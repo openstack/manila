@@ -319,7 +319,8 @@ class ShareGroupsAPITestCase(test.TestCase):
             db_driver, 'share_group_type_get',
             mock.Mock(return_value=share_group_type))
         self.mock_object(share_types, 'get_share_type',
-                         mock.Mock(side_effect=[share_type_1, share_type_1]*2))
+                         mock.Mock(side_effect=[share_type_1,
+                                                share_type_1] * 2))
         self.mock_object(db_driver, 'share_group_snapshot_get')
         kwargs = {
             'availability_zone': 'hypernova',

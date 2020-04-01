@@ -353,10 +353,11 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         path = self._nfs_add_str
         provider = '%s:%s' % (self.host, self._port)
         data = {}
-        va_share_info = ("{\"share\":[{\"fileSystemPath\":\""+va_sharepath +
+        va_share_info = ("{\"share\":[{\"fileSystemPath\":\"" + va_sharepath +
                          "\",\"shareType\":\"NFS\",\"shareDetails\":" +
-                         "[{\"client\":\""+server+"\",\"exportOptions\":\"" +
-                         access_level+"\"}]}]}")
+                         "[{\"client\":\"" + server +
+                         "\",\"exportOptions\":\"" +
+                         access_level + "\"}]}]}")
 
         data["shareDetails"] = va_share_info
 
@@ -396,9 +397,9 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         path = self._nfs_delete_str
         provider = '%s:%s' % (self.host, self._port)
         data = {}
-        va_share_info = ("{\"share\":[{\"fileSystemPath\":\""+va_sharepath +
+        va_share_info = ("{\"share\":[{\"fileSystemPath\":\"" + va_sharepath +
                          "\",\"shareType\":\"NFS\",\"shareDetails\":" +
-                         "[{\"client\":\""+server+"\"}]}]}")
+                         "[{\"client\":\"" + server + "\"}]}]}")
 
         data["shareDetails"] = va_share_info
         result = self._access_api(self.session, provider, path,

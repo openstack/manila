@@ -1121,7 +1121,7 @@ class HPE3ParMediatorTestCase(test.TestCase):
         fstore_init_size = int(
             constants.GET_FSQUOTA['members'][0]['hardBlock'])
 
-        expected_capacity = (0-share_size) * units.Ki + fstore_init_size
+        expected_capacity = (0 - share_size) * units.Ki + fstore_init_size
         self.mock_object(self.mediator,
                          '_find_fstore',
                          mock.Mock(return_value=constants.EXPECTED_FSTORE))
@@ -1667,7 +1667,7 @@ class HPE3ParMediatorTestCase(test.TestCase):
                 constants.NFS_LOWER,
                 constants.EXPECTED_VFS,
                 constants.EXPECTED_SHARE_NAME,
-                clientip='+'+constants.EXPECTED_IP_1234,
+                clientip='+' + constants.EXPECTED_IP_1234,
                 fpg=constants.EXPECTED_FPG,
                 fstore=constants.EXPECTED_FSTORE,
                 comment=constants.EXPECTED_COMMENT),
