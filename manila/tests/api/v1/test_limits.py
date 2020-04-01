@@ -364,36 +364,37 @@ class ParseLimitsTest(BaseLimitTestSuite):
     def test_multiple_rules(self):
         """Test that parse_limits() handles multiple rules correctly."""
         try:
-            l = limits.Limiter.parse_limits('(get, *, .*, 20, minute);'
-                                            '(PUT, /foo*, /foo.*, 10, hour);'
-                                            '(POST, /bar*, /bar.*, 5, second);'
-                                            '(Say, /derp*, /derp.*, 1, day)')
+            lim = limits.Limiter.parse_limits(
+                '(get, *, .*, 20, minute);'
+                '(PUT, /foo*, /foo.*, 10, hour);'
+                '(POST, /bar*, /bar.*, 5, second);'
+                '(Say, /derp*, /derp.*, 1, day)')
         except ValueError as e:
             assert False, six.text_type(e)
 
         # Make sure the number of returned limits are correct
-        self.assertEqual(4, len(l))
+        self.assertEqual(4, len(lim))
 
         # Check all the verbs...
         expected = ['GET', 'PUT', 'POST', 'SAY']
-        self.assertEqual(expected, [t.verb for t in l])
+        self.assertEqual(expected, [t.verb for t in lim])
 
         # ...the URIs...
         expected = ['*', '/foo*', '/bar*', '/derp*']
-        self.assertEqual(expected, [t.uri for t in l])
+        self.assertEqual(expected, [t.uri for t in lim])
 
         # ...the regexes...
         expected = ['.*', '/foo.*', '/bar.*', '/derp.*']
-        self.assertEqual(expected, [t.regex for t in l])
+        self.assertEqual(expected, [t.regex for t in lim])
 
         # ...the values...
         expected = [20, 10, 5, 1]
-        self.assertEqual(expected, [t.value for t in l])
+        self.assertEqual(expected, [t.value for t in lim])
 
         # ...and the units...
         expected = [limits.PER_MINUTE, limits.PER_HOUR,
                     limits.PER_SECOND, limits.PER_DAY]
-        self.assertEqual(expected, [t.unit for t in l])
+        self.assertEqual(expected, [t.unit for t in lim])
 
 
 class LimiterTest(BaseLimitTestSuite):

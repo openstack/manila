@@ -82,13 +82,13 @@ def _conf2json(conf):
 
         for pat, s in [
                 # add omitted "=" signs to block openings
-                ('([^=\s])\s*{', '\\1={'),
+                (r'([^=\s])\s*{', '\\1={'),
                 # delete trailing semicolons in blocks
-                (';\s*}', '}'),
+                (r';\s*}', '}'),
                 # add omitted semicolons after blocks
-                ('}\s*([^}\s])', '};\\1'),
+                (r'}\s*([^}\s])', '};\\1'),
                 # separate syntactically significant characters
-                ('([;{}=])', ' \\1 ')]:
+                (r'([;{}=])', ' \\1 ')]:
             tok = re.sub(pat, s, tok)
 
         # map tokens to JSON equivalents
@@ -98,7 +98,7 @@ def _conf2json(conf):
             elif word == ";":
                 word = ','
             elif (word in ['{', '}'] or
-                  re.search('\A-?[1-9]\d*(\.\d+)?\Z', word)):
+                  re.search(r'\A-?[1-9]\d*(\.\d+)?\Z', word)):
                 pass
             else:
                 word = jsonutils.dumps(word)
@@ -193,8 +193,8 @@ def parseconf(conf):
         # occurrences of a config block to be later converted to a
         # dict key-value pair, with block name being the key and a
         # list of block contents being the value.
-        l = jsonutils.loads(_conf2json(conf), object_pairs_hook=lambda x: x)
-        d = list_to_dict(l)
+        li = jsonutils.loads(_conf2json(conf), object_pairs_hook=lambda x: x)
+        d = list_to_dict(li)
     return d
 
 
@@ -222,7 +222,7 @@ class GaneshaManager(object):
     """Ganesha instrumentation class."""
 
     def __init__(self, execute, tag, **kwargs):
-        self.confrx = re.compile('\.conf\Z')
+        self.confrx = re.compile(r'\.conf\Z')
         self.ganesha_config_path = kwargs['ganesha_config_path']
         self.tag = tag
 
@@ -566,7 +566,7 @@ class GaneshaManager(object):
                 "sqlite3", self.ganesha_db_path,
                 bumpcode + 'select * from ganesha where key = "exportid";',
                 run_as_root=False)[0]
-            match = re.search('\Aexportid\|(\d+)$', out)
+            match = re.search(r'\Aexportid\|(\d+)$', out)
             if not match:
                 LOG.error("Invalid export database on "
                           "Ganesha node %(tag)s: %(db)s.",
