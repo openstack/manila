@@ -261,7 +261,7 @@ class ShareDriverTestCase(test.TestCase):
 
     def test_snapshot_support_exists(self):
         driver.CONF.set_default('driver_handles_share_servers', True)
-        fake_method = lambda *args, **kwargs: None
+        fake_method = lambda *args, **kwargs: None  # noqa: E731
         child_methods = {
             "create_snapshot": fake_method,
             "delete_snapshot": fake_method,
@@ -292,7 +292,7 @@ class ShareDriverTestCase(test.TestCase):
         driver.CONF.set_default('driver_handles_share_servers', True)
 
         common_drv_methods, child_drv_methods = [
-            {method_name: lambda *args, **kwargs: None
+            {method_name: lambda *args, **kwargs: None  # noqa: E731
              for method_name in method_names}
             for method_names in (common_drv_meth_names,
                                  child_drv_meth_names)]
@@ -316,7 +316,7 @@ class ShareDriverTestCase(test.TestCase):
     )
     def test_snapshot_support_absent(self, methods):
         driver.CONF.set_default('driver_handles_share_servers', True)
-        fake_method = lambda *args, **kwargs: None
+        fake_method = lambda *args, **kwargs: None  # noqa: E731
         child_methods = {}
         for method in methods:
             child_methods[method] = fake_method
@@ -349,7 +349,7 @@ class ShareDriverTestCase(test.TestCase):
     def test_snapshot_support_exists_and_set_explicitly(
             self, snapshots_are_supported):
         driver.CONF.set_default('driver_handles_share_servers', True)
-        fake_method = lambda *args, **kwargs: None
+        fake_method = lambda *args, **kwargs: None  # noqa: E731
         child_methods = {
             "create_snapshot": fake_method,
             "delete_snapshot": fake_method,
@@ -368,7 +368,7 @@ class ShareDriverTestCase(test.TestCase):
 
     def test_create_share_from_snapshot_support_exists(self):
         driver.CONF.set_default('driver_handles_share_servers', True)
-        fake_method = lambda *args, **kwargs: None
+        fake_method = lambda *args, **kwargs: None  # noqa: E731
         child_methods = {
             "create_share_from_snapshot": fake_method,
             "create_snapshot": fake_method,
@@ -391,7 +391,7 @@ class ShareDriverTestCase(test.TestCase):
     )
     def test_create_share_from_snapshot_support_absent(self, methods):
         driver.CONF.set_default('driver_handles_share_servers', True)
-        fake_method = lambda *args, **kwargs: None
+        fake_method = lambda *args, **kwargs: None  # noqa: E731
         child_methods = {}
         for method in methods:
             child_methods[method] = fake_method
@@ -427,7 +427,7 @@ class ShareDriverTestCase(test.TestCase):
     def test_create_share_from_snapshot_exists_and_set_explicitly(
             self, create_share_from_snapshot_supported):
         driver.CONF.set_default('driver_handles_share_servers', True)
-        fake_method = lambda *args, **kwargs: None
+        fake_method = lambda *args, **kwargs: None  # noqa: E731
         child_methods = {"create_share_from_snapshot": fake_method}
         child_class_instance = type(
             "NotRedefined", (driver.ShareDriver, ), child_methods)(True)

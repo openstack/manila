@@ -52,8 +52,8 @@ glusterfs_volume_mapped_opts = [
                     'parameter which matches an integer (sequence of '
                     'digits) in which case the value shall be interpreted as '
                     'size of the volume in GB. Examples: '
-                    '"manila-share-volume-\d+$", '
-                    '"manila-share-volume-#{size}G-\d+$"; '
+                    r'"manila-share-volume-\d+$", '
+                    r'"manila-share-volume-#{size}G-\d+$"; '
                     'with matching volume names, respectively: '
                     '"manila-share-volume-12", "manila-share-volume-3G-13". '
                     'In latter example, the number that matches "#{size}", '
@@ -72,10 +72,10 @@ CONF.register_opts(glusterfs_volume_mapped_opts)
 # and a transformer function ('trans') for the matched
 # string value.
 # Currently we handle only #{size}.
-PATTERN_DICT = {'size': {'pattern': '(?P<size>\d+)', 'trans': int}}
+PATTERN_DICT = {'size': {'pattern': r'(?P<size>\d+)', 'trans': int}}
 USER_MANILA_SHARE = 'user.manila-share'
 USER_CLONED_FROM = 'user.manila-cloned-from'
-UUID_RE = re.compile('\A[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}\Z', re.I)
+UUID_RE = re.compile(r'\A[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}\Z', re.I)
 
 
 class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
@@ -276,10 +276,10 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         if size and 'size' in self.volume_pattern_keys:
             # then this function is used to extract the
             # size value for a given volume from the voldict...
-            get_volsize = lambda vol: voldict[vol]['size']
+            get_volsize = lambda vol: voldict[vol]['size']  # noqa: E731
         else:
             # else just use a stub.
-            get_volsize = lambda vol: None
+            get_volsize = lambda vol: None  # noqa: E731
         for vol in unused_vols:
             # For each unused volume, we extract the <size>
             # and <host> values with which it can be inserted

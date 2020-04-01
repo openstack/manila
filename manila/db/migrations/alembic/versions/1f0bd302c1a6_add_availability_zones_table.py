@@ -82,7 +82,7 @@ def upgrade():
 
     # Map string AZ names to ID's in target tables
     # pylint: disable=no-value-for-parameter
-    set_az_id_in_table = lambda table, id, name: (
+    set_az_id_in_table = lambda table, id, name: (  # noqa: E731
         op.execute(
             table.update().where(table.c.availability_zone == name).values(
                 {'availability_zone_id': id})
