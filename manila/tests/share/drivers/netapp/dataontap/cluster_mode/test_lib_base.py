@@ -1436,7 +1436,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         share_name = self.library._get_backend_share_name(
             fake_snapshot['share_id'])
         vserver_client.delete_snapshot.assert_called_once_with(
-            share_name,  fake_snapshot['provider_location'])
+            share_name, fake_snapshot['provider_location'])
 
     @ddt.data(exception.InvalidInput(reason='fake_reason'),
               exception.VserverNotSpecified(),

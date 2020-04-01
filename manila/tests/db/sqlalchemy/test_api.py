@@ -1337,7 +1337,7 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
         expected_number = 1 if status else 3
         filters = {
             'snapshot_ids': 'fake_snapshot_id_1',
-            'statuses':  expected_status
+            'statuses': expected_status
         }
         instances = db_api.share_snapshot_instance_get_all_with_filters(
             self.ctxt, filters)
@@ -3451,7 +3451,7 @@ class ShareTypeAPITestCase(test.TestCase):
 
         # Validate that quotas exist
         share_type_quotas = db_api.quota_get_all_by_project_and_share_type(
-            self.ctxt,  'fake-project-id', share_type['id'])
+            self.ctxt, 'fake-project-id', share_type['id'])
         expected_quotas = {
             'project_id': 'fake-project-id',
             'share_type_id': share_type['id'],

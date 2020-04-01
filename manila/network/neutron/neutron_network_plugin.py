@@ -389,7 +389,7 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         provider_nw_dict = {
             'network_type': network_type,
             'segmentation_id': segmentation_id,
-            'mtu':  net_info['mtu'],
+            'mtu': net_info['mtu'],
         }
         share_network_subnet.update(provider_nw_dict)
 
@@ -608,7 +608,7 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
             share_network_subnet['neutron_net_id'])
 
         mtu_dict = {
-            'mtu':  net_info['mtu'],
+            'mtu': net_info['mtu'],
         }
         share_network_subnet.update(mtu_dict)
 

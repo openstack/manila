@@ -3726,7 +3726,7 @@ class ShareAPITestCase(test.TestCase):
             self.context, replica['id'],
             {'status': constants.STATUS_DELETING, 'terminated_at': mock.ANY})
         mock_snapshot_get_call.assert_called_once_with(
-            self.context,  {'share_instance_ids': replica['id']})
+            self.context, {'share_instance_ids': replica['id']})
         self.assertEqual(
             len(snapshots), mock_snapshot_instance_delete_call.call_count)
 

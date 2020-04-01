@@ -652,7 +652,7 @@ class ShareGroupTypeAccessTest(test.TestCase):
 
     def test_add_project_access_to_public_share_type(self):
         self.mock_object(
-            share_group_types, 'get',  mock.Mock(return_value=GROUP_TYPE_1))
+            share_group_types, 'get', mock.Mock(return_value=GROUP_TYPE_1))
         body = {'addProjectAccess': {'project': PROJ1_UUID}}
         req = fake_request(
             '/v2/fake/share-group-types/%s' % GROUP_TYPE_1['id'], admin=True)

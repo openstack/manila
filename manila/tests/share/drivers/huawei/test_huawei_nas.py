@@ -3437,7 +3437,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertEqual(self.fake_network_allocations[0]['ip_address'],
                          backend_details['ip'])
         self.driver.plugin._get_online_port.assert_called_once_with(
-            ['CTE0.A.H0', 'CTE0.A.H2',  'CTE0.B.H0', 'BOND0'])
+            ['CTE0.A.H0', 'CTE0.A.H2', 'CTE0.B.H0', 'BOND0'])
         self.assertTrue(self.driver.plugin.helper.get_all_logical_port.called)
         self.driver.plugin.helper.get_port_id.assert_called_once_with(
             'CTE0.A.H2', constants.PORT_TYPE_ETH)
@@ -3884,11 +3884,11 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.share_server)
 
     def _add_conf_file_element(self, doc, parent_element, name, value=None):
-            new_element = doc.createElement(name)
-            if value:
-                new_text = doc.createTextNode(value)
-                new_element.appendChild(new_text)
-            parent_element.appendChild(new_element)
+        new_element = doc.createElement(name)
+        if value:
+            new_text = doc.createTextNode(value)
+            new_element.appendChild(new_text)
+        parent_element.appendChild(new_element)
 
     def create_fake_conf_file(self, fake_conf_file,
                               product_flag=True, username_flag=True,

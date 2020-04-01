@@ -501,5 +501,5 @@ class API(base.Base):
     def get_all_share_group_snapshot_members(self, context,
                                              share_group_snapshot_id):
         members = self.db.share_group_snapshot_members_get_all(
-            context,  share_group_snapshot_id)
+            context, share_group_snapshot_id)
         return members

@@ -207,7 +207,7 @@ class ShareMigrationHelperTestCase(test.TestCase):
         # run
         self.assertRaises(
             exception.ShareMigrationFailed,
-            self.helper.create_instance_and_wait,  self.share,
+            self.helper.create_instance_and_wait, self.share,
             host, 'fake_net_id', 'fake_az_id', 'fake_type_id')
 
         # asserts

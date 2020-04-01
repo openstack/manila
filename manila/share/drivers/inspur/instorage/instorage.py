@@ -117,7 +117,7 @@ class InStorageShareDriver(driver.ShareDriver):
 
         try:
             stats = {
-                'share_backend_name':  self.backend_name,
+                'share_backend_name': self.backend_name,
                 'vendor_name': self.VENDOR,
                 'driver_version': self.VERSION,
                 'storage_protocol': 'NFS_CIFS',

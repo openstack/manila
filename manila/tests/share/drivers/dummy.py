@@ -696,7 +696,7 @@ class DummyDriver(driver.ShareDriver):
         gathered_at = timeutils.utcnow()
         for s in shares:
             share_updates.append({'id': s['id'],
-                                  'used_size':  1,
+                                  'used_size': 1,
                                   'gathered_at': gathered_at})
         return share_updates
 

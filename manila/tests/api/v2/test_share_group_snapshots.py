@@ -559,7 +559,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
     @ddt.data(*fakes.fixture_force_delete_with_different_roles)
     @ddt.unpack
     def test_share_group_snapshot_force_delete_with_different_roles(
-            self, role,  resp_code, version):
+            self, role, resp_code, version):
         group_snap, req = self._setup_share_group_snapshot_data()
         ctxt = self._get_context(role)
         req.method = 'POST'

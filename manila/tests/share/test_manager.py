@@ -1563,7 +1563,7 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.db, 'share_replica_update')
 
         self.share_manager._share_replica_update(
-            self.context,  replica, share_id=replica['share_id'])
+            self.context, replica, share_id=replica['share_id'])
 
         mock_db_update_call.assert_called_once_with(
             self.context, replica['id'],
@@ -1688,7 +1688,7 @@ class ShareManagerTestCase(test.TestCase):
             self.context, replica, share_id=replica['share_id'])
 
         if retval == constants.REPLICA_STATE_ACTIVE:
-                self.assertEqual(1, mock_warning_log.call_count)
+            self.assertEqual(1, mock_warning_log.call_count)
         elif retval:
             self.assertEqual(0, mock_warning_log.call_count)
         self.assertTrue(mock_driver_call.called)
