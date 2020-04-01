@@ -82,7 +82,7 @@ class FPG(types.String, types.IPAddress):
         self.max_ip = max_ip
 
     def __call__(self, value):
-        if value is None or value.strip(' ') is '':
+        if value is None or value.strip(' ') == '':
             message = _("Invalid configuration. hpe3par_fpg must be set.")
             LOG.error(message)
             raise exception.HPE3ParInvalid(err=message)
@@ -116,6 +116,7 @@ class FPG(types.String, types.IPAddress):
 
     def _formatter(self, value):
         return six.text_type(value)
+
 
 HPE3PAR_OPTS = [
     cfg.StrOpt('hpe3par_api_url',
@@ -473,7 +474,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
             'now': datetime.datetime.now().strftime('%H%M%S'),
         }
 
-        acceptable = re.compile('[^a-zA-Z0-9_=:@# \-]+', re.UNICODE)
+        acceptable = re.compile(r'[^a-zA-Z0-9_=:@# \-]+', re.UNICODE)
         comment = ("OpenStack Manila - host=%(host)s  orig_name=%(name)s "
                    "created=%(now)s" % info)
 

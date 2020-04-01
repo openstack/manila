@@ -2733,7 +2733,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.set_preferred_dc(security_service)
 
-        if server is '':
+        if server == '':
             self.client.send_request.assert_not_called()
         else:
             preferred_dc_add_args = {

@@ -156,10 +156,10 @@ class IsilonApiTest(test.TestCase):
             for call in actual_calls:
                 if call.url.startswith(expected_call.match_url):
                     match_found = True
-                    if expected_call.request_type is 'dir_creation':
+                    if expected_call.request_type == 'dir_creation':
                         self._verify_dir_creation_request(
                             call, *expected_call.verify_args)
-                    elif expected_call.request_type is 'file_clone':
+                    elif expected_call.request_type == 'file_clone':
                         pass
                     else:
                         self.fail('Invalid request type')

@@ -448,7 +448,7 @@ class AS13000ShareDriverTestCase(test.TestCase):
 
         if share_proto == 'nfs':
             mock_cns.assert_called_once_with(share_path='/fake/path')
-        elif share['share_proto'] is 'cifs':
+        elif share['share_proto'] == 'cifs':
             mock_ccs.assert_called_once_with(share_path='/fake/path',
                                              share_name='share_fakeinstanceid')
 
@@ -480,7 +480,7 @@ class AS13000ShareDriverTestCase(test.TestCase):
 
         if share_proto == 'nfs':
             mock_cns.assert_called_once_with(share_path='/fake/path')
-        elif share['share_proto'] is 'cifs':
+        elif share['share_proto'] == 'cifs':
             mock_ccs.assert_called_once_with(share_path='/fake/path',
                                              share_name='share_fakeinstanceid')
 
@@ -582,7 +582,7 @@ class AS13000ShareDriverTestCase(test.TestCase):
 
         if share_proto == 'nfs':
             mock_gns.assert_called_once_with(r'/P/share_fakeinstanceid')
-        elif share['share_proto'] is 'cifs':
+        elif share['share_proto'] == 'cifs':
             mock_gcs.assert_called_once_with(r'share_fakeinstanceid')
 
     def test_create_snapshot(self):
@@ -653,7 +653,7 @@ class AS13000ShareDriverTestCase(test.TestCase):
         result = self.driver.transfer_rule_to_client(proto, rule)
 
         client = {'name': '1.1.1.1',
-                  'authority':  'rwx' if proto == 'cifs' else 'rw'}
+                  'authority': 'rwx' if proto == 'cifs' else 'rw'}
 
         if proto == 'nfs':
             client.update({'type': 0})
@@ -1085,7 +1085,7 @@ class AS13000ShareDriverTestCase(test.TestCase):
         result = self.driver._get_location_path('fake_name',
                                                 '/fake/path',
                                                 proto)
-        if proto is 'nfs':
+        if proto == 'nfs':
             expect = [{'path': 'ip1:/fake/path'},
                       {'path': 'ip2:/fake/path'}]
         else:
