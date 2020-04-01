@@ -93,7 +93,7 @@ class ShareServerController(wsgi.Controller):
                 server.share_network_name = share_network['id']
         except exception.ShareServerNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
-        except exception.ShareNetworkNotFound as e:
+        except exception.ShareNetworkNotFound:
             msg = _("Share server %s could not be found. Its associated "
                     "share network does not "
                     "exist.") % server.share_network_subnet['share_network_id']

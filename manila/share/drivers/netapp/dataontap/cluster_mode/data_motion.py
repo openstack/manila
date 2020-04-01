@@ -190,7 +190,7 @@ class DataMotionSession(object):
                                          dest_vserver,
                                          dest_volume_name,
                                          clear_checkpoint=False)
-        except netapp_api.NaApiError as e:
+        except netapp_api.NaApiError:
             # Snapmirror is already deleted
             pass
 

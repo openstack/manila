@@ -36,7 +36,7 @@ from manila.share import share_types
 try:
     import ceph_volume_client
     ceph_module_found = True
-except ImportError as e:
+except ImportError:
     ceph_volume_client = None
     ceph_module_found = False
 

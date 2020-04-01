@@ -165,7 +165,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         # (aovchinnikov): ssh_execute does not behave well when passed
         # parameters with spaces.
-        wrap = lambda token: "\"" + token + "\""
+        wrap = lambda token: "\"" + token + "\""  # noqa: E731
         command = [wrap(tkn) if tkn.count(' ') else tkn for tkn in command]
         return processutils.ssh_execute(ssh, ' '.join(command),
                                         check_exit_code=check_exit_code)
@@ -304,7 +304,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             # Remount it to avoid postponed point of failure
             self._ssh_exec(server_details, ['sudo', 'mount', '-a'])
-        except exception.ProcessExecutionError as e:
+        except exception.ProcessExecutionError:
             LOG.error("Failed to mount all shares on server '%s'.",
                       server_details['instance_id'])
 
