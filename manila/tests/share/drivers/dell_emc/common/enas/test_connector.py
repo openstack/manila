@@ -133,11 +133,11 @@ class XMLAPIConnectorTest(test.TestCase):
 
 
 class MockSSH(object):
-        def __enter__(self):
-            return self
+    def __enter__(self):
+        return self
 
-        def __exit__(self, type, value, traceback):
-            pass
+    def __exit__(self, type, value, traceback):
+        pass
 
 
 class MockSSHPool(object):

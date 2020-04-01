@@ -1562,8 +1562,8 @@ class API(base.Base):
                 context, service_host, 'manila-share')
 
             if utils.service_is_up(service):
-                    self.share_rpcapi.migration_cancel(
-                        context, share_instance_ref, migrating_instance_id)
+                self.share_rpcapi.migration_cancel(
+                    context, share_instance_ref, migrating_instance_id)
             else:
                 migrating = False
 
@@ -1840,7 +1840,7 @@ class API(base.Base):
             raise exception.InvalidShare(message=msg)
 
         for share_instance in share.instances:
-                self.deny_access_to_instance(ctx, share_instance, access)
+            self.deny_access_to_instance(ctx, share_instance, access)
 
     def deny_access_to_instance(self, context, share_instance, access):
         self._conditionally_transition_share_instance_access_rules_status(

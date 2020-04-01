@@ -155,6 +155,7 @@ def app():
     mapper['/v2'] = router_v2.APIRouter()
     return mapper
 
+
 fixture_reset_status_with_different_roles_v1 = (
     {
         'role': 'admin',
@@ -280,31 +281,31 @@ def mock_fake_admin_check(context, resource_name, action, *args, **kwargs):
 
 class FakeResourceViewBuilder(api_common.ViewBuilder):
 
-        _collection_name = 'fake_resource'
-        _detail_version_modifiers = [
-            "add_field_xyzzy",
-            "add_field_spoon_for_admins",
-            "remove_field_foo",
-        ]
+    _collection_name = 'fake_resource'
+    _detail_version_modifiers = [
+        "add_field_xyzzy",
+        "add_field_spoon_for_admins",
+        "remove_field_foo",
+    ]
 
-        def view(self, req, resource):
+    def view(self, req, resource):
 
-            keys = ('id', 'foo', 'fred', 'alice')
-            resource_dict = {key: resource.get(key) for key in keys}
+        keys = ('id', 'foo', 'fred', 'alice')
+        resource_dict = {key: resource.get(key) for key in keys}
 
-            self.update_versioned_resource_dict(req, resource_dict, resource)
+        self.update_versioned_resource_dict(req, resource_dict, resource)
 
-            return resource_dict
+        return resource_dict
 
-        @api_common.ViewBuilder.versioned_method("1.41")
-        def add_field_xyzzy(self, context, resource_dict, resource):
-            resource_dict['xyzzy'] = resource.get('xyzzy')
+    @api_common.ViewBuilder.versioned_method("1.41")
+    def add_field_xyzzy(self, context, resource_dict, resource):
+        resource_dict['xyzzy'] = resource.get('xyzzy')
 
-        @api_common.ViewBuilder.versioned_method("1.6")
-        def add_field_spoon_for_admins(self, context, resource_dict, resource):
-            if context.is_admin:
-                resource_dict['spoon'] = resource.get('spoon')
+    @api_common.ViewBuilder.versioned_method("1.6")
+    def add_field_spoon_for_admins(self, context, resource_dict, resource):
+        if context.is_admin:
+            resource_dict['spoon'] = resource.get('spoon')
 
-        @api_common.ViewBuilder.versioned_method("3.14")
-        def remove_field_foo(self, context, resource_dict, resource):
-            resource_dict.pop('foo', None)
+    @api_common.ViewBuilder.versioned_method("3.14")
+    def remove_field_foo(self, context, resource_dict, resource):
+        resource_dict.pop('foo', None)

@@ -1429,46 +1429,46 @@ class ShareManager(manager.SchedulerDependentManager):
                     dest_share_instance)
 
             except Exception:
-                    msg = _("Driver migration completion failed for"
-                            " share %s.") % share_ref['id']
-                    LOG.exception(msg)
+                msg = _("Driver migration completion failed for"
+                        " share %s.") % share_ref['id']
+                LOG.exception(msg)
 
-                    # NOTE(ganso): If driver fails during migration-complete,
-                    # all instances are set to error and it is up to the admin
-                    # to fix the problem to either complete migration
-                    # manually or clean it up. At this moment, data
-                    # preservation at the source backend cannot be
-                    # guaranteed.
+                # NOTE(ganso): If driver fails during migration-complete,
+                # all instances are set to error and it is up to the admin
+                # to fix the problem to either complete migration
+                # manually or clean it up. At this moment, data
+                # preservation at the source backend cannot be
+                # guaranteed.
 
-                    self._restore_migrating_snapshots_status(
-                        context, src_share_instance['id'],
-                        errored_dest_instance_id=dest_share_instance['id'])
-                    self.db.share_instance_update(
-                        context, src_instance_id,
-                        {'status': constants.STATUS_ERROR})
-                    self.db.share_instance_update(
-                        context, dest_instance_id,
-                        {'status': constants.STATUS_ERROR})
-                    self.db.share_update(
-                        context, share_ref['id'],
-                        {'task_state': constants.TASK_STATE_MIGRATION_ERROR})
-                    raise exception.ShareMigrationFailed(reason=msg)
+                self._restore_migrating_snapshots_status(
+                    context, src_share_instance['id'],
+                    errored_dest_instance_id=dest_share_instance['id'])
+                self.db.share_instance_update(
+                    context, src_instance_id,
+                    {'status': constants.STATUS_ERROR})
+                self.db.share_instance_update(
+                    context, dest_instance_id,
+                    {'status': constants.STATUS_ERROR})
+                self.db.share_update(
+                    context, share_ref['id'],
+                    {'task_state': constants.TASK_STATE_MIGRATION_ERROR})
+                raise exception.ShareMigrationFailed(reason=msg)
         else:
             try:
                 self._migration_complete_host_assisted(
                     context, share_ref, src_instance_id,
                     dest_instance_id)
             except Exception:
-                    msg = _("Host-assisted migration completion failed for"
-                            " share %s.") % share_ref['id']
-                    LOG.exception(msg)
-                    self.db.share_update(
-                        context, share_ref['id'],
-                        {'task_state': constants.TASK_STATE_MIGRATION_ERROR})
-                    self.db.share_instance_update(
-                        context, src_instance_id,
-                        {'status': constants.STATUS_AVAILABLE})
-                    raise exception.ShareMigrationFailed(reason=msg)
+                msg = _("Host-assisted migration completion failed for"
+                        " share %s.") % share_ref['id']
+                LOG.exception(msg)
+                self.db.share_update(
+                    context, share_ref['id'],
+                    {'task_state': constants.TASK_STATE_MIGRATION_ERROR})
+                self.db.share_instance_update(
+                    context, src_instance_id,
+                    {'status': constants.STATUS_AVAILABLE})
+                raise exception.ShareMigrationFailed(reason=msg)
 
         model_update = self._get_extra_specs_from_share_type(
             context, dest_share_instance['share_type_id'])
@@ -1986,14 +1986,14 @@ class ShareManager(manager.SchedulerDependentManager):
                     exception=excep)
 
         if replica_ref.get('export_locations'):
-                if isinstance(replica_ref.get('export_locations'), list):
-                    self.db.share_export_locations_update(
-                        context, share_replica['id'],
-                        replica_ref.get('export_locations'))
-                else:
-                    msg = ('Invalid export locations passed to the share '
-                           'manager.')
-                    LOG.warning(msg)
+            if isinstance(replica_ref.get('export_locations'), list):
+                self.db.share_export_locations_update(
+                    context, share_replica['id'],
+                    replica_ref.get('export_locations'))
+            else:
+                msg = ('Invalid export locations passed to the share '
+                       'manager.')
+                LOG.warning(msg)
 
         if replica_ref.get('replica_state'):
             self.db.share_replica_update(

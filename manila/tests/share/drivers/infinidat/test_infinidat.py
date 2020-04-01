@@ -346,11 +346,11 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
             self._mock_export.get_export_path())
         for network_space_ip in \
                 (_MOCK_NETWORK_SPACE_IP_1, _MOCK_NETWORK_SPACE_IP_2):
-                self.assertIn(
-                    "{network_space_ip}:{export_path}".format(
-                        network_space_ip=network_space_ip,
-                        export_path=self._mock_export.get_export_path()),
-                    export_paths)
+            self.assertIn(
+                "{network_space_ip}:{export_path}".format(
+                    network_space_ip=network_space_ip,
+                    export_path=self._mock_export.get_export_path()),
+                export_paths)
 
     def test__get_export(self):
         # The default return value of get_exports is [mock_export, ]:
