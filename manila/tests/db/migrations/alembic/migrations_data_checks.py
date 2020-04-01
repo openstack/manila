@@ -130,7 +130,6 @@ def fake_share(**kwargs):
         'display_name': 'fake_share',
         'display_description': 'my fake share',
         'snapshot_id': uuidutils.generate_uuid(),
-        'share_proto': 'nfs',
         'is_public': True,
         'size': 1,
         'deleted': 'False',

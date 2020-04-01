@@ -1046,7 +1046,6 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             'instance_id': server_get['id'],
             'ip': ip_address,
             'networks': server_get['networks'],
-            'router_id': network_data['router']['id'],
             'public_port_id': 'fake_public_port',
             'service_port_id': 'fake_service_port',
             'admin_port_id': 'fake_admin_port',
