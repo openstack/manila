@@ -139,6 +139,20 @@ class QuotaSetsMixin(object):
 
     @wsgi.Controller.authorize("update")
     def _update(self, req, id, body):
+        body = body.get('quota_set', {})
+        if (body.get('gigabytes') is None and
+                body.get('snapshots') is None and
+                body.get('snapshot_gigabytes') is None and
+                body.get('shares') is None and
+                body.get('share_networks') is None and
+                body.get('share_groups') is None and
+                body.get('share_group_snapshots') is None and
+                body.get('share_replicas') is None and
+                body.get('replica_gigabytes') is None and
+                body.get('per_share_gigabytes') is None):
+            msg = _("Must supply at least one quota field to update.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
         context = req.environ['manila.context']
         project_id = id
         bad_keys = []
@@ -148,7 +162,6 @@ class QuotaSetsMixin(object):
         share_type = params.get('share_type', [None])[0]
         self._validate_user_id_and_share_type_args(user_id, share_type)
         share_type_id = self._get_share_type_id(context, share_type)
-        body = body.get('quota_set', {})
         if share_type and body.get('share_groups',
                                    body.get('share_group_snapshots')):
             msg = _("Share type quotas cannot constrain share groups and "

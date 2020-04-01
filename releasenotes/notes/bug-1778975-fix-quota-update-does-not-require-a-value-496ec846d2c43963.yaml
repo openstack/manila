@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed a manila issue while updating quotas. Now manila requires at least
+    a quota value to be updated.
