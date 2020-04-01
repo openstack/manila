@@ -78,6 +78,7 @@ class FakeConnection(base.StorageConnection):
     def teardown_server(self, server_details, security_services=None):
         """Teardown share server."""
 
+
 FAKE_BACKEND = 'fake_backend'
 
 

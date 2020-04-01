@@ -41,7 +41,7 @@ class EvalConstant(object):
     def eval(self):
         result = self.value
         if (isinstance(result, six.string_types) and
-                re.match("^[a-zA-Z_]+\.[a-zA-Z_]+$", result)):
+                re.match(r"^[a-zA-Z_]+\.[a-zA-Z_]+$", result)):
             (which_dict, entry) = result.split('.')
             try:
                 result = _vars[which_dict][entry]
@@ -220,6 +220,7 @@ class EvalBoolOrOp(object):
         left = self.value[0].eval()
         right = self.value[2].eval()
         return left or right
+
 
 _parser = None
 _vars = {}

@@ -268,4 +268,5 @@ SNAPSHOT_INSTANCE = {
 class FakeException(Exception):
     pass
 
+
 FAKE_EXCEPTION = FakeException("Fake exception for testing.")

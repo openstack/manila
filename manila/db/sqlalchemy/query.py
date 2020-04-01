@@ -36,5 +36,6 @@ def get_maker(engine, autocommit=True, expire_on_commit=False):
                                        expire_on_commit=expire_on_commit,
                                        query_cls=Query)
 
+
 # NOTE(uglide): Monkey patch oslo_db get_maker() function to use custom Query
 orm.get_maker = get_maker

@@ -298,6 +298,7 @@ class FakeHostState(host_manager.HostState):
         for (key, val) in attribute_dict.items():
             setattr(self, key, val)
 
+
 FAKE_HOST_STRING_1 = 'openstack@BackendA#PoolX'
 FAKE_HOST_STRING_2 = 'openstack@BackendB#PoolY'
 FAKE_HOST_STRING_3 = 'openstack@BackendC#PoolZ'
