@@ -286,7 +286,7 @@ class NFSHelper(NASHelperBase):
                 access_to = self._get_parsed_address_or_cidr(
                     access['access_to'])
                 found_item = re.search(
-                    re.escape(local_path) + '[\s\n]*' + re.escape(access_to),
+                    re.escape(local_path) + r'[\s\n]*' + re.escape(access_to),
                     out)
                 if found_item is not None:
                     LOG.warning("Access rule %(type)s:%(to)s already "

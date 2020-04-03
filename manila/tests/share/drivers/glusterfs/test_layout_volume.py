@@ -105,7 +105,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         CONF.set_default('glusterfs_path_to_private_key',
                          '/fakepath/to/privatekey')
         CONF.set_default('glusterfs_volume_pattern',
-                         'manila-share-\d+-#{size}G$')
+                         r'manila-share-\d+-#{size}G$')
         CONF.set_default('driver_handles_share_servers', False)
 
         self.fake_driver = mock.Mock()
@@ -151,7 +151,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         self.assertEqual(fake_obj, ret)
 
     def test_compile_volume_pattern(self):
-        volume_pattern = 'manila-share-\d+-(?P<size>\d+)G$'
+        volume_pattern = r'manila-share-\d+-(?P<size>\d+)G$'
 
         ret = self._layout._compile_volume_pattern()
 
@@ -242,7 +242,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         self.mock_object(self._layout, '_glustermanager',
                          mock.Mock(side_effect=_glustermanager_calls))
         self.mock_object(self._layout, 'volume_pattern',
-                         re.compile('manila-share-\d+(-(?P<size>\d+)G)?$'))
+                         re.compile(r'manila-share-\d+(-(?P<size>\d+)G)?$'))
         expected_output = {'root@host1:/manila-share-1': {'size': None}}
 
         ret = self._layout._fetch_gluster_volumes()

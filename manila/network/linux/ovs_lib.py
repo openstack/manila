@@ -28,16 +28,16 @@ class OVSBridge(object):
         self.re_id = self.re_compile_id()
 
     def re_compile_id(self):
-        external = 'external_ids\s*'
-        mac = 'attached-mac="(?P<vif_mac>([a-fA-F\d]{2}:){5}([a-fA-F\d]{2}))"'
-        iface = 'iface-id="(?P<vif_id>[^"]+)"'
-        name = 'name\s*:\s"(?P<port_name>[^"]*)"'
-        port = 'ofport\s*:\s(?P<ofport>-?\d+)'
-        _re = ('%(external)s:\s{ ( %(mac)s,? | %(iface)s,? | . )* }'
-               ' \s+ %(name)s \s+ %(port)s' % {'external': external,
-                                               'mac': mac,
-                                               'iface': iface, 'name': name,
-                                               'port': port})
+        external = r'external_ids\s*'
+        mac = r'attached-mac="(?P<vif_mac>([a-fA-F\d]{2}:){5}([a-fA-F\d]{2}))"'
+        iface = r'iface-id="(?P<vif_id>[^"]+)"'
+        name = r'name\s*:\s"(?P<port_name>[^"]*)"'
+        port = r'ofport\s*:\s(?P<ofport>-?\d+)'
+        _re = (r'%(external)s:\s{ ( %(mac)s,? | %(iface)s,? | . )* }'
+               r' \s+ %(name)s \s+ %(port)s' % {'external': external,
+                                                'mac': mac,
+                                                'iface': iface, 'name': name,
+                                                'port': port})
         return re.compile(_re, re.M | re.X)
 
     def run_vsctl(self, args):

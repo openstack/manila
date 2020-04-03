@@ -103,7 +103,7 @@ class ManilaException(Exception):
         elif isinstance(message, Exception):
             message = six.text_type(message)
 
-        if re.match('.*[^\.]\.\.$', message):
+        if re.match(r'.*[^\.]\.\.$', message):
             message = message[:-1]
         self.msg = message
         super(ManilaException, self).__init__(message)

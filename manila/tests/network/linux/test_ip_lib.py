@@ -27,15 +27,15 @@ LINK_SAMPLE = [
     '1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN \\'
     'link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00',
     '2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP '
-    'qlen 1000\    link/ether cc:dd:ee:ff:ab:cd brd ff:ff:ff:ff:ff:ff'
-    '\    alias openvswitch',
+    'qlen 1000\\    link/ether cc:dd:ee:ff:ab:cd brd ff:ff:ff:ff:ff:ff'
+    '\\    alias openvswitch',
     '3: br-int: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN '
-    '\    link/ether aa:bb:cc:dd:ee:ff brd ff:ff:ff:ff:ff:ff',
+    '\\    link/ether aa:bb:cc:dd:ee:ff brd ff:ff:ff:ff:ff:ff',
     '4: gw-ddc717df-49: <BROADCAST,MULTICAST> mtu 1500 qdisc noop '
-    'state DOWN \    link/ether fe:dc:ba:fe:dc:ba brd ff:ff:ff:ff:ff:ff',
+    'state DOWN \\    link/ether fe:dc:ba:fe:dc:ba brd ff:ff:ff:ff:ff:ff',
     '5: eth0.50@eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc '
     ' noqueue master brq0b24798c-07 state UP mode DEFAULT'
-    '\    link/ether ab:04:49:b6:ab:a0 brd ff:ff:ff:ff:ff:ff']
+    '\\    link/ether ab:04:49:b6:ab:a0 brd ff:ff:ff:ff:ff:ff']
 
 ADDR_SAMPLE = ("""
 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP qlen 1000

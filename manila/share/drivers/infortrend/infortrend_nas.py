@@ -605,14 +605,14 @@ class InfortrendNAS(object):
     def _parse_location(self, input_location, share_proto):
         ip = None
         folder_name = None
-        pattern_ip = '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'
+        pattern_ip = r'[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'
         if share_proto == 'nfs':
-            pattern_folder = '[^\/]+$'
+            pattern_folder = r'[^\/]+$'
             ip = "".join(re.findall(pattern_ip, input_location))
             folder_name = "".join(re.findall(pattern_folder, input_location))
 
         elif share_proto == 'cifs':
-            pattern_folder = '[^\\\]+$'
+            pattern_folder = r'[^\\]+$'
             ip = "".join(re.findall(pattern_ip, input_location))
             folder_name = "".join(re.findall(pattern_folder, input_location))
 

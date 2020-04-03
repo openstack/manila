@@ -310,7 +310,7 @@ class HitachiHNASDriver(driver.ShareDriver):
                                        is_snapshot=is_snapshot)
 
     def create_share(self, context, share, share_server=None):
-        """Creates share.
+        r"""Creates share.
 
         :param context: The `context.RequestContext` object for the request
         :param share: Share that will be created.
@@ -449,7 +449,7 @@ class HitachiHNASDriver(driver.ShareDriver):
 
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
-        """Creates a new share from snapshot.
+        r"""Creates a new share from snapshot.
 
         :param context: The `context.RequestContext` object for the request
         :param share: Information about the new share.
@@ -521,7 +521,7 @@ class HitachiHNASDriver(driver.ShareDriver):
         return export_list
 
     def ensure_share(self, context, share, share_server=None):
-        """Ensure that share is exported.
+        r"""Ensure that share is exported.
 
         :param context: The `context.RequestContext` object for the request
         :param share: Share that will be checked.
@@ -646,7 +646,7 @@ class HitachiHNASDriver(driver.ShareDriver):
         super(HitachiHNASDriver, self)._update_share_stats(data)
 
     def manage_existing(self, share, driver_options):
-        """Manages a share that exists on backend.
+        r"""Manages a share that exists on backend.
 
         :param share: Share that will be managed.
         :param driver_options: Empty dict or dict with 'volume_id' option.
@@ -1168,7 +1168,7 @@ class HitachiHNASDriver(driver.ShareDriver):
         return export_list
 
     def _get_export_path(self, ip, share_proto, hnas_id, is_snapshot):
-        """Gets and returns export path.
+        r"""Gets and returns export path.
 
         :param ip: IP from HNAS EVS configured.
         :param share_proto: Share or snapshot protocol (NFS or CIFS).
@@ -1223,7 +1223,7 @@ class HitachiHNASDriver(driver.ShareDriver):
         return export_list
 
     def ensure_snapshot(self, context, snapshot, share_server=None):
-        """Ensure that snapshot is exported.
+        r"""Ensure that snapshot is exported.
 
         :param context: The `context.RequestContext` object for the request.
         :param snapshot: Snapshot that will be checked.
