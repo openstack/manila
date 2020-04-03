@@ -18,6 +18,7 @@ GET /messages/<message_id>
 DELETE /messages/<message_id>
 """
 
+from oslo_utils import timeutils
 from six.moves import http_client
 import webob
 from webob import exc
@@ -26,9 +27,11 @@ from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import messages as messages_view
 from manila import exception
+from manila.i18n import _
 from manila.message import api as message_api
 
 MESSAGES_BASE_MICRO_VERSION = '2.37'
+MESSAGES_QUERY_BY_TIMESTAMP = '2.52'
 
 
 class MessagesController(wsgi.Controller):
@@ -69,27 +72,57 @@ class MessagesController(wsgi.Controller):
 
         return webob.Response(status_int=http_client.NO_CONTENT)
 
-    @wsgi.Controller.api_version(MESSAGES_BASE_MICRO_VERSION)
+    @wsgi.Controller.api_version(MESSAGES_BASE_MICRO_VERSION, '2.51')
     @wsgi.Controller.authorize('get_all')
     def index(self, req):
         """Returns a list of messages, transformed through view builder."""
         context = req.environ['manila.context']
+        filters = req.params.copy()
 
-        search_opts = {}
-        search_opts.update(req.GET)
+        params = common.get_pagination_params(req)
+        limit, offset = [params.get('limit'), params.get('offset')]
+        sort_key, sort_dir = common.get_sort_params(filters)
+        filters.pop('created_since', None)
+        filters.pop('created_before', None)
 
-        # Remove keys that are not related to message attrs
-        search_opts.pop('limit', None)
-        search_opts.pop('marker', None)
-        sort_key = search_opts.pop('sort_key', 'created_at')
-        sort_dir = search_opts.pop('sort_dir', 'desc')
+        messages = self.message_api.get_all(context, search_opts=filters,
+                                            limit=limit,
+                                            offset=offset,
+                                            sort_key=sort_key,
+                                            sort_dir=sort_dir)
 
-        messages = self.message_api.get_all(
-            context, search_opts=search_opts, sort_dir=sort_dir,
-            sort_key=sort_key)
-        limited_list = common.limited(messages, req)
+        return self._view_builder.index(req, messages)
 
-        return self._view_builder.index(req, limited_list)
+    @wsgi.Controller.api_version(MESSAGES_QUERY_BY_TIMESTAMP)   # noqa: F811
+    @wsgi.Controller.authorize('get_all')
+    def index(self, req):                 # pylint: disable=function-redefined
+        """Returns a list of messages, transformed through view builder."""
+        context = req.environ['manila.context']
+        filters = req.params.copy()
+
+        params = common.get_pagination_params(req)
+        limit, offset = [params.get('limit'), params.get('offset')]
+        sort_key, sort_dir = common.get_sort_params(filters)
+
+        for time_comparison_filter in ['created_since', 'created_before']:
+            if time_comparison_filter in filters:
+                time_str = filters.get(time_comparison_filter)
+                try:
+                    parsed_time = timeutils.parse_isotime(time_str)
+                except ValueError:
+                    msg = _('Invalid value specified for the query '
+                            'key: %s') % time_comparison_filter
+                    raise exc.HTTPBadRequest(explanation=msg)
+
+                filters[time_comparison_filter] = parsed_time
+
+        messages = self.message_api.get_all(context, search_opts=filters,
+                                            limit=limit,
+                                            offset=offset,
+                                            sort_key=sort_key,
+                                            sort_dir=sort_dir)
+
+        return self._view_builder.index(req, messages)
 
 
 def create_resource():

@@ -1,0 +1,5 @@
+---
+features:
+  - User messages can be queried by timestamp with query keys
+    ``created_since`` and ``created_before`` starting with API
+    version ``2.52``.

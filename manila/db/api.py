@@ -1411,9 +1411,11 @@ def message_get(context, message_id):
     return IMPL.message_get(context, message_id)
 
 
-def message_get_all(context, filters=None, sort_key=None, sort_dir=None):
+def message_get_all(context, filters=None, limit=None, offset=None,
+                    sort_key=None, sort_dir=None):
     """Returns all messages with the project of the specified context."""
-    return IMPL.message_get_all(context, filters=filters, sort_key=sort_key,
+    return IMPL.message_get_all(context, filters=filters, limit=limit,
+                                offset=offset, sort_key=sort_key,
                                 sort_dir=sort_dir)
 
 

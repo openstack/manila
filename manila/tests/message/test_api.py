@@ -85,7 +85,8 @@ class MessageApiTest(test.TestCase):
         self.message_api.get_all(self.ctxt)
 
         self.message_api.db.message_get_all.assert_called_once_with(
-            self.ctxt, filters={}, sort_dir=None, sort_key=None)
+            self.ctxt, filters={}, limit=None, offset=None,
+            sort_dir=None, sort_key=None)
 
     def test_delete(self):
         self.message_api.delete(self.ctxt, 'fake_id')

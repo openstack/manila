@@ -287,3 +287,8 @@ user documentation.
   Added to the service the possibility to have multiple subnets per share
   network, each of them associated to a different AZ. It is also possible to
   configure a default subnet that spans all availability zones.
+
+2.52
+----
+  Added 'created_before' and 'created_since' field to list messages api,
+  support querying user messages within the specified time period.

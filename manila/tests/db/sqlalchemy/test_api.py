@@ -3627,13 +3627,57 @@ class MessagesDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual(2, len(result))
 
-    def test_message_get_all_sorted(self):
+    def test_message_get_all_with_created_since_or_before_filter(self):
+        now = timeutils.utcnow()
+        db_utils.create_message(project_id=self.project_id,
+                                action_id='001',
+                                created_at=now - datetime.timedelta(seconds=1))
+        db_utils.create_message(project_id=self.project_id,
+                                action_id='001',
+                                created_at=now + datetime.timedelta(seconds=1))
+        db_utils.create_message(project_id=self.project_id,
+                                action_id='001',
+                                created_at=now + datetime.timedelta(seconds=2))
+        result1 = db_api.message_get_all(self.ctxt,
+                                         filters={'created_before': now})
+        result2 = db_api.message_get_all(self.ctxt,
+                                         filters={'created_since': now})
+        self.assertEqual(1, len(result1))
+        self.assertEqual(2, len(result2))
+
+    def test_message_get_all_with_invalid_sort_key(self):
+        self.assertRaises(exception.InvalidInput, db_api.message_get_all,
+                          self.ctxt, sort_key='invalid_key')
+
+    def test_message_get_all_sorted_asc(self):
         ids = []
         for i in ['001', '002', '003']:
             msg = db_utils.create_message(project_id=self.project_id,
                                           action_id=i)
             ids.append(msg.id)
 
+        result = db_api.message_get_all(self.ctxt,
+                                        sort_key='action_id',
+                                        sort_dir='asc')
+        result_ids = [r.id for r in result]
+        self.assertEqual(result_ids, ids)
+
+    def test_message_get_all_with_limit_and_offset(self):
+        for i in ['001', '002']:
+            db_utils.create_message(project_id=self.project_id,
+                                    action_id=i)
+
+        result = db_api.message_get_all(self.ctxt, limit=1, offset=1)
+        self.assertEqual(1, len(result))
+
+    def test_message_get_all_sorted(self):
+        ids = []
+        for i in ['003', '002', '001']:
+            msg = db_utils.create_message(project_id=self.project_id,
+                                          action_id=i)
+            ids.append(msg.id)
+
+        # Default the sort direction to descending
         result = db_api.message_get_all(self.ctxt, sort_key='action_id')
         result_ids = [r.id for r in result]
         self.assertEqual(result_ids, ids)
