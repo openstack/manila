@@ -422,8 +422,6 @@ class PoolState(HostState):
                 'allocated_capacity_gb', 0)
             self.qos = capability.get('qos', False)
             self.reserved_percentage = capability['reserved_percentage']
-            self.thin_provisioning = capability.get(
-                'thin_provisioning', False)
             # NOTE(xyang): provisioned_capacity_gb is the apparent total
             # capacity of all the shares created on a backend, which is
             # greater than or equal to allocated_capacity_gb, which is the
@@ -432,19 +430,16 @@ class PoolState(HostState):
             # NOTE(nidhimittalhada): If 'provisioned_capacity_gb' is not set,
             # then calculating 'provisioned_capacity_gb' from share sizes
             # on host, as per information available in manila database.
-            # NOTE(jose-castro-leon): Only calculate provisioned_capacity_gb
-            # on thin provisioned pools
             self.provisioned_capacity_gb = capability.get(
-                'provisioned_capacity_gb', 0)
-
-            if self.thin_provisioning and not self.provisioned_capacity_gb:
-                self.provisioned_capacity_gb = (
-                    self._estimate_provisioned_capacity(self.host,
-                                                        context=context))
+                'provisioned_capacity_gb') or (
+                self._estimate_provisioned_capacity(self.host,
+                                                    context=context))
 
             self.max_over_subscription_ratio = capability.get(
                 'max_over_subscription_ratio',
                 CONF.max_over_subscription_ratio)
+            self.thin_provisioning = capability.get(
+                'thin_provisioning', False)
             self.dedupe = capability.get(
                 'dedupe', False)
             self.compression = capability.get(
