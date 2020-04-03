@@ -919,7 +919,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def _sort_export_locations_by_preferred_paths(self, export_locations):
         """Sort the export locations to report preferred paths first."""
 
-        sort_key = lambda location: location.get(
+        sort_key = lambda location: location.get(  # noqa: E731
             'metadata', {}).get('preferred') is not True
 
         return sorted(export_locations, key=sort_key)

@@ -223,7 +223,7 @@ class WindowsSMBHelper(helpers.CIFSHelperBase):
 
     def _subtract_access_rules(self, access_rules, subtracted_rules):
         # Account names are case insensitive on Windows.
-        filter_rules = lambda rules: [
+        filter_rules = lambda rules: [  # noqa: E731
             {'access_to': access_rule['access_to'].lower(),
              'access_level': access_rule['access_level'],
              'access_type': access_rule['access_type']}

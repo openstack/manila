@@ -30,7 +30,7 @@ class TestBaseFilter(test.TestCase):
         filters = [1, 2, 3, 4]
         filter_properties = {'x': 'y'}
 
-        side_effect = lambda value, props: value in [2, 3]
+        side_effect = lambda value, props: value in [2, 3]  # noqa: E731
         self.mock_object(self.filter,
                          '_filter_one',
                          mock.Mock(side_effect=side_effect))
