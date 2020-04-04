@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed `Launchpad bug 1699836 <https://launchpad.net/bugs/1699836>`_ by
+    preventing share type deletion when there are share group types
+    associated with them.
