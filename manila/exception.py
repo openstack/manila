@@ -641,8 +641,8 @@ class ShareGroupTypeSpecsNotFound(NotFound):
 
 
 class ShareTypeInUse(ManilaException):
-    message = _("Share Type %(share_type_id)s deletion is not allowed with "
-                "shares present with the type.")
+    message = _("Share Type %(share_type_id)s deletion is not allowed while "
+                "shares or share group types are associated with the type.")
 
 
 class IPAddressInUse(InUse):

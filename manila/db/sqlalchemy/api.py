@@ -4219,18 +4219,25 @@ def share_type_destroy(context, id):
     session = get_session()
     with session.begin():
         _share_type_get(context, id, session)
-        results = (model_query(context, models.ShareInstance, session=session,
-                               read_deleted="no").
-                   filter_by(share_type_id=id).count())
-        share_group_count = model_query(
+        shares_count = model_query(
             context,
-            models.ShareGroupShareTypeMapping,
+            models.ShareInstance,
             read_deleted="no",
             session=session,
         ).filter_by(share_type_id=id).count()
-        if results or share_group_count:
-            LOG.error('ShareType %s deletion failed, ShareType in use.',
-                      id)
+        share_group_types_count = model_query(
+            context,
+            models.ShareGroupTypeShareTypeMapping,
+            read_deleted="no",
+            session=session,
+        ).filter_by(share_type_id=id).count()
+        if shares_count or share_group_types_count:
+            msg = ("Deletion of share type %(stype)s failed; it in use by "
+                   "%(shares)d shares and %(gtypes)d share group types")
+            msg_args = {'stype': id,
+                        'shares': shares_count,
+                        'gtypes': share_group_types_count}
+            LOG.error(msg, msg_args)
             raise exception.ShareTypeInUse(share_type_id=id)
         (model_query(context, models.ShareTypeExtraSpecs, session=session).
             filter_by(share_type_id=id).soft_delete())
@@ -5091,6 +5098,11 @@ def share_group_type_destroy(context, type_id):
             raise exception.ShareGroupTypeInUse(type_id=type_id)
         model_query(
             context, models.ShareGroupTypeSpecs, session=session,
+        ).filter_by(
+            share_group_type_id=type_id,
+        ).soft_delete()
+        model_query(
+            context, models.ShareGroupTypeShareTypeMapping, session=session
         ).filter_by(
             share_group_type_id=type_id,
         ).soft_delete()
