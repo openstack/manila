@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed the cleanup for private share types and share group types to include
+    clearing out the database entries recording project specific access
+    rules to these types. See
+    `Launchpad bug 1870751 <https://launchpad.net/bugs/1870751>`_ for more
+    details.
