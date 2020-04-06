@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp cDOT driver with a very busy backend may report that the
+    ``migration cancelation`` operation was successful even if wasn't. Now
+    during the ``migration cancelation`` operation the current state of the
+    migration task will be tracked and the operation will only report success
+    when the operation ends correctly.
