@@ -1210,6 +1210,12 @@ class ShareGroupTypeAPITestCase(test.TestCase):
             name='orange', is_public=False, share_types=[share_type_1['id']],
             group_specs={'dabo': 'allin', 'cadence': 'count'},
             override_defaults=True)
+        db_api.share_group_type_access_add(self.ctxt,
+                                           share_group_type_1['id'],
+                                           "2018ndaetfigovnsaslcahfavmrpions")
+        db_api.share_group_type_access_add(self.ctxt,
+                                           share_group_type_1['id'],
+                                           "2016ndaetfigovnsaslcahfavmrpions")
         share_group_type_2 = db_utils.create_share_group_type(
             name='regalia', share_types=[share_type_2['id']])
         if used_by_groups:
@@ -1235,6 +1241,9 @@ class ShareGroupTypeAPITestCase(test.TestCase):
         self.assertDictMatch(
             {}, db_api.share_group_type_specs_get(
                 self.ctxt, share_group_type_1['id']))
+        self.assertRaises(exception.ShareGroupTypeNotFound,
+                          db_api.share_group_type_access_get_all,
+                          self.ctxt, share_group_type_1['id'])
         self.assertRaises(exception.ShareGroupTypeNotFound,
                           db_api.share_group_type_get,
                           self.ctxt, share_group_type_1['id'])
@@ -3391,8 +3400,16 @@ class ShareTypeAPITestCase(test.TestCase):
     def test_share_type_destroy_in_use(self, used_by_shares,
                                        used_by_group_types):
         share_type_1 = db_utils.create_share_type(
-            name='orange', extra_specs={'somekey': 'someval'})
-        share_type_2 = db_utils.create_share_type(name='regalia')
+            name='orange', extra_specs={'somekey': 'someval'},
+            is_public=False, override_defaults=True)
+        share_type_2 = db_utils.create_share_type(
+            name='regalia', override_defaults=True)
+        db_api.share_type_access_add(self.ctxt,
+                                     share_type_1['id'],
+                                     "2018ndaetfigovnsaslcahfavmrpions")
+        db_api.share_type_access_add(self.ctxt,
+                                     share_type_1['id'],
+                                     "2016ndaetfigovnsaslcahfavmrpions")
         if used_by_shares:
             share_1 = db_utils.create_share(share_type_id=share_type_1['id'])
             db_utils.create_share(share_type_id=share_type_2['id'])
@@ -3425,6 +3442,9 @@ class ShareTypeAPITestCase(test.TestCase):
         self.assertDictMatch(
             {}, db_api.share_type_extra_specs_get(
                 self.ctxt, share_type_1['id']))
+        self.assertRaises(exception.ShareTypeNotFound,
+                          db_api.share_type_access_get_all,
+                          self.ctxt, share_type_1['id'])
         self.assertRaises(exception.ShareTypeNotFound,
                           db_api.share_type_get,
                           self.ctxt, share_type_1['id'])
