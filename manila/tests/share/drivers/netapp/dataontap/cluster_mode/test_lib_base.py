@@ -4694,35 +4694,69 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertDictMatch(expected_progress, migration_progress)
         mock_info_log.assert_called_once()
 
-    @ddt.data(utils.annotated('already_canceled', (True, )),
-              utils.annotated('not_canceled_yet', (False, )))
-    def test_migration_cancel(self, already_canceled):
+    @ddt.data({'state': 'failed'},
+              {'state': 'healthy'})
+    @ddt.unpack
+    def test_migration_cancel(self, state):
         source_snapshots = mock.Mock()
         snapshot_mappings = mock.Mock()
-        already_canceled = already_canceled[0]
-        mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
+        self.library.configuration.netapp_migration_cancel_timeout = 15
         mock_info_log = self.mock_object(lib_base.LOG, 'info')
-        vol_move_side_effect = (exception.NetAppException
-                                if already_canceled else None)
+
         self.mock_object(self.library, '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
         self.mock_object(self.client, 'abort_volume_move')
         self.mock_object(self.client, 'get_volume_move_status',
-                         mock.Mock(side_effect=vol_move_side_effect))
+                         mock.Mock(return_value={'state': state}))
 
-        retval = self.library.migration_cancel(
+        if state == 'failed':
+            retval = self.library.migration_cancel(
+                self.context, fake_share.fake_share_instance(),
+                fake_share.fake_share_instance(), source_snapshots,
+                snapshot_mappings, share_server=fake.SHARE_SERVER,
+                destination_share_server='dst_srv')
+
+            self.assertIsNone(retval)
+            mock_info_log.assert_called_once()
+        else:
+            self.assertRaises(
+                (exception.NetAppException),
+                self.library.migration_cancel, self.context,
+                fake_share.fake_share_instance(),
+                fake_share.fake_share_instance, source_snapshots,
+                snapshot_mappings, share_server=fake.SHARE_SERVER,
+                destination_share_server='dst_srv')
+
+    @ddt.data({'already_canceled': True, 'effect': exception.NetAppException},
+              {'already_canceled': False, 'effect':
+                  (None, exception.NetAppException)})
+    @ddt.unpack
+    def test_migration_cancel_exception_volume_status(self, already_canceled,
+                                                      effect):
+        source_snapshots = mock.Mock()
+        snapshot_mappings = mock.Mock()
+        self.library.configuration.netapp_migration_cancel_timeout = 1
+        mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
+        mock_info_log = self.mock_object(lib_base.LOG, 'info')
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(self.client, 'abort_volume_move')
+        self.mock_object(self.client, 'get_volume_move_status',
+                         mock.Mock(side_effect=effect))
+        self.library.migration_cancel(
             self.context, fake_share.fake_share_instance(),
             fake_share.fake_share_instance(), source_snapshots,
             snapshot_mappings, share_server=fake.SHARE_SERVER,
             destination_share_server='dst_srv')
 
-        self.assertIsNone(retval)
-        if already_canceled:
-            mock_exception_log.assert_called_once()
-        else:
+        mock_exception_log.assert_called_once()
+        if not already_canceled:
             mock_info_log.assert_called_once()
+
         self.assertEqual(not already_canceled,
                          self.client.abort_volume_move.called)
 
