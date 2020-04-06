@@ -2534,6 +2534,8 @@ class NetAppCmodeFileStorageLibrary(object):
         """Abort an ongoing migration."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_volume = self._get_backend_share_name(source_share['id'])
+        retries = (self.configuration.netapp_migration_cancel_timeout / 5 or
+                   1)
 
         try:
             self._get_volume_move_status(source_share, share_server)
@@ -2542,6 +2544,33 @@ class NetAppCmodeFileStorageLibrary(object):
             return
 
         self._client.abort_volume_move(share_volume, vserver)
+
+        @manila_utils.retry(exception.InUse, interval=5,
+                            retries=retries, backoff_rate=1)
+        def wait_for_migration_cancel_complete():
+            move_status = self._get_volume_move_status(source_share,
+                                                       share_server)
+            if move_status['state'] == 'failed':
+                return
+            else:
+                msg = "Migration cancelation isn't finished yet."
+                raise exception.InUse(message=msg)
+
+        try:
+            wait_for_migration_cancel_complete()
+        except exception.InUse:
+            move_status = self._get_volume_move_status(source_share,
+                                                       share_server)
+            msg_args = {
+                'share_move_state': move_status['state']
+            }
+            msg = _("Migration cancelation was not successful. The share "
+                    "migration state failed while transitioning from "
+                    "%(share_move_state)s state to 'failed'. Retries "
+                    "exhausted.") % msg_args
+            raise exception.NetAppException(message=msg)
+        except exception.NetAppException:
+            LOG.exception("Could not get volume move status.")
 
         msg = ("Share volume move operation for share %(shr)s from host "
                "%(src)s to %(dest)s was successfully aborted.")

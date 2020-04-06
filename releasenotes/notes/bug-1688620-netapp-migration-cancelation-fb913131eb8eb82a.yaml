@@ -1,0 +1,20 @@
+---
+fixes:
+  - |
+    NetApp ONTAP share delete operation can fail sometimes when is triggered
+    immediately after migration cancelation on a overloaded NetApp backend.
+    Canceling an ongoing migration is an asynchronous operation on an
+    ONTAP storage system.
+    Now the NetApp driver checks if the asynchronous API has ended  its
+    operation before reporting migration cancelation success. If the operation
+    of the asynchronous API did not end within the specified timeout, the
+    ``migration cancel`` cancel operation will be considered unsuccessful.
+    To do so, a new configuration option ``netapp_migration_cancel_timeout``
+    has been added.
+upgrade:
+  - |
+    The configuration option ``netapp_migration_cancel_timeout`` can be
+    specified in the NetApp backend section to redefine the amount of time
+    that the NetApp driver must attempt to wait on the asynchronous
+    operation to cancel an ongoing migration. This option is set to 3600
+    seconds by default, which is sufficient time in most cases.
