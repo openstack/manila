@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Launchpad bug 1869148 <https://launchpad.net/bugs/1869148>`_ has been
+    fixed. This bug could have affected environments where extension APIs were
+    provided in compiled files rather than source code.
+
