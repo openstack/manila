@@ -34,6 +34,8 @@ from manila.tests.api import fakes
 from manila import utils
 
 CONF = cfg.CONF
+sg_quota_keys = ['share_groups', 'share_group_snapshots']
+replica_quota_keys = ['share_replicas']
 
 
 def _get_request(is_admin, user_in_url):
@@ -269,27 +271,38 @@ class QuotaSetsControllerTest(test.TestCase):
         self.assertIsNone(result)
 
     @ddt.data(
-        {},
-        {"quota_set": {}},
-        {"quota_set": {"foo": "bar"}},
-        {"foo": "bar"},
+        ({}, sg_quota_keys, '2.40'),
+        ({"quota_set": {}}, sg_quota_keys, '2.40'),
+        ({"quota_set": {"foo": "bar"}}, sg_quota_keys, '2.40'),
+        ({"foo": "bar"}, replica_quota_keys, '2.53'),
+        ({"quota_set": {"foo": "bar"}}, replica_quota_keys, '2.53'),
     )
-    def test__ensure_share_group_related_args_are_absent_success(self, body):
-        result = self.controller._ensure_share_group_related_args_are_absent(
-            body)
+    @ddt.unpack
+    def test__ensure_specific_microversion_args_are_absent_success(
+            self, body, keys, microversion):
+        result = self.controller._ensure_specific_microversion_args_are_absent(
+            body, keys, microversion)
 
         self.assertIsNone(result)
 
     @ddt.data(
-        {"share_groups": 5},
-        {"share_group_snapshots": 6},
-        {"quota_set": {"share_groups": 7}},
-        {"quota_set": {"share_group_snapshots": 8}},
+        ({"share_groups": 5}, sg_quota_keys, '2.40'),
+        ({"share_group_snapshots": 6}, sg_quota_keys, '2.40'),
+        ({"quota_set": {"share_groups": 7}}, sg_quota_keys, '2.40'),
+        ({"quota_set": {"share_group_snapshots": 8}}, sg_quota_keys, '2.40'),
+        ({"quota_set": {"share_replicas": 9}}, replica_quota_keys, '2.53'),
+        ({"quota_set": {"share_replicas": 10}}, replica_quota_keys, '2.53'),
     )
-    def test__ensure_share_group_related_args_are_absent_error(self, body):
+    @ddt.unpack
+    def test__ensure_specific_microversion_args_are_absent_error(
+            self, body, keys, microversion):
         self.assertRaises(
             webob.exc.HTTPBadRequest,
-            self.controller._ensure_share_group_related_args_are_absent, body)
+            self.controller._ensure_specific_microversion_args_are_absent,
+            body,
+            keys,
+            microversion
+        )
 
     @ddt.data(_get_request(True, True), _get_request(True, False))
     def test__ensure_share_type_arg_is_absent(self, req):

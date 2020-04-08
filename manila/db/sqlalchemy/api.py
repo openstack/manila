@@ -362,6 +362,20 @@ def _sync_share_group_snapshots(context, project_id, user_id, session,
     return {'share_group_snapshots': share_group_snapshots_count}
 
 
+def _sync_share_replicas(context, project_id, user_id, session,
+                         share_type_id=None):
+    share_replicas_count, _junk = share_replica_data_get_for_project(
+        context, project_id, user_id, session, share_type_id=share_type_id)
+    return {'share_replicas': share_replicas_count}
+
+
+def _sync_replica_gigabytes(context, project_id, user_id, session,
+                            share_type_id=None):
+    _junk, replica_gigs = share_replica_data_get_for_project(
+        context, project_id, user_id, session, share_type_id=share_type_id)
+    return {'replica_gigabytes': replica_gigs}
+
+
 QUOTA_SYNC_FUNCTIONS = {
     '_sync_shares': _sync_shares,
     '_sync_snapshots': _sync_snapshots,
@@ -370,6 +384,8 @@ QUOTA_SYNC_FUNCTIONS = {
     '_sync_share_networks': _sync_share_networks,
     '_sync_share_groups': _sync_share_groups,
     '_sync_share_group_snapshots': _sync_share_group_snapshots,
+    '_sync_share_replicas': _sync_share_replicas,
+    '_sync_replica_gigabytes': _sync_replica_gigabytes,
 }
 
 
@@ -1473,6 +1489,55 @@ def share_instances_get_all(context, filters=None):
 
 
 @require_context
+def _update_share_instance_usages(context, share, instance_ref,
+                                  is_replica=False):
+    deltas = {}
+    no_instances_remain = len(share.instances) == 0
+    share_usages_to_release = {"shares": -1, "gigabytes": -share['size']}
+    replica_usages_to_release = {"share_replicas": -1,
+                                 "replica_gigabytes": -share['size']}
+
+    if is_replica and no_instances_remain:
+        # A share that had a replication_type is being deleted, so there's
+        # need to update the share replica quotas and the share quotas
+        deltas.update(replica_usages_to_release)
+        deltas.update(share_usages_to_release)
+    elif is_replica:
+        # The user is deleting a share replica
+        deltas.update(replica_usages_to_release)
+    else:
+        # A share with no replication_type is being deleted
+        deltas.update(share_usages_to_release)
+
+    reservations = None
+    try:
+        # we give the user_id of the share, to update
+        # the quota usage for the user, who created the share
+        reservations = QUOTAS.reserve(
+            context,
+            project_id=share['project_id'],
+            user_id=share['user_id'],
+            share_type_id=instance_ref['share_type_id'],
+            **deltas)
+        QUOTAS.commit(
+            context, reservations, project_id=share['project_id'],
+            user_id=share['user_id'],
+            share_type_id=instance_ref['share_type_id'])
+    except Exception:
+        resource_name = (
+            'share replica' if is_replica else 'share')
+        resource_id = instance_ref['id'] if is_replica else share['id']
+        msg = (_("Failed to update usages deleting %(resource_name)s "
+                 "'%(id)s'.") % {'id': resource_id,
+                                 "resource_name": resource_name})
+        LOG.exception(msg)
+        if reservations:
+            QUOTAS.rollback(
+                context, reservations,
+                share_type_id=instance_ref['share_type_id'])
+
+
+@require_context
 def share_instance_delete(context, instance_id, session=None,
                           need_to_update_usages=False):
     if session is None:
@@ -1482,6 +1547,7 @@ def share_instance_delete(context, instance_id, session=None,
         share_export_locations_update(context, instance_id, [], delete=True)
         instance_ref = share_instance_get(context, instance_id,
                                           session=session)
+        is_replica = instance_ref['replica_state'] is not None
         instance_ref.soft_delete(session=session, update_status=True)
         share = share_get(context, instance_ref['share_id'], session=session)
         if len(share.instances) == 0:
@@ -1490,30 +1556,9 @@ def share_instance_delete(context, instance_id, session=None,
                 share_id=share['id']).soft_delete()
             share.soft_delete(session=session)
 
-            if need_to_update_usages:
-                reservations = None
-                try:
-                    # we give the user_id of the share, to update
-                    # the quota usage for the user, who created the share
-                    reservations = QUOTAS.reserve(
-                        context,
-                        project_id=share['project_id'],
-                        shares=-1,
-                        gigabytes=-share['size'],
-                        user_id=share['user_id'],
-                        share_type_id=instance_ref['share_type_id'])
-                    QUOTAS.commit(
-                        context, reservations, project_id=share['project_id'],
-                        user_id=share['user_id'],
-                        share_type_id=instance_ref['share_type_id'])
-                except Exception:
-                    LOG.exception(
-                        "Failed to update usages deleting share '%s'.",
-                        share["id"])
-                    if reservations:
-                        QUOTAS.rollback(
-                            context, reservations,
-                            share_type_id=instance_ref['share_type_id'])
+        if need_to_update_usages:
+            _update_share_instance_usages(context, share, instance_ref,
+                                          is_replica=is_replica)
 
 
 def _set_instances_share_data(context, instances, session):
@@ -1733,11 +1778,13 @@ def share_replica_update(context, share_replica_id, values,
 
 
 @require_context
-def share_replica_delete(context, share_replica_id, session=None):
+def share_replica_delete(context, share_replica_id, session=None,
+                         need_to_update_usages=True):
     """Deletes a share replica."""
     session = session or get_session()
 
-    share_instance_delete(context, share_replica_id, session=session)
+    share_instance_delete(context, share_replica_id, session=session,
+                          need_to_update_usages=need_to_update_usages)
 
 
 ################
@@ -2558,7 +2605,7 @@ def snapshot_data_get_for_project(context, project_id, user_id,
         query = query.filter_by(user_id=user_id)
     result = query.first()
 
-    return (result[0] or 0, result[1] or 0)
+    return result[0] or 0, result[1] or 0
 
 
 @require_context
@@ -4678,6 +4725,31 @@ def count_share_group_snapshots(context, project_id, user_id=None,
     elif user_id is not None:
         query = query.filter_by(user_id=user_id)
     return query.first()[0]
+
+
+@require_context
+def share_replica_data_get_for_project(context, project_id, user_id=None,
+                                       session=None, share_type_id=None):
+    session = session or get_session()
+    query = model_query(
+        context, models.ShareInstance,
+        func.count(models.ShareInstance.id),
+        func.sum(models.Share.size),
+        read_deleted="no",
+        session=session).join(
+        models.Share,
+        models.ShareInstance.share_id == models.Share.id).filter(
+        models.Share.project_id == project_id).filter(
+        models.ShareInstance.replica_state.isnot(None))
+
+    if share_type_id:
+        query = query.filter(
+            models.ShareInstance.share_type_id == share_type_id)
+    elif user_id:
+        query = query.filter(models.Share.user_id == user_id)
+
+    result = query.first()
+    return result[0] or 0, result[1] or 0
 
 
 @require_context

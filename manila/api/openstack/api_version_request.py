@@ -143,13 +143,14 @@ REST_API_VERSION_HISTORY = """
     * 2.52 - Added 'created_before' and 'created_since' field to list messages
              filters, support querying user messages within the specified time
              period.
+    * 2.53 - Added quota control to share replicas.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.52"
+_MAX_API_VERSION = "2.53"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

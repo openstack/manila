@@ -2405,6 +2405,11 @@ class ShareManager(manager.SchedulerDependentManager):
         context = context.elevated()
         share_ref = self.db.share_get(context, share_id)
         share_instance = self._get_share_instance(context, share_ref)
+        share_type_extra_specs = self._get_extra_specs_from_share_type(
+            context, share_instance['share_type_id'])
+        share_type_supports_replication = share_type_extra_specs.get(
+            'replication_type', None)
+
         project_id = share_ref['project_id']
 
         try:
@@ -2430,14 +2435,19 @@ class ShareManager(manager.SchedulerDependentManager):
                 msg = _("Driver cannot calculate share size.")
                 raise exception.InvalidShare(reason=msg)
 
-            reservations = QUOTAS.reserve(
-                context,
-                project_id=project_id,
-                user_id=context.user_id,
-                shares=1,
-                gigabytes=share_update['size'],
-                share_type_id=share_instance['share_type_id'],
-            )
+            deltas = {
+                'project_id': project_id,
+                'user_id': context.user_id,
+                'shares': 1,
+                'gigabytes': share_update['size'],
+                'share_type_id': share_instance['share_type_id'],
+            }
+
+            if share_type_supports_replication:
+                deltas.update({'share_replicas': 1,
+                               'replica_gigabytes': share_update['size']})
+
+            reservations = QUOTAS.reserve(context, **deltas)
             QUOTAS.commit(
                 context, reservations, project_id=project_id,
                 share_type_id=share_instance['share_type_id'],
@@ -2570,6 +2580,9 @@ class ShareManager(manager.SchedulerDependentManager):
         share_instance = self._get_share_instance(context, share_ref)
         share_server = None
         project_id = share_ref['project_id']
+        replicas = self.db.share_replicas_get_all_by_share(
+            context, share_id)
+        supports_replication = len(replicas) > 0
 
         def share_manage_set_error_status(msg, exception):
             status = {'status': constants.STATUS_UNMANAGE_ERROR}
@@ -2590,14 +2603,20 @@ class ShareManager(manager.SchedulerDependentManager):
                 ("Share can not be unmanaged: %s."), e)
             return
 
+        deltas = {
+            'project_id': project_id,
+            'shares': -1,
+            'gigabytes': -share_ref['size'],
+            'share_type_id': share_instance['share_type_id'],
+        }
+        # NOTE(carloss): while unmanaging a share, a share will not contain
+        # replicas other than the active one. So there is no need to
+        # recalculate the amount of share replicas to be deallocated.
+        if supports_replication:
+            deltas.update({'share_replicas': -1,
+                           'replica_gigabytes': -share_ref['size']})
         try:
-            reservations = QUOTAS.reserve(
-                context,
-                project_id=project_id,
-                shares=-1,
-                gigabytes=-share_ref['size'],
-                share_type_id=share_instance['share_type_id'],
-            )
+            reservations = QUOTAS.reserve(context, **deltas)
             QUOTAS.commit(
                 context, reservations, project_id=project_id,
                 share_type_id=share_instance['share_type_id'],
@@ -3885,6 +3904,9 @@ class ShareManager(manager.SchedulerDependentManager):
         project_id = share['project_id']
         user_id = share['user_id']
         new_size = int(new_size)
+        replicas = self.db.share_replicas_get_all_by_share(
+            context, share['id'])
+        supports_replication = len(replicas) > 0
 
         self._notify_about_share_usage(context, share,
                                        share_instance, "shrink.start")
@@ -3903,13 +3925,20 @@ class ShareManager(manager.SchedulerDependentManager):
             # we give the user_id of the share, to update the quota usage
             # for the user, who created the share, because on share delete
             # only this quota will be decreased
-            reservations = QUOTAS.reserve(
-                context,
-                project_id=project_id,
-                user_id=user_id,
-                share_type_id=share_instance['share_type_id'],
-                gigabytes=-size_decrease,
-            )
+            deltas = {
+                'project_id': project_id,
+                'user_id': user_id,
+                'share_type_id': share_instance['share_type_id'],
+                'gigabytes': -size_decrease,
+            }
+            # NOTE(carloss): if the share supports replication we need
+            # to query all its replicas and calculate the final size to
+            # deallocate (amount of replicas * size to decrease).
+            if supports_replication:
+                replica_gigs_to_deallocate = len(replicas) * size_decrease
+                deltas.update(
+                    {'replica_gigabytes': -replica_gigs_to_deallocate})
+            reservations = QUOTAS.reserve(context, **deltas)
         except Exception as e:
             error_occurred(
                 e, ("Failed to update quota on share shrinking."))

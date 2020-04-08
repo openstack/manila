@@ -2168,6 +2168,34 @@ class ShareAPITestCase(test.TestCase):
         quota.QUOTAS.commit.assert_called_once_with(
             self.context, 'reservation', share_type_id=share_type['id'])
 
+    def test_create_share_share_type_contains_replication_type(self):
+        extra_specs = {'replication_type': constants.REPLICATION_TYPE_READABLE}
+        share_type = db_utils.create_share_type(extra_specs=extra_specs)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        share, share_data = self._setup_create_mocks(
+            share_type_id=share_type['id'])
+        az = share_data.pop('availability_zone')
+
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(return_value='reservation'))
+        self.mock_object(quota.QUOTAS, 'commit')
+
+        self.api.create(
+            self.context,
+            share_data['share_proto'],
+            share_data['size'],
+            share_data['display_name'],
+            share_data['display_description'],
+            availability_zone=az,
+            share_type=share_type
+        )
+        quota.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_type_id=share_type['id'],
+            gigabytes=1, shares=1, share_replicas=1, replica_gigabytes=1)
+        quota.QUOTAS.commit.assert_called_once_with(
+            self.context, 'reservation', share_type_id=share_type['id']
+        )
+
     def test_create_from_snapshot_with_different_share_type(self):
         snapshot, share, share_data, request_spec = (
             self._setup_create_from_snapshot_mocks()
@@ -2709,19 +2737,52 @@ class ShareAPITestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self.api.extend, self.context, share, new_size)
 
-    def test_extend_quota_error(self):
+    def _setup_extend_mocks(self, supports_replication):
+        replica_list = []
+        if supports_replication:
+            replica_list.append({'id': 'fake_replica_id'})
+            replica_list.append({'id': 'fake_replica_id_2'})
+        self.mock_object(db_api, 'share_replicas_get_all_by_share',
+                         mock.Mock(return_value=replica_list))
+
+    @ddt.data(
+        (False, 'gigabytes', exception.ShareSizeExceedsAvailableQuota),
+        (True, 'replica_gigabytes',
+         exception.ShareReplicaSizeExceedsAvailableQuota)
+    )
+    @ddt.unpack
+    def test_extend_quota_error(self, supports_replication, quota_key,
+                                expected_exception):
+        self._setup_extend_mocks(supports_replication)
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
                                       size=100)
         new_size = 123
-        usages = {'gigabytes': {'reserved': 11, 'in_use': 12}}
-        quotas = {'gigabytes': 13}
-        exc = exception.OverQuota(usages=usages, quotas=quotas, overs=new_size)
+        replica_amount = len(
+            db_api.share_replicas_get_all_by_share.return_value)
+        value_to_be_extended = new_size - share['size']
+        usages = {quota_key: {'reserved': 11, 'in_use': 12}}
+        quotas = {quota_key: 13}
+        overs = {quota_key: new_size}
+        exc = exception.OverQuota(usages=usages, quotas=quotas, overs=overs)
+        expected_deltas = {
+            'project_id': share['project_id'],
+            'gigabytes': value_to_be_extended,
+            'user_id': share['user_id'],
+            'share_type_id': share['instance']['share_type_id']
+        }
+        if supports_replication:
+            expected_deltas.update(
+                {'replica_gigabytes': value_to_be_extended * replica_amount})
         self.mock_object(quota.QUOTAS, 'reserve', mock.Mock(side_effect=exc))
 
-        self.assertRaises(exception.ShareSizeExceedsAvailableQuota,
+        self.assertRaises(expected_exception,
                           self.api.extend, self.context, share, new_size)
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY, **expected_deltas
+        )
 
     def test_extend_quota_user(self):
+        self._setup_extend_mocks(False)
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
                                       size=100)
         diff_user_context = context.RequestContext(
@@ -2743,12 +2804,28 @@ class ShareAPITestCase(test.TestCase):
             user_id=share['user_id']
         )
 
-    def test_extend_valid(self):
+    @ddt.data(True, False)
+    def test_extend_valid(self, supports_replication):
+        self._setup_extend_mocks(supports_replication)
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
                                       size=100)
         new_size = 123
+        size_increase = int(new_size) - share['size']
+        replica_amount = len(
+            db_api.share_replicas_get_all_by_share.return_value)
+
+        expected_deltas = {
+            'project_id': share['project_id'],
+            'gigabytes': size_increase,
+            'user_id': share['user_id'],
+            'share_type_id': share['instance']['share_type_id']
+        }
+        if supports_replication:
+            new_replica_size = size_increase * replica_amount
+            expected_deltas.update({'replica_gigabytes': new_replica_size})
         self.mock_object(self.api, 'update')
         self.mock_object(self.api.share_rpcapi, 'extend_share')
+        self.mock_object(quota.QUOTAS, 'reserve')
 
         self.api.extend(self.context, share, new_size)
 
@@ -2757,6 +2834,8 @@ class ShareAPITestCase(test.TestCase):
         self.api.share_rpcapi.extend_share.assert_called_once_with(
             self.context, share, new_size, mock.ANY
         )
+        quota.QUOTAS.reserve.assert_called_once_with(
+            self.context, **expected_deltas)
 
     def test_shrink_invalid_status(self):
         invalid_status = 'fake'
@@ -3835,6 +3914,95 @@ class ShareAPITestCase(test.TestCase):
 
         self.assertTrue(mock_rpcapi_update_share_replica_call.called)
         self.assertIsNone(retval)
+
+    @ddt.data({'overs': {'replica_gigabytes': 'fake'},
+               'expected_exception':
+                   exception.ShareReplicaSizeExceedsAvailableQuota},
+              {'overs': {'share_replicas': 'fake'},
+               'expected_exception': exception.ShareReplicasLimitExceeded})
+    @ddt.unpack
+    def test_create_share_replica_over_quota(self, overs, expected_exception):
+        request_spec = fakes.fake_replica_request_spec()
+        replica = request_spec['share_instance_properties']
+        share = db_utils.create_share(replication_type='dr',
+                                      id=replica['share_id'])
+        share_type = db_utils.create_share_type()
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        usages = {'replica_gigabytes': {'reserved': 5, 'in_use': 5},
+                  'share_replicas': {'reserved': 5, 'in_use': 5}}
+        quotas = {'share_replicas': 5, 'replica_gigabytes': 5}
+        exc = exception.OverQuota(overs=overs, usages=usages, quotas=quotas)
+
+        self.mock_object(quota.QUOTAS, 'reserve', mock.Mock(side_effect=exc))
+        self.mock_object(db_api, 'share_replicas_get_available_active_replica',
+                         mock.Mock(return_value={'host': 'fake_ar_host'}))
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=share_type))
+
+        self.assertRaises(
+            expected_exception,
+            self.api.create_share_replica,
+            self.context,
+            share
+        )
+        quota.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_type_id=share_type['id'],
+            share_replicas=1, replica_gigabytes=share['size'])
+        (db_api.share_replicas_get_available_active_replica
+         .assert_called_once_with(self.context, share['id']))
+        share_types.get_share_type.assert_called_once_with(
+            self.context, share['instance']['share_type_id'])
+
+    def test_create_share_replica_error_on_quota_commit(self):
+        request_spec = fakes.fake_replica_request_spec()
+        replica = request_spec['share_instance_properties']
+        share_type = db_utils.create_share_type()
+        fake_replica = fakes.fake_replica(id=replica['id'])
+        share = db_utils.create_share(replication_type='dr',
+                                      id=fake_replica['share_id'],
+                                      share_type_id=share_type['id'])
+        share_network_id = None
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        expected_azs = share_type['extra_specs'].get('availability_zones', '')
+        expected_azs = expected_azs.split(',') if expected_azs else []
+
+        reservation = 'fake'
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(return_value=reservation))
+        self.mock_object(quota.QUOTAS, 'commit',
+                         mock.Mock(side_effect=exception.QuotaError('fake')))
+        self.mock_object(db_api, 'share_replica_delete')
+        self.mock_object(quota.QUOTAS, 'rollback')
+        self.mock_object(db_api, 'share_replicas_get_available_active_replica',
+                         mock.Mock(return_value={'host': 'fake_ar_host'}))
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=share_type))
+        self.mock_object(
+            share_api.API, 'create_share_instance_and_get_request_spec',
+            mock.Mock(return_value=(request_spec, fake_replica)))
+
+        self.assertRaises(
+            exception.QuotaError,
+            self.api.create_share_replica,
+            self.context,
+            share
+        )
+
+        db_api.share_replica_delete.assert_called_once_with(
+            self.context, replica['id'], need_to_update_usages=False)
+        quota.QUOTAS.rollback.assert_called_once_with(
+            self.context, reservation,
+            share_type_id=share['instance']['share_type_id'])
+        (db_api.share_replicas_get_available_active_replica.
+         assert_called_once_with(self.context, share['id']))
+        share_types.get_share_type.assert_called_once_with(
+            self.context, share['instance']['share_type_id'])
+        (share_api.API.create_share_instance_and_get_request_spec.
+         assert_called_once_with(self.context, share, availability_zone=None,
+                                 share_network_id=share_network_id,
+                                 share_type_id=share_type['id'],
+                                 availability_zones=expected_azs,
+                                 cast_rules_to_readonly=False))
 
     def test_migration_complete(self):
 

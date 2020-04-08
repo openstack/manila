@@ -443,6 +443,17 @@ class ShareGroupSnapshotsLimitExceeded(QuotaError):
         "Maximum number of allowed share-group-snapshots is exceeded.")
 
 
+class ShareReplicasLimitExceeded(QuotaError):
+    message = _(
+        "Maximum number of allowed share-replicas is exceeded.")
+
+
+class ShareReplicaSizeExceedsAvailableQuota(QuotaError):
+    message = _(
+        "Requested share replica exceeds allowed project/user or share type "
+        "gigabytes quota.")
+
+
 class GlusterfsException(ManilaException):
     message = _("Unknown Gluster exception.")
 

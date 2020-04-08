@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added quotas for amount of share replicas and share replica gigabytes.
+upgrade:
+  - |
+    Two new config options are available for setting default quotas for share
+    replicas: `quota_share_replicas` and `quota_replica_gigabytes`.
