@@ -100,6 +100,109 @@ class EMCShareDriver(driver.ShareDriver):
         else:
             self.shrink_share_support = False
 
+        if hasattr(self.plugin, 'manage_existing_support'):
+            self.manage_existing_support = self.plugin.manage_existing_support
+        else:
+            self.manage_existing_support = False
+
+        if hasattr(self.plugin, 'manage_existing_with_server_support'):
+            self.manage_existing_with_server_support = (
+                self.plugin.manage_existing_with_server_support)
+        else:
+            self.manage_existing_with_server_support = False
+
+        if hasattr(self.plugin, 'manage_existing_snapshot_support'):
+            self.manage_existing_snapshot_support = (
+                self.plugin.manage_existing_snapshot_support)
+        else:
+            self.manage_existing_snapshot_support = False
+
+        if hasattr(self.plugin, 'manage_snapshot_with_server_support'):
+            self.manage_snapshot_with_server_support = (
+                self.plugin.manage_snapshot_with_server_support)
+        else:
+            self.manage_snapshot_with_server_support = False
+
+        if hasattr(self.plugin, 'manage_server_support'):
+            self.manage_server_support = self.plugin.manage_server_support
+        else:
+            self.manage_server_support = False
+
+        if hasattr(self.plugin, 'get_share_server_network_info_support'):
+            self.get_share_server_network_info_support = (
+                self.plugin.get_share_server_network_info_support)
+        else:
+            self.get_share_server_network_info_support = False
+
+    def manage_existing(self, share, driver_options):
+        """manage an existing share"""
+        if self.manage_existing_support:
+            return self.plugin.manage_existing(share, driver_options)
+        else:
+            return NotImplementedError()
+
+    def manage_existing_with_server(self, share, driver_options,
+                                    share_server=None):
+        """manage an existing share"""
+        if self.manage_existing_with_server_support:
+            return self.plugin.manage_existing_with_server(
+                share, driver_options, share_server)
+        else:
+            return NotImplementedError()
+
+    def manage_existing_snapshot(self, snapshot, driver_options):
+        """manage an existing share snapshot"""
+        if self.manage_existing_snapshot_support:
+            return self.plugin.manage_existing_snapshot(snapshot,
+                                                        driver_options)
+        else:
+            return NotImplementedError()
+
+    def manage_existing_snapshot_with_server(self, snapshot, driver_options,
+                                             share_server=None):
+        """manage an existing share snapshot"""
+        if self.manage_snapshot_with_server_support:
+            return self.plugin.manage_existing_snapshot_with_server(
+                snapshot, driver_options, share_server=None)
+        else:
+            return NotImplementedError()
+
+    def manage_server(self, context, share_server, identifier,
+                      driver_options):
+        if self.manage_server_support:
+            return self.plugin.manage_server(context, share_server,
+                                             identifier, driver_options)
+        else:
+            return NotImplementedError()
+
+    def get_share_server_network_info(
+            self, context, share_server, identifier, driver_options):
+        if self.get_share_server_network_info_support:
+            return self.plugin.get_share_server_network_info(
+                context, share_server, identifier, driver_options)
+        else:
+            return NotImplementedError()
+
+    def unmanage_server(self, server_details, security_services=None):
+        LOG.info('Dell EMC driver will unmanage share server: %s out of '
+                 'OpenStack.', server_details.get('server_id'))
+
+    def unmanage(self, share):
+        LOG.info('Dell EMC driver will unmanage share: %s out of '
+                 'OpenStack.', share.get('id'))
+
+    def unmanage_with_server(self, share, share_server=None):
+        LOG.info('Dell EMC driver will unmanage share: %s out of '
+                 'OpenStack.', share.get('id'))
+
+    def unmanage_snapshot(self, snapshot):
+        LOG.info('Dell EMC driver will unmanage snapshot: %s out of '
+                 'OpenStack.', snapshot.get('id'))
+
+    def unmanage_snapshot_with_server(self, snapshot, share_server=None):
+        LOG.info('Dell EMC driver will unmanage snapshot: %s out of '
+                 'OpenStack.', snapshot.get('id'))
+
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""
         location = self.plugin.create_share(context, share, share_server)
@@ -127,7 +230,7 @@ class EMCShareDriver(driver.ShareDriver):
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Is called to create snapshot."""
-        self.plugin.create_snapshot(context, snapshot, share_server)
+        return self.plugin.create_snapshot(context, snapshot, share_server)
 
     def delete_share(self, context, share, share_server=None):
         """Is called to remove share."""

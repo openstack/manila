@@ -14,11 +14,14 @@
 #    under the License.
 """ Utility module for EMC Unity Manila Driver """
 
+from oslo_log import log
 from oslo_utils import fnmatch
 from oslo_utils import units
 
 from manila import exception
 from manila.i18n import _
+
+LOG = log.getLogger(__name__)
 
 
 def do_match(full, matcher_list):
@@ -78,3 +81,37 @@ def find_ports_by_mtu(all_ports, port_ids_conf, mtu):
 
 def gib_to_byte(size_gib):
     return size_gib * units.Gi
+
+
+def get_share_backend_id(share):
+    """Get backend share id.
+
+    Try to get backend share id from path in case this is managed share,
+    use share['id'] when path is empty.
+    """
+
+    backend_share_id = None
+    try:
+        export_locations = share['export_locations'][0]
+        path = export_locations['path']
+        if share['share_proto'].lower() == 'nfs':
+            # 10.0.0.1:/example_share_name
+            backend_share_id = path.split(':/')[-1]
+        if share['share_proto'].lower() == 'cifs':
+            # \\10.0.0.1\example_share_name
+            backend_share_id = path.split('\\')[-1]
+    except Exception as e:
+        LOG.warning('Cannot get share name from path, make sure the path '
+                    'is right. Error details: %s', e)
+    if backend_share_id and (backend_share_id != share['id']):
+        return backend_share_id
+    else:
+        return share['id']
+
+
+def get_snapshot_id(snapshot):
+    """Get backend snapshot id.
+
+    Take the id from provider_location in case this is managed snapshot.
+    """
+    return snapshot['provider_location'] or snapshot['id']

@@ -115,3 +115,52 @@ class TestUtils(test.TestCase):
 
     def test_gb_to_byte(self):
         self.assertEqual(3 * units.Gi, utils.gib_to_byte(3))
+
+    def test_get_snapshot_id(self):
+        snapshot = {'provider_location': '23047-ef2344-4563cvw-r4323cwed',
+                    'id': 'test_id'}
+        result = utils.get_snapshot_id(snapshot)
+        expected = '23047-ef2344-4563cvw-r4323cwed'
+        self.assertEqual(expected, result)
+
+    def test_get_snapshot_id_without_pl(self):
+        snapshot = {'provider_location': '', 'id': 'test_id'}
+        result = utils.get_snapshot_id(snapshot)
+        expected = 'test_id'
+        self.assertEqual(expected, result)
+
+    def test_get_nfs_share_id(self):
+        nfs_share = {'export_locations':
+                     [{'path': '10.10.1.12:/addf-97e-46c-8ac6-55922f',
+                       'share_instance_id': 'e24-457e-47-12c6-gf345'}],
+                     'share_proto': 'NFS', 'id': 'test_nfs_id'}
+        result = utils.get_share_backend_id(nfs_share)
+        expected = 'addf-97e-46c-8ac6-55922f'
+        self.assertEqual(expected, result)
+
+    def test_get_nfs_share_id_without_path(self):
+        nfs_share = {'export_locations':
+                     [{'path': '',
+                       'share_instance_id': 'ev24-7e-4-12c6-g45245'}],
+                     'share_proto': 'NFS', 'id': 'test_nfs_id'}
+        result = utils.get_share_backend_id(nfs_share)
+        expected = 'test_nfs_id'
+        self.assertEqual(expected, result)
+
+    def test_get_cifs_share_id(self):
+        cifs_share = {'export_locations':
+                      [{'path': '\\\\17.66.5.3\\bdf-h4e-42c-122c5-b212',
+                        'share_instance_id': 'ev4-47e-48-126-gfbh452'}],
+                      'share_proto': 'CIFS', 'id': 'test_cifs_id'}
+        result = utils.get_share_backend_id(cifs_share)
+        expected = 'bdf-h4e-42c-122c5-b212'
+        self.assertEqual(expected, result)
+
+    def test_get_cifs_share_id_without_path(self):
+        cifs_share = {'export_locations':
+                      [{'path': '',
+                        'share_instance_id': 'ef4-47e-48-12c6-gf452'}],
+                      'share_proto': 'CIFS', 'id': 'test_cifs_id'}
+        result = utils.get_share_backend_id(cifs_share)
+        expected = 'test_cifs_id'
+        self.assertEqual(expected, result)

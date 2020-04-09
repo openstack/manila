@@ -116,6 +116,7 @@ class TestConnection(test.TestCase):
         share_server = {
             'backend_details': {'share_server_name': None},
             'id': 'test',
+            'identifier': '',
         }
 
         self.assertRaises(exception.InvalidInput,
@@ -246,7 +247,9 @@ class TestConnection(test.TestCase):
         snapshot = mocked_input['snapshot']
         share_server = mocked_input['share_server']
 
-        connection.create_snapshot(None, snapshot, share_server)
+        result = connection.create_snapshot(None, snapshot, share_server)
+        self.assertEqual('ab411797-b1cf-4035-bf14-8771a7bf1805',
+                         result['provider_location'])
 
     @res_mock.mock_manila_input
     @res_mock.patch_connection
@@ -739,3 +742,142 @@ class TestConnection(test.TestCase):
         exp_location = sorted(exp_location, key=lambda x: sorted(x['path']))
         location = sorted(location, key=lambda x: sorted(x['path']))
         self.assertEqual(exp_location, location)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_get_share_server_id(self, connection, mocked_input):
+        share_server = mocked_input['share_server']
+        result = connection._get_server_name(share_server)
+        expected = 'c2e48947-98ed-4eae-999b-fa0b83731dfd'
+        self.assertEqual(expected, result)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_manage_snapshot(self, connection, mocked_input):
+        snapshot = mocked_input['snapshot']
+        driver_options = {'size': 8}
+        result = connection.manage_existing_snapshot(snapshot,
+                                                     driver_options, None)
+        expected = {'provider_location': '23047-ef2344-4563cvw-r4323cwed',
+                    'size': 8}
+        self.assertEqual(expected, result)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_manage_snapshot_wrong_size_type(self, connection, mocked_input):
+        snapshot = mocked_input['snapshot']
+        driver_options = {'size': 'str_size'}
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          connection.manage_existing_snapshot,
+                          snapshot, driver_options, None)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_manage_snapshot_with_server(self, connection, mocked_input):
+        share_server = mocked_input['share_server']
+        snapshot = mocked_input['snapshot']
+        driver_options = {}
+        result = connection.manage_existing_snapshot_with_server(
+            snapshot, driver_options, share_server)
+        expected = {'provider_location': '23047-ef2344-4563cvw-r4323cwed',
+                    'size': 1}
+        self.assertEqual(expected, result)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_get_share_server_network_info(self, connection, mocked_input):
+        share_server = mocked_input['share_server']
+        identifier = 'test_manage_nas_server'
+        result = connection.get_share_server_network_info(None, share_server,
+                                                          identifier, None)
+        expected = ['fake_ip_addr_1', 'fake_ip_addr_2']
+        self.assertEqual(expected, result)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_manage_server(self, connection, mocked_input):
+        share_server = mocked_input['share_server']
+        identifier = 'test_manage_nas_server'
+        result = connection.manage_server(None, share_server, identifier, None)
+        expected = (identifier, None)
+        self.assertEqual(expected, result)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_manage_nfs_share(self, connection, mocked_input):
+        share = mocked_input['managed_nfs_share']
+        driver_options = {'size': 3}
+        result = connection.manage_existing(share, driver_options)
+        path = '172.168.201.201:/ad1caddf-097e-462c-8ac6-5592ed6fe22f'
+        expected = {'export_locations': {'path': path}, 'size': 3}
+        self.assertEqual(expected, result)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_manage_nfs_share_with_server(self, connection, mocked_input):
+        share = mocked_input['managed_nfs_share']
+        share_server = mocked_input['share_server']
+        driver_options = {'size': 8}
+        result = connection.manage_existing_with_server(share, driver_options,
+                                                        share_server)
+        path = '172.168.201.201:/ad1caddf-097e-462c-8ac6-5592ed6fe22f'
+        expected = {'export_locations': {'path': path}, 'size': 8}
+        self.assertEqual(expected, result)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_manage_cifs_share(self, connection, mocked_input):
+        share = mocked_input['managed_cifs_share']
+        driver_options = {'size': 3}
+        result = connection.manage_existing(share, driver_options)
+        path = '\\\\10.0.0.1\\bd23121f-hg4e-432c-12cd2c5-bb93dfghe212'
+        expected = {'export_locations': {'path': path}, 'size': 3}
+        self.assertEqual(expected, result)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_manage_cifs_share_with_server(self, connection, mocked_input):
+        connection.client.create_interface = mock.Mock(return_value=None)
+        share = mocked_input['managed_cifs_share']
+        share_server = mocked_input['share_server']
+        driver_options = {'size': 3}
+        result = connection.manage_existing_with_server(share, driver_options,
+                                                        share_server)
+        path = '\\\\10.0.0.1\\bd23121f-hg4e-432c-12cd2c5-bb93dfghe212'
+        expected = {'export_locations': {'path': path}, 'size': 3}
+        self.assertEqual(expected, result)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_manage_with_wrong_size_data_type(self, connection, mocked_input):
+        connection.client.create_interface = mock.Mock(return_value=None)
+        share = mocked_input['managed_nfs_share']
+        share_server = mocked_input['share_server']
+        driver_options = {'size': 'str_size'}
+        self.assertRaises(exception.ManageInvalidShare,
+                          connection.manage_existing_with_server,
+                          share, driver_options, share_server)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_manage_without_size(self, connection, mocked_input):
+        connection.client.create_interface = mock.Mock(return_value=None)
+        share = mocked_input['managed_nfs_share']
+        share_server = mocked_input['share_server']
+        driver_options = {'size': 0}
+        result = connection.manage_existing_with_server(share, driver_options,
+                                                        share_server)
+        path = '172.168.201.201:/ad1caddf-097e-462c-8ac6-5592ed6fe22f'
+        expected = {'export_locations': {'path': path}, 'size': 1}
+        self.assertEqual(expected, result)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_manage_without_export_locations(self, connection, mocked_input):
+        connection.client.create_interface = mock.Mock(return_value=None)
+        share = mocked_input['nfs_share']
+        share_server = mocked_input['share_server']
+        driver_options = {'size': 3}
+        self.assertRaises(exception.ManageInvalidShare,
+                          connection.manage_existing_with_server,
+                          share, driver_options, share_server)

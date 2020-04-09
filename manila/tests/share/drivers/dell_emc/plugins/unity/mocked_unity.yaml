@@ -1252,3 +1252,89 @@ test_restore_snapshot:
   unity:
     _methods:
       get_snap: *snapshot_1
+
+
+test_manage_cifs_share_with_server:
+  filesystem: &filesystem__test_manage_cifs_share_with_server
+    _properties: &filesystem_prop__test_manage_cifs_share_with_server
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      size_total: 5368709120
+    _methods:
+      shrink:
+
+  cifs_share: &cifs_share__test_manage_cifs_share_with_server
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_manage_cifs_share_with_server
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_manage_cifs_share_with_server
+
+test_manage_cifs_share:
+  filesystem: &filesystem__test_manage_cifs_share
+    _properties: &filesystem_prop__test_manage_cifs_share
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      size_total: 5368709120
+    _methods:
+      shrink:
+
+  cifs_share: &cifs_share__test_manage_cifs_share
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_manage_cifs_share
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_manage_cifs_share
+
+test_manage_nfs_share_with_server:
+  filesystem: &filesystem__test_manage_nfs_share_with_server
+    _properties: &filesystem_prop__test_manage_nfs_share_with_server
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      size_total: 5368709120
+    _methods:
+      extend:
+
+  nfs_share: &nfs_share__test_manage_nfs_share_with_server
+    _properties:
+      <<: *nfs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_manage_nfs_share_with_server
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nfs_share: *nfs_share__test_manage_nfs_share_with_server
+
+test_manage_nfs_share:
+  filesystem: &filesystem__test_manage_nfs_share
+    _properties: &filesystem_prop__test_manage_nfs_share
+      <<: *filesystem_base_prop
+      size_total: 5368709120
+    _methods:
+      shrink:
+
+  nfs_share: &nfs_share__test_manage_nfs_share
+    _properties:
+      <<: *nfs_share_base_prop
+      filesystem: *filesystem__test_manage_nfs_share
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nfs_share: *nfs_share__test_manage_nfs_share
+
+test_get_share_server_network_info:
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nas_server: *nas_server
+
