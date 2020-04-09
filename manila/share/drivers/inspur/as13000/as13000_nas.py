@@ -343,7 +343,7 @@ class AS13000ShareDriver(driver.ShareDriver):
 
     @inspur_driver_debug_trace
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Create a share from snapshot."""
         pool, name, size, proto = self._get_share_instance_pnsp(share)
 

@@ -227,7 +227,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         return self._get_share_path(share)
 
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Creates a snapshot."""
         self._create_share(share)
         share_path = '/' + share['name']

@@ -640,7 +640,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     @ensure_server
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Is called to create share from snapshot."""
         return self._create_share(
             context, share,

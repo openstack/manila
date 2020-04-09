@@ -403,7 +403,7 @@ class ShareManager(manager.SchedulerDependentManager):
             self._ensure_share_instance_has_pool(ctxt, share_instance)
             share_instance = self.db.share_instance_get(
                 ctxt, share_instance['id'], with_share_data=True)
-            share_instance_dict = self._get_share_replica_dict(
+            share_instance_dict = self._get_share_instance_dict(
                 ctxt, share_instance)
             update_share_instances.append(share_instance_dict)
 
@@ -541,6 +541,7 @@ class ShareManager(manager.SchedulerDependentManager):
             self.db.share_instance_update(context, share_instance['id'],
                                           {'status': constants.STATUS_ERROR})
         parent_share_server = None
+        parent_share_same_dest = False
         if snapshot:
             parent_share_server_id = (
                 snapshot['share']['instance']['share_server_id'])
@@ -562,6 +563,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 raise exception.InvalidShareServer(
                     share_server_id=parent_share_server
                 )
+            parent_share_same_dest = (snapshot['share']['instance']['host']
+                                      == share_instance['host'])
         share_network_subnet_id = None
         if share_network_id:
             share_network_subnet = (
@@ -578,7 +581,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 parent_share_server['share_network_subnet_id'])
 
         def get_available_share_servers():
-            if parent_share_server:
+            if parent_share_server and parent_share_same_dest:
                 return [parent_share_server]
             else:
                 return (
@@ -929,9 +932,9 @@ class ShareManager(manager.SchedulerDependentManager):
                         "All snapshots must have '%(status)s' status to be "
                         "migrated by the driver along with share "
                         "%(share)s.") % {
-                            'share': share_ref['id'],
-                            'status': constants.STATUS_AVAILABLE
-                        }
+                        'share': share_ref['id'],
+                        'status': constants.STATUS_AVAILABLE
+                    }
                     raise exception.ShareMigrationFailed(reason=msg)
 
                 src_snap_instances = [x.instance for x in src_snapshots]
@@ -1376,7 +1379,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.db.share_instance_update(
             context, dest_share_instance['id'],
-            {'status': constants.STATUS_AVAILABLE})
+            {'status': constants.STATUS_AVAILABLE, 'progress': '100%'})
 
         self.db.share_instance_update(context, src_share_instance['id'],
                                       {'status': constants.STATUS_INACTIVE})
@@ -1557,7 +1560,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.db.share_instance_update(
             context, dest_share_instance['id'],
-            {'status': constants.STATUS_AVAILABLE})
+            {'status': constants.STATUS_AVAILABLE, 'progress': '100%'})
 
         self.db.share_instance_update(context, src_instance_id,
                                       {'status': constants.STATUS_INACTIVE})
@@ -1753,17 +1756,44 @@ class ShareManager(manager.SchedulerDependentManager):
         else:
             share_server = None
 
+        status = constants.STATUS_AVAILABLE
         try:
             if snapshot_ref:
-                export_locations = self.driver.create_share_from_snapshot(
+                # NOTE(dviroel): we need to provide the parent share info to
+                # assist drivers that create shares from snapshot in different
+                # pools or back ends
+                parent_share_instance = self.db.share_instance_get(
+                    context, snapshot_ref['share']['instance']['id'],
+                    with_share_data=True)
+                parent_share_dict = self._get_share_instance_dict(
+                    context, parent_share_instance)
+                model_update = self.driver.create_share_from_snapshot(
                     context, share_instance, snapshot_ref.instance,
-                    share_server=share_server)
+                    share_server=share_server, parent_share=parent_share_dict)
+                if isinstance(model_update, list):
+                    # NOTE(dviroel): the driver that doesn't implement the new
+                    # model_update will return only the export locations
+                    export_locations = model_update
+                else:
+                    # NOTE(dviroel): share status is mandatory when answering
+                    # a model update. If not provided, won't be possible to
+                    # determine if was successfully created.
+                    status = model_update.get('status')
+                    if status is None:
+                        msg = _("Driver didn't provide a share status.")
+                        raise exception.InvalidShareInstance(reason=msg)
+                    export_locations = model_update.get('export_locations')
             else:
                 export_locations = self.driver.create_share(
                     context, share_instance, share_server=share_server)
+            if status not in [constants.STATUS_AVAILABLE,
+                              constants.STATUS_CREATING_FROM_SNAPSHOT]:
+                msg = _('Driver returned an invalid status: %s') % status
+                raise exception.InvalidShareInstance(reason=msg)
 
-            self.db.share_export_locations_update(
-                context, share_instance['id'], export_locations)
+            if export_locations:
+                self.db.share_export_locations_update(
+                    context, share_instance['id'], export_locations)
 
         except Exception as e:
             with excutils.save_and_reraise_exception():
@@ -1801,9 +1831,11 @@ class ShareManager(manager.SchedulerDependentManager):
         else:
             LOG.info("Share instance %s created successfully.",
                      share_instance_id)
+            progress = '100%' if status == constants.STATUS_AVAILABLE else '0%'
             updates = {
-                'status': constants.STATUS_AVAILABLE,
+                'status': status,
                 'launched_at': timeutils.utcnow(),
+                'progress': progress
             }
             if share.get('replication_type'):
                 updates['replica_state'] = constants.REPLICA_STATE_ACTIVE
@@ -1957,9 +1989,9 @@ class ShareManager(manager.SchedulerDependentManager):
                 with_share_data=True, with_share_server=True)
         )
 
-        replica_list = [self._get_share_replica_dict(context, r)
+        replica_list = [self._get_share_instance_dict(context, r)
                         for r in replica_list]
-        share_replica = self._get_share_replica_dict(context, share_replica)
+        share_replica = self._get_share_instance_dict(context, share_replica)
 
         try:
             replica_ref = self.driver.create_replica(
@@ -1999,7 +2031,8 @@ class ShareManager(manager.SchedulerDependentManager):
             self.db.share_replica_update(
                 context, share_replica['id'],
                 {'status': constants.STATUS_AVAILABLE,
-                 'replica_state': replica_ref.get('replica_state')})
+                 'replica_state': replica_ref.get('replica_state'),
+                 'progress': '100%'})
 
         if replica_ref.get('access_rules_status'):
             self._update_share_replica_access_rules_state(
@@ -2037,12 +2070,12 @@ class ShareManager(manager.SchedulerDependentManager):
                 with_share_data=True, with_share_server=True)
         )
 
-        replica_list = [self._get_share_replica_dict(context, r)
+        replica_list = [self._get_share_instance_dict(context, r)
                         for r in replica_list]
         replica_snapshots = [self._get_snapshot_instance_dict(context, s)
                              for s in replica_snapshots]
         share_server = self._get_share_server(context, share_replica)
-        share_replica = self._get_share_replica_dict(context, share_replica)
+        share_replica = self._get_share_instance_dict(context, share_replica)
 
         try:
             self.access_helper.update_access_rules(
@@ -2157,9 +2190,9 @@ class ShareManager(manager.SchedulerDependentManager):
         access_rules = self.db.share_access_get_all_for_share(
             context, share_replica['share_id'])
 
-        replica_list = [self._get_share_replica_dict(context, r)
+        replica_list = [self._get_share_instance_dict(context, r)
                         for r in replica_list]
-        share_replica = self._get_share_replica_dict(context, share_replica)
+        share_replica = self._get_share_instance_dict(context, share_replica)
 
         try:
             updated_replica_list = (
@@ -2344,10 +2377,10 @@ class ShareManager(manager.SchedulerDependentManager):
             for x in share_snapshots
             if x['aggregate_status'] == constants.STATUS_AVAILABLE]
 
-        replica_list = [self._get_share_replica_dict(context, r)
+        replica_list = [self._get_share_instance_dict(context, r)
                         for r in replica_list]
 
-        share_replica = self._get_share_replica_dict(context, share_replica)
+        share_replica = self._get_share_instance_dict(context, share_replica)
 
         try:
             replica_state = self.driver.update_replica_state(
@@ -3258,7 +3291,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         # Make primitives to pass the information to the driver.
 
-        replica_list = [self._get_share_replica_dict(context, r)
+        replica_list = [self._get_share_instance_dict(context, r)
                         for r in replica_list]
         replica_snapshots = [self._get_snapshot_instance_dict(context, s)
                              for s in replica_snapshots]
@@ -3317,9 +3350,9 @@ class ShareManager(manager.SchedulerDependentManager):
                 context, snapshot_instance_filters))[0]
 
         # Make primitives to pass the information to the driver
-        replica_list = [self._get_share_replica_dict(context, replica)
+        replica_list = [self._get_share_instance_dict(context, replica)
                         for replica in replica_list]
-        active_replica = self._get_share_replica_dict(context, active_replica)
+        active_replica = self._get_share_instance_dict(context, active_replica)
         replica_snapshots = [self._get_snapshot_instance_dict(context, s)
                              for s in replica_snapshots]
         active_replica_snapshot = self._get_snapshot_instance_dict(
@@ -3391,7 +3424,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 with_share_server=True)
         )
 
-        replica_list = [self._get_share_replica_dict(context, r)
+        replica_list = [self._get_share_instance_dict(context, r)
                         for r in replica_list]
         replica_snapshots = [self._get_snapshot_instance_dict(context, s)
                              for s in replica_snapshots]
@@ -3521,7 +3554,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 with_share_data=True, with_share_server=True)
         )
 
-        replica_list = [self._get_share_replica_dict(context, r)
+        replica_list = [self._get_share_instance_dict(context, r)
                         for r in replica_list]
         replica_snapshots = replica_snapshots or []
 
@@ -3531,7 +3564,7 @@ class ShareManager(manager.SchedulerDependentManager):
                              for s in replica_snapshots]
         replica_snapshot = self._get_snapshot_instance_dict(
             context, replica_snapshot)
-        share_replica = self._get_share_replica_dict(context, share_replica)
+        share_replica = self._get_share_instance_dict(context, share_replica)
         share_server = share_replica['share_server']
         snapshot_update = None
 
@@ -4075,6 +4108,20 @@ class ShareManager(manager.SchedulerDependentManager):
             if share_update_list:
                 for share in share_update_list:
                     values = copy.deepcopy(share)
+                    # NOTE(dviroel): To keep backward compatibility we can't
+                    # keep 'status' as a mandatory parameter. We'll set its
+                    # value to 'available' as default.
+                    i_status = values.get('status', constants.STATUS_AVAILABLE)
+                    if i_status not in [
+                        constants.STATUS_AVAILABLE,
+                            constants.STATUS_CREATING_FROM_SNAPSHOT]:
+                        msg = _(
+                            'Driver returned an invalid status %s') % i_status
+                        raise exception.InvalidShareInstance(reason=msg)
+                    values['status'] = i_status
+                    values['progress'] = (
+                        '100%' if i_status == constants.STATUS_AVAILABLE
+                        else '0%')
                     values.pop('id')
                     export_locations = values.pop('export_locations')
                     self.db.share_instance_update(context, share['id'], values)
@@ -4308,45 +4355,83 @@ class ShareManager(manager.SchedulerDependentManager):
         LOG.info("Share group snapshot %s: deleted successfully",
                  share_group_snapshot_id)
 
-    def _get_share_replica_dict(self, context, share_replica):
-        # TODO(gouthamr): remove method when the db layer returns primitives
-        share_replica_ref = {
-            'id': share_replica.get('id'),
-            'name': share_replica.get('name'),
-            'share_id': share_replica.get('share_id'),
-            'host': share_replica.get('host'),
-            'status': share_replica.get('status'),
-            'replica_state': share_replica.get('replica_state'),
-            'availability_zone_id': share_replica.get('availability_zone_id'),
-            'export_locations': share_replica.get('export_locations') or [],
-            'share_network_id': share_replica.get('share_network_id'),
-            'share_server_id': share_replica.get('share_server_id'),
-            'deleted': share_replica.get('deleted'),
-            'terminated_at': share_replica.get('terminated_at'),
-            'launched_at': share_replica.get('launched_at'),
-            'scheduled_at': share_replica.get('scheduled_at'),
-            'updated_at': share_replica.get('updated_at'),
-            'deleted_at': share_replica.get('deleted_at'),
-            'created_at': share_replica.get('created_at'),
-            'share_server': self._get_share_server(context, share_replica),
-            'access_rules_status': share_replica.get('access_rules_status'),
-            # Share details
-            'user_id': share_replica.get('user_id'),
-            'project_id': share_replica.get('project_id'),
-            'size': share_replica.get('size'),
-            'display_name': share_replica.get('display_name'),
-            'display_description': share_replica.get('display_description'),
-            'snapshot_id': share_replica.get('snapshot_id'),
-            'share_proto': share_replica.get('share_proto'),
-            'share_type_id': share_replica.get('share_type_id'),
-            'is_public': share_replica.get('is_public'),
-            'share_group_id': share_replica.get('share_group_id'),
-            'source_share_group_snapshot_member_id': share_replica.get(
-                'source_share_group_snapshot_member_id'),
-            'availability_zone': share_replica.get('availability_zone'),
+    def _get_share_server_dict(self, context, share_server):
+        share_server_ref = {
+            'id': share_server.get('id'),
+            'project_id': share_server.get('project_id'),
+            'updated_at': share_server.get('updated_at'),
+            'status': share_server.get('status'),
+            'host': share_server.get('host'),
+            'share_network_name': share_server.get('share_network_name'),
+            'share_network_id': share_server.get('share_network_id'),
+            'created_at': share_server.get('created_at'),
+            'backend_details': share_server.get('backend_details'),
+            'share_network_subnet_id':
+                share_server.get('share_network_subnet_id', None),
+            'is_auto_deletable': share_server.get('is_auto_deletable', None),
+            'identifier': share_server.get('identifier', None),
+            'network_allocations': share_server.get('network_allocations',
+                                                    None)
         }
+        return share_server_ref
 
-        return share_replica_ref
+    def _get_export_location_dict(self, context, export_location):
+        export_location_ref = {
+            'id': export_location.get('uuid'),
+            'path': export_location.get('path'),
+            'created_at': export_location.get('created_at'),
+            'updated_at': export_location.get('updated_at'),
+            'share_instance_id':
+                export_location.get('share_instance_id', None),
+            'is_admin_only': export_location.get('is_admin_only', None),
+        }
+        return export_location_ref
+
+    def _get_share_instance_dict(self, context, share_instance):
+        # TODO(gouthamr): remove method when the db layer returns primitives
+        share_instance_ref = {
+            'id': share_instance.get('id'),
+            'name': share_instance.get('name'),
+            'share_id': share_instance.get('share_id'),
+            'host': share_instance.get('host'),
+            'status': share_instance.get('status'),
+            'replica_state': share_instance.get('replica_state'),
+            'availability_zone_id': share_instance.get('availability_zone_id'),
+            'share_network_id': share_instance.get('share_network_id'),
+            'share_server_id': share_instance.get('share_server_id'),
+            'deleted': share_instance.get('deleted'),
+            'terminated_at': share_instance.get('terminated_at'),
+            'launched_at': share_instance.get('launched_at'),
+            'scheduled_at': share_instance.get('scheduled_at'),
+            'updated_at': share_instance.get('updated_at'),
+            'deleted_at': share_instance.get('deleted_at'),
+            'created_at': share_instance.get('created_at'),
+            'share_server': self._get_share_server(context, share_instance),
+            'access_rules_status': share_instance.get('access_rules_status'),
+            # Share details
+            'user_id': share_instance.get('user_id'),
+            'project_id': share_instance.get('project_id'),
+            'size': share_instance.get('size'),
+            'display_name': share_instance.get('display_name'),
+            'display_description': share_instance.get('display_description'),
+            'snapshot_id': share_instance.get('snapshot_id'),
+            'share_proto': share_instance.get('share_proto'),
+            'share_type_id': share_instance.get('share_type_id'),
+            'is_public': share_instance.get('is_public'),
+            'share_group_id': share_instance.get('share_group_id'),
+            'source_share_group_snapshot_member_id': share_instance.get(
+                'source_share_group_snapshot_member_id'),
+            'availability_zone': share_instance.get('availability_zone'),
+        }
+        if share_instance_ref['share_server']:
+            share_instance_ref['share_server'] = self._get_share_server_dict(
+                context, share_instance_ref['share_server']
+            )
+        share_instance_ref['export_locations'] = [
+            self._get_export_location_dict(context, el) for
+            el in share_instance.get('export_locations') or []
+        ]
+        return share_instance_ref
 
     def _get_snapshot_instance_dict(self, context, snapshot_instance,
                                     snapshot=None):
@@ -4415,3 +4500,83 @@ class ShareManager(manager.SchedulerDependentManager):
                 context, share, share_instance, "consumed.size",
                 extra_usage_info={'used_size': si['used_size'],
                                   'gathered_at': si['gathered_at']})
+
+    @periodic_task.periodic_task(spacing=CONF.periodic_interval)
+    @utils.require_driver_initialized
+    def periodic_share_status_update(self, context):
+        """Invokes share driver to update shares status."""
+        LOG.debug("Updating status of share instances.")
+        share_instances = self.db.share_instances_get_all_by_host(
+            context, self.host, with_share_data=True,
+            status=constants.STATUS_CREATING_FROM_SNAPSHOT)
+
+        for si in share_instances:
+            si_dict = self._get_share_instance_dict(context, si)
+            self._update_share_status(context, si_dict)
+
+    def _update_share_status(self, context, share_instance):
+        share_server = self._get_share_server(context, share_instance)
+        if share_server is not None:
+            share_server = self._get_share_server_dict(context,
+                                                       share_server)
+        try:
+            data_updates = self.driver.get_share_status(share_instance,
+                                                        share_server)
+        except Exception:
+            LOG.exception(
+                ("Unexpected driver error occurred while updating status for "
+                 "share instance %(id)s that belongs to share '%(share_id)s'"),
+                {'id': share_instance['id'],
+                 'share_id': share_instance['share_id']}
+            )
+            data_updates = {
+                'status': constants.STATUS_ERROR
+            }
+
+        status = data_updates.get('status')
+        if status == constants.STATUS_ERROR:
+            msg = ("Status of share instance %(id)s that belongs to share "
+                   "%(share_id)s was updated to '%(status)s'."
+                   % {'id': share_instance['id'],
+                      'share_id': share_instance['share_id'],
+                      'status': status})
+            LOG.error(msg)
+            self.db.share_instance_update(
+                context, share_instance['id'],
+                {'status': constants.STATUS_ERROR,
+                 'progress': None})
+            self.message_api.create(
+                context,
+                message_field.Action.UPDATE,
+                share_instance['project_id'],
+                resource_type=message_field.Resource.SHARE,
+                resource_id=share_instance['share_id'],
+                detail=message_field.Detail.DRIVER_FAILED_CREATING_FROM_SNAP)
+            return
+
+        export_locations = data_updates.get('export_locations')
+        progress = data_updates.get('progress')
+
+        statuses_requiring_update = [
+            constants.STATUS_AVAILABLE,
+            constants.STATUS_CREATING_FROM_SNAPSHOT]
+
+        if status in statuses_requiring_update:
+            si_updates = {
+                'status': status,
+            }
+            progress = ('100%' if status == constants.STATUS_AVAILABLE
+                        else progress)
+            if progress is not None:
+                si_updates.update({'progress': progress})
+            self.db.share_instance_update(
+                context, share_instance['id'], si_updates)
+            msg = ("Status of share instance %(id)s that belongs to share "
+                   "%(share_id)s was updated to '%(status)s'."
+                   % {'id': share_instance['id'],
+                      'share_id': share_instance['share_id'],
+                      'status': status})
+            LOG.debug(msg)
+        if export_locations:
+            self.db.share_export_locations_update(
+                context, share_instance['id'], export_locations)

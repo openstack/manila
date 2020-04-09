@@ -580,7 +580,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
     @ensure_share_server_not_provided
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Is called to create a share from snapshot."""
         dataset_name = self._get_dataset_name(share)
         ssh_cmd = '%(username)s@%(host)s' % {

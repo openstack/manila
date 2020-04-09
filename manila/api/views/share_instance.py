@@ -11,6 +11,7 @@
 #    under the License.
 
 from manila.api import common
+from manila.common import constants
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -25,6 +26,8 @@ class ViewBuilder(common.ViewBuilder):
         "add_replication_fields",
         "add_share_type_field",
         "add_cast_rules_to_readonly_field",
+        "add_progress_field",
+        "translate_creating_from_snapshot_status",
     ]
 
     def detail_list(self, request, instances):
@@ -47,6 +50,7 @@ class ViewBuilder(common.ViewBuilder):
             'export_location': share_instance.get('export_location'),
             'export_locations': export_locations,
         }
+
         self.update_versioned_resource_dict(
             request, instance_dict, share_instance)
         return {'share_instance': instance_dict}
@@ -91,3 +95,14 @@ class ViewBuilder(common.ViewBuilder):
                                          share_instance):
         instance_dict['cast_rules_to_readonly'] = share_instance.get(
             'cast_rules_to_readonly', False)
+
+    @common.ViewBuilder.versioned_method("1.0", "2.53")
+    def translate_creating_from_snapshot_status(self, context, instance_dict,
+                                                share_instance):
+        if (share_instance.get('status') ==
+                constants.STATUS_CREATING_FROM_SNAPSHOT):
+            instance_dict['status'] = constants.STATUS_CREATING
+
+    @common.ViewBuilder.versioned_method("2.54")
+    def add_progress_field(self, context, instance_dict, share_instance):
+        instance_dict['progress'] = share_instance.get('progress')

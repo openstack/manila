@@ -27,6 +27,7 @@
             "aim": "doc"
         },
         "status": "available",
+        "progress": "100%",
         "description": "My custom share London",
         "host": "manila2@generic1#GENERIC1",
         "access_rules_status": "active",

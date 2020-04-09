@@ -21,6 +21,7 @@ import ddt
 import mock
 from mock import PropertyMock
 
+from manila.common import constants
 from manila import exception
 from manila import network
 from manila.share import configuration
@@ -152,6 +153,12 @@ class ShareDriverTestCase(test.TestCase):
         for key in expected_keys:
             self.assertIn(key, result)
         self.assertEqual('Open Source', result['vendor_name'])
+
+    def test_get_share_status(self):
+        share_driver = self._instantiate_share_driver(None, False)
+        self.assertRaises(NotImplementedError,
+                          share_driver.get_share_status,
+                          None, None)
 
     @ddt.data(
         {'opt': True, 'allowed': True},
@@ -785,6 +792,97 @@ class ShareDriverTestCase(test.TestCase):
                 {'id': 'foo_member_%d' % i},
                 share_server=mock_share_server)
             for i in (1, 2)
+        ])
+        self.assertIsNone(share_group_update)
+        self.assertEqual(expected_share_updates, share_update)
+
+    def test_create_share_group_from_share_group_snapshot_with_dict_raise(
+            self):
+        share_driver = self._instantiate_share_driver(None, False)
+        fake_shares = [
+            {'id': 'fake_share_%d' % i,
+             'source_share_group_snapshot_member_id': 'fake_member_%d' % i}
+            for i in (1, 2)]
+        fake_share_group_dict = {
+            'source_share_group_snapshot_id': 'some_fake_uuid_abc',
+            'shares': fake_shares,
+            'id': 'some_fake_uuid_def',
+        }
+        fake_share_group_snapshot_dict = {
+            'share_group_snapshot_members': [
+                {'id': 'fake_member_1'}, {'id': 'fake_member_2'}],
+            'id': 'fake_share_group_snapshot_id',
+        }
+
+        self.mock_object(
+            share_driver, 'create_share_from_snapshot',
+            mock.Mock(side_effect=[{
+                'export_locations': 'fake_export1',
+                'status': constants.STATUS_CREATING},
+                {'export_locations': 'fake_export2',
+                 'status': constants.STATUS_CREATING}]))
+
+        self.assertRaises(
+            exception.InvalidShareInstance,
+            share_driver.create_share_group_from_share_group_snapshot,
+            'fake_context',
+            fake_share_group_dict,
+            fake_share_group_snapshot_dict)
+
+    def test_create_share_group_from_share_group_snapshot_with_dict(
+            self):
+        share_driver = self._instantiate_share_driver(None, False)
+        fake_shares = [
+            {'id': 'fake_share_%d' % i,
+             'source_share_group_snapshot_member_id': 'fake_member_%d' % i}
+            for i in (1, 2)]
+        fake_share_group_dict = {
+            'source_share_group_snapshot_id': 'some_fake_uuid_abc',
+            'shares': fake_shares,
+            'id': 'some_fake_uuid_def',
+        }
+        fake_share_group_snapshot_dict = {
+            'share_group_snapshot_members': [
+                {'id': 'fake_member_1'}, {'id': 'fake_member_2'}],
+            'id': 'fake_share_group_snapshot_id',
+        }
+
+        mock_create = self.mock_object(
+            share_driver, 'create_share_from_snapshot',
+            mock.Mock(side_effect=[{
+                'export_locations': 'fake_export1',
+                'status': constants.STATUS_CREATING_FROM_SNAPSHOT},
+                {'export_locations': 'fake_export2',
+                 'status': constants.STATUS_AVAILABLE}]))
+        expected_share_updates = [
+            {
+                'id': 'fake_share_1',
+                'status': constants.STATUS_CREATING_FROM_SNAPSHOT,
+                'export_locations': 'fake_export1',
+            },
+            {
+                'id': 'fake_share_2',
+                'status': constants.STATUS_AVAILABLE,
+                'export_locations': 'fake_export2',
+            },
+        ]
+
+        share_group_update, share_update = (
+            share_driver.create_share_group_from_share_group_snapshot(
+                'fake_context', fake_share_group_dict,
+                fake_share_group_snapshot_dict))
+
+        mock_create.assert_has_calls([
+            mock.call(
+                'fake_context',
+                {'id': 'fake_share_1',
+                 'source_share_group_snapshot_member_id': 'fake_member_1'},
+                {'id': 'fake_member_1'}),
+            mock.call(
+                'fake_context',
+                {'id': 'fake_share_2',
+                 'source_share_group_snapshot_member_id': 'fake_member_2'},
+                {'id': 'fake_member_2'})
         ])
         self.assertIsNone(share_group_update)
         self.assertEqual(expected_share_updates, share_update)

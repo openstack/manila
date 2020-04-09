@@ -1,0 +1,14 @@
+---
+features:
+  - The scheduler was improved to select and weigh compatible back ends when
+    creating shares from snapshots. This change only affects the existing
+    behavior if the option ``use_scheduler_creating_share_from_snapshot`` is
+    enabled.
+  - A new share status `creating_from_snapshot` was added to inform the user
+    that a share creation from snapshot is in progress and may take some time
+    to be concluded. In order to quantify the share creation progress a new
+    field called ``progress`` was added to shares and share instances information,
+    to indicate the conclusion percentage of share create operation (0 to 100%).
+fixes:
+  - The availability zone parameter is now being considered when creating
+    shares from snapshots.

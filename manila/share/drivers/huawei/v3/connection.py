@@ -383,7 +383,7 @@ class V3StorageConnection(driver.HuaweiBase):
         return share
 
     def create_share_from_snapshot(self, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Create a share from snapshot."""
         share_fs_id = self.helper.get_fsid_by_name(snapshot['share_name'])
         if not share_fs_id:

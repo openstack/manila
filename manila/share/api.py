@@ -46,7 +46,11 @@ share_api_opts = [
                 default=False,
                 help='If set to False, then share creation from snapshot will '
                      'be performed on the same host. '
-                     'If set to True, then scheduling step will be used.')
+                     'If set to True, then scheduler will be used.'
+                     'When enabling this option make sure that filter '
+                     'CreateShareFromSnapshot is enabled and to have hosts '
+                     'reporting replication_domain option.'
+                )
 ]
 
 CONF = cfg.CONF
@@ -190,7 +194,18 @@ class API(base.Base):
             share_type_id = share_type['id'] if share_type else None
         else:
             source_share = self.db.share_get(context, snapshot['share_id'])
-            availability_zone = source_share['instance']['availability_zone']
+            source_share_az = source_share['instance']['availability_zone']
+            if availability_zone is None:
+                availability_zone = source_share_az
+            elif (availability_zone != source_share_az
+                  and not CONF.use_scheduler_creating_share_from_snapshot):
+                LOG.error("The specified availability zone must be the same "
+                          "as parent share when you have the configuration "
+                          "option 'use_scheduler_creating_share_from_snapshot'"
+                          " set to False.")
+                msg = _("The specified availability zone must be the same "
+                        "as the parent share when creating from snapshot.")
+                raise exception.InvalidInput(reason=msg)
             if share_type is None:
                 # Grab the source share's share_type if no new share type
                 # has been provided.
@@ -327,19 +342,23 @@ class API(base.Base):
                         context, reservations, share_type_id=share_type_id)
 
         host = None
-        if snapshot and not CONF.use_scheduler_creating_share_from_snapshot:
-            # Shares from snapshots with restriction - source host only.
-            # It is common situation for different types of backends.
-            host = snapshot['share']['instance']['host']
+        snapshot_host = None
+        if snapshot:
+            snapshot_host = snapshot['share']['instance']['host']
+            if not CONF.use_scheduler_creating_share_from_snapshot:
+                # Shares from snapshots with restriction - source host only.
+                # It is common situation for different types of backends.
+                host = snapshot['share']['instance']['host']
 
-        elif share_group:
+        if share_group and host is None:
             host = share_group['host']
 
         self.create_instance(
             context, share, share_network_id=share_network_id, host=host,
             availability_zone=availability_zone, share_group=share_group,
             share_group_snapshot_member=share_group_snapshot_member,
-            share_type_id=share_type_id, availability_zones=availability_zones)
+            share_type_id=share_type_id, availability_zones=availability_zones,
+            snapshot_host=snapshot_host)
 
         # Retrieve the share with instance details
         share = self.db.share_get(context, share['id'])
@@ -415,14 +434,16 @@ class API(base.Base):
     def create_instance(self, context, share, share_network_id=None,
                         host=None, availability_zone=None,
                         share_group=None, share_group_snapshot_member=None,
-                        share_type_id=None, availability_zones=None):
+                        share_type_id=None, availability_zones=None,
+                        snapshot_host=None):
         request_spec, share_instance = (
             self.create_share_instance_and_get_request_spec(
                 context, share, availability_zone=availability_zone,
                 share_group=share_group, host=host,
                 share_network_id=share_network_id,
                 share_type_id=share_type_id,
-                availability_zones=availability_zones))
+                availability_zones=availability_zones,
+                snapshot_host=snapshot_host))
 
         if share_group_snapshot_member:
             # Inherit properties from the share_group_snapshot_member
@@ -461,7 +482,7 @@ class API(base.Base):
             self, context, share, availability_zone=None,
             share_group=None, host=None, share_network_id=None,
             share_type_id=None, cast_rules_to_readonly=False,
-            availability_zones=None):
+            availability_zones=None, snapshot_host=None):
 
         availability_zone_id = None
         if availability_zone:
@@ -528,6 +549,7 @@ class API(base.Base):
             'share_proto': share['share_proto'],
             'share_id': share['id'],
             'snapshot_id': share['snapshot_id'],
+            'snapshot_host': snapshot_host,
             'share_type': share_type,
             'share_group': share_group,
             'availability_zone_id': availability_zone_id,

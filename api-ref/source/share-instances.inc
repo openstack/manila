@@ -48,6 +48,7 @@ Response parameters
    - status: status_5
    - access_rules_status: access_rules_status
    - share_id: share_id_2
+   - progress: progress_share_instance
    - availability_zone: availability_zone_1
    - created_at: created_at
    - replica_state: replica_state
@@ -105,6 +106,7 @@ Response parameters
    - status: status_5
    - access_rules_status: access_rules_status
    - share_id: share_id_2
+   - progress: progress_share_instance
    - availability_zone: availability_zone_1
    - created_at: created_at
    - replica_state: replica_state

@@ -485,7 +485,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Creates new share from snapshot."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         self._allocate_container_from_snapshot(

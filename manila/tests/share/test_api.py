@@ -769,7 +769,7 @@ class ShareAPITestCase(test.TestCase):
             self.context, share, share_network_id=fake_share_network_id,
             host=None, availability_zone=None, share_group=None,
             share_group_snapshot_member=None, share_type_id=None,
-            availability_zones=expected_azs
+            availability_zones=expected_azs, snapshot_host=None
         )
         db_api.share_get.assert_called_once()
 
@@ -914,6 +914,23 @@ class ShareAPITestCase(test.TestCase):
             assert_called_once_with(
                 self.context, request_spec=mock.ANY, filter_properties={}))
         self.assertFalse(self.api.share_rpcapi.create_share_instance.called)
+
+    def test_create_share_instance_from_snapshot(self):
+        snapshot, share, _, _ = self._setup_create_from_snapshot_mocks()
+
+        request_spec, share_instance = (
+            self.api.create_share_instance_and_get_request_spec(
+                self.context, share)
+        )
+
+        self.assertIsNotNone(share_instance)
+        self.assertEqual(share['id'],
+                         request_spec['share_instance_properties']['share_id'])
+        self.assertEqual(share['snapshot_id'], request_spec['snapshot_id'])
+
+        self.assertFalse(
+            self.api.share_rpcapi.create_share_instance_and_get_request_spec
+                .called)
 
     def test_create_instance_share_group_snapshot_member(self):
         fake_req_spec = {
@@ -2126,10 +2143,14 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share', 'create_snapshot', share)
 
-    @ddt.data({'use_scheduler': False, 'valid_host': 'fake'},
-              {'use_scheduler': True, 'valid_host': None})
+    @ddt.data({'use_scheduler': False, 'valid_host': 'fake',
+               'az': None},
+              {'use_scheduler': True, 'valid_host': None,
+               'az': None},
+              {'use_scheduler': True, 'valid_host': None,
+               'az': "fakeaz2"})
     @ddt.unpack
-    def test_create_from_snapshot(self, use_scheduler, valid_host):
+    def test_create_from_snapshot(self, use_scheduler, valid_host, az):
         snapshot, share, share_data, request_spec = (
             self._setup_create_from_snapshot_mocks(
                 use_scheduler=use_scheduler, host=valid_host)
@@ -2138,8 +2159,8 @@ class ShareAPITestCase(test.TestCase):
 
         mock_get_share_type_call = self.mock_object(
             share_types, 'get_share_type', mock.Mock(return_value=share_type))
-        az = share_data.pop('availability_zone')
 
+        az = snapshot['share']['availability_zone'] if not az else az
         self.api.create(
             self.context,
             share_data['share_proto'],
@@ -2147,8 +2168,10 @@ class ShareAPITestCase(test.TestCase):
             share_data['display_name'],
             share_data['display_description'],
             snapshot_id=snapshot['id'],
-            availability_zone=az
+            availability_zone=az,
         )
+
+        share_data.pop('availability_zone')
 
         mock_get_share_type_call.assert_called_once_with(
             self.context, share['share_type_id'])
@@ -2157,9 +2180,10 @@ class ShareAPITestCase(test.TestCase):
         self.api.create_instance.assert_called_once_with(
             self.context, share, share_network_id=share['share_network_id'],
             host=valid_host, share_type_id=share_type['id'],
-            availability_zone=snapshot['share']['availability_zone'],
+            availability_zone=az,
             share_group=None, share_group_snapshot_member=None,
-            availability_zones=None)
+            availability_zones=None,
+            snapshot_host=snapshot['share']['instance']['host'])
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share_snapshot', 'get_snapshot')
         quota.QUOTAS.reserve.assert_called_once_with(
@@ -2195,6 +2219,19 @@ class ShareAPITestCase(test.TestCase):
         quota.QUOTAS.commit.assert_called_once_with(
             self.context, 'reservation', share_type_id=share_type['id']
         )
+
+    def test_create_from_snapshot_az_different_from_source(self):
+        snapshot, share, share_data, request_spec = (
+            self._setup_create_from_snapshot_mocks(use_scheduler=False)
+        )
+
+        self.assertRaises(exception.InvalidInput, self.api.create,
+                          self.context, share_data['share_proto'],
+                          share_data['size'],
+                          share_data['display_name'],
+                          share_data['display_description'],
+                          snapshot_id=snapshot['id'],
+                          availability_zone='fake_different_az')
 
     def test_create_from_snapshot_with_different_share_type(self):
         snapshot, share, share_data, request_spec = (

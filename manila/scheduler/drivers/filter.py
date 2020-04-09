@@ -162,21 +162,27 @@ class FilterScheduler(base.Scheduler):
 
         share_group = request_spec.get('share_group')
 
-        # NOTE(gouthamr): If 'active_replica_host' is present in the request
-        # spec, pass that host's 'replication_domain' to the
-        # ShareReplication filter.
+        # NOTE(gouthamr): If 'active_replica_host' or 'snapshot_host' is
+        # present in the request spec, pass that host's 'replication_domain' to
+        # the ShareReplication and CreateFromSnapshot filters.
         active_replica_host = request_spec.get('active_replica_host')
-        replication_domain = None
+        snapshot_host = request_spec.get('snapshot_host')
+        allowed_hosts = []
         if active_replica_host:
+            allowed_hosts.append(active_replica_host)
+        if snapshot_host:
+            allowed_hosts.append(snapshot_host)
+        replication_domain = None
+        if active_replica_host or snapshot_host:
             temp_hosts = self.host_manager.get_all_host_states_share(elevated)
-            ar_host = next((host for host in temp_hosts
-                            if host.host == active_replica_host), None)
-            if ar_host:
-                replication_domain = ar_host.replication_domain
+            matching_host = next((host for host in temp_hosts
+                                  if host.host in allowed_hosts), None)
+            if matching_host:
+                replication_domain = matching_host.replication_domain
 
             # NOTE(zengyingzhe): remove the 'share_backend_name' extra spec,
-            # let scheduler choose the available host for this replica
-            # creation request.
+            # let scheduler choose the available host for this replica or
+            # snapshot clone creation request.
             share_type.get('extra_specs', {}).pop('share_backend_name', None)
 
         if filter_properties is None:

@@ -501,7 +501,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
         return self._hpe3par.build_export_locations(protocol, ips, path)
 
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Is called to create share from snapshot."""
 
         fpg, vfs, ips = self._get_pool_location(share, share_server)

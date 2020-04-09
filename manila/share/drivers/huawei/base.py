@@ -66,7 +66,7 @@ class HuaweiBase(object):
 
     @abc.abstractmethod
     def create_share_from_snapshot(self, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Create share from snapshot."""
 
     @abc.abstractmethod

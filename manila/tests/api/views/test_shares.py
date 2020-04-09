@@ -13,9 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import ddt
 
 from manila.api.views import shares
+from manila.common import constants
 from manila import test
 from manila.tests.api.contrib import stubs
 from manila.tests.api import fakes
@@ -44,6 +46,7 @@ class ViewBuilderTestCase(test.TestCase):
                     'name': 'fake_share_type_name',
                 },
                 'share_type_id': 'fake_share_type_id',
+                'progress': '100%',
             },
             'replication_type': 'fake_replication_type',
             'has_replicas': False,
@@ -51,13 +54,14 @@ class ViewBuilderTestCase(test.TestCase):
             'snapshot_support': True,
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': True,
+            'progress': '100%',
         }
         return stubs.stub_share('fake_id', **fake_share)
 
     def test__collection_name(self):
         self.assertEqual('shares', self.builder._collection_name)
 
-    @ddt.data('2.6', '2.9', '2.10', '2.11', '2.16', '2.24', '2.27')
+    @ddt.data('2.6', '2.9', '2.10', '2.11', '2.16', '2.24', '2.27', '2.54')
     def test_detail(self, microversion):
         req = fakes.HTTPRequest.blank('/shares', version=microversion)
 
@@ -85,5 +89,26 @@ class ViewBuilderTestCase(test.TestCase):
             expected['create_share_from_snapshot_support'] = True
         if self.is_microversion_ge(microversion, '2.27'):
             expected['revert_to_snapshot_support'] = True
+        if self.is_microversion_ge(microversion, '2.54'):
+            expected['progress'] = '100%'
+
+        self.assertSubDictMatch(expected, result['share'])
+
+    @ddt.data('1.0', '2.51', '2.54')
+    def test_detail_translate_creating_from_snapshot_status(self,
+                                                            microversion):
+        req = fakes.HTTPRequest.blank('/shares', version=microversion)
+        new_share_status = constants.STATUS_CREATING_FROM_SNAPSHOT
+
+        fake_shr = copy.deepcopy(self.fake_share)
+        fake_shr.update(
+            {'status': new_share_status})
+        result = self.builder.detail(req, fake_shr)
+
+        expected = {
+            'status': constants.STATUS_CREATING,
+        }
+        if self.is_microversion_ge(microversion, '2.54'):
+            expected['status'] = new_share_status
 
         self.assertSubDictMatch(expected, result['share'])

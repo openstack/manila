@@ -403,7 +403,7 @@ class InfiniboxShareDriver(driver.ShareDriver):
 
     @infinisdk_to_manila_exceptions
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         name = self._make_share_name(share)
         infinidat_snapshot = self._get_infinidat_snapshot(snapshot)
         infinidat_new_share = infinidat_snapshot.create_snapshot(

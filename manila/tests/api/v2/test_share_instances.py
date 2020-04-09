@@ -122,13 +122,20 @@ class ShareInstancesAPITest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'index')
 
-    def test_show(self):
+    @ddt.data('2.3', '2.54')
+    def test_show(self, version):
         test_instance = db_utils.create_share(size=1).instance
         id = test_instance['id']
 
-        actual_result = self.controller.show(self._get_request('fake'), id)
+        actual_result = self.controller.show(
+            self._get_request('fake', version=version), id)
 
         self.assertEqual(id, actual_result['share_instance']['id'])
+        if (api_version_request.APIVersionRequest(version) >=
+                api_version_request.APIVersionRequest("2.54")):
+            self.assertIn("progress", actual_result['share_instance'])
+        else:
+            self.assertNotIn("progress", actual_result['share_instance'])
         self.mock_policy_check.assert_called_once_with(
             self.admin_context, self.resource_name, 'show')
 
