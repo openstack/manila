@@ -582,31 +582,48 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None, parent_share=None):
         """Is called to create a share from snapshot."""
+        src_backend_name = share_utils.extract_host(
+            snapshot.share_instance['host'], level='backend_name'
+        )
+        src_snapshot_name = self._get_saved_snapshot_name(snapshot)
         dataset_name = self._get_dataset_name(share)
-        ssh_cmd = '%(username)s@%(host)s' % {
+
+        dst_backend_ssh_cmd = '%(username)s@%(host)s' % {
             'username': self.configuration.zfs_ssh_username,
             'host': self.service_ip,
         }
-        pool_name = share_utils.extract_host(share['host'], level='pool')
+
+        dst_backend_pool_name = share_utils.extract_host(share['host'],
+                                                         level='pool')
         options = self._get_dataset_creation_options(share, is_readonly=False)
+
         self.private_storage.update(
             share['id'], {
                 'entity_type': 'share',
                 'dataset_name': dataset_name,
-                'ssh_cmd': ssh_cmd,  # used in replication
-                'pool_name': pool_name,  # used in replication
+                'ssh_cmd': dst_backend_ssh_cmd,  # used in replication
+                'pool_name': dst_backend_pool_name,  # used in replication
                 'used_options': options,
             }
         )
-        snapshot_name = self._get_saved_snapshot_name(snapshot)
 
+        # NOTE(andrebeltrami): Implementing the support for create share
+        # from snapshot in different backends in different hosts
+        src_config = get_backend_configuration(src_backend_name)
+        src_backend_ssh_cmd = '%(username)s@%(host)s' % {
+            'username': src_config.zfs_ssh_username,
+            'host': src_config.zfs_service_ip,
+        }
         self.execute(
             # NOTE(vponomaryov): SSH is used as workaround for 'execute'
-            # implementation restriction that does not support usage of '|'.
-            'ssh', ssh_cmd,
-            'sudo', 'zfs', 'send', '-vD', snapshot_name, '|',
+            # implementation restriction that does not support usage
+            # of '|'.
+            'ssh', src_backend_ssh_cmd,
+            'sudo', 'zfs', 'send', '-vD', src_snapshot_name, '|',
+            'ssh', dst_backend_ssh_cmd,
             'sudo', 'zfs', 'receive', '-v', dataset_name,
         )
+
         # Apply options based on used share type that may differ from
         # one used for original share.
         for option in options:
@@ -615,7 +632,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         # Delete with retry as right after creation it may be temporary busy.
         self.execute_with_retry(
             'sudo', 'zfs', 'destroy',
-            dataset_name + '@' + snapshot_name.split('@')[-1])
+            dataset_name + '@' + src_snapshot_name.split('@')[-1])
 
         return self._get_share_helper(
             share['share_proto']).create_exports(dataset_name)

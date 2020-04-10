@@ -23,6 +23,7 @@ from manila import exception
 from manila.share.drivers.ganesha import utils as ganesha_utils
 from manila.share.drivers.zfsonlinux import driver as zfs_driver
 from manila import test
+from manila.tests import db_utils
 
 CONF = cfg.CONF
 
@@ -792,7 +793,13 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             share_server={'id': 'fake_server'},
         )
 
-    def test_create_share_from_snapshot(self):
+    @ddt.data({'src_backend_name': 'backend_a', 'src_user': 'someuser',
+               'src_ip': '2.2.2.2'},
+              {'src_backend_name': 'backend_b', 'src_user': 'someuser2',
+               'src_ip': '3.3.3.3'})
+    @ddt.unpack
+    def test_create_share_from_snapshot(self, src_backend_name, src_user,
+                                        src_ip):
         mock_get_helper = self.mock_object(self.driver, '_get_share_helper')
         self.mock_object(self.driver, 'zfs')
         self.mock_object(self.driver, 'execute')
@@ -801,19 +808,31 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'get_extra_specs_from_share',
             mock.Mock(return_value={}))
         context = 'fake_context'
-        share = {
-            'id': 'fake_share_id',
-            'host': 'hostname@backend_name#bar',
-            'share_proto': 'NFS',
-            'size': 4,
-        }
-        snapshot = {
-            'id': 'fake_snapshot_instance_id',
-            'snapshot_id': 'fake_snapshot_id',
-            'host': 'hostname@backend_name#bar',
-            'size': 4,
-            'share_instance_id': share['id'],
-        }
+        dst_backend_name = 'backend_a'
+        parent_share = db_utils.create_share_without_instance(
+            id='fake_share_id_1',
+            size=4
+        )
+        parent_instance = db_utils.create_share_instance(
+            id='fake_parent_instance',
+            share_id=parent_share['id'],
+            host='hostname@%s#bar' % src_backend_name
+        )
+        share = db_utils.create_share(
+            id='fake_share_id_2',
+            host='hostname@%s#bar' % dst_backend_name,
+            size=4
+        )
+        snapshot = db_utils.create_snapshot(
+            id='fake_snap_id_1',
+            share_id='fake_share_id_1'
+        )
+        snap_instance = db_utils.create_snapshot_instance(
+            id='fake_snap_instance',
+            snapshot_id=snapshot['id'],
+            share_instance_id=parent_instance['id']
+        )
+
         dataset_name = 'bar/subbar/some_prefix_%s' % share['id']
         snap_tag = 'prefix_%s' % snapshot['id']
         snap_name = '%(dataset)s@%(tag)s' % {
@@ -823,43 +842,60 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.driver.share_export_ip = '1.1.1.1'
         self.driver.service_ip = '2.2.2.2'
         self.driver.private_storage.update(
-            snapshot['id'], {'snapshot_name': snap_name})
+            snap_instance['id'], {'snapshot_name': snap_name})
         self.driver.private_storage.update(
-            snapshot['snapshot_id'], {'snapshot_tag': snap_tag})
+            snap_instance['snapshot_id'], {'snapshot_tag': snap_tag})
         self.driver.private_storage.update(
-            snapshot['share_instance_id'], {'dataset_name': dataset_name})
+            snap_instance['share_instance_id'],
+            {'dataset_name': dataset_name})
+
+        self.mock_object(
+            zfs_driver, 'get_backend_configuration',
+            mock.Mock(return_value=type(
+                'FakeConfig', (object,), {
+                    'zfs_ssh_username': src_user,
+                    'zfs_service_ip': src_ip
+                })))
 
         result = self.driver.create_share_from_snapshot(
-            context, share, snapshot, share_server=None)
+            context, share, snap_instance, share_server=None)
 
         self.assertEqual(
             mock_get_helper.return_value.create_exports.return_value,
             result,
         )
+
+        dst_ssh_host = (self.configuration.zfs_ssh_username +
+                        '@' + self.driver.service_ip)
+        src_ssh_host = src_user + '@' + src_ip
         self.assertEqual(
             'share',
             self.driver.private_storage.get(share['id'], 'entity_type'))
         self.assertEqual(
             dataset_name,
-            self.driver.private_storage.get(share['id'], 'dataset_name'))
+            self.driver.private_storage.get(
+                snap_instance['share_instance_id'], 'dataset_name'))
         self.assertEqual(
-            'someuser@2.2.2.2',
+            dst_ssh_host,
             self.driver.private_storage.get(share['id'], 'ssh_cmd'))
         self.assertEqual(
             'bar',
             self.driver.private_storage.get(share['id'], 'pool_name'))
+
         self.driver.execute.assert_has_calls([
             mock.call(
-                'ssh', 'someuser@2.2.2.2',
+                'ssh', src_ssh_host,
                 'sudo', 'zfs', 'send', '-vD', snap_name, '|',
+                'ssh', dst_ssh_host,
                 'sudo', 'zfs', 'receive', '-v',
-                'bar/subbar/some_prefix_fake_share_id'),
+                '%s' % dataset_name),
             mock.call(
                 'sudo', 'zfs', 'destroy',
-                'bar/subbar/some_prefix_fake_share_id@%s' % snap_tag),
+                '%s@%s' % (dataset_name, snap_tag)),
         ])
+
         self.driver.zfs.assert_has_calls([
-            mock.call('set', opt, 'bar/subbar/some_prefix_fake_share_id')
+            mock.call('set', opt, '%s' % dataset_name)
             for opt in ('quota=4G', 'bark=barv', 'readonly=off', 'fook=foov')
         ], any_order=True)
         mock_get_helper.assert_has_calls([

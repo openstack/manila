@@ -158,6 +158,8 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
     echo "SHARE_DRIVER=manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" >> $localconf
     echo "RUN_MANILA_REPLICATION_TESTS=True" >> $localconf
+    # Enable using the scheduler when creating a share from snapshot
+    echo "MANILA_USE_SCHEDULER_CREATING_SHARE_FROM_SNAPSHOT=True" >> $localconf
     # Set the replica_state_update_interval to 60 seconds to make
     # replication tests run faster. The default is 300, which is greater than
     # the build timeout for ZFS on the gate.
