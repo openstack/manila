@@ -32,7 +32,6 @@
         - manila-tempest-minimal-dsvm-dummy
         # Through the Train release we need to keep some python2 coverage.
         - manila-tempest-minimal-dsvm-dummy-py2
-        - manila-tempest-minimal-dsvm-lvm
         - manila-tempest-minimal-lvm-ipv6-only
         - manila-grenade:
             voting: false
@@ -50,7 +49,6 @@
       jobs:
         - manila-tox-genconfig
         - manila-tempest-minimal-dsvm-dummy
-        - manila-tempest-minimal-dsvm-lvm
         - manila-tempest-minimal-lvm-ipv6-only
     experimental:
       jobs:
