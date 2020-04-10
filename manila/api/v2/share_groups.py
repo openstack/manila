@@ -33,6 +33,7 @@ from manila.share_group import share_group_types
 
 
 LOG = log.getLogger(__name__)
+SG_GRADUATION_VERSION = '2.55'
 
 
 class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
@@ -52,17 +53,23 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
             msg = _("Share group %s not found.") % share_group_id
             raise exc.HTTPNotFound(explanation=msg)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize('get')
-    def show(self, req, id):
+    def _show(self, req, id):
         """Return data about the given share group."""
         context = req.environ['manila.context']
         share_group = self._get_share_group(context, id)
         return self._view_builder.detail(req, share_group)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.Controller.authorize
-    def delete(self, req, id):
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    def show(self, req, id):
+        return self._show(req, id)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def show(self, req, id):  # pylint: disable=function-redefined
+        return self._show(req, id)
+
+    @wsgi.Controller.authorize('delete')
+    def _delete_share_group(self, req, id):
         """Delete a share group."""
         context = req.environ['manila.context']
 
@@ -74,20 +81,33 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
             raise exc.HTTPConflict(explanation=six.text_type(e))
         return webob.Response(status_int=http_client.ACCEPTED)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.Controller.authorize('get_all')
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    def delete(self, req, id):
+        return self._delete_share_group(req, id)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def delete(self, req, id):  # pylint: disable=function-redefined
+        return self._delete_share_group(req, id)
+
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
     def index(self, req):
-        """Returns a summary list of share groups."""
         return self._get_share_groups(req, is_detail=False)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.Controller.authorize('get_all')
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def index(self, req):  # pylint: disable=function-redefined
+        return self._get_share_groups(req, is_detail=False)
+
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
     def detail(self, req):
-        """Returns a detailed list of share groups."""
         return self._get_share_groups(req, is_detail=True)
 
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def detail(self, req):  # pylint: disable=function-redefined
+        return self._get_share_groups(req, is_detail=True)
+
+    @wsgi.Controller.authorize('get_all')
     def _get_share_groups(self, req, is_detail):
-        """Returns a list of share groups, transformed through view builder."""
+        """Returns a summary or detail list of share groups."""
         context = req.environ['manila.context']
 
         search_opts = {}
@@ -118,9 +138,8 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
             share_groups = self._view_builder.summary_list(req, limited_list)
         return share_groups
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.Controller.authorize
-    def update(self, req, id, body):
+    @wsgi.Controller.authorize('update')
+    def _update_share_group(self, req, id, body):
         """Update a share group."""
         context = req.environ['manila.context']
 
@@ -140,10 +159,16 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
             context, share_group, share_group_data)
         return self._view_builder.detail(req, share_group)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.response(202)
-    @wsgi.Controller.authorize
-    def create(self, req, body):
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    def update(self, req, id, body):
+        return self._update_share_group(req, id, body)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def update(self, req, id, body):  # pylint: disable=function-redefined
+        return self._update_share_group(req, id, body)
+
+    @wsgi.Controller.authorize('create')
+    def _create(self, req, body):
         """Creates a new share group."""
         context = req.environ['manila.context']
 
@@ -260,6 +285,16 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._view_builder.detail(
             req, {k: v for k, v in new_share_group.items()})
 
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    @wsgi.response(202)
+    def create(self, req, body):
+        return self._create(req, body)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    @wsgi.response(202)
+    def create(self, req, body):  # pylint: disable=function-redefined
+        return self._create(req, body)
+
     def _update(self, *args, **kwargs):
         db.share_group_update(*args, **kwargs)
 
@@ -277,12 +312,25 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         db.share_group_destroy(context.elevated(), resource['id'])
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
     @wsgi.action('reset_status')
     def share_group_reset_status(self, req, id, body):
         return self._reset_status(req, id, body)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
+    # pylint: disable=function-redefined
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    @wsgi.action('reset_status')
+    def share_group_reset_status(self, req, id, body):
+        return self._reset_status(req, id, body)
+
+    # pylint: enable=function-redefined
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    @wsgi.action('force_delete')
+    def share_group_force_delete(self, req, id, body):
+        return self._force_delete(req, id, body)
+
+    # pylint: disable=function-redefined
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
     @wsgi.action('force_delete')
     def share_group_force_delete(self, req, id, body):
         return self._force_delete(req, id, body)

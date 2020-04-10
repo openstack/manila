@@ -68,8 +68,10 @@ GROUP_TYPE_3 = {
     'share_types': [],
 }
 
+SG_GRADUATION_VERSION = '2.55'
 
-def fake_request(url, admin=False, experimental=True, version='2.31',
+
+def fake_request(url, admin=False, version='2.31', experimental=True,
                  **kwargs):
 
     return fakes.HTTPRequest.blank(
@@ -91,11 +93,15 @@ class ShareGroupTypesAPITest(test.TestCase):
         self.resource_name = self.controller.resource_name
         self.mock_object(policy, 'check_policy', mock.Mock(return_value=True))
 
-    def test_share_group_types_index(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_share_group_types_index(self, microversion, experimental):
         fake_types = {GROUP_TYPE_1['name']: GROUP_TYPE_1}
         mock_get_all = self.mock_object(
             share_group_types, 'get_all', mock.Mock(return_value=fake_types))
-        req = fake_request('/v2/fake/share-group-types', admin=False)
+        req = fake_request('/v2/fake/share-group-types', admin=False,
+                           version=microversion, experimental=experimental)
         expected_list = [{
             'id': GROUP_TYPE_1['id'],
             'name': GROUP_TYPE_1['name'],
@@ -103,6 +109,8 @@ class ShareGroupTypesAPITest(test.TestCase):
             'group_specs': {},
             'share_types': [],
         }]
+        if self.is_microversion_ge(microversion, '2.46'):
+            expected_list[0]['is_default'] = False
 
         res_dict = self.controller.index(req)
 
@@ -159,7 +167,8 @@ class ShareGroupTypesAPITest(test.TestCase):
     def test_share_group_types_index_not_experimental(self):
         self.mock_object(
             share_group_types, 'get_all', mock.Mock(return_value={}))
-        req = fake_request('/v2/fake/share-group-types', experimental=False)
+        req = fake_request('/v2/fake/share-group-types', experimental=False,
+                           version='2.54')
 
         self.assertRaises(
             exception.VersionNotFoundForAPIMethod, self.controller.index, req)
@@ -183,12 +192,16 @@ class ShareGroupTypesAPITest(test.TestCase):
 
         self.assertEqual(0, len(res_dict['share_group_types']))
 
-    def test_share_group_types_show(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_share_group_types_show(self, microversion, experimental):
         mock_get = self.mock_object(
             share_group_types, 'get',
             mock.Mock(return_value=GROUP_TYPE_1))
         req = fake_request(
-            '/v2/fake/share-group-types/%s' % GROUP_TYPE_1['id'])
+            '/v2/fake/share-group-types/%s' % GROUP_TYPE_1['id'],
+            version=microversion, experimental=experimental)
         expected_type = {
             'id': GROUP_TYPE_1['id'],
             'name': GROUP_TYPE_1['name'],
@@ -196,6 +209,8 @@ class ShareGroupTypesAPITest(test.TestCase):
             'group_specs': {},
             'share_types': [],
         }
+        if self.is_microversion_ge(microversion, '2.46'):
+            expected_type['is_default'] = False
 
         res_dict = self.controller.show(req, GROUP_TYPE_1['id'])
 
@@ -233,11 +248,15 @@ class ShareGroupTypesAPITest(test.TestCase):
 
         mock_get.assert_called_once_with(mock.ANY, GROUP_TYPE_2['id'])
 
-    def test_share_group_types_default(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_share_group_types_default(self, microversion, experimental):
         mock_get = self.mock_object(
             share_group_types, 'get_default',
             mock.Mock(return_value=GROUP_TYPE_2))
-        req = fake_request('/v2/fake/share-group-types/default')
+        req = fake_request('/v2/fake/share-group-types/default',
+                           version=microversion, experimental=experimental)
         expected_type = {
             'id': GROUP_TYPE_2['id'],
             'name': GROUP_TYPE_2['name'],
@@ -245,6 +264,8 @@ class ShareGroupTypesAPITest(test.TestCase):
             'group_specs': {'consistent_snapshots': 'true'},
             'share_types': [SHARE_TYPE_ID],
         }
+        if self.is_microversion_ge(microversion, '2.46'):
+            expected_type['is_default'] = False
 
         res_dict = self.controller.default(req)
 
@@ -260,14 +281,18 @@ class ShareGroupTypesAPITest(test.TestCase):
 
         mock_get.assert_called_once_with(mock.ANY)
 
-    def test_share_group_types_delete(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_share_group_types_delete(self, microversion, experimental):
         mock_get = self.mock_object(
             share_group_types, 'get', mock.Mock(return_value=GROUP_TYPE_1))
         mock_destroy = self.mock_object(share_group_types, 'destroy')
         req = fake_request(
-            '/v2/fake/share-group-types/%s' % GROUP_TYPE_1['id'])
+            '/v2/fake/share-group-types/%s' % GROUP_TYPE_1['id'],
+            version=microversion, experimental=experimental)
 
-        self.controller._delete(req, GROUP_TYPE_1['id'])
+        self.controller.delete(req, GROUP_TYPE_1['id'])
 
         mock_get.assert_called_once_with(mock.ANY, GROUP_TYPE_1['id'])
         mock_destroy.assert_called_once_with(mock.ANY, GROUP_TYPE_1['id'])
@@ -280,19 +305,23 @@ class ShareGroupTypesAPITest(test.TestCase):
         req = fake_request(
             '/v2/fake/share-group-types/%s' % GROUP_TYPE_2['id'])
 
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller._delete,
+        self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
                           req, GROUP_TYPE_2['id'])
 
         mock_get.assert_called_once_with(mock.ANY, GROUP_TYPE_2['id'])
 
-    def test_create_minimal(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_create_minimal(self, microversion, experimental):
         fake_type = copy.deepcopy(GROUP_TYPE_1)
         fake_type['share_types'] = [{'share_type_id': SHARE_TYPE_ID}]
         mock_create = self.mock_object(share_group_types, 'create')
         mock_get = self.mock_object(
             share_group_types, 'get_by_name',
             mock.Mock(return_value=fake_type))
-        req = fake_request('/v2/fake/share-group-types')
+        req = fake_request('/v2/fake/share-group-types', version=microversion,
+                           experimental=experimental)
         fake_body = {'share_group_type': {
             'name': GROUP_TYPE_1['name'],
             'share_types': [SHARE_TYPE_ID],
@@ -304,8 +333,10 @@ class ShareGroupTypesAPITest(test.TestCase):
             'group_specs': {},
             'share_types': [SHARE_TYPE_ID],
         }
+        if self.is_microversion_ge(microversion, '2.46'):
+            expected_type['is_default'] = False
 
-        res_dict = self.controller._create(req, fake_body)
+        res_dict = self.controller.create(req, fake_body)
 
         mock_create.assert_called_once_with(
             mock.ANY, GROUP_TYPE_1['name'],
@@ -338,7 +369,7 @@ class ShareGroupTypesAPITest(test.TestCase):
             'share_types': [SHARE_TYPE_ID],
         }
 
-        res_dict = self.controller._create(req, fake_body)
+        res_dict = self.controller.create(req, fake_body)
 
         mock_create.assert_called_once_with(
             mock.ANY, GROUP_TYPE_1['name'], [SHARE_TYPE_ID], specs,
@@ -366,7 +397,7 @@ class ShareGroupTypesAPITest(test.TestCase):
         }}
 
         self.assertRaises(
-            webob.exc.HTTPBadRequest, self.controller._create, req, fake_body)
+            webob.exc.HTTPBadRequest, self.controller.create, req, fake_body)
 
         self.assertEqual(0, mock_create.call_count)
         self.assertEqual(0, mock_get.call_count)
@@ -393,7 +424,7 @@ class ShareGroupTypesAPITest(test.TestCase):
             'share_types': [SHARE_TYPE_ID],
         }
 
-        res_dict = self.controller._create(req, fake_body)
+        res_dict = self.controller.create(req, fake_body)
 
         mock_create.assert_called_once_with(
             mock.ANY, GROUP_TYPE_1['name'], [SHARE_TYPE_ID], {}, False)
@@ -412,7 +443,7 @@ class ShareGroupTypesAPITest(test.TestCase):
         }}
 
         self.assertRaises(
-            webob.exc.HTTPConflict, self.controller._create, req, fake_body)
+            webob.exc.HTTPConflict, self.controller.create, req, fake_body)
 
         mock_create.assert_called_once_with(
             mock.ANY, GROUP_TYPE_1['name'], [SHARE_TYPE_ID], {}, True)
@@ -422,7 +453,7 @@ class ShareGroupTypesAPITest(test.TestCase):
         fake_body = {'share_group_type': {'share_types': [SHARE_TYPE_ID]}}
 
         self.assertRaises(
-            webob.exc.HTTPBadRequest, self.controller._create, req, fake_body)
+            webob.exc.HTTPBadRequest, self.controller.create, req, fake_body)
 
     def test_create_invalid_request_missing_share_types(self):
         req = fake_request('/v2/fake/share-group-types')
@@ -430,7 +461,7 @@ class ShareGroupTypesAPITest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPBadRequest,
-            self.controller._create, req, fake_body)
+            self.controller.create, req, fake_body)
 
     def test_create_provided_share_type_does_not_exist(self):
         req = fake_request('/v2/fake/share-group-types', admin=True)
@@ -443,7 +474,7 @@ class ShareGroupTypesAPITest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPNotFound,
-            self.controller._create, req, fake_body)
+            self.controller.create, req, fake_body)
 
     @ddt.data(('2.45', True), ('2.45', False),
               ('2.46', True), ('2.46', False))
@@ -465,7 +496,7 @@ class ShareGroupTypesAPITest(test.TestCase):
             'name': GROUP_TYPE_1['name'],
             'share_types': [SHARE_TYPE_ID],
         }}
-        res_dict = self.controller._create(req, fake_body)
+        res_dict = self.controller.create(req, fake_body)
         if self.is_microversion_ge(version, '2.46'):
             self.assertIn('is_default', res_dict['share_group_type'])
             self.assertIs(False, res_dict['share_group_type']['is_default'])
@@ -489,7 +520,7 @@ class ShareGroupTypesAPITest(test.TestCase):
             'name': GROUP_TYPE_3['name'],
             'share_types': [SHARE_TYPE_ID],
         }}
-        res_dict = self.controller._create(req, fake_body)
+        res_dict = self.controller.create(req, fake_body)
         if self.is_microversion_ge(version, '2.46'):
             self.assertIn('is_default', res_dict['share_group_type'])
             self.assertIs(True, res_dict['share_group_type']['is_default'])
@@ -538,6 +569,7 @@ class ShareGroupTypesAPITest(test.TestCase):
             self.assertNotIn('is_default', res_dict['share_group_type'])
 
 
+@ddt.ddt
 class ShareGroupTypeAccessTest(test.TestCase):
 
     def setUp(self):
@@ -584,16 +616,21 @@ class ShareGroupTypeAccessTest(test.TestCase):
             webob.exc.HTTPNotFound,
             self.controller.share_group_type_access, req, GROUP_TYPE_2['id'])
 
-    def test_add_project_access(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_add_project_access(self, microversion, experimental):
         self.mock_object(share_group_types, 'get',
                          mock.Mock(return_value=GROUP_TYPE_2))
         mock_add_access = self.mock_object(
             share_group_types, 'add_share_group_type_access')
         body = {'addProjectAccess': {'project': PROJ1_UUID}}
         req = fake_request(
-            '/v2/fake/share-group-types/%s' % GROUP_TYPE_2['id'], admin=True)
+            '/v2/fake/share-group-types/%s' % GROUP_TYPE_2['id'], admin=True,
+            experimental=experimental, version=microversion
+        )
 
-        response = self.controller._add_project_access(
+        response = self.controller.add_project_access(
             req, GROUP_TYPE_2['id'], body)
 
         mock_add_access.assert_called_once_with(
@@ -611,7 +648,7 @@ class ShareGroupTypeAccessTest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPNotFound,
-            self.controller._add_project_access, req, GROUP_TYPE_2['id'], body)
+            self.controller.add_project_access, req, GROUP_TYPE_2['id'], body)
 
     def test_add_project_access_missing_project_in_body(self):
         body = {'addProjectAccess': {}}
@@ -620,7 +657,7 @@ class ShareGroupTypeAccessTest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPBadRequest,
-            self.controller._add_project_access, req, GROUP_TYPE_2['id'], body)
+            self.controller.add_project_access, req, GROUP_TYPE_2['id'], body)
 
     def test_add_project_access_missing_add_project_access_in_body(self):
         body = {}
@@ -629,7 +666,7 @@ class ShareGroupTypeAccessTest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPBadRequest,
-            self.controller._add_project_access, req, GROUP_TYPE_2['id'], body)
+            self.controller.add_project_access, req, GROUP_TYPE_2['id'], body)
 
     def test_add_project_access_with_already_added_access(self):
         self.mock_object(
@@ -645,7 +682,7 @@ class ShareGroupTypeAccessTest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPConflict,
-            self.controller._add_project_access, req, GROUP_TYPE_2['id'], body)
+            self.controller.add_project_access, req, GROUP_TYPE_2['id'], body)
 
         mock_add_access.assert_called_once_with(
             mock.ANY, GROUP_TYPE_2['id'], PROJ1_UUID)
@@ -659,18 +696,22 @@ class ShareGroupTypeAccessTest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPConflict,
-            self.controller._add_project_access, req, GROUP_TYPE_1['id'], body)
+            self.controller.add_project_access, req, GROUP_TYPE_1['id'], body)
 
-    def test_remove_project_access(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_remove_project_access(self, microversion, experimental):
         self.mock_object(
             share_group_types, 'get', mock.Mock(return_value=GROUP_TYPE_2))
         mock_remove_access = self.mock_object(
             share_group_types, 'remove_share_group_type_access')
         body = {'removeProjectAccess': {'project': PROJ1_UUID}}
         req = fake_request(
-            '/v2/fake/share-group-types/%s' % GROUP_TYPE_2['id'], admin=True)
+            '/v2/fake/share-group-types/%s' % GROUP_TYPE_2['id'], admin=True,
+            version=microversion, experimental=experimental)
 
-        response = self.controller._remove_project_access(
+        response = self.controller.remove_project_access(
             req, GROUP_TYPE_2['id'], body)
 
         mock_remove_access.assert_called_once_with(
@@ -690,7 +731,7 @@ class ShareGroupTypeAccessTest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPNotFound,
-            self.controller._remove_project_access,
+            self.controller.remove_project_access,
             req, GROUP_TYPE_2['id'], body)
 
         mock_remove_access.assert_called_once_with(
@@ -704,7 +745,7 @@ class ShareGroupTypeAccessTest(test.TestCase):
             '/v2/fake/share-group-types/%s' % GROUP_TYPE_1['id'], admin=True)
 
         self.assertRaises(webob.exc.HTTPConflict,
-                          self.controller._remove_project_access, req,
+                          self.controller.remove_project_access, req,
                           GROUP_TYPE_1['id'], body)
 
     def test_remove_project_access_non_existent_type(self):
@@ -717,7 +758,7 @@ class ShareGroupTypeAccessTest(test.TestCase):
             '/v2/fake/share-group-types/%s' % GROUP_TYPE_2['id'], admin=True)
 
         self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller._remove_project_access, req,
+                          self.controller.remove_project_access, req,
                           GROUP_TYPE_2['id'], body)
 
     def test_remove_project_access_missing_project_in_body(self):
@@ -726,7 +767,7 @@ class ShareGroupTypeAccessTest(test.TestCase):
             '/v2/fake/share-group-types/%s' % GROUP_TYPE_2['id'], admin=True)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller._remove_project_access, req,
+                          self.controller.remove_project_access, req,
                           GROUP_TYPE_2['id'], body)
 
     def test_remove_project_access_missing_remove_project_access_in_body(self):
@@ -735,5 +776,5 @@ class ShareGroupTypeAccessTest(test.TestCase):
             '/v2/fake/share-group-types/%s' % GROUP_TYPE_2['id'], admin=True)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller._remove_project_access, req,
+                          self.controller.remove_project_access, req,
                           GROUP_TYPE_2['id'], body)

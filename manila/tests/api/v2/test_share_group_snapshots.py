@@ -36,6 +36,7 @@ from manila.tests.api import fakes
 from manila.tests import db_utils
 
 CONF = cfg.CONF
+SG_GRADUATION_VERSION = '2.55'
 
 
 @ddt.ddt
@@ -106,6 +107,13 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         del expected_member['share_proto']
         return member, expected_member
 
+    def _get_fake_custom_request_and_context(self, microversion, experimental):
+        req = fakes.HTTPRequest.blank(
+            '/share-group-snapshots', version=microversion,
+            experimental=experimental)
+        req_context = req.environ['manila.context']
+        return req, req_context
+
     def test_create_invalid_body(self):
         body = {"not_group_snapshot": {}}
 
@@ -126,20 +134,25 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
-    def test_create(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_create(self, microversion, experimental):
         fake_snap, expected_snap = self._get_fake_share_group_snapshot()
         fake_id = six.text_type(uuidutils.generate_uuid())
         body = {"share_group_snapshot": {"share_group_id": fake_id}}
         mock_create = self.mock_object(
             self.controller.share_group_api, 'create_share_group_snapshot',
             mock.Mock(return_value=fake_snap))
+        req, req_context = self._get_fake_custom_request_and_context(
+            microversion, experimental)
 
-        res_dict = self.controller.create(self.request, body)
+        res_dict = self.controller.create(req, body)
 
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'create')
+            req_context, self.resource_name, 'create')
         mock_create.assert_called_once_with(
-            self.context, share_group_id=fake_id)
+            req_context, share_group_id=fake_id)
         res_dict['share_group_snapshot'].pop('links')
 
         self.assertEqual(expected_snap, res_dict['share_group_snapshot'])
@@ -265,7 +278,11 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
-    def test_update_with_name_and_description(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_update_with_name_and_description(self, microversion,
+                                              experimental):
         fake_name = 'fake_name'
         fake_description = 'fake_description'
         fake_id = six.text_type(uuidutils.generate_uuid())
@@ -277,6 +294,8 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         mock_update = self.mock_object(
             self.controller.share_group_api, 'update_share_group_snapshot',
             mock.Mock(return_value=fake_snap))
+        req, req_context = self._get_fake_custom_request_and_context(
+            microversion, experimental)
 
         body = {
             "share_group_snapshot": {
@@ -284,16 +303,16 @@ class ShareGroupSnapshotAPITest(test.TestCase):
                 "name": fake_name,
             }
         }
-        res_dict = self.controller.update(self.request, fake_id, body)
+        res_dict = self.controller.update(req, fake_id, body)
 
         res_dict['share_group_snapshot'].pop('links')
 
         mock_update.assert_called_once_with(
-            self.context, fake_snap,
+            req_context, fake_snap,
             {"name": fake_name, "description": fake_description})
         self.assertEqual(expected_snap, res_dict['share_group_snapshot'])
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'update')
+            req_context, self.resource_name, 'update')
 
     def test_update_snapshot_not_found(self):
         body = {"share_group_snapshot": {}}
@@ -334,19 +353,24 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'update')
 
-    def test_list_index(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_list_index(self, microversion, experimental):
         fake_snap, expected_snap = self._get_fake_simple_share_group_snapshot()
         self.mock_object(
             self.controller.share_group_api, 'get_all_share_group_snapshots',
             mock.Mock(return_value=[fake_snap]))
+        req, req_context = self._get_fake_custom_request_and_context(
+            microversion, experimental)
 
-        res_dict = self.controller.index(self.request)
+        res_dict = self.controller.index(req)
 
         res_dict['share_group_snapshots'][0].pop('links')
 
         self.assertEqual([expected_snap], res_dict['share_group_snapshots'])
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'get_all')
+            req_context, self.resource_name, 'get_all')
 
     def test_list_index_no_share_groups(self):
         self.mock_object(
@@ -402,20 +426,25 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'get_all')
 
-    def test_list_detail(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_list_detail(self, microversion, experimental):
         fake_snap, expected_snap = self._get_fake_share_group_snapshot()
         self.mock_object(
             self.controller.share_group_api, 'get_all_share_group_snapshots',
             mock.Mock(return_value=[fake_snap]))
+        req, context = self._get_fake_custom_request_and_context(
+            microversion, experimental)
 
-        res_dict = self.controller.detail(self.request)
+        res_dict = self.controller.detail(req)
 
         res_dict['share_group_snapshots'][0].pop('links')
 
         self.assertEqual(1, len(res_dict['share_group_snapshots']))
         self.assertEqual(expected_snap, res_dict['share_group_snapshots'][0])
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'get_all')
+            context, self.resource_name, 'get_all')
 
     def test_list_detail_no_share_groups(self):
         self.mock_object(
@@ -456,8 +485,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
             mock.Mock(return_value=[fake_snap, fake_snap2]))
         req = fakes.HTTPRequest.blank(
             '/share-group-snapshots?limit=1&offset=1',
-            version=self.api_version,
-            experimental=True)
+            version=self.api_version, experimental=True)
         req_context = req.environ['manila.context']
 
         res_dict = self.controller.detail(req)
@@ -469,19 +497,24 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'get_all')
 
-    def test_delete(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_delete(self, microversion, experimental):
         fake_snap, expected_snap = self._get_fake_share_group_snapshot()
         self.mock_object(
             self.controller.share_group_api, 'get_share_group_snapshot',
             mock.Mock(return_value=fake_snap))
         self.mock_object(
             self.controller.share_group_api, 'delete_share_group_snapshot')
+        req, req_context = self._get_fake_custom_request_and_context(
+            microversion, experimental)
 
-        res = self.controller.delete(self.request, fake_snap['id'])
+        res = self.controller.delete(req, fake_snap['id'])
 
         self.assertEqual(202, res.status_code)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'delete')
+            req_context, self.resource_name, 'delete')
 
     def test_delete_not_found(self):
         fake_snap, expected_snap = self._get_fake_share_group_snapshot()
@@ -513,19 +546,24 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'delete')
 
-    def test_show(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_show(self, microversion, experimental):
         fake_snap, expected_snap = self._get_fake_share_group_snapshot()
         self.mock_object(
             self.controller.share_group_api, 'get_share_group_snapshot',
             mock.Mock(return_value=fake_snap))
+        req, req_context = self._get_fake_custom_request_and_context(
+            microversion, experimental)
 
-        res_dict = self.controller.show(self.request, fake_snap['id'])
+        res_dict = self.controller.show(req, fake_snap['id'])
 
         res_dict['share_group_snapshot'].pop('links')
 
         self.assertEqual(expected_snap, res_dict['share_group_snapshot'])
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'get')
+            req_context, self.resource_name, 'get')
 
     def test_show_share_group_not_found(self):
         fake_snap, expected_snap = self._get_fake_share_group_snapshot()
@@ -553,7 +591,6 @@ class ShareGroupSnapshotAPITest(test.TestCase):
                 share_group_snapshot['id'])
         req = fakes.HTTPRequest.blank(path, script_name=path, version=version)
         req.headers[wsgi.API_VERSION_REQUEST_HEADER] = version
-        req.headers[wsgi.EXPERIMENTAL_API_REQUEST_HEADER] = 'True'
         return share_group_snapshot, req
 
     @ddt.data(*fakes.fixture_force_delete_with_different_roles)
@@ -568,6 +605,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         body = {action_name: {'status': constants.STATUS_ERROR}}
         req.body = six.b(jsonutils.dumps(body))
         req.headers['X-Openstack-Manila-Api-Version'] = self.api_version
+        req.headers['X-Openstack-Manila-Api-Experimental'] = True
         req.environ['manila.context'] = ctxt
 
         with mock.patch.object(
@@ -576,6 +614,19 @@ class ShareGroupSnapshotAPITest(test.TestCase):
 
         # Validate response
         self.assertEqual(resp_code, resp.status_int)
+
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test__force_delete_call(self, microversion, experimental):
+        self.mock_object(self.controller, '_force_delete')
+        req, _junk = self._get_fake_custom_request_and_context(
+            microversion, experimental)
+        sg_id = 'fake'
+        body = {'force_delete': {}}
+
+        self.controller.share_group_snapshot_force_delete(req, sg_id, body)
+        self.controller._force_delete.assert_called_once_with(req, sg_id, body)
 
     @ddt.data(*fakes.fixture_reset_status_with_different_roles)
     @ddt.unpack
@@ -589,6 +640,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         req.headers['content-type'] = 'application/json'
         req.body = six.b(jsonutils.dumps(body))
         req.headers['X-Openstack-Manila-Api-Version'] = self.api_version
+        req.headers['X-Openstack-Manila-Api-Experimental'] = True
         req.environ['manila.context'] = ctxt
 
         with mock.patch.object(
@@ -600,3 +652,16 @@ class ShareGroupSnapshotAPITest(test.TestCase):
 
         actual_model = db.share_group_snapshot_get(ctxt, group_snap['id'])
         self.assertEqual(valid_status, actual_model['status'])
+
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test__reset_status_call(self, microversion, experimental):
+        self.mock_object(self.controller, '_reset_status')
+        req, _junk = self._get_fake_custom_request_and_context(
+            microversion, experimental)
+        sg_id = 'fake'
+        body = {'reset_status': {'status': constants.STATUS_ERROR}}
+
+        self.controller.share_group_snapshot_reset_status(req, sg_id, body)
+        self.controller._reset_status.assert_called_once_with(req, sg_id, body)

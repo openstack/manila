@@ -29,6 +29,7 @@ from manila.i18n import _
 import manila.share_group.api as share_group_api
 
 LOG = log.getLogger(__name__)
+SG_GRADUATION_VERSION = '2.55'
 
 
 class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
@@ -50,17 +51,23 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
             msg = _("Share group snapshot %s not found.") % sg_snapshot_id
             raise exc.HTTPNotFound(explanation=msg)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize('get')
-    def show(self, req, id):
+    def _show(self, req, id):
         """Return data about the given share group snapshot."""
         context = req.environ['manila.context']
         sg_snapshot = self._get_share_group_snapshot(context, id)
         return self._view_builder.detail(req, sg_snapshot)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.Controller.authorize
-    def delete(self, req, id):
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    def show(self, req, id):
+        return self._show(req, id)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def show(self, req, id):  # pylint: disable=function-redefined
+        return self._show(req, id)
+
+    @wsgi.Controller.authorize('delete')
+    def _delete_group_snapshot(self, req, id):
         """Delete a share group snapshot."""
         context = req.environ['manila.context']
         LOG.info("Delete share group snapshot with id: %s",
@@ -73,18 +80,35 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
             raise exc.HTTPConflict(explanation=six.text_type(e))
         return webob.Response(status_int=http_client.ACCEPTED)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.Controller.authorize('get_all')
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    def delete(self, req, id):
+        return self._delete_group_snapshot(req, id)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def delete(self, req, id):  # pylint: disable=function-redefined
+        return self._delete_group_snapshot(req, id)
+
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
     def index(self, req):
         """Returns a summary list of share group snapshots."""
         return self._get_share_group_snaps(req, is_detail=False)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.Controller.authorize('get_all')
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def index(self, req):  # pylint: disable=function-redefined
+        """Returns a summary list of share group snapshots."""
+        return self._get_share_group_snaps(req, is_detail=False)
+
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
     def detail(self, req):
         """Returns a detailed list of share group snapshots."""
         return self._get_share_group_snaps(req, is_detail=True)
 
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def detail(self, req):  # pylint: disable=function-redefined
+        """Returns a detailed list of share group snapshots."""
+        return self._get_share_group_snaps(req, is_detail=True)
+
+    @wsgi.Controller.authorize('get_all')
     def _get_share_group_snaps(self, req, is_detail):
         """Returns a list of share group snapshots."""
         context = req.environ['manila.context']
@@ -110,9 +134,8 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
             snaps = self._view_builder.summary_list(req, limited_list)
         return snaps
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.Controller.authorize
-    def update(self, req, id, body):
+    @wsgi.Controller.authorize('update')
+    def _update_group_snapshot(self, req, id, body):
         """Update a share group snapshot."""
         context = req.environ['manila.context']
         key = 'share_group_snapshot'
@@ -135,10 +158,16 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
             context, sg_snapshot, sg_snapshot_data)
         return self._view_builder.detail(req, sg_snapshot)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.response(202)
-    @wsgi.Controller.authorize
-    def create(self, req, body):
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    def update(self, req, id, body):
+        return self._update_group_snapshot(req, id, body)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def update(self, req, id, body):  # pylint: disable=function-redefined
+        return self._update_group_snapshot(req, id, body)
+
+    @wsgi.Controller.authorize('create')
+    def _create(self, req, body):
         """Creates a new share group snapshot."""
         context = req.environ['manila.context']
 
@@ -172,9 +201,18 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         return self._view_builder.detail(req, dict(new_snapshot.items()))
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    @wsgi.response(202)
+    def create(self, req, body):
+        return self._create(req, body)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    @wsgi.response(202)
+    def create(self, req, body):  # pylint: disable=function-redefined
+        return self._create(req, body)
+
     @wsgi.Controller.authorize('get')
-    def members(self, req, id):
+    def _members(self, req, id):
         """Returns a list of share group snapshot members."""
         context = req.environ['manila.context']
 
@@ -186,6 +224,14 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         snaps = self._view_builder.member_list(req, limited_list)
         return snaps
 
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    def members(self, req, id):
+        return self._members(req, id)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def members(self, req, id):  # pylint: disable=function-redefined
+        return self._members(req, id)
+
     def _update(self, *args, **kwargs):
         db.share_group_snapshot_update(*args, **kwargs)
 
@@ -195,12 +241,25 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
     def _delete(self, context, resource, force=True):
         db.share_group_snapshot_destroy(context.elevated(), resource['id'])
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
     @wsgi.action('reset_status')
     def share_group_snapshot_reset_status(self, req, id, body):
         return self._reset_status(req, id, body)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
+    # pylint: disable=function-redefined
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    @wsgi.action('reset_status')
+    def share_group_snapshot_reset_status(self, req, id, body):
+        return self._reset_status(req, id, body)
+
+    # pylint: enable=function-redefined
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    @wsgi.action('force_delete')
+    def share_group_snapshot_force_delete(self, req, id, body):
+        return self._force_delete(req, id, body)
+
+    # pylint: disable=function-redefined
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
     @wsgi.action('force_delete')
     def share_group_snapshot_force_delete(self, req, id, body):
         return self._force_delete(req, id, body)

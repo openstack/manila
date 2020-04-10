@@ -147,13 +147,14 @@ REST_API_VERSION_HISTORY = """
     * 2.54 - Share and share instance objects include a new field called
              "progress" which indicates the completion of a share creation
              operation as a percentage.
+    * 2.55 - Share groups feature is no longer considered experimental.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.54"
+_MAX_API_VERSION = "2.55"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 
