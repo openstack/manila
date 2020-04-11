@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    NetApp cDOT driver is now fixed to not create peer relationship between
+    same share servers when handling share replica creation and promotion.
+    This issue was happening when operating in `driver_handles_share_servers`
+    enabled mode with backends configured with more than one pool. See
+    `Launchpad bug 1872243 <https://launchpad.net/bugs/1872243>`_ for more
+    details.
+
