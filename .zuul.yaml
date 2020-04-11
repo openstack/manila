@@ -31,7 +31,6 @@
         - manila-tempest-dsvm-glusterfs-native:
             voting: false
         - manila-tempest-minimal-dsvm-dummy
-        - manila-tempest-minimal-dsvm-lvm
         - manila-tempest-minimal-lvm-ipv6-only
         - manila-grenade:
             voting: false
@@ -49,7 +48,6 @@
       jobs:
         - manila-tox-genconfig
         - manila-tempest-minimal-dsvm-dummy
-        - manila-tempest-minimal-dsvm-lvm
         - manila-tempest-minimal-lvm-ipv6-only
     experimental:
       jobs:
