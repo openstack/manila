@@ -380,7 +380,8 @@ class DataMotionSession(object):
 
         # 2. vserver operations when driver handles share servers
         replica_config = get_backend_configuration(replica_backend)
-        if replica_config.driver_handles_share_servers:
+        if (replica_config.driver_handles_share_servers
+                and replica_vserver != new_src_vserver):
             # create vserver peering if does not exists
             if not replica_client.get_vserver_peers(replica_vserver,
                                                     new_src_vserver):
