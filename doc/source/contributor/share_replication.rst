@@ -311,4 +311,5 @@ Replicated Snapshot interfaces:
 -------------------------------
 
 .. autoclass:: manila.share.driver.ShareDriver
+    :noindex:
     :members:  create_replicated_snapshot, delete_replicated_snapshot, update_replicated_snapshot
