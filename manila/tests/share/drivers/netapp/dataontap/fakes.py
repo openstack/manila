@@ -191,6 +191,7 @@ EXTRA_SPEC = {
     'netapp_flexvol_encryption': 'true',
     'netapp:tcp_max_xfer_size': 100,
     'netapp:udp_max_xfer_size': 100,
+    'netapp:adaptive_qos_policy_group': None,
 }
 
 NFS_CONFIG_DEFAULT = {
@@ -271,11 +272,16 @@ PROVISIONING_OPTIONS = {
     'split': True,
     'encrypt': False,
     'hide_snapdir': False,
+    'adaptive_qos_policy_group': None,
 }
 
 PROVISIONING_OPTIONS_WITH_QOS = copy.deepcopy(PROVISIONING_OPTIONS)
 PROVISIONING_OPTIONS_WITH_QOS.update(
     {'qos_policy_group': QOS_POLICY_GROUP_NAME})
+
+PROVISIONING_OPTS_WITH_ADAPT_QOS = copy.deepcopy(PROVISIONING_OPTIONS)
+PROVISIONING_OPTS_WITH_ADAPT_QOS.update(
+    {'adaptive_qos_policy_group': QOS_POLICY_GROUP_NAME})
 
 PROVISIONING_OPTIONS_BOOLEAN = {
     'thin_provisioned': True,
@@ -300,18 +306,21 @@ PROVISIONING_OPTIONS_STRING = {
     'snapshot_policy': 'default',
     'language': 'en-US',
     'max_files': 5000,
+    'adaptive_qos_policy_group': None,
 }
 
 PROVISIONING_OPTIONS_STRING_MISSING_SPECS = {
     'snapshot_policy': 'default',
     'language': 'en-US',
     'max_files': None,
+    'adaptive_qos_policy_group': None,
 }
 
 PROVISIONING_OPTIONS_STRING_DEFAULT = {
     'snapshot_policy': None,
     'language': None,
     'max_files': None,
+    'adaptive_qos_policy_group': None,
 }
 
 SHORT_BOOLEAN_EXTRA_SPEC = {
@@ -322,11 +331,13 @@ STRING_EXTRA_SPEC = {
     'netapp:snapshot_policy': 'default',
     'netapp:language': 'en-US',
     'netapp:max_files': 5000,
+    'netapp:adaptive_qos_policy_group': None,
 }
 
 SHORT_STRING_EXTRA_SPEC = {
     'netapp:snapshot_policy': 'default',
     'netapp:language': 'en-US',
+    'netapp:adaptive_qos_policy_group': None,
 }
 
 INVALID_EXTRA_SPEC = {

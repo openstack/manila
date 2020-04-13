@@ -1,0 +1,16 @@
+---
+features:
+  - |
+    Added support for Adaptive QoS policies that have been pre-created on
+    the storage system, with clustered ONTAP version 9.4 or higher.  To use
+    this feature, configure a Manila share type with the extra-spec
+    "netapp:adaptive_qos_policy_group" and value set to the qos policy
+    group on the ONTAP storage system, for example:
+
+    netapp:adaptive_qos_policy_group=platform3
+
+    Note that a cluster scoped account must be used in the driver
+    configuration in order to use QoS in clustered ONTAP.  Other notes:
+
+    - This only works for backends without share server management.
+    - This does not work for share replicas or share migration.

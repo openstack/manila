@@ -1278,7 +1278,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
             thin_provisioned=True, snapshot_policy='default',
             language='en-US', dedup_enabled=True, split=True, encrypt=False,
-            compression_enabled=False, max_files=5000, snapshot_reserve=8)
+            compression_enabled=False, max_files=5000, snapshot_reserve=8,
+            adaptive_qos_policy_group=None)
 
         if hide_snapdir:
             vserver_client.set_volume_snapdir_access.assert_called_once_with(
@@ -1316,7 +1317,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             thin_provisioned=True, snapshot_policy='default',
             language='en-US', dedup_enabled=True, split=True,
             compression_enabled=False, max_files=5000, encrypt=False,
-            snapshot_reserve=8, volume_type='dp')
+            snapshot_reserve=8, volume_type='dp',
+            adaptive_qos_policy_group=None)
 
     def test_allocate_container_no_pool_name(self):
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
@@ -1448,11 +1450,45 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_provisioning_options.assert_called_once_with(extra_specs)
         mock_get_normalized_qos_specs.assert_called_once_with(extra_specs)
 
+    def test_get_provisioning_options_for_share_qos_conflict(self):
+        vserver_client = mock.Mock()
+        extra_specs = fake.EXTRA_SPEC_WITH_QOS
+        mock_get_extra_specs_from_share = self.mock_object(
+            share_types, 'get_extra_specs_from_share',
+            mock.Mock(return_value=extra_specs))
+        mock_remap_standard_boolean_extra_specs = self.mock_object(
+            self.library, '_remap_standard_boolean_extra_specs',
+            mock.Mock(return_value=extra_specs))
+        mock_check_extra_specs_validity = self.mock_object(
+            self.library, '_check_extra_specs_validity')
+        mock_get_provisioning_options = self.mock_object(
+            self.library, '_get_provisioning_options',
+            mock.Mock(return_value=fake.PROVISIONING_OPTS_WITH_ADAPT_QOS))
+        mock_get_normalized_qos_specs = self.mock_object(
+            self.library, '_get_normalized_qos_specs',
+            mock.Mock(return_value={fake.QOS_NORMALIZED_SPEC: 3000}))
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._get_provisioning_options_for_share,
+                          fake.SHARE_INSTANCE, fake.VSERVER1,
+                          vserver_client=vserver_client,
+                          replica=False)
+
+        mock_get_extra_specs_from_share.assert_called_once_with(
+            fake.SHARE_INSTANCE)
+        mock_remap_standard_boolean_extra_specs.assert_called_once_with(
+            extra_specs)
+        mock_check_extra_specs_validity.assert_called_once_with(
+            fake.SHARE_INSTANCE, extra_specs)
+        mock_get_provisioning_options.assert_called_once_with(extra_specs)
+        mock_get_normalized_qos_specs.assert_called_once_with(extra_specs)
+
     def test_get_provisioning_options_implicit_false(self):
         result = self.library._get_provisioning_options(
             fake.EMPTY_EXTRA_SPEC)
 
         expected = {
+            'adaptive_qos_policy_group': None,
             'language': None,
             'max_files': None,
             'snapshot_policy': None,
@@ -1662,7 +1698,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             share_name, parent_share_name, parent_snapshot_name,
             thin_provisioned=True, snapshot_policy='default',
             language='en-US', dedup_enabled=True, split=expected_split_op,
-            encrypt=False, compression_enabled=False, max_files=5000)
+            encrypt=False, compression_enabled=False, max_files=5000,
+            adaptive_qos_policy_group=None)
         if size > original_snapshot_size:
             vserver_client.set_volume_size.assert_called_once_with(
                 share_name, size)

@@ -2839,8 +2839,16 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with('volume-create',
                                                          volume_create_args)
 
-    @ddt.data(None, fake.QOS_POLICY_GROUP_NAME)
-    def test_create_volume_with_extra_specs(self, qos_policy_group_name):
+    @ddt.data({'qos_policy_group_name': None,
+               'adaptive_policy_group_name': None},
+              {'qos_policy_group_name': fake.QOS_POLICY_GROUP_NAME,
+               'adaptive_policy_group_name': None},
+              {'qos_policy_group_name': None,
+               'adaptive_policy_group_name': fake.QOS_POLICY_GROUP_NAME},
+              )
+    @ddt.unpack
+    def test_create_volume_with_extra_specs(self, qos_policy_group_name,
+                                            adaptive_policy_group_name):
 
         self.mock_object(self.client, 'set_volume_max_files')
         self.mock_object(self.client, 'enable_dedup')
@@ -2856,7 +2864,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             thin_provisioned=True, language='en-US',
             snapshot_policy='default', dedup_enabled=True,
             compression_enabled=True, max_files=5000, snapshot_reserve=15,
-            qos_policy_group=qos_policy_group_name)
+            qos_policy_group=qos_policy_group_name,
+            adaptive_qos_policy_group=adaptive_policy_group_name)
 
         volume_create_args = {
             'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
@@ -2873,6 +2882,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
         if qos_policy_group_name:
             volume_create_args.update(
                 {'qos-policy-group-name': qos_policy_group_name})
+        if adaptive_policy_group_name:
+            volume_create_args.update(
+                {'qos-adaptive-policy-group-name': adaptive_policy_group_name})
 
         self.client.send_request.assert_called_with('volume-create',
                                                     volume_create_args)
@@ -3961,16 +3973,29 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertIsNone(result)
 
-    @ddt.data(None, fake.QOS_POLICY_GROUP_NAME)
-    def test_create_volume_clone(self, qos_policy_group_name):
+    @ddt.data({'qos_policy_group_name': None,
+               'adaptive_qos_policy_group_name': None},
+              {'qos_policy_group_name': fake.QOS_POLICY_GROUP_NAME,
+               'adaptive_qos_policy_group_name': None},
+              {'qos_policy_group_name': None,
+               'adaptive_qos_policy_group_name': fake.QOS_POLICY_GROUP_NAME},
+              )
+    @ddt.unpack
+    def test_create_volume_clone(self, qos_policy_group_name,
+                                 adaptive_qos_policy_group_name):
 
         self.mock_object(self.client, 'send_request')
         self.mock_object(self.client, 'split_volume_clone')
+        set_qos_adapt_mock = self.mock_object(
+            self.client,
+            'set_qos_adaptive_policy_group_for_volume')
 
-        self.client.create_volume_clone(fake.SHARE_NAME,
-                                        fake.PARENT_SHARE_NAME,
-                                        fake.PARENT_SNAPSHOT_NAME,
-                                        qos_policy_group=qos_policy_group_name)
+        self.client.create_volume_clone(
+            fake.SHARE_NAME,
+            fake.PARENT_SHARE_NAME,
+            fake.PARENT_SNAPSHOT_NAME,
+            qos_policy_group=qos_policy_group_name,
+            adaptive_qos_policy_group=adaptive_qos_policy_group_name)
 
         volume_clone_create_args = {
             'volume': fake.SHARE_NAME,
@@ -3982,7 +4007,10 @@ class NetAppClientCmodeTestCase(test.TestCase):
         if qos_policy_group_name:
             volume_clone_create_args.update(
                 {'qos-policy-group-name': fake.QOS_POLICY_GROUP_NAME})
-
+        if adaptive_qos_policy_group_name:
+            set_qos_adapt_mock.assert_called_once_with(
+                fake.SHARE_NAME, fake.QOS_POLICY_GROUP_NAME
+            )
         self.client.send_request.assert_has_calls([
             mock.call('volume-clone-create', volume_clone_create_args)])
         self.assertFalse(self.client.split_volume_clone.called)
@@ -7091,6 +7119,36 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_iter_request.assert_called_once_with(
             'volume-get-iter', expected_api_args)
         self.assertEqual(expected_snapshot_name, result)
+
+    def test_set_qos_adaptive_policy_group_for_volume(self):
+
+        self.client.features.add_feature('ADAPTIVE_QOS')
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.set_qos_adaptive_policy_group_for_volume(
+            fake.SHARE_NAME,
+            fake.QOS_POLICY_GROUP_NAME)
+
+        volume_modify_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-qos-attributes': {
+                        'adaptive-policy-group-name':
+                            fake.QOS_POLICY_GROUP_NAME,
+                    },
+                },
+            },
+        }
+        self.client.send_request.assert_called_once_with(
+            'volume-modify-iter', volume_modify_iter_args)
 
     def test_get_nfs_config(self):
         api_args = {

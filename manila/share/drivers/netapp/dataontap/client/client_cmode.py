@@ -85,6 +85,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                   supported=ontapi_1_30)
         self.features.add_feature('FLEXVOL_ENCRYPTION', supported=ontapi_1_110)
         self.features.add_feature('SVM_DR', supported=ontapi_1_140)
+        self.features.add_feature('ADAPTIVE_QOS', supported=ontapi_1_140)
         self.features.add_feature('TRANSFER_LIMIT_NFS_CONFIG',
                                   supported=ontapi_1_140)
         self.features.add_feature('CIFS_DC_ADD_SKIP_CHECK',
@@ -1646,7 +1647,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       language=None, dedup_enabled=False,
                       compression_enabled=False, max_files=None,
                       snapshot_reserve=None, volume_type='rw',
-                      qos_policy_group=None,
+                      qos_policy_group=None, adaptive_qos_policy_group=None,
                       encrypt=False, **options):
         """Creates a volume."""
         api_args = {
@@ -1668,6 +1669,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 snapshot_reserve)
         if qos_policy_group is not None:
             api_args['qos-policy-group-name'] = qos_policy_group
+        if adaptive_qos_policy_group is not None:
+            api_args['qos-adaptive-policy-group-name'] = (
+                adaptive_qos_policy_group)
 
         if encrypt is True:
             if not self.features.FLEXVOL_ENCRYPTION:
@@ -2323,7 +2327,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def create_volume_clone(self, volume_name, parent_volume_name,
                             parent_snapshot_name=None, split=False,
-                            qos_policy_group=None, **options):
+                            qos_policy_group=None,
+                            adaptive_qos_policy_group=None, **options):
         """Clones a volume."""
         api_args = {
             'volume': volume_name,
@@ -2339,6 +2344,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         if split:
             self.split_volume_clone(volume_name)
+
+        if adaptive_qos_policy_group is not None:
+            self.set_qos_adaptive_policy_group_for_volume(
+                volume_name, adaptive_qos_policy_group)
 
     @na_utils.trace
     def split_volume_clone(self, volume_name):
@@ -3006,6 +3015,31 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'volume-attributes': {
                     'volume-qos-attributes': {
                         'policy-group-name': qos_policy_group_name,
+                    },
+                },
+            },
+        }
+        self.send_request('volume-modify-iter', api_args)
+
+    @na_utils.trace
+    def set_qos_adaptive_policy_group_for_volume(self, volume_name,
+                                                 qos_policy_group_name):
+        if not self.features.ADAPTIVE_QOS:
+            msg = 'Adaptive QoS not supported on this backend ONTAP version.'
+            raise exception.NetAppException(msg)
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-qos-attributes': {
+                        'adaptive-policy-group-name': qos_policy_group_name,
                     },
                 },
             },

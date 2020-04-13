@@ -84,6 +84,7 @@ class NetAppCmodeFileStorageLibrary(object):
         'netapp:snapshot_policy': 'snapshot_policy',
         'netapp:language': 'language',
         'netapp:max_files': 'max_files',
+        'netapp:adaptive_qos_policy_group': 'adaptive_qos_policy_group',
     }
 
     # Maps standard extra spec keys to legacy NetApp keys
@@ -1039,6 +1040,20 @@ class NetAppCmodeFileStorageLibrary(object):
         self._check_extra_specs_validity(share, extra_specs)
         provisioning_options = self._get_provisioning_options(extra_specs)
         qos_specs = self._get_normalized_qos_specs(extra_specs)
+        if (provisioning_options.get('adaptive_qos_policy_group') is not None
+                and qos_specs):
+            msg = _('Share cannot be provisioned with both qos_specs '
+                    '%(qos_specs_string)s and adaptive_qos_policy_group '
+                    '%(adaptive_qos_policy_group)s.')
+            qos_specs_string = ""
+            for key in qos_specs:
+                qos_specs_string += key + "=" + str(qos_specs[key]) + " "
+            msg_args = {
+                'adaptive_qos_policy_group':
+                    provisioning_options['adaptive_qos_policy_group'],
+                'qos_specs_string': qos_specs_string
+            }
+            raise exception.NetAppException(msg % msg_args)
         if qos_specs and not replica:
             qos_policy_group = self._create_qos_policy_group(
                 share, vserver, qos_specs, vserver_client)
