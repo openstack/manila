@@ -463,7 +463,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         new_replica_client = data_motion.get_client_for_backend(
             new_replica_host, vserver_name=dst_vserver)
 
-        if not self._get_vserver_peers(dst_vserver, src_vserver):
+        if (dst_vserver != src_vserver
+                and not self._get_vserver_peers(dst_vserver, src_vserver)):
             # 3.1. Request vserver peer creation from new_replica's host
             # to active replica's host
             new_replica_client.create_vserver_peer(
