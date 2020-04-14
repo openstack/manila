@@ -4290,10 +4290,22 @@ def share_type_destroy(context, id):
                         'gtypes': share_group_types_count}
             LOG.error(msg, msg_args)
             raise exception.ShareTypeInUse(share_type_id=id)
-        (model_query(context, models.ShareTypeExtraSpecs, session=session).
-            filter_by(share_type_id=id).soft_delete())
-        (model_query(context, models.ShareTypes, session=session).
-            filter_by(id=id).soft_delete())
+
+        model_query(
+            context, models.ShareTypeExtraSpecs, session=session
+        ).filter_by(
+            share_type_id=id
+        ).soft_delete()
+        model_query(
+            context, models.ShareTypeProjects, session=session
+        ).filter_by(
+            share_type_id=id,
+        ).soft_delete()
+        model_query(
+            context, models.ShareTypes, session=session
+        ).filter_by(
+            id=id
+        ).soft_delete()
 
     # Destroy any quotas, usages and reservations for the share type:
     quota_destroy_all_by_share_type(context, id)
@@ -5179,6 +5191,11 @@ def share_group_type_destroy(context, type_id):
         ).soft_delete()
         model_query(
             context, models.ShareGroupTypeShareTypeMapping, session=session
+        ).filter_by(
+            share_group_type_id=type_id,
+        ).soft_delete()
+        model_query(
+            context, models.ShareGroupTypeProjects, session=session
         ).filter_by(
             share_group_type_id=type_id,
         ).soft_delete()
