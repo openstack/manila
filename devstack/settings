@@ -126,6 +126,7 @@ MANILA_SERVICE_KEYPAIR_NAME=${MANILA_SERVICE_KEYPAIR_NAME:-"manila-service"}
 MANILA_SERVICE_INSTANCE_USER=${MANILA_SERVICE_INSTANCE_USER:-"manila"}
 MANILA_SERVICE_IMAGE_URL=${MANILA_SERVICE_IMAGE_URL:-"http://tarballs.openstack.org/manila-image-elements/images/manila-service-image-master.qcow2"}
 MANILA_SERVICE_IMAGE_NAME=${MANILA_SERVICE_IMAGE_NAME:-"manila-service-image-master"}
+MANILA_USE_SCHEDULER_CREATING_SHARE_FROM_SNAPSHOT=${MANILA_USE_SCHEDULER_CREATING_SHARE_FROM_SNAPSHOT:-"False"}
 
 # Third party CI Vendors should set this to false to skip the service image download
 MANILA_SERVICE_IMAGE_ENABLED=$(trueorfalse True MANILA_SERVICE_IMAGE_ENABLED)

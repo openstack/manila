@@ -251,6 +251,8 @@ function configure_manila {
 
     # Set the replica_state_update_interval
     iniset $MANILA_CONF DEFAULT replica_state_update_interval $MANILA_REPLICA_STATE_UPDATE_INTERVAL
+    # Set the use_scheduler_creating_share_from_snapshot
+    iniset $MANILA_CONF DEFAULT use_scheduler_creating_share_from_snapshot $MANILA_USE_SCHEDULER_CREATING_SHARE_FROM_SNAPSHOT
 
     if is_service_enabled neutron; then
         configure_keystone_authtoken_middleware $MANILA_CONF neutron neutron
