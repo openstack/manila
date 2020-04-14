@@ -1251,6 +1251,57 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
 
 
 @ddt.ddt
+class ShareGroupTypeAPITestCase(test.TestCase):
+
+    def setUp(self):
+        super(ShareGroupTypeAPITestCase, self).setUp()
+        self.ctxt = context.RequestContext(
+            user_id='user_id', project_id='project_id', is_admin=True)
+
+    @ddt.data(True, False)
+    def test_share_type_destroy_in_use(self, used_by_groups):
+        share_type_1 = db_utils.create_share_type(name='fike')
+        share_type_2 = db_utils.create_share_type(name='bowman')
+        share_group_type_1 = db_utils.create_share_group_type(
+            name='orange', is_public=False, share_types=[share_type_1['id']],
+            group_specs={'dabo': 'allin', 'cadence': 'count'},
+            override_defaults=True)
+        share_group_type_2 = db_utils.create_share_group_type(
+            name='regalia', share_types=[share_type_2['id']])
+        if used_by_groups:
+            share_group_1 = db_utils.create_share_group(
+                share_group_type_id=share_group_type_1['id'],
+                share_types=[share_type_1['id']])
+            share_group_2 = db_utils.create_share_group(
+                share_group_type_id=share_group_type_2['id'],
+                share_types=[share_type_2['id']])
+            self.assertRaises(exception.ShareGroupTypeInUse,
+                              db_api.share_group_type_destroy,
+                              self.ctxt, share_group_type_1['id'])
+            self.assertRaises(exception.ShareGroupTypeInUse,
+                              db_api.share_group_type_destroy,
+                              self.ctxt, share_group_type_2['id'])
+            # Cleanup share groups
+            db_api.share_group_destroy(self.ctxt, share_group_1['id'])
+            db_api.share_group_destroy(self.ctxt, share_group_2['id'])
+
+        # Let's cleanup share_group_type_1 and verify it is gone
+        self.assertIsNone(db_api.share_group_type_destroy(
+            self.ctxt, share_group_type_1['id']))
+        self.assertDictMatch(
+            {}, db_api.share_group_type_specs_get(
+                self.ctxt, share_group_type_1['id']))
+        self.assertRaises(exception.ShareGroupTypeNotFound,
+                          db_api.share_group_type_get,
+                          self.ctxt, share_group_type_1['id'])
+
+        # share_group_type_2 must still be around
+        self.assertEqual(share_group_type_2['id'],
+                         db_api.share_group_type_get(
+                             self.ctxt, share_group_type_2['id'])['id'])
+
+
+@ddt.ddt
 class ShareSnapshotDatabaseAPITestCase(test.TestCase):
 
     def setUp(self):
@@ -3389,29 +3440,26 @@ class ShareTypeAPITestCase(test.TestCase):
         self.ctxt = context.RequestContext(
             user_id='user_id', project_id='project_id', is_admin=True)
 
-    @ddt.data({'used_by_shares': True, 'used_by_groups': False},
-              {'used_by_shares': False, 'used_by_groups': True},
-              {'used_by_shares': True, 'used_by_groups': True})
+    @ddt.data({'used_by_shares': True, 'used_by_group_types': False},
+              {'used_by_shares': False, 'used_by_group_types': True},
+              {'used_by_shares': True, 'used_by_group_types': True})
     @ddt.unpack
     def test_share_type_destroy_in_use(self, used_by_shares,
-                                       used_by_groups):
+                                       used_by_group_types):
         share_type_1 = db_utils.create_share_type(
             name='orange', extra_specs={'somekey': 'someval'})
         share_type_2 = db_utils.create_share_type(name='regalia')
         if used_by_shares:
             share_1 = db_utils.create_share(share_type_id=share_type_1['id'])
             db_utils.create_share(share_type_id=share_type_2['id'])
-        if used_by_groups:
+        if used_by_group_types:
             group_type_1 = db_utils.create_share_group_type(
                 name='crimson', share_types=[share_type_1['id']])
-            group_type_2 = db_utils.create_share_group_type(
+            db_utils.create_share_group_type(
                 name='tide', share_types=[share_type_2['id']])
             share_group_1 = db_utils.create_share_group(
                 share_group_type_id=group_type_1['id'],
                 share_types=[share_type_1['id']])
-            db_utils.create_share_group(
-                share_group_type_id=group_type_2['id'],
-                share_types=[share_type_2['id']])
 
         self.assertRaises(exception.ShareTypeInUse,
                           db_api.share_type_destroy,
@@ -3423,13 +3471,13 @@ class ShareTypeAPITestCase(test.TestCase):
         # Let's cleanup share_type_1 and verify it is gone
         if used_by_shares:
             db_api.share_instance_delete(self.ctxt, share_1.instance.id)
-        if used_by_groups:
+        if used_by_group_types:
             db_api.share_group_destroy(self.ctxt, share_group_1['id'])
             db_api.share_group_type_destroy(self.ctxt,
                                             group_type_1['id'])
 
-        self.assertIsNone(db_api.share_type_destroy(
-            self.ctxt, share_type_1['id']))
+        self.assertIsNone(
+            db_api.share_type_destroy(self.ctxt, share_type_1['id']))
         self.assertDictMatch(
             {}, db_api.share_type_extra_specs_get(
                 self.ctxt, share_type_1['id']))
