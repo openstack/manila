@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Reduces an increase of schedule time for non thin provisioned backends.
+    On those backends, there is no need to calculate provisioned_capacity_gb,
+    as it is not used during the scheduling. This calculation was not scaling
+    properly on big environments as it implies many database queries.
