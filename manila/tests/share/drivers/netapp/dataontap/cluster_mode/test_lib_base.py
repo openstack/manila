@@ -779,7 +779,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.mock_allocate_container.assert_called_once_with(
                 self.fake_share, fake.VSERVER2,
                 self.dest_vserver_client, replica=True)
-            self.mock_dm_create_snapmirror.asser_called_once()
+            self.mock_dm_create_snapmirror.assert_called_once()
             self.temp_src_share['replica_state'] = (
                 constants.REPLICA_STATE_ACTIVE)
             state = self.library.STATE_SNAPMIRROR_DATA_COPYING
@@ -1056,7 +1056,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 cutover_action='defer')
             self.fake_src_share['internal_state'] = (
                 self.library.STATE_MOVING_VOLUME)
-            self.mock_pvt_storage_update.asser_called_once_with(
+            self.mock_pvt_storage_update.assert_called_once_with(
                 fake.SHARE['id'],
                 {'source_share': json.dumps(self.fake_src_share)}
             )
@@ -1119,7 +1119,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             expect_result['export_locations'] = self.fake_export_location
             self.assertEqual(expect_result, result)
         else:
-            self.mock_pvt_storage_update.asser_called_once_with(
+            self.mock_pvt_storage_update.assert_called_once_with(
                 fake.SHARE['id'],
                 {'source_share': json.dumps(self.fake_src_share)}
             )
@@ -1184,7 +1184,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             expect_result['export_locations'] = self.fake_export_location
             self.assertEqual(expect_result, result)
         elif replica_state not in [constants.STATUS_ERROR, None]:
-            self.mock_pvt_storage_update.asser_called_once_with(
+            self.mock_pvt_storage_update.assert_called_once_with(
                 fake.SHARE['id'],
                 {'source_share': json.dumps(self.fake_src_share)}
             )
