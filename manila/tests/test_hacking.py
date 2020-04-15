@@ -155,7 +155,7 @@ class HackingTestCase(test.TestCase):
                       "climbing.", ('volume1', 500))
                """
         self._assert_has_errors(code.format(log_method), checker,
-                                expected_errors=[(4, 21, 'M310')])
+                                expected_errors=[(4, mock.ANY, 'M310')])
 
     def test_str_on_exception(self):
 
