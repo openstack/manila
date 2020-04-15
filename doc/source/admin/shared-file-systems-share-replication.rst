@@ -265,6 +265,10 @@ Specify the share ID or name as a parameter.
    created for you. You can verify this with the
    :command:`manila share-replica-list` command.
 
+   From API version 2.53, when creating a replicated share, the manila quota
+   system will reserve and consume resources for two additional quotas:
+   ``share_replicas`` and ``replica_gigabytes``.
+
 
 Creating and promoting share replicas
 -------------------------------------
