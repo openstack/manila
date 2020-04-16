@@ -21,6 +21,15 @@ Contributor/Developer Guide
 In this section you will find information helpful for contributing to manila.
 
 
+Basic Information
+-----------------
+
+.. toctree::
+   :maxdepth: 3
+
+   contributing
+
+
 Programming HowTos and Tutorials
 --------------------------------
 .. toctree::
@@ -59,6 +68,7 @@ Other Resources
    launchpad
    gerrit
    manila-review-policy
+   project-team-lead
 
 API Reference
 -------------
