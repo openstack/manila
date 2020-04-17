@@ -18,9 +18,9 @@
 
 import os
 import time
+from unittest import mock
 
 import ddt
-import mock
 import netaddr
 from oslo_config import cfg
 from oslo_utils import importutils

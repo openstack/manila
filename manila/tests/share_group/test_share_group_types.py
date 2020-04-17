@@ -14,9 +14,9 @@
 """Test of Share Type methods for Manila."""
 import copy
 import datetime
+from unittest import mock
 
 import ddt
-import mock
 
 from manila.common import constants
 from manila import context

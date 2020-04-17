@@ -14,10 +14,10 @@
 #    under the License.
 
 import copy
+from unittest import mock
 
 import ddt
 from lxml import builder
-import mock
 from oslo_concurrency import processutils
 
 from manila import exception

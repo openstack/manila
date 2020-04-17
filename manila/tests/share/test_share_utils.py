@@ -16,8 +16,9 @@
 
 """Tests For miscellaneous util methods used with share."""
 
+from unittest import mock
+
 import ddt
-import mock
 
 from manila.common import constants
 from manila.share import utils as share_utils

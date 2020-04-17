@@ -12,9 +12,9 @@
 
 import copy
 import datetime
+from unittest import mock
 
 import ddt
-import mock
 from oslo_config import cfg
 import webob
 

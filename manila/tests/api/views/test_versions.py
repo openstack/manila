@@ -14,9 +14,9 @@
 #    under the License.
 
 import copy
+from unittest import mock
 
 import ddt
-import mock
 
 from manila.api.views import versions
 from manila import test

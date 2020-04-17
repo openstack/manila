@@ -17,7 +17,7 @@
 Tests for Host Affinity Weigher.
 """
 
-import mock
+from unittest import mock
 
 from manila.common import constants
 from manila.db import api as db_api

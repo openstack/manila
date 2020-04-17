@@ -12,9 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 from cinderclient import exceptions as cinder_exception
 import ddt
-import mock
 
 from manila import context
 from manila import exception

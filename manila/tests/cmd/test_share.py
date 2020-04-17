@@ -14,9 +14,9 @@
 # under the License.
 
 import sys
+from unittest import mock
 
 import ddt
-import mock
 
 from manila.cmd import share as manila_share
 from manila import test

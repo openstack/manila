@@ -14,12 +14,12 @@
 # under the License.
 
 import datetime
+import random
+from unittest import mock
 
 import ddt
-import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
-import random
 import webob
 
 from manila.api.v2 import share_types as types

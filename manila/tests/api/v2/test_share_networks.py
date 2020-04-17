@@ -14,14 +14,15 @@
 #    under the License.
 
 import copy
+from unittest import mock
+
 import ddt
-from manila.api import common
-import mock
 from oslo_db import exception as db_exception
 from oslo_utils import timeutils
 from six.moves.urllib import parse
 from webob import exc as webob_exc
 
+from manila.api import common
 from manila.api.openstack import api_version_request as api_version
 from manila.api.v2 import share_networks
 from manila.db import api as db_api

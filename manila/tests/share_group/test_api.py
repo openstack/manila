@@ -16,9 +16,9 @@
 
 import copy
 import datetime
+from unittest import mock
 
 import ddt
-import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
 
@@ -27,7 +27,7 @@ from manila import context
 from manila import db as db_driver
 from manila import exception
 from manila.share import share_types
-import manila.share_group.api as share_group_api
+from manila.share_group import api as share_group_api
 from manila import test
 from manila.tests.api.contrib import stubs
 from manila.tests import utils as test_utils

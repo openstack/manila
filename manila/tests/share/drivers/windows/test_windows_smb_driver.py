@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ddt
-import mock
-
 import os
+from unittest import mock
+
+import ddt
 
 from manila.share import configuration
 from manila.share.drivers import generic

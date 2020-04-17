@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ddt
-import mock
+from unittest import mock
 
+import ddt
 from oslo_config import cfg
 
 from manila import context

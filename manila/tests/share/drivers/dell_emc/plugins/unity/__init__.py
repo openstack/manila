@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
 import sys
+from unittest import mock
 
 sys.modules['storops'] = mock.Mock()
 sys.modules['storops.unity'] = mock.Mock()

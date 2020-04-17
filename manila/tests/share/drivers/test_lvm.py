@@ -15,9 +15,9 @@
 """Unit tests for the LVM driver module."""
 
 import os
+from unittest import mock
 
 import ddt
-import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import timeutils

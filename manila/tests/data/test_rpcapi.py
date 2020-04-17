@@ -17,8 +17,8 @@ Unit Tests for manila.data.rpcapi
 """
 
 import copy
+from unittest import mock
 
-import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 

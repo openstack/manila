@@ -17,9 +17,9 @@
 import datetime
 import json
 import time
+from unittest import mock
 
 import ddt
-import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
 from oslo_utils import uuidutils

@@ -15,8 +15,9 @@
 
 """Test of Base Manager for Manila."""
 
+from unittest import mock
+
 import ddt
-import mock
 from oslo_utils import importutils
 
 from manila import manager

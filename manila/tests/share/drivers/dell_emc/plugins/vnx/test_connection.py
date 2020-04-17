@@ -14,9 +14,9 @@
 #    under the License.
 
 import copy
+from unittest import mock
 
 import ddt
-import mock
 from oslo_log import log
 
 from manila import exception

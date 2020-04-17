@@ -15,9 +15,9 @@
 """This modules stubs out functions in manila.utils."""
 
 import re
+from unittest import mock
 
 from eventlet import greenthread
-import mock
 from oslo_log import log
 import six
 

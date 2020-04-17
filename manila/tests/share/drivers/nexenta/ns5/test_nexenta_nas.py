@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 import ddt
-import mock
-from mock import patch
 from oslo_utils import units
 
 from manila import context
@@ -174,7 +174,7 @@ class TestNexentaNasDriver(test.TestCase):
         self.assertRaises(jsonrpc.NefException,
                           self.drv.check_for_setup_error)
 
-    @patch('%s.NefFilesystems.get' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.get' % RPC_PATH)
     def test__get_provisioned_capacity(self, fs_get):
         fs_get.return_value = {
             'path': 'pool1/nfs_share/123',
@@ -185,9 +185,9 @@ class TestNexentaNasDriver(test.TestCase):
 
         self.assertEqual(1 * units.Gi, self.drv.provisioned_capacity)
 
-    @patch('%s._mount_filesystem' % DRV_PATH)
-    @patch('%s.NefFilesystems.create' % RPC_PATH)
-    @patch('%s.NefFilesystems.delete' % RPC_PATH)
+    @mock.patch('%s._mount_filesystem' % DRV_PATH)
+    @mock.patch('%s.NefFilesystems.create' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.delete' % RPC_PATH)
     def test_create_share(self, delete_fs, create_fs, mount_fs):
         mount_path = '%s:/%s' % (self.cfg.nexenta_nas_host, SHARE_PATH)
         mount_fs.return_value = mount_path
@@ -216,10 +216,10 @@ class TestNexentaNasDriver(test.TestCase):
         self.drv.nef.filesystems.delete.assert_called_with(
             SHARE_PATH, delete_payload)
 
-    @patch('%s.NefFilesystems.promote' % RPC_PATH)
-    @patch('%s.NefSnapshots.get' % RPC_PATH)
-    @patch('%s.NefSnapshots.list' % RPC_PATH)
-    @patch('%s.NefFilesystems.delete' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.promote' % RPC_PATH)
+    @mock.patch('%s.NefSnapshots.get' % RPC_PATH)
+    @mock.patch('%s.NefSnapshots.list' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.delete' % RPC_PATH)
     def test_delete_share(self, fs_delete, snap_list, snap_get, fs_promote):
         delete_payload = {'force': True, 'snapshots': True}
         snapshots_payload = {'parent': SHARE_PATH, 'fields': 'path'}
@@ -238,8 +238,8 @@ class TestNexentaNasDriver(test.TestCase):
         snap_get.assert_called_with('%s@snap1' % SHARE_PATH, clones_payload)
         snap_list.assert_called_with(snapshots_payload)
 
-    @patch('%s.NefFilesystems.mount' % RPC_PATH)
-    @patch('%s.NefFilesystems.get' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.mount' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.get' % RPC_PATH)
     def test_mount_filesystem(self, fs_get, fs_mount):
         mount_path = '%s:/%s' % (self.cfg.nexenta_nas_host, SHARE_PATH)
         fs_get.return_value = {
@@ -247,9 +247,9 @@ class TestNexentaNasDriver(test.TestCase):
         self.assertEqual(mount_path, self.drv._mount_filesystem(SHARE))
         self.drv.nef.filesystems.mount.assert_called_with(SHARE_PATH)
 
-    @patch('%s.NefHpr.activate' % RPC_PATH)
-    @patch('%s.NefFilesystems.mount' % RPC_PATH)
-    @patch('%s.NefFilesystems.get' % RPC_PATH)
+    @mock.patch('%s.NefHpr.activate' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.mount' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.get' % RPC_PATH)
     def test_mount_filesystem_with_activate(
             self, fs_get, fs_mount, hpr_activate):
         mount_path = '%s:/%s' % (self.cfg.nexenta_nas_host, SHARE_PATH)
@@ -260,8 +260,8 @@ class TestNexentaNasDriver(test.TestCase):
         payload = {'datasetName': SHARE_PATH}
         self.drv.nef.hpr.activate.assert_called_once_with(payload)
 
-    @patch('%s.NefFilesystems.mount' % RPC_PATH)
-    @patch('%s.NefFilesystems.unmount' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.mount' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.unmount' % RPC_PATH)
     def test_remount_filesystem(self, fs_unmount, fs_mount):
         self.drv._remount_filesystem(SHARE_PATH)
         fs_unmount.assert_called_once_with(SHARE_PATH)
@@ -277,9 +277,9 @@ class TestNexentaNasDriver(test.TestCase):
         return ls
 
     @ddt.data({'key': 'value'}, {})
-    @patch('%s.NefNfs.list' % RPC_PATH)
-    @patch('%s.NefNfs.set' % RPC_PATH)
-    @patch('%s.NefFilesystems.acl' % RPC_PATH)
+    @mock.patch('%s.NefNfs.list' % RPC_PATH)
+    @mock.patch('%s.NefNfs.set' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.acl' % RPC_PATH)
     def test_update_nfs_access(self, acl, nfs_set, nfs_list, list_data):
         security_contexts = {'securityModes': ['sys']}
         nfs_list.return_value = list_data
@@ -327,7 +327,7 @@ class TestNexentaNasDriver(test.TestCase):
         self.assertRaises(ValueError, self.drv._update_nfs_access,
                           SHARE, rw_list, ro_list)
 
-    @patch('%s._update_nfs_access' % DRV_PATH)
+    @mock.patch('%s._update_nfs_access' % DRV_PATH)
     def test_update_access__ip_rw(self, update_nfs_access):
         access = {
             'access_type': 'ip',
@@ -342,7 +342,7 @@ class TestNexentaNasDriver(test.TestCase):
                 self.ctx, SHARE, [access], None, None))
         self.drv._update_nfs_access.assert_called_with(SHARE, ['1.1.1.1'], [])
 
-    @patch('%s._update_nfs_access' % DRV_PATH)
+    @mock.patch('%s._update_nfs_access' % DRV_PATH)
     def test_update_access__ip_ro(self, update_nfs_access):
         access = {
             'access_type': 'ip',
@@ -369,8 +369,8 @@ class TestNexentaNasDriver(test.TestCase):
         self.assertEqual(expected, self.drv.update_access(
             self.ctx, SHARE, [access], None, None))
 
-    @patch('%s._get_capacity_info' % DRV_PATH)
-    @patch('manila.share.driver.ShareDriver._update_share_stats')
+    @mock.patch('%s._get_capacity_info' % DRV_PATH)
+    @mock.patch('manila.share.driver.ShareDriver._update_share_stats')
     def test_update_share_stats(self, super_stats, info):
         info.return_value = (100, 90, 10)
         stats = {
@@ -405,10 +405,10 @@ class TestNexentaNasDriver(test.TestCase):
 
         self.assertEqual((10, 9, 1), self.drv._get_capacity_info())
 
-    @patch('%s._set_reservation' % DRV_PATH)
-    @patch('%s._set_quota' % DRV_PATH)
-    @patch('%s.NefFilesystems.rename' % RPC_PATH)
-    @patch('%s.NefFilesystems.get' % RPC_PATH)
+    @mock.patch('%s._set_reservation' % DRV_PATH)
+    @mock.patch('%s._set_quota' % DRV_PATH)
+    @mock.patch('%s.NefFilesystems.rename' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.get' % RPC_PATH)
     def test_manage_existing(self, fs_get, fs_rename, set_res, set_quota):
         fs_get.return_value = {'referencedQuotaSize': 1073741824}
         old_path = '%s:/%s' % (self.cfg.nexenta_nas_host, 'path_to_fs')
@@ -422,23 +422,23 @@ class TestNexentaNasDriver(test.TestCase):
         set_res.assert_called_with(SHARE, 2)
         set_quota.assert_called_with(SHARE, 2)
 
-    @patch('%s.NefSnapshots.create' % RPC_PATH)
+    @mock.patch('%s.NefSnapshots.create' % RPC_PATH)
     def test_create_snapshot(self, snap_create):
         self.assertIsNone(self.drv.create_snapshot(self.ctx, SNAPSHOT))
         snap_create.assert_called_once_with({
             'path': SNAPSHOT['snapshot_path']})
 
-    @patch('%s.NefSnapshots.delete' % RPC_PATH)
+    @mock.patch('%s.NefSnapshots.delete' % RPC_PATH)
     def test_delete_snapshot(self, snap_delete):
         self.assertIsNone(self.drv.delete_snapshot(self.ctx, SNAPSHOT))
         payload = {'defer': True}
         snap_delete.assert_called_once_with(
             SNAPSHOT['snapshot_path'], payload)
 
-    @patch('%s._mount_filesystem' % DRV_PATH)
-    @patch('%s._remount_filesystem' % DRV_PATH)
-    @patch('%s.NefFilesystems.delete' % RPC_PATH)
-    @patch('%s.NefSnapshots.clone' % RPC_PATH)
+    @mock.patch('%s._mount_filesystem' % DRV_PATH)
+    @mock.patch('%s._remount_filesystem' % DRV_PATH)
+    @mock.patch('%s.NefFilesystems.delete' % RPC_PATH)
+    @mock.patch('%s.NefSnapshots.clone' % RPC_PATH)
     def test_create_share_from_snapshot(
             self, snap_clone, fs_delete, remount_fs, mount_fs):
         mount_fs.return_value = 'mount_path'
@@ -460,10 +460,10 @@ class TestNexentaNasDriver(test.TestCase):
         }
         snap_clone.assert_called_once_with(SNAPSHOT['snapshot_path'], payload)
 
-    @patch('%s._mount_filesystem' % DRV_PATH)
-    @patch('%s._remount_filesystem' % DRV_PATH)
-    @patch('%s.NefFilesystems.delete' % RPC_PATH)
-    @patch('%s.NefSnapshots.clone' % RPC_PATH)
+    @mock.patch('%s._mount_filesystem' % DRV_PATH)
+    @mock.patch('%s._remount_filesystem' % DRV_PATH)
+    @mock.patch('%s.NefFilesystems.delete' % RPC_PATH)
+    @mock.patch('%s.NefSnapshots.clone' % RPC_PATH)
     def test_create_share_from_snapshot_error(
             self, snap_clone, fs_delete, remount_fs, mount_fs):
         fs_delete.side_effect = jsonrpc.NefException('delete error')
@@ -485,7 +485,7 @@ class TestNexentaNasDriver(test.TestCase):
         payload = {'force': True}
         fs_delete.assert_called_once_with(SHARE2_PATH, payload)
 
-    @patch('%s.NefFilesystems.rollback' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.rollback' % RPC_PATH)
     def test_revert_to_snapshot(self, fs_rollback):
         self.assertIsNone(self.drv.revert_to_snapshot(
             self.ctx, SNAPSHOT, [], []))
@@ -493,8 +493,8 @@ class TestNexentaNasDriver(test.TestCase):
         fs_rollback.assert_called_once_with(
             SHARE_PATH, payload)
 
-    @patch('%s._set_reservation' % DRV_PATH)
-    @patch('%s._set_quota' % DRV_PATH)
+    @mock.patch('%s._set_reservation' % DRV_PATH)
+    @mock.patch('%s._set_quota' % DRV_PATH)
     def test_extend_share(self, set_quota, set_reservation):
         self.assertIsNone(self.drv.extend_share(
             SHARE, 2))
@@ -503,9 +503,9 @@ class TestNexentaNasDriver(test.TestCase):
         set_reservation.assert_called_once_with(
             SHARE, 2)
 
-    @patch('%s.NefFilesystems.get' % RPC_PATH)
-    @patch('%s._set_reservation' % DRV_PATH)
-    @patch('%s._set_quota' % DRV_PATH)
+    @mock.patch('%s.NefFilesystems.get' % RPC_PATH)
+    @mock.patch('%s._set_reservation' % DRV_PATH)
+    @mock.patch('%s._set_quota' % DRV_PATH)
     def test_shrink_share(self, set_quota, set_reservation, fs_get):
         fs_get.return_value = {
             'bytesUsedBySelf': 0.5 * units.Gi
@@ -517,7 +517,7 @@ class TestNexentaNasDriver(test.TestCase):
         set_reservation.assert_called_once_with(
             SHARE2, 1)
 
-    @patch('%s.NefFilesystems.set' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.set' % RPC_PATH)
     def test_set_quota(self, fs_set):
         quota = int(2 * units.Gi * 1.1)
         payload = {'referencedQuotaSize': quota}
@@ -525,7 +525,7 @@ class TestNexentaNasDriver(test.TestCase):
             SHARE, 2))
         fs_set.assert_called_once_with(SHARE_PATH, payload)
 
-    @patch('%s.NefFilesystems.set' % RPC_PATH)
+    @mock.patch('%s.NefFilesystems.set' % RPC_PATH)
     def test_set_reservation(self, fs_set):
         reservation = int(2 * units.Gi * 1.1)
         payload = {'referencedReservationSize': reservation}

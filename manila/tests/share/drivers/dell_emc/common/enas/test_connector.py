@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 from eventlet import greenthread
-import mock
 from oslo_concurrency import processutils
 from six.moves.urllib import error as url_error
 from six.moves.urllib import request as url_request

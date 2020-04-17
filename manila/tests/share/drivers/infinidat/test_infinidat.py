@@ -16,7 +16,8 @@
 
 import copy
 import functools
-import mock
+from unittest import mock
+
 from oslo_utils import units
 
 from manila.common import constants

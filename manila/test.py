@@ -23,9 +23,9 @@ inline callbacks.
 
 import os
 import shutil
+from unittest import mock
 
 import fixtures
-import mock
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture

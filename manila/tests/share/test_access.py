@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ddt
-import mock
-import random
-
 import itertools
+import random
+from unittest import mock
+
+import ddt
 import six
 
 from manila.common import constants

@@ -16,9 +16,9 @@
 import code
 import readline
 import sys
+from unittest import mock
 
 import ddt
-import mock
 from oslo_config import cfg
 import six
 

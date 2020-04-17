@@ -10,12 +10,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import inspect
+from unittest import mock
+
 import ddt
-import mock
 import six
 import webob
-
-import inspect
 
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi

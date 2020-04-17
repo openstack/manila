@@ -20,9 +20,9 @@ import copy
 import hashlib
 import json
 import posixpath
+from unittest import mock
 import uuid
 
-import mock
 import requests
 import six
 

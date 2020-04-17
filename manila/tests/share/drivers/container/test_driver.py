@@ -14,9 +14,10 @@
 #    under the License.
 """Unit tests for the Container driver module."""
 
-import ddt
 import functools
-import mock
+from unittest import mock
+
+import ddt
 from oslo_config import cfg
 
 from manila.common import constants as const

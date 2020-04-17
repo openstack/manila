@@ -12,8 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 from lxml import etree
-import mock
 from six.moves import urllib
 
 from manila.share.drivers.netapp.dataontap.client import api

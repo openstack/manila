@@ -14,7 +14,8 @@
 """
 Unit tests for Oracle's ZFSSA Manila driver.
 """
-import mock
+from unittest import mock
+
 from oslo_config import cfg
 from oslo_utils import units
 

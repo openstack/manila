@@ -19,9 +19,10 @@
 import copy
 import datetime
 import itertools
+from unittest import mock
+
 
 import ddt
-import mock
 from oslo_utils import strutils
 
 from manila.common import constants

@@ -17,7 +17,8 @@
 Tests For Simple Scheduler
 """
 
-import mock
+from unittest import mock
+
 from oslo_config import cfg
 
 from manila import context

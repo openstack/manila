@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 import ddt
-import mock
 
 from manila.api.v2 import share_snapshot_instance_export_locations as exp_loc
 from manila.common import constants

@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 import ddt
-import mock
 from oslo_concurrency import processutils
 from oslo_utils import importutils
 from oslo_utils import strutils

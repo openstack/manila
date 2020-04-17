@@ -14,9 +14,10 @@
 #    under the License.
 """Unit tests for the Protocol helper module."""
 
-import ddt
 import functools
-import mock
+from unittest import mock
+
+import ddt
 
 from manila.common import constants as const
 from manila import exception

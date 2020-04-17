@@ -17,8 +17,8 @@ Unit Tests for manila.scheduler.rpcapi
 """
 
 import copy
+from unittest import mock
 
-import mock
 from oslo_config import cfg
 
 from manila import context

@@ -22,10 +22,10 @@ import shutil
 import six
 import tempfile
 import time
+from unittest import mock
 import xml.dom.minidom
 
 import ddt
-import mock
 from oslo_serialization import jsonutils
 from xml.etree import ElementTree as ET
 

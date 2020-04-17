@@ -15,10 +15,10 @@
 #    under the License.
 
 import copy
-import ddt
-import mock
 import time
+from unittest import mock
 
+import ddt
 from oslo_config import cfg
 
 from manila.common import constants

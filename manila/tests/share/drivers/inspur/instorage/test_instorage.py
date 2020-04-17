@@ -17,14 +17,13 @@
 Share driver test for Inspur InStorage
 """
 
+from unittest import mock
+
 import ddt
-import mock
-import paramiko
-
 from eventlet import greenthread
-
 from oslo_concurrency import processutils
 from oslo_config import cfg
+import paramiko
 
 from manila import context
 from manila import exception

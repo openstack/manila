@@ -14,7 +14,8 @@
 
 """Unit tests for MapRFS native protocol driver module."""
 
-import mock
+from unittest import mock
+
 from oslo_concurrency import processutils
 from oslo_config import cfg
 import six

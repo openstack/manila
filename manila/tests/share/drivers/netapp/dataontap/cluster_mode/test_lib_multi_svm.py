@@ -16,9 +16,9 @@ Unit tests for the NetApp Data ONTAP cDOT multi-SVM storage driver library.
 """
 
 import copy
+from unittest import mock
 
 import ddt
-import mock
 from oslo_log import log
 from oslo_serialization import jsonutils
 

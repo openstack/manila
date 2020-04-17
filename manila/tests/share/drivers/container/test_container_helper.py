@@ -14,9 +14,10 @@
 #    under the License.
 """Unit tests for the Container helper module."""
 
-import ddt
-import mock
+from unittest import mock
 import uuid
+
+import ddt
 
 from manila import exception
 from manila.share import configuration

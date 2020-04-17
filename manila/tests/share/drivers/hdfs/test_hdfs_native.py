@@ -15,8 +15,8 @@
 """Unit tests for HDFS native protocol driver module."""
 
 import socket
+from unittest import mock
 
-import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 import six

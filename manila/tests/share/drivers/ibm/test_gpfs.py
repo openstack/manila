@@ -16,9 +16,9 @@
 
 import re
 import socket
+from unittest import mock
 
 import ddt
-import mock
 from oslo_config import cfg
 
 from manila import context

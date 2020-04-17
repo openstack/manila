@@ -18,8 +18,10 @@
 """
 Tests for NetApp API layer
 """
+
+from unittest import mock
+
 import ddt
-import mock
 from six.moves import urllib
 
 from manila import exception

@@ -13,8 +13,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+from unittest import mock
+
 import alembic
-import mock
 
 from manila.db import migration
 from manila import test
