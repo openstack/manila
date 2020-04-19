@@ -109,19 +109,7 @@ Additional resources
 For contributors
 ----------------
 
-Contributions to Manila are welcome. There is a lot of background information that
-can help you get started. Please feel free to also ask any questions in
-the **#openstack-manila** IRC channel.
-
-Getting started
-~~~~~~~~~~~~~~~
-
-* `OpenStack Contributor Guide <https://docs.openstack.org/contributors/>`_
-
-Contributing to Manila
-~~~~~~~~~~~~~~~~~~~~~~
-
-Contents:
+If you are a ``new contributor`` :doc:`start here <contributor/contributing>`.
 
 .. toctree::
    :maxdepth: 1
