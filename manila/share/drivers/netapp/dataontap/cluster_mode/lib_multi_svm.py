@@ -461,6 +461,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             new_replica['host'], level='backend_name')
         new_replica_client = data_motion.get_client_for_backend(
             new_replica_host, vserver_name=dst_vserver)
+        new_replica_cluster_name = new_replica_client.get_cluster_name()
 
         if (dst_vserver != src_vserver
                 and not self._get_vserver_peers(dst_vserver, src_vserver)):
@@ -471,8 +472,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 peer_cluster_name=src_replica_cluster_name)
 
             # 3.2. Accepts the vserver peering using active replica host's
-            # client
-            src_replica_client.accept_vserver_peer(src_vserver, dst_vserver)
+            # client (inter-cluster only)
+            if new_replica_cluster_name != src_replica_cluster_name:
+                src_replica_client.accept_vserver_peer(src_vserver,
+                                                       dst_vserver)
 
         return (super(NetAppCmodeMultiSVMFileStorageLibrary, self).
                 create_replica(context, replica_list, new_replica,

@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    NetApp cDOT driver is now fixed to not trigger peer accept operation
+    between share servers that belong to the same cluster, when handling share
+    replica creation and promotion. This issue was happening when operating in
+    `driver_handles_share_servers` enabled mode with multiple backends
+    configured within the same cluster. See
+    `Launchpad bug 1873963 <https://launchpad.net/bugs/1873963>`_ for more
+    details.
