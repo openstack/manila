@@ -2845,6 +2845,7 @@ class ShareManagerTestCase(test.TestCase):
             'shares': 1,
             'gigabytes': driver_data['size'],
             'share_type_id': share['instance']['share_type_id'],
+            'overquota_allowed': True
         }
         if replication_type:
             expected_deltas.update({'share_replicas': 1,
