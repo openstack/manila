@@ -389,12 +389,14 @@ class DataMotionSession(object):
                     new_src_backend, vserver_name=new_src_vserver)
                 # Cluster name is needed for setting up the vserver peering
                 new_src_cluster_name = new_src_client.get_cluster_name()
+                replica_cluster_name = replica_client.get_cluster_name()
 
                 replica_client.create_vserver_peer(
                     replica_vserver, new_src_vserver,
                     peer_cluster_name=new_src_cluster_name)
-                new_src_client.accept_vserver_peer(new_src_vserver,
-                                                   replica_vserver)
+                if new_src_cluster_name != replica_cluster_name:
+                    new_src_client.accept_vserver_peer(new_src_vserver,
+                                                       replica_vserver)
 
         # 3. create
         # TODO(ameade): Update the schedule if needed.
