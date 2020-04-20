@@ -2621,6 +2621,14 @@ class ShareManagerTestCase(test.TestCase):
         share = db_utils.create_share(replication_type=replication_type)
         share_id = share['id']
         driver_options = {'fake': 'fake'}
+        expected_deltas = {
+            'project_id': share['project_id'],
+            'user_id': self.context.user_id,
+            'shares': 1,
+            'gigabytes': driver_data['size'],
+            'share_type_id': share['instance']['share_type_id'],
+            'overquota_allowed': True
+        }
 
         self.share_manager.manage_share(self.context, share_id, driver_options)
 
@@ -2644,6 +2652,8 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             share_id, valid_share_data)
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY, **expected_deltas)
 
     def test_update_quota_usages_new(self):
         self.mock_object(self.share_manager.db, 'quota_usage_get',

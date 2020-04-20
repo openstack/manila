@@ -378,7 +378,8 @@ class DbQuotaDriver(object):
         return {k: v['limit'] for k, v in quotas.items()}
 
     def reserve(self, context, resources, deltas, expire=None,
-                project_id=None, user_id=None, share_type_id=None):
+                project_id=None, user_id=None, share_type_id=None,
+                overquota_allowed=False):
         """Check quotas and reserve resources.
 
         For counting quotas--those quotas for which there is a usage
@@ -459,7 +460,7 @@ class DbQuotaDriver(object):
             context, resources, quotas, user_quotas, share_type_quotas,
             deltas, expire, CONF.until_refresh, CONF.max_age,
             project_id=project_id, user_id=user_id,
-            share_type_id=share_type_id)
+            share_type_id=share_type_id, overquota_allowed=overquota_allowed)
 
     def commit(self, context, reservations, project_id=None, user_id=None,
                share_type_id=None):
@@ -870,7 +871,7 @@ class QuotaEngine(object):
         return res.count(context, *args, **kwargs)
 
     def reserve(self, context, expire=None, project_id=None, user_id=None,
-                share_type_id=None, **deltas):
+                share_type_id=None, overquota_allowed=False, **deltas):
         """Check quotas and reserve resources.
 
         For counting quotas--those quotas for which there is a usage
@@ -911,6 +912,7 @@ class QuotaEngine(object):
             project_id=project_id,
             user_id=user_id,
             share_type_id=share_type_id,
+            overquota_allowed=overquota_allowed
         )
 
         LOG.debug("Created reservations %s", reservations)

@@ -904,16 +904,19 @@ def _get_project_quota_usages(context, session, project_id):
 @require_context
 def quota_reserve(context, resources, project_quotas, user_quotas,
                   share_type_quotas, deltas, expire, until_refresh,
-                  max_age, project_id=None, user_id=None, share_type_id=None):
+                  max_age, project_id=None, user_id=None, share_type_id=None,
+                  overquota_allowed=False):
     user_reservations = _quota_reserve(
         context, resources, project_quotas, user_quotas,
-        deltas, expire, until_refresh, max_age, project_id, user_id=user_id)
+        deltas, expire, until_refresh, max_age, project_id, user_id=user_id,
+        overquota_allowed=overquota_allowed)
     if share_type_id:
         try:
             st_reservations = _quota_reserve(
                 context, resources, project_quotas, share_type_quotas,
                 deltas, expire, until_refresh, max_age, project_id,
-                share_type_id=share_type_id)
+                share_type_id=share_type_id,
+                overquota_allowed=overquota_allowed)
         except exception.OverQuota:
             with excutils.save_and_reraise_exception():
                 # rollback previous reservations
@@ -927,7 +930,8 @@ def quota_reserve(context, resources, project_quotas, user_quotas,
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def _quota_reserve(context, resources, project_quotas, user_or_st_quotas,
                    deltas, expire, until_refresh,
-                   max_age, project_id=None, user_id=None, share_type_id=None):
+                   max_age, project_id=None, user_id=None, share_type_id=None,
+                   overquota_allowed=False):
     elevated = context.elevated()
     session = get_session()
     with session.begin():
@@ -1074,6 +1078,21 @@ def _quota_reserve(context, resources, project_quotas, user_or_st_quotas,
                   project_usages[res]['total'] or
                   user_or_st_quotas[res] < delta +
                   user_or_st_usages[res].total)]
+
+        # NOTE(carloss): If OverQuota is allowed, there is no problem to exceed
+        # the quotas, so we reset the overs list and LOG it.
+        if overs and overquota_allowed:
+            msg = _("The service has identified one or more exceeded "
+                    "quotas. Please check the quotas for project "
+                    "%(project_id)s, user %(user_id)s and share type "
+                    "%(share_type_id)s, and adjust them if "
+                    "necessary.") % {
+                "project_id": project_id,
+                "user_id": user_id,
+                "share_type_id": share_type_id
+            }
+            LOG.warning(msg)
+            overs = []
 
         # NOTE(Vek): The quota check needs to be in the transaction,
         #            but the transaction doesn't fail just because

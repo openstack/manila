@@ -250,12 +250,13 @@ def quota_usage_update(context, project_id, user_id, resource,
 
 def quota_reserve(context, resources, quotas, user_quotas, share_type_quotas,
                   deltas, expire, until_refresh, max_age,
-                  project_id=None, user_id=None, share_type_id=None):
+                  project_id=None, user_id=None, share_type_id=None,
+                  overquota_allowed=False):
     """Check quotas and create appropriate reservations."""
     return IMPL.quota_reserve(
         context, resources, quotas, user_quotas, share_type_quotas, deltas,
         expire, until_refresh, max_age, project_id=project_id, user_id=user_id,
-        share_type_id=share_type_id)
+        share_type_id=share_type_id, overquota_allowed=overquota_allowed)
 
 
 def reservation_commit(context, reservations, project_id=None, user_id=None,
