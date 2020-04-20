@@ -1,0 +1,8 @@
+---
+
+fixes:
+  - Updated the scheduler pool attributes  ``provisioned_capacity_gb`` and
+    ``allocated_capacity_gb``  to accommodate shares being created. This
+    helps maintain an approximate tally of these attributes in between back end
+    scheduler updates.
+
