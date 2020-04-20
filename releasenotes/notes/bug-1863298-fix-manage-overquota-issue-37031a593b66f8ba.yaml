@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed an issue while bringing shares under Manila management. Now, when
+    a share is being managed and there is no available quota to complete
+    this operation, the service will allow the quotas to be exceeded and the
+    operation will be completed. The administrator will need to adjust the
+    quotas after. Please see
+    `Launchpad bug <https://bugs.launchpad.net/manila/+bug/1863298>`_ for
+    more details.

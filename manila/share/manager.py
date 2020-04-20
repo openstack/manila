@@ -2480,7 +2480,14 @@ class ShareManager(manager.SchedulerDependentManager):
                 deltas.update({'share_replicas': 1,
                                'replica_gigabytes': share_update['size']})
 
-            reservations = QUOTAS.reserve(context, **deltas)
+            # NOTE(carloss): Allowing OverQuota to do not compromise this
+            # operation. If this hit OverQuota error while managing a share,
+            # the admin would need to reset the state of the share and
+            # delete or force delete the share (bug 1863298). Allowing
+            # OverQuota makes this operation work properly and the admin will
+            # need to adjust quotas afterwards.
+            reservations = QUOTAS.reserve(context, overquota_allowed=True,
+                                          **deltas)
             QUOTAS.commit(
                 context, reservations, project_id=project_id,
                 share_type_id=share_instance['share_type_id'],
