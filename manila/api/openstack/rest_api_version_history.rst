@@ -302,6 +302,6 @@ user documentation.
   Share and share instance objects include a new field called "progress" which
   indicates the completion of a share creation operation as a percentage.
 
-2.55
-----
+2.55 (Maximum in Ussuri)
+------------------------
   Share groups feature is no longer considered experimental.
