@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Dell EMC VNX and PowerMax Drivers: Fixes `bug 1871999
+    <https://bugs.launchpad.net/manila/+bug/1871999>`__ to make `create_share`
+    and `create_share_from_snapshot` return correct list of export locations.

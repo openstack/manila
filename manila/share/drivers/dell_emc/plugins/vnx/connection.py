@@ -40,8 +40,9 @@ from manila import utils
     4.0.0 - Bumped the version for Pike
     5.0.0 - Bumped the version for Queens
     9.0.0 - Bumped the version for Ussuri
+    9.0.1 - Fixes bug 1871999: wrong format of export locations
 """
-VERSION = "9.0.0"
+VERSION = "9.0.1"
 
 LOG = log.getLogger(__name__)
 
@@ -126,7 +127,9 @@ class VNXStorageConnection(driver.StorageConnection):
         elif share_proto == 'CIFS':
             location = self._create_cifs_share(share_name, share_server)
 
-        return location
+        return [
+            {'path': location}
+        ]
 
     def _share_server_validation(self, share_server):
         """Validate the share server."""
@@ -246,7 +249,9 @@ class VNXStorageConnection(driver.StorageConnection):
         elif share_proto == 'CIFS':
             location = self._create_cifs_share(share_name, share_server)
 
-        return location
+        return [
+            {'path': location}
+        ]
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Create snapshot from share."""

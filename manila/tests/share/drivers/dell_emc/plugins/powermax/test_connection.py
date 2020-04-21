@@ -173,9 +173,10 @@ class StorageConnectionTestCase(test.TestCase):
         ssh_calls = [mock.call(self.cifs_share.cmd_disable_access(), True)]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual(location, r'\\%s\%s' %
-                         (fakes.FakeData.network_allocations_ip1,
-                          share['name']),
+        self.assertEqual(location,
+                         [{'path': r'\\%s\%s' % (
+                             fakes.FakeData.network_allocations_ip1,
+                             share['name'])}],
                          'CIFS export path is incorrect')
 
     def test_create_cifs_share_with_ipv6(self):
@@ -214,11 +215,12 @@ class StorageConnectionTestCase(test.TestCase):
         ssh_calls = [mock.call(self.cifs_share.cmd_disable_access(), True)]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual(location, r'\\%s.ipv6-literal.net\%s' %
-                         (fakes.FakeData.network_allocations_ip3.replace(
-                             ':', '-'),
-                          share['name']),
-                         'CIFS export path is incorrect')
+        self.assertEqual(
+            location,
+            [{'path': r'\\%s.ipv6-literal.net\%s' % (
+                fakes.FakeData.network_allocations_ip3.replace(':', '-'),
+                share['name'])}],
+            'CIFS export path is incorrect')
 
     def test_create_nfs_share(self):
         share_server = fakes.SHARE_SERVER
@@ -248,7 +250,8 @@ class StorageConnectionTestCase(test.TestCase):
         ssh_calls = [mock.call(self.nfs_share.cmd_create(), True)]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual(location, '192.168.1.2:/%s' % share['name'],
+        self.assertEqual(location,
+                         [{'path': '192.168.1.2:/%s' % share['name']}],
                          'NFS export path is incorrect')
 
     def test_create_nfs_share_with_ipv6(self):
@@ -281,9 +284,10 @@ class StorageConnectionTestCase(test.TestCase):
         ssh_calls = [mock.call(self.nfs_share.cmd_create(), True)]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual(location, '[%s]:/%s' %
-                         (fakes.FakeData.network_allocations_ip4,
-                          share['name']),
+        self.assertEqual(location,
+                         [{'path': '[%s]:/%s' % (
+                             fakes.FakeData.network_allocations_ip4,
+                             share['name'])}],
                          'NFS export path is incorrect')
 
     def test_create_cifs_share_without_share_server(self):
@@ -412,7 +416,8 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual(location, r'\\192.168.1.1\%s' % share['name'],
+        self.assertEqual(location,
+                         [{'path': r'\\192.168.1.1\%s' % share['name']}],
                          'CIFS export path is incorrect')
 
     def test_create_cifs_share_from_snapshot_with_ipv6(self):
@@ -473,11 +478,12 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual(location, r'\\%s.ipv6-literal.net\%s' %
-                         (fakes.FakeData.network_allocations_ip3.replace(':',
-                                                                         '-'),
-                          share['name']),
-                         'CIFS export path is incorrect')
+        self.assertEqual(
+            location,
+            [{'path': r'\\%s.ipv6-literal.net\%s' % (
+                fakes.FakeData.network_allocations_ip3.replace(':', '-'),
+                share['name'])}],
+            'CIFS export path is incorrect')
 
     def test_create_nfs_share_from_snapshot(self):
         share_server = fakes.SHARE_SERVER
@@ -525,7 +531,8 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual(location, '192.168.1.2:/%s' % share['name'],
+        self.assertEqual(location,
+                         [{'path': '192.168.1.2:/%s' % share['name']}],
                          'NFS export path is incorrect')
 
     def test_create_nfs_share_from_snapshot_with_ipv6(self):
@@ -574,10 +581,12 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual(location, '[%s]:/%s' %
-                         (fakes.FakeData.network_allocations_ip4,
-                          share['name']),
-                         'NFS export path is incorrect')
+        self.assertEqual(
+            location,
+            [{'path': '[%s]:/%s' % (
+                fakes.FakeData.network_allocations_ip4,
+                share['name'])}],
+            'NFS export path is incorrect')
 
     def test_create_share_with_incorrect_proto(self):
         share_server = fakes.SHARE_SERVER

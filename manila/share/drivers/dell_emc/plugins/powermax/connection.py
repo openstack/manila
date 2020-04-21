@@ -40,8 +40,9 @@ from manila import utils
     3.0.0 - Rebranding to PowerMax
     3.1.0 - Access Host details prevents a read-only share mounts
             (bug #1845147)
+    3.2.0 - Wrong format of export locations (bug #1871999)
 """
-VERSION = "3.1.0"
+VERSION = "3.2.0"
 
 LOG = log.getLogger(__name__)
 
@@ -127,7 +128,9 @@ class PowerMaxStorageConnection(driver.StorageConnection):
         elif share_proto == 'CIFS':
             location = self._create_cifs_share(share_name, share_server)
 
-        return location
+        return [
+            {'path': location}
+        ]
 
     def _share_server_validation(self, share_server):
         """Validate the share server."""
@@ -191,13 +194,9 @@ class PowerMaxStorageConnection(driver.StorageConnection):
 
         self._get_context('CIFSShare').disable_share_access(share_name,
                                                             vdm_name)
-        locations = []
         location = (r'\\%(interface)s\%(name)s' %
                     {'interface': interface, 'name': share_name})
-
-        locations.append(location)
-
-        return locations
+        return location
 
     @enas_utils.log_enter_exit
     def _create_nfs_share(self, share_name, share_server):
@@ -249,7 +248,9 @@ class PowerMaxStorageConnection(driver.StorageConnection):
         elif share_proto == 'CIFS':
             location = self._create_cifs_share(share_name, share_server)
 
-        return location
+        return [
+            {'path': location}
+        ]
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Create snapshot from share."""
