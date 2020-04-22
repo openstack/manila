@@ -15,9 +15,9 @@
 
 import ddt
 import json
-import mock
 import requests
 import time
+from unittest import mock
 
 from manila import exception
 from manila.share.drivers.hitachi.hsp import rest

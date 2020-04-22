@@ -18,8 +18,9 @@
 Tests for manila.api.v2.quota_sets.py
 """
 
+from unittest import mock
+
 import ddt
-import mock
 from oslo_config import cfg
 import webob.exc
 import webob.response

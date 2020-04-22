@@ -13,9 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ddt
-import mock
 import ssl
+from unittest import mock
+
+import ddt
 
 from manila.share.drivers.dell_emc.common.enas import utils
 from manila import test

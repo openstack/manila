@@ -18,9 +18,9 @@
 
 import os
 import time
+from unittest import mock
 
 import ddt
-import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from six import moves

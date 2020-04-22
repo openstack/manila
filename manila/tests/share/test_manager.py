@@ -17,9 +17,9 @@
 import datetime
 import hashlib
 import random
+from unittest import mock
 
 import ddt
-import mock
 from oslo_concurrency import lockutils
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
@@ -109,8 +109,8 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_share_manager_instance(self):
         fake_service_name = "fake_service"
-        import_mock = mock.Mock()
-        self.mock_object(importutils, "import_object", import_mock)
+        importutils_mock = mock.Mock()
+        self.mock_object(importutils, "import_object", importutils_mock)
         private_data_mock = mock.Mock()
         self.mock_object(drivers_private_data, "DriverPrivateData",
                          private_data_mock)
@@ -123,26 +123,26 @@ class ShareManagerTestCase(test.TestCase):
             backend_host=share_manager.host,
             config_group=fake_service_name
         )
-        self.assertTrue(import_mock.called)
+        self.assertTrue(importutils_mock.called)
         self.assertTrue(manager.ShareManager._init_hook_drivers.called)
 
     def test__init_hook_drivers(self):
         fake_service_name = "fake_service"
-        import_mock = mock.Mock()
-        self.mock_object(importutils, "import_object", import_mock)
+        importutils_mock = mock.Mock()
+        self.mock_object(importutils, "import_object", importutils_mock)
         self.mock_object(drivers_private_data, "DriverPrivateData")
         share_manager = manager.ShareManager(service_name=fake_service_name)
         share_manager.configuration.safe_get = mock.Mock(
             return_value=["Foo", "Bar"])
         self.assertEqual(0, len(share_manager.hooks))
-        import_mock.reset()
+        importutils_mock.reset()
 
         share_manager._init_hook_drivers()
 
         self.assertEqual(
             len(share_manager.configuration.safe_get.return_value),
             len(share_manager.hooks))
-        import_mock.assert_has_calls([
+        importutils_mock.assert_has_calls([
             mock.call(
                 hook,
                 configuration=share_manager.configuration,
@@ -1773,7 +1773,9 @@ class ShareManagerTestCase(test.TestCase):
         elif retval:
             self.assertEqual(0, mock_warning_log.call_count)
         self.assertTrue(mock_driver_call.called)
+        # pylint: disable=unsubscriptable-object
         snapshot_list_arg = mock_driver_call.call_args[0][4]
+        # pylint: enable=unsubscriptable-object
         self.assertIn('active_replica_snapshot', snapshot_list_arg[0])
         self.assertIn('share_replica_snapshot', snapshot_list_arg[0])
         mock_db_update_call.assert_has_calls(mock_db_update_calls)

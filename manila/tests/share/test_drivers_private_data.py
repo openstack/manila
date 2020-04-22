@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 import ddt
-import mock
 from oslo_utils import uuidutils
 
 from manila.share import drivers_private_data as pd

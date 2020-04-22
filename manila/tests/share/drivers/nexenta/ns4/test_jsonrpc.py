@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from mock import patch
+from unittest import mock
+
 from oslo_serialization import jsonutils
 import requests
 
@@ -24,7 +25,7 @@ from manila import test
 
 class TestNexentaJSONProxy(test.TestCase):
 
-    @patch('requests.post')
+    @mock.patch('requests.post')
     def test_call(self, post):
         nms_post = jsonrpc.NexentaJSONProxy(
             'http', '1.1.1.1', '8080', 'user', 'pass',

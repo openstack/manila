@@ -14,9 +14,9 @@
 #    under the License.
 
 from os import path
+from unittest import mock
 import yaml
 
-import mock
 from oslo_log import log
 
 LOG = log.getLogger(__name__)

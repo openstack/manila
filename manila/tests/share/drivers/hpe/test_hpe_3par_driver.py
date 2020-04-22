@@ -14,9 +14,9 @@
 
 from copy import deepcopy
 import sys
+from unittest import mock
 
 import ddt
-import mock
 if 'hpe3parclient' not in sys.modules:
     sys.modules['hpe3parclient'] = mock.Mock()
 

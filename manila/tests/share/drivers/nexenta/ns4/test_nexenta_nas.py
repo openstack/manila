@@ -15,9 +15,8 @@
 
 import base64
 import json
-import mock
-from mock import patch
-from mock import PropertyMock
+from unittest import mock
+
 from oslo_serialization import jsonutils
 from oslo_utils import units
 
@@ -28,7 +27,7 @@ from manila.share.drivers.nexenta.ns4 import nexenta_nas
 from manila import test
 
 PATH_TO_RPC = 'requests.post'
-CODE = PropertyMock(return_value=200)
+CODE = mock.PropertyMock(return_value=200)
 
 
 class FakeResponse(object):
@@ -120,14 +119,14 @@ class TestNexentaNasDriver(test.TestCase):
         self.volume = self.cfg.nexenta_volume
         self.share = self.cfg.nexenta_nfs_share
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_check_for_setup_error__volume_doesnt_exist(self, post):
         post.return_value = FakeResponse()
 
         self.assertRaises(
             exception.NexentaException, self.drv.check_for_setup_error)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_check_for_setup_error__folder_doesnt_exist(self, post):
         folder = '%s/%s' % (self.volume, self.share)
         create_folder_props = {
@@ -177,7 +176,7 @@ class TestNexentaNasDriver(test.TestCase):
                 'folder', 'object_exists', folder),
             headers=self.request_params.headers)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_create_share(self, post):
         share = {
             'name': 'share',
@@ -192,7 +191,7 @@ class TestNexentaNasDriver(test.TestCase):
         self.assertEqual([location],
                          self.drv.create_share(self.ctx, share))
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_create_share__wrong_proto(self, post):
         share = {
             'name': 'share',
@@ -204,7 +203,7 @@ class TestNexentaNasDriver(test.TestCase):
         self.assertRaises(exception.InvalidShare, self.drv.create_share,
                           self.ctx, share)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_create_share__thin_provisioning(self, post):
         share = {'name': 'share', 'size': 1,
                  'share_proto': self.cfg.enabled_share_protocols}
@@ -229,7 +228,7 @@ class TestNexentaNasDriver(test.TestCase):
                 create_folder_props),
             headers=self.request_params.headers)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_create_share__thick_provisioning(self, post):
         share = {
             'name': 'share',
@@ -259,7 +258,7 @@ class TestNexentaNasDriver(test.TestCase):
                 create_folder_props),
             headers=self.request_params.headers)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_create_share_from_snapshot(self, post):
         share = {
             'name': 'share',
@@ -284,7 +283,7 @@ class TestNexentaNasDriver(test.TestCase):
                 '%s/%s/%s' % (self.volume, self.share, share['name'])),
             headers=self.request_params.headers)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_delete_share(self, post):
         share = {
             'name': 'share',
@@ -305,7 +304,7 @@ class TestNexentaNasDriver(test.TestCase):
                 '-r'),
             headers=self.request_params.headers)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_delete_share__exists_error(self, post):
         share = {
             'name': 'share',
@@ -317,7 +316,7 @@ class TestNexentaNasDriver(test.TestCase):
 
         self.drv.delete_share(self.ctx, share)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_delete_share__some_error(self, post):
         share = {
             'name': 'share',
@@ -330,7 +329,7 @@ class TestNexentaNasDriver(test.TestCase):
         self.assertRaises(
             exception.ManilaException, self.drv.delete_share, self.ctx, share)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_extend_share__thin_provisoning(self, post):
         share = {
             'name': 'share',
@@ -353,7 +352,7 @@ class TestNexentaNasDriver(test.TestCase):
                 'quota', quota),
             headers=self.request_params.headers)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_extend_share__thick_provisoning(self, post):
         share = {
             'name': 'share',
@@ -368,7 +367,7 @@ class TestNexentaNasDriver(test.TestCase):
 
         post.assert_not_called()
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_create_snapshot(self, post):
         snapshot = {'share_name': 'share', 'name': 'share@first'}
         post.return_value = FakeResponse()
@@ -381,7 +380,7 @@ class TestNexentaNasDriver(test.TestCase):
                 'folder', 'create_snapshot', folder, snapshot['name'], '-r'),
             headers=self.request_params.headers)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_delete_snapshot(self, post):
         snapshot = {'share_name': 'share', 'name': 'share@first'}
         post.return_value = FakeResponse()
@@ -396,7 +395,7 @@ class TestNexentaNasDriver(test.TestCase):
                 ''),
             headers=self.request_params.headers)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_delete_snapshot__nexenta_error_1(self, post):
         snapshot = {'share_name': 'share', 'name': 'share@first'}
         post.return_value = FakeResponse()
@@ -404,7 +403,7 @@ class TestNexentaNasDriver(test.TestCase):
 
         self.drv.delete_snapshot(self.ctx, snapshot)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_delete_snapshot__nexenta_error_2(self, post):
         snapshot = {'share_name': 'share', 'name': 'share@first'}
         post.return_value = FakeResponse()
@@ -412,7 +411,7 @@ class TestNexentaNasDriver(test.TestCase):
 
         self.drv.delete_snapshot(self.ctx, snapshot)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_delete_snapshot__some_error(self, post):
         snapshot = {'share_name': 'share', 'name': 'share@first'}
         post.return_value = FakeResponse()
@@ -421,7 +420,7 @@ class TestNexentaNasDriver(test.TestCase):
         self.assertRaises(exception.ManilaException, self.drv.delete_snapshot,
                           self.ctx, snapshot)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_update_access__unsupported_access_type(self, post):
         share = {
             'name': 'share',
@@ -441,7 +440,7 @@ class TestNexentaNasDriver(test.TestCase):
                           None,
                           None)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_update_access__cidr(self, post):
         share = {
             'name': 'share',
@@ -497,7 +496,7 @@ class TestNexentaNasDriver(test.TestCase):
                                      'access_level': 'rw'}],
                           None, None)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_update_access__add_one_ip_to_empty_access_list(self, post):
         share = {'name': 'share',
                  'share_proto': self.cfg.enabled_share_protocols}
@@ -551,7 +550,7 @@ class TestNexentaNasDriver(test.TestCase):
                             'access_level': 'rw'}],
                           None, None)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_deny_access__unsupported_access_type(self, post):
         share = {'name': 'share',
                  'share_proto': self.cfg.enabled_share_protocols}
@@ -567,7 +566,7 @@ class TestNexentaNasDriver(test.TestCase):
     def test_share_backend_name(self):
         self.assertEqual('NexentaStor', self.drv.share_backend_name)
 
-    @patch(PATH_TO_RPC)
+    @mock.patch(PATH_TO_RPC)
     def test_get_capacity_info(self, post):
         post.return_value = FakeResponse({'result': {
             'available': 9 * units.Gi, 'used': 1 * units.Gi}})
@@ -575,9 +574,9 @@ class TestNexentaNasDriver(test.TestCase):
         self.assertEqual(
             (10, 9, 1), self.drv.helper._get_capacity_info())
 
-    @patch('manila.share.drivers.nexenta.ns4.nexenta_nfs_helper.NFSHelper.'
-           '_get_capacity_info')
-    @patch('manila.share.driver.ShareDriver._update_share_stats')
+    @mock.patch('manila.share.drivers.nexenta.ns4.nexenta_nfs_helper.'
+                'NFSHelper._get_capacity_info')
+    @mock.patch('manila.share.driver.ShareDriver._update_share_stats')
     def test_update_share_stats(self, super_stats, info):
         info.return_value = (100, 90, 10)
         stats = {

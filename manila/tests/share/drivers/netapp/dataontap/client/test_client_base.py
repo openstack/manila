@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 import ddt
-import mock
 from oslo_log import log
 
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api

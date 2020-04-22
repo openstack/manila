@@ -13,11 +13,13 @@
 #    under the License.
 
 import sys
+from unittest import mock
 
 import ddt
-import mock
 if 'hpe3parclient' not in sys.modules:
     sys.modules['hpe3parclient'] = mock.Mock()
+from oslo_utils import units
+import six
 
 from manila.data import utils as data_utils
 from manila import exception
@@ -26,8 +28,6 @@ from manila import test
 from manila.tests.share.drivers.hpe import test_hpe_3par_constants as constants
 from manila import utils
 
-from oslo_utils import units
-import six
 
 CLIENT_VERSION_MIN_OK = hpe3parmediator.MIN_CLIENT_VERSION
 TEST_WSAPI_VERSION_STR = '30201292'

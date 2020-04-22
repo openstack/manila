@@ -13,13 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import tempfile
+import time
+from unittest import mock
+
 import requests
 from requests import auth
 from requests import exceptions
-import tempfile
-import time
-
-import mock
 import six
 
 from manila import exception

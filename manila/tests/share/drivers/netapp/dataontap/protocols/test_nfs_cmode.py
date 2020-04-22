@@ -16,10 +16,10 @@ Mock unit tests for the NetApp driver protocols NFS class module.
 """
 
 import copy
+from unittest import mock
 import uuid
 
 import ddt
-import mock
 
 from manila import exception
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode

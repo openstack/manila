@@ -14,9 +14,9 @@
 #    under the License.
 
 import time
+from unittest import mock
 
 import ddt
-import mock
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 import paramiko

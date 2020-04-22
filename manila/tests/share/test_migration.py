@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ddt
-import mock
-
 import time
+from unittest import mock
+
+import ddt
 
 from manila.common import constants
 from manila import context

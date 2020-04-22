@@ -16,10 +16,10 @@
 """Unit tests for the Share driver module."""
 
 import time
+from unittest import mock
+
 
 import ddt
-import mock
-from mock import PropertyMock
 
 from manila.common import constants
 from manila import exception
@@ -1210,7 +1210,7 @@ class ShareDriverTestCase(test.TestCase):
         share_driver = self._instantiate_share_driver(None, True)
         self.mock_object(share_driver, 'get_configured_ip_versions',
                          mock.Mock(return_value=conf))
-        versions = PropertyMock(return_value=user_networks)
+        versions = mock.PropertyMock(return_value=user_networks)
         type(share_driver.network_api).enabled_ip_versions = versions
         data = {'share_backend_name': 'fake_backend'}
 

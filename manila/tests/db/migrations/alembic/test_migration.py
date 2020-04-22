@@ -17,8 +17,9 @@
 Tests for database migrations.
 """
 
+from unittest import mock
+
 from alembic import script
-import mock
 from oslo_db.sqlalchemy import test_base
 from oslo_db.sqlalchemy import test_migrations
 from oslo_log import log

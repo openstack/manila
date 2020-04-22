@@ -14,9 +14,9 @@
 #    under the License.
 
 import os
+from unittest import mock
 
 import ddt
-import mock
 
 from manila import exception
 from manila.share.drivers.ganesha import utils as ganesha_utils

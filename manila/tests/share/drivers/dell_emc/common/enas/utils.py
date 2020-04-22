@@ -14,9 +14,9 @@
 #    under the License.
 
 import doctest
+from unittest import mock
 
 from lxml import doctestcompare
-import mock
 import six
 
 

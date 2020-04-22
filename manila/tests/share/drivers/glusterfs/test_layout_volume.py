@@ -19,9 +19,9 @@
 import re
 import shutil
 import tempfile
+from unittest import mock
 
 import ddt
-import mock
 from oslo_config import cfg
 
 from manila.common import constants

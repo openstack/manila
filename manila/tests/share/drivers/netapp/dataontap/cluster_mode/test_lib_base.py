@@ -21,9 +21,9 @@ import json
 import math
 import socket
 import time
+from unittest import mock
 
 import ddt
-import mock
 from oslo_log import log
 from oslo_service import loopingcall
 from oslo_utils import timeutils

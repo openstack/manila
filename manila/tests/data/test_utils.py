@@ -15,8 +15,7 @@
 
 import os
 import time
-
-import mock
+from unittest import mock
 
 from manila.data import utils as data_utils
 from manila import exception

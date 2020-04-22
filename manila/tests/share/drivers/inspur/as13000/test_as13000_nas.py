@@ -17,12 +17,13 @@
 Share driver test for Inspur AS13000
 """
 
-import ddt
 import json
-import mock
+import time
+from unittest import mock
+
+import ddt
 from oslo_config import cfg
 import requests
-import time
 
 from manila import context
 from manila import exception
@@ -1147,8 +1148,8 @@ class AS13000ShareDriverTestCase(test.TestCase):
 
     @ddt.data('5000000000', '5000000k', '5000mb', '50G', '5TB')
     def test__unit_convert(self, capacity):
-        trans = {'5000000000': '%.0f' % (float(5000000000) / 1024**3),
-                 '5000000k': '%.0f' % (float(5000000) / 1024**2),
+        trans = {'5000000000': '%.0f' % (float(5000000000) / 1024 ** 3),
+                 '5000000k': '%.0f' % (float(5000000) / 1024 ** 2),
                  '5000mb': '%.0f' % (float(5000) / 1024),
                  '50G': '%.0f' % float(50),
                  '5TB': '%.0f' % (float(5) * 1024)}

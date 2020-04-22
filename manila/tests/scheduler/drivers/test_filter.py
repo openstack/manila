@@ -16,8 +16,9 @@
 Tests For Filter Scheduler.
 """
 
+from unittest import mock
+
 import ddt
-import mock
 from oslo_utils import strutils
 
 from manila.common import constants

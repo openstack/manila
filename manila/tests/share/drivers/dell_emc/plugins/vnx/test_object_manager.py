@@ -15,10 +15,11 @@
 
 import copy
 import time
+from unittest import mock
+
 
 import ddt
 from lxml import builder
-import mock
 
 from oslo_concurrency import processutils
 

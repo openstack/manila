@@ -15,8 +15,7 @@
 Mock unit tests for the NetApp file share driver interfaces
 """
 
-
-import mock
+from unittest import mock
 
 from manila.share.drivers.netapp.dataontap.cluster_mode import drv_multi_svm
 from manila.share.drivers.netapp.dataontap.cluster_mode import drv_single_svm

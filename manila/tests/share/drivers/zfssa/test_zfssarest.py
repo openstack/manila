@@ -14,7 +14,7 @@
 """
 Unit tests for Oracle's ZFSSA REST API.
 """
-import mock
+from unittest import mock
 
 from manila import exception
 from manila.share.drivers.zfssa import restclient

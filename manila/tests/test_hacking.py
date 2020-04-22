@@ -15,9 +15,9 @@
 import itertools
 import sys
 import textwrap
+from unittest import mock
 
 import ddt
-import mock
 import pycodestyle
 
 from manila.hacking import checks
@@ -326,6 +326,16 @@ class HackingTestCase(test.TestCase):
                hex_uuid = uuid.uuid4().hex
                """
         self._assert_has_no_errors(code, checks.check_uuid4)
+
+    @ddt.unpack
+    @ddt.data(
+        (1, 'import mock'),
+        (0, 'from unittest import mock'),
+        (1, 'from mock import patch'),
+        (0, 'from unittest.mock import patch'))
+    def test_no_third_party_mock(self, err_count, line):
+        self.assertEqual(err_count,
+                         len(list(checks.no_third_party_mock(line))))
 
     def test_no_log_warn_check(self):
         self.assertEqual(0, len(list(checks.no_log_warn_check(

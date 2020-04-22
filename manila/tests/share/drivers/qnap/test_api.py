@@ -14,12 +14,12 @@
 #    under the License.
 
 import base64
+import time
+from unittest import mock
 
 import ddt
-import mock
 import six
 from six.moves import urllib
-import time
 
 from manila import exception
 from manila.share.drivers.qnap import qnap

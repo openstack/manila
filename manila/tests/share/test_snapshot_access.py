@@ -14,8 +14,9 @@
 #    under the License.
 
 import copy
+from unittest import mock
+
 import ddt
-import mock
 
 from manila.common import constants
 from manila import context

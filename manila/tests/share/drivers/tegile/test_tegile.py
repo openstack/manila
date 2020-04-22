@@ -16,8 +16,9 @@
 Share driver Test for Tegile storage.
 """
 
+from unittest import mock
+
 import ddt
-import mock
 from oslo_config import cfg
 import requests
 import six

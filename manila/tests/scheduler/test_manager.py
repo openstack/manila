@@ -17,14 +17,10 @@
 Tests For Scheduler Manager
 """
 
-try:
-    # Python3 variant
-    from importlib import reload
-except ImportError:
-    pass
+from importlib import reload
+from unittest import mock
 
 import ddt
-import mock
 from oslo_config import cfg
 
 from manila.common import constants

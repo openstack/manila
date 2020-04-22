@@ -19,10 +19,10 @@
 
 import copy
 import datetime
-import ddt
-import mock
 import random
+from unittest import mock
 
+import ddt
 from oslo_db import exception as db_exception
 from oslo_utils import timeutils
 from oslo_utils import uuidutils

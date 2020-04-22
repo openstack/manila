@@ -15,9 +15,9 @@
 
 import copy
 import re
+from unittest import mock
 
 import ddt
-import mock
 from oslo_serialization import jsonutils
 import six
 

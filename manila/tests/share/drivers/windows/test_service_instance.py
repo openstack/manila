@@ -14,9 +14,9 @@
 #    under the License.
 
 import os
+from unittest import mock
 
 import ddt
-import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 import six

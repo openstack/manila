@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 import ddt
-import mock
 from tooz import coordination as tooz_coordination
 from tooz import locking as tooz_locking
 

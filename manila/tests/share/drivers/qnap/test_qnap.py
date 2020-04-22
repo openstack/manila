@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
+from unittest import mock
 
 try:
     import xml.etree.cElementTree as ET
@@ -20,12 +22,10 @@ except ImportError:
     import xml.etree.ElementTree as ET
 
 import ddt
-import mock
+from eventlet import greenthread
 from oslo_config import cfg
 import six
-import time
 
-from eventlet import greenthread
 from manila import exception
 from manila.share.drivers.qnap import api
 from manila.share.drivers.qnap import qnap

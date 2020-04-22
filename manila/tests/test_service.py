@@ -21,8 +21,9 @@
 Unit Tests for remote procedure calls using queue
 """
 
+from unittest import mock
+
 import ddt
-import mock
 from oslo_config import cfg
 from oslo_service import wsgi
 

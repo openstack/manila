@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 from keystoneauth1 import loading as auth
 from oslo_config import cfg
-
-import mock
 
 from manila.common import client_auth
 from manila import exception

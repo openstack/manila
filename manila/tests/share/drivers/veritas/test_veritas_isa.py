@@ -16,8 +16,8 @@ Unit tests for Veritas Manila driver.
 """
 import hashlib
 import json
+from unittest import mock
 
-import mock
 from oslo_config import cfg
 import requests
 import six

@@ -13,9 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Unit tests for the Storage helper module."""
-import ddt
+
 import functools
-import mock
+from unittest import mock
+
+import ddt
 
 from manila import exception
 from manila.share import configuration

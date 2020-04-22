@@ -17,9 +17,9 @@
 import copy
 import hashlib
 import time
+from unittest import mock
 
 import ddt
-import mock
 from oslo_log import log
 import six
 
