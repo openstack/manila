@@ -1099,7 +1099,7 @@ def _quota_reserve(context, resources, project_quotas, user_or_st_quotas,
                 project_usages[key] = value
         overs = [res for res, delta in deltas.items()
                  if user_or_st_quotas[res] >= 0 and delta >= 0 and
-                 (project_quotas[res] < delta +
+                 (0 <= project_quotas[res] < delta +
                   project_usages[res]['total'] or
                   user_or_st_quotas[res] < delta +
                   user_or_st_usages[res].total)]
