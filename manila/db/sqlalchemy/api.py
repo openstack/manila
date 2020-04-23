@@ -2075,10 +2075,6 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
             msg = _("Wrong sorting key provided - '%s'.") % sort_key
             raise exception.InvalidInput(reason=msg)
 
-    if 'limit' in filters:
-        offset = filters.get('offset', 0)
-        query = query.limit(filters['limit']).offset(offset)
-
     # Returns list of shares that satisfy filters.
     query = query.all()
     return query

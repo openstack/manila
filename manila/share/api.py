@@ -1789,10 +1789,6 @@ class API(base.Base):
                 msg = _("Wrong extra specs filter provided: "
                         "%s.") % six.text_type(filters['extra_specs'])
                 raise exception.InvalidInput(reason=msg)
-        if 'limit' in search_opts:
-            filters['limit'] = search_opts.pop('limit')
-        if 'offset' in search_opts:
-            filters['offset'] = search_opts.pop('offset')
         if not (isinstance(sort_key, six.string_types) and sort_key):
             msg = _("Wrong sort_key filter provided: "
                     "'%s'.") % six.text_type(sort_key)
