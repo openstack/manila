@@ -795,10 +795,13 @@ class HostStateTestCase(test.TestCase):
         fake_context = context.RequestContext('user', 'project', is_admin=True)
         share_size = 10
         free_capacity = 100
+        provisioned_capacity_gb = 50
         fake_share = {'id': 'foo', 'size': share_size}
         share_capability = {
             'total_capacity_gb': free_capacity * 2,
             'free_capacity_gb': free_capacity,
+            'provisioned_capacity_gb': provisioned_capacity_gb,
+            'allocated_capacity_gb': provisioned_capacity_gb,
             'reserved_percentage': 0,
             'timestamp': None
         }
@@ -809,11 +812,17 @@ class HostStateTestCase(test.TestCase):
         fake_host.consume_from_share(fake_share)
         self.assertEqual(fake_host.free_capacity_gb,
                          free_capacity - share_size)
+        self.assertEqual(fake_host.provisioned_capacity_gb,
+                         provisioned_capacity_gb + share_size)
+        self.assertEqual(fake_host.allocated_capacity_gb,
+                         provisioned_capacity_gb + share_size)
 
     def test_consume_from_share_unknown_capability(self):
         share_capability = {
             'total_capacity_gb': 'unknown',
             'free_capacity_gb': 'unknown',
+            'provisioned_capacity_gb': None,
+            'allocated_capacity_gb': 0,
             'reserved_percentage': 0,
             'timestamp': None
         }
@@ -827,13 +836,18 @@ class HostStateTestCase(test.TestCase):
         fake_host.consume_from_share(fake_share)
         self.assertEqual(fake_host.total_capacity_gb, 'unknown')
         self.assertEqual(fake_host.free_capacity_gb, 'unknown')
+        self.assertIsNone(fake_host.provisioned_capacity_gb)
+        self.assertEqual(fake_host.allocated_capacity_gb, share_size)
 
     def test_consume_from_share_invalid_capacity(self):
         fake_host = host_manager.PoolState('host1', {}, '_pool0')
         fake_host.free_capacity_gb = 'invalid_foo_string'
+        fake_host.provisioned_capacity_gb = None
+        fake_host.allocated_capacity_gb = 0
+        fake_share = {'id': 'fake', 'size': 10}
 
         self.assertRaises(exception.InvalidCapacity,
-                          fake_host.consume_from_share, 'fake')
+                          fake_host.consume_from_share, fake_share)
 
     def test_repr(self):
 

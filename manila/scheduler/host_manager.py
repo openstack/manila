@@ -368,6 +368,10 @@ class HostState(object):
 
     def consume_from_share(self, share):
         """Incrementally update host state from an share."""
+        if self.provisioned_capacity_gb is not None:
+            self.provisioned_capacity_gb += share['size']
+
+        self.allocated_capacity_gb += share['size']
 
         if (isinstance(self.free_capacity_gb, six.string_types)
                 and self.free_capacity_gb != 'unknown'):
