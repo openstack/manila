@@ -1,0 +1,5 @@
+---
+fixes:
+  - NetApp cDOT driver is now fixed to remove the QoS Policy on the
+    backend volume when a share is migrated from an extra-spec which had
+    QoS defined to another extra-spec which has no QoS defined in it.
