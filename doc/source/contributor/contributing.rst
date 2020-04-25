@@ -70,6 +70,7 @@ manila-test-image
 manila-specs
     | Design Specifications for the Shared File System service
     | code: https://opendev.org/openstack/manila-specs
+    | published specs: https://specs.openstack.org/openstack/manila-specs/
     | release model: no releases
     | Launchpad: https://launchpad.net/manila
 
