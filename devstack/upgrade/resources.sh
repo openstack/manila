@@ -247,8 +247,24 @@ function scenario_2_verify_attach_ss_to_sn {
     }
 
     assert share-network-show fake_sn_name description fake_sn_description
-    assert share-network-show fake_sn_name neutron_net_id fake_net
-    assert share-network-show fake_sn_name neutron_subnet_id fake_subnet
+    # From API version 2.51, share-network-show command doesn't have
+    # neutron_net_id and neutron_subnet_id, that information is in
+    # "share-network-subnets"
+    assert "--os-share-api-version 2.50 share-network-show" fake_sn_name neutron_net_id fake_net
+    assert "--os-share-api-version 2.50 share-network-show" fake_sn_name neutron_subnet_id fake_subnet
+
+    share_network_subnets=$(manila share-network-show fake_sn_name | grep share_network_subnets)
+    if [[ ! -z "$share_network_subnets" ]]; then
+        neutron_net_id=$(echo $share_network_subnets | tr ',' '\n' | grep neutron_net_id | cut -d "'" -f4)
+        neutron_subnet_id=$(echo $share_network_subnets | tr ',' '\n' | grep neutron_subnet_id | cut -d "'" -f4)
+
+        if [[ $neutron_net_id != fake_net ]]; then
+            die $LINENO "Neutron net ID for share network isn't fake_net, it is $neutron_net_id"
+        fi
+        if [[ $neutron_subnet_id != fake_subnet ]]; then
+            die $LINENO "Neutron subnet ID for share network isn't fake_subnet, it is $neutron_subnet_id"
+        fi
+    fi
 
     assert security-service-show fake_ss_name description fake_ss_description
     assert security-service-show fake_ss_name dns_ip fake_dns_ip
