@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Dell EMC Unity Driver: Fixes `bug 1841035
+    <https://bugs.launchpad.net/manila/+bug/1841035>`__ to avoid lots of error
+    messages displayed in logs.
+
