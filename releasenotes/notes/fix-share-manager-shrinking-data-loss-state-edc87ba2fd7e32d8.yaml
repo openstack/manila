@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    When attempting to shrink a share to a size smaller than the current used
+    space, the share status will remain as ``available`` instead of
+    ``shrinking_possible_data_loss_error``. The user will receive warning
+    message saying that the shrink operation was not completed.

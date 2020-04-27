@@ -3717,10 +3717,10 @@ class ShareManagerTestCase(test.TestCase):
         (self.share_manager.db.share_replicas_get_all_by_share
             .assert_called_once_with(mock.ANY, share['id']))
 
-    @ddt.data({'exc': exception.InvalidShare('fake'),
+    @ddt.data({'exc': exception.InvalidShare("fake"),
                'status': constants.STATUS_SHRINKING_ERROR},
               {'exc': exception.ShareShrinkingPossibleDataLoss("fake"),
-               'status': constants.STATUS_SHRINKING_POSSIBLE_DATA_LOSS_ERROR})
+               'status': constants.STATUS_AVAILABLE})
     @ddt.unpack
     def test_shrink_share_invalid(self, exc, status):
         share = db_utils.create_share()
@@ -3757,6 +3757,15 @@ class ShareManagerTestCase(test.TestCase):
             share_type_id=None, user_id=share['user_id'],
         )
         self.assertTrue(self.share_manager.db.share_get.called)
+
+        if isinstance(exc, exception.ShareShrinkingPossibleDataLoss):
+            self.share_manager.message_api.create.assert_called_once_with(
+                utils.IsAMatcher(context.RequestContext),
+                message_field.Action.SHRINK,
+                share['project_id'],
+                resource_type=message_field.Resource.SHARE,
+                resource_id=share_id,
+                detail=message_field.Detail.DRIVER_REFUSED_SHRINK)
 
     @ddt.data(True, False)
     def test_shrink_share(self, supports_replication):

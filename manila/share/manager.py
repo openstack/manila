@@ -3985,8 +3985,15 @@ class ShareManager(manager.SchedulerDependentManager):
         except Exception as e:
             if isinstance(e, exception.ShareShrinkingPossibleDataLoss):
                 msg = ("Shrink share failed due to possible data loss.")
-                status = constants.STATUS_SHRINKING_POSSIBLE_DATA_LOSS_ERROR
+                status = constants.STATUS_AVAILABLE
                 error_params = {'msg': msg, 'status': status}
+                self.message_api.create(
+                    context,
+                    message_field.Action.SHRINK,
+                    share['project_id'],
+                    resource_type=message_field.Resource.SHARE,
+                    resource_id=share_id,
+                    detail=message_field.Detail.DRIVER_REFUSED_SHRINK)
             else:
                 error_params = {'msg': ("Shrink share failed.")}
 
