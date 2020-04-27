@@ -3,7 +3,6 @@ alembic==0.8.10
 amqp==2.2.2
 appdirs==1.4.3
 asn1crypto==0.24.0
-Babel==2.3.4
 bashate==0.5.1
 bcrypt==3.1.4
 cachetools==2.0.1
