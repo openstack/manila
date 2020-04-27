@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed an issue in NetApp driver when shrinking shares to a size
+    smaller than the current used space. Now it will return a more
+    appropriate error status called
+    ``shrinking_possible_data_loss_error``.
