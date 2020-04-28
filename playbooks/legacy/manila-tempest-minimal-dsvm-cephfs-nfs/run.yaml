@@ -72,7 +72,7 @@
           # Basic services needed for minimal job
           OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
           # Enable glance for scenario tests
-          OVERRIDE_ENABLED_SERVICES+=,g-api,g-reg
+          OVERRIDE_ENABLED_SERVICES+=,g-api
           # Enable nova for scenario tests
           OVERRIDE_ENABLED_SERVICES+=,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj
           # Enable neutron for scenario tests
