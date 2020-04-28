@@ -1,8 +1,8 @@
 Tempest Tests
 =============
 
-Manila stores tempest tests as plugin under ``manila_tempest_tests`` directory.
-It contains functional and scenario tests.
+Manila's functional API and scenario tests are in the `manila tempest plugin
+<https://opendev.org/openstack/manila-tempest-plugin>`_ repository.
 
 Installation of plugin to tempest
 ---------------------------------
@@ -39,7 +39,7 @@ and find manila tests in it.
 
 Configuration of manila-related tests in tempest.conf
 -----------------------------------------------------
-All config options for manila are defined in ``manila_tempest_tests/config.py``
+All config options for manila are defined in `manila_tempest_tests/config.py`_
 module. They can be set/redefined in ``tempest.conf`` file.
 
 Here is a configuration example:
@@ -78,7 +78,9 @@ Here is a configuration example:
 
 .. note::
     None of existing share drivers support all features. So, make sure
-    that share backends really support features you enable in config.
+    that share backends really support features you enable in config. See
+    the :doc:`../admin/share_back_ends_feature_support_mapping` to see what
+    features are supported by the back end that you are testing.
 
 Running tests
 -------------
@@ -188,3 +190,5 @@ To run only positive API tests, use following command:
       \(\?\=\.\*\\\[\.\*\\bpositive\\b\.\*\\\]\) \
       \(\?\=\.\*\\\[\.\*\\bapi\\b\.\*\\\]\) \
       \(\^manila_tempest_tests.tests.api\)
+
+.. _manila_tempest_tests/config.py: https://opendev.org/openstack/manila-tempest-plugin/src/branch/master/manila_tempest_tests/config.py
