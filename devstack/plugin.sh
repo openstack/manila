@@ -435,14 +435,12 @@ function create_manila_service_flavor {
 # create_manila_service_image - creates image, that will be used by backends
 # with configured generic driver to boot Nova VMs from.
 function create_manila_service_image {
-    if is_service_enabled nova; then
+    if is_service_enabled nova g-api; then
         TOKEN=$(openstack token issue -c id -f value)
         local image_exists=$( openstack image list | grep " $MANILA_SERVICE_IMAGE_NAME " )
         if [[ -z $image_exists ]]; then
             # Download Manila's image
-            if is_service_enabled g-reg; then
-                upload_image $MANILA_SERVICE_IMAGE_URL $TOKEN
-            fi
+            upload_image $MANILA_SERVICE_IMAGE_URL $TOKEN
         fi
     fi
 }
