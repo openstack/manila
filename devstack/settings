@@ -158,6 +158,11 @@ MANILA_SHARE_BACKEND1_NAME=${MANILA_SHARE_BACKEND1_NAME:-GENERIC1}  # deprecated
 MANILA_BACKEND2_CONFIG_GROUP_NAME=${MANILA_BACKEND2_CONFIG_GROUP_NAME:-generic2}  # deprecated
 MANILA_SHARE_BACKEND2_NAME=${MANILA_SHARE_BACKEND2_NAME:-GENERIC2}  # deprecated
 
+# Enable this option when using a storage backend that is on the same host
+# as the devstack host, these iptable rules are necessary to allow mounting
+# shares from the host
+MANILA_ALLOW_NAS_SERVER_PORTS_ON_HOST=${MANILA_ALLOW_NAS_SERVER_PORTS_ON_HOST:-False}
+
 # Options for configuration of LVM share driver
 SHARE_BACKING_FILE_SIZE=${SHARE_BACKING_FILE_SIZE:-8400M}
 SHARE_GROUP=${SHARE_GROUP:-lvm-shares}

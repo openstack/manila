@@ -47,6 +47,8 @@ echo "MANILA_SHARE_BACKEND2_NAME=PARIS" >> $localconf
 
 echo "MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=${MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE:=True}" >> $localconf
 
+echo "MANILA_ALLOW_NAS_SERVER_PORTS_ON_HOST=${MANILA_ALLOW_NAS_SERVER_PORTS_ON_HOST:=False}" >> $localconf
+
 # === Handle script arguments ===
 # First argument is expected to be a boolean-like value for DHSS.
 DHSS=$1
