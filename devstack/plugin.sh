@@ -1173,6 +1173,14 @@ function setup_ipv6 {
 
 }
 
+function setup_bgp_for_ipv6 {
+    public_gateway_ipv6=$(openstack subnet show ipv6-public-subnet -c gateway_ip -f value)
+    neutron bgp-speaker-create --ip-version 6 --local-as 100 bgpspeaker
+    neutron bgp-speaker-network-add bgpspeaker $PUBLIC_NETWORK_NAME
+    neutron bgp-peer-create --peer-ip $public_gateway_ipv6 --remote-as 200 bgppeer
+    neutron bgp-speaker-peer-add bgpspeaker bgppeer
+}
+
 # Main dispatcher
 if [[ "$1" == "stack" && "$2" == "install" ]]; then
     echo_summary "Installing Manila Client"
@@ -1289,6 +1297,12 @@ elif [[ "$1" == "stack" && "$2" == "test-config" ]]; then
     if [[ "$(trueorfalse False MANILA_ALLOW_NAS_SERVER_PORTS_ON_HOST)" == "True" ]]; then
         echo_summary "Allowing IPv4 and IPv6 access to NAS ports on the host"
         allow_host_ports_for_share_mounting
+    fi
+
+    if [[ "$(trueorfalse False MANILA_SETUP_IPV6)" == "True" ]]; then
+        # Now that all plugins are loaded, setup BGP
+        echo_summary "Setting up BGP speaker to advertise routes to project networks"
+        setup_bgp_for_ipv6
     fi
 
 fi
