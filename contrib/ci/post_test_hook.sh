@@ -338,14 +338,6 @@ source $BASE/new/devstack/openrc admin admin
 public_net_id=$(openstack network list --name $PUBLIC_NETWORK_NAME -f value -c ID )
 iniset $TEMPEST_CONFIG network public_network_id $public_net_id
 
-# Now that all plugins are loaded, setup BGP here
-if [ $(trueorfalse False MANILA_SETUP_IPV6) == True ]; then
-    neutron bgp-speaker-create --ip-version 6 --local-as 100 bgpspeaker
-    neutron bgp-speaker-network-add bgpspeaker $PUBLIC_NETWORK_NAME
-    neutron bgp-peer-create --peer-ip ::1 --remote-as 200 bgppeer
-    neutron bgp-speaker-peer-add bgpspeaker bgppeer
-fi
-
 # Set config to run IPv6 tests according to env var
 iniset $TEMPEST_CONFIG share run_ipv6_tests $RUN_MANILA_IPV6_TESTS
 
