@@ -1583,9 +1583,12 @@ class NetAppCmodeFileStorageLibrary(object):
             return constants.REPLICA_STATE_OUT_OF_SYNC
 
         snapmirror = snapmirrors[0]
-
+        # NOTE(dviroel): Don't try to resume or resync a SnapMirror that has
+        # one of the in progress transfer states, because the storage will
+        # answer with an error.
+        in_progress_status = ['preparing', 'transferring', 'finalizing']
         if (snapmirror.get('mirror-state') != 'snapmirrored' and
-                snapmirror.get('relationship-status') == 'transferring'):
+                snapmirror.get('relationship-status') in in_progress_status):
             return constants.REPLICA_STATE_OUT_OF_SYNC
 
         if snapmirror.get('mirror-state') != 'snapmirrored':
