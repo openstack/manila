@@ -192,7 +192,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
                                            driver_options)
         self.assertIsInstance(result, NotImplementedError)
 
-    def unmanage_manage(self):
+    def test_unmanage_manage(self):
         share = mock.Mock()
         server_details = {}
         share_server = mock.Mock()
