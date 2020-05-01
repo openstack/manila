@@ -65,6 +65,7 @@
           export DEVSTACK_GATE_NEUTRON=1
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
           export MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=False
+          export MANILA_ALLOW_NAS_SERVER_PORTS_ON_HOST=True
 
           export MANILA_SETUP_IPV6=True
           export RUN_MANILA_IPV6_TESTS=True
