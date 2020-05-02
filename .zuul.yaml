@@ -343,34 +343,6 @@
       - openstack/tempest
 
 - job:
-    name: manila-tempest-minimal-py35-dsvm-cephfs-native-centos-7
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-minimal-py35-dsvm-cephfs-native-centos-7/run.yaml
-    post-run: playbooks/legacy/manila-tempest-minimal-py35-dsvm-cephfs-native-centos-7/post.yaml
-    nodeset: legacy-centos-7
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/devstack-plugin-ceph
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-minimal-py35-dsvm-cephfs-nfs-centos-7
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-minimal-py35-dsvm-cephfs-nfs-centos-7/run.yaml
-    post-run: playbooks/legacy/manila-tempest-minimal-py35-dsvm-cephfs-nfs-centos-7/post.yaml
-    nodeset: legacy-centos-7
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/devstack-plugin-ceph
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
     name: manila-tox-genconfig
     parent: openstack-tox
     description: |
