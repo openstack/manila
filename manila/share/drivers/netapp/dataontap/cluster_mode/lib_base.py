@@ -1049,6 +1049,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # Validate extra specs
         extra_specs = share_types.get_extra_specs_from_share(share)
+        extra_specs = self._remap_standard_boolean_extra_specs(extra_specs)
         try:
             self._check_extra_specs_validity(share, extra_specs)
             self._check_aggregate_extra_specs_validity(aggregate_name,
@@ -2236,6 +2237,8 @@ class NetAppCmodeFileStorageLibrary(object):
         # Modify volume properties per share type extra-specs
         extra_specs = share_types.get_extra_specs_from_share(
             destination_share)
+        extra_specs = self._remap_standard_boolean_extra_specs(extra_specs)
+        self._check_extra_specs_validity(destination_share, extra_specs)
         provisioning_options = self._get_provisioning_options(extra_specs)
         qos_policy_group_name = self._modify_or_create_qos_for_existing_share(
             destination_share, extra_specs, vserver, vserver_client)
