@@ -914,6 +914,14 @@ function install_manila_tempest_plugin {
 # update_tempest - Function used for updating Tempest config if Tempest service enabled
 function update_tempest {
     if is_service_enabled tempest; then
+
+        if [[ "$(trueorfalse False MANILA_SETUP_IPV6)" == "True" ]]; then
+            # The public network was created by us, so set it explicitly in
+            # tempest.conf
+            public_net_id=$(openstack network list --name $PUBLIC_NETWORK_NAME -f value -c ID )
+            iniset $TEMPEST_CONFIG network public_network_id $public_net_id
+        fi
+
         TEMPEST_CONFIG=${TEMPEST_CONFIG:-$TEMPEST_DIR/etc/tempest.conf}
         ADMIN_TENANT_NAME=${ADMIN_TENANT_NAME:-"admin"}
         ADMIN_DOMAIN_NAME=${ADMIN_DOMAIN_NAME:-"Default"}
