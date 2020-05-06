@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    The NetApp cDOT driver now reports the max_over_subscription_ratio
+    configuration, which can be set per share back end, via
+    scheduler-stats/pools/detail API.
