@@ -23,8 +23,9 @@ import re
 
 from lxml import etree
 from oslo_log import log
+import requests
+from requests import auth
 import six
-from six.moves import urllib
 
 from manila import exception
 from manila.i18n import _
@@ -61,6 +62,7 @@ class NaServer(object):
 
     TRANSPORT_TYPE_HTTP = 'http'
     TRANSPORT_TYPE_HTTPS = 'https'
+    SSL_CERT_DEFAULT = "/etc/ssl/certs/"
     SERVER_TYPE_FILER = 'filer'
     SERVER_TYPE_DFM = 'dfm'
     URL_FILER = 'servlets/netapp.servlets.admin.XMLrequest_filer'
@@ -232,8 +234,8 @@ class NaServer(object):
         """Invoke the API on the server."""
         if na_element and not isinstance(na_element, NaElement):
             ValueError('NaElement must be supplied to invoke API')
-        request, request_element = self._create_request(na_element,
-                                                        enable_tunneling)
+        request_element = self._create_request(na_element, enable_tunneling)
+        request_d = request_element.to_string()
 
         api_name = na_element.get_name()
         api_name_matches_regex = (re.match(self._api_trace_pattern, api_name)
@@ -242,23 +244,26 @@ class NaServer(object):
         if self._trace and api_name_matches_regex:
             LOG.debug("Request: %s", request_element.to_string(pretty=True))
 
-        if (not hasattr(self, '_opener') or not self._opener
+        if (not hasattr(self, '_session') or not self._session
                 or self._refresh_conn):
-            self._build_opener()
+            self._build_session()
         try:
             if hasattr(self, '_timeout'):
-                response = self._opener.open(request, timeout=self._timeout)
+                response = self._session.post(
+                    self._get_url(), data=request_d, timeout=self._timeout)
             else:
-                response = self._opener.open(request)
-        except urllib.error.HTTPError as e:
-            raise NaApiError(e.code, e.msg)
-        except urllib.error.URLError as e:
+                response = self._session.post(
+                    self._get_url(), data=request_d)
+        except requests.HTTPError as e:
+            raise NaApiError(e.errno, e.strerror)
+        except requests.URLRequired as e:
             raise exception.StorageCommunicationException(six.text_type(e))
         except Exception as e:
             raise NaApiError(message=e)
 
-        response_xml = response.read()
-        response_element = self._get_result(response_xml)
+        response_xml = response.text
+        response_element = self._get_result(
+            bytes(bytearray(response_xml, encoding='utf-8')))
 
         if self._trace and api_name_matches_regex:
             LOG.debug("Response: %s", response_element.to_string(pretty=True))
@@ -296,11 +301,7 @@ class NaServer(object):
         if enable_tunneling:
             self._enable_tunnel_request(netapp_elem)
         netapp_elem.add_child_elem(na_element)
-        request_d = netapp_elem.to_string()
-        request = urllib.request.Request(
-            self._get_url(), data=request_d,
-            headers={'Content-Type': 'text/xml', 'charset': 'utf-8'})
-        return request, netapp_elem
+        return netapp_elem
 
     def _enable_tunnel_request(self, netapp_elem):
         """Enables vserver or vfiler tunneling."""
@@ -341,20 +342,20 @@ class NaServer(object):
             host = '[%s]' % host
         return '%s://%s:%s/%s' % (self._protocol, host, self._port, self._url)
 
-    def _build_opener(self):
+    def _build_session(self):
         if self._auth_style == NaServer.STYLE_LOGIN_PASSWORD:
             auth_handler = self._create_basic_auth_handler()
         else:
             auth_handler = self._create_certificate_auth_handler()
-        opener = urllib.request.build_opener(auth_handler)
-        self._opener = opener
+
+        self._session = requests.Session()
+        self._session.auth = auth_handler
+        self._session.verify = NaServer.SSL_CERT_DEFAULT
+        self._session.headers = {
+            'Content-Type': 'text/xml', 'charset': 'utf-8'}
 
     def _create_basic_auth_handler(self):
-        password_man = urllib.request.HTTPPasswordMgrWithDefaultRealm()
-        password_man.add_password(None, self._get_url(), self._username,
-                                  self._password)
-        auth_handler = urllib.request.HTTPBasicAuthHandler(password_man)
-        return auth_handler
+        return auth.HTTPBasicAuth(self._username, self._password)
 
     def _create_certificate_auth_handler(self):
         raise NotImplementedError()
