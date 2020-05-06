@@ -20,7 +20,7 @@ Tests for NetApp API layer
 """
 import ddt
 import mock
-from six.moves import urllib
+import requests
 
 from manila import exception
 from manila.share.drivers.netapp.dataontap.client import api
@@ -188,14 +188,12 @@ class NetAppApiServerTests(test.TestCase):
         """Tests handling of HTTPError"""
         na_element = fake.FAKE_NA_ELEMENT
         self.mock_object(self.root, '_create_request', mock.Mock(
-            return_value=('abc', fake.FAKE_NA_ELEMENT)))
+            return_value=fake.FAKE_NA_ELEMENT))
         self.mock_object(api, 'LOG')
-        self.root._opener = fake.FAKE_HTTP_OPENER
-        self.mock_object(self.root, '_build_opener')
-        self.mock_object(self.root._opener, 'open', mock.Mock(
-            side_effect=urllib.error.HTTPError(url='', hdrs='',
-                                               fp=None, code='401',
-                                               msg='httperror')))
+        self.root._session = fake.FAKE_HTTP_SESSION
+        self.mock_object(self.root, '_build_session')
+        self.mock_object(self.root._session, 'post', mock.Mock(
+            side_effect=requests.HTTPError()))
 
         self.assertRaises(api.NaApiError, self.root.invoke_elem,
                           na_element)
@@ -204,12 +202,12 @@ class NetAppApiServerTests(test.TestCase):
         """Tests handling of URLError"""
         na_element = fake.FAKE_NA_ELEMENT
         self.mock_object(self.root, '_create_request', mock.Mock(
-            return_value=('abc', fake.FAKE_NA_ELEMENT)))
+            return_value=fake.FAKE_NA_ELEMENT))
         self.mock_object(api, 'LOG')
-        self.root._opener = fake.FAKE_HTTP_OPENER
-        self.mock_object(self.root, '_build_opener')
-        self.mock_object(self.root._opener, 'open', mock.Mock(
-            side_effect=urllib.error.URLError(reason='urlerror')))
+        self.root._session = fake.FAKE_HTTP_SESSION
+        self.mock_object(self.root, '_build_session')
+        self.mock_object(self.root._session, 'post', mock.Mock(
+            side_effect=requests.URLRequired()))
 
         self.assertRaises(exception.StorageCommunicationException,
                           self.root.invoke_elem,
@@ -219,11 +217,11 @@ class NetAppApiServerTests(test.TestCase):
         """Tests handling of Unknown Exception"""
         na_element = fake.FAKE_NA_ELEMENT
         self.mock_object(self.root, '_create_request', mock.Mock(
-            return_value=('abc', fake.FAKE_NA_ELEMENT)))
+            return_value=fake.FAKE_NA_ELEMENT))
         self.mock_object(api, 'LOG')
-        self.root._opener = fake.FAKE_HTTP_OPENER
-        self.mock_object(self.root, '_build_opener')
-        self.mock_object(self.root._opener, 'open', mock.Mock(
+        self.root._session = fake.FAKE_HTTP_SESSION
+        self.mock_object(self.root, '_build_session')
+        self.mock_object(self.root._session, 'post', mock.Mock(
             side_effect=Exception))
 
         exception = self.assertRaises(api.NaApiError, self.root.invoke_elem,
@@ -245,15 +243,18 @@ class NetAppApiServerTests(test.TestCase):
         self.root._trace = trace_enabled
         self.root._api_trace_pattern = trace_pattern
         self.mock_object(self.root, '_create_request', mock.Mock(
-            return_value=('abc', fake.FAKE_NA_ELEMENT)))
+            return_value=fake.FAKE_NA_ELEMENT))
         self.mock_object(api, 'LOG')
-        self.root._opener = fake.FAKE_HTTP_OPENER
-        self.mock_object(self.root, '_build_opener')
+        self.root._session = fake.FAKE_HTTP_SESSION
+        self.mock_object(self.root, '_build_session')
         self.mock_object(self.root, '_get_result', mock.Mock(
             return_value=fake.FAKE_NA_ELEMENT))
-        opener_mock = self.mock_object(
-            self.root._opener, 'open', mock.Mock())
-        opener_mock.read.side_effect = ['resp1', 'resp2']
+
+        response = mock.Mock()
+        response.text = 'res1'
+        self.mock_object(
+            self.root._session, 'post', mock.Mock(
+                return_value=response))
 
         self.root.invoke_elem(na_element)
 

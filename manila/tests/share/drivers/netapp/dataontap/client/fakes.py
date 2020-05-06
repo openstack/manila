@@ -14,7 +14,7 @@
 
 from lxml import etree
 import mock
-from six.moves import urllib
+import requests
 
 from manila.share.drivers.netapp.dataontap.client import api
 
@@ -2597,7 +2597,7 @@ FAKE_RESULT_API_ERRNO_VALID.add_attr('errno', '14956')
 FAKE_RESULT_SUCCESS = api.NaElement('result')
 FAKE_RESULT_SUCCESS.add_attr('status', 'passed')
 
-FAKE_HTTP_OPENER = urllib.request.build_opener()
+FAKE_HTTP_SESSION = requests.Session()
 
 FAKE_MANAGE_VOLUME = {
     'aggregate': SHARE_AGGREGATE_NAME,
