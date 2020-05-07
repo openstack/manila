@@ -189,6 +189,7 @@ if [[ "$MANILA_SETUP_IPV6" == True ]]; then
     # regular Neutron DevStack configuration.
     echo "NEUTRON_CREATE_INITIAL_NETWORKS=False" >> $localconf
     echo "IP_VERSION=4+6" >> $localconf
+    echo "MANILA_RESTORE_IPV6_DEFAULT_ROUTE=False" >> $localconf
 fi
 
 if [[ "$DRIVER" == "generic"* ]]; then
