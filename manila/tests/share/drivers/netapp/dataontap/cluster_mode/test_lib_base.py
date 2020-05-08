@@ -4731,8 +4731,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertFalse(self.library._create_export.called)
         self.assertEqual(3, mock_warning_log.call_count)
 
-    @ddt.data('cutover_hard_deferred', 'cutover_soft_deferred', 'completed')
-    def test_migration_complete(self, phase):
+    @ddt.data({'phase': 'cutover_hard_deferred',
+               'provisioning_options': fake.PROVISIONING_OPTIONS_WITH_QOS,
+               'policy_group_name': fake.QOS_POLICY_GROUP_NAME},
+              {'phase': 'cutover_soft_deferred',
+               'provisioning_options': fake.PROVISIONING_OPTIONS_WITH_QOS,
+               'policy_group_name': fake.QOS_POLICY_GROUP_NAME},
+              {'phase': 'completed',
+               'provisioning_options': fake.PROVISIONING_OPTIONS,
+               'policy_group_name': False})
+    @ddt.unpack
+    def test_migration_complete(self, phase, provisioning_options,
+                                policy_group_name):
         snap = fake_share.fake_snapshot_instance(
             id='src-snapshot', provider_location='test-src-provider-location')
         dest_snap = fake_share.fake_snapshot_instance(id='dest-snapshot',
@@ -4766,10 +4776,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=fake.EXTRA_SPEC))
         self.mock_object(
             self.library, '_get_provisioning_options',
-            mock.Mock(return_value=fake.PROVISIONING_OPTIONS_WITH_QOS))
+            mock.Mock(return_value=provisioning_options))
         self.mock_object(
             self.library, '_modify_or_create_qos_for_existing_share',
-            mock.Mock(return_value=fake.QOS_POLICY_GROUP_NAME))
+            mock.Mock(return_value=policy_group_name))
         self.mock_object(vserver_client, 'modify_volume')
 
         src_share = fake_share.fake_share_instance(id='source-share-instance')
@@ -4794,7 +4804,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             dest_share, fake.SHARE_SERVER, fake.VSERVER1, vserver_client,
             clear_current_export_policy=False)
         vserver_client.modify_volume.assert_called_once_with(
-            dest_aggr, 'new_share_name', **fake.PROVISIONING_OPTIONS_WITH_QOS)
+            dest_aggr, 'new_share_name', **provisioning_options)
         mock_info_log.assert_called_once()
         if phase != 'completed':
             self.assertEqual(2, mock_warning_log.call_count)
