@@ -45,7 +45,7 @@
           disable_service s-proxy
 
           enable_plugin manila https://opendev.org/openstack/manila
-
+          enable_plugin manila-tempest-plugin https://opendev.org/openstack/manila-tempest-plugin
           enable_plugin devstack-plugin-ceph https://opendev.org/openstack/devstack-plugin-ceph
 
           # Enable CephFS as the backend for Manila.
