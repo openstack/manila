@@ -94,6 +94,10 @@ class Detail(object):
           " smaller than the current used space. The share status has been"
           " set to available. Please select a size greater than the current"
           " used space."))
+    DRIVER_FAILED_SHRINK = (
+        '019',
+        _("Share Driver does not support shrinking shares."
+          " Shrinking share operation failed."))
 
     ALL = (UNKNOWN_ERROR,
            NO_VALID_HOST,
@@ -112,7 +116,8 @@ class Detail(object):
            DRIVER_FAILED_EXTEND,
            FILTER_CREATE_FROM_SNAPSHOT,
            DRIVER_FAILED_CREATING_FROM_SNAP,
-           DRIVER_REFUSED_SHRINK)
+           DRIVER_REFUSED_SHRINK,
+           DRIVER_FAILED_SHRINK)
 
     # Exception and detail mappings
     EXCEPTION_DETAIL_MAPPINGS = {
