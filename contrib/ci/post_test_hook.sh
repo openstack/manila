@@ -344,21 +344,6 @@ export OS_USER_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
 source $BASE/new/manila/contrib/ci/common.sh
 manila_wait_for_drivers_init $MANILA_CONF
 
-
-TCP_PORTS=(2049 111 32803 892 875 662)
-UDP_PORTS=(111 32769 892 875 662)
-for ipcmd in iptables ip6tables; do
-    # (aovchinnikov): extra rules are needed to allow instances talk to host.
-    sudo $ipcmd -N manila-nfs
-    sudo $ipcmd -I INPUT 1 -j manila-nfs
-    for port in ${TCP_PORTS[*]}; do
-        sudo $ipcmd -A manila-nfs -m tcp -p tcp --dport $port -j ACCEPT
-    done
-    for port in ${UDP_PORTS[*]}; do
-        sudo $ipcmd -A manila-nfs -m udp -p udp --dport $port -j ACCEPT
-    done
-done
-
 source $BASE/new/devstack/openrc admin admin
 public_net_id=$(openstack network list --name $PUBLIC_NETWORK_NAME -f value -c ID )
 iniset $TEMPEST_CONFIG network public_network_id $public_net_id
