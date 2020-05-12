@@ -96,8 +96,8 @@ class NetAppBaseClient(object):
                 LOG.exception("Could not get licenses list.")
 
         return sorted(
-            [l.get_child_content('package').lower()
-             for l in result.get_child_by_name('licenses').get_children()])
+            [child.get_child_content('package').lower()
+             for child in result.get_child_by_name('licenses').get_children()])
 
     def send_ems_log_message(self, message_dict):
         """Sends a message to the Data ONTAP EMS log."""

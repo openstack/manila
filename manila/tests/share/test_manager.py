@@ -1441,7 +1441,7 @@ class ShareManagerTestCase(test.TestCase):
         mock_replica_update = self.mock_object(db, 'share_replica_update')
         expected_update_calls = [mock.call(
             mock.ANY, r['id'], {'status': constants.STATUS_ERROR})
-            for r in(replica, active_replica)]
+            for r in (replica, active_replica)]
 
         self.assertRaises(exception.ManilaException,
                           self.share_manager.promote_share_replica,

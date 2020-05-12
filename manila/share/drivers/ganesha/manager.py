@@ -165,23 +165,23 @@ def parseconf(conf):
 
     Convert config to a (nested) dictionary.
     """
-    def list_to_dict(l):
+    def list_to_dict(src_list):
         # Convert a list of key-value pairs stored as tuples to a dict.
         # For tuples with identical keys, preserve all the values in a
         # list. e.g., argument [('k', 'v1'), ('k', 'v2')] to function
         # returns {'k': ['v1', 'v2']}.
-        d = {}
-        for i in l:
+        dst_dict = {}
+        for i in src_list:
             if isinstance(i, tuple):
                 k, v = i
                 if isinstance(v, list):
                     v = list_to_dict(v)
-                if k in d:
-                    d[k] = [d[k]]
-                    d[k].append(v)
+                if k in dst_dict:
+                    dst_dict[k] = [dst_dict[k]]
+                    dst_dict[k].append(v)
                 else:
-                    d[k] = v
-        return d
+                    dst_dict[k] = v
+        return dst_dict
 
     try:
         # allow config to be specified in JSON --

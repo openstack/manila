@@ -3243,7 +3243,7 @@ def share_export_locations_update(context, share_instance_id, export_locations,
         context, share_instance_id, session=session)
 
     def get_path_list_from_rows(rows):
-        return set([l['path'] for l in rows])
+        return set([row['path'] for row in rows])
 
     current_el_paths = get_path_list_from_rows(current_el_rows)
 

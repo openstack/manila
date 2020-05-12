@@ -117,7 +117,7 @@ class IPWrapper(SubProcessBase):
     @classmethod
     def get_namespaces(cls):
         output = cls._execute('', 'netns', ('list',))
-        return [l.strip() for l in output.split('\n')]
+        return [ns.strip() for ns in output.split('\n')]
 
 
 class IPDevice(SubProcessBase):
