@@ -116,6 +116,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
     def test_update_share_stats(self):
         data = {}
         self.driver.plugin = mock.Mock()
+        self.driver.plugin.get_default_filter_function.return_value = None
         self.driver._update_share_stats()
         data["share_backend_name"] = FAKE_BACKEND
         data["driver_handles_share_servers"] = True
@@ -203,3 +204,8 @@ class EMCShareFrameworkTestCase(test.TestCase):
         self.driver.unmanage_snapshot(snapshot)
         self.driver.unmanage_snapshot_with_server(snapshot, share_server)
         self.driver.unmanage_server(server_details)
+
+    def test_get_default_filter_function(self):
+        expected = None
+        actual = self.driver.get_default_filter_function()
+        self.assertEqual(expected, actual)

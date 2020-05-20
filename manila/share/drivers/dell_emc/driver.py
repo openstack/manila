@@ -308,3 +308,8 @@ class EMCShareDriver(driver.ShareDriver):
                                                   share_server)
         else:
             raise NotImplementedError()
+
+    def get_default_filter_function(self):
+        if hasattr(self.plugin, 'get_default_filter_function'):
+            return self.plugin.get_default_filter_function()
+        return None

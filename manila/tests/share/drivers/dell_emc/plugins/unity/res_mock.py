@@ -354,6 +354,7 @@ def do_connection_connect(conn, res):
     conn.port_set = set(['spa_eth1', 'spa_eth2'])
     conn.nas_server_pool = StorageObjectMock(res['nas_server_pool'])
     conn.storage_processor = StorageObjectMock(res['sp_a'])
+    conn.report_default_filter_function = False
 
 
 def patch_connection(func):

@@ -42,9 +42,10 @@ from manila import utils
      7.0.1 - Fix parsing management IPv6 address
      7.0.2 - Bugfix: failed to delete CIFS share if wrong access was set
      8.0.0 - Supports manage/unmanage share server/share/snapshot
+     9.0.0 - Implements default filter function
 """
 
-VERSION = "8.0.0"
+VERSION = "9.0.0"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
@@ -72,6 +73,9 @@ UNITY_OPTS = [
                help='NAS server used for creating share when driver '
                     'is in DHSS=False mode. It is required when '
                     'driver_handles_share_servers=False in manila.conf.'),
+    cfg.StrOpt('report_default_filter_function',
+               default=False,
+               help='Whether or not report default filter function.'),
 ]
 
 CONF = cfg.CONF
@@ -143,6 +147,8 @@ class UnityStorageConnection(driver.StorageConnection):
         self.validate_port_configuration(self.port_ids_conf)
         pool_name = config.unity_server_meta_pool
         self._config_pool(pool_name)
+        self.report_default_filter_function = config.safe_get(
+            'report_default_filter_function')
 
     def get_server_name(self, share_server=None):
         if not self.driver_handles_share_servers:
@@ -894,3 +900,8 @@ class UnityStorageConnection(driver.StorageConnection):
         """Reverts a share (in place) to the specified snapshot."""
         snapshot_id = unity_utils.get_snapshot_id(snapshot)
         return self.client.restore_snapshot(snapshot_id)
+
+    def get_default_filter_function(self):
+        if self.report_default_filter_function:
+            return "share.size >= 3"
+        return None
