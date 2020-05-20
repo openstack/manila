@@ -30,7 +30,7 @@
           cat << 'EOF' >>"/tmp/dg-local.conf"
           [[local|localrc]]
           enable_plugin manila https://opendev.org/openstack/manila
-
+          enable_plugin manila-tempest-plugin https://opendev.org/openstack/manila-tempest-plugin
           enable_plugin devstack-plugin-ceph https://opendev.org/openstack/devstack-plugin-ceph
 
           # Enable CephFS as the backend for Manila.
@@ -69,6 +69,8 @@
           export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
           OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
           export OVERRIDE_ENABLED_SERVICES
+
+          export MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=False
 
           function pre_test_hook {
               # Configure Manila with a CephFS Native or NFS driver backend.

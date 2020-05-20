@@ -35,6 +35,8 @@
           export DEVSTACK_GATE_TEMPEST_NOTESTS=1
           export DEVSTACK_GATE_GRENADE=pullup
 
+          export MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=False
+
           # Basic services needed for grenade manila job using dummy driver
           export OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit
 

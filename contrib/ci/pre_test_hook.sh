@@ -40,6 +40,8 @@ echo "MANILA_BACKEND2_CONFIG_GROUP_NAME=paris" >> $localconf
 echo "MANILA_SHARE_BACKEND1_NAME=LONDON" >> $localconf
 echo "MANILA_SHARE_BACKEND2_NAME=PARIS" >> $localconf
 
+echo "MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=${MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE:=True}" >> $localconf
+
 # === Handle script arguments ===
 # First argument is expected to be a boolean-like value for DHSS.
 DHSS=$1
