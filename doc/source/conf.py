@@ -65,9 +65,10 @@ policy_generator_config_file = (
 sample_policy_basename = '_static/manila'
 
 # openstackdocstheme options
-repository_name = 'openstack/manila'
-bug_project = 'manila'
-bug_tag = 'docs'
+openstackdocs_repo_name = 'openstack/manila'
+openstackdocs_pdf_link = True
+openstackdocs_bug_project = 'manila'
+openstackdocs_bug_tag = 'docs'
 
 todo_include_todos = True
 
@@ -123,7 +124,7 @@ add_module_names = False
 show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = 'native'
 
 # A list of ignored prefixes for module index sorting.
 modindex_common_prefix = ['manila.']
