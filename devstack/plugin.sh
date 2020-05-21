@@ -959,6 +959,24 @@ function install_libraries {
     fi
 }
 
+function allow_host_ports_for_share_mounting {
+
+    TCP_PORTS=(2049 111 32803 892 875 662)
+    UDP_PORTS=(111 32769 892 875 662)
+    for ipcmd in iptables ip6tables; do
+        # (aovchinnikov): extra rules are needed to allow instances talk to
+        # host.
+        sudo $ipcmd -N manila-nfs
+        sudo $ipcmd -I INPUT 1 -j manila-nfs
+        for port in ${TCP_PORTS[*]}; do
+            sudo $ipcmd -A manila-nfs -m tcp -p tcp --dport $port -j ACCEPT
+        done
+        for port in ${UDP_PORTS[*]}; do
+            sudo $ipcmd -A manila-nfs -m udp -p udp --dport $port -j ACCEPT
+        done
+    done
+}
+
 function setup_ipv6 {
 
     # This will fail with multiple default routes and is not needed in CI
@@ -1187,6 +1205,13 @@ elif [[ "$1" == "stack" && "$2" == "test-config" ]]; then
 
     echo_summary "Update Tempest config"
     update_tempest
+
+
+    if [[ "$(trueorfalse False MANILA_ALLOW_NAS_SERVER_PORTS_ON_HOST)" == "True" ]]; then
+        echo_summary "Allowing IPv4 and IPv6 access to NAS ports on the host"
+        allow_host_ports_for_share_mounting
+    fi
+
 fi
 
 if [[ "$1" == "unstack" ]]; then
