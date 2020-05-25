@@ -1,4 +1,13 @@
 ---
+upgrade:
+  - |
+    A new configuration option called ``report_default_filter_function`` has
+    been added to the Dell EMC Unity driver. It can be set to True or False,
+    and the default value is False. When set to True, the scheduler will
+    disallow the creation of shares smaller than 3 GiB on the Dell EMC Unity
+    back end. The default value of this option will be changed to ``True`` in
+    a future release, so always set the desired value in your manila.conf per
+    your expectations.
 features:
   - |
     Dell EMC Unity: Default filter function support for 3GB share size.
