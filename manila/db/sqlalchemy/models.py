@@ -81,14 +81,6 @@ class Service(BASE, ManilaBase):
     )
 
 
-class ManilaNode(BASE, ManilaBase):
-    """Represents a running manila service on a host."""
-
-    __tablename__ = 'manila_nodes'
-    id = Column(Integer, primary_key=True)
-    service_id = Column(Integer, ForeignKey('services.id'), nullable=True)
-
-
 class Quota(BASE, ManilaBase):
     """Represents a single quota override for a project.
 
