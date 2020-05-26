@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver is now fixed to avoid the deletion of `Cluster` and
+    `Default` ipspaces when deleting a share server. This issue was happening
+    only when operating in `driver_handles_share_servers` enabled mode and
+    creating shares using `flat` network type. See
+    `Launchpad bug 1880747 <https://launchpad.net/bugs/1880747>`_ for more
+    details.
