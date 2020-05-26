@@ -364,7 +364,7 @@ class ShareCommands(object):
     @args('--force', required=False, type=bool, default=False,
           help="Ignore validations.")
     def update_host(self, current_host, new_host, force=False):
-        """Modify the host name associated with a share.
+        """Modify the host name associated with a share and share server.
 
            Particularly to recover from cases where one has moved
            their Manila Share node, or modified their 'host' opt
@@ -376,6 +376,11 @@ class ShareCommands(object):
         updated = db.share_instances_host_update(ctxt, current_host, new_host)
         print("Updated host of %(count)s share instances on %(chost)s "
               "to %(nhost)s." % {'count': updated, 'chost': current_host,
+                                 'nhost': new_host})
+
+        servers = db.share_servers_host_update(ctxt, current_host, new_host)
+        print("Updated host of %(count)s share servers on %(chost)s "
+              "to %(nhost)s." % {'count': servers, 'chost': current_host,
                                  'nhost': new_host})
 
 

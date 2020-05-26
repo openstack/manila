@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    The ``manila-manage share update_host`` command now updates the host
+    attribute of share servers in addition to shares.

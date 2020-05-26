@@ -392,13 +392,19 @@ class ManilaCmdManageTestCase(test.TestCase):
                          mock.Mock(return_value='admin_ctxt'))
         self.mock_object(db, 'share_instances_host_update',
                          mock.Mock(return_value=20))
+        self.mock_object(db, 'share_servers_host_update',
+                         mock.Mock(return_value=5))
 
         with mock.patch('sys.stdout', new=six.StringIO()) as intercepted_op:
             self.share_cmds.update_host(current_host, new_host, force)
 
-        expected_op = ("Updated host of 20 share instances on "
-                       "%(chost)s to %(nhost)s." %
-                       {'chost': current_host, 'nhost': new_host})
-        self.assertEqual(expected_op, intercepted_op.getvalue().strip())
+        expected_op_si = ("Updated host of 20 share instances on "
+                          "%(chost)s to %(nhost)s." %
+                          {'chost': current_host, 'nhost': new_host})
+        expected_op_sv = ("Updated host of 5 share servers on "
+                          "%(chost)s to %(nhost)s." %
+                          {'chost': current_host, 'nhost': new_host})
+        self.assertEqual(expected_op_si + "\n" + expected_op_sv,
+                         intercepted_op.getvalue().strip())
         db.share_instances_host_update.assert_called_once_with(
             'admin_ctxt', current_host, new_host)
