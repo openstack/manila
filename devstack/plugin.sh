@@ -1176,8 +1176,17 @@ elif [[ "$1" == "stack" && "$2" == "test-config" ]]; then
     fi
     ###########################################################################
 
-    echo_summary "Fetching and installing manila-tempest-plugin system-wide"
-    install_manila_tempest_plugin
+
+    if [ $(trueorfalse False MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE) == True ]; then
+        echo_summary "Fetching and installing manila-tempest-plugin system-wide"
+        install_manila_tempest_plugin
+        export DEPRECATED_TEXT="$DEPRECATED_TEXT\nInstalling
+        manila-tempest-plugin can be done with the help of its own DevStack
+        plugin by adding: \n\n\t'enable_plugin manila-tempest-plugin
+        https://opendev.org/openstack/manila-tempest-plugin'.\n\nManila's
+        DevStack plugin will stop installing it automatically."
+    fi
+
     echo_summary "Update Tempest config"
     update_tempest
 fi
