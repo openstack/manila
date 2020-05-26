@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Added ``cleanup`` sub command to the ``manila-manage service`` command for
+    administrators to be able to soft-delete services marked as down.
+fixes:
+  - |
+    Added ``manila-manage service cleanup`` command to soft-delete entries from
+    the services table for services, that are down. E.g. this fixed the removal
+    of services for hosts, that had been renamed.

@@ -344,6 +344,17 @@ class ServiceCommands(object):
                 svc['updated_at'],
             ))
 
+    def cleanup(self):
+        """Remove manila services reporting as 'down'."""
+        ctxt = context.get_admin_context()
+        services = db.service_get_all(ctxt)
+
+        for svc in services:
+            if utils.service_is_up(svc):
+                continue
+            db.service_destroy(ctxt, svc['id'])
+            print("Cleaned up service %s" % svc['host'])
+
 
 class ShareCommands(object):
 
