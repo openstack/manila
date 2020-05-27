@@ -161,6 +161,13 @@ class TestClient(test.TestCase):
         client.delete_snapshot(snapshot)
 
     @res_mock.patch_client
+    def test_cifs_deny_access__nonexistentuser_expt(self, client):
+        try:
+            client.cifs_deny_access('fake_share_name', 'fake_username')
+        except fake_exceptions.UnityAclUserNotFoundError:
+            self.fail("UnityAclUserNotFoundError raised unexpectedly!")
+
+    @res_mock.patch_client
     def test_nfs_deny_access__nonexistent_expt(self, client):
         client.nfs_deny_access('fake_share_name', 'fake_ip_addr')
 
