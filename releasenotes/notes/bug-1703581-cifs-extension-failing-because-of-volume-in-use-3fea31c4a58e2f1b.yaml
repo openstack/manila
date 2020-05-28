@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed the Generic driver to evict and kill any user processes accessing
+    a share before attempting to extend or shrink a CIFS share.
