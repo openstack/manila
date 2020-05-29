@@ -1700,9 +1700,29 @@ class NetAppCmodeFileStorageLibrary(object):
                                                      replica_list)
                 new_replica_list.append(r)
 
-        # Unmount the original active replica.
         orig_active_vserver = dm_session.get_vserver_from_share(
             orig_active_replica)
+
+        # Cleanup the original active share if necessary
+        orig_active_replica_backend = (
+            share_utils.extract_host(orig_active_replica['host'],
+                                     level='backend_name'))
+        orig_active_replica_name = self._get_backend_share_name(
+            orig_active_replica['id'])
+        orig_active_vserver_client = data_motion.get_client_for_backend(
+            orig_active_replica_backend, vserver_name=orig_active_vserver)
+
+        orig_active_replica_helper = self._get_helper(orig_active_replica)
+        orig_active_replica_helper.set_client(orig_active_vserver_client)
+
+        try:
+            orig_active_replica_helper.cleanup_demoted_replica(
+                orig_active_replica, orig_active_replica_name)
+        except exception.StorageCommunicationException:
+            LOG.exception("Could not cleanup the original active replica %s.",
+                          orig_active_replica['id'])
+
+        # Unmount the original active replica.
         self._unmount_orig_active_replica(orig_active_replica,
                                           orig_active_vserver)
 

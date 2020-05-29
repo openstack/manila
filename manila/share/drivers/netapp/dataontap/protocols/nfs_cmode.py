@@ -182,3 +182,7 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
         else:
             self._client.rename_nfs_export_policy(actual_export_policy,
                                                   expected_export_policy)
+
+    @na_utils.trace
+    def cleanup_demoted_replica(self, share, share_name):
+        return
