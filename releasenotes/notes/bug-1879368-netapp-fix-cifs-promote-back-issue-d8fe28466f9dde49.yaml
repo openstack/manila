@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed an issue while promoting back share replicas created using CIFS
+    protocol. Please refer to the
+    `Launchpad bug #1879368 <https://bugs.launchpad.net/manila/+bug/1879368>`_
+    for more details.
