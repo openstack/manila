@@ -214,3 +214,9 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
         self.assertEqual(ip, result_ip)
         self.assertEqual(share_name, result_share_name)
+
+    def test_cleanup_demoted_replica(self):
+        self.helper.cleanup_demoted_replica(fake.CIFS_SHARE, fake.SHARE_NAME)
+
+        self.mock_client.remove_cifs_share.assert_called_once_with(
+            fake.SHARE_NAME)
