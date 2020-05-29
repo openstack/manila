@@ -61,9 +61,11 @@ class DockerExecHelper(driver.ExecuteMixin):
         # provide any more possibilities for an exploitation than other
         # first-party drivers.
 
+        path = "{0}:/shares".format(
+            self.configuration.container_volume_mount_path)
         cmd = ["docker", "run", "-d", "-i", "-t", "--privileged",
                "-v", "/dev:/dev", "--name=%s" % name,
-               "-v", "/tmp/shares:/shares", image_name]
+               "-v", path, image_name]
         try:
             result = self._inner_execute(cmd)
         except (exception.ProcessExecutionError, OSError):

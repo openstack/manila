@@ -34,6 +34,7 @@ class DockerExecHelperTestCase(test.TestCase):
         super(DockerExecHelperTestCase, self).setUp()
         self.fake_conf = configuration.Configuration(None)
         self.fake_conf.container_image_name = "fake_image"
+        self.fake_conf.container_volume_mount_path = "/tmp/shares"
         self.DockerExecHelper = container_helper.DockerExecHelper(
             configuration=self.fake_conf)
 

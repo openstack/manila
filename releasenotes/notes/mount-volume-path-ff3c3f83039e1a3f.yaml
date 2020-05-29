@@ -1,0 +1,6 @@
+---
+upgrade:
+  - Added a new config option ``container_volume_mount_path``.
+    This option defines the path where ContainerShareDriver driver should
+    mount a logical volume on the host  prior to providing access to it from
+    a container.
