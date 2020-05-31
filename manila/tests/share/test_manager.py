@@ -3681,6 +3681,52 @@ class ShareManagerTestCase(test.TestCase):
                                   (['INFO', 'share.extend.start'],
                                    ['INFO', 'share.extend.end']))
 
+    def test_shrink_share_not_supported(self):
+        share = db_utils.create_share(size=2)
+        new_size = 1
+        share_id = share['id']
+
+        self.mock_object(self.share_manager.db, 'share_get',
+                         mock.Mock(return_value=share))
+        self.mock_object(self.share_manager, 'driver')
+        self.mock_object(self.share_manager.db, 'share_update')
+
+        self.mock_object(quota.QUOTAS, 'reserve')
+        self.mock_object(quota.QUOTAS, 'rollback')
+        self.mock_object(self.share_manager.driver, 'shrink_share',
+                         mock.Mock(side_effect=NotImplementedError))
+
+        self.assertRaises(
+            exception.ShareShrinkingError,
+            self.share_manager.shrink_share, self.context, share_id, new_size)
+
+        self.share_manager.driver.shrink_share.assert_called_once_with(
+            utils.IsAMatcher(models.ShareInstance),
+            new_size, share_server=None
+        )
+
+        self.share_manager.db.share_update.assert_called_once_with(
+            mock.ANY, share_id, {'status': constants.STATUS_AVAILABLE}
+        )
+
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY, gigabytes=-1, project_id=share['project_id'],
+            share_type_id=None, user_id=share['user_id'],
+        )
+        quota.QUOTAS.rollback.assert_called_once_with(
+            mock.ANY, mock.ANY, project_id=share['project_id'],
+            share_type_id=None, user_id=share['user_id'],
+        )
+        self.assertTrue(self.share_manager.db.share_get.called)
+
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.SHRINK,
+            share['project_id'],
+            resource_type=message_field.Resource.SHARE,
+            resource_id=share_id,
+            detail=message_field.Detail.DRIVER_FAILED_SHRINK)
+
     @ddt.data((True, [{'id': 'fake'}]), (False, []))
     @ddt.unpack
     def test_shrink_share_quota_error(self, supports_replication,

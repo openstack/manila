@@ -3945,6 +3945,16 @@ class ShareManager(manager.SchedulerDependentManager):
                                        share_instance, "shrink.start")
 
         def error_occurred(exc, msg, status=constants.STATUS_SHRINKING_ERROR):
+            if isinstance(exc, NotImplementedError):
+                msg = _("Shrink share operation not supported.")
+                status = constants.STATUS_AVAILABLE
+                self.message_api.create(
+                    context,
+                    message_field.Action.SHRINK,
+                    share['project_id'],
+                    resource_type=message_field.Resource.SHARE,
+                    resource_id=share['id'],
+                    detail=message_field.Detail.DRIVER_FAILED_SHRINK)
             LOG.exception(msg, resource=share)
             self.db.share_update(context, share['id'], {'status': status})
 
