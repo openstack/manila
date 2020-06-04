@@ -125,6 +125,9 @@ type of replication. In the example, we assume a configuration of two
 Availability Zones [1]_,
 called `availability_zone_1` and `availability_zone_2`.
 
+Since the Train release, some drivers operating in
+``driver_handles_share_server=True`` mode support share replication.
+
 Multiple availability zones are not necessary to use the replication feature.
 However, the use of an availability zone as a ``failure domain`` is encouraged.
 
@@ -212,6 +215,11 @@ protocol, size and the availability zone.
    | metadata                    | {}                                   |
    +-----------------------------+--------------------------------------+
 
+.. note::
+   If you are creating a share with the share type specification
+   ``driver_handles_share_servers=True``, the share network parameter is
+   required for the operation to be performed.
+
 Use the :command:`manila show` command to retrieve details of the share.
 Specify the share ID or name as a parameter.
 
@@ -273,9 +281,7 @@ Create a share replica
 
 Use the :command:`manila share-replica-create` command to create a share
 replica. Specify the share ID or name as a parameter. You may
-optionally provide the `availability_zone` and `share_network_id`. In the
-example below, `share_network_id` is not used since the ZFSonLinux driver
-does not support it.
+optionally provide the `availability_zone`.
 
 .. code-block:: console
 
@@ -296,6 +302,13 @@ does not support it.
    +-------------------+--------------------------------------+
 
 See details of the newly created share replica
+
+.. note::
+   Since API version 2.51 (Train release), a share network is able to span
+   multiple subnets in different availability zones. So, when using a share
+   type with specification ``driver_handles_share_servers=True``, users must
+   ensure that the share network has a subnet in the availability zone that
+   they desire the share replica to be created in.
 
 Use the :command:`manila share-replica-show` command to see details
 of the newly created share replica. Specify the share replica's ID as a
