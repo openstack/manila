@@ -20,4 +20,6 @@ User
 
     API
     create-and-manage-shares
+    share-network-operations
+    share-network-subnet-operations
     troubleshooting-asynchronous-failures
