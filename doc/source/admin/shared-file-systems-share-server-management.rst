@@ -39,6 +39,7 @@ To bring a share server under the Shared File System service, use the
 
     manila share-server-manage
         [--driver_options [<key=value> [<key=value> ...]]]
+        [--share_network_subnet <share-network-subnet>]]
         <host> <share_network> <identifier>
 
 The positional arguments are:
@@ -55,6 +56,16 @@ metadata items as key and value pairs. The specific key-value pairs necessary
 vary from driver to driver. Consult the driver-specific documentation to
 determine if any specific parameters must be supplied. Ensure that the share
 type has the ``driver_handles_share_servers = True`` extra-spec.
+
+The ``share_network_subnet`` is an optional parameter which was introduced in
+Train release. Due to a change in the share networks structure, a share
+network no longer contains the following attributes: ``neutron_net_id``,
+``neutron_subnet_id``, ``gateway``, ``mtu``, ``network_type``, ``ip_version``,
+``segmentation_id``. These attributes now pertain to the share network subnet
+entity, and a share network can span multiple share network subnets in
+different availability zones. If you do not specify a share network subnet,
+the Shared File Systems Service will choose the default one (which does not
+pertain to any availability zone).
 
 If using an OpenStack Networking (Neutron) based plugin, ensure that:
 
