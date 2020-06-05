@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed `bug #1882590 <https://bugs.launchpad.net/manila/+bug/1882590>`_
+    that caused an error on starting a NetApp backend when using the SVM
+    scoped account.
