@@ -18,7 +18,7 @@ import copy
 from manila.common import constants
 import manila.tests.share.drivers.netapp.fakes as na_fakes
 
-
+NO_SNAPRESTORE_LICENSE = '"SnapRestore" is not licensed in the cluster.'
 BACKEND_NAME = 'fake_backend_name'
 DRIVER_NAME = 'fake_driver_name'
 APP_VERSION = 'fake_app_vsersion'
