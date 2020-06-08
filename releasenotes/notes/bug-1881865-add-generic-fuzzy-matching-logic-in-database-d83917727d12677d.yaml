@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed `bug #1881865 <https://bugs.launchpad.net/manila/+bug/1881865>`_
+    Added generic fuzzy matching logic to the database layer, This logic is
+    applied to query share snapshot list, This will greatly improve the speed
+    of paging fuzzy queries.

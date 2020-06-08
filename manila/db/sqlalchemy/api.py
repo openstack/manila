@@ -274,6 +274,50 @@ def model_query(context, model, *args, **kwargs):
         model=model, session=session, args=args, **kwargs)
 
 
+def _process_model_like_filter(model, query, filters):
+    """Applies regex expression filtering to a query.
+
+    :param model: model to apply filters to
+    :param query: query to apply filters to
+    :param filters: dictionary of filters with regex values
+    :returns: the updated query.
+    """
+    if query is None:
+        return query
+
+    if filters:
+        for key in sorted(filters):
+            column_attr = getattr(model, key)
+            if 'property' == type(column_attr).__name__:
+                continue
+            value = filters[key]
+            if not (isinstance(value, (str, int))):
+                continue
+            query = query.filter(
+                column_attr.op('LIKE')(u'%%%s%%' % value))
+    return query
+
+
+def apply_like_filters(process_exact_filters):
+    def _decorator(query, model, filters, legal_keys):
+        exact_filters = filters.copy()
+        regex_filters = {}
+        for key, value in filters.items():
+            if key not in legal_keys:
+                # Skip ones we're not filtering on
+                continue
+            # NOTE(haixin): For inexact match, the filter keys
+            # are in the format of 'key~=value'
+            if key.endswith('~'):
+                exact_filters.pop(key)
+                regex_filters[key.rstrip('~')] = value
+        query = process_exact_filters(query, model, exact_filters,
+                                      legal_keys)
+        return _process_model_like_filter(model, query, regex_filters)
+    return _decorator
+
+
+@apply_like_filters
 def exact_filter(query, model, filters, legal_keys,
                  created_at_key='created_at'):
     """Applies exact match filtering to a query.
@@ -2865,11 +2909,25 @@ def share_snapshot_get(context, snapshot_id, session=None):
 
 def _share_snapshot_get_all_with_filters(context, project_id=None,
                                          share_id=None, filters=None,
+                                         limit=None, offset=None,
                                          sort_key=None, sort_dir=None):
+    """Retrieves all snapshots.
+
+    If no sorting parameters are specified then returned snapshots are sorted
+    by the 'created_at' key and desc order.
+
+    :param context: context to query under
+    :param filters: dictionary of filters
+    :param limit: maximum number of items to return
+    :param sort_key: attribute by which results should be sorted,default is
+                     created_at
+    :param sort_dir: direction in which results should be sorted
+    :returns: list of matching snapshots
+    """
     # Init data
-    sort_key = sort_key or 'share_id'
+    sort_key = sort_key or 'created_at'
     sort_dir = sort_dir or 'desc'
-    filters = filters or {}
+    filters = copy.deepcopy(filters) if filters else {}
     query = model_query(context, models.ShareSnapshot)
 
     if project_id:
@@ -2879,60 +2937,65 @@ def _share_snapshot_get_all_with_filters(context, project_id=None,
     query = query.options(joinedload('share'))
     query = query.options(joinedload('instances'))
 
+    # Snapshots with no instances are filtered out.
+    query = query.filter(
+        models.ShareSnapshot.id == models.ShareSnapshotInstance.snapshot_id)
+
     # Apply filters
     if 'usage' in filters:
         usage_filter_keys = ['any', 'used', 'unused']
         if filters['usage'] == 'any':
             pass
         elif filters['usage'] == 'used':
-            query = query.filter(or_(models.Share.snapshot_id == (
-                models.ShareSnapshot.id)))
+            query = query.filter(models.Share.snapshot_id == (
+                models.ShareSnapshot.id))
         elif filters['usage'] == 'unused':
-            query = query.filter(or_(models.Share.snapshot_id != (
-                models.ShareSnapshot.id)))
+            query = query.filter(models.Share.snapshot_id != (
+                models.ShareSnapshot.id))
         else:
             msg = _("Wrong 'usage' key provided - '%(key)s'. "
                     "Expected keys are '%(ek)s'.") % {
                         'key': filters['usage'],
                         'ek': usage_filter_keys}
             raise exception.InvalidInput(reason=msg)
+        filters.pop('usage')
+    if 'status' in filters:
+        query = query.filter(models.ShareSnapshotInstance.status == (
+            filters['status']))
+        filters.pop('status')
 
-    # Apply sorting
-    try:
-        attr = getattr(models.ShareSnapshot, sort_key)
-    except AttributeError:
-        msg = _("Wrong sorting key provided - '%s'.") % sort_key
-        raise exception.InvalidInput(reason=msg)
-    if sort_dir.lower() == 'desc':
-        query = query.order_by(attr.desc())
-    elif sort_dir.lower() == 'asc':
-        query = query.order_by(attr.asc())
-    else:
-        msg = _("Wrong sorting data provided: sort key is '%(sort_key)s' "
-                "and sort direction is '%(sort_dir)s'.") % {
-                    "sort_key": sort_key, "sort_dir": sort_dir}
-        raise exception.InvalidInput(reason=msg)
+    legal_filter_keys = ('display_name', 'display_name~',
+                         'display_description', 'display_description~',
+                         'id', 'user_id', 'project_id', 'share_id',
+                         'share_proto', 'size', 'share_size')
+    query = exact_filter(query, models.ShareSnapshot,
+                         filters, legal_filter_keys)
+
+    query = utils.paginate_query(query, models.ShareSnapshot, limit,
+                                 sort_key=sort_key,
+                                 sort_dir=sort_dir,
+                                 offset=offset)
 
     # Returns list of shares that satisfy filters
     return query.all()
 
 
 @require_admin_context
-def share_snapshot_get_all(context, filters=None, sort_key=None,
-                           sort_dir=None):
+def share_snapshot_get_all(context, filters=None, limit=None, offset=None,
+                           sort_key=None, sort_dir=None):
     return _share_snapshot_get_all_with_filters(
-        context, filters=filters, sort_key=sort_key, sort_dir=sort_dir,
-    )
+        context, filters=filters, limit=limit,
+        offset=offset, sort_key=sort_key, sort_dir=sort_dir)
 
 
 @require_context
 def share_snapshot_get_all_by_project(context, project_id, filters=None,
+                                      limit=None, offset=None,
                                       sort_key=None, sort_dir=None):
     authorize_project_context(context, project_id)
     return _share_snapshot_get_all_with_filters(
-        context, project_id=project_id,
-        filters=filters, sort_key=sort_key, sort_dir=sort_dir,
-    )
+        context, project_id=project_id, filters=filters, limit=limit,
+        offset=offset, sort_key=sort_key, sort_dir=sort_dir)
 
 
 @require_context

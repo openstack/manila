@@ -91,12 +91,18 @@ class ShareSnapshotMixin(object):
 
         search_opts = {}
         search_opts.update(req.GET)
+        params = common.get_pagination_params(req)
+        limit, offset = [params.get('limit'), params.get('offset')]
 
         # Remove keys that are not related to share attrs
         search_opts.pop('limit', None)
         search_opts.pop('offset', None)
-        sort_key = search_opts.pop('sort_key', 'created_at')
-        sort_dir = search_opts.pop('sort_dir', 'desc')
+        sort_key, sort_dir = common.get_sort_params(search_opts)
+        key_dict = {"name": "display_name",
+                    "description": "display_description"}
+        for key in key_dict:
+            if sort_key == key:
+                sort_key = key_dict[key]
 
         # NOTE(vponomaryov): Manila stores in DB key 'display_name', but
         # allows to use both keys 'name' and 'display_name'. It is leftover
@@ -119,19 +125,16 @@ class ShareSnapshotMixin(object):
         snapshots = self.share_api.get_all_snapshots(
             context,
             search_opts=search_opts,
+            limit=limit,
+            offset=offset,
             sort_key=sort_key,
             sort_dir=sort_dir,
         )
 
-        # Snapshots with no instances are filtered out.
-        snapshots = list(filter(lambda x: x.get('status') is not None,
-                                snapshots))
-
-        limited_list = common.limited(snapshots, req)
         if is_detail:
-            snapshots = self._view_builder.detail_list(req, limited_list)
+            snapshots = self._view_builder.detail_list(req, snapshots)
         else:
-            snapshots = self._view_builder.summary_list(req, limited_list)
+            snapshots = self._view_builder.summary_list(req, snapshots)
         return snapshots
 
     def _get_snapshots_search_options(self):

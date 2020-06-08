@@ -184,7 +184,7 @@ class ShareSnapshotAPITest(test.TestCase):
             url = url + '&' + k + '=' + v
         req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
 
-        snapshots = [
+        db_snapshots = [
             {'id': 'id1', 'display_name': 'n1',
              'status': 'fake_status', 'share_id': 'fake_share_id'},
             {'id': 'id2', 'display_name': 'n2',
@@ -192,6 +192,7 @@ class ShareSnapshotAPITest(test.TestCase):
             {'id': 'id3', 'display_name': 'n3',
              'status': 'fake_status', 'share_id': 'fake_share_id'},
         ]
+        snapshots = [db_snapshots[1]]
         self.mock_object(share_api.API, 'get_all_snapshots',
                          mock.Mock(return_value=snapshots))
 
@@ -206,14 +207,16 @@ class ShareSnapshotAPITest(test.TestCase):
             search_opts_expected.update({'fake_key': 'fake_value'})
         share_api.API.get_all_snapshots.assert_called_once_with(
             req.environ['manila.context'],
+            limit=int(search_opts['limit']),
+            offset=int(search_opts['offset']),
             sort_key=search_opts['sort_key'],
             sort_dir=search_opts['sort_dir'],
             search_opts=search_opts_expected,
         )
         self.assertEqual(1, len(result['snapshots']))
-        self.assertEqual(snapshots[1]['id'], result['snapshots'][0]['id'])
+        self.assertEqual(snapshots[0]['id'], result['snapshots'][0]['id'])
         self.assertEqual(
-            snapshots[1]['display_name'], result['snapshots'][0]['name'])
+            snapshots[0]['display_name'], result['snapshots'][0]['name'])
 
     def test_snapshot_list_summary_with_search_opts_by_non_admin(self):
         self._snapshot_list_summary_with_search_opts(use_admin_context=False)
@@ -229,7 +232,7 @@ class ShareSnapshotAPITest(test.TestCase):
             url = url + '&' + k + '=' + v
         req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
 
-        snapshots = [
+        db_snapshots = [
             {
                 'id': 'id1',
                 'display_name': 'n1',
@@ -252,6 +255,7 @@ class ShareSnapshotAPITest(test.TestCase):
                 'share_id': 'fake_share_id',
             },
         ]
+        snapshots = [db_snapshots[1]]
 
         self.mock_object(share_api.API, 'get_all_snapshots',
                          mock.Mock(return_value=snapshots))
@@ -267,18 +271,20 @@ class ShareSnapshotAPITest(test.TestCase):
             search_opts_expected.update({'fake_key': 'fake_value'})
         share_api.API.get_all_snapshots.assert_called_once_with(
             req.environ['manila.context'],
+            limit=int(search_opts['limit']),
+            offset=int(search_opts['offset']),
             sort_key=search_opts['sort_key'],
             sort_dir=search_opts['sort_dir'],
             search_opts=search_opts_expected,
         )
         self.assertEqual(1, len(result['snapshots']))
-        self.assertEqual(snapshots[1]['id'], result['snapshots'][0]['id'])
+        self.assertEqual(snapshots[0]['id'], result['snapshots'][0]['id'])
         self.assertEqual(
-            snapshots[1]['display_name'], result['snapshots'][0]['name'])
+            snapshots[0]['display_name'], result['snapshots'][0]['name'])
         self.assertEqual(
-            snapshots[1]['status'], result['snapshots'][0]['status'])
+            snapshots[0]['status'], result['snapshots'][0]['status'])
         self.assertEqual(
-            snapshots[1]['share_id'], result['snapshots'][0]['share_id'])
+            snapshots[0]['share_id'], result['snapshots'][0]['share_id'])
 
     def test_snapshot_list_detail_with_search_opts_by_non_admin(self):
         self._snapshot_list_detail_with_search_opts(use_admin_context=False)
@@ -296,14 +302,6 @@ class ShareSnapshotAPITest(test.TestCase):
 
     def test_snapshot_list_status_none(self):
         snapshots = [
-            {
-                'id': 2,
-                'share_id': 'fakeshareid',
-                'size': 1,
-                'status': 'fakesnapstatus',
-                'name': 'displaysnapname',
-                'description': 'displaysnapdesc',
-            },
             {
                 'id': 3,
                 'share_id': 'fakeshareid',
