@@ -34,6 +34,7 @@ class LVMHelperTestCase(test.TestCase):
         super(LVMHelperTestCase, self).setUp()
         self.share = fake_share()
         self.fake_conf = configuration.Configuration(None)
+        self.fake_conf.container_volume_mount_path = "/tmp/shares"
         self.LVMHelper = storage_helper.LVMHelper(configuration=self.fake_conf)
 
     def fake_exec_sync(self, *args, **kwargs):

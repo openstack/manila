@@ -77,9 +77,8 @@ class LVMHelper(driver.ExecuteMixin):
                             share_name)
 
     def _get_lv_folder(self, share_name):
-        # Provides folder name in hosts /tmp to which logical volume is
-        # mounted prior to providing access to it from a container.
-        return os.path.join("/tmp/shares", share_name)
+        return os.path.join(self.configuration.container_volume_mount_path,
+                            share_name)
 
     def provide_storage(self, share_name, size):
         self._execute("lvcreate", "-p", "rw", "-L",

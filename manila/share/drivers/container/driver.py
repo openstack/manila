@@ -70,6 +70,11 @@ container_opts = [
                help="Helper which facilitates interaction with storage "
                     "solution used to actually store data. By default LVM "
                     "is used to provide storage for a share."),
+    cfg.StrOpt("container_volume_mount_path",
+               default="/tmp/shares",
+               help="Folder name in host to which logical volume will be "
+                    "mounted prior to providing access to it from a "
+                    "container."),
 ]
 
 
