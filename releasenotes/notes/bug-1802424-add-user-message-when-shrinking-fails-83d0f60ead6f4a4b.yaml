@@ -1,0 +1,5 @@
+
+fixes:
+  - |
+    Added a new user message when share shrinking fails due to operation not being
+    supported by the driver.
