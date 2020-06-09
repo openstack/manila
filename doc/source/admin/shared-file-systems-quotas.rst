@@ -25,11 +25,15 @@ To see the absolute limits, run:
    | maxTotalShareSnapshots     | 50    |
    | maxTotalShares             | 50    |
    | maxTotalSnapshotGigabytes  | 1000  |
+   | maxTotalShareReplicas      | 100   |
+   | maxTotalReplicaGigabytes   | 1000  |
    | totalShareGigabytesUsed    | 1     |
    | totalShareNetworksUsed     | 2     |
    | totalShareSnapshotsUsed    | 1     |
    | totalSharesUsed            | 1     |
    | totalSnapshotGigabytesUsed | 1     |
+   | totalShareReplicasUsed     | 1     |
+   | totalReplicaGigabytesUsed  | 1     |
    +----------------------------+-------+
 
 Rate limits control the frequency at which users can issue specific API
@@ -112,6 +116,8 @@ you get the quotas for the specified project.
    | share_networks        | 10                                |
    | share_groups          | 50                                |
    | share_group_snapshots | 50                                |
+   | share_replicas        | 100                               |
+   | replica_gigabytes     | 1000                              |
    +-----------------------+-----------------------------------+
 
 There are default quotas for a project that are set from the
@@ -132,6 +138,8 @@ the :command:`manila quota-defaults` command:
    | share_networks        | 10                                 |
    | share_groups          | 50                                 |
    | share_group_snapshots | 50                                 |
+   | share_replicas        | 100                                |
+   | replica_gigabytes     | 1000                               |
    +-----------------------+------------------------------------+
 
 The administrator can update the quotas for a specific project, or for a
@@ -139,6 +147,11 @@ specific user by providing both the ``--tenant`` and ``--user`` optional
 arguments. It is possible to update the ``shares``, ``snapshots``,
 ``gigabytes``, ``snapshot-gigabytes``, ``share-networks``, ``share_groups``,
 ``share_group_snapshots`` and ``share-type`` quotas.
+
+.. note::
+    Since API version 2.53, the administrator is also able to update quotas
+    for share replicas and replica gigabytes by specifying ``share_replicas``
+    and/or ``replica_gigabytes``.
 
 .. code-block:: console
 

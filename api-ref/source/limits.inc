@@ -11,7 +11,7 @@ tenant (project). An administrator can configure limits in the
 Users can query their rate and absolute limits. The absolute limits
 contain information about:
 
-- Total maximum share memory, in GBs.
+- Total maximum share memory, in GiBs.
 
 - Number of share-networks.
 
@@ -19,9 +19,13 @@ contain information about:
 
 - Number of shares.
 
-- Shares and total used memory, in GBs.
+- Shares and total used memory, in GiBs.
 
-- Snapshots and total used memory, in GBs.
+- Snapshots and total used memory, in GiBs.
+
+- Number of share replicas (since API version 2.53).
+
+- Share replicas and total used memory, in GiBs (since API version 2.53).
 
 Rate limits control the frequency at which users can issue specific
 API requests. Administrators use rate limiting to configure limits
@@ -67,11 +71,15 @@ Response parameters
    - maxTotalShares: maxTotalShares
    - maxTotalShareSnapshots: maxTotalShareSnapshots
    - maxTotalShareNetworks: maxTotalShareNetworks
+   - maxTotalShareReplicas: maxTotalShareReplicas
+   - maxTotalReplicaGigabytes: maxTotalReplicaGigabytes
    - totalSharesUsed: totalSharesUsed
    - totalShareSnapshotsUsed: totalShareSnapshotsUsed
    - totalShareNetworksUsed: totalShareNetworksUsed
    - totalShareGigabytesUsed: totalShareGigabytesUsed
    - totalSnapshotGigabytesUsed: totalSnapshotGigabytesUsed
+   - totalShareReplicasUsed: totalShareReplicasUsed
+   - totalReplicaGigabytesUsed: totalReplicaGigabytesUsed
    - uri: uri
    - regex: regex
    - value: value

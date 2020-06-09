@@ -18,9 +18,16 @@ Provides quotas management support.
     - ``snapshots``
     - ``shares``
     - ``snapshot_gigabytes``
+    - ``share_groups`` (since API version 2.40)
+    - ``share_group_snapshots`` (since API version 2.40)
+    - ``share_replicas`` (since API version 2.53)
+    - ``replica_gigabytes`` (since API version 2.53)
 
     Share groups and share group snapshots were added to quota management
     APIs in API version 2.40.
+
+    Share replicas and replica gigabytes were added to quota management
+    APIs in API version 2.53.
 
 
 Show default quota set
@@ -66,6 +73,8 @@ Response parameters
    - share_groups: quota_share_groups
    - share_group_snapshots: quota_share_group_snapshots
    - share_networks: quota_share_networks_default
+   - share_replicas: quota_share_replicas
+   - replica_gigabytes: quota_replica_gigabytes
 
 Response example
 ----------------
@@ -122,6 +131,8 @@ Response parameters
    - share_networks: quota_share_networks
    - share_groups: quota_share_groups
    - share_group_snapshots: quota_share_group_snapshots
+   - share_replicas: quota_share_replicas
+   - replica_gigabytes: quota_replica_gigabytes
 
 Response example
 ----------------
@@ -180,6 +191,8 @@ Response parameters
    - share_networks: quota_share_networks_detail
    - share_groups: quota_share_groups_detail
    - share_group_snapshots: quota_share_group_snapshots_detail
+   - share_replicas: quota_share_replicas_detail
+   - replica_gigabytes: quota_replica_gigabytes_detail
 
 Response example
 ----------------
@@ -230,6 +243,8 @@ Request
    - share_groups: quota_share_groups_request
    - share_group_snapshots: quota_share_group_snapshots_request
    - share_type: share_type_for_quota
+   - share_replicas: quota_share_replicas_request
+   - replica_gigabytes: quota_replica_gigabytes_request
 
 Request example
 ---------------
@@ -251,6 +266,8 @@ Response parameters
    - share_networks: quota_share_networks
    - share_groups: quota_share_groups
    - share_group_snapshots: quota_share_group_snapshots
+   - share_replicas: quota_share_replicas
+   - replica_gigabytes: quota_replica_gigabytes
 
 Response example
 ----------------

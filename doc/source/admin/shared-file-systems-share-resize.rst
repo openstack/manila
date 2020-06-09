@@ -15,6 +15,14 @@ with the new size that does not exceed the quota. For details, see
 :ref:`Quotas and Limits <shared_file_systems_quotas>`. You also cannot shrink
 share size to 0 or to a greater value than the current share size.
 
+.. note::
+    From API version 2.53, extending a replicated share, manila quota system
+    will reserve and consume resources for two additional quotas:
+    ``share_replicas`` and ``replica_gigabytes``. This request will fail if
+    there is no available quotas to extend the share and all of its share
+    replicas.
+
+
 While extending, the share has an ``extending`` status. This means that
 the increase share size request was issued successfully.
 

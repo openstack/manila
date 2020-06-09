@@ -21,6 +21,12 @@
                          "reserved": 0},
         "share_group_snapshots": {"in_use": 0,
                                   "limit": 10,
-                                  "reserved": 0}
+                                  "reserved": 0},
+        "share_replicas": {"in_use": 0,
+                           "limit": 100,
+                           "reserved": 0},
+        "replica_gigabytes": {"in_use": 0,
+                              "limit": 1000,
+                              "reserved": 0}
     }
 }

@@ -6,6 +6,8 @@
         "snapshots": 49,
         "share_networks": 9,
         "share_groups": 12,
-        "share_group_snapshots": 12
+        "share_group_snapshots": 12,
+        "share_replicas": 89,
+        "replica_gigabytes": 1000
     }
 }

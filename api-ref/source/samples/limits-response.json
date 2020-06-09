@@ -11,7 +11,11 @@
             "maxTotalShares": 50,
             "totalSnapshotGigabytesUsed": 0,
             "maxTotalSnapshotGigabytes": 1000,
-            "maxTotalShareSnapshots": 50
+            "maxTotalShareSnapshots": 50,
+            "maxTotalShareReplicas": 100,
+            "maxTotalReplicaGigabytes": 1000,
+            "totalShareReplicasUsed": 0,
+            "totalReplicaGigabytesUsed": 0
         }
     }
 }
