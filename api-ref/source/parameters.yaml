@@ -1249,6 +1249,24 @@ manage_share_server_id:
   required: true
   type: string
   min_version: 2.49
+maxTotalReplicaGigabytes:
+    description: |
+      The maximum number of replica gigabytes that are allowed in a project.
+      You cannot create a share, share replica, manage a share or extend a
+      share if it is going to exceed the allowed replica gigabytes quota.
+    in: body
+    required: true
+    type: integer
+    min_version: 2.53
+maxTotalReplicaGigabytesOptional:
+    description: |
+      The maximum number of replica gigabytes that are allowed in a project.
+      You cannot create a share, share replica, manage a share or extend a
+      share if it is going to exceed the allowed replica gigabytes quota.
+    in: body
+    required: false
+    type: integer
+    min_version: 2.53
 maxTotalShareGigabytes:
   description: |
     The total maximum number of share gigabytes that
@@ -1293,6 +1311,20 @@ maxTotalShareNetworksOptional:
   in: body
   required: false
   type: integer
+maxTotalShareReplicas:
+  description: |
+    The maximum number of share replicas that is allowed.
+  in: body
+  required: true
+  type: integer
+  min_version: 2.53
+maxTotalShareReplicasOptional:
+  description: |
+    The maximum number of share replicas that is allowed.
+  in: body
+  required: false
+  type: integer
+  min_version: 2.53
 maxTotalShares:
   description: |
     The total maximum number of shares that are
@@ -1630,6 +1662,27 @@ quota_project_id:
   in: body
   required: true
   type: string
+quota_replica_gigabytes:
+  description: |
+    The number of gigabytes for the share replicas allowed for each project.
+  in: body
+  required: true
+  min_version: 2.53
+  type: integer
+quota_replica_gigabytes_detail:
+  description: |
+    The limit, in_use, reserved number of replica gigabytes for each project.
+  in: body
+  min_version: 2.53
+  required: true
+  type: object
+quota_replica_gigabytes_request:
+  description: |
+    The number of gigabytes for share replicas for the project.
+  in: body
+  min_version: 2.53
+  required: false
+  type: integer
 quota_set:
   description: |
     The ``quota_set`` object.
@@ -1705,6 +1758,27 @@ quota_share_networks_request:
   description: |
     The number of share networks for the project.
   in: body
+  required: false
+  type: integer
+quota_share_replicas:
+  description: |
+    The number of share replicas allowed for each project.
+  in: body
+  required: true
+  min_version: 2.53
+  type: integer
+quota_share_replicas_detail:
+  description: |
+    The limit, in_use, reserved number of share replicas for each project.
+  in: body
+  min_version: 2.53
+  required: true
+  type: object
+quota_share_replicas_request:
+  description: |
+    The number of share replicas allowed for each project or user.
+  in: body
+  min_version: 2.53
   required: false
   type: integer
 quota_shares:
@@ -2801,6 +2875,13 @@ timestamp:
   in: body
   required: true
   type: string
+totalReplicaGigabytesUsed:
+  description: |
+    The total number of replica gigabytes used in a
+    project by share replicas.
+  in: body
+  required: true
+  type: integer
 totalShareGigabytesUsed:
   description: |
     The total number of gigabytes used in a project
@@ -2812,6 +2893,12 @@ totalShareNetworksUsed:
   description: |
     The total number of created share-networks in a
     project.
+  in: body
+  required: true
+  type: integer
+totalShareReplicasUsed:
+  description: |
+    The total number of created share replicas in a project.
   in: body
   required: true
   type: integer

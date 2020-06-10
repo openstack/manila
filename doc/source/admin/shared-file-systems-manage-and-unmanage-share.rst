@@ -55,6 +55,12 @@ Manage a share
     share servers via share networks until Shared File Systems API version
     ``2.49`` (Stein/Manila 8.0.0 release).
 
+.. note::
+    From API version 2.53, if the requester specifies a share type containing
+    a ``replication_type`` extra spec while managing a share, manila quota
+    system will reserve and consume resources for two additional quotas:
+    ``share_replicas`` and ``replica_gigabytes``.
+
 To register the non-managed share in the File System service, run the
 :command:`manila manage` command:
 

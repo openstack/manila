@@ -7,6 +7,8 @@
         "snapshot_gigabytes": 1000,
         "shares": 50,
         "id": "default",
-        "share_networks": 10
+        "share_networks": 10,
+        "share_replicas": 100,
+        "replica_gigabytes": 1000
     }
 }
