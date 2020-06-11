@@ -2466,6 +2466,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'is-v3-ms-dos-client-enabled': 'true',
             'is-nfsv3-connection-drop-enabled': 'false',
             'enable-ejukebox': 'false',
+            'is-vstorage-enabled': 'true',
         }
         self.client.send_request.assert_called_once_with(
             'nfs-service-modify', nfs_service_modify_args)

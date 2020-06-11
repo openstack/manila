@@ -1472,6 +1472,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'is-v3-ms-dos-client-enabled': 'true',
             'is-nfsv3-connection-drop-enabled': 'false',
             'enable-ejukebox': 'false',
+            'is-vstorage-enabled': 'true',
         }
         self.send_request('nfs-service-modify', nfs_service_modify_args)
 
