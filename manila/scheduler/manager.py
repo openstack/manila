@@ -40,13 +40,21 @@ from manila.share import rpcapi as share_rpcapi
 
 LOG = log.getLogger(__name__)
 
-scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
-                                  default='manila.scheduler.drivers.'
-                                          'filter.FilterScheduler',
-                                  help='Default scheduler driver to use.')
+scheduler_driver_opts = [
+    cfg.StrOpt('scheduler_driver',
+               default='manila.scheduler.drivers.'
+                       'filter.FilterScheduler',
+               help='Default scheduler driver to use.'),
+    cfg.BoolOpt('migration_ignore_scheduler',
+                default=False,
+                help='Whether migration will '
+                     'filter target host through '
+                     'scheduler.'),
+]
 
 CONF = cfg.CONF
-CONF.register_opt(scheduler_driver_opt)
+CONF.register_opts(scheduler_driver_opts)
+
 
 # Drivers that need to change module paths or class names can add their
 # old/new path here to maintain backward compatibility.
@@ -184,8 +192,12 @@ class SchedulerManager(manager.Manager):
                 context, ex, request_spec)
 
         try:
-            tgt_host = self.driver.host_passes_filters(
-                context, host, request_spec, filter_properties)
+            if CONF.migration_ignore_scheduler:
+                target_host = host
+            else:
+                tgt_host = self.driver.host_passes_filters(
+                    context, host, request_spec, filter_properties)
+                target_host = tgt_host.host
 
         except Exception as ex:
             with excutils.save_and_reraise_exception():
@@ -194,7 +206,7 @@ class SchedulerManager(manager.Manager):
 
             try:
                 share_rpcapi.ShareAPI().migration_start(
-                    context, share_ref, tgt_host.host,
+                    context, share_ref, target_host,
                     force_host_assisted_migration, preserve_metadata, writable,
                     nondisruptive, preserve_snapshots, new_share_network_id,
                     new_share_type_id)
