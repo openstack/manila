@@ -835,7 +835,7 @@ function start_manila_api {
 
     if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
         echo "Deploying with UWSGI"
-        run_process m-api "$MANILA_BIN_DIR/uwsgi --ini $MANILA_UWSGI_CONF --procname-prefix manila-api"
+        run_process m-api "$(which uwsgi) --ini $MANILA_UWSGI_CONF --procname-prefix manila-api"
     elif [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
         echo "Deploying with MOD_WSGI"
         install_apache_wsgi
