@@ -27,6 +27,7 @@ from manila import context
 from manila import db
 from manila.db import migration
 from manila import test
+from manila import utils
 from manila import version
 
 CONF = cfg.CONF
@@ -302,6 +303,39 @@ class ManilaCmdManageTestCase(test.TestCase):
             get_admin_context.assert_called_with()
             service_get_all.assert_called_with(ctxt)
             service_is_up.assert_called_with(service)
+
+    @ddt.data(True, False)
+    def test_service_commands_cleanup(self, service_is_up):
+        ctxt = context.RequestContext('fake-user', 'fake-project')
+        self.mock_object(context, 'get_admin_context',
+                         mock.Mock(return_value=ctxt))
+        service = {'id': 17,
+                   'binary': 'manila-binary',
+                   'host': 'fake-host.fake-domain',
+                   'availability_zone': {'name': 'fake-zone'},
+                   'updated_at': '2020-06-17 07:22:33',
+                   'disabled': False}
+        self.mock_object(db, 'service_get_all',
+                         mock.Mock(return_value=[service]))
+        self.mock_object(db, 'service_destroy')
+        self.mock_object(utils, 'service_is_up',
+                         mock.Mock(return_value=service_is_up))
+
+        with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
+            if not service_is_up:
+                expected_out = "Cleaned up service %s" % service['host']
+            else:
+                expected_out = ''
+            self.service_cmds.cleanup()
+
+            self.assertEqual(expected_out, fake_out.getvalue().strip())
+            context.get_admin_context.assert_called_with()
+            db.service_get_all.assert_called_with(ctxt)
+            utils.service_is_up.assert_called_with(service)
+            if not service_is_up:
+                db.service_destroy.assert_called_with(ctxt, service['id'])
+            else:
+                self.assertFalse(db.service_destroy.called)
 
     def test_methods_of(self):
         obj = type('Fake', (object,),
