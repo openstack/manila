@@ -1,0 +1,10 @@
+---
+upgrade:
+  - |
+    This version of OpenStack Manila has not been tested with Ceph clusters
+    prior to Nautilus. The CephFS drivers interact with with Ceph clusters
+    via a python binding called "ceph_volume_client". This is being
+    replaced by supplying management operations via the ceph manager
+    interface that was introduced in the Nautilus release of Ceph. So it is
+    advised that you upgrade your Ceph deployment prior to upgrading to
+    Manila's Victoria release.
