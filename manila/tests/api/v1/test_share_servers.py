@@ -40,6 +40,8 @@ fake_share_server_list = {
             'project_id': 'fake_project_id',
             'id': 'fake_server_id',
             'is_auto_deletable': False,
+            'task_state': None,
+            'source_share_server_id': None,
             'identifier': 'fake_id'
         },
         {
@@ -52,6 +54,8 @@ fake_share_server_list = {
             'project_id': 'fake_project_id_2',
             'id': 'fake_server_id_2',
             'is_auto_deletable': True,
+            'task_state': None,
+            'source_share_server_id': None,
             'identifier': 'fake_id_2'
         },
     ]
@@ -88,6 +92,8 @@ fake_share_server_get_result = {
             'fake_key_2': 'fake_value_2',
         },
         'is_auto_deletable': False,
+        'task_state': None,
+        'source_share_server_id': None,
         'identifier': 'fake_id'
     }
 }
@@ -122,6 +128,8 @@ class FakeShareServer(object):
         self.project_id = 'fake_project_id'
         self.identifier = kwargs.get('identifier', 'fake_id')
         self.is_auto_deletable = kwargs.get('is_auto_deletable', False)
+        self.task_state = kwargs.get('task_state')
+        self.source_share_server_id = kwargs.get('source_share_server_id')
         self.backend_details = share_server_backend_details
 
     def __getitem__(self, item):
@@ -138,6 +146,7 @@ def fake_share_server_get_all():
                             'share_network_id': 'fake_sn_id_2',
                             },
                         identifier='fake_id_2',
+                        task_state=None,
                         is_auto_deletable=True,
                         status=constants.STATUS_ERROR)
     ]

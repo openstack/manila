@@ -2861,3 +2861,298 @@ class ShareDriver(object):
             to 'error'.
         """
         raise NotImplementedError()
+
+    def share_server_migration_start(self, context, src_share_server,
+                                     dest_share_server, shares, snapshots):
+        """Starts migration of a given share server to another host.
+
+        .. note::
+           Is called in destination share server's backend to start migration.
+
+        Driver should implement this method if willing to perform a server
+        migration in driver-assisted way, useful when source share server's
+        backend driver is compatible with destination backend driver. This
+        method should start the migration procedure in the backend and return
+        immediately.
+        Following steps should be done in 'share_server_migration_continue'.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param src_share_server: Reference to the original share server.
+        :param dest_share_server: Reference to the share server to be used by
+            as destination.
+        :param shares: All shares in the source share server that should be
+            migrated.
+        :param snapshots: All snapshots in the source share server that should
+            be migrated.
+        """
+        raise NotImplementedError()
+
+    def share_server_migration_continue(self, context, src_share_server,
+                                        dest_share_server, shares, snapshots):
+        """Continues migration of a given share server to another host.
+
+        .. note::
+            Is called in destination share server's backend to continue
+            migration.
+
+        Driver should implement this method to continue monitor the migration
+        progress in storage and perform following steps until 1st phase is
+        completed.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param src_share_server: Reference to the original share server.
+        :param dest_share_server: Reference to the share server to be used as
+            destination.
+        :param shares: All shares in the source share server that should be
+            migrated.
+        :param snapshots: All snapshots in the source share server that should
+            be migrated.
+        :return: Boolean value to indicate if 1st phase is finished.
+        """
+        raise NotImplementedError()
+
+    def share_server_migration_get_progress(self, context, src_share_server,
+                                            dest_share_server, shares,
+                                            snapshots):
+        """Obtains progress of migration of a share server to another host.
+
+        .. note::
+            Is called in destination share's backend to obtain migration
+            progress.
+
+        If possible, driver can implement a way to return migration progress
+        information.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param src_share_server: Reference to the original share server.
+        :param dest_share_server: Reference to the share server to be used as
+            destination.
+        :param shares: All shares in the source share server that should be
+            migrated.
+        :param snapshots: All snapshots in the source share server that should
+            be migrated.
+        :return: A dictionary with at least 'total_progress' field containing
+            the percentage value.
+        """
+        raise NotImplementedError()
+
+    def share_server_migration_cancel(self, context, src_share_server,
+                                      dest_share_server, shares, snapshots):
+        """Cancels migration of a given share server to another host.
+
+        .. note::
+           Is called in destination share server's backend to continue
+           migration.
+
+        If possible, driver can implement a way to cancel an in-progress
+        migration.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param src_share_server: Reference to the original share server.
+        :param dest_share_server: Reference to the share server to be used as
+            destination.
+        :param shares: All shares in the source share server that should be
+            migrated.
+        :param snapshots: All snapshots in the source share server that should
+            be migrated.
+        """
+        raise NotImplementedError()
+
+    def share_server_migration_check_compatibility(
+            self, context, share_server, dest_host, old_share_network,
+            new_share_network, shares_request_spec):
+        """Checks destination compatibility for migration of a share server.
+
+        .. note::
+            Is called in destination share server's backend to continue
+            migration. Can be called by an admin to check if a given host is
+            compatible or by the share manager to test compatibility with
+            destination backend.
+
+        Driver should check if it is compatible with destination backend so
+        driver-assisted migration can proceed.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param share_server: Share server model.
+        :param dest_host: Reference to the hos to be used by the migrated
+            share server.
+        :param old_share_network: Share network model where the source share
+            server is placed.
+        :param new_share_network: Share network model where the share
+            server is going to be migrated to.
+        :param shares_request_spec: Dict. Contains information about all shares
+            and share types that belong to the source share server. The drivers
+            can use this information to check if the capabilities match with
+            the destination backend and if there is available space to hold the
+            new share server and all its resource.
+
+        Example::
+
+            {
+            'shares_size': 100,
+            'snapshots_size': 100,
+            'shares_req_spec':
+            [
+                {
+                'share_properties':
+                    {
+                    'size': 10
+                    'user_id': '2f5c1df4-5203-444e-b68e-1e60f3f26fc3'
+                    'project_id': '0b82b278-51d6-4357-b273-0d7263982c31'
+                    'snapshot_support': True
+                    'create_share_from_snapshot_support': True
+                    'revert_to_snapshot_support': False
+                    'mount_snapshot_support': False
+                    'share_proto': NFS
+                    'share_type_id': '360e01c1-a4f7-4782-9676-dc013f1a2f21'
+                    'is_public': False
+                    'share_group_id': None
+                    'source_share_group_snapshot_member_id': None
+                    'snapshot_id': None
+                    },
+                'share_instance_properties':
+                    {
+                    'availability_zone_id':
+                        '02377ad7-381c-4b25-a04c-6fd218f22a91',
+                    'share_network_id': '691544aa-da83-4669-8522-22719f236e16',
+                    'share_server_id': 'cd658413-d02c-4d1b-ac8a-b6b972e76bac',
+                    'share_id': 'e42fec45-781e-4dcc-a4d2-44354ad5ae91',
+                    'host': 'hostA@backend1#pool0',
+                    'status': 'available',
+                    },
+                'share_type':
+                    {
+                    'id': '360e01c1-a4f7-4782-9676-dc013f1a2f21',
+                    'name': 'dhss_false',
+                    'is_public': False,
+                    'extra_specs':
+                        {
+                        'driver_handles_share_servers': False,
+                        }
+                    },
+                'share_id': e42fec45-781e-4dcc-a4d2-44354ad5ae91,
+                },
+            ],
+            }
+
+        :return: A dictionary containing values indicating if destination
+            backend is compatible, if share can remain writable during
+            migration, if it can preserve all file metadata and if it can
+            perform migration of given share non-disruptively.
+
+            Example::
+
+                {
+                    'compatible': True,
+                    'writable': True,
+                    'nondisruptive': True,
+                    'preserve_snapshots': True,
+                    'migration_cancel': True,
+                    'migration_get_progress': False
+                }
+
+        """
+        return {
+            'compatible': False,
+            'writable': False,
+            'nondisruptive': False,
+            'preserve_snapshots': False,
+            'migration_cancel': False,
+            'migration_get_progress': False
+        }
+
+    def share_server_migration_complete(self, context, src_share_server,
+                                        dest_share_server, shares, snapshots,
+                                        new_network_info):
+        """Completes migration of a given share server to another host.
+
+        .. note::
+            Is called in destination share server's backend to complete
+            migration.
+
+        If driver is implementing 2-phase migration, this method should
+        perform the disruptive tasks related to the 2nd phase of migration,
+        thus completing it. Driver should also delete all original data from
+        source backend.
+
+        It expected that all shares and snapshots will be available at the
+        destination share server in the end of the migration complete and all
+        updates provided in the returned model update.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param src_share_server: Reference to the original share server.
+        :param dest_share_server: Reference to the share server to be used as
+            destination.
+        :param shares: All shares in the source share server that should be
+            migrated.
+        :param snapshots: All snapshots in the source share server that should
+            be migrated.
+        :param new_network_info: Network allocation associated to the
+            destination share server.
+        :return: If the migration changes the shares export locations,
+            snapshots provider locations or snapshots export locations, this
+            method should return a dictionary containing a list of share
+            instances and snapshot instances indexed by their id's, where each
+            instance should provide a dict with the relevant information that
+            need to be updated.
+
+            Example::
+
+                {
+                    'share_updates':
+                    {
+                        '4363eb92-23ca-4888-9e24-502387816e2a':
+                        {
+                        'export_locations':
+                        [
+                            {
+                            'path': '1.2.3.4:/foo',
+                            'metadata': {},
+                            'is_admin_only': False
+                            },
+                            {
+                            'path': '5.6.7.8:/foo',
+                            'metadata': {},
+                            'is_admin_only': True
+                            },
+                        ],
+                        'pool_name': 'poolA',
+                        },
+                    },
+                    'snapshot_updates':
+                    {
+                        'bc4e3b28-0832-4168-b688-67fdc3e9d408':
+                        {
+                        'provider_location': '/snapshots/foo/bar_1',
+                        'export_locations':
+                        [
+                            {
+                            'path': '1.2.3.4:/snapshots/foo/bar_1',
+                            'is_admin_only': False,
+                            },
+                            {
+                            'path': '5.6.7.8:/snapshots/foo/bar_1',
+                            'is_admin_only': True,
+                            },
+                        ],
+                        },
+                        '2e62b7ea-4e30-445f-bc05-fd523ca62941':
+                        {
+                        'provider_location': '/snapshots/foo/bar_2',
+                        'export_locations':
+                        [
+                            {
+                            'path': '1.2.3.4:/snapshots/foo/bar_2',
+                            'is_admin_only': False,
+                            },
+                            {
+                            'path': '5.6.7.8:/snapshots/foo/bar_2',
+                            'is_admin_only': True,
+                            },
+                        ],
+                        },
+                    }
+                }
+
+        """
+        raise NotImplementedError()

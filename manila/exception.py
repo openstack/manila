@@ -246,8 +246,16 @@ class ShareServerInUse(InUse):
     message = _("Share server %(share_server_id)s is in use.")
 
 
+class ShareServerMigrationError(ManilaException):
+    message = _("Error in share server migration: %(reason)s")
+
+
+class ShareServerMigrationFailed(ManilaException):
+    message = _("Share server migration failed: %(reason)s")
+
+
 class InvalidShareServer(Invalid):
-    message = _("Share server %(share_server_id)s is not valid.")
+    message = _("Invalid share server: %(reason)s")
 
 
 class ShareMigrationError(ManilaException):

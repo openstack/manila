@@ -44,10 +44,10 @@ class ShareRpcAPITestCase(test.TestCase):
             share_id='fake_share_id',
             host='fake_host',
         )
-        share_server = db_utils.create_share_server()
         share_group = {'id': 'fake_share_group_id', 'host': 'fake_host'}
         share_group_snapshot = {'id': 'fake_share_group_id'}
         host = 'fake_host'
+        share_server = db_utils.create_share_server(host=host)
         self.fake_share = jsonutils.to_primitive(share)
         # mock out the getattr on the share db model object since jsonutils
         # doesn't know about those extra attributes to pull in
@@ -115,11 +115,25 @@ class ShareRpcAPITestCase(test.TestCase):
         if 'snapshot_instance' in expected_msg:
             snapshot_instance = expected_msg.pop('snapshot_instance', None)
             expected_msg['snapshot_instance_id'] = snapshot_instance['id']
+        share_server_id_methods = [
+            'manage_share_server', 'unmanage_share_server',
+            'share_server_migration_start', 'share_server_migration_check']
+        src_dest_share_server_methods = [
+            'share_server_migration_cancel',
+            'share_server_migration_get_progress',
+            'share_server_migration_complete']
         if ('share_server' in expected_msg
-                and (method == 'manage_share_server')
-                or method == 'unmanage_share_server'):
+                and method in share_server_id_methods):
             share_server = expected_msg.pop('share_server', None)
             expected_msg['share_server_id'] = share_server['id']
+        if ('share_server' in expected_msg
+                and method in src_dest_share_server_methods):
+            share_server = expected_msg.pop('share_server', None)
+            expected_msg['src_share_server_id'] = share_server['id']
+        if ('dest_share_server' in expected_msg
+                and method in src_dest_share_server_methods):
+            share_server = expected_msg.pop('dest_share_server', None)
+            expected_msg['dest_share_server_id'] = share_server['id']
 
         if 'host' in kwargs:
             host = kwargs['host']
@@ -388,3 +402,58 @@ class ShareRpcAPITestCase(test.TestCase):
                              version='1.17',
                              snapshot_instance=self.fake_snapshot[
                                  'share_instance'])
+
+    def test_share_server_migration_start(self):
+        self._test_share_api('share_server_migration_start',
+                             rpc_method='cast',
+                             version='1.21',
+                             share_server=self.fake_share_server,
+                             dest_host=self.fake_host,
+                             writable=True,
+                             nondisruptive=False,
+                             preserve_snapshots=True,
+                             new_share_network_id='fake_share_network_id')
+
+    def test_share_server_migration_check(self):
+        self._test_share_api('share_server_migration_check',
+                             rpc_method='call',
+                             version='1.21',
+                             share_server_id=self.fake_share_server['id'],
+                             dest_host=self.fake_host,
+                             writable=True,
+                             nondisruptive=False,
+                             preserve_snapshots=True,
+                             new_share_network_id='fake_net_id')
+
+    def test_share_server_migration_cancel(self):
+        self._test_share_api('share_server_migration_cancel',
+                             rpc_method='cast',
+                             version='1.21',
+                             dest_host=self.fake_host,
+                             share_server=self.fake_share_server,
+                             dest_share_server=self.fake_share_server)
+
+    def test_share_server_migration_get_progress(self):
+        self._test_share_api('share_server_migration_get_progress',
+                             rpc_method='call',
+                             version='1.21',
+                             dest_host=self.fake_host,
+                             share_server=self.fake_share_server,
+                             dest_share_server=self.fake_share_server)
+
+    def test_share_server_migration_complete(self):
+        self._test_share_api('share_server_migration_complete',
+                             rpc_method='cast',
+                             version='1.21',
+                             dest_host=self.fake_host,
+                             share_server=self.fake_share_server,
+                             dest_share_server=self.fake_share_server)
+
+    def test_update_access_for_share_instances(self):
+        self._test_share_api(
+            'update_access_for_instances',
+            rpc_method='cast',
+            version='1.21',
+            dest_host=self.fake_host,
+            share_instance_ids=[self.fake_share['instance']['id']],
+            share_server_id=self.fake_share_server['id'])

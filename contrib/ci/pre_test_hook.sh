@@ -81,6 +81,8 @@ echo "MANILA_DATA_COPY_CHECK_HASH=${MANILA_DATA_COPY_CHECK_HASH:=True}" >> $loca
 
 # Share Migration CI tests migration_continue period task interval
 echo "MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL=${MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL:=1}" >> $localconf
+# Share Server Migration CI tests migration_continue period task interval
+echo "MANILA_SERVER_MIGRATION_PERIOD_TASK_INTERVAL=${MANILA_SERVER_MIGRATION_PERIOD_TASK_INTERVAL:=10}" >> $localconf
 
 MANILA_SERVICE_IMAGE_ENABLED=${MANILA_SERVICE_IMAGE_ENABLED:-False}
 DEFAULT_EXTRA_SPECS=${DEFAULT_EXTRA_SPECS:-"'snapshot_support=True create_share_from_snapshot_support=True'"}

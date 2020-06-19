@@ -324,6 +324,21 @@ def share_instance_update(context, instance_id, values, with_share_data=False):
                                       with_share_data=with_share_data)
 
 
+def share_and_snapshot_instances_status_update(
+        context, values, share_instance_ids=None, snapshot_instance_ids=None,
+        current_expected_status=None):
+    return IMPL.share_and_snapshot_instances_status_update(
+        context, values, share_instance_ids=share_instance_ids,
+        snapshot_instance_ids=snapshot_instance_ids,
+        current_expected_status=current_expected_status)
+
+
+def share_instances_status_update(context, share_instance_ids, values):
+    """Updates the status of a bunch of share instances at once."""
+    return IMPL.share_instances_status_update(
+        context, share_instance_ids, values)
+
+
 def share_instances_host_update(context, current_host, new_host):
     """Update the host attr of all share instances that are on current_host."""
     return IMPL.share_instances_host_update(context, current_host, new_host)
@@ -334,10 +349,11 @@ def share_instances_get_all(context, filters=None):
     return IMPL.share_instances_get_all(context, filters=filters)
 
 
-def share_instances_get_all_by_share_server(context, share_server_id):
+def share_instances_get_all_by_share_server(context, share_server_id,
+                                            with_share_data=False):
     """Returns all share instances with given share_server_id."""
-    return IMPL.share_instances_get_all_by_share_server(context,
-                                                        share_server_id)
+    return IMPL.share_instances_get_all_by_share_server(
+        context, share_server_id, with_share_data=with_share_data)
 
 
 def share_instances_get_all_by_host(context, host, with_share_data=False,
@@ -517,6 +533,13 @@ def share_snapshot_instance_update(context, instance_id, values):
     return IMPL.share_snapshot_instance_update(context, instance_id, values)
 
 
+def share_snapshot_instances_status_update(
+        context, snapshot_instance_ids, values):
+    """Updates the status of a bunch of share snapshot instances at once."""
+    return IMPL.share_snapshot_instances_status_update(
+        context, snapshot_instance_ids, values)
+
+
 def share_snapshot_instance_create(context, snapshot_id, values):
     """Create a share snapshot instance for an existing snapshot."""
     return IMPL.share_snapshot_instance_create(
@@ -657,6 +680,13 @@ def share_snapshot_instance_access_delete(context, access_id,
 def share_snapshot_instance_export_location_create(context, values):
     """Create a share snapshot instance export location."""
     return IMPL.share_snapshot_instance_export_location_create(context, values)
+
+
+def share_snapshot_instance_export_locations_update(
+        context, share_snapshot_instance_id, export_locations, delete=True):
+    """Update export locations of a share instance."""
+    return IMPL.share_snapshot_instance_export_locations_update(
+        context, share_snapshot_instance_id, export_locations, delete=delete)
 
 
 def share_snapshot_instance_export_locations_get_all(
@@ -974,9 +1004,14 @@ def share_server_get_all(context):
     return IMPL.share_server_get_all(context)
 
 
-def share_server_get_all_by_host(context, host):
+def share_server_get_all_with_filters(context, filters):
+    """Get all share servers that match with the specified filters."""
+    return IMPL.share_server_get_all_with_filters(context, filters)
+
+
+def share_server_get_all_by_host(context, host, filters=None):
     """Get all share servers related to particular host."""
-    return IMPL.share_server_get_all_by_host(context, host)
+    return IMPL.share_server_get_all_by_host(context, host, filters=filters)
 
 
 def share_server_get_all_unused_deletable(context, host, updated_before):

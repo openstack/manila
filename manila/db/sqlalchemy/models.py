@@ -264,8 +264,10 @@ class Share(BASE, ManilaBase):
         if len(self.instances) > 0:
             order = (constants.STATUS_REVERTING,
                      constants.STATUS_REPLICATION_CHANGE,
-                     constants.STATUS_MIGRATING, constants.STATUS_AVAILABLE,
-                     constants.STATUS_ERROR)
+                     constants.STATUS_MIGRATING,
+                     constants.STATUS_SERVER_MIGRATING,
+                     constants.STATUS_AVAILABLE,
+                     constants.STATUS_ERROR, )
             other_statuses = (
                 [x['status'] for x in self.instances if
                  x['status'] not in order and
@@ -671,8 +673,9 @@ class ShareSnapshot(BASE, ManilaBase):
                 lambda x: qualified_replica(x.share_instance), self.instances))
 
             migrating_snapshots = list(filter(
-                lambda x: x.share_instance['status'] ==
-                constants.STATUS_MIGRATING, self.instances))
+                lambda x: x.share_instance['status'] in (
+                    constants.STATUS_MIGRATING,
+                    constants.STATUS_SERVER_MIGRATING), self.instances))
 
             snapshot_instances = (replica_snapshots or migrating_snapshots
                                   or self.instances)
@@ -704,6 +707,7 @@ class ShareSnapshot(BASE, ManilaBase):
 
         order = (constants.STATUS_DELETING, constants.STATUS_CREATING,
                  constants.STATUS_ERROR, constants.STATUS_MIGRATING,
+                 constants.STATUS_SERVER_MIGRATING,
                  constants.STATUS_AVAILABLE)
         other_statuses = [x['status'] for x in self.instances if
                           x['status'] not in order]
@@ -1006,12 +1010,17 @@ class ShareServer(BASE, ManilaBase):
     host = Column(String(255), nullable=False)
     is_auto_deletable = Column(Boolean, default=True)
     identifier = Column(String(255), nullable=True)
+    task_state = Column(String(255), nullable=True)
+    source_share_server_id = Column(String(36), ForeignKey('share_servers.id'),
+                                    nullable=True)
     status = Column(Enum(
         constants.STATUS_INACTIVE, constants.STATUS_ACTIVE,
         constants.STATUS_ERROR, constants.STATUS_DELETING,
         constants.STATUS_CREATING, constants.STATUS_DELETED,
         constants.STATUS_MANAGING, constants.STATUS_UNMANAGING,
-        constants.STATUS_UNMANAGE_ERROR, constants.STATUS_MANAGE_ERROR),
+        constants.STATUS_UNMANAGE_ERROR, constants.STATUS_MANAGE_ERROR,
+        constants.STATUS_SERVER_MIGRATING,
+        constants.STATUS_SERVER_MIGRATING_TO),
         default=constants.STATUS_INACTIVE)
     network_allocations = orm.relationship(
         "NetworkAllocation",

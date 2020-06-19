@@ -309,3 +309,8 @@ user documentation.
 2.56
 ----
   Share replication feature is no longer considered experimental.
+
+2.57
+----
+  Added share server migration feature. A two-phase approach that migrates
+  a share server and all its resources to a new host.

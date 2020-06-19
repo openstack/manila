@@ -20,6 +20,7 @@ from webob import exc
 
 from manila.api.openstack import wsgi
 from manila.api.v1 import share_servers
+from manila.api.views import share_server_migration as server_migration_views
 from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
@@ -35,17 +36,13 @@ class ShareServerController(share_servers.ShareServerController,
                             wsgi.AdminActionsMixin):
     """The Share Server API V2 controller for the OpenStack API."""
 
+    def __init__(self):
+        super(ShareServerController, self).__init__()
+        self._migration_view_builder = server_migration_views.ViewBuilder()
+
     valid_statuses = {
-        'status': {
-            constants.STATUS_ACTIVE,
-            constants.STATUS_ERROR,
-            constants.STATUS_DELETING,
-            constants.STATUS_CREATING,
-            constants.STATUS_MANAGING,
-            constants.STATUS_UNMANAGING,
-            constants.STATUS_UNMANAGE_ERROR,
-            constants.STATUS_MANAGE_ERROR,
-        }
+        'status': set(constants.SHARE_SERVER_STATUSES),
+        'task_state': set(constants.SERVER_TASK_STATE_STATUSES),
     }
 
     def _update(self, context, id, update):
@@ -203,6 +200,183 @@ class ShareServerController(share_servers.ShareServerController,
             raise exc.HTTPBadRequest(explanation=msg)
 
         return identifier, host, share_network, driver_opts, network_subnet
+
+    @wsgi.Controller.api_version('2.57', experimental=True)
+    @wsgi.action("migration_start")
+    @wsgi.Controller.authorize
+    @wsgi.response(http_client.ACCEPTED)
+    def share_server_migration_start(self, req, id, body):
+        """Migrate a share server to the specified host."""
+        context = req.environ['manila.context']
+        try:
+            share_server = db_api.share_server_get(
+                context, id)
+        except exception.ShareServerNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+
+        params = body.get('migration_start')
+
+        if not params:
+            raise exc.HTTPBadRequest(explanation=_("Request is missing body."))
+
+        bool_params = ['writable', 'nondisruptive', 'preserve_snapshots']
+        mandatory_params = bool_params + ['host']
+
+        utils.check_params_exist(mandatory_params, params)
+        bool_param_values = utils.check_params_are_boolean(bool_params, params)
+
+        pool_was_specified = len(params['host'].split('#')) > 1
+
+        if pool_was_specified:
+            msg = _('The destination host can not contain pool information.')
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        new_share_network = None
+
+        new_share_network_id = params.get('new_share_network_id', None)
+        if new_share_network_id:
+            try:
+                new_share_network = db_api.share_network_get(
+                    context, new_share_network_id)
+            except exception.NotFound:
+                msg = _("Share network %s not "
+                        "found.") % new_share_network_id
+                raise exc.HTTPBadRequest(explanation=msg)
+
+        try:
+            self.share_api.share_server_migration_start(
+                context, share_server, params['host'],
+                bool_param_values['writable'],
+                bool_param_values['nondisruptive'],
+                bool_param_values['preserve_snapshots'],
+                new_share_network=new_share_network)
+        except exception.ServiceIsDown as e:
+            # NOTE(dviroel): user should check if the host is healthy
+            raise exc.HTTPBadRequest(explanation=e.msg)
+        except exception.InvalidShareServer as e:
+            # NOTE(dviroel): invalid share server meaning that some internal
+            # resource have a invalid state.
+            raise exc.HTTPConflict(explanation=e.msg)
+
+    @wsgi.Controller.api_version('2.57', experimental=True)
+    @wsgi.action("migration_complete")
+    @wsgi.Controller.authorize
+    def share_server_migration_complete(self, req, id, body):
+        """Invokes 2nd phase of share server migration."""
+        context = req.environ['manila.context']
+        try:
+            share_server = db_api.share_server_get(
+                context, id)
+        except exception.ShareServerNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+
+        try:
+            result = self.share_api.share_server_migration_complete(
+                context, share_server)
+        except (exception.InvalidShareServer,
+                exception.ServiceIsDown) as e:
+            raise exc.HTTPBadRequest(explanation=e.msg)
+
+        return self._migration_view_builder.migration_complete(req, result)
+
+    @wsgi.Controller.api_version('2.57', experimental=True)
+    @wsgi.action("migration_cancel")
+    @wsgi.Controller.authorize
+    @wsgi.response(http_client.ACCEPTED)
+    def share_server_migration_cancel(self, req, id, body):
+        """Attempts to cancel share migration."""
+        context = req.environ['manila.context']
+        try:
+            share_server = db_api.share_server_get(
+                context, id)
+        except exception.ShareServerNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+
+        try:
+            self.share_api.share_server_migration_cancel(context, share_server)
+        except (exception.InvalidShareServer,
+                exception.ServiceIsDown) as e:
+            raise exc.HTTPBadRequest(explanation=e.msg)
+
+    @wsgi.Controller.api_version('2.57', experimental=True)
+    @wsgi.action("migration_get_progress")
+    @wsgi.Controller.authorize
+    def share_server_migration_get_progress(self, req, id, body):
+        """Retrieve share server migration progress for a given share."""
+        context = req.environ['manila.context']
+        try:
+            result = self.share_api.share_server_migration_get_progress(
+                context, id)
+        except exception.ServiceIsDown as e:
+            raise exc.HTTPConflict(explanation=e.msg)
+        except exception.InvalidShareServer as e:
+            raise exc.HTTPBadRequest(explanation=e.msg)
+
+        return self._migration_view_builder.get_progress(req, result)
+
+    @wsgi.Controller.api_version('2.57', experimental=True)
+    @wsgi.action("reset_task_state")
+    @wsgi.Controller.authorize
+    def share_server_reset_task_state(self, req, id, body):
+        return self._reset_status(req, id, body, status_attr='task_state')
+
+    @wsgi.Controller.api_version('2.57', experimental=True)
+    @wsgi.action("migration_check")
+    @wsgi.Controller.authorize
+    def share_server_migration_check(self, req, id, body):
+        """Check if can migrate a share server to the specified host."""
+        context = req.environ['manila.context']
+        try:
+            share_server = db_api.share_server_get(
+                context, id)
+        except exception.ShareServerNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+
+        params = body.get('migration_check')
+
+        if not params:
+            raise exc.HTTPBadRequest(explanation=_("Request is missing body."))
+
+        bool_params = ['writable', 'nondisruptive', 'preserve_snapshots']
+        mandatory_params = bool_params + ['host']
+
+        utils.check_params_exist(mandatory_params, params)
+        bool_param_values = utils.check_params_are_boolean(bool_params, params)
+
+        pool_was_specified = len(params['host'].split('#')) > 1
+
+        if pool_was_specified:
+            msg = _('The destination host can not contain pool information.')
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        new_share_network = None
+        new_share_network_id = params.get('new_share_network_id', None)
+        if new_share_network_id:
+            try:
+                new_share_network = db_api.share_network_get(
+                    context, new_share_network_id)
+            except exception.NotFound:
+                msg = _("Share network %s not "
+                        "found.") % new_share_network_id
+                raise exc.HTTPBadRequest(explanation=msg)
+
+        try:
+            result = self.share_api.share_server_migration_check(
+                context, share_server, params['host'],
+                bool_param_values['writable'],
+                bool_param_values['nondisruptive'],
+                bool_param_values['preserve_snapshots'],
+                new_share_network=new_share_network)
+        except exception.ServiceIsDown as e:
+            # NOTE(dviroel): user should check if the host is healthy
+            raise exc.HTTPBadRequest(explanation=e.msg)
+        except exception.InvalidShareServer as e:
+            # NOTE(dviroel): invalid share server meaning that some internal
+            # resource have a invalid state.
+            raise exc.HTTPConflict(explanation=e.msg)
+
+        return self._migration_view_builder.build_check_migration(
+            req, params, result)
 
 
 def create_resource():

@@ -805,8 +805,8 @@ class API(base.Base):
                 raise exception.InvalidInput(reason=msg)
 
             if share_server['status'] != constants.STATUS_ACTIVE:
-                msg = _("Share Server specified is not active.")
-                raise exception.InvalidShareServer(message=msg)
+                msg = _("The provided share server is not active.")
+                raise exception.InvalidShareServer(reason=msg)
             subnet = self.db.share_network_subnet_get(
                 context, share_server['share_network_subnet_id'])
             share_data['share_network_id'] = subnet['share_network_id']
@@ -850,7 +850,9 @@ class API(base.Base):
         if share is None:
             share = {'instance': {}}
 
-        share_instance = share['instance']
+        # NOTE(dviroel): The share object can be a share instance object with
+        # share data.
+        share_instance = share.get('instance', share)
 
         share_properties = {
             'size': kwargs.get('size', share.get('size')),
@@ -1610,6 +1612,7 @@ class API(base.Base):
         if task_state in (constants.TASK_STATE_MIGRATION_SUCCESS,
                           constants.TASK_STATE_DATA_COPYING_ERROR,
                           constants.TASK_STATE_MIGRATION_CANCELLED,
+                          constants.TASK_STATE_MIGRATION_CANCEL_IN_PROGRESS,
                           constants.TASK_STATE_MIGRATION_COMPLETING,
                           constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE,
                           constants.TASK_STATE_DATA_COPYING_COMPLETED,
@@ -1625,22 +1628,30 @@ class API(base.Base):
         else:
             return None
 
-    def _migration_validate_error_message(self, share):
-
-        task_state = share['task_state']
+    def _migration_validate_error_message(self, resource,
+                                          resource_type='share'):
+        task_state = resource['task_state']
         if task_state == constants.TASK_STATE_MIGRATION_SUCCESS:
-            msg = _("Migration of share %s has already "
-                    "completed.") % share['id']
+            msg = _("Migration of %(resource_type)s %(resource_id)s has "
+                    "already completed.") % {
+                'resource_id': resource['id'],
+                'resource_type': resource_type}
         elif task_state in (None, constants.TASK_STATE_MIGRATION_ERROR):
-            msg = _("There is no migration being performed for share %s "
-                    "at this moment.") % share['id']
+            msg = _("There is no migration being performed for "
+                    "%(resource_type)s %(resource_id)s at this moment.") % {
+                'resource_id': resource['id'],
+                'resource_type': resource_type}
         elif task_state == constants.TASK_STATE_MIGRATION_CANCELLED:
-            msg = _("Migration of share %s was already "
-                    "cancelled.") % share['id']
+            msg = _("Migration of %(resource_type)s %(resource_id)s was "
+                    "already cancelled.") % {
+                'resource_id': resource['id'],
+                'resource_type': resource_type}
         elif task_state in (constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE,
                             constants.TASK_STATE_DATA_COPYING_COMPLETED):
-            msg = _("Migration of share %s has already completed first "
-                    "phase.") % share['id']
+            msg = _("Migration of %(resource_type)s %(resource_id)s has "
+                    "already completed first phase.") % {
+                'resource_id': resource['id'],
+                'resource_type': resource_type}
         else:
             return None
         return msg
@@ -2234,3 +2245,401 @@ class API(base.Base):
     def snapshot_export_location_get(self, context, el_id):
         return self.db.share_snapshot_instance_export_location_get(context,
                                                                    el_id)
+
+    def share_server_migration_get_destination(self, context, source_server_id,
+                                               status=None):
+        filters = {'source_share_server_id': source_server_id}
+        if status:
+            filters.update({'status': status})
+
+        dest_share_servers = self.db.share_server_get_all_with_filters(
+            context, filters=filters)
+        if not dest_share_servers:
+            msg = _("A destination share server wasn't found for source "
+                    "share server %s.") % source_server_id
+            raise exception.InvalidShareServer(reason=msg)
+        if len(dest_share_servers) > 1:
+            msg = _("More than one destination share server was found for "
+                    "source share server %s. Aborting...") % source_server_id
+            raise exception.InvalidShareServer(reason=msg)
+
+        return dest_share_servers[0]
+
+    def get_share_server_migration_request_spec_dict(
+            self, context, share_instances, snapshot_instances, **kwargs):
+        """Returns request specs related to share server and all its shares."""
+
+        shares_total_size = sum([instance.get('size', 0)
+                                 for instance in share_instances])
+        snapshots_total_size = sum([instance.get('size', 0)
+                                    for instance in snapshot_instances])
+
+        shares_req_spec = []
+        for share_instance in share_instances:
+            share_type_id = share_instance['share_type_id']
+            share_type = share_types.get_share_type(context, share_type_id)
+            req_spec = self._get_request_spec_dict(share_instance,
+                                                   share_type,
+                                                   **kwargs)
+            shares_req_spec.append(req_spec)
+
+        server_request_spec = {
+            'shares_size': shares_total_size,
+            'snapshots_size': snapshots_total_size,
+            'shares_req_spec': shares_req_spec,
+        }
+        return server_request_spec
+
+    def _migration_initial_checks(self, context, share_server, dest_host,
+                                  new_share_network):
+        shares = self.db.share_get_all_by_share_server(
+            context, share_server['id'])
+
+        if len(shares) == 0:
+            msg = _("Share server %s does not have shares."
+                    % share_server['id'])
+            raise exception.InvalidShareServer(reason=msg)
+
+        # We only handle "active" share servers for now
+        if share_server['status'] != constants.STATUS_ACTIVE:
+            msg = _('Share server %(server_id)s status must be active, '
+                    'but current status is: %(server_status)s.') % {
+                        'server_id': share_server['id'],
+                        'server_status': share_server['status']}
+            raise exception.InvalidShareServer(reason=msg)
+
+        share_groups_related_to_share_server = (
+            self.db.share_group_get_all_by_share_server(
+                context, share_server['id']))
+
+        if share_groups_related_to_share_server:
+            msg = _("The share server %s can not be migrated because it is "
+                    "related to a share group.") % share_server['id']
+            raise exception.InvalidShareServer(reason=msg)
+
+        # Same backend and same network, nothing changes
+        src_backend = share_utils.extract_host(share_server['host'],
+                                               level='backend_name')
+        dest_backend = share_utils.extract_host(dest_host,
+                                                level='backend_name')
+        current_share_network_id = shares[0]['instance']['share_network_id']
+        if (src_backend == dest_backend and
+                (new_share_network is None or
+                 new_share_network['id'] == current_share_network_id)):
+            msg = _('There is no difference between source and destination '
+                    'backends and between source and destination share '
+                    'networks. Share server migration will not proceed.')
+            raise exception.InvalidShareServer(reason=msg)
+
+        filters = {'source_share_server_id': share_server['id'],
+                   'status': constants.STATUS_SERVER_MIGRATING_TO}
+        dest_share_servers = self.db.share_server_get_all_with_filters(
+            context, filters=filters)
+        if len(dest_share_servers):
+            msg = _("There is at least one destination share server pointing "
+                    "to this source share server. Clean up your environment "
+                    "before starting a new migration.")
+            raise exception.InvalidShareServer(reason=msg)
+
+        dest_service_host = share_utils.extract_host(dest_host)
+        # Make sure the host is in the list of available hosts
+        utils.validate_service_host(context, dest_service_host)
+
+        service = self.db.service_get_by_args(
+            context, dest_service_host, 'manila-share')
+
+        # Get all share types
+        type_ids = set([share['instance']['share_type_id']
+                        for share in shares])
+        types = [share_types.get_share_type(context, type_id)
+                 for type_id in type_ids]
+
+        # Check if share type azs are supported by the destination host
+        for share_type in types:
+            azs = share_type['extra_specs'].get('availability_zones', '')
+            if azs and service['availability_zone']['name'] not in azs:
+                msg = _("Share server %(server)s cannot be migrated to host "
+                        "%(dest)s because the share type %(type)s is used by "
+                        "one of the shares, and this share type is not "
+                        "supported within the availability zone (%(az)s) that "
+                        "the host is in.")
+                type_name = '%s' % (share_type['name'] or '')
+                type_id = '(ID: %s)' % share_type['id']
+                payload = {'type': '%s%s' % (type_name, type_id),
+                           'az': service['availability_zone']['name'],
+                           'server': share_server['id'],
+                           'dest': dest_host}
+                raise exception.InvalidShareServer(reason=msg % payload)
+
+        if new_share_network:
+            new_share_network_id = new_share_network['id']
+        else:
+            new_share_network_id = shares[0]['instance']['share_network_id']
+        # NOTE(carloss): check if the new or old share network has a subnet
+        # that spans the availability zone of the destination host, otherwise
+        # we should deny this operation.
+        dest_az = self.db.availability_zone_get(
+            context, service['availability_zone']['name'])
+        compatible_subnet = (
+            self.db.share_network_subnet_get_by_availability_zone_id(
+                context, new_share_network_id, dest_az['id']))
+
+        if not compatible_subnet:
+            msg = _("The share network %(network)s does not have a subnet "
+                    "that spans the destination host availability zone.")
+            payload = {'network': new_share_network_id}
+            raise exception.InvalidShareServer(reason=msg % payload)
+
+        # NOTE(carloss): Refreshing the list of shares since something could've
+        # changed from the initial list.
+        shares = self.db.share_get_all_by_share_server(
+            context, share_server['id'])
+        for share in shares:
+            if share['status'] != constants.STATUS_AVAILABLE:
+                msg = _('Share %(share_id)s status must be available, '
+                        'but current status is: %(share_status)s.') % {
+                            'share_id': share['id'],
+                            'share_status': share['status']}
+                raise exception.InvalidShareServer(reason=msg)
+
+            if share.has_replicas:
+                msg = _('Share %s has replicas. Remove the replicas of all '
+                        'shares in the share server before attempting to '
+                        'migrate it.') % share['id']
+                LOG.error(msg)
+                raise exception.InvalidShareServer(reason=msg)
+
+            # NOTE(carloss): Not validating the flag preserve_snapshots at this
+            # point, considering that even if the admin set the value to False,
+            # the driver can still support preserving snapshots and the
+            # snapshots would be copied anyway. So the share/manager will be
+            # responsible for checking if the driver does not support snapshot
+            # preservation, and if there are snapshots in the share server.
+            share_snapshots = self.db.share_snapshot_get_all_for_share(
+                context, share['id'])
+            all_snapshots_are_available = all(
+                [snapshot['status'] == constants.STATUS_AVAILABLE
+                 for snapshot in share_snapshots])
+            if not all_snapshots_are_available:
+                msg = _(
+                    "All snapshots must have '%(status)s' status to be "
+                    "migrated by the driver along with share "
+                    "%(resource_id)s.") % {
+                        'resource_id': share['id'],
+                        'status': constants.STATUS_AVAILABLE,
+                }
+                LOG.error(msg)
+                raise exception.InvalidShareServer(reason=msg)
+
+            if share.get('share_group_id'):
+                msg = _('Share %s is a member of a group. This operation is '
+                        'not currently supported for share servers that '
+                        'contain shares members of  groups.') % share['id']
+                LOG.error(msg)
+                raise exception.InvalidShareServer(reason=msg)
+
+            share_instance = share['instance']
+            # Access rules status must not be error
+            if share_instance['access_rules_status'] == constants.STATUS_ERROR:
+                msg = _(
+                    'Share instance %(instance_id)s access rules status must '
+                    'not be in %(error)s when attempting to start a share '
+                    'server migration.') % {
+                        'instance_id': share_instance['id'],
+                        'error': constants.STATUS_ERROR}
+                raise exception.InvalidShareServer(reason=msg)
+            try:
+                self._check_is_share_busy(share)
+            except exception.ShareBusyException as e:
+                raise exception.InvalidShareServer(reason=e.msg)
+
+        return shares, types, service, new_share_network_id
+
+    def share_server_migration_check(self, context, share_server, dest_host,
+                                     writable, nondisruptive,
+                                     preserve_snapshots,
+                                     new_share_network=None):
+        """Migrates share server to a new host."""
+        shares, types, service, new_share_network_id = (
+            self._migration_initial_checks(context, share_server, dest_host,
+                                           new_share_network))
+
+        # NOTE(dviroel): Service is up according to validations made on initial
+        # checks
+        result = self.share_rpcapi.share_server_migration_check(
+            context, share_server['id'], dest_host, writable, nondisruptive,
+            preserve_snapshots, new_share_network_id)
+
+        return result
+
+    def share_server_migration_start(
+            self, context, share_server, dest_host, writable, nondisruptive,
+            preserve_snapshots, new_share_network=None):
+        """Migrates share server to a new host."""
+
+        shares, types, dest_service, new_share_network_id = (
+            self._migration_initial_checks(context, share_server,
+                                           dest_host,
+                                           new_share_network))
+
+        # Updates the share server status to migration starting
+        self.db.share_server_update(
+            context, share_server['id'],
+            {'task_state': constants.TASK_STATE_MIGRATION_STARTING,
+             'status': constants.STATUS_SERVER_MIGRATING})
+
+        share_snapshots = [
+            self.db.share_snapshot_get_all_for_share(context, share['id'])
+            for share in shares]
+        snapshot_instance_ids = []
+        for snapshot_list in share_snapshots:
+            for snapshot in snapshot_list:
+                snapshot_instance_ids.append(snapshot['instance']['id'])
+        share_instance_ids = [share['instance']['id'] for share in shares]
+
+        # Updates all shares and snapshot instances
+        self.db.share_and_snapshot_instances_status_update(
+            context, {'status': constants.STATUS_SERVER_MIGRATING},
+            share_instance_ids=share_instance_ids,
+            snapshot_instance_ids=snapshot_instance_ids,
+            current_expected_status=constants.STATUS_AVAILABLE
+        )
+
+        # NOTE(dviroel): Service is up according to validations made on initial
+        # checks
+        self.share_rpcapi.share_server_migration_start(
+            context, share_server, dest_host, writable, nondisruptive,
+            preserve_snapshots, new_share_network_id)
+
+    def share_server_migration_complete(self, context, share_server):
+        """Invokes 2nd phase of share server migration."""
+        if share_server['status'] != constants.STATUS_SERVER_MIGRATING:
+            msg = _("Share server %s is not migrating") % share_server['id']
+            LOG.error(msg)
+            raise exception.InvalidShareServer(reason=msg)
+        if (share_server['task_state'] !=
+                constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE):
+            msg = _("The first phase of migration has to finish to "
+                    "request the completion of server %s's "
+                    "migration.") % share_server['id']
+            LOG.error(msg)
+            raise exception.InvalidShareServer(reason=msg)
+
+        dest_share_server = self.share_server_migration_get_destination(
+            context, share_server['id'],
+            status=constants.STATUS_SERVER_MIGRATING_TO
+        )
+
+        dest_host = share_utils.extract_host(dest_share_server['host'])
+        utils.validate_service_host(context, dest_host)
+
+        self.share_rpcapi.share_server_migration_complete(
+            context, dest_share_server['host'], share_server,
+            dest_share_server)
+
+        return {
+            'destination_share_server_id': dest_share_server['id']
+        }
+
+    def share_server_migration_cancel(self, context, share_server):
+        """Attempts to cancel share server migration."""
+        if share_server['status'] != constants.STATUS_SERVER_MIGRATING:
+            msg = _("Migration of share server %s cannot be cancelled because "
+                    "the provided share server is not being migrated.")
+            LOG.error(msg)
+            raise exception.InvalidShareServer(reason=msg)
+
+        if share_server['task_state'] in (
+                constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE,
+                constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS):
+
+            dest_share_server = self.share_server_migration_get_destination(
+                context, share_server['id'],
+                status=constants.STATUS_SERVER_MIGRATING_TO
+            )
+
+            dest_host = share_utils.extract_host(dest_share_server['host'])
+            utils.validate_service_host(context, dest_host)
+
+            self.share_rpcapi.share_server_migration_cancel(
+                context, dest_share_server['host'], share_server,
+                dest_share_server)
+        else:
+            msg = self._migration_validate_error_message(
+                share_server, resource_type='share_server')
+            if msg is None:
+                msg = _("Migration of share server %s can be cancelled only "
+                        "after the driver already started the migration, or "
+                        "when the first phase of the migration gets "
+                        "completed.") % share_server['id']
+            LOG.error(msg)
+            raise exception.InvalidShareServer(reason=msg)
+
+    def share_server_migration_get_progress(self, context,
+                                            src_share_server_id):
+        """Retrieve migration progress for a given share server."""
+        try:
+            share_server = self.db.share_server_get(context,
+                                                    src_share_server_id)
+        except exception.ShareServerNotFound:
+            msg = _('Share server %s was not found. We will search for a '
+                    'successful migration') % src_share_server_id
+            LOG.debug(msg)
+            # Search for a successful migration, raise an error if not found
+            dest_share_server = self.share_server_migration_get_destination(
+                context, src_share_server_id,
+                status=constants.STATUS_ACTIVE
+            )
+            return {
+                'total_progress': 100,
+                'destination_share_server_id': dest_share_server['id'],
+                'task_state': dest_share_server['task_state'],
+            }
+        # Source server still exists so it must be in 'server_migrating' status
+        if (share_server and
+                share_server['status'] != constants.STATUS_SERVER_MIGRATING):
+            msg = _("Migration progress of share server %s cannot be "
+                    "obtained. The provided share server is not being "
+                    "migrated.") % share_server['id']
+            LOG.error(msg)
+            raise exception.InvalidShareServer(reason=msg)
+
+        dest_share_server = self.share_server_migration_get_destination(
+            context, share_server['id'],
+            status=constants.STATUS_SERVER_MIGRATING_TO
+        )
+
+        if (share_server['task_state'] ==
+                constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS):
+
+            dest_host = share_utils.extract_host(dest_share_server['host'])
+            utils.validate_service_host(context, dest_host)
+
+            try:
+                result = (
+                    self.share_rpcapi.share_server_migration_get_progress(
+                        context, dest_share_server['host'],
+                        share_server, dest_share_server))
+            except Exception:
+                msg = _("Failed to obtain migration progress of share "
+                        "server %s.") % share_server['id']
+                LOG.exception(msg)
+                raise exception.ShareServerMigrationError(reason=msg)
+
+        else:
+            result = self._migration_get_progress_state(share_server)
+
+        if not (result and result.get('total_progress') is not None):
+            msg = self._migration_validate_error_message(
+                share_server, resource_type='share_server')
+            if msg is None:
+                msg = _("Migration progress of share server %s cannot be "
+                        "obtained at this moment.") % share_server['id']
+            LOG.error(msg)
+            raise exception.InvalidShareServer(reason=msg)
+
+        result.update({
+            'destination_share_server_id': dest_share_server['id'],
+            'task_state': dest_share_server['task_state']
+        })
+        return result

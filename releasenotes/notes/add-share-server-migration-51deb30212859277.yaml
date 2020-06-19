@@ -1,0 +1,26 @@
+---
+features:
+  - |
+    Added the ability to migrate share servers within and across backends in
+    Manila. As designed in share migration, a two-phase approach is now
+    available for share servers, with the addition of a new API to check the
+    feasibility of a migration, called ``share-server-migration-check``. Now,
+    Manila can start, complete, cancel and retrieve the progress of a share
+    server migration. These operations were designed for Administrators and
+    will work only when operating under `driver_handles_share_servers=True`
+    mode. When starting a share server migration, it is possible to choose
+    which capabilities must be supported by the driver: remain ``writable``
+    during the first phase, ``preserve_snapshots``, be ``nondisruptive`` and
+    migrate to a different share network.
+upgrade:
+  - |
+    The share server entity now contains two new fields: ``task_state`` and
+    `source_share_server_id`. The `task_state` field helps tracking the
+    migration progress of a share server. The ``source_share_server_id`` field
+    will hold the source share server identification until the migration gets
+    completed or cancelled.
+    New statuses were added in order to control whether a share server, its
+    shares or snapshots are being migrated to a different location. Share
+    server shares’ are going to remain in the status ``server_migrating`` while
+    the migration is in course. When the migration gets completed, the
+    statuses are going to be updated.

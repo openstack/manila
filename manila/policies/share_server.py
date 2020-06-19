@@ -93,6 +93,68 @@ share_server_policies = [
                 'path': '/share-servers/{share_server_id}/action'
             }
         ]),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'share_server_migration_start',
+        check_str=base.RULE_ADMIN_API,
+        description="Migrates a share server to the specified host.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-servers/{share_server_id}/action',
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'share_server_migration_check',
+        check_str=base.RULE_ADMIN_API,
+        description="Check if can migrates a share server to the specified "
+                    "host.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-servers/{share_server_id}/action',
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'share_server_migration_complete',
+        check_str=base.RULE_ADMIN_API,
+        description="Invokes the 2nd phase of share server migration.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-servers/{share_server_id}/action',
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'share_server_migration_cancel',
+        check_str=base.RULE_ADMIN_API,
+        description="Attempts to cancel share server migration.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-servers/{share_server_id}/action',
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'share_server_migration_get_progress',
+        check_str=base.RULE_ADMIN_API,
+        description=("Retrieves the share server migration progress for a "
+                     "given share server."),
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-servers/{share_server_id}/action',
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'share_server_reset_task_state',
+        check_str=base.RULE_ADMIN_API,
+        description=("Resets task state."),
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-servers/{share_server_id}/action',
+            }
+        ]),
 ]
 
 

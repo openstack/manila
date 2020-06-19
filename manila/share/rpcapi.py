@@ -77,6 +77,8 @@ class ShareAPI(object):
         1.18 - Remove unused "share_id" parameter from revert_to_snapshot()
         1.19 - Add manage_share_server() and unmanage_share_server()
         1.20 - Add share_instance_id parameter for create_share_server() method
+        1.21 - Add share_server_migration_start, share_server_migration_check()
+            and share_server_get_progress()
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -85,7 +87,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.20')
+        self.client = rpc.get_client(target, version_cap='1.21')
 
     def create_share_instance(self, context, share_instance, host,
                               request_spec, filter_properties,
@@ -180,6 +182,64 @@ class ShareAPI(object):
             new_share_network_id=new_share_network_id,
             new_share_type_id=new_share_type_id)
 
+    def share_server_migration_start(self, context, share_server, dest_host,
+                                     writable, nondisruptive,
+                                     preserve_snapshots, new_share_network_id):
+        host = utils.extract_host(dest_host)
+        call_context = self.client.prepare(server=host, version='1.21')
+        call_context.cast(
+            context,
+            'share_server_migration_start',
+            share_server_id=share_server['id'],
+            dest_host=dest_host,
+            writable=writable,
+            nondisruptive=nondisruptive,
+            preserve_snapshots=preserve_snapshots,
+            new_share_network_id=new_share_network_id)
+
+    def share_server_migration_check(self, context, share_server_id, dest_host,
+                                     writable, nondisruptive,
+                                     preserve_snapshots, new_share_network_id):
+        host = utils.extract_host(dest_host)
+        call_context = self.client.prepare(server=host, version='1.21')
+        return call_context.call(
+            context,
+            'share_server_migration_check',
+            share_server_id=share_server_id,
+            dest_host=dest_host,
+            writable=writable,
+            nondisruptive=nondisruptive,
+            preserve_snapshots=preserve_snapshots,
+            new_share_network_id=new_share_network_id)
+
+    def share_server_migration_cancel(self, context, dest_host, share_server,
+                                      dest_share_server):
+        host = utils.extract_host(dest_host)
+        call_context = self.client.prepare(server=host, version='1.21')
+        call_context.cast(
+            context,
+            'share_server_migration_cancel',
+            src_share_server_id=share_server['id'],
+            dest_share_server_id=dest_share_server['id'])
+
+    def share_server_migration_get_progress(self, context, dest_host,
+                                            share_server, dest_share_server):
+        host = utils.extract_host(dest_host)
+        call_context = self.client.prepare(server=host, version='1.21')
+        return call_context.call(context,
+                                 'share_server_migration_get_progress',
+                                 src_share_server_id=share_server['id'],
+                                 dest_share_server_id=dest_share_server['id'])
+
+    def share_server_migration_complete(self, context, dest_host,
+                                        share_server, dest_share_server):
+        host = utils.extract_host(dest_host)
+        call_context = self.client.prepare(server=host, version='1.21')
+        call_context.cast(context,
+                          'share_server_migration_complete',
+                          src_share_server_id=share_server['id'],
+                          dest_share_server_id=dest_share_server['id'])
+
     def connection_get_info(self, context, share_instance):
         new_host = utils.extract_host(share_instance['host'])
         call_context = self.client.prepare(server=new_host, version='1.12')
@@ -233,6 +293,14 @@ class ShareAPI(object):
         call_context = self.client.prepare(server=host, version='1.14')
         call_context.cast(context, 'update_access',
                           share_instance_id=share_instance['id'])
+
+    def update_access_for_instances(self, context, dest_host,
+                                    share_instance_ids, share_server_id=None):
+        host = utils.extract_host(dest_host)
+        call_context = self.client.prepare(server=host, version='1.21')
+        call_context.cast(context, 'update_access_for_instances',
+                          share_instance_ids=share_instance_ids,
+                          share_server_id=share_server_id)
 
     def publish_service_capabilities(self, context):
         call_context = self.client.prepare(fanout=True, version='1.0')
