@@ -24,5 +24,3 @@
      - (String) The name of the cluster in use, if it is not the default ('ceph').
    * - ``cephfs_conf_path`` =
      - (String) Fully qualified path to the ceph.conf file.
-   * - ``cephfs_enable_snapshots`` = ``False``
-     - (Boolean) Whether to enable snapshots in this driver.

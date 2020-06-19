@@ -221,7 +221,6 @@ Create a section like this to define a CephFS native backend:
     cephfs_protocol_helper_type = CEPHFS
     cephfs_auth_id = manila
     cephfs_cluster_name = ceph
-    cephfs_enable_snapshots = True
 
 Set ``driver-handles-share-servers`` to ``False`` as the driver does not
 manage the lifecycle of ``share-servers``. For the driver backend to expose
@@ -267,7 +266,6 @@ Create a section to define a CephFS NFS share backend:
     cephfs_conf_path = /etc/ceph/ceph.conf
     cephfs_auth_id = manila
     cephfs_cluster_name = ceph
-    cephfs_enable_snapshots = True
     cephfs_ganesha_server_is_remote= False
     cephfs_ganesha_server_ip = 172.24.4.3
     ganesha_rados_store_enable = True
@@ -486,11 +484,6 @@ Known restrictions
   Using a non-unique Ceph auth ID will result in the driver unintentionally
   evicting other CephFS clients using the same Ceph auth ID to connect to the
   backend.
-
-- The snapshot support of the driver is disabled by default. The
-  ``cephfs_enable_snapshots`` configuration option needs to be set to ``True``
-  to allow snapshot operations. Snapshot support will also need to be enabled
-  on the backend CephFS storage.
 
 - Snapshots are read-only. A user can read a snapshot's contents from the
   ``.snap/{manila-snapshot-id}_{unknown-id}`` folder within the mounted

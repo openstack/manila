@@ -68,7 +68,11 @@ cephfs_opts = [
                help="The prefix of the cephfs volume path."
                ),
     cfg.BoolOpt('cephfs_enable_snapshots',
-                default=False,
+                deprecated_for_removal=True,
+                deprecated_since='Victoria',
+                deprecated_reason='CephFS snapshots are fully supported '
+                                  'since the Nautilus release of Ceph.',
+                default=True,
                 help="Whether to enable snapshots in this driver."
                 ),
     cfg.StrOpt('cephfs_protocol_helper_type',

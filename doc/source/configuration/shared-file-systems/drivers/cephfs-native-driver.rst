@@ -159,10 +159,8 @@ Configure CephFS back end in ``manila.conf``
        cephfs_conf_path = /etc/ceph/ceph.conf
        cephfs_auth_id = manila
        cephfs_cluster_name = ceph
-       cephfs_enable_snapshots = False
 
-   To let the driver perform snapshot related operations, set
-   cephfs_enable_snapshots to True . Also set the
+   Also set the
    ``driver-handles-share-servers`` to ``False`` as the driver does not manage
    the lifecycle of ``share-servers``.
 
@@ -261,10 +259,6 @@ Consider the driver as a building block for supporting multi-tenant workloads
 in the future. However, it can be used in private cloud deployments.
 
 - The guests have direct access to Ceph's public network.
-
-- The snapshot support of the driver is disabled by default.
-  ``cephfs_enable_snapshots`` configuration option needs to be set to ``True``
-  to allow snapshot operations.
 
 - Snapshots are read-only. A user can read a snapshot's contents from the
   ``.snap/{manila-snapshot-id}_{unknown-id}`` folder within the mounted

@@ -74,6 +74,8 @@
           export MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=False
           export DEVSTACK_GATE_USE_PYTHON3=True
 
+          export RUN_MANILA_SNAPSHOT_TESTS=True
+
           function pre_test_hook {
               # Configure Manila with a CephFS Native or NFS driver backend.
               # Refer to job-template pre_test_hook for more details on the
