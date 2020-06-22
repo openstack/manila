@@ -47,15 +47,7 @@ class UnityClient(object):
         :return: UnityCifsShare object
         """
         try:
-            share = resource.create_cifs_share(share_name)
-            try:
-                # bug on unity: the enable ace API has bug for snap
-                # based share.  Log the internal error if it happens.
-                share.enable_ace()
-            except storops_ex.UnityException:
-                msg = ('Failed to enabled ACE for share: {}.')
-                LOG.exception(msg.format(share_name))
-            return share
+            return resource.create_cifs_share(share_name)
         except storops_ex.UnitySmbShareNameExistedError:
             return self.get_share(share_name, 'CIFS')
 

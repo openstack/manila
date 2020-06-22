@@ -42,9 +42,10 @@ from manila import utils
      7.0.1 - Fix parsing management IPv6 address
      7.0.2 - Bugfix: failed to delete CIFS share if wrong access was set
      8.0.0 - Supports manage/unmanage share server/share/snapshot
+     8.0.1 - Bugfix: remove enable ace process when creating cifs share
 """
 
-VERSION = "8.0.0"
+VERSION = "8.0.1"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
