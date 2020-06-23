@@ -409,7 +409,7 @@ Response example
 Manage share (since API v2.7)
 =============================
 
-.. rest_method::  GET /v2/{project_id}/shares/manage
+.. rest_method::  POST /v2/{project_id}/shares/manage
 
 .. versionadded:: 2.7
 
