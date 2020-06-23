@@ -29,6 +29,7 @@ from oslo_utils import excutils
 
 from manila import exception
 from manila.i18n import _
+from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
@@ -72,8 +73,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             check_for_setup_error())
 
     @na_utils.trace
-    def _get_vserver(self, share_server=None, vserver_name=None):
-
+    def _get_vserver(self, share_server=None, vserver_name=None,
+                     backend_name=None):
         if share_server:
             backend_details = share_server.get('backend_details')
             vserver = backend_details.get(
@@ -86,13 +87,19 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         elif vserver_name:
             vserver = vserver_name
         else:
-            msg = _('Share server not provided')
+            msg = _('Share server or vserver name not provided')
             raise exception.InvalidInput(reason=msg)
 
-        if not self._client.vserver_exists(vserver):
+        if backend_name:
+            vserver_client = data_motion.get_client_for_backend(
+                backend_name, vserver
+            )
+        else:
+            vserver_client = self._get_api_client(vserver)
+
+        if not vserver_client.vserver_exists(vserver):
             raise exception.VserverNotFound(vserver=vserver)
 
-        vserver_client = self._get_api_client(vserver)
         return vserver, vserver_client
 
     def _get_ems_pool_info(self):
@@ -152,7 +159,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 server_details['nfs_config'] = jsonutils.dumps(nfs_config)
 
             try:
-                self._create_vserver(vserver_name, network_info,
+                self._create_vserver(vserver_name, network_info, metadata,
                                      nfs_config=nfs_config)
             except Exception as e:
                 e.detail_data = {'server_details': server_details}
@@ -208,12 +215,20 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         return self.configuration.netapp_vserver_name_template % server_id
 
     @na_utils.trace
-    def _create_vserver(self, vserver_name, network_info, nfs_config=None):
+    def _create_vserver(self, vserver_name, network_info, metadata=None,
+                        nfs_config=None):
         """Creates Vserver with given parameters if it doesn't exist."""
 
         if self._client.vserver_exists(vserver_name):
             msg = _('Vserver %s already exists.')
             raise exception.NetAppException(msg % vserver_name)
+        # NOTE(dviroel): check if this vserver will be a data protection server
+        is_dp_destination = False
+        if metadata and metadata.get('migration_destination') is True:
+            is_dp_destination = True
+            msg = _("Starting creation of a vserver with 'dp_destination' "
+                    "subtype.")
+            LOG.debug(msg)
 
         # NOTE(lseki): If there's already an ipspace created for the same VLAN
         # port, reuse it. It will be named after the previously created share
@@ -224,47 +239,66 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         ipspace_name = self._client.get_ipspace_name_for_vlan_port(
             node_name, port, vlan) or self._create_ipspace(network_info)
 
-        LOG.debug('Vserver %s does not exist, creating.', vserver_name)
-        self._client.create_vserver(
-            vserver_name,
-            self.configuration.netapp_root_volume_aggregate,
-            self.configuration.netapp_root_volume,
-            self._find_matching_aggregates(),
-            ipspace_name)
+        if is_dp_destination:
+            # Get Data ONTAP aggregate name as pool name.
+            LOG.debug('Creating a new Vserver (%s) for data protection.',
+                      vserver_name)
+            self._client.create_vserver_dp_destination(
+                vserver_name,
+                self._find_matching_aggregates(),
+                ipspace_name)
+            # Set up port and broadcast domain for the current ipspace
+            self._create_port_and_broadcast_domain(ipspace_name, network_info)
+        else:
+            LOG.debug('Vserver %s does not exist, creating.', vserver_name)
+            self._client.create_vserver(
+                vserver_name,
+                self.configuration.netapp_root_volume_aggregate,
+                self.configuration.netapp_root_volume,
+                self._find_matching_aggregates(),
+                ipspace_name)
 
-        vserver_client = self._get_api_client(vserver=vserver_name)
-        security_services = None
-        try:
-            self._create_vserver_lifs(vserver_name,
-                                      vserver_client,
-                                      network_info,
-                                      ipspace_name)
+            vserver_client = self._get_api_client(vserver=vserver_name)
 
-            self._create_vserver_admin_lif(vserver_name,
-                                           vserver_client,
-                                           network_info,
-                                           ipspace_name)
+            security_services = network_info.get('security_services')
+            try:
+                self._setup_network_for_vserver(
+                    vserver_name, vserver_client, network_info, ipspace_name,
+                    security_services=security_services, nfs_config=nfs_config)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.error("Failed to configure Vserver.")
+                    # NOTE(dviroel): At this point, the lock was already
+                    # acquired by the caller of _create_vserver.
+                    self._delete_vserver(vserver_name,
+                                         security_services=security_services,
+                                         needs_lock=False)
 
-            self._create_vserver_routes(vserver_client,
-                                        network_info)
+    def _setup_network_for_vserver(self, vserver_name, vserver_client,
+                                   network_info, ipspace_name,
+                                   enable_nfs=True, security_services=None,
+                                   nfs_config=None):
+        self._create_vserver_lifs(vserver_name,
+                                  vserver_client,
+                                  network_info,
+                                  ipspace_name)
 
+        self._create_vserver_admin_lif(vserver_name,
+                                       vserver_client,
+                                       network_info,
+                                       ipspace_name)
+
+        self._create_vserver_routes(vserver_client,
+                                    network_info)
+        if enable_nfs:
             vserver_client.enable_nfs(
                 self.configuration.netapp_enabled_share_protocols,
                 nfs_config=nfs_config)
 
-            security_services = network_info.get('security_services')
-            if security_services:
-                self._client.setup_security_services(security_services,
-                                                     vserver_client,
-                                                     vserver_name)
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                LOG.error("Failed to configure Vserver.")
-                # NOTE(dviroel): At this point, the lock was already acquired
-                # by the caller of _create_vserver.
-                self._delete_vserver(vserver_name,
-                                     security_services=security_services,
-                                     needs_lock=False)
+        if security_services:
+            self._client.setup_security_services(security_services,
+                                                 vserver_client,
+                                                 vserver_name)
 
     def _get_valid_ipspace_name(self, network_id):
         """Get IPspace name according to network id."""
@@ -377,6 +411,21 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 lif_name, ipspace_name, mtu)
 
     @na_utils.trace
+    def _create_port_and_broadcast_domain(self, ipspace_name, network_info):
+        nodes = self._client.list_cluster_nodes()
+        node_network_info = zip(nodes, network_info['network_allocations'])
+
+        for node_name, network_allocation in node_network_info:
+
+            port = self._get_node_data_port(node_name)
+            vlan = network_allocation['segmentation_id']
+            network_mtu = network_allocation.get('mtu')
+            mtu = network_mtu or DEFAULT_MTU
+
+            self._client.create_port_and_broadcast_domain(
+                node_name, port, vlan, mtu, ipspace_name)
+
+    @na_utils.trace
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""
         return len(self._client.list_cluster_nodes())
@@ -415,6 +464,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         vserver_client = self._get_api_client(vserver=vserver)
         network_interfaces = vserver_client.get_network_interfaces()
+        snapmirror_policies = self._client.get_snapmirror_policies(vserver)
 
         interfaces_on_vlans = []
         vlans = []
@@ -430,6 +480,11 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             vlan_id = None
 
         def _delete_vserver_without_lock():
+            # NOTE(dviroel): always delete all policies before deleting the
+            # vserver
+            for policy in snapmirror_policies:
+                vserver_client.delete_snapmirror_policy(policy)
+
             # NOTE(dviroel): Attempt to delete all vserver peering
             # created by replication
             self._delete_vserver_peers(vserver)
@@ -437,13 +492,17 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             self._client.delete_vserver(vserver,
                                         vserver_client,
                                         security_services=security_services)
-
+            ipspace_deleted = False
             if (ipspace_name and ipspace_name not in CLUSTER_IPSPACES
                     and not self._client.ipspace_has_data_vservers(
                         ipspace_name)):
                 self._client.delete_ipspace(ipspace_name)
+                ipspace_deleted = True
 
-            self._delete_vserver_vlans(interfaces_on_vlans)
+            if not ipspace_name or ipspace_deleted:
+                # NOTE(dviroel): only delete vlans if they are not being used
+                # by any ipspaces and data vservers.
+                self._delete_vserver_vlans(interfaces_on_vlans)
 
         @utils.synchronized('netapp-VLAN-%s' % vlan_id, external=True)
         def _delete_vserver_with_lock():
@@ -592,8 +651,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
     def _get_snapmirrors(self, vserver, peer_vserver):
         return self._client.get_snapmirrors(
-            source_vserver=vserver, source_volume=None,
-            destination_vserver=peer_vserver, destination_volume=None)
+            source_vserver=vserver, dest_vserver=peer_vserver)
 
     def _get_vservers_from_replicas(self, context, replica_list, new_replica):
         active_replica = self.find_active_replica(replica_list)
@@ -706,10 +764,13 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             extra_specs = share_types.get_extra_specs_from_share(share)
             nfs_config = self._get_nfs_config_provisioning_options(extra_specs)
 
+        # Avoid the reuse of 'dp_protection' vservers:
         for share_server in share_servers:
             if self._check_reuse_share_server(share_server, nfs_config,
                                               share_group=share_group):
                 return share_server
+
+        #  There is no compatible share server to be reused
         return None
 
     @na_utils.trace
@@ -718,6 +779,16 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         """Check whether the share_server can be reused or not."""
         if (share_group and share_group.get('share_server_id') !=
                 share_server['id']):
+            return False
+
+        backend_name = share_utils.extract_host(share_server['host'],
+                                                level='backend_name')
+        vserver_name, client = self._get_vserver(share_server,
+                                                 backend_name=backend_name)
+        vserver_info = client.get_vserver_info(vserver_name)
+        if (vserver_info.get('operational_state') != 'running'
+                or vserver_info.get('state') != 'running'
+                or vserver_info.get('subtype') != 'default'):
             return False
 
         if self.is_nfs_config_supported:
@@ -799,3 +870,417 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         return (super(NetAppCmodeMultiSVMFileStorageLibrary, self).
                 manage_existing(share, driver_options,
                                 share_server=share_server))
+
+    @na_utils.trace
+    def share_server_migration_check_compatibility(
+            self, context, source_share_server, dest_host, old_share_network,
+            new_share_network, shares_request_spec):
+
+        not_compatible = {
+            'compatible': False,
+            'writable': None,
+            'nondisruptive': None,
+            'preserve_snapshots': None,
+            'migration_cancel': None,
+            'migration_get_progress': None,
+            'share_network_id': None
+        }
+
+        # We need cluster creds, of course
+        if not self._have_cluster_creds:
+            msg = _("Cluster credentials have not been configured with this "
+                    "share driver. Cannot perform server migration operation.")
+            LOG.error(msg)
+            return not_compatible
+
+        # Vserver will spread across aggregates in this implementation
+        if share_utils.extract_host(dest_host, level='pool') is not None:
+            msg = _("Cannot perform server migration to a specific pool. "
+                    "Please choose a destination host 'host@backend' as "
+                    "destination.")
+            LOG.error(msg)
+            return not_compatible
+
+        src_backend_name = share_utils.extract_host(
+            source_share_server['host'], level='backend_name')
+        src_vserver, src_client = self._get_vserver(
+            source_share_server, backend_name=src_backend_name)
+        dest_backend_name = share_utils.extract_host(dest_host,
+                                                     level='backend_name')
+        # Block migration within the same backend.
+        if src_backend_name == dest_backend_name:
+            msg = _("Cannot perform server migration within the same backend. "
+                    "Please choose a destination host different from the "
+                    "source.")
+            LOG.error(msg)
+            return not_compatible
+
+        src_cluster_name = src_client.get_cluster_name()
+        # NOTE(dviroel): This call is supposed to made in the destination host
+        dest_cluster_name = self._client.get_cluster_name()
+        # Must be in different clusters too, SVM-DR restriction
+        if src_cluster_name == dest_cluster_name:
+            msg = _("Cannot perform server migration within the same cluster. "
+                    "Please choose a destination host that's in a different "
+                    "cluster.")
+            LOG.error(msg)
+            return not_compatible
+
+        # Check for SVM DR support
+        # NOTE(dviroel): These clients can only be used for non-tunneling
+        # requests.
+        dst_client = data_motion.get_client_for_backend(dest_backend_name,
+                                                        vserver_name=None)
+        if (not src_client.is_svm_dr_supported()
+                or not dst_client.is_svm_dr_supported()):
+            msg = _("Cannot perform server migration because at leat one of "
+                    "the backends doesn't support SVM DR.")
+            LOG.error(msg)
+            return not_compatible
+
+        # Blocking different security services for now
+        if old_share_network['id'] != new_share_network['id']:
+            new_sec_services = new_share_network.get('security_services', [])
+            old_sec_services = old_share_network.get('security_services', [])
+            if new_sec_services or old_sec_services:
+                new_sec_serv_ids = [ss['id'] for ss in new_sec_services]
+                old_sec_serv_ids = [ss['id'] for ss in old_sec_services]
+                if not set(new_sec_serv_ids) == set(old_sec_serv_ids):
+                    msg = _("Cannot perform server migration for different "
+                            "security services. Please choose a suitable "
+                            "share network that matches the source security "
+                            "service.")
+                    LOG.error(msg)
+                    return not_compatible
+
+        pools = self._get_pools()
+        # Check 'netapp_flexvol_encryption' and 'revert_to_snapshot_support'
+        specs_to_validate = ('netapp_flexvol_encryption',
+                             'revert_to_snapshot_support')
+        for req_spec in shares_request_spec.get('shares_req_spec', []):
+            extra_specs = req_spec.get('share_type', {}).get('extra_specs', {})
+            for spec in specs_to_validate:
+                if extra_specs.get(spec) and not pools[0][spec]:
+                    msg = _("Cannot perform server migration since the "
+                            "destination host doesn't support the required "
+                            "extra-spec %s.") % spec
+                    LOG.error(msg)
+                    return not_compatible
+            # TODO(dviroel): disk_type extra-spec
+
+        # Check capacity
+        server_total_size = (shares_request_spec.get('shares_size', 0) +
+                             shares_request_spec.get('snapshots_size', 0))
+        # NOTE(dviroel): If the backend has a 'max_over_subscription_ratio'
+        # configured and greater than 1, we'll consider thin provisioning
+        # enable for all shares.
+        thin_provisioning = self.configuration.max_over_subscription_ratio > 1
+        if self.configuration.netapp_server_migration_check_capacity is True:
+            if not self._check_capacity_compatibility(pools, thin_provisioning,
+                                                      server_total_size):
+                msg = _("Cannot perform server migration because destination "
+                        "host doesn't have enough free space.")
+                LOG.error(msg)
+                return not_compatible
+
+        compatibility = {
+            'compatible': True,
+            'writable': True,
+            'nondisruptive': False,
+            'preserve_snapshots': True,
+            'share_network_id': new_share_network['id'],
+            'migration_cancel': True,
+            'migration_get_progress': False,
+        }
+
+        return compatibility
+
+    def share_server_migration_start(self, context, source_share_server,
+                                     dest_share_server, share_intances,
+                                     snapshot_instances):
+        """Start share server migration using SVM DR.
+
+        1. Create vserver peering between source and destination
+        2. Create SnapMirror
+        """
+        src_backend_name = share_utils.extract_host(
+            source_share_server['host'], level='backend_name')
+        src_vserver, src_client = self._get_vserver(
+            share_server=source_share_server, backend_name=src_backend_name)
+        src_cluster = src_client.get_cluster_name()
+
+        dest_backend_name = share_utils.extract_host(
+            dest_share_server['host'], level='backend_name')
+        dest_vserver, dest_client = self._get_vserver(
+            share_server=dest_share_server, backend_name=dest_backend_name)
+        dest_cluster = dest_client.get_cluster_name()
+
+        # 1. Check and create vserver peer if needed
+        if not self._get_vserver_peers(dest_vserver, src_vserver):
+            # Request vserver peer creation from destination to source
+            # NOTE(dviroel): vserver peering rollback is handled by
+            # '_delete_vserver' function.
+            dest_client.create_vserver_peer(
+                dest_vserver, src_vserver,
+                peer_cluster_name=src_cluster)
+
+            # Accepts the vserver peering using active replica host's
+            # client (inter-cluster only)
+            if dest_cluster != src_cluster:
+                src_client.accept_vserver_peer(src_vserver, dest_vserver)
+
+        # 2. Create SnapMirror
+        dm_session = data_motion.DataMotionSession()
+        try:
+            dm_session.create_snapmirror_svm(source_share_server,
+                                             dest_share_server)
+        except Exception:
+            # NOTE(dviroel): vserver peer delete will be handled on vserver
+            # teardown
+            dm_session.cancel_snapmirror_svm(source_share_server,
+                                             dest_share_server)
+            msg_args = {
+                'src': source_share_server['id'],
+                'dest': dest_share_server['id'],
+            }
+            msg = _('Could not initialize SnapMirror between %(src)s and '
+                    '%(dest)s vservers.') % msg_args
+            raise exception.NetAppException(message=msg)
+
+        msg_args = {
+            'src': source_share_server['id'],
+            'dest': dest_share_server['id'],
+        }
+        msg = _('Starting share server migration from %(src)s to %(dest)s.')
+        LOG.info(msg, msg_args)
+
+    def _get_snapmirror_svm(self, source_share_server, dest_share_server):
+        dm_session = data_motion.DataMotionSession()
+        try:
+            snapmirrors = dm_session.get_snapmirrors_svm(
+                source_share_server, dest_share_server)
+        except netapp_api.NaApiError:
+            msg_args = {
+                'src': source_share_server['id'],
+                'dest': dest_share_server['id']
+            }
+            msg = _("Could not retrieve snapmirrors between source "
+                    "%(src)s and destination %(dest)s vServers.") % msg_args
+            LOG.exception(msg)
+            raise exception.NetAppException(message=msg)
+
+        return snapmirrors
+
+    @na_utils.trace
+    def share_server_migration_continue(self, context, source_share_server,
+                                        dest_share_server, share_instances,
+                                        snapshot_instances):
+        """Continues a share server migration using SVM DR."""
+        snapmirrors = self._get_snapmirror_svm(source_share_server,
+                                               dest_share_server)
+        if not snapmirrors:
+            msg_args = {
+                'src': source_share_server['id'],
+                'dest': dest_share_server['id']
+            }
+            msg = _("No snapmirror relationship was found between source "
+                    "%(src)s and destination %(dest)s vServers.") % msg_args
+            LOG.exception(msg)
+            raise exception.NetAppException(message=msg)
+
+        snapmirror = snapmirrors[0]
+        in_progress_status = ['preparing', 'transferring', 'finalizing']
+        mirror_state = snapmirror.get('mirror-state')
+        status = snapmirror.get('relationship-status')
+        if mirror_state != 'snapmirrored' and status in in_progress_status:
+            LOG.debug("Data transfer still in progress.")
+            return False
+        elif mirror_state == 'snapmirrored' and status == 'idle':
+            LOG.info("Source and destination vServers are now snapmirrored.")
+            return True
+
+        msg = _("Snapmirror is not ready yet. The current mirror state is "
+                "'%(mirror_state)s' and relationship status is '%(status)s'.")
+        msg_args = {
+            'mirror_state': mirror_state,
+            'status': status,
+        }
+        LOG.debug(msg, msg_args)
+        return False
+
+    @na_utils.trace
+    def share_server_migration_complete(self, context, source_share_server,
+                                        dest_share_server, share_instances,
+                                        snapshot_instances, new_network_alloc):
+        """Completes share server migration using SVM DR.
+
+        1. Do a last SnapMirror update.
+        2. Quiesce, abort and then break the relationship.
+        3. Stop the source vserver
+        4. Configure network interfaces in the destination vserver
+        5. Start the destinarion vserver
+        6. Delete and release the snapmirror
+        7. Build the list of export_locations for each share
+        8. Release all resources from the source share server
+        """
+        dm_session = data_motion.DataMotionSession()
+        try:
+            # 1. Start an update to try to get a last minute transfer before we
+            # quiesce and break
+            dm_session.update_snapmirror_svm(source_share_server,
+                                             dest_share_server)
+        except exception.StorageCommunicationException:
+            # Ignore any errors since the current source may be unreachable
+            pass
+
+        src_backend_name = share_utils.extract_host(
+            source_share_server['host'], level='backend_name')
+        src_vserver, src_client = self._get_vserver(
+            share_server=source_share_server, backend_name=src_backend_name)
+
+        dest_backend_name = share_utils.extract_host(
+            dest_share_server['host'], level='backend_name')
+        dest_vserver, dest_client = self._get_vserver(
+            share_server=dest_share_server, backend_name=dest_backend_name)
+        try:
+            # 2. Attempt to quiesce, abort and then break SnapMirror
+            dm_session.quiesce_and_break_snapmirror_svm(source_share_server,
+                                                        dest_share_server)
+            # NOTE(dviroel): Lets wait until the destination vserver be
+            # promoted to 'default' and state 'running', before starting
+            # shutting down the source
+            dm_session.wait_for_vserver_state(
+                dest_vserver, dest_client, subtype='default',
+                state='running', operational_state='stopped',
+                timeout=(self.configuration.
+                         netapp_server_migration_state_change_timeout))
+
+            # 3. Stop source vserver
+            src_client.stop_vserver(src_vserver)
+
+            # 4. Setup network configuration
+            ipspace_name = dest_client.get_vserver_ipspace(dest_vserver)
+
+            # NOTE(dviroel): Security service and NFS configuration should be
+            # handled by SVM DR, so no changes will be made here.
+            vlan = new_network_alloc['segmentation_id']
+
+            @utils.synchronized('netapp-VLAN-%s' % vlan, external=True)
+            def setup_network_for_destination_vserver():
+                self._setup_network_for_vserver(
+                    dest_vserver, dest_client, new_network_alloc, ipspace_name,
+                    enable_nfs=False,
+                    security_services=None)
+
+            setup_network_for_destination_vserver()
+
+            # 5. Start the destination.
+            dest_client.start_vserver(dest_vserver)
+
+        except Exception:
+            # Try to recover source vserver
+            try:
+                src_client.start_vserver(src_vserver)
+            except Exception:
+                LOG.warning("Unable to recover source share server after a "
+                            "migration failure.")
+            # Destroy any snapmirror and make destination vserver to have its
+            # subtype set to 'default'
+            dm_session.cancel_snapmirror_svm(source_share_server,
+                                             dest_share_server)
+            # Rollback resources transferred to the destination
+            for instance in share_instances:
+                self._delete_share(instance, dest_client, remove_export=False)
+
+            msg_args = {
+                'src': source_share_server['id'],
+                'dest': dest_share_server['id'],
+            }
+            msg = _('Could not complete the migration between %(src)s and '
+                    '%(dest)s vservers.') % msg_args
+            raise exception.NetAppException(message=msg)
+
+        # 6. Delete/release snapmirror
+        dm_session.delete_snapmirror_svm(source_share_server,
+                                         dest_share_server)
+
+        # 7. Build a dict with shares/snapshot location updates
+        # NOTE(dviroel): For SVM DR, the share names aren't modified, only the
+        # export_locations are updated due to network changes.
+        share_updates = {}
+        for instance in share_instances:
+            # Get the volume to find out the associated aggregate
+            try:
+                share_name = self._get_backend_share_name(instance['id'])
+                volume = dest_client.get_volume(share_name)
+            except Exception:
+                msg_args = {
+                    'src': source_share_server['id'],
+                    'dest': dest_share_server['id'],
+                }
+                msg = _('Could not complete the migration between %(src)s and '
+                        '%(dest)s vservers. One of the shares was not found '
+                        'in the destination vserver.') % msg_args
+                raise exception.NetAppException(message=msg)
+
+            export_locations = self._create_export(
+                instance, dest_share_server, dest_vserver, dest_client,
+                clear_current_export_policy=False,
+                ensure_share_already_exists=True)
+
+            share_updates.update({
+                instance['id']: {
+                    'export_locations': export_locations,
+                    'pool_name': volume.get('aggregate')
+                }})
+
+        # NOTE(dviroel): Nothing to update in snapshot instances since the
+        # provider location didn't change.
+
+        # 8. Release source share resources
+        for instance in share_instances:
+            self._delete_share(instance, src_client, remove_export=True)
+
+        # NOTE(dviroel): source share server deletion must be triggered by
+        # the manager after finishing the migration
+        LOG.info('Share server migration completed.')
+        return {
+            'share_updates': share_updates,
+        }
+
+    def share_server_migration_cancel(self, context, source_share_server,
+                                      dest_share_server, shares, snapshots):
+        """Cancel a share server migration that is using SVM DR."""
+
+        dm_session = data_motion.DataMotionSession()
+        dest_backend_name = share_utils.extract_host(dest_share_server['host'],
+                                                     level='backend_name')
+        dest_vserver, dest_client = self._get_vserver(
+            share_server=dest_share_server, backend_name=dest_backend_name)
+
+        try:
+            snapmirrors = self._get_snapmirror_svm(source_share_server,
+                                                   dest_share_server)
+            if snapmirrors:
+                dm_session.cancel_snapmirror_svm(source_share_server,
+                                                 dest_share_server)
+            # Do a simple volume cleanup in the destination vserver
+            for instance in shares:
+                self._delete_share(instance, dest_client, remove_export=False)
+
+        except Exception:
+            msg_args = {
+                'src': source_share_server['id'],
+                'dest': dest_share_server['id'],
+            }
+            msg = _('Unable to cancel SnapMirror relationship between %(src)s '
+                    'and %(dest)s vservers.') % msg_args
+            raise exception.NetAppException(message=msg)
+
+        LOG.info('Share server migration was cancelled.')
+
+    def share_server_migration_get_progress(self, context, src_share_server,
+                                            dest_share_server, shares,
+                                            snapshots):
+        # TODO(dviroel): get snapmirror info to infer the progress
+        return {'total_progress': 0}

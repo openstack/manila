@@ -111,7 +111,11 @@ netapp_provisioning_opts = [
                     "nothing will be changed during startup. This will not "
                     "affect new shares, which will have their snapshot "
                     "directory always visible, unless toggled by the share "
-                    "type extra spec 'netapp:hide_snapdir'."), ]
+                    "type extra spec 'netapp:hide_snapdir'."),
+    cfg.StrOpt('netapp_snapmirror_policy_name_svm_template',
+               help='NetApp SnapMirror policy name template for Storage '
+                    'Virtual Machines (Vservers).',
+               default='snapmirror_policy_%(share_server_id)s'), ]
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',
@@ -145,6 +149,11 @@ netapp_data_motion_opts = [
                help='The maximum time in seconds to wait for existing '
                     'snapmirror transfers to complete before aborting when '
                     'promoting a replica.'),
+    cfg.IntOpt('netapp_snapmirror_release_timeout',
+               min=0,
+               default=3600,  # One Hour
+               help='The maximum time in seconds to wait for a snapmirror '
+                    'release when breaking snapmirror relationships.'),
     cfg.IntOpt('netapp_volume_move_cutover_timeout',
                min=0,
                default=3600,  # One Hour,
@@ -162,7 +171,27 @@ netapp_data_motion_opts = [
                default=3600,  # One Hour,
                help='The maximum time in seconds that migration cancel '
                     'waits for all migration operations be completely '
-                    'aborted.'), ]
+                    'aborted.'),
+    cfg.IntOpt('netapp_server_migration_state_change_timeout',
+               min=0,
+               default=3600,  # One hour,
+               help='The maximum time in seconds that a share server '
+                    'migration waits for a vserver to change its internal '
+                    'states.'),
+    cfg.BoolOpt('netapp_server_migration_check_capacity',
+                default=True,
+                help='Specify if the capacity check must be made by the '
+                     'driver while performing a share server migration. '
+                     'If enabled, the driver will validate if the destination '
+                     'backend can hold all shares and snapshots capacities '
+                     'from the source share server.'),
+    cfg.IntOpt('netapp_server_migration_state_change_timeout',
+               min=0,
+               default=3600,  # One hour,
+               help='The maximum time in seconds that a share server '
+                    'migration waits for a vserver to change its internal '
+                    'states.'),
+]
 
 CONF = cfg.CONF
 CONF.register_opts(netapp_proxy_opts)

@@ -41,8 +41,12 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
 
     @na_utils.trace
     def create_share(self, share, share_name,
-                     clear_current_export_policy=True):
+                     clear_current_export_policy=True,
+                     ensure_share_already_exists=False):
         """Creates NFS share."""
+        # TODO(dviroel): Ensure that nfs share already exists if
+        #  ensure_share_already_exists is True. Although, no conflicts are
+        #  expected here since there is no create share operation being made.
         if clear_current_export_policy:
             self._client.clear_nfs_export_policy_for_volume(share_name)
         self._ensure_export_policy(share, share_name)

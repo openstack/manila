@@ -74,6 +74,17 @@ DELETED_EXPORT_POLICIES = {
 }
 QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
 QOS_MAX_THROUGHPUT = '5000B/s'
+VSERVER_TYPE_DEFAULT = 'default'
+VSERVER_TYPE_DP_DEST = 'dp_destination'
+VSERVER_OP_STATE_RUNNING = 'running'
+VSERVER_STATE = 'running'
+VSERVER_INFO = {
+    'name': VSERVER_NAME,
+    'subtype': VSERVER_TYPE_DEFAULT,
+    'operational_state': VSERVER_OP_STATE_RUNNING,
+    'state': VSERVER_STATE,
+}
+SNAPMIRROR_POLICY_NAME = 'fake_snapmirror_policy'
 
 USER_NAME = 'fake_user'
 
@@ -197,6 +208,20 @@ VSERVER_GET_ITER_RESPONSE = etree.XML("""
     <num-records>1</num-records>
   </results>
 """ % {'fake_vserver': VSERVER_NAME})
+
+VSERVER_GET_ITER_RESPONSE_INFO = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <vserver-info>
+        <operational-state>%(operational_state)s</operational-state>
+        <state>%(state)s</state>
+        <vserver-name>%(name)s</vserver-name>
+        <vserver-subtype>%(subtype)s</vserver-subtype>
+      </vserver-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % VSERVER_INFO)
 
 VSERVER_GET_ROOT_VOLUME_NAME_RESPONSE = etree.XML("""
   <results status="passed">
@@ -1702,6 +1727,18 @@ CIFS_SHARE_ACCESS_CONTROL_GET_ITER = etree.XML("""
   </results>
 """ % {'volume': SHARE_NAME})
 
+CIFS_SHARE_GET_ITER_RESPONSE = etree.XML("""
+ <results status="passed">
+    <attributes-list>
+      <cifs-share>
+        <share-name>%(share_name)s</share-name>
+        <vserver>fake_vserver</vserver>
+      </cifs-share>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'share_name': SHARE_NAME})
+
 NFS_EXPORT_RULES = ('10.10.10.10', '10.10.10.20')
 
 NFS_EXPORTFS_LIST_RULES_2_NO_RULES_RESPONSE = etree.XML("""
@@ -2373,10 +2410,40 @@ SNAPMIRROR_GET_ITER_FILTERED_RESPONSE = etree.XML("""
         <destination-volume>fake_destination_volume</destination-volume>
         <is-healthy>true</is-healthy>
         <mirror-state>snapmirrored</mirror-state>
+        <relationship-status>idle</relationship-status>
         <schedule>daily</schedule>
         <source-vserver>fake_source_vserver</source-vserver>
         <source-volume>fake_source_volume</source-volume>
       </snapmirror-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""")
+
+SNAPMIRROR_GET_ITER_FILTERED_RESPONSE_2 = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapmirror-info>
+        <source-vserver>fake_source_vserver</source-vserver>
+        <destination-vserver>fake_destination_vserver</destination-vserver>
+        <mirror-state>snapmirrored</mirror-state>
+        <relationship-status>idle</relationship-status>
+      </snapmirror-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""")
+
+SNAPMIRROR_GET_DESTINATIONS_ITER_FILTERED_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapmirror-destination-info>
+        <destination-location>fake_destination_vserver:</destination-location>
+        <destination-vserver>fake_destination_vserver</destination-vserver>
+        <relationship-id>fake_relationship_id</relationship-id>
+        <source-location>fake_source_vserver:</source-location>
+        <source-vserver>fake_source_vserver</source-vserver>
+      </snapmirror-destination-info>
     </attributes-list>
     <num-records>1</num-records>
   </results>
@@ -2603,6 +2670,20 @@ QOS_POLICY_GROUP_GET_ITER_RESPONSE = etree.XML("""
     'qos_policy_group_name': QOS_POLICY_GROUP_NAME,
     'vserver': VSERVER_NAME,
     'max_throughput': QOS_MAX_THROUGHPUT,
+})
+
+SNAPMIRROR_POLICY_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapmirror-policy-info>
+        <policy-name>%(policy_name)s</policy-name>
+        <vserver-name>%(vserver_name)s</vserver-name>
+      </snapmirror-policy-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>""" % {
+    'policy_name': SNAPMIRROR_POLICY_NAME,
+    'vserver_name': VSERVER_NAME,
 })
 
 FAKE_VOL_XML = """<volume-info>

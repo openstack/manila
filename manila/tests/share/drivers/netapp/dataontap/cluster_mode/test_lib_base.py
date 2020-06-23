@@ -313,6 +313,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
 
+    def test__get_backend_snapmirror_policy_name_svm(self):
+        result = self.library._get_backend_snapmirror_policy_name_svm(
+            fake.SERVER_ID)
+        expected = 'snapmirror_policy_' + fake.SERVER_ID.replace('-', '_')
+
+        self.assertEqual(expected, result)
+
     def test_get_aggregate_space_cluster_creds(self):
 
         self.library._have_cluster_creds = True
@@ -1804,7 +1811,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_export_addresses_with_metadata.assert_called_once_with(
             fake.SHARE, fake.SHARE_SERVER, fake.LIFS)
         protocol_helper.create_share.assert_called_once_with(
-            fake.SHARE, fake.SHARE_NAME, clear_current_export_policy=True)
+            fake.SHARE, fake.SHARE_NAME, clear_current_export_policy=True,
+            ensure_share_already_exists=False)
 
     def test_create_export_lifs_not_found(self):
 
@@ -3117,8 +3125,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             share_server=None)
 
         self.assertDictMatch(expected_model_update, model_update)
-        mock_dm_session.create_snapmirror.assert_called_once_with(fake.SHARE,
-                                                                  fake.SHARE)
+        mock_dm_session.create_snapmirror.assert_called_once_with(
+            fake.SHARE, fake.SHARE)
         data_motion.get_client_for_backend.assert_called_once_with(
             fake.BACKEND_NAME, vserver_name=fake.VSERVER1)
 
@@ -3144,8 +3152,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             share_server=fake.SHARE_SERVER)
 
         self.assertDictMatch(expected_model_update, model_update)
-        mock_dm_session.create_snapmirror.assert_called_once_with(fake.SHARE,
-                                                                  fake.SHARE)
+        mock_dm_session.create_snapmirror.assert_called_once_with(
+            fake.SHARE, fake.SHARE)
         data_motion.get_client_for_backend.assert_called_once_with(
             fake.BACKEND_NAME, vserver_name=fake.VSERVER1)
 
@@ -3339,7 +3347,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result = self.library.update_replica_state(
             None, [replica], replica, None, [], share_server=None)
 
-        self.assertEqual(1, self.mock_dm_session.create_snapmirror.call_count)
+        self.assertEqual(1,
+                         self.mock_dm_session.create_snapmirror.call_count)
         self.assertEqual(constants.STATUS_OUT_OF_SYNC, result)
 
     def test_update_replica_state_broken_snapmirror(self):
@@ -3364,7 +3373,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                    fake.SHARE, None, [],
                                                    share_server=None)
 
-        vserver_client.resync_snapmirror.assert_called_once_with(
+        vserver_client.resync_snapmirror_vol.assert_called_once_with(
             fake.VSERVER2, 'fake_volume', fake.VSERVER1, fake.SHARE['name']
         )
 
@@ -3428,13 +3437,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                  vserver_client)))
         self.mock_dm_session.get_snapmirrors = mock.Mock(
             return_value=[fake_snapmirror])
-        vserver_client.resync_snapmirror.side_effect = netapp_api.NaApiError
+        vserver_client.resync_snapmirror_vol.side_effect = (
+            netapp_api.NaApiError)
 
         result = self.library.update_replica_state(None, [fake.SHARE],
                                                    fake.SHARE, None, [],
                                                    share_server=None)
 
-        vserver_client.resync_snapmirror.assert_called_once_with(
+        vserver_client.resync_snapmirror_vol.assert_called_once_with(
             fake.VSERVER2, 'fake_volume', fake.VSERVER1, fake.SHARE['name']
         )
 
@@ -5820,3 +5830,37 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                               fake.SHARE_SERVER,
                                               cutover_action)
         mock_warning_log.assert_not_called()
+
+    @ddt.data({'total': 20, 'free': 5, 'reserved': 10, 'thin': False,
+               'over_sub': 0, 'size': 3, 'compatible': True, 'nb_pools': 1},
+              {'total': 20, 'free': 5, 'reserved': 10, 'thin': False,
+               'over_sub': 0, 'size': 4, 'compatible': False, 'nb_pools': 1},
+              {'total': 20, 'free': 5, 'reserved': 20, 'thin': False,
+               'over_sub': 1.1, 'size': 3, 'compatible': False, 'nb_pools': 1},
+              {'total': 20, 'free': 5, 'reserved': 10, 'thin': True,
+               'over_sub': 2.0, 'size': 6, 'compatible': True, 'nb_pools': 1},
+              {'total': 20, 'free': 5, 'reserved': 10, 'thin': True,
+               'over_sub': 1.0, 'size': 4, 'compatible': False, 'nb_pools': 1},
+              {'total': 'unknown', 'free': 5, 'reserved': 0, 'thin': False,
+               'over_sub': 3.0, 'size': 1, 'compatible': False, 'nb_pools': 1},
+              {'total': 20, 'free': 5, 'reserved': 10, 'thin': True,
+               'over_sub': 1.0, 'size': 6, 'compatible': True, 'nb_pools': 2},
+              {'total': 20, 'free': 5, 'reserved': 10, 'thin': True,
+               'over_sub': 1.0, 'size': 7, 'compatible': False, 'nb_pools': 2},
+              )
+    @ddt.unpack
+    def test__check_capacity_compatibility(self, total, free, reserved, thin,
+                                           over_sub, size, compatible,
+                                           nb_pools):
+        pools = []
+        for p in range(nb_pools):
+            pool = copy.deepcopy(fake.POOLS[0])
+            pool['total_capacity_gb'] = total
+            pool['free_capacity_gb'] = free
+            pool['reserved_percentage'] = reserved
+            pool['max_over_subscription_ratio'] = over_sub
+            pools.append(pool)
+
+        result = self.library._check_capacity_compatibility(pools, thin, size)
+
+        self.assertEqual(compatible, result)

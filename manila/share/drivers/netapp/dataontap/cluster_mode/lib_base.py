@@ -273,6 +273,10 @@ class NetAppCmodeFileStorageLibrary(object):
         return self.configuration.netapp_qos_policy_group_name_template % {
             'share_id': share_id.replace('-', '_')}
 
+    def _get_backend_snapmirror_policy_name_svm(self, share_server_id):
+        return (self.configuration.netapp_snapmirror_policy_name_svm_template
+                % {'share_server_id': share_server_id.replace('-', '_')})
+
     @na_utils.trace
     def _get_aggregate_space(self):
         aggregates = self._find_matching_aggregates()
@@ -1155,7 +1159,8 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def _create_export(self, share, share_server, vserver, vserver_client,
-                       clear_current_export_policy=True):
+                       clear_current_export_policy=True,
+                       ensure_share_already_exists=False):
         """Creates NAS storage."""
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
@@ -1177,7 +1182,8 @@ class NetAppCmodeFileStorageLibrary(object):
         # Create the share and get a callback for generating export locations
         callback = helper.create_share(
             share, share_name,
-            clear_current_export_policy=clear_current_export_policy)
+            clear_current_export_policy=clear_current_export_policy,
+            ensure_share_already_exists=ensure_share_already_exists)
 
         # Generate export locations using addresses, metadata and callback
         export_locations = [
@@ -1919,14 +1925,16 @@ class NetAppCmodeFileStorageLibrary(object):
 
         if snapmirror.get('mirror-state') != 'snapmirrored':
             try:
-                vserver_client.resume_snapmirror(snapmirror['source-vserver'],
-                                                 snapmirror['source-volume'],
-                                                 vserver,
-                                                 share_name)
-                vserver_client.resync_snapmirror(snapmirror['source-vserver'],
-                                                 snapmirror['source-volume'],
-                                                 vserver,
-                                                 share_name)
+                vserver_client.resume_snapmirror_vol(
+                    snapmirror['source-vserver'],
+                    snapmirror['source-volume'],
+                    vserver,
+                    share_name)
+                vserver_client.resync_snapmirror_vol(
+                    snapmirror['source-vserver'],
+                    snapmirror['source-volume'],
+                    vserver,
+                    share_name)
                 return constants.REPLICA_STATE_OUT_OF_SYNC
             except netapp_api.NaApiError:
                 LOG.exception("Could not resync snapmirror.")
@@ -2592,7 +2600,7 @@ class NetAppCmodeFileStorageLibrary(object):
             msg_args = {
                 'share_move_state': move_status['state']
             }
-            msg = _("Migration cancelation was not successful. The share "
+            msg = _("Migration cancellation was not successful. The share "
                     "migration state failed while transitioning from "
                     "%(share_move_state)s state to 'failed'. Retries "
                     "exhausted.") % msg_args
@@ -2842,3 +2850,32 @@ class NetAppCmodeFileStorageLibrary(object):
         self.volume_rehost(share, src_vserver, dest_vserver)
         # Mount the volume on the destination vserver
         dest_vserver_client.mount_volume(volume_name)
+
+    def _check_capacity_compatibility(self, pools, thin_provision, size):
+        """Check if the size requested is suitable for the available pools"""
+
+        backend_free_capacity = 0.0
+
+        for pool in pools:
+            if "unknown" in (pool['free_capacity_gb'],
+                             pool['total_capacity_gb']):
+                return False
+            reserved = float(pool['reserved_percentage']) / 100
+
+            total_pool_free = math.floor(
+                pool['free_capacity_gb'] -
+                pool['total_capacity_gb'] * reserved)
+
+            if thin_provision:
+                # If thin provision is enabled it's necessary recalculate the
+                # total_pool_free considering the max over subscription ratio
+                # for each pool. After summing the free space for each pool we
+                # have the total backend free capacity to compare with the
+                # requested size.
+                if pool['max_over_subscription_ratio'] >= 1:
+                    total_pool_free = math.floor(
+                        total_pool_free * pool['max_over_subscription_ratio'])
+
+            backend_free_capacity += total_pool_free
+
+        return size <= backend_free_capacity

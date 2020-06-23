@@ -58,6 +58,7 @@ CONSISTENCY_GROUP_ID2 = '35f5c1ea-45fb-40c4-98ae-2a2a17554159'
 CG_SNAPSHOT_ID = '6ddd8a6b-5df7-417b-a2ae-3f6e449f4eea'
 CG_SNAPSHOT_MEMBER_ID1 = '629f79ef-b27e-4596-9737-30f084e5ba29'
 CG_SNAPSHOT_MEMBER_ID2 = 'e876aa9c-a322-4391-bd88-9266178262be'
+SERVER_ID = 'd5e90724-6f28-4944-858a-553138bdbd29'
 FREE_CAPACITY = 10000000000
 TOTAL_CAPACITY = 20000000000
 AGGREGATE = 'manila_aggr_1'
@@ -71,6 +72,7 @@ NODE_DATA_PORT = 'e0c'
 NODE_DATA_PORTS = ('e0c', 'e0d')
 LIF_NAME_TEMPLATE = 'os_%(net_allocation_id)s'
 SHARE_TYPE_ID = '26e89a5b-960b-46bb-a8cf-0778e653098f'
+SHARE_TYPE_ID_2 = '2a06887e-25b5-486e-804a-d84c2d806feb'
 SHARE_TYPE_NAME = 'fake_share_type'
 IPSPACE = 'fake_ipspace'
 IPSPACE_ID = '27d38c27-3e8b-4d7d-9d91-fcf295e3ac8f'
@@ -82,6 +84,10 @@ MANILA_HOST_NAME_2 = '%(host)s@%(backend)s#%(pool)s' % {
     'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME_2}
 MANILA_HOST_NAME_3 = '%(host)s@%(backend)s#%(pool)s' % {
     'host': HOST_NAME, 'backend': BACKEND_NAME_2, 'pool': POOL_NAME_2}
+SERVER_HOST = '%(host)s@%(backend)s' % {
+    'host': HOST_NAME, 'backend': BACKEND_NAME}
+SERVER_HOST_2 = '%(host)s@%(backend)s' % {
+    'host': HOST_NAME, 'backend': BACKEND_NAME_2}
 QOS_EXTRA_SPEC = 'netapp:maxiops'
 QOS_SIZE_DEPENDENT_EXTRA_SPEC = 'netapp:maxbpspergib'
 QOS_NORMALIZED_SPEC = 'maxiops'
@@ -161,6 +167,15 @@ FLEXVOL = {
     'style': 'flex',
     'size': '1610612736',  # rounds down to 1 GB,
     'owning-vserver-name': VSERVER1,
+}
+
+SHARE_TYPE_EXTRA_SPEC = {
+    'snapshot_support': True,
+    'create_share_from_snapshot_support': True,
+    'revert_to_snapshot_support': True,
+    'mount_snapshot_support': False,
+    'driver_handles_share_servers': True,
+    'availability_zones': [],
 }
 
 EXTRA_SPEC = {
@@ -438,6 +453,7 @@ SHARE_SERVER = {
     },
     'network_allocations': (USER_NETWORK_ALLOCATIONS +
                             ADMIN_NETWORK_ALLOCATIONS),
+    'host': SERVER_HOST,
 }
 
 SHARE_SERVER_2 = {
@@ -448,6 +464,14 @@ SHARE_SERVER_2 = {
     },
     'network_allocations': (USER_NETWORK_ALLOCATIONS +
                             ADMIN_NETWORK_ALLOCATIONS),
+    'host': SERVER_HOST_2,
+}
+
+VSERVER_INFO = {
+    'name': 'fake_vserver_name',
+    'subtype': 'default',
+    'operational_state': 'running',
+    'state': 'running',
 }
 
 SHARE_SERVER_NFS_TCP = {
@@ -456,6 +480,7 @@ SHARE_SERVER_NFS_TCP = {
         'vserver_name': VSERVER2,
         'nfs_config': jsonutils.dumps(NFS_CONFIG_TCP_MAX),
     },
+    'host': 'fake_host@fake_backend',
 }
 
 SHARE_SERVER_NFS_UDP = {
@@ -464,6 +489,7 @@ SHARE_SERVER_NFS_UDP = {
         'vserver_name': VSERVER2,
         'nfs_config': jsonutils.dumps(NFS_CONFIG_UDP_MAX),
     },
+    'host': 'fake_host@fake_backend',
 }
 
 SHARE_SERVER_NFS_TCP_UDP = {
@@ -472,6 +498,7 @@ SHARE_SERVER_NFS_TCP_UDP = {
         'vserver_name': VSERVER2,
         'nfs_config': jsonutils.dumps(NFS_CONFIG_TCP_UDP_MAX),
     },
+    'host': 'fake_host@fake_backend',
 }
 
 SHARE_SERVER_NO_NFS_NONE = {
@@ -479,10 +506,12 @@ SHARE_SERVER_NO_NFS_NONE = {
     'backend_details': {
         'vserver_name': VSERVER2,
     },
+    'host': 'fake_host@fake_backend',
 }
 
 SHARE_SERVER_NO_DETAILS = {
     'id': 'id_no_datails',
+    'host': 'fake_host@fake_backend',
 }
 
 SHARE_SERVER_NFS_DEFAULT = {
@@ -491,6 +520,7 @@ SHARE_SERVER_NFS_DEFAULT = {
         'vserver_name': VSERVER2,
         'nfs_config': jsonutils.dumps(NFS_CONFIG_DEFAULT),
     },
+    'host': 'fake_host@fake_backend',
 }
 
 SHARE_SERVERS = [
@@ -1440,6 +1470,100 @@ EXPANDED_PROCESSOR_COUNTERS = [
         'timestamp': '1453524150',
     },
 ]
+
+SERVER_MIGRATION_CHECK_NOT_COMPATIBLE = {
+    'compatible': False,
+    'writable': None,
+    'nondisruptive': None,
+    'preserve_snapshots': None,
+    'migration_cancel': None,
+    'migration_get_progress': None,
+    'share_network_id': None
+}
+
+CIFS_SECURITY_SERVICE = {
+    'id': 'fake_id',
+    'type': 'active_directory',
+    'password': 'fake_password',
+    'user': 'fake_user',
+    'ou': 'fake_ou',
+    'domain': 'fake_domain',
+    'dns_ip': 'fake_dns_ip',
+    'server': '',
+}
+
+SHARE_NETWORK_SUBNET = {
+    'id': 'fake_share_net_subnet_d',
+    'neutron_subnet_id': '34950f50-a142-4328-8026-418ad4410b09',
+    'neutron_net_id': 'fa202676-531a-4446-bc0c-bcec15a72e82',
+    'network_type': 'fake_network_type',
+    'segmentation_id': 1234,
+    'ip_version': 4,
+    'cidr': 'fake_cidr',
+    'gateway': 'fake_gateway',
+    'mtu': 1509,
+}
+
+SHARE_NETWORK = {
+    'id': 'fake_share_net_id',
+    'project_id': 'fake_project_id',
+    'status': 'fake_status',
+    'name': 'fake_name',
+    'description': 'fake_description',
+    'security_services': [CIFS_SECURITY_SERVICE],
+    'subnets': [SHARE_NETWORK_SUBNET],
+}
+
+SHARE_TYPE_2 = copy.deepcopy(SHARE_TYPE)
+SHARE_TYPE_2['id'] = SHARE_TYPE_ID_2
+SHARE_TYPE_2['extra_specs'].update(SHARE_TYPE_EXTRA_SPEC)
+
+SHARE_REQ_SPEC = {
+    'share_properties': {
+        'size': SHARE['size'],
+        'project_id': SHARE['project_id'],
+        'snapshot_support': SHARE_TYPE_EXTRA_SPEC['snapshot_support'],
+        'create_share_from_snapshot_support':
+            SHARE_TYPE_EXTRA_SPEC['create_share_from_snapshot_support'],
+        'revert_to_snapshot_support':
+            SHARE_TYPE_EXTRA_SPEC['revert_to_snapshot_support'],
+        'mount_snapshot_support':
+            SHARE_TYPE_EXTRA_SPEC['mount_snapshot_support'],
+        'share_proto': SHARE['share_proto'],
+        'share_type_id': SHARE_TYPE_2['id'],
+        'is_public': True,
+        'share_group_id': None,
+        'source_share_group_snapshot_member_id': None,
+        'snapshot_id': None,
+    },
+    'share_instance_properties': {
+        'availability_zone_id': 'fake_az_1',
+        'share_network_id': SHARE_NETWORK['id'],
+        'share_server_id': SHARE_SERVER['id'],
+        'share_id': SHARE_ID,
+        'host': SHARE_INSTANCE['host'],
+        'status': SHARE_INSTANCE['status'],
+    },
+    'share_type': SHARE_TYPE_2,
+    'share_id': SHARE_ID,
+}
+
+SERVER_MIGRATION_REQUEST_SPEC = {
+    'shares_size': 10,
+    'snapshots_size': 10,
+    'shares_req_spec': [SHARE_REQ_SPEC],
+}
+
+CLIENT_GET_VOLUME_RESPONSE = {
+    'aggregate': AGGREGATE,
+    'junction-path': '/%s' % SHARE_NAME,
+    'name': SHARE_NAME,
+    'type': 'rw',
+    'style': 'flex',
+    'size': SHARE_SIZE,
+    'owning-vserver-name': VSERVER1,
+    'qos-policy-group-name': QOS_POLICY_GROUP_NAME,
+}
 
 
 def get_config_cmode():

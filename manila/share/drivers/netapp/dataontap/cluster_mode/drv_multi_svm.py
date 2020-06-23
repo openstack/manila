@@ -287,9 +287,38 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def get_share_status(self, share_instance, share_server=None):
         return self.library.get_share_status(share_instance, share_server)
 
-    def choose_share_server_compatible_with_share(self, context,
-                                                  share_servers, share,
-                                                  snapshot=None,
+    def share_server_migration_check_compatibility(
+            self, context, share_server, dest_host, old_share_network,
+            new_share_network, shares_request_spec):
+
+        return self.library.share_server_migration_check_compatibility(
+            context, share_server, dest_host, old_share_network,
+            new_share_network, shares_request_spec)
+
+    def share_server_migration_start(self, context, src_share_server,
+                                     dest_share_server, shares, snapshots):
+        self.library.share_server_migration_start(
+            context, src_share_server, dest_share_server, shares, snapshots)
+
+    def share_server_migration_continue(self, context, src_share_server,
+                                        dest_share_server, shares, snapshots):
+        return self.library.share_server_migration_continue(
+            context, src_share_server, dest_share_server, shares, snapshots)
+
+    def share_server_migration_complete(self, context, src_share_server,
+                                        dest_share_server, shares, snapshots,
+                                        new_network_info):
+        return self.library.share_server_migration_complete(
+            context, src_share_server, dest_share_server, shares, snapshots,
+            new_network_info)
+
+    def share_server_migration_cancel(self, context, src_share_server,
+                                      dest_share_server, shares, snapshots):
+        self.library.share_server_migration_cancel(
+            context, src_share_server, dest_share_server, shares, snapshots)
+
+    def choose_share_server_compatible_with_share(self, context, share_servers,
+                                                  share, snapshot=None,
                                                   share_group=None):
         return self.library.choose_share_server_compatible_with_share(
             context, share_servers, share, snapshot=snapshot,
@@ -301,3 +330,9 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
         return self.library.choose_share_server_compatible_with_share_group(
             context, share_servers, share_group_ref,
             share_group_snapshot=share_group_snapshot)
+
+    def share_server_migration_get_progress(self, context, src_share_server,
+                                            dest_share_server, shares,
+                                            snapshots):
+        return self.library.share_server_migration_get_progress(
+            context, src_share_server, dest_share_server, shares, snapshots)

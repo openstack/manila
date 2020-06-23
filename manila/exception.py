@@ -779,6 +779,10 @@ class VserverNotSpecified(NetAppException):
     message = _("Vserver not specified.")
 
 
+class VserverNotReady(NetAppException):
+    message = _("Vserver %(vserver)s is not ready yet.")
+
+
 class EMCPowerMaxXMLAPIError(Invalid):
     message = _("%(err)s")
 

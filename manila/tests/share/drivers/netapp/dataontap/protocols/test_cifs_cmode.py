@@ -40,9 +40,14 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
         self.helper = cifs_cmode.NetAppCmodeCIFSHelper()
         self.helper.set_client(self.mock_client)
 
-    def test_create_share(self):
-
-        result = self.helper.create_share(fake.CIFS_SHARE, fake.SHARE_NAME)
+    @ddt.data({'clear_export_policy': True, 'ensure_share_exists': False},
+              {'clear_export_policy': False, 'ensure_share_exists': True})
+    @ddt.unpack
+    def test_create_share(self, clear_export_policy, ensure_share_exists):
+        result = self.helper.create_share(
+            fake.CIFS_SHARE, fake.SHARE_NAME,
+            clear_current_export_policy=clear_export_policy,
+            ensure_share_already_exists=ensure_share_exists)
 
         export_addresses = [fake.SHARE_ADDRESS_1, fake.SHARE_ADDRESS_2]
         export_paths = [result(address) for address in export_addresses]
@@ -51,10 +56,17 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
             r'\\%s\%s' % (fake.SHARE_ADDRESS_2, fake.SHARE_NAME),
         ]
         self.assertEqual(expected_paths, export_paths)
-        self.mock_client.create_cifs_share.assert_called_once_with(
-            fake.SHARE_NAME)
-        self.mock_client.remove_cifs_share_access.assert_called_once_with(
-            fake.SHARE_NAME, 'Everyone')
+        if ensure_share_exists:
+            self.mock_client.cifs_share_exists.assert_called_once_with(
+                fake.SHARE_NAME)
+            self.mock_client.create_cifs_share.assert_not_called()
+        else:
+            self.mock_client.create_cifs_share.assert_called_once_with(
+                fake.SHARE_NAME)
+            self.mock_client.cifs_share_exists.assert_not_called()
+        if clear_export_policy:
+            self.mock_client.remove_cifs_share_access.assert_called_once_with(
+                fake.SHARE_NAME, 'Everyone')
         self.mock_client.set_volume_security_style.assert_called_once_with(
             fake.SHARE_NAME, security_style='ntfs')
 

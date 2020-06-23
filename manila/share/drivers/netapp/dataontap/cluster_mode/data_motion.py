@@ -94,31 +94,47 @@ class DataMotionSession(object):
 
     def _get_backend_qos_policy_group_name(self, share):
         """Get QoS policy name according to QoS policy group name template."""
-        __, config = self._get_backend_config_obj(share)
+        __, config = self.get_backend_name_and_config_obj(share['host'])
         return config.netapp_qos_policy_group_name_template % {
             'share_id': share['id'].replace('-', '_')}
+
+    def _get_backend_snapmirror_policy_name_svm(self, share_server_id,
+                                                backend_name):
+        config = get_backend_configuration(backend_name)
+        return (config.netapp_snapmirror_policy_name_svm_template
+                % {'share_server_id': share_server_id.replace('-', '_')})
+
+    def get_vserver_from_share_server(self, share_server):
+        backend_details = share_server.get('backend_details')
+        if backend_details:
+            return backend_details.get('vserver_name')
 
     def get_vserver_from_share(self, share_obj):
         share_server = share_obj.get('share_server')
         if share_server:
-            backend_details = share_server.get('backend_details')
-            if backend_details:
-                return backend_details.get('vserver_name')
+            return self.get_vserver_from_share_server(share_server)
 
-    def _get_backend_config_obj(self, share_obj):
-        backend_name = share_utils.extract_host(
-            share_obj['host'], level='backend_name')
+    def get_backend_name_and_config_obj(self, host):
+        backend_name = share_utils.extract_host(host, level='backend_name')
         config = get_backend_configuration(backend_name)
         return backend_name, config
 
     def get_backend_info_for_share(self, share_obj):
-        backend_name, config = self._get_backend_config_obj(share_obj)
+        backend_name, config = self.get_backend_name_and_config_obj(
+            share_obj['host'])
         vserver = (self.get_vserver_from_share(share_obj) or
                    config.netapp_vserver)
-        volume_name = self._get_backend_volume_name(
-            config, share_obj)
+        volume_name = self._get_backend_volume_name(config, share_obj)
 
         return volume_name, vserver, backend_name
+
+    def get_client_and_vserver_name(self, share_server):
+        destination_host = share_server.get('host')
+        vserver = self.get_vserver_from_share_server(share_server)
+        backend, __ = self.get_backend_name_and_config_obj(destination_host)
+        client = get_client_for_backend(backend, vserver_name=vserver)
+
+        return client, vserver
 
     def get_snapmirrors(self, source_share_obj, dest_share_obj):
         dest_volume_name, dest_vserver, dest_backend = (
@@ -130,8 +146,8 @@ class DataMotionSession(object):
             source_share_obj)
 
         snapmirrors = dest_client.get_snapmirrors(
-            src_vserver, src_volume_name,
-            dest_vserver, dest_volume_name,
+            source_vserver=src_vserver, dest_vserver=dest_vserver,
+            source_volume=src_volume_name, dest_volume=dest_volume_name,
             desired_attributes=['relationship-status',
                                 'mirror-state',
                                 'source-vserver',
@@ -155,17 +171,17 @@ class DataMotionSession(object):
 
         # 1. Create SnapMirror relationship
         # TODO(ameade): Change the schedule from hourly to a config value
-        dest_client.create_snapmirror(src_vserver,
-                                      src_volume_name,
-                                      dest_vserver,
-                                      dest_volume_name,
-                                      schedule='hourly')
-
-        # 2. Initialize async transfer of the initial data
-        dest_client.initialize_snapmirror(src_vserver,
+        dest_client.create_snapmirror_vol(src_vserver,
                                           src_volume_name,
                                           dest_vserver,
-                                          dest_volume_name)
+                                          dest_volume_name,
+                                          schedule='hourly')
+
+        # 2. Initialize async transfer of the initial data
+        dest_client.initialize_snapmirror_vol(src_vserver,
+                                              src_volume_name,
+                                              dest_vserver,
+                                              dest_volume_name)
 
     def delete_snapmirror(self, source_share_obj, dest_share_obj,
                           release=True):
@@ -185,21 +201,21 @@ class DataMotionSession(object):
 
         # 1. Abort any ongoing transfers
         try:
-            dest_client.abort_snapmirror(src_vserver,
-                                         src_volume_name,
-                                         dest_vserver,
-                                         dest_volume_name,
-                                         clear_checkpoint=False)
+            dest_client.abort_snapmirror_vol(src_vserver,
+                                             src_volume_name,
+                                             dest_vserver,
+                                             dest_volume_name,
+                                             clear_checkpoint=False)
         except netapp_api.NaApiError:
             # Snapmirror is already deleted
             pass
 
         # 2. Delete SnapMirror Relationship and cleanup destination snapshots
         try:
-            dest_client.delete_snapmirror(src_vserver,
-                                          src_volume_name,
-                                          dest_vserver,
-                                          dest_volume_name)
+            dest_client.delete_snapmirror_vol(src_vserver,
+                                              src_volume_name,
+                                              dest_vserver,
+                                              dest_volume_name)
         except netapp_api.NaApiError as e:
             with excutils.save_and_reraise_exception() as exc_context:
                 if (e.code == netapp_api.EOBJECTNOTFOUND or
@@ -218,10 +234,10 @@ class DataMotionSession(object):
             # 3. Cleanup SnapMirror relationship on source
             try:
                 if src_client:
-                    src_client.release_snapmirror(src_vserver,
-                                                  src_volume_name,
-                                                  dest_vserver,
-                                                  dest_volume_name)
+                    src_client.release_snapmirror_vol(src_vserver,
+                                                      src_volume_name,
+                                                      dest_vserver,
+                                                      dest_volume_name)
             except netapp_api.NaApiError as e:
                 with excutils.save_and_reraise_exception() as exc_context:
                     if (e.code == netapp_api.EOBJECTNOTFOUND or
@@ -242,50 +258,81 @@ class DataMotionSession(object):
             source_share_obj)
 
         # Update SnapMirror
-        dest_client.update_snapmirror(src_vserver,
-                                      src_volume_name,
-                                      dest_vserver,
-                                      dest_volume_name)
+        dest_client.update_snapmirror_vol(src_vserver,
+                                          src_volume_name,
+                                          dest_vserver,
+                                          dest_volume_name)
+
+    def quiesce_then_abort_svm(self, source_share_server, dest_share_server):
+        source_client, source_vserver = self.get_client_and_vserver_name(
+            source_share_server)
+        dest_client, dest_vserver = self.get_client_and_vserver_name(
+            dest_share_server)
+
+        # 1. Attempt to quiesce, then abort
+        dest_client.quiesce_snapmirror_svm(source_vserver, dest_vserver)
+
+        dest_backend = share_utils.extract_host(dest_share_server['host'],
+                                                level='backend_name')
+        config = get_backend_configuration(dest_backend)
+        retries = config.netapp_snapmirror_quiesce_timeout / 5
+
+        @utils.retry(exception.ReplicationException, interval=5,
+                     retries=retries, backoff_rate=1)
+        def wait_for_quiesced():
+            snapmirror = dest_client.get_snapmirrors_svm(
+                source_vserver=source_vserver, dest_vserver=dest_vserver,
+                desired_attributes=['relationship-status', 'mirror-state']
+            )[0]
+            if snapmirror.get('relationship-status') != 'quiesced':
+                raise exception.ReplicationException(
+                    reason="Snapmirror relationship is not quiesced.")
+
+        try:
+            wait_for_quiesced()
+        except exception.ReplicationException:
+            dest_client.abort_snapmirror_svm(source_vserver,
+                                             dest_vserver,
+                                             clear_checkpoint=False)
 
     def quiesce_then_abort(self, source_share_obj, dest_share_obj):
-        dest_volume_name, dest_vserver, dest_backend = (
+        dest_volume, dest_vserver, dest_backend = (
             self.get_backend_info_for_share(dest_share_obj))
         dest_client = get_client_for_backend(dest_backend,
                                              vserver_name=dest_vserver)
 
-        src_volume_name, src_vserver, __ = self.get_backend_info_for_share(
+        src_volume, src_vserver, __ = self.get_backend_info_for_share(
             source_share_obj)
 
         # 1. Attempt to quiesce, then abort
-        dest_client.quiesce_snapmirror(src_vserver,
-                                       src_volume_name,
-                                       dest_vserver,
-                                       dest_volume_name)
+        dest_client.quiesce_snapmirror_vol(src_vserver,
+                                           src_volume,
+                                           dest_vserver,
+                                           dest_volume)
 
-        config = get_backend_configuration(share_utils.extract_host(
-            source_share_obj['host'], level='backend_name'))
+        config = get_backend_configuration(dest_backend)
         retries = config.netapp_snapmirror_quiesce_timeout / 5
 
         @utils.retry(exception.ReplicationException, interval=5,
                      retries=retries, backoff_rate=1)
         def wait_for_quiesced():
             snapmirror = dest_client.get_snapmirrors(
-                src_vserver, src_volume_name, dest_vserver,
-                dest_volume_name, desired_attributes=['relationship-status',
-                                                      'mirror-state']
+                source_vserver=src_vserver, dest_vserver=dest_vserver,
+                source_volume=src_volume, dest_volume=dest_volume,
+                desired_attributes=['relationship-status', 'mirror-state']
             )[0]
             if snapmirror.get('relationship-status') != 'quiesced':
                 raise exception.ReplicationException(
-                    reason=("Snapmirror relationship is not quiesced."))
+                    reason="Snapmirror relationship is not quiesced.")
 
         try:
             wait_for_quiesced()
         except exception.ReplicationException:
-            dest_client.abort_snapmirror(src_vserver,
-                                         src_volume_name,
-                                         dest_vserver,
-                                         dest_volume_name,
-                                         clear_checkpoint=False)
+            dest_client.abort_snapmirror_vol(src_vserver,
+                                             src_volume,
+                                             dest_vserver,
+                                             dest_volume,
+                                             clear_checkpoint=False)
 
     def break_snapmirror(self, source_share_obj, dest_share_obj, mount=True):
         """Breaks SnapMirror relationship.
@@ -307,10 +354,10 @@ class DataMotionSession(object):
         self.quiesce_then_abort(source_share_obj, dest_share_obj)
 
         # 2. Break SnapMirror
-        dest_client.break_snapmirror(src_vserver,
-                                     src_volume_name,
-                                     dest_vserver,
-                                     dest_volume_name)
+        dest_client.break_snapmirror_vol(src_vserver,
+                                         src_volume_name,
+                                         dest_vserver,
+                                         dest_volume_name)
 
         # 3. Mount the destination volume and create a junction path
         if mount:
@@ -326,10 +373,10 @@ class DataMotionSession(object):
         src_volume_name, src_vserver, __ = self.get_backend_info_for_share(
             source_share_obj)
 
-        dest_client.resync_snapmirror(src_vserver,
-                                      src_volume_name,
-                                      dest_vserver,
-                                      dest_volume_name)
+        dest_client.resync_snapmirror_vol(src_vserver,
+                                          src_volume_name,
+                                          dest_vserver,
+                                          dest_volume_name)
 
     def resume_snapmirror(self, source_share_obj, dest_share_obj):
         """Resume SnapMirror relationship from a quiesced state."""
@@ -341,10 +388,10 @@ class DataMotionSession(object):
         src_volume_name, src_vserver, __ = self.get_backend_info_for_share(
             source_share_obj)
 
-        dest_client.resume_snapmirror(src_vserver,
-                                      src_volume_name,
-                                      dest_vserver,
-                                      dest_volume_name)
+        dest_client.resume_snapmirror_vol(src_vserver,
+                                          src_volume_name,
+                                          dest_vserver,
+                                          dest_volume_name)
 
     def change_snapmirror_source(self, replica,
                                  orig_source_replica,
@@ -400,16 +447,16 @@ class DataMotionSession(object):
 
         # 3. create
         # TODO(ameade): Update the schedule if needed.
-        replica_client.create_snapmirror(new_src_vserver,
-                                         new_src_volume_name,
-                                         replica_vserver,
-                                         replica_volume_name,
-                                         schedule='hourly')
+        replica_client.create_snapmirror_vol(new_src_vserver,
+                                             new_src_volume_name,
+                                             replica_vserver,
+                                             replica_volume_name,
+                                             schedule='hourly')
         # 4. resync
-        replica_client.resync_snapmirror(new_src_vserver,
-                                         new_src_volume_name,
-                                         replica_vserver,
-                                         replica_volume_name)
+        replica_client.resync_snapmirror_vol(new_src_vserver,
+                                             new_src_volume_name,
+                                             replica_vserver,
+                                             replica_volume_name)
 
     @na_utils.trace
     def remove_qos_on_old_active_replica(self, orig_active_replica):
@@ -430,3 +477,254 @@ class DataMotionSession(object):
                           "for replica %s to unset QoS policy and mark "
                           "the QoS policy group for deletion.",
                           orig_active_replica['id'])
+
+    def create_snapmirror_svm(self, source_share_server,
+                              dest_share_server):
+        """Sets up a SnapMirror relationship between two vServers.
+
+        1. Create a SnapMirror policy for SVM DR
+        2. Create SnapMirror relationship
+        3. Initialize data transfer asynchronously
+        """
+        dest_client, dest_vserver = self.get_client_and_vserver_name(
+            dest_share_server)
+        src_vserver = self.get_vserver_from_share_server(source_share_server)
+
+        # 1: Create SnapMirror policy for SVM DR
+        dest_backend_name = share_utils.extract_host(dest_share_server['host'],
+                                                     level='backend_name')
+        policy_name = self._get_backend_snapmirror_policy_name_svm(
+            dest_share_server['id'],
+            dest_backend_name,
+        )
+        dest_client.create_snapmirror_policy(policy_name)
+
+        # 2. Create SnapMirror relationship
+        dest_client.create_snapmirror_svm(src_vserver,
+                                          dest_vserver,
+                                          policy=policy_name,
+                                          schedule='hourly')
+
+        # 2. Initialize async transfer of the initial data
+        dest_client.initialize_snapmirror_svm(src_vserver,
+                                              dest_vserver)
+
+    def get_snapmirrors_svm(self, source_share_server, dest_share_server):
+        """Get SnapMirrors between two vServers."""
+
+        dest_client, dest_vserver = self.get_client_and_vserver_name(
+            dest_share_server)
+        src_vserver = self.get_vserver_from_share_server(source_share_server)
+
+        snapmirrors = dest_client.get_snapmirrors_svm(
+            source_vserver=src_vserver, dest_vserver=dest_vserver,
+            desired_attributes=['relationship-status',
+                                'mirror-state',
+                                'last-transfer-end-timestamp'])
+        return snapmirrors
+
+    def get_snapmirror_destinations_svm(self, source_share_server,
+                                        dest_share_server):
+        """Get SnapMirrors between two vServers."""
+
+        dest_client, dest_vserver = self.get_client_and_vserver_name(
+            dest_share_server)
+        src_vserver = self.get_vserver_from_share_server(source_share_server)
+
+        snapmirrors = dest_client.get_snapmirror_destinations_svm(
+            source_vserver=src_vserver, dest_vserver=dest_vserver)
+        return snapmirrors
+
+    def update_snapmirror_svm(self, source_share_server, dest_share_server):
+        """Schedule a SnapMirror update to happen on the backend."""
+
+        dest_client, dest_vserver = self.get_client_and_vserver_name(
+            dest_share_server)
+        src_vserver = self.get_vserver_from_share_server(source_share_server)
+
+        # Update SnapMirror
+        dest_client.update_snapmirror_svm(src_vserver, dest_vserver)
+
+    def quiesce_and_break_snapmirror_svm(self, source_share_server,
+                                         dest_share_server):
+        """Abort and break a SnapMirror relationship between vServers.
+
+        1. Quiesce SnapMirror
+        2. Break SnapMirror
+        """
+        dest_client, dest_vserver = self.get_client_and_vserver_name(
+            dest_share_server)
+        src_vserver = self.get_vserver_from_share_server(source_share_server)
+
+        # 1. Attempt to quiesce, then abort
+        self.quiesce_then_abort_svm(source_share_server, dest_share_server)
+
+        # 2. Break SnapMirror
+        dest_client.break_snapmirror_svm(src_vserver, dest_vserver)
+
+    def cancel_snapmirror_svm(self, source_share_server, dest_share_server):
+        """Cancels SnapMirror relationship between vServers."""
+
+        dest_backend = share_utils.extract_host(dest_share_server['host'],
+                                                level='backend_name')
+        dest_config = get_backend_configuration(dest_backend)
+        server_timeout = (
+            dest_config.netapp_server_migration_state_change_timeout)
+        dest_client, dest_vserver = self.get_client_and_vserver_name(
+            dest_share_server)
+
+        snapmirrors = self.get_snapmirrors_svm(source_share_server,
+                                               dest_share_server)
+        if snapmirrors:
+            # 1. Attempt to quiesce and break snapmirror
+            self.quiesce_and_break_snapmirror_svm(source_share_server,
+                                                  dest_share_server)
+
+            # NOTE(dviroel): Lets wait until the destination vserver be
+            # promoted to 'default' and state 'running', before starting
+            # shutting down the source
+            self.wait_for_vserver_state(dest_vserver, dest_client,
+                                        subtype='default', state='running',
+                                        operational_state='stopped',
+                                        timeout=server_timeout)
+            # 2. Delete SnapMirror
+            self.delete_snapmirror_svm(source_share_server, dest_share_server)
+        else:
+            dest_info = dest_client.get_vserver_info(dest_vserver)
+            if dest_info is None:
+                # NOTE(dviroel): Nothing to cancel since the destination does
+                # not exist.
+                return
+            if dest_info.get('subtype') == 'dp_destination':
+                # NOTE(dviroel): Can be a corner case where no snapmirror
+                # relationship was found but the destination vserver is stuck
+                # in DP mode. We need to convert it to 'default' to release
+                # its resources later.
+                self.convert_svm_to_default_subtype(dest_vserver, dest_client,
+                                                    timeout=server_timeout)
+
+    def convert_svm_to_default_subtype(self, vserver_name, client,
+                                       is_dest_path=True, timeout=300):
+        interval = 10
+        retries = (timeout / interval or 1)
+
+        @utils.retry(exception.VserverNotReady, interval=interval,
+                     retries=retries, backoff_rate=1)
+        def wait_for_state():
+            vserver_info = client.get_vserver_info(vserver_name)
+            if vserver_info.get('subtype') != 'default':
+                if is_dest_path:
+                    client.break_snapmirror_svm(dest_vserver=vserver_name)
+                else:
+                    client.break_snapmirror_svm(source_vserver=vserver_name)
+                raise exception.VserverNotReady(vserver=vserver_name)
+        try:
+            wait_for_state()
+        except exception.VserverNotReady:
+            msg = _("Vserver %s did not reach the expected state. Retries "
+                    "exhausted. Aborting.") % vserver_name
+            raise exception.NetAppException(message=msg)
+
+    def delete_snapmirror_svm(self, src_share_server, dest_share_server,
+                              release=True):
+        """Ensures all information about a SnapMirror relationship is removed.
+
+        1. Abort SnapMirror
+        2. Delete the SnapMirror
+        3. Release SnapMirror to cleanup SnapMirror metadata and snapshots
+        """
+        src_client, src_vserver = self.get_client_and_vserver_name(
+            src_share_server)
+        dest_client, dest_vserver = self.get_client_and_vserver_name(
+            dest_share_server)
+        # 1. Abort any ongoing transfers
+        try:
+            dest_client.abort_snapmirror_svm(src_vserver, dest_vserver)
+        except netapp_api.NaApiError:
+            # SnapMirror is already deleted
+            pass
+
+        # 2. Delete SnapMirror Relationship and cleanup destination snapshots
+        try:
+            dest_client.delete_snapmirror_svm(src_vserver, dest_vserver)
+        except netapp_api.NaApiError as e:
+            with excutils.save_and_reraise_exception() as exc_context:
+                if (e.code == netapp_api.EOBJECTNOTFOUND or
+                        e.code == netapp_api.ESOURCE_IS_DIFFERENT or
+                        "(entry doesn't exist)" in e.message):
+                    LOG.info('No snapmirror relationship to delete')
+                    exc_context.reraise = False
+
+        # 3. Release SnapMirror
+        if release:
+            src_backend = share_utils.extract_host(src_share_server['host'],
+                                                   level='backend_name')
+            src_config = get_backend_configuration(src_backend)
+            release_timeout = (
+                src_config.netapp_snapmirror_release_timeout)
+            self.wait_for_snapmirror_release_svm(src_vserver,
+                                                 dest_vserver,
+                                                 src_client,
+                                                 timeout=release_timeout)
+
+    def wait_for_vserver_state(self, vserver_name, client, state=None,
+                               operational_state=None, subtype=None,
+                               timeout=300):
+        interval = 10
+        retries = (timeout / interval or 1)
+
+        expected = {}
+        if state:
+            expected['state'] = state
+        if operational_state:
+            expected['operational_state'] = operational_state
+        if subtype:
+            expected['subtype'] = subtype
+
+        @utils.retry(exception.VserverNotReady, interval=interval,
+                     retries=retries, backoff_rate=1)
+        def wait_for_state():
+            vserver_info = client.get_vserver_info(vserver_name)
+            if not all(item in vserver_info.items() for
+                       item in expected.items()):
+                raise exception.VserverNotReady(vserver=vserver_name)
+        try:
+            wait_for_state()
+        except exception.VserverNotReady:
+            msg = _("Vserver %s did not reach the expected state. Retries "
+                    "exhausted. Aborting.") % vserver_name
+            raise exception.NetAppException(message=msg)
+
+    def wait_for_snapmirror_release_svm(self, source_vserver, dest_vserver,
+                                        src_client, timeout=300):
+        interval = 10
+        retries = (timeout / interval or 1)
+
+        @utils.retry(exception.NetAppException, interval=interval,
+                     retries=retries, backoff_rate=1)
+        def release_snapmirror():
+            snapmirrors = src_client.get_snapmirror_destinations_svm(
+                source_vserver=source_vserver, dest_vserver=dest_vserver)
+            if not snapmirrors:
+                LOG.debug("No snapmirrors to be released in source location.")
+            else:
+                try:
+                    src_client.release_snapmirror_svm(source_vserver,
+                                                      dest_vserver)
+                except netapp_api.NaApiError as e:
+                    if (e.code == netapp_api.EOBJECTNOTFOUND or
+                            e.code == netapp_api.ESOURCE_IS_DIFFERENT or
+                            "(entry doesn't exist)" in e.message):
+                        LOG.debug('Snapmirror relationship does not exists '
+                                  'anymore.')
+
+                msg = _('Snapmirror release sent to source vserver. We will '
+                        'wait for it to be released.')
+                raise exception.NetAppException(vserver=msg)
+
+        try:
+            release_snapmirror()
+        except exception.NetAppException:
+            msg = _("Unable to release the snapmirror from source vserver %s. "
+                    "Retries exhausted. Aborting") % source_vserver
+            raise exception.NetAppException(message=msg)

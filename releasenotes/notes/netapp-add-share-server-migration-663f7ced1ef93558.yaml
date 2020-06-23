@@ -1,0 +1,19 @@
+---
+features:
+  - |
+    The NetApp ONTAP driver now supports migration of share servers across
+    clusters. While migrating a share server, the source remains writable
+    during the first phase of the migration, until the cutover is issued. It is
+    possible to specify a new share network for the destination share server,
+    only if the associated security services remain unchanged.
+    Share server migration relies on ONTAP features available only in versions
+    equal and greater than ``9.4``. In order to have share server migration
+    working across ONTAP clusters, they must be peered in advance.
+    In order to adapt to different workloads and provide more flexibility on
+    managing cluster’s free space a new configuration option was added:
+
+    - ``netapp_server_migration_check_capacity``:
+      Specifies if a capacity validation at the destination backend must be
+      made before proceeding with the share server migration. When enabled,
+      the NetApp driver will validate if the destination pools can hold all
+      shares and snapshots belonging to the source share server.

@@ -84,6 +84,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.features.add_feature('ADVANCED_DISK_PARTITIONING',
                                   supported=ontapi_1_30)
         self.features.add_feature('FLEXVOL_ENCRYPTION', supported=ontapi_1_110)
+        self.features.add_feature('SVM_DR', supported=ontapi_1_140)
         self.features.add_feature('TRANSFER_LIMIT_NFS_CONFIG',
                                   supported=ontapi_1_140)
         self.features.add_feature('CIFS_DC_ADD_SKIP_CHECK',
@@ -161,15 +162,42 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def create_vserver(self, vserver_name, root_volume_aggregate_name,
                        root_volume_name, aggregate_names, ipspace_name):
         """Creates new vserver and assigns aggregates."""
+        self._create_vserver(
+            vserver_name, aggregate_names, ipspace_name,
+            root_volume_name=root_volume_name,
+            root_volume_aggregate_name=root_volume_aggregate_name,
+            root_volume_security_style='unix',
+            name_server_switch='file')
+
+    @na_utils.trace
+    def create_vserver_dp_destination(self, vserver_name, aggregate_names,
+                                      ipspace_name):
+        """Creates new 'dp_destination' vserver and assigns aggregates."""
+        self._create_vserver(
+            vserver_name, aggregate_names, ipspace_name,
+            subtype='dp_destination')
+
+    @na_utils.trace
+    def _create_vserver(self, vserver_name, aggregate_names, ipspace_name,
+                        root_volume_name=None, root_volume_aggregate_name=None,
+                        root_volume_security_style=None,
+                        name_server_switch=None, subtype=None):
+        """Creates new vserver and assigns aggregates."""
         create_args = {
             'vserver-name': vserver_name,
-            'root-volume-security-style': 'unix',
-            'root-volume-aggregate': root_volume_aggregate_name,
-            'root-volume': root_volume_name,
-            'name-server-switch': {
-                'nsswitch': 'file',
-            },
         }
+        if root_volume_name:
+            create_args['root-volume'] = root_volume_name
+        if root_volume_aggregate_name:
+            create_args['root-volume-aggregate'] = root_volume_aggregate_name
+        if root_volume_security_style:
+            create_args['root-volume-security-style'] = (
+                root_volume_security_style)
+        if name_server_switch:
+            create_args['name-server-switch'] = {
+                'nsswitch': name_server_switch}
+        if subtype:
+            create_args['vserver-subtype'] = subtype
 
         if ipspace_name:
             if not self.features.IPSPACES:
@@ -188,6 +216,50 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('vserver-modify', modify_args)
 
     @na_utils.trace
+    def get_vserver_info(self, vserver_name):
+        """Retrieves Vserver info."""
+        LOG.debug('Retrieving Vserver %s information.', vserver_name)
+
+        api_args = {
+            'query': {
+                'vserver-info': {
+                    'vserver-name': vserver_name,
+                },
+            },
+            'desired-attributes': {
+                'vserver-info': {
+                    'vserver-name': None,
+                    'vserver-subtype': None,
+                    'state': None,
+                    'operational-state': None,
+                },
+            },
+        }
+        result = self.send_iter_request('vserver-get-iter', api_args)
+        if not self._has_records(result):
+            return
+        try:
+            vserver_info = result.get_child_by_name(
+                'attributes-list').get_child_by_name(
+                'vserver-info')
+            vserver_subtype = vserver_info.get_child_content(
+                'vserver-subtype')
+            vserver_op_state = vserver_info.get_child_content(
+                'operational-state')
+            vserver_state = vserver_info.get_child_content('state')
+        except AttributeError:
+            msg = _('Could not retrieve vserver-info for %s.') % vserver_name
+            raise exception.NetAppException(msg)
+
+        vserver_info = {
+            'name': vserver_name,
+            'subtype': vserver_subtype,
+            'operational_state': vserver_op_state,
+            'state': vserver_state,
+        }
+        return vserver_info
+
+    @na_utils.trace
     def vserver_exists(self, vserver_name):
         """Checks if Vserver exists."""
         LOG.debug('Checking if Vserver %s exists', vserver_name)
@@ -204,7 +276,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_iter_request('vserver-get-iter', api_args)
+        try:
+            result = self.send_iter_request('vserver-get-iter', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EVSERVERNOTFOUND:
+                return False
+            else:
+                raise
         return self._has_records(result)
 
     @na_utils.trace
@@ -332,19 +410,23 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def delete_vserver(self, vserver_name, vserver_client,
                        security_services=None):
-        """Delete Vserver.
+        """Deletes a Vserver.
 
         Checks if Vserver exists and does not have active shares.
         Offlines and destroys root volumes.  Deletes Vserver.
         """
-        if not self.vserver_exists(vserver_name):
+        vserver_info = self.get_vserver_info(vserver_name)
+        if vserver_info is None:
             LOG.error("Vserver %s does not exist.", vserver_name)
             return
 
+        is_dp_destination = vserver_info.get('subtype') == 'dp_destination'
         root_volume_name = self.get_vserver_root_volume_name(vserver_name)
         volumes_count = vserver_client.get_vserver_volume_count()
 
-        if volumes_count == 1:
+        # NOTE(dviroel): 'dp_destination' vservers don't allow to delete its
+        # root volume. We can just call vserver-destroy directly.
+        if volumes_count == 1 and not is_dp_destination:
             try:
                 vserver_client.offline_volume(root_volume_name)
             except netapp_api.NaApiError as e:
@@ -359,7 +441,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             msg = _("Cannot delete Vserver. Vserver %s has shares.")
             raise exception.NetAppException(msg % vserver_name)
 
-        if security_services:
+        if security_services and not is_dp_destination:
             self._terminate_vserver_services(vserver_name, vserver_client,
                                              security_services)
 
@@ -579,10 +661,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return list(self.get_vserver_aggregate_capacities().keys())
 
     @na_utils.trace
-    def create_network_interface(self, ip, netmask, vlan, node, port,
-                                 vserver_name, lif_name, ipspace_name, mtu):
-        """Creates LIF on VLAN port."""
-
+    def create_port_and_broadcast_domain(self, node, port, vlan, mtu, ipspace):
         home_port_name = port
         if vlan:
             self._create_vlan(node, port, vlan)
@@ -590,7 +669,17 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         if self.features.BROADCAST_DOMAINS:
             self._ensure_broadcast_domain_for_port(
-                node, home_port_name, mtu, ipspace=ipspace_name)
+                node, home_port_name, mtu, ipspace=ipspace)
+
+        return home_port_name
+
+    @na_utils.trace
+    def create_network_interface(self, ip, netmask, vlan, node, port,
+                                 vserver_name, lif_name, ipspace_name, mtu):
+        """Creates LIF on VLAN port."""
+
+        home_port_name = self.create_port_and_broadcast_domain(
+            node, port, vlan, mtu, ipspace_name)
 
         LOG.debug('Creating LIF %(lif)s for Vserver %(vserver)s ',
                   {'lif': lif_name, 'vserver': vserver_name})
@@ -2706,6 +2795,26 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('cifs-share-create', api_args)
 
     @na_utils.trace
+    def cifs_share_exists(self, share_name):
+        """Check that a cifs share already exists"""
+        share_path = '/%s' % share_name
+        api_args = {
+            'query': {
+                'cifs-share': {
+                    'share-name': share_name,
+                    'path': share_path,
+                },
+            },
+            'desired-attributes': {
+                'cifs-share': {
+                    'share-name': None
+                }
+            },
+        }
+        result = self.send_iter_request('cifs-share-get-iter', api_args)
+        return self._has_records(result)
+
+    @na_utils.trace
     def get_cifs_share_access(self, share_name):
         api_args = {
             'query': {
@@ -3411,24 +3520,57 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             raise exception.NetAppException(msg)
 
     @na_utils.trace
-    def create_snapmirror(self, source_vserver, source_volume,
-                          destination_vserver, destination_volume,
-                          schedule=None, policy=None,
-                          relationship_type='data_protection'):
+    def create_snapmirror_vol(self, source_vserver, source_volume,
+                              destination_vserver, destination_volume,
+                              schedule=None, policy=None,
+                              relationship_type='data_protection'):
+        """Creates a SnapMirror relationship between volumes."""
+        self._create_snapmirror(source_vserver, destination_vserver,
+                                source_volume=source_volume,
+                                destination_volume=destination_volume,
+                                schedule=schedule, policy=policy,
+                                relationship_type=relationship_type)
+
+    @na_utils.trace
+    def create_snapmirror_svm(self, source_vserver, destination_vserver,
+                              schedule=None, policy=None,
+                              relationship_type='data_protection',
+                              identity_preserve=True,
+                              max_transfer_rate=None):
+        """Creates a SnapMirror relationship between vServers."""
+        self._create_snapmirror(source_vserver, destination_vserver,
+                                schedule=schedule, policy=policy,
+                                relationship_type=relationship_type,
+                                identity_preserve=identity_preserve,
+                                max_transfer_rate=max_transfer_rate)
+
+    @na_utils.trace
+    def _create_snapmirror(self, source_vserver, destination_vserver,
+                           source_volume=None, destination_volume=None,
+                           schedule=None, policy=None,
+                           relationship_type='data_protection',
+                           identity_preserve=None, max_transfer_rate=None):
         """Creates a SnapMirror relationship (cDOT 8.2 or later only)."""
         self._ensure_snapmirror_v2()
 
         api_args = {
-            'source-volume': source_volume,
             'source-vserver': source_vserver,
-            'destination-volume': destination_volume,
             'destination-vserver': destination_vserver,
             'relationship-type': relationship_type,
         }
+        if source_volume:
+            api_args['source-volume'] = source_volume
+        if destination_volume:
+            api_args['destination-volume'] = destination_volume
         if schedule:
             api_args['schedule'] = schedule
         if policy:
             api_args['policy'] = policy
+        if identity_preserve is not None:
+            api_args['identity-preserve'] = (
+                'true' if identity_preserve is True else 'false')
+        if max_transfer_rate is not None:
+            api_args['max-transfer-rate'] = max_transfer_rate
 
         try:
             self.send_request('snapmirror-create', api_args)
@@ -3436,19 +3578,60 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             if e.code != netapp_api.ERELATION_EXISTS:
                 raise
 
+    def _build_snapmirror_request(self, source_path=None, dest_path=None,
+                                  source_vserver=None, dest_vserver=None,
+                                  source_volume=None, dest_volume=None):
+        """Build a default SnapMirror request."""
+
+        req_args = {}
+        if source_path:
+            req_args['source-location'] = source_path
+        if dest_path:
+            req_args['destination-location'] = dest_path
+        if source_vserver:
+            req_args['source-vserver'] = source_vserver
+        if source_volume:
+            req_args['source-volume'] = source_volume
+        if dest_vserver:
+            req_args['destination-vserver'] = dest_vserver
+        if dest_volume:
+            req_args['destination-volume'] = dest_volume
+
+        return req_args
+
     @na_utils.trace
-    def initialize_snapmirror(self, source_vserver, source_volume,
-                              destination_vserver, destination_volume,
-                              source_snapshot=None, transfer_priority=None):
-        """Initializes a SnapMirror relationship (cDOT 8.2 or later only)."""
+    def initialize_snapmirror_vol(self, source_vserver, source_volume,
+                                  dest_vserver, dest_volume,
+                                  source_snapshot=None,
+                                  transfer_priority=None):
+        """Initializes a SnapMirror relationship between volumes."""
+        return self._initialize_snapmirror(
+            source_vserver=source_vserver, dest_vserver=dest_vserver,
+            source_volume=source_volume, dest_volume=dest_volume,
+            source_snapshot=source_snapshot,
+            transfer_priority=transfer_priority)
+
+    @na_utils.trace
+    def initialize_snapmirror_svm(self, source_vserver, dest_vserver,
+                                  transfer_priority=None):
+        """Initializes a SnapMirror relationship between vServer."""
+        source_path = source_vserver + ':'
+        dest_path = dest_vserver + ':'
+        return self._initialize_snapmirror(source_path=source_path,
+                                           dest_path=dest_path,
+                                           transfer_priority=transfer_priority)
+
+    @na_utils.trace
+    def _initialize_snapmirror(self, source_path=None, dest_path=None,
+                               source_vserver=None, dest_vserver=None,
+                               source_volume=None, dest_volume=None,
+                               source_snapshot=None, transfer_priority=None):
+        """Initializes a SnapMirror relationship."""
         self._ensure_snapmirror_v2()
 
-        api_args = {
-            'source-volume': source_volume,
-            'source-vserver': source_vserver,
-            'destination-volume': destination_volume,
-            'destination-vserver': destination_vserver,
-        }
+        api_args = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
         if source_snapshot:
             api_args['source-snapshot'] = source_snapshot
         if transfer_priority:
@@ -3469,54 +3652,109 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return result_info
 
     @na_utils.trace
-    def release_snapmirror(self, source_vserver, source_volume,
-                           destination_vserver, destination_volume,
-                           relationship_info_only=False):
+    def release_snapmirror_vol(self, source_vserver, source_volume,
+                               dest_vserver, dest_volume,
+                               relationship_info_only=False):
         """Removes a SnapMirror relationship on the source endpoint."""
-        self._ensure_snapmirror_v2()
-
-        api_args = {
-            'query': {
-                'snapmirror-destination-info': {
-                    'source-volume': source_volume,
-                    'source-vserver': source_vserver,
-                    'destination-volume': destination_volume,
-                    'destination-vserver': destination_vserver,
-                    'relationship-info-only': ('true' if relationship_info_only
-                                               else 'false'),
-                }
-            }
-        }
-        self.send_request('snapmirror-release-iter', api_args)
+        self._release_snapmirror(source_vserver=source_vserver,
+                                 dest_vserver=dest_vserver,
+                                 source_volume=source_volume,
+                                 dest_volume=dest_volume,
+                                 relationship_info_only=relationship_info_only)
 
     @na_utils.trace
-    def quiesce_snapmirror(self, source_vserver, source_volume,
-                           destination_vserver, destination_volume):
+    def release_snapmirror_svm(self, source_vserver, dest_vserver,
+                               relationship_info_only=False):
+        """Removes a SnapMirror relationship on the source endpoint."""
+        source_path = source_vserver + ':'
+        dest_path = dest_vserver + ':'
+        self._release_snapmirror(source_path=source_path, dest_path=dest_path,
+                                 relationship_info_only=relationship_info_only,
+                                 enable_tunneling=False)
+
+    @na_utils.trace
+    def _release_snapmirror(self, source_path=None, dest_path=None,
+                            source_vserver=None, dest_vserver=None,
+                            source_volume=None, dest_volume=None,
+                            relationship_info_only=False,
+                            enable_tunneling=True):
+        """Removes a SnapMirror relationship on the source endpoint."""
+        dest_info = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
+        self._ensure_snapmirror_v2()
+        dest_info['relationship-info-only'] = (
+            'true' if relationship_info_only else 'false')
+        api_args = {
+            'query': {
+                'snapmirror-destination-info': dest_info
+            }
+        }
+        self.send_request('snapmirror-release-iter', api_args,
+                          enable_tunneling=enable_tunneling)
+
+    @na_utils.trace
+    def quiesce_snapmirror_vol(self, source_vserver, source_volume,
+                               dest_vserver, dest_volume):
+        """Disables future transfers to a SnapMirror destination."""
+        self._quiesce_snapmirror(source_vserver=source_vserver,
+                                 dest_vserver=dest_vserver,
+                                 source_volume=source_volume,
+                                 dest_volume=dest_volume)
+
+    @na_utils.trace
+    def quiesce_snapmirror_svm(self, source_vserver, dest_vserver):
+        """Disables future transfers to a SnapMirror destination."""
+        source_path = source_vserver + ':'
+        dest_path = dest_vserver + ':'
+        self._quiesce_snapmirror(source_path=source_path, dest_path=dest_path)
+
+    @na_utils.trace
+    def _quiesce_snapmirror(self, source_path=None, dest_path=None,
+                            source_vserver=None, dest_vserver=None,
+                            source_volume=None, dest_volume=None):
         """Disables future transfers to a SnapMirror destination."""
         self._ensure_snapmirror_v2()
 
-        api_args = {
-            'source-volume': source_volume,
-            'source-vserver': source_vserver,
-            'destination-volume': destination_volume,
-            'destination-vserver': destination_vserver,
-        }
+        api_args = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
+
         self.send_request('snapmirror-quiesce', api_args)
 
     @na_utils.trace
-    def abort_snapmirror(self, source_vserver, source_volume,
-                         destination_vserver, destination_volume,
-                         clear_checkpoint=False):
+    def abort_snapmirror_vol(self, source_vserver, source_volume,
+                             dest_vserver, dest_volume,
+                             clear_checkpoint=False):
+        """Stops ongoing transfers for a SnapMirror relationship."""
+        self._abort_snapmirror(source_vserver=source_vserver,
+                               dest_vserver=dest_vserver,
+                               source_volume=source_volume,
+                               dest_volume=dest_volume,
+                               clear_checkpoint=clear_checkpoint)
+
+    @na_utils.trace
+    def abort_snapmirror_svm(self, source_vserver, dest_vserver,
+                             clear_checkpoint=False):
+        """Stops ongoing transfers for a SnapMirror relationship."""
+        source_path = source_vserver + ':'
+        dest_path = dest_vserver + ':'
+        self._abort_snapmirror(source_path=source_path, dest_path=dest_path,
+                               clear_checkpoint=clear_checkpoint)
+
+    @na_utils.trace
+    def _abort_snapmirror(self, source_path=None, dest_path=None,
+                          source_vserver=None, dest_vserver=None,
+                          source_volume=None, dest_volume=None,
+                          clear_checkpoint=False):
         """Stops ongoing transfers for a SnapMirror relationship."""
         self._ensure_snapmirror_v2()
 
-        api_args = {
-            'source-volume': source_volume,
-            'source-vserver': source_vserver,
-            'destination-volume': destination_volume,
-            'destination-vserver': destination_vserver,
-            'clear-checkpoint': 'true' if clear_checkpoint else 'false',
-        }
+        api_args = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
+        api_args['clear-checkpoint'] = 'true' if clear_checkpoint else 'false'
+
         try:
             self.send_request('snapmirror-abort', api_args)
         except netapp_api.NaApiError as e:
@@ -3524,33 +3762,64 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise
 
     @na_utils.trace
-    def break_snapmirror(self, source_vserver, source_volume,
-                         destination_vserver, destination_volume):
+    def break_snapmirror_vol(self, source_vserver, source_volume,
+                             dest_vserver, dest_volume):
+        """Breaks a data protection SnapMirror relationship."""
+        self._break_snapmirror(source_vserver=source_vserver,
+                               dest_vserver=dest_vserver,
+                               source_volume=source_volume,
+                               dest_volume=dest_volume)
+
+    @na_utils.trace
+    def break_snapmirror_svm(self, source_vserver=None, dest_vserver=None):
+        """Breaks a data protection SnapMirror relationship."""
+        source_path = source_vserver + ':' if source_vserver else None
+        dest_path = dest_vserver + ':' if dest_vserver else None
+        self._break_snapmirror(source_path=source_path, dest_path=dest_path)
+
+    @na_utils.trace
+    def _break_snapmirror(self, source_path=None, dest_path=None,
+                          source_vserver=None, dest_vserver=None,
+                          source_volume=None, dest_volume=None):
         """Breaks a data protection SnapMirror relationship."""
         self._ensure_snapmirror_v2()
 
-        api_args = {
-            'source-volume': source_volume,
-            'source-vserver': source_vserver,
-            'destination-volume': destination_volume,
-            'destination-vserver': destination_vserver,
-        }
-        self.send_request('snapmirror-break', api_args)
+        api_args = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
+        try:
+            self.send_request('snapmirror-break', api_args)
+        except netapp_api.NaApiError as e:
+            break_in_progress = 'SnapMirror operation status is "Breaking"'
+            if not (e.code == netapp_api.ESVMDR_CANNOT_PERFORM_OP_FOR_STATUS
+                    and break_in_progress in e.message):
+                raise
 
     @na_utils.trace
-    def modify_snapmirror(self, source_vserver, source_volume,
-                          destination_vserver, destination_volume,
-                          schedule=None, policy=None, tries=None,
-                          max_transfer_rate=None):
+    def modify_snapmirror_vol(self, source_vserver, source_volume,
+                              dest_vserver, dest_volume,
+                              schedule=None, policy=None, tries=None,
+                              max_transfer_rate=None):
+        """Modifies a SnapMirror relationship between volumes."""
+        self._modify_snapmirror(source_vserver=source_vserver,
+                                dest_vserver=dest_vserver,
+                                source_volume=source_volume,
+                                dest_volume=dest_volume,
+                                schedule=schedule, policy=policy, tries=tries,
+                                max_transfer_rate=max_transfer_rate)
+
+    @na_utils.trace
+    def _modify_snapmirror(self, source_path=None, dest_path=None,
+                           source_vserver=None, dest_vserver=None,
+                           source_volume=None, dest_volume=None,
+                           schedule=None, policy=None, tries=None,
+                           max_transfer_rate=None):
         """Modifies a SnapMirror relationship."""
         self._ensure_snapmirror_v2()
 
-        api_args = {
-            'source-volume': source_volume,
-            'source-vserver': source_vserver,
-            'destination-volume': destination_volume,
-            'destination-vserver': destination_vserver,
-        }
+        api_args = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
         if schedule:
             api_args['schedule'] = schedule
         if policy:
@@ -3563,35 +3832,66 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('snapmirror-modify', api_args)
 
     @na_utils.trace
-    def delete_snapmirror(self, source_vserver, source_volume,
-                          destination_vserver, destination_volume):
+    def delete_snapmirror_vol(self, source_vserver, source_volume,
+                              dest_vserver, dest_volume):
+        """Destroys a SnapMirror relationship between volumes."""
+        self._delete_snapmirror(source_vserver=source_vserver,
+                                dest_vserver=dest_vserver,
+                                source_volume=source_volume,
+                                dest_volume=dest_volume)
+
+    @na_utils.trace
+    def delete_snapmirror_svm(self, source_vserver, dest_vserver):
+        """Destroys a SnapMirror relationship between vServers."""
+        source_path = source_vserver + ':'
+        dest_path = dest_vserver + ':'
+        self._delete_snapmirror(source_path=source_path, dest_path=dest_path)
+
+    @na_utils.trace
+    def _delete_snapmirror(self, source_path=None, dest_path=None,
+                           source_vserver=None, dest_vserver=None,
+                           source_volume=None, dest_volume=None):
         """Destroys a SnapMirror relationship."""
         self._ensure_snapmirror_v2()
 
+        snapmirror_info = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
+
         api_args = {
             'query': {
-                'snapmirror-info': {
-                    'source-volume': source_volume,
-                    'source-vserver': source_vserver,
-                    'destination-volume': destination_volume,
-                    'destination-vserver': destination_vserver,
-                }
+                'snapmirror-info': snapmirror_info
             }
         }
         self.send_request('snapmirror-destroy-iter', api_args)
 
     @na_utils.trace
-    def update_snapmirror(self, source_vserver, source_volume,
-                          destination_vserver, destination_volume):
+    def update_snapmirror_vol(self, source_vserver, source_volume,
+                              dest_vserver, dest_volume):
+        """Schedules a snapmirror update between volumes."""
+        self._update_snapmirror(source_vserver=source_vserver,
+                                dest_vserver=dest_vserver,
+                                source_volume=source_volume,
+                                dest_volume=dest_volume)
+
+    @na_utils.trace
+    def update_snapmirror_svm(self, source_vserver, dest_vserver):
+        """Schedules a snapmirror update between vServers."""
+        source_path = source_vserver + ':'
+        dest_path = dest_vserver + ':'
+        self._update_snapmirror(source_path=source_path, dest_path=dest_path)
+
+    @na_utils.trace
+    def _update_snapmirror(self, source_path=None, dest_path=None,
+                           source_vserver=None, dest_vserver=None,
+                           source_volume=None, dest_volume=None):
         """Schedules a snapmirror update."""
         self._ensure_snapmirror_v2()
 
-        api_args = {
-            'source-volume': source_volume,
-            'source-vserver': source_vserver,
-            'destination-volume': destination_volume,
-            'destination-vserver': destination_vserver,
-        }
+        api_args = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
+
         try:
             self.send_request('snapmirror-update', api_args)
         except netapp_api.NaApiError as e:
@@ -3600,17 +3900,32 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise
 
     @na_utils.trace
-    def resume_snapmirror(self, source_vserver, source_volume,
-                          destination_vserver, destination_volume):
+    def resume_snapmirror_vol(self, source_vserver, source_volume,
+                              dest_vserver, dest_volume):
+        """Resume a SnapMirror relationship if it is quiesced."""
+        self._resume_snapmirror(source_vserver=source_vserver,
+                                dest_vserver=dest_vserver,
+                                source_volume=source_volume,
+                                dest_volume=dest_volume)
+
+    @na_utils.trace
+    def resume_snapmirror_svm(self, source_vserver, dest_vserver):
+        """Resume a SnapMirror relationship if it is quiesced."""
+        source_path = source_vserver + ':'
+        dest_path = dest_vserver + ':'
+        self._resume_snapmirror(source_path=source_path, dest_path=dest_path)
+
+    @na_utils.trace
+    def _resume_snapmirror(self, source_path=None, dest_path=None,
+                           source_vserver=None, dest_vserver=None,
+                           source_volume=None, dest_volume=None):
         """Resume a SnapMirror relationship if it is quiesced."""
         self._ensure_snapmirror_v2()
 
-        api_args = {
-            'source-volume': source_volume,
-            'source-vserver': source_vserver,
-            'destination-volume': destination_volume,
-            'destination-vserver': destination_vserver,
-        }
+        api_args = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
+
         try:
             self.send_request('snapmirror-resume', api_args)
         except netapp_api.NaApiError as e:
@@ -3618,42 +3933,49 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise
 
     @na_utils.trace
-    def resync_snapmirror(self, source_vserver, source_volume,
-                          destination_vserver, destination_volume):
+    def resync_snapmirror_vol(self, source_vserver, source_volume,
+                              dest_vserver, dest_volume):
+        """Resync a SnapMirror relationship between volumes."""
+        self._resync_snapmirror(source_vserver=source_vserver,
+                                dest_vserver=dest_vserver,
+                                source_volume=source_volume,
+                                dest_volume=dest_volume)
+
+    @na_utils.trace
+    def resync_snapmirror_svm(self, source_vserver, dest_vserver):
+        """Resync a SnapMirror relationship between vServers."""
+        source_path = source_vserver + ':'
+        dest_path = dest_vserver + ':'
+        self._resync_snapmirror(source_path=source_path, dest_path=dest_path)
+
+    @na_utils.trace
+    def _resync_snapmirror(self, source_path=None, dest_path=None,
+                           source_vserver=None, dest_vserver=None,
+                           source_volume=None, dest_volume=None):
         """Resync a SnapMirror relationship."""
         self._ensure_snapmirror_v2()
 
-        api_args = {
-            'source-volume': source_volume,
-            'source-vserver': source_vserver,
-            'destination-volume': destination_volume,
-            'destination-vserver': destination_vserver,
-        }
+        api_args = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
+
         self.send_request('snapmirror-resync', api_args)
 
     @na_utils.trace
-    def _get_snapmirrors(self, source_vserver=None, source_volume=None,
-                         destination_vserver=None, destination_volume=None,
+    def _get_snapmirrors(self, source_path=None, dest_path=None,
+                         source_vserver=None, source_volume=None,
+                         dest_vserver=None, dest_volume=None,
                          desired_attributes=None):
+        """Gets one or more SnapMirror relationships."""
 
-        query = None
-        if (source_vserver or source_volume or destination_vserver or
-                destination_volume):
-            query = {'snapmirror-info': {}}
-            if source_volume:
-                query['snapmirror-info']['source-volume'] = source_volume
-            if destination_volume:
-                query['snapmirror-info']['destination-volume'] = (
-                    destination_volume)
-            if source_vserver:
-                query['snapmirror-info']['source-vserver'] = source_vserver
-            if destination_vserver:
-                query['snapmirror-info']['destination-vserver'] = (
-                    destination_vserver)
-
+        snapmirror_info = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
         api_args = {}
-        if query:
-            api_args['query'] = query
+        if snapmirror_info:
+            api_args['query'] = {
+                'snapmirror-info': snapmirror_info
+            }
         if desired_attributes:
             api_args['desired-attributes'] = desired_attributes
 
@@ -3664,8 +3986,18 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             return result.get_child_by_name('attributes-list').get_children()
 
     @na_utils.trace
-    def get_snapmirrors(self, source_vserver, source_volume,
-                        destination_vserver, destination_volume,
+    def get_snapmirrors_svm(self, source_vserver=None, dest_vserver=None,
+                            desired_attributes=None):
+        source_path = source_vserver + ':' if source_vserver else None
+        dest_path = dest_vserver + ':' if dest_vserver else None
+        return self.get_snapmirrors(source_path=source_path,
+                                    dest_path=dest_path,
+                                    desired_attributes=desired_attributes)
+
+    @na_utils.trace
+    def get_snapmirrors(self, source_path=None, dest_path=None,
+                        source_vserver=None, dest_vserver=None,
+                        source_volume=None, dest_volume=None,
                         desired_attributes=None):
         """Gets one or more SnapMirror relationships.
 
@@ -3680,10 +4012,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             }
 
         result = self._get_snapmirrors(
+            source_path=source_path,
+            dest_path=dest_path,
             source_vserver=source_vserver,
             source_volume=source_volume,
-            destination_vserver=destination_vserver,
-            destination_volume=destination_volume,
+            dest_vserver=dest_vserver,
+            dest_volume=dest_volume,
             desired_attributes=desired_attributes)
 
         snapmirrors = []
@@ -3697,6 +4031,79 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         return snapmirrors
 
+    @na_utils.trace
+    def _get_snapmirror_destinations(self, source_path=None, dest_path=None,
+                                     source_vserver=None, source_volume=None,
+                                     dest_vserver=None, dest_volume=None,
+                                     desired_attributes=None):
+        """Gets one or more SnapMirror at source endpoint."""
+
+        snapmirror_info = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
+        api_args = {}
+        if snapmirror_info:
+            api_args['query'] = {
+                'snapmirror-destination-info': snapmirror_info
+            }
+        if desired_attributes:
+            api_args['desired-attributes'] = desired_attributes
+
+        result = self.send_iter_request('snapmirror-get-destination-iter',
+                                        api_args)
+        if not self._has_records(result):
+            return []
+        else:
+            return result.get_child_by_name('attributes-list').get_children()
+
+    @na_utils.trace
+    def get_snapmirror_destinations(self, source_path=None, dest_path=None,
+                                    source_vserver=None, dest_vserver=None,
+                                    source_volume=None, dest_volume=None,
+                                    desired_attributes=None):
+        """Gets one or more SnapMirror relationships in the source endpoint.
+
+        Either the source or destination info may be omitted.
+        Desired attributes should be a flat list of attribute names.
+        """
+        self._ensure_snapmirror_v2()
+
+        if desired_attributes is not None:
+            desired_attributes = {
+                'snapmirror-destination-info': {
+                    attr: None for attr in desired_attributes},
+            }
+
+        result = self._get_snapmirror_destinations(
+            source_path=source_path,
+            dest_path=dest_path,
+            source_vserver=source_vserver,
+            source_volume=source_volume,
+            dest_vserver=dest_vserver,
+            dest_volume=dest_volume,
+            desired_attributes=desired_attributes)
+
+        snapmirrors = []
+
+        for snapmirror_info in result:
+            snapmirror = {}
+            for child in snapmirror_info.get_children():
+                name = self._strip_xml_namespace(child.get_name())
+                snapmirror[name] = child.get_content()
+            snapmirrors.append(snapmirror)
+
+        return snapmirrors
+
+    @na_utils.trace
+    def get_snapmirror_destinations_svm(self, source_vserver=None,
+                                        dest_vserver=None,
+                                        desired_attributes=None):
+        source_path = source_vserver + ':' if source_vserver else None
+        dest_path = dest_vserver + ':' if dest_vserver else None
+        return self.get_snapmirror_destinations(
+            source_path=source_path, dest_path=dest_path,
+            desired_attributes=desired_attributes)
+
     def volume_has_snapmirror_relationships(self, volume):
         """Return True if snapmirror relationships exist for a given volume.
 
@@ -3706,11 +4113,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         try:
             # Check if volume is a source snapmirror volume
             snapmirrors = self.get_snapmirrors(
-                volume['owning-vserver-name'], volume['name'], None, None)
+                source_vserver=volume['owning-vserver-name'],
+                source_volume=volume['name'])
             # Check if volume is a destination snapmirror volume
             if not snapmirrors:
                 snapmirrors = self.get_snapmirrors(
-                    None, None, volume['owning-vserver-name'], volume['name'])
+                    dest_vserver=volume['owning-vserver-name'],
+                    dest_volume=volume['name'])
 
             has_snapmirrors = len(snapmirrors) > 0
         except netapp_api.NaApiError:
@@ -3742,6 +4151,71 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         return [snapshot_info.get_child_content('name')
                 for snapshot_info in attributes_list.get_children()]
+
+    @na_utils.trace
+    def create_snapmirror_policy(self, policy_name, type='async_mirror',
+                                 discard_network_info=True,
+                                 preserve_snapshots=True):
+        """Creates a SnapMirror policy for a vServer."""
+        self._ensure_snapmirror_v2()
+
+        api_args = {
+            'policy-name': policy_name,
+            'type': type,
+        }
+
+        if discard_network_info:
+            api_args['discard-configs'] = {
+                'svmdr-config-obj': 'network'
+            }
+
+        self.send_request('snapmirror-policy-create', api_args)
+
+        if preserve_snapshots:
+            api_args = {
+                'policy-name': policy_name,
+                'snapmirror-label': 'all_source_snapshots',
+                'keep': '1',
+                'preserve': 'false'
+            }
+
+            self.send_request('snapmirror-policy-add-rule', api_args)
+
+    @na_utils.trace
+    def delete_snapmirror_policy(self, policy_name):
+        """Deletes a SnapMirror policy."""
+
+        api_args = {
+            'policy-name': policy_name,
+        }
+        try:
+            self.send_request('snapmirror-policy-delete', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code != netapp_api.EOBJECTNOTFOUND:
+                raise
+
+    @na_utils.trace
+    def get_snapmirror_policies(self, vserver_name):
+        """Get all SnapMirror policies associated to a vServer."""
+
+        api_args = {
+            'query': {
+                'snapmirror-policy-info': {
+                    'vserver-name': vserver_name,
+                },
+            },
+            'desired-attributes': {
+                'snapmirror-policy-info': {
+                    'policy-name': None,
+                },
+            },
+        }
+        result = self.send_iter_request('snapmirror-policy-get-iter', api_args)
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        return [policy_info.get_child_content('policy-name')
+                for policy_info in attributes_list.get_children()]
 
     @na_utils.trace
     def start_volume_move(self, volume_name, vserver, destination_aggregate,
@@ -4086,3 +4560,34 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             nfs_config[arg] = nfs_info_elem.get_child_content(arg)
 
         return nfs_config
+
+    @na_utils.trace
+    def start_vserver(self, vserver, force=None):
+        """Starts a vServer."""
+        api_args = {
+            'vserver-name': vserver,
+        }
+        if force is not None:
+            api_args['force'] = 'true' if force is True else 'false'
+
+        try:
+            self.send_request('vserver-start', api_args,
+                              enable_tunneling=False)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EVSERVERALREADYSTARTED:
+                msg = _("Vserver %s is already started.")
+                LOG.debug(msg, vserver)
+            else:
+                raise
+
+    @na_utils.trace
+    def stop_vserver(self, vserver):
+        """Stops a vServer."""
+        api_args = {
+            'vserver-name': vserver,
+        }
+
+        self.send_request('vserver-stop', api_args, enable_tunneling=False)
+
+    def is_svm_dr_supported(self):
+        return self.features.SVM_DR

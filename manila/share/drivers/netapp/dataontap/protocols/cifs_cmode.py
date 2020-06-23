@@ -29,9 +29,15 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
 
     @na_utils.trace
     def create_share(self, share, share_name,
-                     clear_current_export_policy=True):
+                     clear_current_export_policy=True,
+                     ensure_share_already_exists=False):
         """Creates CIFS share on Data ONTAP Vserver."""
-        self._client.create_cifs_share(share_name)
+        if not ensure_share_already_exists:
+            self._client.create_cifs_share(share_name)
+        elif not self._client.cifs_share_exists(share_name):
+            msg = _("The expected CIFS share %(share_name)s was not found.")
+            msg_args = {'share_name': share_name}
+            raise exception.NetAppException(msg % msg_args)
         if clear_current_export_policy:
             self._client.remove_cifs_share_access(share_name, 'Everyone')
 
