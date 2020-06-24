@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed `bug #1878993 <https://bugs.launchpad.net/manila/+bug/1878993>`_
+    that caused a failure on HTTPS connections within NetApp backend using
+    python 3.7.
