@@ -41,9 +41,10 @@ from manila import utils
      7.0.0 - Supports DHSS=False mode
      7.0.1 - Fix parsing management IPv6 address
      7.0.2 - Bugfix: failed to delete CIFS share if wrong access was set
+     7.0.3 - Bugfix: remove enable ace process when creating cifs share
 """
 
-VERSION = "7.0.2"
+VERSION = "7.0.3"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
