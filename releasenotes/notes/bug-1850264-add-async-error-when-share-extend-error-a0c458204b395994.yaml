@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    A new user message has been added in case of share extensions failing
+    asynchronously.
