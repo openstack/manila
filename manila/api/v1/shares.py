@@ -346,7 +346,8 @@ class ShareMixin(object):
                 else:
                     share_type = share_types.get_share_type(
                         context, req_share_type)
-            except exception.ShareTypeNotFound:
+            except (exception.ShareTypeNotFound,
+                    exception.ShareTypeNotFoundByName):
                 msg = _("Share type not found.")
                 raise exc.HTTPNotFound(explanation=msg)
         elif not snapshot:
