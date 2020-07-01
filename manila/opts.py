@@ -35,6 +35,8 @@ import manila.data.helper
 import manila.db.api
 import manila.db.base
 import manila.exception
+import manila.image
+import manila.image.glance
 import manila.message.api
 import manila.network
 import manila.network.linux.interface
@@ -110,6 +112,7 @@ _global_opt_lists = [
     manila.db.api.db_opts,
     [manila.db.base.db_driver_opt],
     manila.exception.exc_log_opts,
+    manila.image._glance_opts,
     manila.message.api.messages_opts,
     manila.network.linux.interface.OPTS,
     manila.network.network_opts,
@@ -198,6 +201,8 @@ _opts = [
      list(itertools.chain(manila.compute.nova.nova_opts))),
     (manila.network.neutron.api.NEUTRON_GROUP,
      list(itertools.chain(manila.network.neutron.api.neutron_opts))),
+    (manila.image.glance.GLANCE_GROUP,
+     list(itertools.chain(manila.image.glance.glance_opts))),
 ]
 
 _opts.extend(oslo_concurrency.opts.list_opts())
@@ -206,6 +211,7 @@ _opts.extend(oslo_middleware.opts.list_opts())
 _opts.extend(oslo_policy.opts.list_opts())
 _opts.extend(manila.network.neutron.api.list_opts())
 _opts.extend(manila.compute.nova.list_opts())
+_opts.extend(manila.image.glance.list_opts())
 _opts.extend(manila.volume.cinder.list_opts())
 _opts.extend(oslo_service.sslutils.list_opts())
 

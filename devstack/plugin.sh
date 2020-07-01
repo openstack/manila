@@ -263,7 +263,9 @@ function configure_manila {
     if is_service_enabled cinder; then
         configure_keystone_authtoken_middleware $MANILA_CONF cinder cinder
     fi
-
+    if is_service_enabled glance; then
+        configure_keystone_authtoken_middleware $MANILA_CONF glance glance
+    fi
     # Note: set up config group does not mean that this backend will be enabled.
     # To enable it, specify its name explicitly using "enabled_share_backends" opt.
     configure_default_backends

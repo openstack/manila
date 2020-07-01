@@ -732,21 +732,47 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                 self.assertEqual((None, None), result)
 
     def test_get_service_image(self):
-        fake_image = fake_compute.FakeImage(
+        fake_image1 = fake_compute.FakeImage(
             name=self._manager.get_config_option('service_image_name'),
             status='active')
-        self.mock_object(self._manager.compute_api, 'image_get',
-                         mock.Mock(return_value=fake_image))
+        fake_image2 = fake_compute.FakeImage(
+            name='service_image_name',
+            status='error')
+        fake_image3 = fake_compute.FakeImage(
+            name='another-image',
+            status='active')
+        self.mock_object(self._manager.image_api, 'image_list',
+                         mock.Mock(return_value=[fake_image1,
+                                                 fake_image2,
+                                                 fake_image3]))
 
         result = self._manager._get_service_image(self._manager.admin_context)
-        self.assertEqual(fake_image, result)
+        self.assertEqual(fake_image1.id, result)
+
+    def test_get_service_image_not_found(self):
+        self.mock_object(self._manager.image_api, 'image_list',
+                         mock.Mock(return_value=[]))
+        self.assertRaises(
+            exception.ServiceInstanceException,
+            self._manager._get_service_image, self._manager.admin_context)
 
     def test_get_service_image_not_active(self):
         fake_error_image = fake_compute.FakeImage(
             name='service_image_name',
             status='error')
-        self.mock_object(self._manager.compute_api, 'image_get',
-                         mock.Mock(return_value=fake_error_image))
+        self.mock_object(self._manager.image_api, 'image_list',
+                         mock.Mock(return_value=[fake_error_image]))
+        self.assertRaises(
+            exception.ServiceInstanceException,
+            self._manager._get_service_image, self._manager.admin_context)
+
+    def test_get_service_image_ambiguous(self):
+        fake_image = fake_compute.FakeImage(
+            name=fake_get_config_option('service_image_name'),
+            status='active')
+        fake_images = [fake_image, fake_image]
+        self.mock_object(self._manager.image_api, 'image_list',
+                         mock.Mock(return_value=fake_images))
         self.assertRaises(
             exception.ServiceInstanceException,
             self._manager._get_service_image, self._manager.admin_context)
