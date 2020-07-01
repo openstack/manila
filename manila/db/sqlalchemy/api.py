@@ -4233,8 +4233,7 @@ def share_type_get(context, id, inactive=False, expected_fields=None):
 
 
 def _share_type_get_by_name(context, name, session=None):
-    result = (model_query(context, models.ShareTypes, session=session).
-              options(joinedload('extra_specs')).
+    result = (_share_type_get_query(context, session=session).
               filter_by(name=name).
               first())
 
