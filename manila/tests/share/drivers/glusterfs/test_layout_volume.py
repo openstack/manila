@@ -600,8 +600,10 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
             self.glusterfs_target1)
         self._layout.private_storage.delete.assert_called_once_with(
             self.share1['id'])
-        gmgr1.set_vol_option.assert_called_once_with(
-            'user.manila-share', 'NONE')
+        gmgr1.set_vol_option.assert_has_calls([
+            mock.call('user.manila-share', 'NONE'),
+            mock.call('nfs.disable', 'on')
+        ])
 
     def test_delete_share_clone(self):
         self._layout._push_gluster_vol = mock.Mock()
