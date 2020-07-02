@@ -433,6 +433,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                 # them to the pool (after some purification rituals)
                 self._wipe_gluster_vol(gmgr)
                 gmgr.set_vol_option(USER_MANILA_SHARE, 'NONE')
+                gmgr.set_vol_option('nfs.disable', 'on')
 
             self._push_gluster_vol(gmgr.qualified)
         except exception.GlusterfsException:

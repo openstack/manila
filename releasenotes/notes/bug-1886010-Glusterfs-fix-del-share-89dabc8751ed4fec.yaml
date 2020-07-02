@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed `bug #1886010  <https://bugs.launchpad.net/manila/+bug/1886010>`_
+    This bug caused glusterfs shares to still be readable/writable to
+    connected clients while the share was deleted from manila.
