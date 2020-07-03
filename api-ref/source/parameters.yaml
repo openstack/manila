@@ -1438,7 +1438,7 @@ migrate_share:
   type: object
 migration_complete:
   description: |
-    The ``migration_complate`` object.
+    The ``migration_complete`` object.
   in: body
   required: true
   type: object
