@@ -118,7 +118,7 @@ class OpenStackInfo(object):
     NetApp uses these fields as content for EMS log entry.
     """
 
-    PACKAGE_NAME = 'python-manila'
+    PACKAGE_NAME = 'python3-manila'
 
     def __init__(self):
         self._version = 'unknown version'
