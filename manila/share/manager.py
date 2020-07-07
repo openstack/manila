@@ -507,8 +507,15 @@ class ShareManager(manager.SchedulerDependentManager):
                 update_share_instances[share_instance['id']]
                 .get('export_locations'))
             if update_export_location:
+                LOG.debug(
+                    "Share instance %(id)s: updating export "
+                    "location '%(export_location)s'.",
+                    {'id': share_instance['id'],
+                     'export_location': update_export_location},
+                )
                 self.db.share_export_locations_update(
-                    ctxt, share_instance['id'], update_export_location)
+                    ctxt, share_instance['id'], update_export_location,
+                    reexport=True)
 
             share_server = self._get_share_server(ctxt, share_instance)
 

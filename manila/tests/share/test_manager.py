@@ -394,8 +394,10 @@ class ShareManagerTestCase(test.TestCase):
                 utils.IsAMatcher(context.RequestContext),
                 self.share_manager.host)
             exports_update.assert_has_calls([
-                mock.call(mock.ANY, instances[0]['id'], fake_export_locations),
-                mock.call(mock.ANY, instances[2]['id'], fake_export_locations)
+                mock.call(mock.ANY, instances[0]['id'], fake_export_locations,
+                          reexport=True),
+                mock.call(mock.ANY, instances[2]['id'], fake_export_locations,
+                          reexport=True)
             ])
             (self.share_manager._ensure_share_instance_has_pool.
                 assert_has_calls([

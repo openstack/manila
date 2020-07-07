@@ -83,7 +83,7 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
             check_for_setup_error())
 
     @na_utils.trace
-    def _get_vserver(self, share_server=None):
+    def _get_vserver(self, share_server=None, reexport=False):
 
         if share_server is not None:
             msg = _('Share server must not be passed to the driver '
@@ -94,8 +94,9 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
             msg = _('Vserver not specified in configuration.')
             raise exception.InvalidInput(reason=msg)
 
-        if not self._client.vserver_exists(self._vserver):
-            raise exception.VserverNotFound(vserver=self._vserver)
+        if not reexport:
+            if not self._client.vserver_exists(self._vserver):
+                raise exception.VserverNotFound(vserver=self._vserver)
 
         vserver_client = self._get_api_client(self._vserver)
         return self._vserver, vserver_client

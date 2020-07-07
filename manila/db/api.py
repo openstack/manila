@@ -787,10 +787,11 @@ def share_export_locations_get_by_share_instance_id(context,
 
 
 def share_export_locations_update(context, share_instance_id, export_locations,
-                                  delete=True):
+                                  delete=True, reexport=False):
     """Update export locations of a share instance."""
     return IMPL.share_export_locations_update(
-        context, share_instance_id, export_locations, delete)
+        context, share_instance_id, export_locations, delete,
+        reexport=reexport)
 
 
 ####################

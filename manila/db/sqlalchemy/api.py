@@ -3398,7 +3398,7 @@ def share_export_location_get_by_uuid(context, export_location_uuid,
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_export_locations_update(context, share_instance_id, export_locations,
-                                  delete):
+                                  delete, reexport=False):
     # NOTE(u_glide):
     # Backward compatibility code for drivers,
     # which return single export_location as string
@@ -3460,6 +3460,18 @@ def share_export_locations_update(context, share_instance_id, export_locations,
             if el['el_metadata']:
                 export_location_metadata_update(
                     context, el['uuid'], el['el_metadata'], session=session)
+            if reexport:
+                for update_el in export_locations:
+                    if not update_el.get('metadata'):
+                        continue
+                    if el['path'] != update_el['path']:
+                        continue
+                    LOG.debug("updating %(uuid)s metadata with %(meta)s",
+                              {'uuid': el['uuid'],
+                               'meta': update_el['metadata']})
+                    export_location_metadata_update(
+                        context, el['uuid'], update_el['metadata'],
+                        session=session)
 
     # Now add new export locations
     for el in export_locations:
