@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    The container driver now supports driver assisted share migration and
+    share server migration across share networks, and across backends that
+    share the same underlying volume group (configuration option:
+    container_volume_group).

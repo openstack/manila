@@ -522,3 +522,89 @@ class ContainerShareDriverTestCase(test.TestCase):
         mock_container_exists.assert_called_once_with(
             fake_name
         )
+
+    def test_migration_complete(self):
+        share_server = {'id': 'fakeid'}
+        fake_container_name = 'manila_fake_container'
+        new_export_location = 'new_export_location'
+
+        mock_migraton_storage = self.mock_object(self._driver.storage,
+                                                 'migration_complete')
+        mock_get_container_name = self.mock_object(
+            self._driver, '_get_container_name',
+            mock.Mock(return_value=fake_container_name))
+
+        mock_mount = self.mock_object(
+            self._driver, '_mount_storage',
+            mock.Mock(return_value=new_export_location))
+
+        mock_umount = self.mock_object(self._driver, '_umount_storage')
+
+        expected_location = {'export_locations': new_export_location}
+        self.assertEqual(expected_location,
+                         self._driver.migration_complete(
+                             self._context, self.share, self.share, None,
+                             None, share_server, share_server))
+
+        mock_migraton_storage.assert_called_once_with(
+            self._context, self.share, self.share, None, None,
+            destination_share_server=share_server, share_server=share_server
+        )
+        mock_mount.assert_called_once_with(
+            self.share, fake_container_name, self.share.share_id
+        )
+        mock_umount.assert_called_once_with(
+            self.share, fake_container_name, self.share.share_id
+        )
+        mock_get_container_name.assert_called_with(
+            share_server['id']
+        )
+
+    def test_share_server_migration_complete(self):
+        source_server = {'id': 'source_fake_id', 'host': 'host@back1'}
+        dest_server = {'id': 'dest_fake_id', 'host': 'host@back2'}
+        fake_container_name = 'manila_fake_container'
+        new_export_location = 'new_export_location'
+        fake_pool_name = 'fake_vg'
+        shares_list = [self.share, self.share]
+
+        mock_get_container_name = self.mock_object(
+            self._driver, '_get_container_name',
+            mock.Mock(return_value=fake_container_name))
+        mock_umount = self.mock_object(self._driver, '_umount_storage')
+        mock_migraton_storage = self.mock_object(
+            self._driver.storage, 'share_server_migration_complete')
+        mock_mount = self.mock_object(
+            self._driver, '_mount_storage',
+            mock.Mock(return_value=new_export_location))
+        mock_get_pool = self.mock_object(
+            self._driver.storage, 'get_share_pool_name',
+            mock.Mock(return_value=fake_pool_name))
+
+        share_updates = {}
+        for fake_share in shares_list:
+            share_updates[fake_share['id']] = {
+                'export_locations': new_export_location,
+                'pool_name': fake_pool_name,
+            }
+
+        expected_result = {
+            'share_updates': share_updates,
+        }
+        self.assertDictMatch(expected_result,
+                             self._driver.share_server_migration_complete(
+                                 self._context, source_server, dest_server,
+                                 shares_list, None, None))
+        mock_migraton_storage.assert_called_once_with(
+            self._context, source_server, dest_server, shares_list, None, None)
+
+        # assert shares
+        for fake_share in shares_list:
+            mock_get_pool.assert_any_call(fake_share['share_id'])
+            mock_umount.assert_any_call(fake_share, fake_container_name,
+                                        fake_share.share_id)
+            mock_mount.assert_any_call(fake_share, fake_container_name,
+                                       fake_share.share_id)
+
+        mock_get_container_name.assert_any_call(source_server['id'])
+        mock_get_container_name.assert_any_call(dest_server['id'])

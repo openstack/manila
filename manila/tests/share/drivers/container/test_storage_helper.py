@@ -23,6 +23,7 @@ from manila import exception
 from manila.share import configuration
 from manila.share.drivers.container import storage_helper
 from manila import test
+from manila.tests import fake_share as base_fake_share
 from manila.tests.share.drivers.container.fakes import fake_share
 
 
@@ -36,6 +37,7 @@ class LVMHelperTestCase(test.TestCase):
         self.fake_conf = configuration.Configuration(None)
         self.fake_conf.container_volume_mount_path = "/tmp/shares"
         self.LVMHelper = storage_helper.LVMHelper(configuration=self.fake_conf)
+        self.context = mock.Mock()
 
     def fake_exec_sync(self, *args, **kwargs):
         kwargs['execute_arguments'].append(args)
@@ -207,3 +209,123 @@ class LVMHelperTestCase(test.TestCase):
         )
         mock_get_lv_device.assert_called_once_with(share_name)
         self.assertEqual(result, 1)
+
+    @ddt.data({'source_host': 'host@back1#vg1', 'dest_host': 'host@back2#vg2',
+               'compatible': False},
+              {'source_host': 'host@back1#vg1', 'dest_host': 'host@back2#vg1',
+               'compatible': True},
+              {'source_host': 'host@back1#vg1', 'dest_host': 'host@back1#vg1',
+               'compatible': True})
+    @ddt.unpack
+    def test_migration_check_compatibility(
+            self, source_host, dest_host, compatible):
+        mock_exception_log = self.mock_object(storage_helper.LOG, 'exception')
+
+        source_share = base_fake_share.fake_share_instance(host=source_host)
+        dest_share = base_fake_share.fake_share_instance(host=dest_host)
+
+        migration_compatibility = self.LVMHelper.migration_check_compatibility(
+            self.context, source_share, dest_share, share_server=None,
+            destination_share_server=None)
+
+        expected_compatibility = {
+            'compatible': compatible,
+            'writable': True,
+            'nondisruptive': False,
+            'preserve_metadata': True,
+            'preserve_snapshots': False,
+        }
+        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        if not compatible:
+            mock_exception_log.assert_called_once()
+
+    def test_migration_continue(self):
+        end1Phase = self.LVMHelper.migration_continue(
+            self.context, None, None, None, None, share_server=None,
+            destination_share_server=None)
+        self.assertTrue(end1Phase)
+
+    def test_migration_get_progress(self):
+        progress = self.LVMHelper.migration_get_progress(
+            self.context, None, None, None, None, share_server=None,
+            destination_share_server=None)
+        expected_progress = {
+            'total_progress': 100,
+        }
+        self.assertDictMatch(expected_progress, progress)
+
+    @ddt.data({'source_host': 'host@back1', 'dest_host': 'host@back1',
+               'shares_specs': {}},
+              {'source_host': 'host@back1', 'dest_host': 'host@back2#vg1',
+               'shares_specs': {'shares_req_spec': [
+                   {'share_instance_properties': {'host': 'host@back1#vg2'}}
+               ]}})
+    @ddt.unpack
+    def test_share_server_migration_check_compatibility_false(
+            self, source_host, dest_host, shares_specs):
+        not_compatible = {
+            'compatible': False,
+            'writable': None,
+            'nondisruptive': None,
+            'preserve_snapshots': None,
+            'migration_cancel': None,
+            'migration_get_progress': None
+        }
+        mock_error_log = self.mock_object(storage_helper.LOG, 'error')
+
+        source_server = {'id': 'fake_id', 'host': source_host}
+        migration_compatibility = (
+            self.LVMHelper.share_server_migration_check_compatibility(
+                self.context, source_server, dest_host, None, None,
+                shares_specs))
+
+        self.assertDictMatch(not_compatible, migration_compatibility)
+        mock_error_log.assert_called_once()
+
+    @ddt.data({'source_host': 'host@back1', 'dest_host': 'host@back2#vg1',
+               'shares_specs': {'shares_req_spec': [
+                   {'share_instance_properties': {'host': 'host@back1#vg1'}}
+               ]}},
+              {'source_host': 'host@back1', 'dest_host': 'host@back2',
+               'shares_specs': {'shares_req_spec': [
+                   {'share_instance_properties': {'host': 'host@back1#vg1'}}
+               ]}})
+    @ddt.unpack
+    def test_share_server_migration_check_compatibility_true(
+            self, source_host, dest_host, shares_specs):
+        compatible = {
+            'compatible': True,
+            'writable': True,
+            'nondisruptive': False,
+            'preserve_snapshots': False,
+            'migration_cancel': True,
+            'migration_get_progress': True
+        }
+
+        source_server = {'id': 'fake_id', 'host': source_host}
+        migration_compatibility = (
+            self.LVMHelper.share_server_migration_check_compatibility(
+                self.context, source_server, dest_host, None, None,
+                shares_specs))
+
+        self.assertDictMatch(compatible, migration_compatibility)
+
+    def test_share_server_migration_continue(self):
+        end1Phase = self.LVMHelper.share_server_migration_continue(
+            self.context, None, None, None, None)
+        self.assertTrue(end1Phase)
+
+    def test_share_server_migration_get_progess(self):
+        progress = self.LVMHelper.share_server_migration_get_progress(
+            self.context, None, None, None, None)
+        expected_progress = {
+            'total_progress': 100,
+        }
+        self.assertDictMatch(expected_progress, progress)
+
+    def test_get_share_pool_name(self):
+        fake_vg_name = 'fake_vg'
+        self.LVMHelper.configuration.container_volume_group = fake_vg_name
+
+        vg_name = self.LVMHelper.get_share_pool_name('fake_share_id')
+        self.assertEqual(vg_name, fake_vg_name)
