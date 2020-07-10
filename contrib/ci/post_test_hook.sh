@@ -195,7 +195,7 @@ elif [[ "$TEST_TYPE" == "scenario" ]]; then
 fi
 
 if [[ "$DRIVER" == "lvm" ]]; then
-    MANILA_TESTS="(^manila_tempest_tests.tests)(?=.*\[.*\bbackend\b.*\])"
+    MANILA_TESTS="(^manila_tempest_tests.tests.api)(?=.*\[.*\bbackend\b.*\])"
     MANILA_TEMPEST_CONCURRENCY=8
     RUN_MANILA_SG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=False
