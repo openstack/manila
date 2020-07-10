@@ -344,11 +344,12 @@ class NFSHelper(NASHelperBase):
         self._ssh_exec(server, sync_cmd)
         self._ssh_exec(server, ['sudo', 'exportfs', '-a'])
         out, _ = self._ssh_exec(
-            server, ['sudo', 'service', 'nfs-kernel-server', 'status'],
+            server,
+            ['sudo', 'systemctl', 'is-active', 'nfs-kernel-server'],
             check_exit_code=False)
-        if "not" in out:
+        if "inactive" in out:
             self._ssh_exec(
-                server, ['sudo', 'service', 'nfs-kernel-server', 'restart'])
+                server, ['sudo', 'systemctl', 'restart', 'nfs-kernel-server'])
 
     def _get_export_location_template(self, export_location_or_path):
         path = export_location_or_path.split(':')[-1]
