@@ -108,7 +108,7 @@ class LVMMixin(driver.ExecuteMixin):
                       device_name, run_as_root=True)
 
     def _extend_container(self, share, device_name, size):
-        cmd = ['lvextend', '-L', '%sG' % size, '-n', device_name]
+        cmd = ['lvextend', '-L', '%sG' % size, '-r', device_name]
         self._try_execute(*cmd, run_as_root=True)
 
     def _deallocate_container(self, share_name):
@@ -392,7 +392,6 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
     def extend_share(self, share, new_size, share_server=None):
         device_name = self._get_local_path(share)
         self._extend_container(share, device_name, new_size)
-        self._execute('resize2fs', device_name, run_as_root=True)
 
     def revert_to_snapshot(self, context, snapshot, share_access_rules,
                            snapshot_access_rules, share_server=None):
