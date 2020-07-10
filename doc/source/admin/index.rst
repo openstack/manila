@@ -54,6 +54,7 @@ deployment.
    shared-file-systems-multi-backend.rst
    shared-file-systems-networking.rst
    shared-file-systems-troubleshoot.rst
+   shared-file-systems-upgrades.rst
    share_back_ends_feature_support_mapping
    capabilities_and_extra_specs
    group_capabilities_and_extra_specs
