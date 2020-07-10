@@ -467,8 +467,6 @@ class LVMShareDriverTestCase(test.TestCase):
         self._driver.extend_share(self.share, 3)
         self._driver._extend_container.assert_called_once_with(self.share,
                                                                local_path, 3)
-        self._driver._execute.assert_called_once_with('resize2fs', local_path,
-                                                      run_as_root=True)
 
     def test_ssh_exec_as_root(self):
         command = ['fake_command']
@@ -491,7 +489,7 @@ class LVMShareDriverTestCase(test.TestCase):
             'lvextend',
             '-L',
             '3G',
-            '-n',
+            '-r',
             'device_name',
             run_as_root=True)
 
