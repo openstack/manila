@@ -1,0 +1,14 @@
+---
+upgrade:
+  - |
+    The default value for the CephFS driver configuration option
+    ``cephfs_enable_snapshots`` has changed to True. This option has also
+    been deprecated, and will be removed in a future release. If snapshots
+    are not desired with this back end, set the share type extra spec
+    ``snapshot_support`` to False.
+deprecations:
+  - |
+    The CephFS driver configuration option ``cephfs_enable_snapshots`` has
+    been deprecated, and will be removed in a future release. Use
+    the share type extra-spec ``snapshot_support`` to enable or disable
+    snapshots.
