@@ -2724,8 +2724,28 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           self.client.configure_dns,
                           fake.KERBEROS_SECURITY_SERVICE)
 
-    @ddt.data('', '10.0.0.1', ['10.0.0.2', '10.0.0.3'])
-    def test_set_preferred_dc(self, server):
+    @ddt.data(
+        {
+            'server': '',
+            'check_feature': False
+        },
+        {
+            'server': ['10.0.0.2', '10.0.0.3'],
+            'check_feature': False
+        },
+        {
+            'server': '10.0.0.1',
+            'check_feature': False
+        },
+        {
+            'server': '10.0.0.1',
+            'check_feature': True
+        }
+    )
+    @ddt.unpack
+    def test_set_preferred_dc(self, server, check_feature):
+        if check_feature:
+            self.client.features.add_feature('CIFS_DC_ADD_SKIP_CHECK')
 
         self.mock_object(self.client, 'send_request')
         security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
@@ -2740,6 +2760,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 'domain': fake.CIFS_SECURITY_SERVICE['domain'],
                 'preferred-dc': [{'string': dc_ip} for dc_ip in server]
             }
+
+            if check_feature:
+                preferred_dc_add_args['skip-config-validation'] = 'false'
 
             self.client.send_request.assert_has_calls([
                 mock.call('cifs-domain-preferred-dc-add',
