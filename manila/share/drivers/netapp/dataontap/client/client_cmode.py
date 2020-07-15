@@ -70,6 +70,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontapi_1_2x = (1, 20) <= ontapi_version < (1, 30)
         ontapi_1_30 = ontapi_version >= (1, 30)
         ontapi_1_110 = ontapi_version >= (1, 110)
+        ontapi_1_150 = ontapi_version >= (1, 150)
 
         self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
         self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
@@ -82,6 +83,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.features.add_feature('ADVANCED_DISK_PARTITIONING',
                                   supported=ontapi_1_30)
         self.features.add_feature('FLEXVOL_ENCRYPTION', supported=ontapi_1_110)
+        self.features.add_feature('CIFS_DC_ADD_SKIP_CHECK',
+                                  supported=ontapi_1_150)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -1526,6 +1529,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         for dc_ip in security_service['server'].split(','):
             api_args['preferred-dc'].append({'string': dc_ip.strip()})
+
+        if self.features.CIFS_DC_ADD_SKIP_CHECK:
+            api_args['skip-config-validation'] = 'false'
 
         try:
             self.send_request('cifs-domain-preferred-dc-add', api_args)
