@@ -28,6 +28,8 @@
 # CINDER_OVERSUBSCRIPTION_RATIO=20.0
 
 
+define_plugin manila
+
 # Defaults
 # --------
 MANILA_GIT_BASE=${MANILA_GIT_BASE:-https://opendev.org}
