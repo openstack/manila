@@ -1,0 +1,91 @@
+- job:
+    name: manila-grenade
+    parent: grenade
+    irrelevant-files:
+      - ^(test-|)requirements.txt$
+      - ^.*\.rst$
+      - ^api-ref/.*$
+      - ^doc/.*$
+      - ^manila/hacking/.*$
+      - ^manila/tests/.*$
+      - ^releasenotes/.*$
+      - ^setup.cfg$
+      - ^tools/.*$
+      - ^tox.ini$
+    required-projects:
+      - openstack/grenade
+      - openstack/manila
+      - openstack/python-manilaclient
+      - openstack/manila-tempest-plugin
+    vars:
+      grenade_devstack_localrc:
+        shared:
+          # This job performs data path tests, it's good to test
+          # both DHSS driver modes with it, but for now, it'll use the LVM
+          # driver (DHSS=False)
+          MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE: false
+          MANILA_ALLOW_NAS_SERVER_PORTS_ON_HOST: true
+          MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS: 'snapshot_support=True create_share_from_snapshot_support=True revert_to_snapshot_support=True mount_snapshot_support=True'
+          MANILA_CONFIGURE_DEFAULT_TYPES: true
+          SHARE_DRIVER: manila.share.drivers.lvm.LVMShareDriver
+          MANILA_ENABLED_BACKENDS: london,paris
+          MANILA_BACKEND1_CONFIG_GROUP_NAME: london
+          MANILA_BACKEND2_CONFIG_GROUP_NAME: paris
+          MANILA_SHARE_BACKEND1_NAME: LONDON
+          MANILA_SHARE_BACKEND2_NAME: PARIS
+          MANILA_OPTGROUP_london_driver_handles_share_servers: false
+          MANILA_OPTGROUP_paris_driver_handles_share_servers: false
+          SHARE_BACKING_FILE_SIZE: 32000M
+      devstack_plugins:
+        manila: https://opendev.org/openstack/manila.git
+      devstack_services:
+        manila: true
+        m-api: true
+        m-sch: true
+        m-shr: true
+        m-dat: true
+        # don't need some services
+        c-api: false
+        c-bak: false
+        c-vol: false
+        cinder: false
+        # These services can be turned off, if not
+        # for: https://launchpad.net/bugs/1887835
+        # g-api: false
+        # g-reg: false
+        # n-api: false
+        # n-api-meta: false
+        # n-cauth: false
+        # n-cond: false
+        # n-cpu: false
+        # n-novnc: false
+        # n-obj: false
+        # n-sch: false
+        # placement-api: false
+        # q-agt: false
+        # q-dhcp: false
+        # q-l3: false
+        # q-meta: false
+        # q-metering: false
+        # q-svc: false
+        s-account: false
+        s-container: false
+        s-object: false
+        s-proxy: false
+      devstack_local_conf:
+        test-config:
+          "$TEMPEST_CONFIG":
+            share:
+              default_share_type_name: default
+              run_mount_snapshot_tests: true
+              run_shrink_tests: false
+              run_revert_to_snapshot_tests: true
+              enable_user_rules_for_protocols: cifs
+              enable_ip_rules_for_protocols: nfs
+              multitenancy_enabled: False
+              backend_names: LONDON,PARIS
+              multi_backend: true
+      tempest_plugins:
+        - manila-tempest-plugin
+      tempest_test_regex: ^manila_tempest_tests.tests.api
+      tox_envlist: all

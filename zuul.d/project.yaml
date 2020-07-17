@@ -74,19 +74,6 @@
       - ^tox.ini$
 
 - job:
-    name: manila-grenade
-    parent: manila-tempest-base
-    run: playbooks/legacy/grenade-dsvm-manila/run.yaml
-    post-run: playbooks/legacy/grenade-dsvm-manila/post.yaml
-    timeout: 10800
-    required-projects:
-      - openstack/grenade
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/python-manilaclient
-      - openstack/manila-tempest-plugin
-
-- job:
     name: manila-tempest-dsvm-container-scenario-custom-image
     parent: manila-tempest-base
     run: playbooks/legacy/manila-tempest-dsvm-container-scenario-custom-image/run.yaml
