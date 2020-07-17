@@ -5324,7 +5324,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         result = self.client.get_aggregate_disk_types(
             fake.SHARE_AGGREGATE_NAME)
 
-        self.assertItemsEqual(expected, result)
+        self.assertEqual(sorted(expected), sorted(result))
         mock_get_aggregate_disk_types.assert_called_once_with(
             fake.SHARE_AGGREGATE_NAME)
 
@@ -5352,7 +5352,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             fake.SHARE_AGGREGATE_NAME)
 
         self.assertIsInstance(result, list)
-        self.assertItemsEqual(['SATA', 'SSD'], result)
+        self.assertEqual(sorted(['SATA', 'SSD']), sorted(result))
         mock_get_aggregate_disk_types.assert_has_calls([
             mock.call(fake.SHARE_AGGREGATE_NAME),
             mock.call(fake.SHARE_AGGREGATE_NAME, shared=True),

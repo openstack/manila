@@ -170,7 +170,7 @@ class ShareTypesTestCase(test.TestCase):
                          'share_type_get_all',
                          mock.Mock(return_value=copy.deepcopy(share_type)))
         returned_type = share_types.get_all_types(self.context)
-        self.assertItemsEqual(share_type, returned_type)
+        self.assertEqual(sorted(share_type), sorted(returned_type))
 
     def test_get_all_types_search(self):
         share_type = self.fake_type_w_extra
@@ -183,7 +183,7 @@ class ShareTypesTestCase(test.TestCase):
         db.share_type_get_all.assert_called_once_with(
             mock.ANY, 0, filters={'is_public': True})
 
-        self.assertItemsEqual(share_type, returned_type)
+        self.assertEqual(sorted(share_type), sorted(returned_type))
         search_filter = {'extra_specs': {'gold': 'False'}}
         expected_types = {}
         returned_types = share_types.get_all_types(self.context,
@@ -194,7 +194,7 @@ class ShareTypesTestCase(test.TestCase):
         search_filter = {'extra_specs': {'gold': 'True'}}
         returned_type = share_types.get_all_types(self.context,
                                                   search_opts=search_filter)
-        self.assertItemsEqual(share_type, returned_type)
+        self.assertEqual(sorted(share_type), sorted(returned_type))
 
     @ddt.data("nova", "supernova,nova", "supernova",
               "nova,hypernova,supernova")
@@ -268,7 +268,8 @@ class ShareTypesTestCase(test.TestCase):
         expected_return_types = (['gold', 'silver', 'default']
                                  if len(search_azs.split(',')) < 3
                                  else ['gold', 'default'])
-        self.assertItemsEqual(expected_return_types, returned_types)
+        self.assertEqual(sorted(expected_return_types),
+                         sorted(returned_types))
 
     def test_get_share_type_extra_specs(self):
         share_type = self.fake_type_w_extra['test_with_extra']

@@ -372,7 +372,7 @@ class PerformanceLibraryTestCase(test.TestCase):
             self.fake_volumes, self.fake_aggregates)
 
         expected_aggregate_names = ['aggr1', 'aggr2', 'aggr3']
-        self.assertItemsEqual(expected_aggregate_names, result)
+        self.assertEqual(sorted(expected_aggregate_names), sorted(result))
 
     def test_get_nodes_for_aggregates(self):
 
@@ -390,7 +390,8 @@ class PerformanceLibraryTestCase(test.TestCase):
 
         expected_node_names = ['node1', 'node2']
         expected_aggr_node_map = dict(zip(aggregate_names, aggregate_nodes))
-        self.assertItemsEqual(expected_node_names, result_node_names)
+        self.assertEqual(sorted(expected_node_names),
+                         sorted(result_node_names))
         self.assertEqual(expected_aggr_node_map, result_aggr_node_map)
         mock_get_node_for_aggregate.assert_has_calls([
             mock.call('aggr1'), mock.call('aggr2'), mock.call('aggr3')])
