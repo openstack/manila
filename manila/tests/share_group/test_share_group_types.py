@@ -98,7 +98,7 @@ class ShareGroupTypesTestCase(test.TestCase):
 
         returned_type = share_group_types.get_all(self.context)
 
-        self.assertItemsEqual(share_group_type, returned_type)
+        self.assertEqual(sorted(share_group_type), sorted(returned_type))
 
     def test_get_all_types_search(self):
         share_group_type = self.fake_type_w_extra
@@ -112,7 +112,7 @@ class ShareGroupTypesTestCase(test.TestCase):
 
         db.share_group_type_get_all.assert_called_once_with(
             mock.ANY, 0, filters={'is_public': True})
-        self.assertItemsEqual(share_group_type, returned_type)
+        self.assertEqual(sorted(share_group_type), sorted(returned_type))
         search_filter = {"group_specs": {"gold": "False"}}
         returned_type = share_group_types.get_all(
             self.context, search_opts=search_filter)
