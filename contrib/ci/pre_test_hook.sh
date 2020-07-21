@@ -17,8 +17,10 @@
 # 'False' means share driver will not handle share servers
 # 'True' means it will handle share servers.
 
-# Import devstack function 'trueorfalse'
+# Import devstack function 'trueorfalse', 'deprecated'
 source $BASE/new/devstack/functions
+
+deprecated "Manila's pre_test_hook and post_test_hook scripts are DEPRECATED. Please use alternate tools to configure devstack's local.conf file"
 
 localconf=$BASE/new/devstack/local.conf
 
@@ -83,96 +85,9 @@ echo "MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL=${MANILA_SHARE_MIGRATION_PERIO
 MANILA_SERVICE_IMAGE_ENABLED=${MANILA_SERVICE_IMAGE_ENABLED:-False}
 DEFAULT_EXTRA_SPECS=${DEFAULT_EXTRA_SPECS:-"'snapshot_support=True create_share_from_snapshot_support=True'"}
 
-if [[ "$DRIVER" == "generic"* ]]; then
-    MANILA_SERVICE_IMAGE_ENABLED=True
-    echo "SHARE_DRIVER=manila.share.drivers.generic.GenericShareDriver" >> $localconf
-elif [[ "$DRIVER" == "windows" ]]; then
+if [[ "$DRIVER" == "windows" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
     echo "SHARE_DRIVER=manila.share.drivers.windows.windows_smb_driver.WindowsSMBDriver" >> $localconf
-elif [[ "$DRIVER" == "dummy" ]]; then
-    driver_path="manila.tests.share.drivers.dummy.DummyDriver"
-    DEFAULT_EXTRA_SPECS="'snapshot_support=True create_share_from_snapshot_support=True revert_to_snapshot_support=True mount_snapshot_support=True'"
-    echo "MANILA_SERVICE_IMAGE_ENABLED=False" >> $localconf
-
-    # Run dummy driver CI job using standalone approach for running
-    # manila API service just because we need to test this approach too,
-    # that is very useful for development needs.
-    echo "MANILA_USE_UWSGI=False" >> $localconf
-    echo "MANILA_USE_MOD_WSGI=False" >> $localconf
-
-    echo "SHARE_DRIVER=$driver_path" >> $localconf
-    echo "SUPPRESS_ERRORS_IN_CLEANUP=False" >> $localconf
-    echo "MANILA_REPLICA_STATE_UPDATE_INTERVAL=10" >> $localconf
-    echo "MANILA_ENABLED_BACKENDS=alpha,beta,gamma,delta" >> $localconf
-    echo "MANILA_CONFIGURE_GROUPS=alpha,beta,gamma,delta,membernet,adminnet" >> $localconf
-
-    echo "MANILA_OPTGROUP_alpha_share_driver=$driver_path" >> $localconf
-    echo "MANILA_OPTGROUP_alpha_driver_handles_share_servers=True" >> $localconf
-    echo "MANILA_OPTGROUP_alpha_share_backend_name=ALPHA" >> $localconf
-    echo "MANILA_OPTGROUP_alpha_network_config_group=membernet" >> $localconf
-    echo "MANILA_OPTGROUP_alpha_admin_network_config_group=adminnet" >> $localconf
-    echo "MANILA_OPTGROUP_alpha_replication_domain=DUMMY_DOMAIN_2" >> $localconf
-
-    echo "MANILA_OPTGROUP_beta_share_driver=$driver_path" >> $localconf
-    echo "MANILA_OPTGROUP_beta_driver_handles_share_servers=True" >> $localconf
-    echo "MANILA_OPTGROUP_beta_share_backend_name=BETA" >> $localconf
-    echo "MANILA_OPTGROUP_beta_network_config_group=membernet" >> $localconf
-    echo "MANILA_OPTGROUP_beta_admin_network_config_group=adminnet" >> $localconf
-    echo "MANILA_OPTGROUP_beta_replication_domain=DUMMY_DOMAIN_2" >> $localconf
-
-    echo "MANILA_OPTGROUP_gamma_share_driver=$driver_path" >> $localconf
-    echo "MANILA_OPTGROUP_gamma_driver_handles_share_servers=False" >> $localconf
-    echo "MANILA_OPTGROUP_gamma_share_backend_name=GAMMA" >> $localconf
-    echo "MANILA_OPTGROUP_gamma_replication_domain=DUMMY_DOMAIN" >> $localconf
-
-    echo "MANILA_OPTGROUP_delta_share_driver=$driver_path" >> $localconf
-    echo "MANILA_OPTGROUP_delta_driver_handles_share_servers=False" >> $localconf
-    echo "MANILA_OPTGROUP_delta_share_backend_name=DELTA" >> $localconf
-    echo "MANILA_OPTGROUP_delta_replication_domain=DUMMY_DOMAIN" >> $localconf
-
-    echo "MANILA_OPTGROUP_membernet_network_api_class=manila.network.standalone_network_plugin.StandaloneNetworkPlugin" >> $localconf
-    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_gateway=10.0.0.1" >> $localconf
-    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_mask=24" >> $localconf
-    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_network_type=vlan" >> $localconf
-    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_segmentation_id=1010" >> $localconf
-    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_allowed_ip_ranges=10.0.0.10-10.0.0.209" >> $localconf
-    echo "MANILA_OPTGROUP_membernet_network_plugin_ipv4_enabled=True" >> $localconf
-
-    echo "MANILA_OPTGROUP_adminnet_network_api_class=manila.network.standalone_network_plugin.StandaloneNetworkPlugin" >> $localconf
-    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_gateway=11.0.0.1" >> $localconf
-    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_mask=24" >> $localconf
-    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_network_type=vlan" >> $localconf
-    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_segmentation_id=1011" >> $localconf
-    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_allowed_ip_ranges=11.0.0.10-11.0.0.19,11.0.0.30-11.0.0.39,11.0.0.50-11.0.0.199" >> $localconf
-    echo "MANILA_OPTGROUP_adminnet_network_plugin_ipv4_enabled=True" >> $localconf
-
-    export MANILA_TEMPEST_CONCURRENCY=24
-    export MANILA_CONFIGURE_DEFAULT_TYPES=False
-
-elif [[ "$DRIVER" == "lvm" ]]; then
-    MANILA_SERVICE_IMAGE_ENABLED=True
-    DEFAULT_EXTRA_SPECS="'snapshot_support=True create_share_from_snapshot_support=True revert_to_snapshot_support=True mount_snapshot_support=True'"
-
-    echo "SHARE_DRIVER=manila.share.drivers.lvm.LVMShareDriver" >> $localconf
-    echo "SHARE_BACKING_FILE_SIZE=32000M" >> $localconf
-elif [[ "$DRIVER" == "zfsonlinux" ]]; then
-    MANILA_SERVICE_IMAGE_ENABLED=True
-    echo "SHARE_DRIVER=manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" >> $localconf
-    echo "RUN_MANILA_REPLICATION_TESTS=True" >> $localconf
-    # Enable using the scheduler when creating a share from snapshot
-    echo "MANILA_USE_SCHEDULER_CREATING_SHARE_FROM_SNAPSHOT=True" >> $localconf
-    # Set the replica_state_update_interval to 60 seconds to make
-    # replication tests run faster. The default is 300, which is greater than
-    # the build timeout for ZFS on the gate.
-    echo "MANILA_REPLICA_STATE_UPDATE_INTERVAL=60" >> $localconf
-    echo "MANILA_ZFSONLINUX_USE_SSH=True" >> $localconf
-    # Set proper host IP for user export to be able to run scenario tests correctly
-    echo "MANILA_ZFSONLINUX_SHARE_EXPORT_IP=$HOST" >> $localconf
-    echo "MANILA_ZFSONLINUX_SERVICE_IP=127.0.0.1" >> $localconf
-elif [[ "$DRIVER" == "container"* ]]; then
-    DEFAULT_EXTRA_SPECS="'snapshot_support=false'"
-    echo "SHARE_DRIVER=manila.share.drivers.container.driver.ContainerShareDriver" >> $localconf
-    echo "SHARE_BACKING_FILE_SIZE=64000M" >> $localconf
 fi
 
 echo "MANILA_SERVICE_IMAGE_ENABLED=$MANILA_SERVICE_IMAGE_ENABLED" >> $localconf
@@ -203,20 +118,3 @@ if [[ "$MANILA_SETUP_IPV6" == True ]]; then
     echo "IP_VERSION=4+6" >> $localconf
     echo "MANILA_RESTORE_IPV6_DEFAULT_ROUTE=False" >> $localconf
 fi
-
-if [[ "$DRIVER" == "generic"* ]]; then
-    echo -e '[[post-config|${NOVA_CONF:-/etc/nova/nova.conf}]]\n[DEFAULT]\nquota_instances=30\n' >> $localconf
-    echo -e '[[post-config|${NEUTRON_CONF:-/etc/neutron/neutron.conf}]]\n[DEFAULT]\nmax_fixed_ips_per_port=100\n' >> $localconf
-    echo -e '[[post-config|${NEUTRON_CONF:-/etc/neutron/neutron.conf}]]\n[QUOTAS]\nquota_subnet=-1\n' >> $localconf
-fi
-
-# Required for "grenade" job that uses devstack config from 'old' directory.
-if [[ -d "$BASE/old/devstack" ]]; then
-    cp $localconf $BASE/old/devstack/local.conf
-fi
-
-cd $BASE/new/tempest
-source $BASE/new/manila/contrib/ci/common.sh
-
-# Print current Tempest status
-git status

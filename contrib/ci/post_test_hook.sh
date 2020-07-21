@@ -16,6 +16,10 @@
 # First argument ($1) expects 'multibackend' as value for setting appropriate
 # tempest conf opts, all other values will assume singlebackend installation.
 
+SCRIPT_IS_DEPRECATED="Manila's pre_test_hook and post_test_hook scripts are
+DEPRECATED. Please use alternate tools to configure devstack's local.conf
+file or run tempest tests"
+
 sudo chown -R $USER:stack $BASE/new/tempest
 sudo chown -R $USER:stack $BASE/data/tempest
 sudo chmod -R o+rx $BASE/new/devstack/files
@@ -43,9 +47,7 @@ TEST_TYPE=$3
 POSTGRES_ENABLED=$4
 POSTGRES_ENABLED=$(trueorfalse True POSTGRES_ENABLED)
 
-if [[ "$DRIVER" == "dummy" ]]; then
-    export BACKENDS_NAMES="ALPHA,BETA"
-elif [[ "$BACK_END_TYPE" == "multibackend" ]]; then
+if [[ "$BACK_END_TYPE" == "multibackend" ]]; then
     iniset $TEMPEST_CONFIG share multi_backend True
     # Set share backends names, they are defined within pre_test_hook
     export BACKENDS_NAMES="LONDON,PARIS"
@@ -159,141 +161,6 @@ cd $BASE/new/tempest
 export MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-6}
 export MANILA_TESTS=${MANILA_TESTS:-'manila_tempest_tests.tests.api'}
 
-if [[ "$DRIVER" == "generic"* ]]; then
-    RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
-    RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
-    RUN_MANILA_CG_TESTS=False
-    if [[ "$MULTITENANCY_ENABLED" == "True"  ]]; then
-        # NOTE(ganso): The generic driver has not implemented support for
-        # Manage/unmanage shares/snapshots in DHSS=True
-        RUN_MANILA_MANAGE_SNAPSHOT_TESTS=False
-        RUN_MANILA_MANAGE_TESTS=False
-    fi
-    if [[ "$POSTGRES_ENABLED" == "True" ]]; then
-        # Run only CIFS tests on PostgreSQL DB backend
-        # to reduce amount of tests per job using 'generic' share driver.
-        iniset $TEMPEST_CONFIG share enable_protocols cifs
-    else
-        # Run only NFS tests on MySQL DB backend to reduce amount of tests
-        # per job using 'generic' share driver.
-        iniset $TEMPEST_CONFIG share enable_protocols nfs
-    fi
-    MANILA_TESTS="(^manila_tempest_tests.tests.api)(?=.*\[.*\bbackend\b.*\])"
-    RUN_MANILA_SG_TESTS=False
-fi
-
-if [[ "$DRIVER" == "generic_with_custom_image" ]]; then
-    # For CI jobs that test changes to image we do not need to run lots of tests
-    # Will be enough to run simple scenario test, because
-    # if some package is lost, it is very likely to fail with each test.
-    MANILA_TESTS="(^manila_tempest_tests.tests.scenario)(?=.*\btest_write_data_to_share_created_from_snapshot\b.*)"
-elif [[ "$TEST_TYPE" == "scenario" ]]; then
-    echo "Set test set to scenario only"
-    MANILA_TESTS='manila_tempest_tests.tests.scenario'
-    iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
-    RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
-fi
-
-if [[ "$DRIVER" == "lvm" ]]; then
-    MANILA_TESTS="(^manila_tempest_tests.tests)(?=.*\[.*\bbackend\b.*\])"
-    MANILA_TEMPEST_CONCURRENCY=8
-    RUN_MANILA_SG_TESTS=False
-    RUN_MANILA_MANAGE_TESTS=False
-    RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
-    RUN_MANILA_SHRINK_TESTS=False
-    RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS=True
-    RUN_MANILA_MOUNT_SNAPSHOT_TESTS=True
-    RUN_MANILA_IPV6_TESTS=True
-    iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
-    iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
-    iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-master'
-    iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
-    iniset $TEMPEST_CONFIG share capability_snapshot_support True
-    if ! grep $USERNAME_FOR_USER_RULES "/etc/passwd"; then
-        sudo useradd $USERNAME_FOR_USER_RULES
-    fi
-    (echo $PASSWORD_FOR_SAMBA_USER; echo $PASSWORD_FOR_SAMBA_USER) | sudo smbpasswd -s -a $USERNAME_FOR_USER_RULES
-    sudo smbpasswd -e $USERNAME_FOR_USER_RULES
-    samba_daemon_name=smbd
-    if is_fedora; then
-        samba_daemon_name=smb
-    fi
-    sudo service $samba_daemon_name restart
-elif [[ "$DRIVER" == "zfsonlinux" ]]; then
-    MANILA_TESTS="(^manila_tempest_tests.tests)(?=.*\[.*\bbackend\b.*\])"
-    MANILA_TEMPEST_CONCURRENCY=8
-    RUN_MANILA_SG_TESTS=False
-    RUN_MANILA_MANAGE_TESTS=True
-    RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
-    RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
-    RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=True
-    RUN_MANILA_REPLICATION_TESTS=True
-    iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
-    iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols ''
-    iniset $TEMPEST_CONFIG share enable_cert_rules_for_protocols ''
-    iniset $TEMPEST_CONFIG share enable_ro_access_level_for_protocols 'nfs'
-    iniset $TEMPEST_CONFIG share build_timeout 180
-    iniset $TEMPEST_CONFIG share share_creation_retry_number 0
-    iniset $TEMPEST_CONFIG share capability_storage_protocol 'NFS'
-    iniset $TEMPEST_CONFIG share enable_protocols 'nfs'
-    iniset $TEMPEST_CONFIG share suppress_errors_in_cleanup False
-    iniset $TEMPEST_CONFIG share multitenancy_enabled False
-    iniset $TEMPEST_CONFIG share multi_backend True
-    iniset $TEMPEST_CONFIG share backend_replication_type 'readable'
-    iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-master'
-    iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
-    iniset $TEMPEST_CONFIG share capability_snapshot_support True
-    iniset $TEMPEST_CONFIG share run_create_share_from_snapshot_in_another_pool_or_az_tests True
-elif [[ "$DRIVER" == "dummy" ]]; then
-    MANILA_TEMPEST_CONCURRENCY=24
-    MANILA_CONFIGURE_DEFAULT_TYPES=False
-    RUN_MANILA_SG_TESTS=True
-    RUN_MANILA_MANAGE_TESTS=True
-    RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
-    RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=True
-    RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS=True
-    RUN_MANILA_MOUNT_SNAPSHOT_TESTS=True
-    RUN_MANILA_MIGRATION_WITH_PRESERVE_SNAPSHOTS_TESTS=True
-    RUN_MANILA_REPLICATION_TESTS=True
-    iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
-    iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
-    iniset $TEMPEST_CONFIG share enable_cert_rules_for_protocols ''
-    iniset $TEMPEST_CONFIG share enable_ro_access_level_for_protocols 'nfs,cifs'
-    iniset $TEMPEST_CONFIG share build_timeout 180
-    iniset $TEMPEST_CONFIG share share_creation_retry_number 0
-    iniset $TEMPEST_CONFIG share capability_storage_protocol 'NFS_CIFS'
-    iniset $TEMPEST_CONFIG share capability_sg_consistent_snapshot_support 'pool'
-    iniset $TEMPEST_CONFIG share enable_protocols 'nfs,cifs'
-    iniset $TEMPEST_CONFIG share suppress_errors_in_cleanup False
-    iniset $TEMPEST_CONFIG share multitenancy_enabled True
-    iniset $TEMPEST_CONFIG share create_networks_when_multitenancy_enabled False
-    iniset $TEMPEST_CONFIG share multi_backend True
-    iniset $TEMPEST_CONFIG share backend_replication_type 'readable'
-elif [[ "$DRIVER" == "container"* ]]; then
-    if [[ "$DRIVER" == "container_with_custom_image" ]]; then
-        # TODO(vponomaryov): set scenario tests for run when
-        # manila tempest plugin supports share protocol and rules that
-        # container driver uses.
-        # MANILA_TESTS="(^manila_tempest_tests.tests.scenario)(?=.*\btest_read_write_two_vms\b.*)"
-        :
-    fi
-    MANILA_TEMPEST_CONCURRENCY=8
-    RUN_MANILA_SG_TESTS=False
-    RUN_MANILA_MANAGE_TESTS=True
-    RUN_MANILA_QUOTA_TESTS=False
-    RUN_MANILA_SHRINK_TESTS=False
-    RUN_MANILA_SNAPSHOT_TESTS=False
-    RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=False
-    CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT=False
-    iniset $TEMPEST_CONFIG share capability_storage_protocol 'CIFS'
-    iniset $TEMPEST_CONFIG share enable_protocols 'cifs'
-    iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
-    iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols ''
-
-    # TODO(vponomaryov): set following to True when bug #1679715 is fixed
-    iniset $TEMPEST_CONFIG auth use_dynamic_credentials False
-fi
-
 # Enable quota tests
 iniset $TEMPEST_CONFIG share run_quota_tests $RUN_MANILA_QUOTA_TESTS
 
@@ -340,11 +207,6 @@ ADMIN_DOMAIN_NAME=${ADMIN_DOMAIN_NAME:-"Default"}
 export OS_PROJECT_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
 export OS_USER_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
 
-# Also, we should wait until service VM is available
-# before running Tempest tests using Generic driver in DHSS=False mode.
-source $BASE/new/manila/contrib/ci/common.sh
-manila_wait_for_drivers_init $MANILA_CONF
-
 source $BASE/new/devstack/openrc admin admin
 public_net_id=$(openstack network list --name $PUBLIC_NETWORK_NAME -f value -c ID )
 iniset $TEMPEST_CONFIG network public_network_id $public_net_id
@@ -363,6 +225,8 @@ echo "Manila service details"
 source $BASE/new/devstack/openrc admin admin
 manila service-list
 
+echo $SCRIPT_IS_DEPRECATED
+
 echo "Running tempest manila test suites"
 cd $BASE/new/tempest/
 # List plugins in logs to enable debugging
@@ -370,40 +234,4 @@ sudo -H -u $USER tempest list-plugins
 sudo -H -u $USER tempest run -r $MANILA_TESTS --concurrency=$MANILA_TEMPEST_CONCURRENCY
 RETVAL=$?
 cd -
-
-
-# If using the dummy driver, configure the second run. We can't use the
-# devstack variables RUN_MANILA_* now, we'll directly iniset tempest options.
-if [[ "$DRIVER" == "dummy" ]]; then
-    save_tempest_results 1
-    echo "First tempest run (DHSS=True) returned '$RETVAL'"
-    iniset $TEMPEST_CONFIG share backend_names "GAMMA,DELTA"
-    iniset $TEMPEST_CONFIG share run_manage_unmanage_tests True
-    iniset $TEMPEST_CONFIG share run_manage_unmanage_snapshot_tests True
-    iniset $TEMPEST_CONFIG share run_replication_tests True
-    iniset $TEMPEST_CONFIG share multitenancy_enabled False
-    iniset $TEMPEST_CONFIG share backend_replication_type 'readable'
-
-    # Change driver mode for default share type to make tempest use
-    # DHSS=False backends. This is just done here for semantics, if
-    # the default share type hasn't been configured
-    # ($MANILA_CONFIGURE_DEFAULT_TYPES=False), this command has no effect
-    # since there is no default share type configured.
-    source $BASE/new/devstack/openrc admin demo
-    manila type-key default set driver_handles_share_servers=False
-
-    echo "Running tempest manila test suites for DHSS=False mode"
-    cd $BASE/new/tempest/
-    sudo -H -u $USER tempest run -r  $MANILA_TESTS --concurrency=$MANILA_TEMPEST_CONCURRENCY
-    RETVAL2=$?
-    cd -
-    save_tempest_results 2
-
-    # Exit with last code if first succeeded else exit with first error code
-    if [[ "$RETVAL" == "0" ]]; then
-        RETVAL=$RETVAL2
-    fi
-
-    echo "Second tempest run (DHSS=False) returned '$RETVAL2'"
-fi
 exit $RETVAL

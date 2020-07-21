@@ -10,324 +10,43 @@
     check:
       jobs:
         - manila-tox-genconfig
-        - manila-tempest-dsvm-mysql-generic:
+        - openstack-tox-pylint:
             voting: false
-        - manila-tempest-dsvm-postgres-container:
+            timeout: 5400
+        - openstack-tox-cover:
             voting: false
-        - manila-tempest-dsvm-postgres-zfsonlinux:
+        - manila-tempest-plugin-dummy-no-dhss
+        - manila-tempest-plugin-dummy-dhss
+        - manila-tempest-plugin-lvm
+        - manila-tempest-plugin-cephfs-native:
             voting: false
-        - manila-tempest-dsvm-postgres-generic-singlebackend:
+        - manila-tempest-plugin-cephfs-nfs:
             voting: false
-        - manila-tempest-dsvm-generic-no-share-servers:
+        - manila-tempest-plugin-container:
             voting: false
-        - manila-tempest-dsvm-scenario:
+        - manila-tempest-plugin-generic:
             voting: false
-        - manila-tempest-minimal-dsvm-cephfs-native:
+        - manila-tempest-plugin-glusterfs-native:
             voting: false
-        - manila-tempest-minimal-dsvm-cephfs-nfs:
+        - manila-tempest-plugin-glusterfs-nfs:
             voting: false
-        - manila-tempest-dsvm-glusterfs-nfs:
+        - manila-tempest-plugin-zfsonlinux:
             voting: false
-        - manila-tempest-dsvm-glusterfs-native:
-            voting: false
-        - manila-tempest-minimal-dsvm-dummy
-        - manila-tempest-minimal-lvm-ipv6-only
         - manila-grenade:
             voting: false
         - manila-rally-no-ss:
             voting: false
         - manila-rally-ss:
             voting: false
-        - openstack-tox-pylint:
-            voting: false
-            timeout: 5400
-        - openstack-tox-cover:
-            voting: false
     gate:
       queue: manila
       jobs:
-        - manila-tox-genconfig
-        - manila-tempest-minimal-dsvm-dummy
-        - manila-tempest-minimal-lvm-ipv6-only
+        - manila-tempest-plugin-dummy-no-dhss
+        - manila-tempest-plugin-dummy-dhss
+        - manila-tempest-plugin-lvm
     experimental:
       jobs:
-        - manila-tempest-dsvm-glusterfs-nfs-heketi
-        - manila-tempest-dsvm-glusterfs-native-heketi
-        - manila-tempest-minimal-dsvm-cephfs-native-centos-7
-        - manila-tempest-minimal-dsvm-cephfs-nfs-centos-7
         - tripleo-ci-centos-7-scenario004-standalone
-
-- job:
-    name: manila-tempest-base
-    parent: legacy-dsvm-base
-    timeout: 7200
-    irrelevant-files: &tempest-irrelevant-files
-      - ^(test-|)requirements.txt$
-      - ^.*\.rst$
-      - ^api-ref/.*$
-      - ^doc/.*$
-      - ^manila/hacking/.*$
-      - ^manila/tests/.*$
-      - ^releasenotes/.*$
-      - ^setup.cfg$
-      - ^tools/.*$
-      - ^tox.ini$
-
-- job:
-    name: manila-tempest-dsvm-container-scenario-custom-image
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-container-scenario-custom-image/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-container-scenario-custom-image/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/manila-image-elements
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-dsvm-generic-no-share-servers
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-generic-no-share-servers/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-generic-no-share-servers/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/manila-image-elements
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-dsvm-generic-scenario-custom-image
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-generic-scenario-custom-image/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-generic-scenario-custom-image/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/manila-image-elements
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-dsvm-glusterfs-native
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - x/devstack-plugin-glusterfs
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-dsvm-glusterfs-native-heketi
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native-heketi/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native-heketi/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - x/devstack-plugin-glusterfs
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-dsvm-glusterfs-nfs
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - x/devstack-plugin-glusterfs
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-dsvm-glusterfs-nfs-heketi
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs-heketi/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs-heketi/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - x/devstack-plugin-glusterfs
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-dsvm-hdfs
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-hdfs/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-hdfs/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - x/devstack-plugin-hdfs
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-dsvm-mysql-generic
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-mysql-generic/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-mysql-generic/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/manila-image-elements
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-dsvm-postgres-container
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-postgres-container/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-postgres-container/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/manila-image-elements
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-dsvm-postgres-generic-singlebackend
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-postgres-generic-singlebackend/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-postgres-generic-singlebackend/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/manila-image-elements
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-dsvm-postgres-zfsonlinux
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-postgres-zfsonlinux/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-postgres-zfsonlinux/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/manila-image-elements
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-dsvm-scenario
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-dsvm-scenario/run.yaml
-    post-run: playbooks/legacy/manila-tempest-dsvm-scenario/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/manila-image-elements
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-minimal-dsvm-cephfs-native-centos-7
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-native-centos-7/run.yaml
-    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-native-centos-7/post.yaml
-    nodeset: legacy-centos-7
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/devstack-plugin-ceph
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-minimal-dsvm-cephfs-native
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-native/run.yaml
-    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-native/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/devstack-plugin-ceph
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-minimal-dsvm-cephfs-nfs-centos-7
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-nfs-centos-7/run.yaml
-    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-nfs-centos-7/post.yaml
-    nodeset: legacy-centos-7
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/devstack-plugin-ceph
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-minimal-dsvm-cephfs-nfs
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-nfs/run.yaml
-    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-nfs/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/devstack-plugin-ceph
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/neutron-dynamic-routing
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-minimal-dsvm-dummy
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/run.yaml
-    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-minimal-dsvm-lvm
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm/run.yaml
-    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/neutron-dynamic-routing
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-minimal-lvm-ipv6-only
-    parent: manila-tempest-minimal-dsvm-lvm
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm/run-ipv6.yaml
-    required-projects:
-      - openstack/tempest
 
 - job:
     name: manila-tox-genconfig
@@ -343,7 +62,17 @@
 - job:
     name: manila-rally-no-ss
     parent: rally-task-manila-no-ss
-    irrelevant-files: *tempest-irrelevant-files
+    irrelevant-files: &irrelevant-files
+      - ^(test-|)requirements.txt$
+      - ^.*\.rst$
+      - ^api-ref/.*$
+      - ^doc/.*$
+      - ^manila/hacking/.*$
+      - ^manila/tests/.*$
+      - ^releasenotes/.*$
+      - ^setup.cfg$
+      - ^tools/.*$
+      - ^tox.ini$
     vars:
       rally_task: rally-jobs/rally-manila-no-ss.yaml
       devstack_plugins:
@@ -354,7 +83,7 @@
 - job:
     name: manila-rally-ss
     parent: rally-task-manila-ss
-    irrelevant-files: *tempest-irrelevant-files
+    irrelevant-files: *irrelevant-files
     vars:
       rally_task: rally-jobs/rally-manila.yaml
       devstack_plugins:
