@@ -2398,18 +2398,24 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('vserver-modify', vserver_modify_args)])
 
-    def test_enable_nfs(self):
+    @ddt.data({'tcp-max-xfer-size': 10000}, {}, None)
+    def test_enable_nfs(self, nfs_config):
 
         self.mock_object(self.client, 'send_request')
         self.mock_object(self.client, '_enable_nfs_protocols')
         self.mock_object(self.client, '_create_default_nfs_export_rules')
+        self.mock_object(self.client, '_configure_nfs')
 
-        self.client.enable_nfs(fake.NFS_VERSIONS)
+        self.client.enable_nfs(fake.NFS_VERSIONS, nfs_config)
 
         self.client.send_request.assert_called_once_with('nfs-enable')
         self.client._enable_nfs_protocols.assert_called_once_with(
             fake.NFS_VERSIONS)
         self.client._create_default_nfs_export_rules.assert_called_once_with()
+        if nfs_config:
+            self.client._configure_nfs.assert_called_once_with(nfs_config)
+        else:
+            self.client._configure_nfs.assert_not_called()
 
     @ddt.data((True, True, True), (True, False, False), (False, True, True))
     @ddt.unpack
@@ -2434,6 +2440,17 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
         self.client.send_request.assert_called_once_with(
             'nfs-service-modify', nfs_service_modify_args)
+
+    def test_configure_nfs(self):
+        fake_nfs = {
+            'tcp-max-xfer-size': 10000,
+        }
+        self.mock_object(self.client, 'send_request')
+
+        self.client._configure_nfs(fake_nfs)
+
+        self.client.send_request.assert_called_once_with(
+            'nfs-service-modify', fake_nfs)
 
     def test_create_default_nfs_export_rules(self):
 
@@ -6790,3 +6807,74 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_iter_request.assert_called_once_with(
             'volume-get-iter', expected_api_args)
         self.assertEqual(expected_snapshot_name, result)
+
+    def test_get_nfs_config(self):
+        api_args = {
+            'query': {
+                'nfs-info': {
+                    'vserver': 'vserver',
+                },
+            },
+            'desired-attributes': {
+                'nfs-info': {
+                    'field': None,
+                },
+            },
+        }
+        api_response = netapp_api.NaElement(
+            fake.NFS_CONFIG_SERVER_RESULT)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+        self.mock_object(self.client,
+                         'parse_nfs_config',
+                         mock.Mock(return_value=None))
+
+        self.client.get_nfs_config(['field'], 'vserver')
+
+        self.client.send_request.assert_called_once_with(
+            'nfs-service-get-iter', api_args)
+
+    def test_get_nfs_config_default(self):
+        api_response = netapp_api.NaElement(
+            fake.NFS_CONFIG_DEFAULT_RESULT)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+        self.mock_object(self.client,
+                         'parse_nfs_config',
+                         mock.Mock(return_value=None))
+
+        self.client.get_nfs_config_default(['field'])
+
+        self.client.send_request.assert_called_once_with(
+            'nfs-service-get-create-defaults', None)
+
+    @ddt.data(
+        {'nfs_info': fake.NFS_CONFIG_SERVER_RESULT,
+         'desired_args': ['tcp-max-xfer-size'],
+         'expected_nfs': {
+             'tcp-max-xfer-size': '65536',
+         }},
+        {'nfs_info': fake.NFS_CONFIG_SERVER_RESULT,
+         'desired_args': ['udp-max-xfer-size'],
+         'expected_nfs': {
+             'udp-max-xfer-size': '32768',
+         }},
+        {'nfs_info': fake.NFS_CONFIG_SERVER_RESULT,
+         'desired_args': ['tcp-max-xfer-size', 'udp-max-xfer-size'],
+         'expected_nfs': {
+             'tcp-max-xfer-size': '65536',
+             'udp-max-xfer-size': '32768',
+         }},
+        {'nfs_info': fake.NFS_CONFIG_SERVER_RESULT,
+         'desired_args': [],
+         'expected_nfs': {}})
+    @ddt.unpack
+    def test_parse_nfs_config(self, nfs_info, desired_args, expected_nfs):
+        parent_elem = netapp_api.NaElement(nfs_info).get_child_by_name(
+            'attributes-list')
+
+        nfs_config = self.client.parse_nfs_config(parent_elem, desired_args)
+
+        self.assertDictEqual(nfs_config, expected_nfs)

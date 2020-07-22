@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    For NetApp ONTAP driver, administrators are now able to set share servers
+    max NFS transfer limits. These limits can be configured by setting the
+    `netapp:tcp_max_xfer_size` and  `netapp:udp_max_xfer_size` extra-specs.
+    The driver will consider these limits while deciding to create or reuse
+    share servers. While bringing a share under Manila management, the driver
+    will check if the share type extra-specs values match the share server
+    configured NFS limits. This change does not have effect in DHSS=False
+    environments and relies on ONTAP features available only in versions equal
+    to and greater than ``9.4``.

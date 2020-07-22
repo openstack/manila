@@ -70,6 +70,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontapi_1_2x = (1, 20) <= ontapi_version < (1, 30)
         ontapi_1_30 = ontapi_version >= (1, 30)
         ontapi_1_110 = ontapi_version >= (1, 110)
+        ontapi_1_140 = ontapi_version >= (1, 140)
         ontapi_1_150 = ontapi_version >= (1, 150)
 
         self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
@@ -83,6 +84,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.features.add_feature('ADVANCED_DISK_PARTITIONING',
                                   supported=ontapi_1_30)
         self.features.add_feature('FLEXVOL_ENCRYPTION', supported=ontapi_1_110)
+        self.features.add_feature('TRANSFER_LIMIT_NFS_CONFIG',
+                                  supported=ontapi_1_140)
         self.features.add_feature('CIFS_DC_ADD_SKIP_CHECK',
                                   supported=ontapi_1_150)
 
@@ -1352,10 +1355,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(msg % security_service['type'])
 
     @na_utils.trace
-    def enable_nfs(self, versions):
+    def enable_nfs(self, versions, nfs_config=None):
         """Enables NFS on Vserver."""
         self.send_request('nfs-enable')
         self._enable_nfs_protocols(versions)
+
+        if nfs_config:
+            self._configure_nfs(nfs_config)
+
         self._create_default_nfs_export_rules()
 
     @na_utils.trace
@@ -1371,6 +1378,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'is-nfsv41-enabled': nfs41,
         }
         self.send_request('nfs-service-modify', nfs_service_modify_args)
+
+    @na_utils.trace
+    def _configure_nfs(self, nfs_config):
+        """Sets the nfs configuraton"""
+        self.send_request('nfs-service-modify', nfs_config)
 
     @na_utils.trace
     def _create_default_nfs_export_rules(self):
@@ -4033,3 +4045,44 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'destination-vserver': destination_vserver,
         }
         self.send_request('volume-rehost', api_args)
+
+    @na_utils.trace
+    def get_nfs_config(self, desired_args, vserver):
+        """Gets the NFS config of the given vserver with the desired params"""
+        api_args = {
+            'query': {
+                'nfs-info': {
+                    'vserver': vserver,
+                },
+            },
+        }
+        nfs_info = {}
+        for arg in desired_args:
+            nfs_info[arg] = None
+
+        if nfs_info:
+            api_args['desired-attributes'] = {'nfs-info': nfs_info}
+
+        result = self.send_request('nfs-service-get-iter', api_args)
+        child_elem = result.get_child_by_name('attributes-list')
+
+        return self.parse_nfs_config(child_elem, desired_args)
+
+    @na_utils.trace
+    def get_nfs_config_default(self, desired_args):
+        """Gets the default NFS config with the desired params"""
+        result = self.send_request('nfs-service-get-create-defaults', None)
+        child_elem = result.get_child_by_name('defaults')
+
+        return self.parse_nfs_config(child_elem, desired_args)
+
+    @na_utils.trace
+    def parse_nfs_config(self, parent_elem, desired_args):
+        """Parse the get NFS config operation returning the desired params"""
+        nfs_info_elem = parent_elem.get_child_by_name('nfs-info')
+
+        nfs_config = {}
+        for arg in desired_args:
+            nfs_config[arg] = nfs_info_elem.get_child_content(arg)
+
+        return nfs_config

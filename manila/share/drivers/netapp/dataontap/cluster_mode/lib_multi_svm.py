@@ -33,6 +33,7 @@ from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp import utils as na_utils
+from manila.share import share_types
 from manila.share import utils as share_utils
 from manila import utils
 
@@ -123,11 +124,18 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     @na_utils.trace
     def setup_server(self, network_info, metadata=None):
         """Creates and configures new Vserver."""
-
         vlan = network_info['segmentation_id']
         ports = {}
         for network_allocation in network_info['network_allocations']:
             ports[network_allocation['id']] = network_allocation['ip_address']
+
+        nfs_config = self._default_nfs_config
+        if (self.is_nfs_config_supported and metadata and
+                'share_type_id' in metadata):
+            extra_specs = share_types.get_share_type_extra_specs(
+                metadata['share_type_id'])
+            self._check_nfs_config_extra_specs_validity(extra_specs)
+            nfs_config = self._get_nfs_config_provisioning_options(extra_specs)
 
         @utils.synchronized('netapp-VLAN-%s' % vlan, external=True)
         def setup_server_with_lock():
@@ -137,11 +145,15 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             vserver_name = self._get_vserver_name(network_info['server_id'])
             server_details = {
                 'vserver_name': vserver_name,
-                'ports': jsonutils.dumps(ports)
+                'ports': jsonutils.dumps(ports),
             }
 
+            if self.is_nfs_config_supported:
+                server_details['nfs_config'] = jsonutils.dumps(nfs_config)
+
             try:
-                self._create_vserver(vserver_name, network_info)
+                self._create_vserver(vserver_name, network_info,
+                                     nfs_config=nfs_config)
             except Exception as e:
                 e.detail_data = {'server_details': server_details}
                 raise
@@ -149,6 +161,38 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             return server_details
 
         return setup_server_with_lock()
+
+    @na_utils.trace
+    def _check_nfs_config_extra_specs_validity(self, extra_specs):
+        """Check if the nfs config extra_spec has valid values."""
+        int_extra_specs = ['netapp:tcp_max_xfer_size',
+                           'netapp:udp_max_xfer_size']
+        for key in int_extra_specs:
+            if key in extra_specs:
+                self._check_if_extra_spec_is_positive(
+                    extra_specs[key], key)
+
+    @na_utils.trace
+    def _check_if_extra_spec_is_positive(self, value, key):
+        """Check if extra_spec has a valid positive int value."""
+        if int(value) < 0:
+            args = {'value': value, 'key': key}
+            msg = _('Invalid value "%(value)s" for extra_spec "%(key)s" '
+                    'used by share server setup.')
+            raise exception.NetAppException(msg % args)
+
+    @na_utils.trace
+    def _get_nfs_config_provisioning_options(self, specs):
+        """Return the nfs config provisioning option."""
+        nfs_config = self.get_string_provisioning_options(
+            specs, self.NFS_CONFIG_EXTRA_SPECS_MAP)
+
+        # Changes the no set config to the default value
+        for k, v in nfs_config.items():
+            if v is None:
+                nfs_config[k] = self._default_nfs_config[k]
+
+        return nfs_config
 
     @na_utils.trace
     def _validate_network_type(self, network_info):
@@ -164,7 +208,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         return self.configuration.netapp_vserver_name_template % server_id
 
     @na_utils.trace
-    def _create_vserver(self, vserver_name, network_info):
+    def _create_vserver(self, vserver_name, network_info, nfs_config=None):
         """Creates Vserver with given parameters if it doesn't exist."""
 
         if self._client.vserver_exists(vserver_name):
@@ -205,7 +249,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                         network_info)
 
             vserver_client.enable_nfs(
-                self.configuration.netapp_enabled_share_protocols)
+                self.configuration.netapp_enabled_share_protocols,
+                nfs_config=nfs_config)
 
             security_services = network_info.get('security_services')
             if security_services:
@@ -327,7 +372,6 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         if not vserver_client.network_interface_exists(
                 vserver_name, node_name, port, ip_address, netmask, vlan):
-
             self._client.create_network_interface(
                 ip_address, netmask, vlan, node_name, port, vserver_name,
                 lif_name, ipspace_name, mtu)
@@ -508,11 +552,19 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         """Manages a vserver by renaming it and returning backend_details."""
         new_vserver_name = self._get_vserver_name(share_server['id'])
         old_vserver_name = self._get_correct_vserver_old_name(identifier)
-
         if new_vserver_name != old_vserver_name:
             self._client.rename_vserver(old_vserver_name, new_vserver_name)
 
-        backend_details = {'vserver_name': new_vserver_name}
+        backend_details = {
+            'vserver_name': new_vserver_name,
+        }
+
+        if self.is_nfs_config_supported:
+            nfs_config = self._client.get_nfs_config(
+                list(self.NFS_CONFIG_EXTRA_SPECS_MAP.values()),
+                new_vserver_name)
+            backend_details['nfs_config'] = jsonutils.dumps(nfs_config)
+
         return new_vserver_name, backend_details
 
     def unmanage_server(self, server_details, security_services=None):
@@ -607,5 +659,143 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         return (super(NetAppCmodeMultiSVMFileStorageLibrary, self)
                 .create_share_from_snapshot(
-                context, share, snapshot, share_server=share_server,
-                parent_share=parent_share))
+                    context, share, snapshot, share_server=share_server,
+                    parent_share=parent_share))
+
+    @na_utils.trace
+    def _is_share_server_compatible(self, share_server, expected_nfs_config):
+        """Check if the share server has the given nfs config
+
+        The None and the default_nfs_config should be considered
+        as the same configuration.
+        """
+        nfs_config = share_server.get('backend_details', {}).get('nfs_config')
+        share_server_nfs = jsonutils.loads(nfs_config) if nfs_config else None
+
+        if share_server_nfs == expected_nfs_config:
+            return True
+        elif (share_server_nfs is None and
+              expected_nfs_config == self._default_nfs_config):
+            return True
+        elif (expected_nfs_config is None and
+              share_server_nfs == self._default_nfs_config):
+            return True
+
+        return False
+
+    def choose_share_server_compatible_with_share(self, context, share_servers,
+                                                  share, snapshot=None,
+                                                  share_group=None):
+        """Method that allows driver to choose share server for provided share.
+
+        If compatible share-server is not found, method should return None.
+
+        :param context: Current context
+        :param share_servers: list with share-server models
+        :param share:  share model
+        :param snapshot: snapshot model
+        :param share_group: ShareGroup model with shares
+        :returns: share-server or None
+        """
+        if not share_servers:
+            # No share server to reuse
+            return None
+
+        nfs_config = None
+        if self.is_nfs_config_supported:
+            extra_specs = share_types.get_extra_specs_from_share(share)
+            nfs_config = self._get_nfs_config_provisioning_options(extra_specs)
+
+        for share_server in share_servers:
+            if self._check_reuse_share_server(share_server, nfs_config,
+                                              share_group=share_group):
+                return share_server
+        return None
+
+    @na_utils.trace
+    def _check_reuse_share_server(self, share_server, nfs_config,
+                                  share_group=None):
+        """Check whether the share_server can be reused or not."""
+        if (share_group and share_group.get('share_server_id') !=
+                share_server['id']):
+            return False
+
+        if self.is_nfs_config_supported:
+            # NOTE(felipe_rodrigues): Do not check that the share nfs_config
+            # matches with the group nfs_config, because the API guarantees
+            # that the share type is an element of the group types.
+            return self._is_share_server_compatible(share_server, nfs_config)
+
+        return True
+
+    @na_utils.trace
+    def choose_share_server_compatible_with_share_group(
+            self, context, share_servers, share_group_ref,
+            share_group_snapshot=None):
+        """Choose the server compatible with group.
+
+        If the NFS configuration is supported, it will check that the group
+        types agree for the NFS extra-specs values.
+        """
+        if not share_servers:
+            # No share server to reuse
+            return None
+
+        nfs_config = None
+        if self.is_nfs_config_supported:
+            nfs_config = self._get_nfs_config_share_group(share_group_ref)
+
+        for share_server in share_servers:
+            if self._check_reuse_share_server(share_server, nfs_config):
+                return share_server
+
+        return None
+
+    @na_utils.trace
+    def _get_nfs_config_share_group(self, share_group_ref):
+        """Get the NFS config of the share group.
+
+        In case the group types do not agree for the NFS config, it throws an
+        exception.
+        """
+        nfs_config = None
+        first = True
+        for st in share_group_ref.get('share_types', []):
+            extra_specs = share_types.get_share_type_extra_specs(
+                st['share_type_id'])
+
+            if first:
+                self._check_nfs_config_extra_specs_validity(extra_specs)
+                nfs_config = self._get_nfs_config_provisioning_options(
+                    extra_specs)
+                first = False
+                continue
+
+            type_nfs_config = self._get_nfs_config_provisioning_options(
+                extra_specs)
+            if nfs_config != type_nfs_config:
+                msg = _("The specified share_types cannot have "
+                        "conflicting values for the NFS configuration "
+                        "extra-specs.")
+                raise exception.InvalidInput(reason=msg)
+
+        return nfs_config
+
+    @na_utils.trace
+    def manage_existing(self, share, driver_options, share_server=None):
+
+        # In case NFS config is supported, the share's nfs_config must be the
+        # same as the server
+        if share_server and self.is_nfs_config_supported:
+            extra_specs = share_types.get_extra_specs_from_share(share)
+            nfs_config = self._get_nfs_config_provisioning_options(extra_specs)
+            if not self._is_share_server_compatible(share_server, nfs_config):
+                args = {'server_id': share_server['id']}
+                msg = _('Invalid NFS configuration for the server '
+                        '%(server_id)s . The extra-specs must match the '
+                        'values of NFS of the server.')
+                raise exception.NetAppException(msg % args)
+
+        return (super(NetAppCmodeMultiSVMFileStorageLibrary, self).
+                manage_existing(share, driver_options,
+                                share_server=share_server))

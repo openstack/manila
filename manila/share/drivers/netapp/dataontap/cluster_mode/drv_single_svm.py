@@ -283,3 +283,13 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
 
     def get_share_status(self, share_instance, share_server=None):
         return self.library.get_share_status(share_instance, share_server)
+
+    def choose_share_server_compatible_with_share(self, context, share_servers,
+                                                  share, snapshot=None,
+                                                  share_group=None):
+        raise NotImplementedError
+
+    def choose_share_server_compatible_with_share_group(
+            self, context, share_servers, share_group_ref,
+            share_group_snapshot=None):
+        raise NotImplementedError

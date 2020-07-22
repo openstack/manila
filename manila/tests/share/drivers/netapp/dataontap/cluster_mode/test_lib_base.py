@@ -119,18 +119,26 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library._client, 'check_for_cluster_credentials',
             mock.Mock(return_value=True))
         self.mock_object(
+            self.library._client, 'get_nfs_config_default',
+            mock.Mock(return_value=fake.NFS_CONFIG_DEFAULT))
+        self.mock_object(
             self.library, '_check_snaprestore_license',
             mock.Mock(return_value=True))
         self.mock_object(
             self.library,
             '_get_licenses',
             mock.Mock(return_value=fake.LICENSES))
+        mock_get_api_client.features.TRANSFER_LIMIT_NFS_CONFIG = True
+
         self.library.do_setup(self.context)
 
         self.assertEqual(fake.LICENSES, self.library._licenses)
         mock_get_api_client.assert_called_once_with()
         (self.library._client.check_for_cluster_credentials.
             assert_called_once_with())
+        (self.library._client.get_nfs_config_default.
+            assert_called_once_with(
+                list(self.library.NFS_CONFIG_EXTRA_SPECS_MAP.values())))
         self.assertEqual('fake_perf_library', self.library._perf_library)
         self.mock_object(self.library._client,
                          'check_for_cluster_credentials',
@@ -1481,14 +1489,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual(expected, result)
 
     def test_get_string_provisioning_options(self):
-        result = self.library._get_string_provisioning_options(
+        result = self.library.get_string_provisioning_options(
             fake.STRING_EXTRA_SPEC,
             self.library.STRING_QUALIFIED_EXTRA_SPECS_MAP)
 
         self.assertEqual(fake.PROVISIONING_OPTIONS_STRING, result)
 
     def test_get_string_provisioning_options_missing_spec(self):
-        result = self.library._get_string_provisioning_options(
+        result = self.library.get_string_provisioning_options(
             fake.SHORT_STRING_EXTRA_SPEC,
             self.library.STRING_QUALIFIED_EXTRA_SPECS_MAP)
 
@@ -1496,7 +1504,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          result)
 
     def test_get_string_provisioning_options_implicit_false(self):
-        result = self.library._get_string_provisioning_options(
+        result = self.library.get_string_provisioning_options(
             fake.EMPTY_EXTRA_SPEC,
             self.library.STRING_QUALIFIED_EXTRA_SPECS_MAP)
 

@@ -2409,6 +2409,43 @@ VOLUME_MOVE_GET_ITER_RESULT = etree.XML("""
     'vserver': VSERVER_NAME,
 })
 
+NFS_INFO_STR = """
+    <nfs-info>
+        <is-rquota-enabled>false</is-rquota-enabled>
+        <is-tcp-enabled>true</is-tcp-enabled>
+        <is-v3-hide-snapshot>false</is-v3-hide-snapshot>
+        <ntfs-unix-security-ops>use_export_policy</ntfs-unix-security-ops>
+        <permitted-enc-types>
+        <string>des</string>
+        <string>des3</string>
+        <string>aes_128</string>
+        <string>aes_256</string>
+        </permitted-enc-types>
+        <tcp-max-xfer-size>65536</tcp-max-xfer-size>
+        <udp-max-xfer-size>32768</udp-max-xfer-size>
+        <v3-search-unconverted-filename>false</v3-search-unconverted-filename>
+        <v4-inherited-acl-preserve>false</v4-inherited-acl-preserve>
+    </nfs-info>
+"""
+
+NFS_INFO_DEFAULT_TREE = etree.XML(NFS_INFO_STR)
+
+NFS_CONFIG_DEFAULT_RESULT = etree.XML("""
+    <results status="passed">
+       <defaults>
+          %s
+        </defaults>
+    </results>
+""" % NFS_INFO_STR)
+
+NFS_CONFIG_SERVER_RESULT = etree.XML("""
+    <results status="passed">
+       <attributes-list>
+        %s
+       </attributes-list>
+    </results>
+""" % NFS_INFO_STR)
+
 PERF_OBJECT_COUNTER_TOTAL_CP_MSECS_LABELS = [
     'SETUP', 'PRE_P0', 'P0_SNAP_DEL', 'P1_CLEAN', 'P1_QUOTA', 'IPU_DISK_ADD',
     'P2V_INOFILE', 'P2V_INO_PUB', 'P2V_INO_PRI', 'P2V_FSINFO', 'P2V_DLOG1',
