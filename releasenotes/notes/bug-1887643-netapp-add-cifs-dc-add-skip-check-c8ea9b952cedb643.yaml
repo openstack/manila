@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The NetApp cDOT driver now validates the configuration of preferred domain
+    controller(s) added in CIFS security service server setup. The mandatory
+    option ``skip-config-validation`` was introduced to
+    ``cifs-domain-preferred-dc-add`` with ONTAP 9.5.
