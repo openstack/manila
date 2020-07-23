@@ -13,7 +13,7 @@ set -o xtrace
 
 # Access rules data specific to first enabled backend.
 MANILA_GRENADE_ACCESS_TYPE=${MANILA_GRENADE_ACCESS_TYPE:-"ip"}
-MANILA_GRENADE_ACCESS_TO=${MANILA_GRENADE_ACCESS_TO:-"127.0.0.1"}
+MANILA_GRENADE_ACCESS_TO=${MANILA_GRENADE_ACCESS_TO:-"0.0.0.0/0"}
 
 # Network information that will be used in case DHSS=True driver is used
 # with non-single-network-plugin.
@@ -54,6 +54,8 @@ function scenario_1_do_share_with_rules_and_metadata {
     create_share_cmd="manila create $share_protocol 1 "
     create_share_cmd+="--share-type $MANILA_GRENADE_SHARE_TYPE_NAME "
     create_share_cmd+="--name $MANILA_GRENADE_SHARE_NAME"
+
+    resource_save manila share_protocol $share_protocol
 
     if [[ $(trueorfalse False driver_handles_share_servers) == True ]]; then
         share_driver=$(iniget $MANILA_CONF $backend share_driver)
@@ -119,6 +121,13 @@ function scenario_1_do_share_with_rules_and_metadata {
     else
         die $LINENO "Share timed out to reach 'available' status."
     fi
+
+    # grab the export location
+    export_path=$(manila share-export-location-list \
+                    $MANILA_GRENADE_SHARE_NAME | grep ":/" | \
+                        cut -d "|" -f 3 | head -1)
+
+    resource_save manila export_path $export_path
 
     # Create some metadata
     manila metadata $MANILA_GRENADE_SHARE_NAME set gre=nade
@@ -417,6 +426,37 @@ function scenario_5_destroy_share_snapshot {
     fi
 }
 
+#####
+
+function scenario_6_do_share_mount_and_write_data {
+
+    mkdir -p /tmp/manila-share
+    export_path=$(resource_get manila export_path)
+    share_protocol=$(resource_get manila share_protocol| awk '{print tolower($0)}')
+    sudo mount -t $share_protocol $export_path /tmp/manila-share
+    test_msg="Hello from the past"
+    echo $test_msg | sudo tee /tmp/manila-share/testfile && sudo sync
+}
+
+function scenario_6_verify_share_mount_and_read_data {
+    export_path=$(resource_get manila export_path)
+    share_is_mounted=$(sudo mount | grep $export_path)
+    [[ -z $share_is_mounted ]] && die $LINENO "Share $export_path is not mounted"
+
+    read_data=$(sudo cat /tmp/manila-share/testfile|xargs)
+    if [[ $read_data == "Hello from the past" ]]; then
+        echo "Share data remains unmodified."
+    else
+        die $LINENO "Share data does not match what was written before upgrade."
+    fi
+}
+
+function scenario_6_destroy_share_mount {
+    export_path=$(resource_get manila export_path)
+    sudo umount -f /tmp/manila-share
+}
+
+
 ################################# Main logic ##################################
 
 function create {
@@ -425,6 +465,7 @@ function create {
     scenario_3_do_quotas
     scenario_4_do_private_share_types
     scenario_5_do_share_snapshot
+    scenario_6_do_share_mount_and_write_data
     echo "Manila 'create': SUCCESS"
 }
 
@@ -434,10 +475,12 @@ function verify {
     scenario_3_verify_quotas
     scenario_4_verify_private_share_types
     scenario_5_verify_share_snapshot
+    scenario_6_verify_share_mount_and_read_data
     echo "Manila 'verify': SUCCESS"
 }
 
 function destroy {
+    scenario_6_destroy_share_mount
     scenario_5_destroy_share_snapshot
     scenario_1_destroy_share_with_rules_and_metadata
     scenario_2_destroy_attach_ss_to_sn
@@ -447,7 +490,7 @@ function destroy {
 }
 
 function verify_noapi {
-    :
+    scenario_6_verify_share_mount_and_read_data
 }
 
 ################################# Dispatcher ##################################
