@@ -469,6 +469,17 @@ class ShareManager(manager.SchedulerDependentManager):
                 )
                 continue
 
+            metadata = share_ref.get('share_metadata')
+            if metadata:
+                metadata = {item['key']: item['value'] for item in metadata}
+                if 'snapmirror' in metadata and metadata['snapmirror'] == '1':
+                    LOG.info(
+                        "Share instance %(id)s: skipping export, "
+                        "because it has snapmirror flag.",
+                        {'id': share_instance['id']},
+                    )
+                    continue
+
             self._ensure_share_instance_has_pool(ctxt, share_instance)
             share_instance = self.db.share_instance_get(
                 ctxt, share_instance['id'], with_share_data=True)
