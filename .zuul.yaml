@@ -26,7 +26,11 @@
         - manila-tempest-minimal-dsvm-cephfs-nfs-centos-7:
             voting: false
         - manila-tempest-minimal-dsvm-dummy
-        - manila-tempest-minimal-dsvm-lvm-centos-7
+        - manila-tempest-dsvm-lvm-em-only
+        # manila-tempest-dsvm-lvm-em-only replaces below
+        # job because of LP #1888717
+        - manila-tempest-minimal-dsvm-lvm-centos-7:
+            voting: false
         - grenade-dsvm-manila:
             voting: false
         - rally-dsvm-manila-multibackend:
@@ -42,7 +46,7 @@
       jobs:
         - manila-tox-genconfig
         - manila-tempest-minimal-dsvm-dummy
-        - manila-tempest-minimal-dsvm-lvm-centos-7
+        - manila-tempest-dsvm-lvm-em-only
     experimental:
       jobs:
         - manila-tempest-dsvm-glusterfs-nfs
@@ -297,6 +301,18 @@
     parent: legacy-manila-tempest-dsvm-base
     run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/run.yaml
     post-run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/post.yaml
+    required-projects:
+      - openstack/devstack-gate
+      - openstack/manila
+      - openstack/manila-tempest-plugin
+      - openstack/python-manilaclient
+      - openstack/tempest
+
+- job:
+    name: manila-tempest-dsvm-lvm-em-only
+    parent: legacy-manila-tempest-dsvm-base
+    run: playbooks/legacy/manila-tempest-dsvm-lvm-em-only/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-lvm-em-only/post.yaml
     required-projects:
       - openstack/devstack-gate
       - openstack/manila
