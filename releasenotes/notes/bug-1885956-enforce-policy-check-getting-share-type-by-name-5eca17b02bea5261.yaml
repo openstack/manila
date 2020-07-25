@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed `launchpad bug #1885956 <https://bugs.launchpad.net/manila/+bug/1885956>`_
+    by ensuring that policy checks are enforced when looking up a share-type
+    by name.  This prevents a problem where shares could be stuck in CREATING
+    status when a user attempts to create a share using the name of a private
+    share-type to which the user lacks access.
