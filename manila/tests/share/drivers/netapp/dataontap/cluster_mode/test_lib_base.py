@@ -118,8 +118,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(
             self.library._client, 'check_for_cluster_credentials',
             mock.Mock(return_value=True))
+        self.mock_object(
+            self.library, '_check_snaprestore_license',
+            mock.Mock(return_value=True))
+        self.mock_object(
+            self.library,
+            '_get_licenses',
+            mock.Mock(return_value=fake.LICENSES))
         self.library.do_setup(self.context)
 
+        self.assertEqual(fake.LICENSES, self.library._licenses)
         mock_get_api_client.assert_called_once_with()
         (self.library._client.check_for_cluster_credentials.
             assert_called_once_with())
@@ -127,6 +135,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library._client,
                          'check_for_cluster_credentials',
                          mock.Mock(return_value=True))
+        self.mock_object(
+            self.library, '_check_snaprestore_license',
+            mock.Mock(return_value=True))
         mock_set_cluster_info = self.mock_object(
             self.library, '_set_cluster_info')
         self.library.do_setup(self.context)
@@ -138,17 +149,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                         fake.CLUSTER_NODES)
 
     def test_check_for_setup_error(self):
-
-        self.library._licenses = []
-        self.mock_object(self.library,
-                         '_get_licenses',
-                         mock.Mock(return_value=['fake_license']))
         mock_start_periodic_tasks = self.mock_object(self.library,
                                                      '_start_periodic_tasks')
-
         self.library.check_for_setup_error()
 
-        self.assertEqual(['fake_license'], self.library._licenses)
         mock_start_periodic_tasks.assert_called_once_with()
 
     def test_get_vserver(self):
@@ -333,7 +337,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             assert_called_once_with(fake.AGGREGATES))
         self.assertDictEqual(fake.AGGREGATE_CAPACITIES, result)
 
-    def test_check_snaprestore_license_notfound(self):
+    def test_check_snaprestore_license_admin_notfound(self):
+        self.library._have_cluster_creds = True
         licenses = list(fake.LICENSES)
         licenses.remove('snaprestore')
         self.mock_object(self.client,
@@ -342,12 +347,43 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result = self.library._check_snaprestore_license()
         self.assertIs(False, result)
 
-    def test_check_snaprestore_license_found(self):
-        self.mock_object(self.client,
-                         'get_licenses',
-                         mock.Mock(return_value=fake.LICENSES))
+    def test_check_snaprestore_license_admin_found(self):
+        self.library._have_cluster_creds = True
+        self.library._licenses = fake.LICENSES
         result = self.library._check_snaprestore_license()
         self.assertIs(True, result)
+
+    def test_check_snaprestore_license_svm_scoped_notfound(self):
+        self.library._have_cluster_creds = False
+        self.mock_object(self.library._client,
+                         'restore_snapshot',
+                         mock.Mock(side_effect=netapp_api.NaApiError(
+                                   code=netapp_api.EAPIERROR,
+                                   message=fake.NO_SNAPRESTORE_LICENSE)))
+        result = self.library._check_snaprestore_license()
+        self.assertIs(False, result)
+
+    def test_check_snaprestore_license_svm_scoped_found(self):
+        self.library._have_cluster_creds = False
+        self.mock_object(self.library._client,
+                         'restore_snapshot',
+                         mock.Mock(side_effect=netapp_api.NaApiError(
+                                   code=netapp_api.EAPIERROR,
+                                   message='Other error')))
+        result = self.library._check_snaprestore_license()
+        self.assertIs(True, result)
+
+    def test_check_snaprestore_license_svm_scoped_found_exception(self):
+        self.mock_object(lib_base.LOG, 'exception')
+        self.library._have_cluster_creds = False
+        self.mock_object(self.library._client,
+                         'restore_snapshot',
+                         mock.Mock(return_value=None))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._check_snaprestore_license)
+        lib_base.LOG.exception.assert_called_once()
 
     def test_get_aggregate_node_cluster_creds(self):
 
@@ -449,13 +485,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library, '_get_aggregate_space',
             mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
         self.library._have_cluster_creds = True
+        self.library._revert_to_snapshot_support = True
         self.library._cluster_info = fake.CLUSTER_INFO
         self.library._ssc_stats = fake.SSC_INFO
         self.library._perf_library.get_node_utilization_for_pool = (
             mock.Mock(side_effect=[30.0, 42.0]))
-        self.mock_object(self.library,
-                         '_check_snaprestore_license',
-                         mock.Mock(return_value=True))
 
         result = self.library._get_pools(filter_function='filter',
                                          goodness_function='goodness')
@@ -468,13 +502,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library, '_get_aggregate_space',
             mock.Mock(return_value=fake.AGGREGATE_CAPACITIES_VSERVER_CREDS))
         self.library._have_cluster_creds = False
+        self.library._revert_to_snapshot_support = True
         self.library._cluster_info = fake.CLUSTER_INFO
         self.library._ssc_stats = fake.SSC_INFO_VSERVER_CREDS
         self.library._perf_library.get_node_utilization_for_pool = (
             mock.Mock(side_effect=[50.0, 50.0]))
-        self.mock_object(self.library,
-                         '_check_snaprestore_license',
-                         mock.Mock(return_value=True))
 
         result = self.library._get_pools()
 
