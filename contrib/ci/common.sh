@@ -60,15 +60,6 @@ function manila_wait_for_drivers_init {
     sleep 10
 }
 
-function archive_file {
-    # First argument is expected to be filename
-    local filename=$1
-
-    sudo gzip -9 $filename
-    sudo chown $USER:stack $filename.gz
-    sudo chmod a+r $filename.gz
-}
-
 function save_tempest_results {
     # First argument is expected to be number or tempest run
 
@@ -89,8 +80,7 @@ function save_tempest_results {
     # 3. Save tempest log file
     cp $src_dirname/tempest.log $src_dirname/tempest.txt
     echo '' > $src_dirname/tempest.log
-    archive_file $src_dirname/tempest.txt
-    sudo mv $src_dirname/tempest.txt.gz $dst_dirname/tempest.txt.gz
+    sudo mv $src_dirname/tempest.txt $dst_dirname/tempest.txt
 
     # 4. Save tempest stestr results
 
@@ -105,11 +95,8 @@ function save_tempest_results {
     if [ -f $src_dirname/tempest.subunit ]; then
         s2h=`type -p subunit2html`
         sudo $s2h $src_dirname/tempest.subunit $src_dirname/testr_results.html
-        archive_file $src_dirname/tempest.subunit
-        sudo mv $src_dirname/tempest.subunit.gz $dst_dirname/tempest.subunit.gz
-
-        archive_file $src_dirname/testr_results.html
-        sudo mv $src_dirname/testr_results.html.gz $dst_dirname/testr_results.html.gz
+        sudo mv $src_dirname/tempest.subunit $dst_dirname/tempest.subunit
+        sudo mv $src_dirname/testr_results.html $dst_dirname/testr_results.html
 
         # 5. Cleanup
         sudo rm -rf $src_dirname/.stestr
