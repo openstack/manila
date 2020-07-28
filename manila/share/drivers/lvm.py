@@ -118,7 +118,9 @@ class LVMMixin(driver.ExecuteMixin):
                               (self.configuration.lvm_share_volume_group,
                                share_name), run_as_root=True)
         except exception.ProcessExecutionError as exc:
-            if "not found" not in exc.stderr:
+            err_pattern = re.compile(".*failed to find.*|.*not found.*",
+                                     re.IGNORECASE)
+            if not err_pattern.match(exc.stderr):
                 LOG.exception("Error deleting volume")
                 raise
             LOG.warning("Volume not found: %s", exc.stderr)
@@ -269,11 +271,11 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         return location
 
     def delete_share(self, context, share, share_server=None):
-        self._unmount_device(share)
+        self._unmount_device(share, raise_if_missing=False)
         self._delete_share(context, share)
         self._deallocate_container(share['name'])
 
-    def _unmount_device(self, share_or_snapshot):
+    def _unmount_device(self, share_or_snapshot, raise_if_missing=True):
         """Unmount the filesystem of a share or snapshot LV."""
         mount_path = self._get_mount_path(share_or_snapshot)
         if os.path.exists(mount_path):
@@ -281,9 +283,13 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             try:
                 self._execute('umount', '-f', mount_path, run_as_root=True)
             except exception.ProcessExecutionError as exc:
-                if 'device is busy' in six.text_type(exc):
+                if 'device is busy' in exc.stderr.lower():
                     raise exception.ShareBusyException(
                         reason=share_or_snapshot['name'])
+                elif 'not mounted' in exc.stderr.lower():
+                    if raise_if_missing:
+                        LOG.error('Unable to find device: %s', exc)
+                        raise
                 else:
                     LOG.error('Unable to umount: %s', exc)
                     raise
@@ -443,7 +449,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         return {'export_locations': exports}
 
     def delete_snapshot(self, context, snapshot, share_server=None):
-        self._unmount_device(snapshot)
+        self._unmount_device(snapshot, raise_if_missing=False)
 
         super(LVMShareDriver, self).delete_snapshot(context, snapshot,
                                                     share_server)
