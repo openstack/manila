@@ -268,9 +268,12 @@ class LVMShareDriverTestCase(test.TestCase):
                           self._driver._deallocate_container,
                           self.share['name'])
 
-    def test_deallocate_container_not_found_error(self):
+    @ddt.data(
+        'Logical volume "fake/fake-volume" not found\n',
+        'Failed to find logical volume "fake/fake-volume"\n')
+    def test_deallocate_container_not_found_error(self, error_msg):
         def _fake_exec(*args, **kwargs):
-            raise exception.ProcessExecutionError(stderr="not found")
+            raise exception.ProcessExecutionError(stderr=error_msg)
 
         self.mock_object(self._driver, '_try_execute', _fake_exec)
         self._driver._deallocate_container(self.share['name'])
@@ -287,6 +290,22 @@ class LVMShareDriverTestCase(test.TestCase):
             self.assertEqual(stats,
                              self._driver.get_share_stats(refresh=True))
         self._driver._update_share_stats.assert_called_once_with()
+
+    def test__unmount_device_not_mounted(self):
+        def exec_runner(*ignore_args, **ignore_kwargs):
+            umount_msg = (
+                "umount: /opt/stack/data/manila/mnt/share-fake-share: not "
+                "mounted.\n"
+            )
+            raise exception.ProcessExecutionError(stderr=umount_msg)
+        self._os.path.exists.return_value = True
+        mount_path = self._get_mount_path(self.share)
+        expected_exec = "umount -f %s" % (mount_path)
+        fake_utils.fake_execute_set_repliers([(expected_exec, exec_runner)])
+
+        self._driver._unmount_device(self.share, raise_if_missing=False)
+
+        self._os.path.exists.assert_called_with(mount_path)
 
     def test__unmount_device_is_busy_error(self):
         def exec_runner(*ignore_args, **ignore_kwargs):
