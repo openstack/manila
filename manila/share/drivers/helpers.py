@@ -278,8 +278,18 @@ class NFSHelper(NASHelperBase):
                     continue
                 access_to = self._get_parsed_address_or_cidr(
                     access['access_to'])
-                self._ssh_exec(server, ['sudo', 'exportfs', '-u',
-                               ':'.join((access_to, local_path))])
+                try:
+                    self._ssh_exec(server, ['sudo', 'exportfs', '-u',
+                                            ':'.join((access_to, local_path))])
+                except exception.ProcessExecutionError as e:
+                    if "could not find" in e.stderr.lower():
+                        LOG.debug(
+                            "Client/s with IP address/es %(host)s did not "
+                            "have access to %(share)s. Nothing to deny.",
+                            {'host': access_to, 'share': share_name})
+                    else:
+                        raise
+
             if delete_rules:
                 self._sync_nfs_temp_and_perm_files(server)
             for access in add_rules:
