@@ -30,6 +30,7 @@ from oslo_log import log
 from oslo_service import loopingcall
 from oslo_utils import timeutils
 from oslo_utils import units
+from oslo_utils import uuidutils
 import six
 
 from manila.common import constants
@@ -116,6 +117,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self._clients = {}
         self._ssc_stats = {}
         self._have_cluster_creds = None
+        self._revert_to_snapshot_support = False
         self._cluster_info = {}
 
         self._app_version = kwargs.get('app_version', 'unknown')
@@ -132,6 +134,9 @@ class NetAppCmodeFileStorageLibrary(object):
         if self._have_cluster_creds is True:
             self._set_cluster_info()
 
+        self._licenses = self._get_licenses()
+        self._revert_to_snapshot_support = self._check_snaprestore_license()
+
         # Performance monitoring library
         self._perf_library = performance.PerformanceLibrary(self._client)
 
@@ -143,7 +148,6 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def check_for_setup_error(self):
-        self._licenses = self._get_licenses()
         self._start_periodic_tasks()
 
     def _get_vserver(self, share_server=None):
@@ -247,10 +251,30 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _check_snaprestore_license(self):
         """Check if snaprestore license is enabled."""
-        if not self._licenses:
-            self._licenses = self._client.get_licenses()
+        if self._have_cluster_creds:
+            return 'snaprestore' in self._licenses
+        else:
+            # NOTE: (felipe_rodrigues): workaround to find out whether the
+            # backend has the license: since without cluster credentials it
+            # cannot retrieve the ontap licenses, it sends a fake ONTAP
+            # "snapshot-restore-volume" request which is only available when
+            # the license exists. By the got error, it checks whether license
+            # is installed or not.
+            try:
+                self._client.restore_snapshot(
+                    "fake_%s" % uuidutils.generate_uuid(dashed=False), "")
+            except netapp_api.NaApiError as e:
+                no_license = 'is not licensed'
+                LOG.debug('Fake restore_snapshot request failed: %s', e)
+                return not (e.code == netapp_api.EAPIERROR and
+                            no_license in e.message)
 
-        return 'snaprestore' in self._licenses
+            # since it passed an empty snapshot, it should never get here
+            msg = _("Caught an unexpected behavior: the fake restore to "
+                    "snapshot request using 'fake' volume and empty string "
+                    "snapshot as argument has not failed.")
+            LOG.exception(msg)
+            raise exception.NetAppException(msg)
 
     @na_utils.trace
     def _get_aggregate_node(self, aggregate_name):
@@ -323,8 +347,6 @@ class NetAppCmodeFileStorageLibrary(object):
         netapp_flexvol_encryption = self._cluster_info.get(
             'nve_support', False)
 
-        revert_to_snapshot_support = self._check_snaprestore_license()
-
         for aggr_name in sorted(aggregates):
 
             reserved_percentage = self.configuration.reserved_share_percentage
@@ -354,7 +376,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'thin_provisioning': [True, False],
                 'snapshot_support': True,
                 'create_share_from_snapshot_support': True,
-                'revert_to_snapshot_support': revert_to_snapshot_support,
+                'revert_to_snapshot_support': self._revert_to_snapshot_support,
             }
 
             # Add storage service catalog data.
