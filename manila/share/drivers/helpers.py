@@ -530,6 +530,30 @@ class CIFSHelperIPAccess(CIFSHelperBase):
         ]
         self._ssh_exec(server, backup_exports)
         self._set_allow_hosts(server, [], share_name)
+        self._kick_out_users(server, share_name)
+
+    def _kick_out_users(self, server, share_name):
+        """Kick out all users of share"""
+        (out, _) = self._ssh_exec(server, ['sudo', 'smbstatus', '-S'])
+
+        shares = []
+        header = True
+        regexp = r"^(?P<share>[^ ]+)\s+(?P<pid>[0-9]+)\s+(?P<machine>[^ ]+).*"
+        for line in out.splitlines():
+            line = line.strip()
+            if not header and line:
+                match = re.match(regexp, line)
+                if match:
+                    shares.append(match.groupdict())
+                else:
+                    raise exception.ShareBackendException(
+                        msg="Failed to obtain smbstatus for %s!" % share_name)
+            elif line.startswith('----'):
+                header = False
+        to_kill = [s['pid'] for s in shares if
+                   share_name == s['share'] or share_name is None]
+        if to_kill:
+            self._ssh_exec(server, ['sudo', 'kill', '-15'] + to_kill)
 
     def restore_access_after_maintenance(self, server, share_name):
         maintenance_file = self._get_maintenance_file_path(share_name)
