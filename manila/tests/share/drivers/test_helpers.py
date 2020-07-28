@@ -215,12 +215,41 @@ class NFSHelperTestCase(test.TestCase):
             [],
             [])
 
-    def test_update_access_delete_invalid_rule(self):
-        delete_rules = [test_generic.get_fake_access_rule(
-            'lala', 'fake_level', access_type='user'), ]
+    @ddt.data({'access_to': 'lala', 'access_type': 'user'},
+              {'access_to': '203.0.113.29'},
+              {'access_to': '2001:0DB8:7d18:c63e:5f0a:871f:83b8:d244',
+               'access_level': 'ro'})
+    @ddt.unpack
+    def test_update_access_delete_invalid_rule(
+            self, access_to, access_level='rw', access_type='ip'):
+        mount_path = '%s:/shares/%s' % (access_to, self.share_name)
+        if access_type == 'ip':
+            self._helper._get_parsed_address_or_cidr = mock.Mock(
+                return_value=access_to)
+            not_found_msg = (
+                "exportfs: Could not find '%s' to unexport.\n" % mount_path
+            )
+            exc = exception.ProcessExecutionError
+            self.mock_object(
+                self._helper,
+                '_ssh_exec',
+                mock.Mock(side_effect=[(0, 0), exc(stderr=not_found_msg)]))
+
+        delete_rules = [
+            test_generic.get_fake_access_rule(access_to,
+                                              access_level,
+                                              access_type),
+        ]
         self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
+
         self._helper.update_access(self.server, self.share_name, [],
                                    [], delete_rules)
+
+        if access_type == 'ip':
+            self._helper._ssh_exec.assert_has_calls([
+                mock.call(self.server, ['sudo', 'exportfs']),
+                mock.call(self.server,
+                          ['sudo', 'exportfs', '-u', mount_path])])
         self._helper._sync_nfs_temp_and_perm_files.assert_called_with(
             self.server)
 
