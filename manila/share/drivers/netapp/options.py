@@ -150,7 +150,13 @@ netapp_data_motion_opts = [
                default=3600,  # One Hour,
                help='The maximum time in seconds to wait for the completion '
                     'of a volume move operation after the cutover '
-                    'was triggered.'), ]
+                    'was triggered.'),
+    cfg.IntOpt('netapp_migration_cancel_timeout',
+               min=0,
+               default=3600,  # One Hour,
+               help='The maximum time in seconds that migration cancel '
+                    'waits for all migration operations be completely '
+                    'aborted.'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(netapp_proxy_opts)
