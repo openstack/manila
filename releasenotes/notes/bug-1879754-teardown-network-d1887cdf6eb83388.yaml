@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed unneeded all ports list request to Neutron
+    in service instance helper module on tearing down
+    service subnet, Neutron can filter them by subnet_id itself.
