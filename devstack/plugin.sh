@@ -963,20 +963,29 @@ function install_libraries {
 
 function allow_host_ports_for_share_mounting {
 
-    TCP_PORTS=(2049 111 32803 892 875 662)
-    UDP_PORTS=(111 32769 892 875 662)
-    for ipcmd in iptables ip6tables; do
-        # (aovchinnikov): extra rules are needed to allow instances talk to
-        # host.
-        sudo $ipcmd -N manila-nfs
-        sudo $ipcmd -I INPUT 1 -j manila-nfs
-        for port in ${TCP_PORTS[*]}; do
-            sudo $ipcmd -A manila-nfs -m tcp -p tcp --dport $port -j ACCEPT
+    if [[ $MANILA_ENABLED_SHARE_PROTOCOLS =~ NFS ]]; then
+        # 111 and 2049 are for rpcbind and NFS
+        # Other ports are for NFSv3 statd, mountd and lockd daemons
+        MANILA_TCP_PORTS=(2049 111 32803 892 875 662)
+        MANILA_UDP_PORTS=(111 32769 892 875 662)
+    fi
+    if [[ $MANILA_ENABLED_SHARE_PROTOCOLS =~ CEPHFS ]]; then
+        # clients need access to the ceph daemons
+        MANILA_TCP_PORTS=(${MANILA_TCP_PORTS[*]} 6789 6800:7300)
+    fi
+
+    if [[ -v MANILA_TCP_PORTS || -v MANILA_UDP_PORTS ]]; then
+        for ipcmd in iptables ip6tables; do
+            sudo $ipcmd -N manila-storage
+            sudo $ipcmd -I INPUT 1 -j manila-storage
+            for port in ${MANILA_TCP_PORTS[*]}; do
+                sudo $ipcmd -A manila-storage -m tcp -p tcp --dport $port -j ACCEPT
+            done
+            for port in ${MANILA_UDP_PORTS[*]}; do
+                sudo $ipcmd -A manila-storage -m udp -p udp --dport $port -j ACCEPT
+            done
         done
-        for port in ${UDP_PORTS[*]}; do
-            sudo $ipcmd -A manila-nfs -m udp -p udp --dport $port -j ACCEPT
-        done
-    done
+    fi
 }
 
 function setup_ipv6 {
