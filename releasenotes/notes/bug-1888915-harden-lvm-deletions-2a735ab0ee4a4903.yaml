@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The LVM driver no longer fails to delete shares, snapshots and access
+    rules that are missing from storage. See `Launchpad bug #1888915
+    <https://launchpad.net/bugs/1888915>`_ for more details.
