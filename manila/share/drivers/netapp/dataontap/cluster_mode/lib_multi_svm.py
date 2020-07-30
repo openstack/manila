@@ -38,6 +38,7 @@ LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
 SEGMENTED_NETWORK_TYPES = ('vlan',)
 DEFAULT_MTU = 1500
+CLUSTER_IPSPACES = ('Cluster', 'Default')
 
 
 class NetAppCmodeMultiSVMFileStorageLibrary(
@@ -387,8 +388,9 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                         vserver_client,
                                         security_services=security_services)
 
-            if ipspace_name and not self._client.ipspace_has_data_vservers(
-                    ipspace_name):
+            if (ipspace_name and ipspace_name not in CLUSTER_IPSPACES
+                    and not self._client.ipspace_has_data_vservers(
+                        ipspace_name)):
                 self._client.delete_ipspace(ipspace_name)
 
             self._delete_vserver_vlans(interfaces_on_vlans)
