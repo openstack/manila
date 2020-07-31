@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    An error with share group snapshot creation and deletion due to missing
+    attributes has been fixed. See `Launchpad bug 1888905
+    <https://launchpad.net/bugs/1888905>`_ for more information.
