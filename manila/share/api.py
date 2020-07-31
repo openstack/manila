@@ -1565,6 +1565,10 @@ class API(base.Base):
                 try:
                     result = self.share_rpcapi.migration_get_progress(
                         context, share_instance_ref, migrating_instance_id)
+                except exception.InvalidShare:
+                    # reload to get the latest task_state
+                    share = self.db.share_get(context, share['id'])
+                    result = self._migration_get_progress_state(share)
                 except Exception:
                     msg = _("Failed to obtain migration progress of share "
                             "%s.") % share['id']

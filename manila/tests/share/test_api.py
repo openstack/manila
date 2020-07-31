@@ -5513,6 +5513,41 @@ class ShareAPITestCase(test.TestCase):
         mock_get_destination.assert_called_once_with(
             self.context, 'fake_src_server_id', status=constants.STATUS_ACTIVE)
 
+    def test_migration_get_progress_race(self):
+
+        instance1 = db_utils.create_share_instance(
+            share_id='fake_id',
+            status=constants.STATUS_MIGRATING,
+            host='some_host')
+        instance2 = db_utils.create_share_instance(
+            share_id='fake_id',
+            status=constants.STATUS_MIGRATING_TO)
+        share = db_utils.create_share(
+            id='fake_id',
+            task_state=constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS,
+            instances=[instance1, instance2])
+        share_ref = fakes.fake_share(
+            id='fake_id',
+            task_state=constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE)
+        service = 'fake_service'
+        expected = {'total_progress': 100}
+
+        self.mock_object(utils, 'service_is_up', mock.Mock(return_value=True))
+        self.mock_object(db_api, 'service_get_by_args',
+                         mock.Mock(return_value=service))
+        self.mock_object(db_api, 'share_instance_get',
+                         mock.Mock(return_value=instance1))
+        self.mock_object(db_api, 'share_get',
+                         mock.Mock(return_value=share_ref))
+        self.mock_object(self.api.share_rpcapi, 'migration_get_progress',
+                         mock.Mock(side_effect=exception.InvalidShare('fake')))
+
+        result = self.api.migration_get_progress(self.context, share)
+        self.assertEqual(expected, result)
+
+        self.api.share_rpcapi.migration_get_progress.assert_called_once_with(
+            self.context, instance1, instance2['id'])
+
 
 class OtherTenantsShareActionsTestCase(test.TestCase):
     def setUp(self):

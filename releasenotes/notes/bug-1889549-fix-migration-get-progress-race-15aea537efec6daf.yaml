@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    In the share migration_get_progress API a race condition was fixed. If the
+    share manager reports ``InvalidShare`` the share's task state is evaluated
+    again to return progress 0 or 100 based on known task states instead of
+    raising ``ShareMigrationError``.
