@@ -95,7 +95,7 @@ class MessagesController(wsgi.Controller):
 
     @wsgi.Controller.api_version(MESSAGES_QUERY_BY_TIMESTAMP)   # noqa: F811
     @wsgi.Controller.authorize('get_all')
-    def index(self, req):                 # pylint: disable=function-redefined
+    def index(self, req):  # pylint: disable=function-redefined  # noqa F811
         """Returns a list of messages, transformed through view builder."""
         context = req.environ['manila.context']
         filters = req.params.copy()

@@ -47,7 +47,7 @@ class ShareReplicaExportLocationController(wsgi.Controller):
 
     # pylint: disable=function-redefined
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
-    def index(self, req, share_replica_id):
+    def index(self, req, share_replica_id):  # noqa F811
         return self._index(req, share_replica_id)
 
     # pylint: enable=function-redefined
@@ -71,7 +71,7 @@ class ShareReplicaExportLocationController(wsgi.Controller):
 
     # pylint: disable=function-redefined
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
-    def show(self, req, share_replica_id, export_location_uuid):
+    def show(self, req, share_replica_id, export_location_uuid):  # noqa F811
         return self._show(req, share_replica_id, export_location_uuid)
 
     # pylint: enable=function-redefined

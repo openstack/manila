@@ -86,7 +86,7 @@ class VersionsController(wsgi.Controller):
         return builder.build_versions(known_versions)
 
     @wsgi.Controller.api_version('2.0')  # noqa
-    def index(self, req):  # pylint: disable=function-redefined
+    def index(self, req):  # pylint: disable=function-redefined   # noqa F811
         """Return versions supported after the start of microversions."""
         builder = views_versions.get_view_builder(req)
         known_versions = copy.deepcopy(_KNOWN_VERSIONS)

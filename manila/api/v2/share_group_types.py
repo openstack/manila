@@ -54,7 +54,7 @@ class ShareGroupTypesController(wsgi.Controller):
         return self._index(req)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def index(self, req):  # pylint: disable=function-redefined
+    def index(self, req):  # pylint: disable=function-redefined  # noqa F811
         return self._index(req)
 
     @wsgi.Controller.authorize('show')
@@ -75,7 +75,7 @@ class ShareGroupTypesController(wsgi.Controller):
         return self._show(req, id)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def show(self, req, id):  # pylint: disable=function-redefined
+    def show(self, req, id):  # pylint: disable=function-redefined  # noqa F811
         return self._show(req, id)
 
     @wsgi.Controller.authorize('default')
@@ -95,7 +95,7 @@ class ShareGroupTypesController(wsgi.Controller):
         return self._default(req)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def default(self, req):  # pylint: disable=function-redefined
+    def default(self, req):  # pylint: disable=function-redefined  # noqa F811
         return self._default(req)
 
     def _get_share_group_types(self, req):
@@ -181,7 +181,7 @@ class ShareGroupTypesController(wsgi.Controller):
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
     @wsgi.action("create")
-    def create(self, req, body):  # pylint: disable=function-redefined
+    def create(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         return self._create(req, body)
 
     @wsgi.Controller.authorize('delete')
@@ -205,7 +205,7 @@ class ShareGroupTypesController(wsgi.Controller):
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
     @wsgi.action("delete")
-    def delete(self, req, id):  # pylint: disable=function-redefined
+    def delete(self, req, id):  # pylint: disable=function-redefined  # noqa F811
         return self._delete(req, id)
 
     @wsgi.Controller.authorize('list_project_access')
@@ -236,7 +236,7 @@ class ShareGroupTypesController(wsgi.Controller):
 
     # pylint: disable=function-redefined
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def share_group_type_access(self, req, id):
+    def share_group_type_access(self, req, id):  # noqa F811
         return self._share_group_type_access(req, id)
 
     @wsgi.Controller.authorize('add_project_access')
@@ -261,7 +261,7 @@ class ShareGroupTypesController(wsgi.Controller):
     # pylint: disable=function-redefined
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
     @wsgi.action('addProjectAccess')
-    def add_project_access(self, req, id, body):
+    def add_project_access(self, req, id, body):  # noqa F811
         return self._add_project_access(req, id, body)
 
     @wsgi.Controller.authorize('remove_project_access')
@@ -286,7 +286,7 @@ class ShareGroupTypesController(wsgi.Controller):
     # pylint: disable=function-redefined
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
     @wsgi.action('removeProjectAccess')
-    def remove_project_access(self, req, id, body):
+    def remove_project_access(self, req, id, body):  # noqa F811
         return self._remove_project_access(req, id, body)
 
     def _assert_non_public_share_group_type(self, context, type_id):

@@ -184,18 +184,18 @@ class ShareController(shares.ShareMixin,
                             check_availability_zones_extra_spec=True)
 
     @wsgi.Controller.api_version("2.31", "2.47")  # noqa
-    def create(self, req, body):  # pylint: disable=function-redefined
+    def create(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         return self._create(
             req, body, check_create_share_from_snapshot_support=True)
 
     @wsgi.Controller.api_version("2.24", "2.30")  # noqa
-    def create(self, req, body):  # pylint: disable=function-redefined
+    def create(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         body.get('share', {}).pop('share_group_id', None)
         return self._create(req, body,
                             check_create_share_from_snapshot_support=True)
 
     @wsgi.Controller.api_version("2.0", "2.23")  # noqa
-    def create(self, req, body):  # pylint: disable=function-redefined
+    def create(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         body.get('share', {}).pop('share_group_id', None)
         return self._create(req, body)
 
@@ -410,12 +410,12 @@ class ShareController(shares.ShareMixin,
         return detail
 
     @wsgi.Controller.api_version("2.8", "2.48")  # noqa
-    def manage(self, req, body):  # pylint: disable=function-redefined
+    def manage(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         detail = self._manage(req, body, allow_dhss_true=False)
         return detail
 
     @wsgi.Controller.api_version("2.49")  # noqa
-    def manage(self, req, body):  # pylint: disable=function-redefined
+    def manage(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         detail = self._manage(req, body, allow_dhss_true=True)
         return detail
 
@@ -426,8 +426,8 @@ class ShareController(shares.ShareMixin,
 
     @wsgi.Controller.api_version('2.49')  # noqa
     @wsgi.action('unmanage')
-    def unmanage(self, req, id,
-                 body=None):  # pylint: disable=function-redefined
+    def unmanage(self, req, id,  # pylint: disable=function-redefined # noqa F811
+                 body=None):
         return self._unmanage(req, id, body, allow_dhss_true=True)
 
     @wsgi.Controller.api_version('2.27')

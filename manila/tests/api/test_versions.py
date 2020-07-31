@@ -270,7 +270,7 @@ class ExperimentalAPITestCase(test.TestCase):
             return {'fake_key': 'fake_value'}
 
         @wsgi.Controller.api_version('2.1', '2.1', experimental=True)  # noqa
-        def index(self, req):  # pylint: disable=function-redefined
+        def index(self, req):  # pylint: disable=function-redefined  # noqa F811
             return {'fake_key': 'fake_value'}
 
     def setUp(self):

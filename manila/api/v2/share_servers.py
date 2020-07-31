@@ -88,7 +88,7 @@ class ShareServerController(share_servers.ShareServerController,
 
     @wsgi.Controller.api_version('2.49')  # noqa
     @wsgi.response(202)
-    def manage(self, req, body):  # pylint: disable=function-redefined
+    def manage(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         body.get('share_server', {}).pop('share_network_subnet_id', None)
         return self._manage(req, body)
 

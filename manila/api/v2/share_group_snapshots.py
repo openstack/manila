@@ -63,7 +63,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._show(req, id)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def show(self, req, id):  # pylint: disable=function-redefined
+    def show(self, req, id):  # pylint: disable=function-redefined  # noqa F811
         return self._show(req, id)
 
     @wsgi.Controller.authorize('delete')
@@ -85,7 +85,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._delete_group_snapshot(req, id)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def delete(self, req, id):  # pylint: disable=function-redefined
+    def delete(self, req, id):  # pylint: disable=function-redefined  # noqa F811
         return self._delete_group_snapshot(req, id)
 
     @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
@@ -94,7 +94,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._get_share_group_snaps(req, is_detail=False)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def index(self, req):  # pylint: disable=function-redefined
+    def index(self, req):  # pylint: disable=function-redefined  # noqa F811
         """Returns a summary list of share group snapshots."""
         return self._get_share_group_snaps(req, is_detail=False)
 
@@ -104,7 +104,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._get_share_group_snaps(req, is_detail=True)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def detail(self, req):  # pylint: disable=function-redefined
+    def detail(self, req):  # pylint: disable=function-redefined  # noqa F811
         """Returns a detailed list of share group snapshots."""
         return self._get_share_group_snaps(req, is_detail=True)
 
@@ -163,7 +163,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._update_group_snapshot(req, id, body)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def update(self, req, id, body):  # pylint: disable=function-redefined
+    def update(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
         return self._update_group_snapshot(req, id, body)
 
     @wsgi.Controller.authorize('create')
@@ -208,7 +208,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
     @wsgi.response(202)
-    def create(self, req, body):  # pylint: disable=function-redefined
+    def create(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         return self._create(req, body)
 
     @wsgi.Controller.authorize('get')
@@ -229,7 +229,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._members(req, id)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def members(self, req, id):  # pylint: disable=function-redefined
+    def members(self, req, id):  # pylint: disable=function-redefined  # noqa F811
         return self._members(req, id)
 
     def _update(self, *args, **kwargs):
@@ -249,7 +249,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
     # pylint: disable=function-redefined
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
     @wsgi.action('reset_status')
-    def share_group_snapshot_reset_status(self, req, id, body):
+    def share_group_snapshot_reset_status(self, req, id, body):  # noqa F811
         return self._reset_status(req, id, body)
 
     # pylint: enable=function-redefined
@@ -261,7 +261,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
     # pylint: disable=function-redefined
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
     @wsgi.action('force_delete')
-    def share_group_snapshot_force_delete(self, req, id, body):
+    def share_group_snapshot_force_delete(self, req, id, body):  # noqa F811
         return self._force_delete(req, id, body)
 
 

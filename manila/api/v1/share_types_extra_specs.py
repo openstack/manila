@@ -153,7 +153,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
 
     @wsgi.Controller.api_version('2.24')  # noqa
     @wsgi.Controller.authorize
-    def delete(self, req, type_id, id):  # pylint: disable=function-redefined
+    def delete(self, req, type_id, id):  # pylint: disable=function-redefined  # noqa F811
         """Deletes an existing extra spec."""
         context = req.environ['manila.context']
         self._check_type(context, type_id)

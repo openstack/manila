@@ -65,7 +65,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._show(req, id)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def show(self, req, id):  # pylint: disable=function-redefined
+    def show(self, req, id):  # pylint: disable=function-redefined  # noqa F811
         return self._show(req, id)
 
     @wsgi.Controller.authorize('delete')
@@ -86,7 +86,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._delete_share_group(req, id)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def delete(self, req, id):  # pylint: disable=function-redefined
+    def delete(self, req, id):  # pylint: disable=function-redefined  # noqa F811
         return self._delete_share_group(req, id)
 
     @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
@@ -94,7 +94,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._get_share_groups(req, is_detail=False)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def index(self, req):  # pylint: disable=function-redefined
+    def index(self, req):  # pylint: disable=function-redefined  # noqa F811
         return self._get_share_groups(req, is_detail=False)
 
     @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
@@ -102,7 +102,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._get_share_groups(req, is_detail=True)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def detail(self, req):  # pylint: disable=function-redefined
+    def detail(self, req):  # pylint: disable=function-redefined  # noqa F811
         return self._get_share_groups(req, is_detail=True)
 
     @wsgi.Controller.authorize('get_all')
@@ -164,7 +164,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._update_share_group(req, id, body)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def update(self, req, id, body):  # pylint: disable=function-redefined
+    def update(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
         return self._update_share_group(req, id, body)
 
     @wsgi.Controller.authorize('create')
@@ -292,7 +292,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
     @wsgi.response(202)
-    def create(self, req, body):  # pylint: disable=function-redefined
+    def create(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         return self._create(req, body)
 
     def _update(self, *args, **kwargs):
@@ -320,7 +320,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
     # pylint: disable=function-redefined
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
     @wsgi.action('reset_status')
-    def share_group_reset_status(self, req, id, body):
+    def share_group_reset_status(self, req, id, body):  # noqa F811
         return self._reset_status(req, id, body)
 
     # pylint: enable=function-redefined
@@ -332,7 +332,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
     # pylint: disable=function-redefined
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
     @wsgi.action('force_delete')
-    def share_group_force_delete(self, req, id, body):
+    def share_group_force_delete(self, req, id, body):  # noqa F811
         return self._force_delete(req, id, body)
 
 

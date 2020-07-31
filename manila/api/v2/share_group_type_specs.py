@@ -72,7 +72,7 @@ class ShareGroupTypeSpecsController(wsgi.Controller):
         return self._index(req, id)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def index(self, req, id):  # pylint: disable=function-redefined
+    def index(self, req, id):  # pylint: disable=function-redefined  # noqa F811
         return self._index(req, id)
 
     @wsgi.Controller.authorize('create')
@@ -93,7 +93,7 @@ class ShareGroupTypeSpecsController(wsgi.Controller):
         return self._create(req, id, body)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def create(self, req, id, body=None):  # pylint: disable=function-redefined
+    def create(self, req, id, body=None):  # pylint: disable=function-redefined   # noqa F811
         return self._create(req, id, body)
 
     @wsgi.Controller.authorize('update')
@@ -119,7 +119,7 @@ class ShareGroupTypeSpecsController(wsgi.Controller):
 
     # pylint: disable=function-redefined
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def update(self, req, id, key, body=None):
+    def update(self, req, id, key, body=None):  # noqa F811
         return self._update(req, id, key, body)
 
     @wsgi.Controller.authorize('show')
@@ -139,7 +139,7 @@ class ShareGroupTypeSpecsController(wsgi.Controller):
         return self._show(req, id, key)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def show(self, req, id, key):  # pylint: disable=function-redefined
+    def show(self, req, id, key):  # pylint: disable=function-redefined   # noqa F811
         return self._show(req, id, key)
 
     @wsgi.Controller.authorize('delete')
@@ -158,7 +158,7 @@ class ShareGroupTypeSpecsController(wsgi.Controller):
         return self._delete(req, id, key)
 
     @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
-    def delete(self, req, id, key):  # pylint: disable=function-redefined
+    def delete(self, req, id, key):  # pylint: disable=function-redefined   # noqa F811
         return self._delete(req, id, key)
 
     def _check_key_names(self, keys):

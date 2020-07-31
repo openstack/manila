@@ -64,7 +64,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._get_replicas(req)
 
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
-    def index(self, req):  # pylint: disable=function-redefined
+    def index(self, req):  # pylint: disable=function-redefined  # noqa F811
         """Return a summary list of replicas."""
         return self._get_replicas(req)
 
@@ -75,7 +75,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._get_replicas(req, is_detail=True)
 
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
-    def detail(self, req):  # pylint: disable=function-redefined
+    def detail(self, req):  # pylint: disable=function-redefined  # noqa F811
         """Returns a detailed list of replicas."""
         return self._get_replicas(req, is_detail=True)
 
@@ -110,7 +110,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._show(req, id)
 
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
-    def show(self, req, id):  # pylint: disable=function-redefined
+    def show(self, req, id):  # pylint: disable=function-redefined   # noqa F811
         """Return data about the given replica."""
         return self._show(req, id)
 
@@ -135,7 +135,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
 
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
     @wsgi.response(202)
-    def create(self, req, body):  # pylint: disable=function-redefined
+    def create(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         return self._create(req, body)
 
     @wsgi.Controller.authorize('create')
@@ -181,7 +181,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._delete_share_replica(req, id)
 
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
-    def delete(self, req, id):  # pylint: disable=function-redefined
+    def delete(self, req, id):  # pylint: disable=function-redefined  # noqa F811
         return self._delete_share_replica(req, id)
 
     @wsgi.Controller.authorize('delete')
@@ -212,7 +212,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
     @wsgi.response(202)
     @wsgi.action('promote')
-    def promote(self, req, id, body):  # pylint: disable=function-redefined
+    def promote(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
         return self._promote(req, id, body)
 
     @wsgi.Controller.authorize('promote')
@@ -250,7 +250,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
     # pylint: disable=function-redefined
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
     @wsgi.action('reset_status')
-    def reset_status(self, req, id, body):
+    def reset_status(self, req, id, body):  # noqa F811
         """Reset the 'status' attribute in the database."""
         return self._reset_status(req, id, body)
 
@@ -265,7 +265,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
     # pylint: disable=function-redefined
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
     @wsgi.action('force_delete')
-    def force_delete(self, req, id, body):
+    def force_delete(self, req, id, body):  # noqa F811
         """Force deletion on the database, attempt on the backend."""
         return self._force_delete(req, id, body)
 
@@ -282,7 +282,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
     @wsgi.action('reset_replica_state')
     @wsgi.Controller.authorize
-    def reset_replica_state(self, req, id, body):
+    def reset_replica_state(self, req, id, body):  # noqa F811
         """Reset the 'replica_state' attribute in the database."""
         return self._reset_status(req, id, body, status_attr='replica_state')
 
@@ -297,7 +297,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
     @wsgi.response(202)
     @wsgi.action('resync')
-    def resync(self, req, id, body):  # pylint: disable=function-redefined
+    def resync(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
         return self._resync(req, id, body)
 
     @wsgi.Controller.authorize('resync')

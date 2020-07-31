@@ -175,7 +175,7 @@ class ShareTypesController(wsgi.Controller):
 
     @wsgi.Controller.api_version("2.24")  # noqa
     @wsgi.action("create")
-    def create(self, req, body):  # pylint: disable=function-redefined
+    def create(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         return self._create(req, body, set_defaults=False)
 
     @wsgi.Controller.authorize('create')

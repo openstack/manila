@@ -74,7 +74,7 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
 
     @wsgi.Controller.api_version("2.35")  # noqa
     @wsgi.Controller.authorize
-    def index(self, req):  # pylint: disable=function-redefined
+    def index(self, req):  # pylint: disable=function-redefined  # noqa F811
         context = req.environ['manila.context']
         filters = {}
         filters.update(req.GET)
