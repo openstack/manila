@@ -139,3 +139,19 @@ class ExportUncPathTestCase(test.TestCase):
     @ddt.unpack
     def test_invalid_ipv6_addr(self, ip_addr):
         self.assertEqual(ip_addr, utils.export_unc_path(ip_addr))
+
+
+@ddt.ddt
+class SizeToGbTestCase(test.TestCase):
+
+    @ddt.data({'size_in_bytes': 1073741824, 'size_in_gb': 1.0},
+              {'size_in_bytes': 5610301030, 'size_in_gb': 5.22})
+    @ddt.unpack
+    def test_bytes_to_gb(self, size_in_bytes, size_in_gb):
+        self.assertEqual(size_in_gb, utils.bytes_to_gb(size_in_bytes))
+
+    @ddt.data({'size_in_mb': 1024, 'size_in_gb': 1.0},
+              {'size_in_mb': 5346, 'size_in_gb': 5.22})
+    @ddt.unpack
+    def test_mb_to_gb(self, size_in_mb, size_in_gb):
+        self.assertEqual(size_in_gb, utils.mb_to_gb(size_in_mb))
