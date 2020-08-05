@@ -16,14 +16,15 @@
 import copy
 import ddt
 import mock
-from oslo_utils import units
 import six
 
 from manila import exception
+from manila.share.drivers.dell_emc.common.enas import utils as enas_utils
 from manila import test
 from manila.tests.share.drivers.dell_emc.plugins.unity import fake_exceptions
 from manila.tests.share.drivers.dell_emc.plugins.unity import res_mock
 from manila.tests.share.drivers.dell_emc.plugins.unity import utils
+from oslo_utils import units
 
 
 @ddt.ddt
@@ -289,14 +290,18 @@ class TestConnection(test.TestCase):
         self.assertEqual(5, len(stat_dict))
         pool = stat_dict['pools'][0]
         self.assertEqual('pool_1', pool['pool_name'])
-        self.assertEqual(500000.0, pool['total_capacity_gb'])
+        self.assertEqual(
+            enas_utils.bytes_to_gb(500000.0), pool['total_capacity_gb'])
         self.assertEqual(False, pool['qos'])
-        self.assertEqual(30000.0, pool['provisioned_capacity_gb'])
+        self.assertEqual(
+            enas_utils.bytes_to_gb(30000.0), pool['provisioned_capacity_gb'])
         self.assertEqual(20, pool['max_over_subscription_ratio'])
-        self.assertEqual(10000.0, pool['allocated_capacity_gb'])
+        self.assertEqual(
+            enas_utils.bytes_to_gb(10000.0), pool['allocated_capacity_gb'])
         self.assertEqual(0, pool['reserved_percentage'])
         self.assertTrue(pool['thin_provisioning'])
-        self.assertEqual(490000.0, pool['free_capacity_gb'])
+        self.assertEqual(
+            enas_utils.bytes_to_gb(490000.0), pool['free_capacity_gb'])
 
     @res_mock.patch_connection
     def test_update_share_stats__nonexistent_pools(self, connection):

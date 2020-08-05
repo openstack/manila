@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Dell EMC Manila Driver: Fixes wrong capacity in pool_stat.
+    `bug 1890372 <https://bugs.launchpad.net/manila/+bug/1890372>`_
+     powermax manila return size in MB,
+    `bug 1890375 <https://bugs.launchpad.net/manila/+bug/1890375>`_
+     vnx manila return size in MB,
+    `bug 1890376 <https://bugs.launchpad.net/manila/+bug/1890376>`_
+     unity manila return size in bytes.
