@@ -46,7 +46,7 @@
         - manila-tempest-plugin-lvm
     experimental:
       jobs:
-        - tripleo-ci-centos-7-scenario004-standalone
+        - tripleo-ci-centos-8-scenario004-standalone
 
 - job:
     name: manila-tox-genconfig
