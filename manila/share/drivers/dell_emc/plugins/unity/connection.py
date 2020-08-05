@@ -575,10 +575,12 @@ class UnityStorageConnection(driver.StorageConnection):
                 pool_stat = {
                     'pool_name': pool.name,
                     'thin_provisioning': True,
-                    'total_capacity_gb': total_size,
-                    'free_capacity_gb': total_size - used_size,
-                    'allocated_capacity_gb': used_size,
-                    'provisioned_capacity_gb': float(pool.size_subscribed),
+                    'total_capacity_gb': enas_utils.bytes_to_gb(total_size),
+                    'free_capacity_gb':
+                        enas_utils.bytes_to_gb(total_size - used_size),
+                    'allocated_capacity_gb': enas_utils.bytes_to_gb(used_size),
+                    'provisioned_capacity_gb':
+                        enas_utils.bytes_to_gb(pool.size_subscribed),
                     'qos': False,
                     'reserved_percentage': self.reserved_percentage,
                     'max_over_subscription_ratio':
