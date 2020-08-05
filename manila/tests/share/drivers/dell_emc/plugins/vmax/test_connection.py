@@ -21,6 +21,7 @@ from oslo_log import log
 
 from manila import exception
 from manila.share.drivers.dell_emc.common.enas import connector
+from manila.share.drivers.dell_emc.common.enas import utils as enas_utils
 from manila.share.drivers.dell_emc.plugins.vnx import connection
 from manila.share.drivers.dell_emc.plugins.vnx import object_manager
 from manila import test
@@ -1460,12 +1461,14 @@ class StorageConnectionTestCase(test.TestCase):
 
         for pool in fakes.STATS['pools']:
             if pool['pool_name'] == fakes.FakeData.pool_name:
-                self.assertEqual(fakes.FakeData.pool_total_size,
-                                 pool['total_capacity_gb'])
+                self.assertEqual(
+                    enas_utils.mb_to_gb(fakes.FakeData.pool_total_size),
+                    pool['total_capacity_gb'])
 
                 free_size = (fakes.FakeData.pool_total_size -
                              fakes.FakeData.pool_used_size)
-                self.assertEqual(free_size, pool['free_capacity_gb'])
+                self.assertEqual(enas_utils.mb_to_gb(free_size),
+                                 pool['free_capacity_gb'])
 
     def test_update_share_stats_without_matched_config_pools(self):
         self.connection.pools = set('fake_pool')
