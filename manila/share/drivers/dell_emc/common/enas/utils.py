@@ -20,6 +20,7 @@ from oslo_log import log
 from oslo_utils import fnmatch
 from oslo_utils import netutils
 from oslo_utils import timeutils
+from oslo_utils import units
 import ssl
 
 CONF = cfg.CONF
@@ -179,3 +180,11 @@ def export_unc_path(ip_addr):
     if netutils.is_valid_ipv6(ip_addr):
         ip_addr = ip_addr.replace(':', '-') + unc_suffix
     return ip_addr
+
+
+def bytes_to_gb(size):
+    return round(float(size) / units.Gi, 2)
+
+
+def mb_to_gb(size):
+    return bytes_to_gb(size * units.Mi)
