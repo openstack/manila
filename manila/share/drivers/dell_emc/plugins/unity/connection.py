@@ -54,22 +54,14 @@ SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
 UNITY_OPTS = [
     cfg.StrOpt('unity_server_meta_pool',
                required=True,
-               deprecated_name='emc_nas_server_pool',
                help='Pool to persist the meta-data of NAS server.'),
     cfg.ListOpt('unity_share_data_pools',
-                deprecated_name='emc_nas_pool_names',
                 help='Comma separated list of pools that can be used to '
                      'persist share data.'),
     cfg.ListOpt('unity_ethernet_ports',
-                deprecated_name='emc_interface_ports',
                 help='Comma separated list of ports that can be used for '
                      'share server interfaces. Members of the list '
                      'can be Unix-style glob expressions.'),
-    cfg.StrOpt('emc_nas_server_container',
-               deprecated_for_removal=True,
-               deprecated_reason='Unity driver supports nas server auto load '
-                                 'balance.',
-               help='Storage processor to host the NAS server. Obsolete.'),
     cfg.StrOpt('unity_share_server',
                help='NAS server used for creating share when driver '
                     'is in DHSS=False mode. It is required when '

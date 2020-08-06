@@ -48,14 +48,11 @@ LOG = log.getLogger(__name__)
 
 VNX_OPTS = [
     cfg.StrOpt('vnx_server_container',
-               deprecated_name='emc_nas_server_container',
                help='Data mover to host the NAS server.'),
     cfg.ListOpt('vnx_share_data_pools',
-                deprecated_name='emc_nas_pool_names',
                 help='Comma separated list of pools that can be used to '
                      'persist share data.'),
     cfg.ListOpt('vnx_ethernet_ports',
-                deprecated_name='emc_interface_ports',
                 help='Comma separated list of ports that can be used for '
                      'share server interfaces. Members of the list '
                      'can be Unix-style glob expressions.')

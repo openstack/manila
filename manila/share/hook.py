@@ -35,37 +35,31 @@ hook_options = [
     cfg.BoolOpt(
         "enable_pre_hooks",
         default=False,
-        help="Whether to enable pre hooks or not.",
-        deprecated_group='DEFAULT'),
+        help="Whether to enable pre hooks or not."),
     cfg.BoolOpt(
         "enable_post_hooks",
         default=False,
-        help="Whether to enable post hooks or not.",
-        deprecated_group='DEFAULT'),
+        help="Whether to enable post hooks or not."),
     cfg.BoolOpt(
         "enable_periodic_hooks",
         default=False,
-        help="Whether to enable periodic hooks or not.",
-        deprecated_group='DEFAULT'),
+        help="Whether to enable periodic hooks or not."),
     cfg.BoolOpt(
         "suppress_pre_hooks_errors",
         default=False,
         help="Whether to suppress pre hook errors (allow driver perform "
-             "actions) or not.",
-        deprecated_group='DEFAULT'),
+             "actions) or not."),
     cfg.BoolOpt(
         "suppress_post_hooks_errors",
         default=False,
         help="Whether to suppress post hook errors (allow driver's results "
-             "to pass through) or not.",
-        deprecated_group='DEFAULT'),
+             "to pass through) or not."),
     cfg.FloatOpt(
         "periodic_hooks_interval",
         default=300.0,
         help="Interval in seconds between execution of periodic hooks. "
              "Used when option 'enable_periodic_hooks' is set to True. "
-             "Default is 300.",
-        deprecated_group='DEFAULT'),
+             "Default is 300."),
 ]
 
 CONF = cfg.CONF

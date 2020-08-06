@@ -31,50 +31,39 @@ LOG = log.getLogger(__name__)
 
 hitachi_hnas_opts = [
     cfg.HostAddressOpt('hitachi_hnas_ip',
-                       deprecated_name='hds_hnas_ip',
                        help="HNAS management interface IP for communication "
                             "between Manila controller and HNAS."),
     cfg.StrOpt('hitachi_hnas_user',
-               deprecated_name='hds_hnas_user',
                help="HNAS username Base64 String in order to perform tasks "
                     "such as create file-systems and network interfaces."),
     cfg.StrOpt('hitachi_hnas_password',
-               deprecated_name='hds_hnas_password',
                secret=True,
                help="HNAS user password. Required only if private key is not "
                     "provided."),
     cfg.IntOpt('hitachi_hnas_evs_id',
-               deprecated_name='hds_hnas_evs_id',
                help="Specify which EVS this backend is assigned to."),
     cfg.HostAddressOpt('hitachi_hnas_evs_ip',
-                       deprecated_name='hds_hnas_evs_ip',
                        help="Specify IP for mounting shares."),
     cfg.HostAddressOpt('hitachi_hnas_admin_network_ip',
                        help="Specify IP for mounting shares in the Admin "
                             "network."),
     cfg.StrOpt('hitachi_hnas_file_system_name',
-               deprecated_name='hds_hnas_file_system_name',
                help="Specify file-system name for creating shares."),
     cfg.StrOpt('hitachi_hnas_ssh_private_key',
-               deprecated_name='hds_hnas_ssh_private_key',
                secret=True,
                help="RSA/DSA private key value used to connect into HNAS. "
                     "Required only if password is not provided."),
     cfg.HostAddressOpt('hitachi_hnas_cluster_admin_ip0',
-                       deprecated_name='hds_hnas_cluster_admin_ip0',
                        help="The IP of the clusters admin node. Only set in "
                             "HNAS multinode clusters."),
     cfg.IntOpt('hitachi_hnas_stalled_job_timeout',
-               deprecated_name='hds_hnas_stalled_job_timeout',
                default=30,
                help="The time (in seconds) to wait for stalled HNAS jobs "
                     "before aborting."),
     cfg.StrOpt('hitachi_hnas_driver_helper',
-               deprecated_name='hds_hnas_driver_helper',
                default='manila.share.drivers.hitachi.hnas.ssh.HNASSSHBackend',
                help="Python class to be used for driver helper."),
     cfg.BoolOpt('hitachi_hnas_allow_cifs_snapshot_while_mounted',
-                deprecated_name='hds_hnas_allow_cifs_snapshot_while_mounted',
                 default=False,
                 help="By default, CIFS snapshots are not allowed to be taken "
                      "when the share has clients connected because consistent "

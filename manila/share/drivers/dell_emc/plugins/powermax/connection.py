@@ -49,14 +49,11 @@ LOG = log.getLogger(__name__)
 
 POWERMAX_OPTS = [
     cfg.StrOpt('powermax_server_container',
-               deprecated_name='vmax_server_container',
                help='Data mover to host the NAS server.'),
     cfg.ListOpt('powermax_share_data_pools',
-                deprecated_name='vmax_share_data_pools',
                 help='Comma separated list of pools that can be used to '
                      'persist share data.'),
     cfg.ListOpt('powermax_ethernet_ports',
-                deprecated_name='vmax_ethernet_ports',
                 help='Comma separated list of ports that can be used for '
                      'share server interfaces. Members of the list '
                      'can be Unix-style glob expressions.')

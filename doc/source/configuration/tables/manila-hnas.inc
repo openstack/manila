@@ -18,5 +18,5 @@
      - Description
    * - **[DEFAULT]**
      -
-   * - ``hds_hnas_driver_helper`` = ``manila.share.drivers.hitachi.ssh.HNASSSHBackend``
+   * - ``hitachi_hnas_driver_helper`` = ``manila.share.drivers.hitachi.hnas.ssh.HNASSSHBackend``
      - (String) Python class to be used for driver helper.

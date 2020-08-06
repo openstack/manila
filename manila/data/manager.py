@@ -37,7 +37,6 @@ data_opts = [
     cfg.StrOpt(
         'mount_tmp_location',
         default='/tmp/',
-        deprecated_name='migration_tmp_location',
         help="Temporary path to create and mount shares during migration."),
     cfg.BoolOpt(
         'check_hash',

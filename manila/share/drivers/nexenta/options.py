@@ -82,7 +82,6 @@ nexenta_connection_opts = [
 
 nexenta_nfs_opts = [
     cfg.HostAddressOpt('nexenta_nas_host',
-                       deprecated_name='nexenta_host',
                        help='Data IP address of Nexenta storage appliance.',
                        required=True),
     cfg.StrOpt('nexenta_mount_point_base',

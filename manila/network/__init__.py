@@ -27,7 +27,6 @@ network_opts = [
         'network_api_class',
         default='manila.network.neutron.'
                 'neutron_network_plugin.NeutronNetworkPlugin',
-        deprecated_group='DEFAULT',
         help='The full class name of the Networking API class to use.'),
 ]
 

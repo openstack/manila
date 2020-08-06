@@ -1099,7 +1099,7 @@ class TestNefProxy(test.TestCase):
         proto = 'iscsi'
         cfg = copy.copy(self.cfg)
         cfg.nexenta_rest_addresses = ''
-        cfg.nexenta_host = '4.4.4.4'
+        cfg.nexenta_nas_host = '4.4.4.4'
         result = jsonrpc.NefProxy(proto, cfg.nexenta_folder, cfg)
         self.assertIsInstance(result, jsonrpc.NefProxy)
 

@@ -32,19 +32,14 @@ neutron_opts = [
     cfg.StrOpt(
         'url',
         default='http://127.0.0.1:9696',
-        deprecated_group="DEFAULT",
-        deprecated_name="neutron_url",
         help='URL for connecting to neutron.'),
     cfg.IntOpt(
         'url_timeout',
         default=30,
-        deprecated_group="DEFAULT",
-        deprecated_name="neutron_url_timeout",
         help='Timeout value for connecting to neutron in seconds.'),
     cfg.StrOpt(
         'auth_strategy',
         default='keystone',
-        deprecated_group="DEFAULT",
         help='Auth strategy for connecting to neutron in admin context.'),
     cfg.StrOpt(
         'endpoint_type',
@@ -54,18 +49,6 @@ neutron_opts = [
         'region_name',
         help='Region name for connecting to neutron in admin context.'),
 ]
-
-# These fallback options can be removed in/after 9.0.0 (Train)
-deprecated_opts = {
-    'cafile': [
-        cfg.DeprecatedOpt('ca_certificates_file', group="DEFAULT"),
-        cfg.DeprecatedOpt('ca_certificates_file', group=NEUTRON_GROUP),
-    ],
-    'insecure': [
-        cfg.DeprecatedOpt('api_insecure', group="DEFAULT"),
-        cfg.DeprecatedOpt('api_insecure', group=NEUTRON_GROUP),
-    ],
-}
 
 
 CONF = cfg.CONF
@@ -86,7 +69,7 @@ class API(object):
         self.config_group_name = config_group_name or 'DEFAULT'
 
         ks_loading.register_session_conf_options(
-            CONF, NEUTRON_GROUP, deprecated_opts=deprecated_opts)
+            CONF, NEUTRON_GROUP)
         ks_loading.register_auth_conf_options(CONF, NEUTRON_GROUP)
         CONF.register_opts(neutron_opts, NEUTRON_GROUP)
 

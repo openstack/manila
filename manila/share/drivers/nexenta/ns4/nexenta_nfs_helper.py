@@ -38,7 +38,7 @@ class NFSHelper(object):
         self.dataset_dedupe = self.configuration.nexenta_dataset_dedupe
         self.nms = None
         self.nms_protocol = self.configuration.nexenta_rest_protocol
-        self.nms_host = self.configuration.nexenta_host
+        self.nms_host = self.configuration.nexenta_nas_host
         self.volume = self.configuration.nexenta_volume
         self.share = self.configuration.nexenta_nfs_share
         self.nms_port = self.configuration.nexenta_rest_port

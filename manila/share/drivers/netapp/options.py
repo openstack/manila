@@ -31,7 +31,6 @@ netapp_proxy_opts = [
 
 netapp_connection_opts = [
     cfg.HostAddressOpt('netapp_server_hostname',
-                       deprecated_name='netapp_nas_server_hostname',
                        help='The hostname (or IP address) for the storage '
                             'system.'),
     cfg.PortOpt('netapp_server_port',
@@ -41,7 +40,6 @@ netapp_connection_opts = [
 
 netapp_transport_opts = [
     cfg.StrOpt('netapp_transport_type',
-               deprecated_name='netapp_nas_transport_type',
                default='http',
                help=('The transport protocol used when communicating with '
                      'the storage system or proxy server. Valid values are '
@@ -57,11 +55,9 @@ netapp_transport_opts = [
 
 netapp_basicauth_opts = [
     cfg.StrOpt('netapp_login',
-               deprecated_name='netapp_nas_login',
                help=('Administrative user account name used to access the '
                      'storage system.')),
     cfg.StrOpt('netapp_password',
-               deprecated_name='netapp_nas_password',
                help=('Password for the administrative user account '
                      'specified in the netapp_login option.'),
                secret=True), ]
@@ -74,7 +70,6 @@ netapp_provisioning_opts = [
                      'option only applies when the option '
                      'driver_handles_share_servers is set to True. '),
     cfg.StrOpt('netapp_volume_name_template',
-               deprecated_name='netapp_nas_volume_name_template',
                help='NetApp volume name template.',
                default='share_%(share_id)s'),
     cfg.StrOpt('netapp_vserver_name_template',
@@ -101,7 +96,6 @@ netapp_provisioning_opts = [
                     'This option only applies when the option '
                     'driver_handles_share_servers is set to True.'),
     cfg.StrOpt('netapp_root_volume',
-               deprecated_name='netapp_root_volume_name',
                default='root',
                help='Root volume name.'),
     cfg.IntOpt('netapp_volume_snapshot_reserve_percent',

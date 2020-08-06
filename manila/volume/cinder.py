@@ -38,15 +38,11 @@ AUTH_OBJ = None
 cinder_opts = [
     cfg.BoolOpt('cross_az_attach',
                 default=True,
-                deprecated_group="DEFAULT",
-                deprecated_name="cinder_cross_az_attach",
                 help='Allow attaching between instances and volumes in '
                      'different availability zones.'),
     cfg.IntOpt('http_retries',
                default=3,
-               help='Number of cinderclient retries on failed HTTP calls.',
-               deprecated_group='DEFAULT',
-               deprecated_name="cinder_http_retries"),
+               help='Number of cinderclient retries on failed HTTP calls.'),
     cfg.StrOpt('endpoint_type',
                default='publicURL',
                help='Endpoint type to be used with cinder client calls.'),
@@ -54,29 +50,12 @@ cinder_opts = [
                help='Region name for connecting to cinder.'),
     ]
 
-# These fallback options can be removed in/after 9.0.0 (Train)
-deprecated_opts = {
-    'cafile': [
-        cfg.DeprecatedOpt('ca_certificates_file', group="DEFAULT"),
-        cfg.DeprecatedOpt('ca_certificates_file', group=CINDER_GROUP),
-        cfg.DeprecatedOpt('cinder_ca_certificates_file', group="DEFAULT"),
-        cfg.DeprecatedOpt('cinder_ca_certificates_file', group=CINDER_GROUP),
-    ],
-    'insecure': [
-        cfg.DeprecatedOpt('api_insecure', group="DEFAULT"),
-        cfg.DeprecatedOpt('api_insecure', group=CINDER_GROUP),
-        cfg.DeprecatedOpt('cinder_api_insecure', group="DEFAULT"),
-        cfg.DeprecatedOpt('cinder_api_insecure', group=CINDER_GROUP),
-    ],
-}
-
 
 CONF = cfg.CONF
 CONF.register_opts(core_opts)
 CONF.register_opts(cinder_opts, CINDER_GROUP)
 ks_loading.register_session_conf_options(CONF,
-                                         CINDER_GROUP,
-                                         deprecated_opts=deprecated_opts)
+                                         CINDER_GROUP)
 ks_loading.register_auth_conf_options(CONF, CINDER_GROUP)
 
 

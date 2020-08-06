@@ -96,17 +96,6 @@ gpfs_share_opts = [
                     'CES=manila.share.drivers.ibm.gpfs.CESHelper',
                 ],
                 help='Specify list of share export helpers.'),
-    cfg.StrOpt('knfs_export_options',
-               default=('rw,sync,no_root_squash,insecure,no_wdelay,'
-                        'no_subtree_check'),
-               help=('Options to use when exporting a share using kernel '
-                     'NFS server. Note that these defaults can be overridden '
-                     'when a share is created by passing metadata with key '
-                     'name export_options.'),
-               deprecated_for_removal=True,
-               deprecated_reason="This option isn't used any longer. Please "
-                                 "use share-type extra specs for export "
-                                 "options."),
 ]
 
 
