@@ -330,7 +330,11 @@ Allow read-write access
      | metadata     | {'key1': 'value1'}                   |
      +--------------+--------------------------------------+
 
-   .. note::
+  .. note::
+      Since API version 2.38, access rules of type IP supports IPv6 addresses
+      and subnets in CIDR notation.
+
+  .. note::
       Since API version 2.45, metadata can be added, removed and updated for
       share access rules in a form of key=value pairs. Metadata can help you
       identify and filter access rules.
@@ -355,14 +359,14 @@ Allow read-only access
 
   .. code-block:: console
 
-     $ manila access-allow myshare ip 20.0.0.0/24 --access-level ro
+     $ manila access-allow myshare ip fd31:7ee0:3de4:a41b::/64 --access-level ro
      +--------------+--------------------------------------+
      | Property     | Value                                |
      +--------------+--------------------------------------+
      | id           | 45b0a030-306a-4305-9e2a-36aeffb2d5b7 |
      | share_id     | 83b0772b-00ad-4e45-8fad-106b9d4f1719 |
      | access_level | ro                                   |
-     | access_to    | 20.0.0.0/24                          |
+     | access_to    | fd31:7ee0:3de4:a41b::/64             |
      | access_type  | ip                                   |
      | state        | queued_to_apply                      |
      | access_key   | None                                 |
@@ -376,12 +380,12 @@ Allow read-only access
   .. code-block:: console
 
      $ manila access-list myshare
-     +--------------------------------------+-------------+-------------+--------------+--------+------------+----------------------------+------------+
-     | id                                   | access_type | access_to   | access_level | state  | access_key | created_at                 | updated_at |
-     +--------------------------------------+-------------+-------------+--------------+--------+------------+----------------------------+------------+
-     | 45b0a030-306a-4305-9e2a-36aeffb2d5b7 | ip          | 20.0.0.0/24 | ro           | active | None       | 2020-08-07T05:28:35.000000 | None       |
-     | e30bde96-9217-4f90-afdc-27c092af1c77 | ip          | 10.0.0.0/24 | rw           | active | None       | 2020-08-07T05:27:27.000000 | None       |
-     +--------------------------------------+-------------+-------------+--------------+--------+------------+----------------------------+------------+
+     +--------------------------------------+-------------+----------------------------+--------------+--------+------------+----------------------------+------------+
+     | id                                   | access_type | access_to                  | access_level | state  | access_key | created_at                 | updated_at |
+     +--------------------------------------+-------------+----------------------------+--------------+--------+------------+----------------------------+------------+
+     | 45b0a030-306a-4305-9e2a-36aeffb2d5b7 | ip          | fd31:7ee0:3de4:a41b::/64   | ro           | active | None       | 2020-08-07T05:28:35.000000 | None       |
+     | e30bde96-9217-4f90-afdc-27c092af1c77 | ip          | 10.0.0.0/24                | rw           | active | None       | 2020-08-07T05:27:27.000000 | None       |
+     +--------------------------------------+-------------+----------------------------+--------------+--------+------------+----------------------------+------------+
 
   Another access rule is created.
 

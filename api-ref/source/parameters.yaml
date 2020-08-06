@@ -578,36 +578,45 @@ access_to:
   description: |
     The value that defines the access. The back end
     grants or denies the access to it.  A valid value is one of these
-    values:  - ``ip``. Authenticates an instance through its IP
-    address. A valid   format is ``XX.XX.XX.XX`` or
-    ``XX.XX.XX.XX/XX``. For example   ``0.0.0.0/0``.  - ``cert``.
-    Authenticates an instance through a TLS certificate.   Specify the
-    TLS identity as the IDENTKEY. A valid value is any   string up to
-    64 characters long in the common name (CN) of the   certificate.
-    The meaning of a string depends on its   interpretation.  -
-    ``user``. Authenticates by a user or group name. A valid value is
-    an alphanumeric string that can contain some special characters
-    and is from 4 to 32 characters long.
+    values:
+
+    - ``ip``:
+      Authenticates a client through its IP address, that can be IPv4 or IPv6.
+      You may specify a single client IP address or a range of IP addresses in
+      CIDR notation. For example ``0.0.0.0/0`` for IPv4 or ``::/0`` for IPv6.
+    - ``cert``:
+      Authenticates an instance through a TLS certificate. Specify the TLS
+      identity as the IDENTKEY. A valid value is any string up to 64 characters
+      long in the common name (CN) of the certificate. The meaning of a string
+      depends on its interpretation.
+    - ``user``:
+      Authenticates by a user or group name. A valid value is an alphanumeric
+      string that can contain some special characters and is from 4 to 32
+      characters long.
   in: body
   required: true
   type: string
 access_type:
-  description: |
-    The access rule type.  A valid value for the
-    share access rule type is one of the following values:  - ``ip``.
-    Authenticates an instance through its IP address. A valid   format
-    is ``XX.XX.XX.XX`` or ``XX.XX.XX.XX/XX``. For example
-    ``0.0.0.0/0``.  - ``cert``. Authenticates an instance through a
-    TLS certificate.   Specify the TLS identity as the IDENTKEY. A
-    valid value is any   string up to 64 characters long in the common
-    name (CN) of the   certificate. The meaning of a string depends on
-    its   interpretation.  - ``user``. Authenticates by a user or
-    group name. A valid value is   an alphanumeric string that can
-    contain some special characters   and is from 4 to 32 characters
-    long.
   in: body
   required: true
   type: string
+  description: |
+    The access rule type. A valid value for the share access rule type is one
+    of the following values:
+
+    - ``ip``:
+      Authenticates a client through its IP address, that can be IPv4 or IPv6.
+      You may specify a single client IP address or a range of IP addresses in
+      CIDR notation. For example ``0.0.0.0/0`` for IPv4 or ``::/0`` for IPv6.
+    - ``cert``:
+      Authenticates a client through a TLS certificate. Specify the TLS
+      identity as the IDENTKEY. A valid value is any string up to 64 characters
+      long in the common name (CN) of the certificate. The meaning of a string
+      depends on its interpretation.
+    - ``user``:
+      Authenticates by a user or group name. A valid value is an alphanumeric
+      string that can contain some special characters and is from 4 to 32
+      characters long.
 action_id_body:
   in: body
   required: true
