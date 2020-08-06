@@ -161,28 +161,37 @@ Allow read-write access
 
    .. code-block:: console
 
-      $ manila access-allow myshare ip 10.0.0.0/24
+      $ manila access-allow myshare ip 10.0.0.0/24 --metadata key1=value1
       +--------------+--------------------------------------+
       | Property     | Value                                |
       +--------------+--------------------------------------+
-      | share_id     | 8d8b854b-ec32-43f1-acc0-1b2efa7c3400 |
-      | access_type  | ip                                   |
-      | access_to    | 10.0.0.0/24                          |
-      | access_level | rw                                   |
-      | state        | new                                  |
       | id           | 0c8470ca-0d77-490c-9e71-29e1f453bf97 |
+      | share_id     | 8d8b854b-ec32-43f1-acc0-1b2efa7c3400 |
+      | access_level | rw                                   |
+      | access_to    | 10.0.0.0/24                          |
+      | access_type  | ip                                   |
+      | state        | queued_to_apply                      |
+      | access_key   | None                                 |
+      | created_at   | 2016-03-24T14:51:36.000000           |
+      | updated_at   | None                                 |
+      | metadata     | {'key1': 'value1'}                   |
       +--------------+--------------------------------------+
+
+   .. note::
+      Since API version 2.45, metadata can be added, removed and updated for
+      share access rules in a form of key=value pairs.
+
 
 #. List access.
 
    .. code-block:: console
 
       $ manila access-list myshare
-      +--------------------------------------+-------------+-------------+--------------+--------+
-      | id                                   | access_type | access_to   | access_level | state  |
-      +--------------------------------------+-------------+-------------+--------------+--------+
-      | 0c8470ca-0d77-490c-9e71-29e1f453bf97 | ip          | 10.0.0.0/24 | rw           | active |
-      +--------------------------------------+-------------+-------------+--------------+--------+
+      +--------------------------------------+-------------+-------------+--------------+--------+------------+----------------------------+------------+
+      | id                                   | access_type | access_to   | access_level | state  | access_key | created_at                 | updated_at |
+      +--------------------------------------+-------------+-------------+--------------+--------+------------+----------------------------+------------+
+      | 0c8470ca-0d77-490c-9e71-29e1f453bf97 | ip          | 10.0.0.0/24 | rw           | active | None       | 2016-03-24T14:51:36.000000 | None       |
+      +--------------------------------------+-------------+-------------+--------------+--------+------------+----------------------------+------------+
 
    The access is created.
 
@@ -197,12 +206,16 @@ Allow read-only access
       +--------------+--------------------------------------+
       | Property     | Value                                |
       +--------------+--------------------------------------+
-      | share_id     | 8d8b854b-ec32-43f1-acc0-1b2efa7c3400 |
-      | access_type  | ip                                   |
-      | access_to    | 20.0.0.0/24                          |
-      | access_level | ro                                   |
-      | state        | new                                  |
       | id           | f151ad17-654d-40ce-ba5d-98a5df67aadc |
+      | share_id     | 8d8b854b-ec32-43f1-acc0-1b2efa7c3400 |
+      | access_level | ro                                   |
+      | access_to    | 20.0.0.0/24                          |
+      | access_type  | ip                                   |
+      | state        | queued_to_apply                      |
+      | access_key   | None                                 |
+      | created_at   | 2016-03-24T14:54:11.000000           |
+      | updated_at   | None                                 |
+      | metadata     | {}                                   |
       +--------------+--------------------------------------+
 
 #. List access.
@@ -210,14 +223,59 @@ Allow read-only access
    .. code-block:: console
 
       $ manila access-list myshare
-      +--------------------------------------+-------------+-------------+--------------+--------+
-      | id                                   | access_type | access_to   | access_level | state  |
-      +--------------------------------------+-------------+-------------+--------------+--------+
-      | 0c8470ca-0d77-490c-9e71-29e1f453bf97 | ip          | 10.0.0.0/24 | rw           | active |
-      | f151ad17-654d-40ce-ba5d-98a5df67aadc | ip          | 20.0.0.0/24 | ro           | active |
-      +--------------------------------------+-------------+-------------+--------------+--------+
+      +--------------------------------------+-------------+-------------+--------------+--------+------------+----------------------------+------------+
+      | id                                   | access_type | access_to   | access_level | state  | access_key | created_at                 | updated_at |
+      +--------------------------------------+-------------+-------------+--------------+--------+------------+----------------------------+------------+
+      | 0c8470ca-0d77-490c-9e71-29e1f453bf97 | ip          | 10.0.0.0/24 | rw           | active | None       | 2016-03-24T14:51:36.000000 | None       |
+      | f151ad17-654d-40ce-ba5d-98a5df67aadc | ip          | 20.0.0.0/24 | ro           | active | None       | 2016-03-24T14:54:11.000000 | None       |
+      +--------------------------------------+-------------+-------------+--------------+--------+------------+----------------------------+------------+
 
    The access is created.
+
+Update access rules metadata
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#. Add a new metadata.
+
+   .. code-block:: console
+
+      $ manila access-metadata 0c8470ca-0d77-490c-9e71-29e1f453bf97 set key2=value2
+      $ manila access-show 0c8470ca-0d77-490c-9e71-29e1f453bf97
+      +--------------+--------------------------------------+
+      | Property     | Value                                |
+      +--------------+--------------------------------------+
+      | id           | 0c8470ca-0d77-490c-9e71-29e1f453bf97 |
+      | share_id     | 8d8b854b-ec32-43f1-acc0-1b2efa7c3400 |
+      | access_level | rw                                   |
+      | access_to    | 10.0.0.0/24                          |
+      | access_type  | ip                                   |
+      | state        | active                               |
+      | access_key   | None                                 |
+      | created_at   | 2016-03-24T14:51:36.000000           |
+      | updated_at   | None                                 |
+      | metadata     | {'key1': 'value1', 'key2': 'value2'} |
+      +--------------+--------------------------------------+
+
+#. Remove a metadata key value.
+
+   .. code-block:: console
+
+      $ manila access-metadata 0c8470ca-0d77-490c-9e71-29e1f453bf97 unset key
+      $ manila access-show 0c8470ca-0d77-490c-9e71-29e1f453bf97
+      +--------------+--------------------------------------+
+      | Property     | Value                                |
+      +--------------+--------------------------------------+
+      | id           | 0c8470ca-0d77-490c-9e71-29e1f453bf97 |
+      | share_id     | 8d8b854b-ec32-43f1-acc0-1b2efa7c3400 |
+      | access_level | rw                                   |
+      | access_to    | 10.0.0.0/24                          |
+      | access_type  | ip                                   |
+      | state        | active                               |
+      | access_key   | None                                 |
+      | created_at   | 2016-03-24T14:51:36.000000           |
+      | updated_at   | None                                 |
+      | metadata     | {'key2': 'value2'}                   |
+      +--------------+--------------------------------------+
 
 Deny access
 ~~~~~~~~~~~
