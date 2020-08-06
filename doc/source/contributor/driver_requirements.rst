@@ -14,8 +14,8 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-Manila minimum requirements and features since Mitaka
-=====================================================
+Manila minimum requirements and features
+========================================
 
 In order for a driver to be accepted into manila code base, there are certain
 minimum requirements and features that must be met, in order to ensure
@@ -74,8 +74,11 @@ Capabilities
 ------------
 
 In order for manila to function accordingly to the driver being used, the
-driver must provide a set of information to manila, known as capabilities, as
-follows:
+driver must provide a set of information to manila, known as capabilities.
+Share driver can use Share type extra-specs (scoped and un-scoped) to serve
+new shares. See :doc:`../admin/capabilities_and_extra_specs` for more
+information. At a minimum your driver must report:
+
 
 - share_backend_name: a name for the backend;
 - driver_handles_share_servers: driver mode, whether this driver instance
@@ -102,7 +105,79 @@ function correctly in manila, such as:
 - replication_type: string specifying the type of replication supported by
   the driver. Can be one of ('readable', 'writable' or 'dr').
 
-.. note:: for more information please see https://docs.openstack.org/manila/latest/admin/capabilities_and_extra_specs.html
+Below is an example of drivers with multiple pools. "my" is used as an
+example vendor prefix:
+
+::
+
+    {
+        'driver_handles_share_servers': 'False',  #\
+        'share_backend_name': 'My Backend',       # backend level
+        'vendor_name': 'MY',                      # mandatory/fixed
+        'driver_version': '1.0',                  # stats & capabilities
+        'storage_protocol': 'NFS_CIFS',           #/
+                                                  #\
+        'my_capability_1': 'custom_val',          # "my" optional vendor
+        'my_capability_2': True,                  # stats & capabilities
+                                                  #/
+        'pools': [
+            {'pool_name':
+               'thin-dedupe-compression pool',    #\
+             'total_capacity_gb': 500,            #  mandatory stats for
+             'free_capacity_gb': 230,             #  pools
+             'reserved_percentage': 0,            #/
+                                                  #\
+             'dedupe': True,                      # common capabilities
+             'compression': True,                 #
+             'snapshot_support': True,            #
+             'create_share_from_snapshot_support': True,
+             'revert_to_snapshot_support': True,
+             'qos': True,                         # this backend supports QoS
+             'thin_provisioning': True,           #
+             'max_over_subscription_ratio': 10,   # (mandatory for thin)
+             'provisioned_capacity_gb': 270,      # (mandatory for thin)
+                                                  #
+                                                  #
+             'replication_type': 'dr',            # this backend supports
+                                                  # replication_type 'dr'
+                                                  #/
+             'my_dying_disks': 100,               #\
+             'my_super_hero_1': 'Hulk',           #  "my" optional vendor
+             'my_super_hero_2': 'Spider-Man',     #  stats & capabilities
+                                                  #/
+                                                  #\
+                                                  # can replicate to other
+             'replication_domain': 'asgard',      # backends in
+                                                  # replication_domain 'asgard'
+                                                  #/
+             'ipv4_support': True,
+             'ipv6_support': True,
+
+            },
+            {'pool_name': 'thick pool',
+             'total_capacity_gb': 1024,
+             'free_capacity_gb': 1024,
+             'qos': False,
+             'snapshot_support': True,
+             'create_share_from_snapshot_support': False, # this pool does not
+                                                          # allow creating
+                                                          # shares from
+                                                          # snapshots
+             'revert_to_snapshot_support': True,
+             'reserved_percentage': 0,
+             'dedupe': False,
+             'compression': False,
+             'thin_provisioning': False,
+             'replication_type': None,
+             'my_dying_disks': 200,
+             'my_super_hero_1': 'Batman',
+             'my_super_hero_2': 'Robin',
+             'ipv4_support': True,
+             'ipv6_support': True,
+            },
+         ]
+    }
+
 
 Continuous Integration systems
 ------------------------------
@@ -124,7 +199,7 @@ All drivers submitted must be contemplated with unit tests covering at least
 framework and be located in-tree using a structure that mirrors the functional
 code, such as directory names and filenames. See template below:
 
-  ::
+::
 
     manila/[tests/]path/to/brand/new/[test_]driver.py
 
@@ -206,10 +281,41 @@ additional functionalities such as consistent group snapshot, the driver
 vendors may report this capability as a group capability, such as: Ordered
 writes, Consistent snapshots, Group replication.
 
+Drivers need to report group capabilities as part of the updated stats (e.g.
+capacity) and filled in 'share_group_stats' node for their back end. Share group
+type group-specs (scoped and un-scoped) are available for the driver
+implementation to use as-needed. Below is an example of the share stats
+payload from the driver having multiple pools and group capabilities. "my"
+is used as an example vendor prefix:
+
+::
+
+    {
+        'driver_handles_share_servers': 'False',          #\
+        'share_backend_name': 'My Backend',               # backend level
+        'vendor_name': 'MY',                              # mandatory/fixed
+        'driver_version': '1.0',                          # stats & capabilities
+        'storage_protocol': 'NFS_CIFS',                   #/
+                                                          #\
+        'my_capability_1': 'custom_val',                  # "my" optional vendor
+        'my_capability_2': True,                          # stats & capabilities
+                                                          #/
+        'share_group_stats': {
+                                                          #\
+                'my_group_capability_1': 'custom_val',    # "my" optional vendor
+                'my_group_capability_2': True,            # stats & group capabilities
+                                                          #/
+                'consistent_snapshot_support': 'host',    #\
+                                                          # common group capabilities
+                                                          #/
+            },
+         ]
+    }
+
+
 .. note::
 
-  for more information please see
-  `group capabilities <https://docs.openstack.org/manila/latest/admin/group_capabilities_and_extra_specs.html>`_
+  for more information please see :doc:`../admin/group_capabilities_and_extra_specs`
 
 Share Replication
 -----------------
@@ -219,8 +325,7 @@ recovery) or for load sharing. In order to utilize this feature, drivers must
 report the ``replication_type`` they support as a capability and implement
 necessary methods.
 
-More details can be found at:
-https://docs.openstack.org/manila/latest/admin/shared-file-systems-share-replication.html
+More details can be found at: :doc:`../admin/shared-file-systems-share-replication`
 
 Update "used_size" of shares
 ----------------------------
