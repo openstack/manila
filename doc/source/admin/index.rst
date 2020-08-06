@@ -45,10 +45,10 @@ deployment.
 
    shared-file-systems-key-concepts.rst
    shared-file-systems-share-management.rst
-   shared-file-systems-share-migration.rst
    shared-file-systems-share-types.rst
    shared-file-systems-snapshots.rst
    shared-file-systems-security-services.rst
+   shared-file-systems-share-migration.rst
    shared-file-systems-share-replication.rst
    shared-file-systems-multi-backend.rst
    shared-file-systems-networking.rst
