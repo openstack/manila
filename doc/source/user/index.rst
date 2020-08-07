@@ -18,7 +18,7 @@ User
 .. toctree::
     :maxdepth: 1
 
-    API
+    Manila API v2 Reference <https://docs.openstack.org/api-ref/shared-file-system/>
     create-and-manage-shares
     share-network-operations
     share-network-subnet-operations
