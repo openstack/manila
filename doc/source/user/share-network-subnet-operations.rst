@@ -4,6 +4,8 @@
 Create and manage share network subnets
 =======================================
 
+.. contents:: :local:
+
 A share network subnet stores network information to create and manage shares.
 To create and manage your share network subnets, you can use ``manila`` client
 commands. You can create multiple subnets in a share network, and if you do
@@ -11,6 +13,12 @@ not specify an availability zone, the subnet you are creating will be
 considered default by the Shared File Systems service. The default subnet
 spans all availability zones. You cannot have more than one default subnet
 per share network.
+
+
+.. important::
+
+   In order to use share networks, the share type you choose must have the
+   extra specification ``driver_handles_share_servers`` set to True.
 
 Create a subnet in an existing share network
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

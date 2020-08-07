@@ -4,6 +4,8 @@
 Create and manage share networks
 ================================
 
+.. contents:: :local:
+
 A share network stores network information to create and manage shares. A share
 network provides a way to designate a network to export shares upon. In the
 most common use case, you can create a share network with a private OpenStack
@@ -16,6 +18,11 @@ have provider networks that are designated for use with share networks.
 In either case, as long as the underlying network is connected to the clients
 (virtual machines, containers or bare metals), there will exist a direct path
 to communicate with shares exported on the share networks.
+
+.. important::
+
+   In order to use share networks, the share type you choose must have the
+   extra specification ``driver_handles_share_servers`` set to True.
 
 Create share networks
 ~~~~~~~~~~~~~~~~~~~~~
