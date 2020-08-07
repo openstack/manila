@@ -3238,6 +3238,10 @@ class ShareManager(manager.SchedulerDependentManager):
         """Delete a share instance."""
         context = context.elevated()
         share_instance = self._get_share_instance(context, share_instance_id)
+        # explicitly load export location to prevent DetachedInstanceError
+        # see https://bugs.launchpad.net/manila/+bug/1700660
+        # on other possible workaround
+        share_instance.get('export_location')
         share_id = share_instance.get('share_id')
         share_server = self._get_share_server(context, share_instance)
         share = self.db.share_get(context, share_id)

@@ -21,6 +21,8 @@ SQLAlchemy models for Manila data.
 
 from oslo_config import cfg
 from oslo_db.sqlalchemy import models
+from oslo_log import log
+from oslo_utils import strutils
 from sqlalchemy import Column, Integer, String, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import orm
@@ -30,6 +32,7 @@ from manila.common import constants
 
 CONF = cfg.CONF
 BASE = declarative_base()
+LOG = log.getLogger(__name__)
 
 
 class ManilaBase(models.ModelBase,
@@ -351,6 +354,17 @@ class ShareInstance(BASE, ManilaBase):
     @property
     def export_location(self):
         if len(self.export_locations) > 0:
+            try:
+                for export_location in self.export_locations:
+                    is_preferred = strutils.bool_from_string(
+                        export_location['el_metadata'].get('preferred')
+                    )
+                    if is_preferred:
+                        return export_location['path']
+            except Exception as e:
+                # not fatal, if preferred does not work, take the first
+                LOG.warning("Failed to get preferred export location: %s.", e)
+
             return self.export_locations[0]['path']
 
     @property
