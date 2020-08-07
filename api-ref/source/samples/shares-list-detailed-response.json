@@ -32,6 +32,7 @@
             "task_state": null,
             "is_public": true,
             "snapshot_support": true,
+            "user_id": "66ffd308757e44b9a8bec381322b0b88",
             "name": "my_share4",
             "has_replicas": false,
             "replication_type": null,
@@ -76,6 +77,7 @@
             "has_replicas": false,
             "replication_type": null,
             "created_at": "2015-09-16T17:26:28.000000",
+            "user_id": "66ffd308757e44b9a8bec381322b0b88",
             "share_proto": "NFS",
             "volume_type": "default"
         }

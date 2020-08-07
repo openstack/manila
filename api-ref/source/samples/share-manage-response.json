@@ -25,6 +25,7 @@
         "metadata": {},
         "status": "manage_starting",
         "description": "Lets manage share.",
+        "user_id": "66ffd308757e44b9a8bec381322b0b88",
         "host": "manila2@unmanage1#UNMANAGE1",
         "access_rules_status": "active",
         "has_replicas": false,

@@ -1249,6 +1249,13 @@ manage_share_server_id:
   required: true
   type: string
   min_version: 2.49
+managed_share_user_id:
+  description: |
+    ID of the user who brought the share under manila management.
+  in: body
+  required: true
+  type: string
+  min_version: 2.16
 maxTotalReplicaGigabytes:
     description: |
       The maximum number of replica gigabytes that are allowed in a project.
@@ -2566,6 +2573,13 @@ share_unmanage:
   in: body
   required: true
   type: string
+share_user_id:
+  description: |
+    ID of the user that the share was created by.
+  in: body
+  required: true
+  type: string
+  min_version: 2.16
 shrink:
   description: |
     The ``shrink`` object.

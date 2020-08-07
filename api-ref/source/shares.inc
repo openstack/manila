@@ -237,6 +237,7 @@ Response parameters
    - share_proto: share_proto
    - volume_type: volume_type
    - count: count
+   - user_id: share_user_id
 
 Response example
 ----------------
@@ -308,6 +309,7 @@ Response parameters
    - created_at: created_at
    - share_proto: share_proto
    - volume_type: volume_type
+   - user_id: share_user_id
 
 Response example
 ----------------
@@ -398,6 +400,7 @@ Response parameters
    - share_server_id: share_server_id
    - snapshot_support: snapshot_support
    - created_at: created_at
+   - user_id: share_user_id
 
 Response example
 ----------------
@@ -496,6 +499,7 @@ Response parameters
    - created_at: created_at
    - share_proto: share_proto
    - volume_type: volume_type
+   - user_id: managed_share_user_id
 
 Response example
 ----------------
@@ -587,6 +591,7 @@ Response parameters
    - created_at: created_at
    - share_proto: share_proto
    - volume_type: volume_type
+   - user_id: share_user_id
 
 Response example
 ----------------

@@ -30,6 +30,7 @@
         "progress": "100%",
         "description": "My custom share London",
         "host": "manila2@generic1#GENERIC1",
+        "user_id": "66ffd308757e44b9a8bec381322b0b88",
         "access_rules_status": "active",
         "has_replicas": false,
         "replication_type": null,
