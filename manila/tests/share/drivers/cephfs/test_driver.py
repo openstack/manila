@@ -75,8 +75,10 @@ class MockVolumeClientModule(object):
             self.get_used_bytes = mock.Mock(return_value=self.mock_used_bytes)
             self.rados = mock.Mock()
             self.rados.get_cluster_stats = mock.Mock(return_value={
-                "kb": 1000,
-                "kb_avail": 500
+                "kb": 172953600,
+                "kb_avail": 157123584,
+                "kb_used": 15830016,
+                "num_objects": 26,
             })
 
 
@@ -352,10 +354,15 @@ class CephFSDriverTestCase(test.TestCase):
 
     def test_update_share_stats(self):
         self._driver.get_configured_ip_versions = mock.Mock(return_value=[4])
-        self._driver._volume_client
+        self._driver.configuration.local_conf.set_override(
+            'reserved_share_percentage', 5)
+
         self._driver._update_share_stats()
         result = self._driver._stats
 
+        self.assertEqual(5, result['pools'][0]['reserved_percentage'])
+        self.assertEqual(164.94, result['pools'][0]['total_capacity_gb'])
+        self.assertEqual(149.84, result['pools'][0]['free_capacity_gb'])
         self.assertTrue(result['ipv4_support'])
         self.assertFalse(result['ipv6_support'])
         self.assertEqual("CEPHFS", result['storage_protocol'])

@@ -314,6 +314,22 @@ using the section name, ``cephfsnfs1``.
     enabled_share_backends = generic1, cephfsnfs1
 
 
+Space considerations
+~~~~~~~~~~~~~~~~~~~~
+
+The CephFS driver reports total and free capacity available across the Ceph
+cluster to manila to allow provisioning. All CephFS shares are thinly
+provisioned, i.e., empty shares do not consume any significant space
+on the cluster. The CephFS driver does not allow controlling oversubscription
+via manila. So, as long as there is free space, provisioning will continue,
+and eventually this may cause your Ceph cluster to be over provisioned and
+you may run out of space if shares are being filled to capacity. It is advised
+that you use Ceph's monitoring tools to monitor space usage and add more
+storage when required in order to honor space requirements for provisioned
+manila shares. You may use the driver configuration option
+``reserved_share_percentage`` to prevent manila from filling up your Ceph
+cluster, and allow existing shares to grow.
+
 Creating shares
 ~~~~~~~~~~~~~~~
 
