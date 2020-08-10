@@ -630,8 +630,9 @@ class VNXStorageConnection(driver.StorageConnection):
 
                 pool_stat = dict(
                     pool_name=pool['name'],
-                    total_capacity_gb=total_size,
-                    free_capacity_gb=total_size - used_size,
+                    total_capacity_gb=enas_utils.mb_to_gb(total_size),
+                    free_capacity_gb=enas_utils.mb_to_gb(
+                        total_size - used_size),
                     qos=False,
                     reserved_percentage=self.reserved_percentage,
                 )
