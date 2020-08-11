@@ -2969,12 +2969,27 @@ class NetAppCmodeFileStorageLibrary(object):
 
         for share in shares:
             share_server = share.get('share_server')
-            updates[share['id']] = {
-                'export_locations': self.update_share(
-                    share,
-                    share_server=share_server
-                )
-            }
+            try:
+                updates[share['id']] = {
+                    'export_locations': self.update_share(
+                        share,
+                        share_server=share_server
+                    )
+                }
+            except (exception.NetAppException, netapp_api.NaApiError) as e:
+                err_msg = e.message
+                msg_args = {
+                    'share': share['id'],
+                    'exception': err_msg,
+                }
+                msg = _('Failed to ensure share %(share)s: '
+                        '%(exception)s. ') % msg_args
+
+                if err_msg.startswith('Could not find export policy'):
+                    LOG.debug(msg)
+                else:
+                    LOG.warning(msg)
+
         return updates
 
     def ensure_share_server(self, context, share_server, network_info):
