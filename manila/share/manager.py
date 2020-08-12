@@ -210,7 +210,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.19'
+    RPC_API_VERSION = '1.20'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -638,18 +638,24 @@ class ShareManager(manager.SchedulerDependentManager):
                 with_share_data=True
             )
             if create_on_backend:
-                metadata = {'request_host': share_instance['host']}
+                metadata = self._build_server_metadata(
+                    share_instance['host'], share_instance['share_type_id'])
                 compatible_share_server = (
                     self._create_share_server_in_backend(
-                        context, compatible_share_server,
-                        metadata=metadata))
+                        context, compatible_share_server, metadata))
 
             return compatible_share_server, share_instance_ref
 
         return _wrapped_provide_share_server_for_share()
 
+    def _build_server_metadata(self, host, share_type_id):
+        return {
+            'request_host': host,
+            'share_type_id': share_type_id,
+        }
+
     def _create_share_server_in_backend(self, context, share_server,
-                                        metadata=None):
+                                        metadata):
         """Perform setup_server on backend
 
         :param metadata: A dictionary, to be passed to driver's setup_server()
@@ -657,8 +663,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         if share_server['status'] == constants.STATUS_CREATING:
             # Create share server on backend with data from db.
-            share_server = self._setup_server(context, share_server,
-                                              metadata=metadata)
+            share_server = self._setup_server(context, share_server, metadata)
             LOG.info("Share server created successfully.")
         else:
             LOG.info("Using preexisting share server: "
@@ -666,7 +671,8 @@ class ShareManager(manager.SchedulerDependentManager):
                      {'share_server_id': share_server['id']})
         return share_server
 
-    def create_share_server(self, context, share_server_id):
+    def create_share_server(
+            self, context, share_server_id, share_instance_id):
         """Invoked to create a share server in this backend.
 
         This method is invoked to create the share server defined in the model
@@ -674,10 +680,15 @@ class ShareManager(manager.SchedulerDependentManager):
 
         :param context: The 'context.RequestContext' object for the request.
         :param share_server_id: The id of the server to be created.
+        :param share_instance_id: The id of the share instance
         """
         share_server = self.db.share_server_get(context, share_server_id)
+        share = self.db.share_instance_get(
+            context, share_instance_id, with_share_data=True)
+        metadata = self._build_server_metadata(share['host'],
+                                               share['share_type_id'])
 
-        self._create_share_server_in_backend(context, share_server)
+        self._create_share_server_in_backend(context, share_server, metadata)
 
     def provide_share_server(self, context, share_instance_id,
                              share_network_id, snapshot_id=None):
@@ -808,8 +819,11 @@ class ShareManager(manager.SchedulerDependentManager):
 
             if compatible_share_server['status'] == constants.STATUS_CREATING:
                 # Create share server on backend with data from db.
+                metadata = self._build_server_metadata(
+                    share_group_ref['host'],
+                    share_group_ref['share_types'][0]['share_type_id'])
                 compatible_share_server = self._setup_server(
-                    context, compatible_share_server)
+                    context, compatible_share_server, metadata)
                 LOG.info("Share server created successfully.")
             else:
                 LOG.info("Used preexisting share server "
@@ -3685,7 +3699,7 @@ class ShareManager(manager.SchedulerDependentManager):
         }
         return network_info
 
-    def _setup_server(self, context, share_server, metadata=None):
+    def _setup_server(self, context, share_server, metadata):
         try:
             share_network_subnet = share_server['share_network_subnet']
             share_network_subnet_id = share_network_subnet['id']

@@ -378,7 +378,7 @@ class ShareRpcAPITestCase(test.TestCase):
     def test_create_share_server(self):
         self._test_share_api('create_share_server',
                              rpc_method='cast',
-                             version='1.12',
+                             version='1.20',
                              share_instance=self.fake_share['instance'],
                              share_server_id='fake_server_id')
 
