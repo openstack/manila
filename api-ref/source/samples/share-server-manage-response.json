@@ -7,6 +7,7 @@
         "host": "myhost@mybackend",
         "share_network_name": "share-net-name",
         "share_network_id": "78cef6eb-648a-4bbd-9ae1-d2eaaf594cc0",
+        "share_network_subnet_id": "f53252f0-c2a9-4d7c-af41-1c6f3cfb3af3",
         "created_at": "2019-03-06T11:59:41.000000",
         "backend_details": {},
         "is_auto_deletable": false,

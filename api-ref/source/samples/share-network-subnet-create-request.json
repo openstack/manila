@@ -1,0 +1,7 @@
+{
+    "share-network-subnet": {
+        "neutron_net_id": "62187648-6617-4509-a780-ffc973a7fe43",
+        "neutron_subnet_id": "2276888a-27c1-47c2-82a0-ea33050128b5",
+        "availability_zone": "manila-zone-0"
+    }
+}

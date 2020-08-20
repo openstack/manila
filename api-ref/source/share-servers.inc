@@ -79,6 +79,7 @@ Response parameters
    - share_network_name: share_network_name
    - host: host_share_server_body
    - updated_at: updated_at
+   - share_network_subnet_id: share_network_subnet_id_share_server_body
 
 Response example
 ----------------
@@ -132,6 +133,7 @@ Response parameters
   - updated_at: updated_at
   - identifier: share_server_show_identifier
   - is_auto_deletable: share_server_show_is_auto_deletable
+  - share_network_subnet_id: share_network_subnet_id_share_server_body
 
 Response example
 ----------------
@@ -252,6 +254,7 @@ Request
     - identifier: identifier
     - share_network: share_network_id
     - driver_options: driver_options
+    - share_network_subnet_id: share_network_subnet_id_manage_server_request
 
 Request example
 ---------------
@@ -275,6 +278,8 @@ Response parameters
     - backend_details: backend_details
     - is_auto_deletable: is_auto_deletable
     - identifier: identifier
+    - share_network_subnet_id: share_network_subnet_id_manage_server_body
+
 
 Response examples
 -----------------

@@ -91,6 +91,14 @@ Request example
 .. literalinclude:: samples/share-replica-create-request.json
    :language: javascript
 
+.. note::
+   Since API version 2.51, the parameter ``share_network_id``
+   is deprecated. It will be inherited from its parent share, and the
+   Shared File Systems service will automatically choose which share network
+   subnet your share replica will be placed, according to the specified
+   availability zone.
+
+
 Response parameters
 -------------------
 

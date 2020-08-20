@@ -16,6 +16,7 @@ Shared File Systems API
 .. include:: snapshots.inc
 .. include:: snapshot-instances.inc
 .. include:: share-networks.inc
+.. include:: share-network-subnets.inc
 .. include:: security-services.inc
 .. include:: share-servers.inc
 .. include:: share-instances.inc

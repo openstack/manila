@@ -1,0 +1,36 @@
+{
+    "share_network_subnets": [
+    {
+        "id": "a7507a16-98bb-476c-ba90-487e4b4775fa",
+        "availability_zone": null,
+        "share_network_id": "8bc488d8-52f7-46cb-91b1-89dd92cae972",
+        "share_network_name": "sn_test",
+        "created_at": "2019-10-03T18:30:15.000000",
+        "segmentation_id": null,
+        "neutron_subnet_id": "dc0a37f0-81b0-4eb5-aad8-deffda5ff4ca",
+        "updated_at": null,
+        "neutron_net_id": "70bc8f03-525c-4334-a51b-261a024681c5",
+        "ip_version": 4,
+        "cidr": "10.190.5.0/24",
+        "network_type": "flat",
+        "mtu": 1500,
+        "gateway": "10.190.5.1"
+    },
+    {
+        "id": "8ebe964d-ac48-4e43-93ed-b1768148f8f4",
+        "availability_zone": "manila-zone-0",
+        "share_network_id": "8bc488d8-52f7-46cb-91b1-89dd92cae972",
+        "share_network_name": "sn_test",
+        "created_at": "2019-10-02T01:35:10.000000",
+        "segmentation_id": null,
+        "neutron_subnet_id": "2276888a-27c1-47c2-82a0-ea33050128b5",
+        "updated_at": null,
+        "neutron_net_id": "62187648-6617-4509-a780-ffc973a7fe43",
+        "ip_version": 4,
+        "cidr": "172.24.5.0/24",
+        "network_type": "flat",
+        "mtu": 1500,
+        "gateway": "172.24.5.1"
+    }
+    ]
+}

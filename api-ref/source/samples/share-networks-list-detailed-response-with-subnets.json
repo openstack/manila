@@ -1,0 +1,66 @@
+{
+    "share_networks": [
+        {
+            "id": "03987b5f-cb79-4f5f-a590-f6936b91b49e",
+            "name": "net_my1",
+            "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
+            "created_at": "2019-10-02T12:33:36.000000",
+            "updated_at": null,
+            "description": null,
+            "share_network_subnets": [
+                {
+                    "id": "022aa495-845e-42a6-9d83-a38f164053c9",
+                    "availability_zone": null,
+                    "created_at": "2019-10-02T12:33:36.000000",
+                    "updated_at": null,
+                    "segmentation_id": null,
+                    "neutron_net_id": "f00732aa-7721-455d-ba14-ec37619ea13f",
+                    "neutron_subnet_id": "eb7adcf8-ce71-43e3-b4c2-cf81da9f89a",
+                    "ip_version": null,
+                    "cidr": null,
+                    "network_type": null,
+                    "mtu": null,
+                    "gateway": null
+                }
+            ]
+        },
+        {
+            "id": "1324e7d3-fba8-45e4-bb37-b59c12eb06dc",
+            "name": "net_my2",
+            "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
+            "created_at": "2019-07-01T17:49:43.000000",
+            "updated_at": "2019-07-02T12:17:39.000000",
+            "description": null,
+            "share_network_subnets": [
+                {
+                    "id": "8ebe964d-ac48-4e43-93ed-b1768148f8f4",
+                    "availability_zone": "manila-zone-0",
+                    "created_at": "2019-10-03T02:25:12.000000",
+                    "updated_at": null,
+                    "segmentation_id": null,
+                    "neutron_net_id": "62187648-6617-4509-a780-ffc973a7fe43",
+                    "neutron_subnet_id": "2276888a-27c1-47c2-82a0-ea3050128b5",
+                    "ip_version": null,
+                    "cidr": null,
+                    "network_type": null,
+                    "mtu": null,
+                    "gateway": null
+                },
+                {
+                    "id": "e4db03dc-6041-4c6a-a8f9-80bb4141a1eb",
+                    "availability_zone": null,
+                    "created_at": "2019-07-01T17:49:43.000000",
+                    "updated_at": "2019-07-02T12:17:39.000000",
+                    "segmentation_id": null,
+                    "neutron_net_id": "62187648-6617-4509-a780-ffc973a7fe43",
+                    "neutron_subnet_id": "2276888a-27c1-47c2-820-ea33050128b5",
+                    "ip_version": 4,
+                    "cidr": "172.24.5.0/24",
+                    "network_type": "flat",
+                    "mtu": 1500,
+                    "gateway": "172.24.5.1"
+                }
+            ]
+        }
+    ]
+}

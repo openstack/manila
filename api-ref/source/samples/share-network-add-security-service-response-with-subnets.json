@@ -1,0 +1,26 @@
+{
+    "share_network": {
+        "name": "net2",
+        "created_at": "2019-11-10T12:31:12.000000",
+        "updated_at": null,
+        "id": "d8ae6799-2567-4a89-aafb-fa4424350d2b",
+        "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
+        "description": null,
+        "share_network_subnets": [
+            {
+                "id": "e4db03dc-6041-4c6a-a8f9-80bb4141a1eb",
+                "availability_zone": null,
+                "created_at": "2019-11-10T12:31:12.000000",
+                "updated_at": "2019-11-10T12:31:12.000000",
+                "segmentation_id": null,
+                "neutron_net_id": "62187648-6617-4509-a780-ffc973a7fe43",
+                "neutron_subnet_id": "2276888a-27c1-47c2-82a0-ea33050128b5",
+                "ip_version": 4,
+                "cidr": "172.24.5.0/24",
+                "network_type": "flat",
+                "mtu": 1500,
+                "gateway": "172.24.5.1"
+            }
+        ]
+    }
+}

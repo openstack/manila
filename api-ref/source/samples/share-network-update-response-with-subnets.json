@@ -1,0 +1,26 @@
+{
+    "share_network":{
+        "id": "2b33cd3a-3049-4f36-a2fd-f7a211eb9202",
+        "name": "update my network",
+        "project_id": "79ed3be75dbb4d03afd687b758fcc2c0",
+        "created_at": "2019-11-12T17:18:10.000000",
+        "updated_at": null,
+        "description": "i'm adding a description",
+        "share_network_subnets": [
+            {
+                "id": "687ab361-5c40-406e-945c-6326254782d4",
+                "availability_zone": null,
+                "created_at": "2019-11-13T17:18:10.000000",
+                "updated_at": "2019-11-13T17:18:56.000000",
+                "segmentation_id": null,
+                "neutron_net_id": "998b42ee-2cee-4d36-8b95-67b5ca1f2109",
+                "neutron_subnet_id": "53482b62-2c84-4a53-b6ab-30d9d9800d06",
+                "ip_version": 4,
+                "cidr": "172.24.5.0/24",
+                "network_type": "flat",
+                "mtu": 1500,
+                "gateway": "172.24.5.1"
+            }
+        ]
+    }
+}
