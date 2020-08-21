@@ -4,136 +4,218 @@
 Share types
 ===========
 
-A share type enables you to filter or choose back ends before you create a
-share and to set data for the share driver. A share type behaves in the same
-way as a Block Storage volume type behaves.
+The Shared File System service back-end storage drivers offer a wide range
+of capabilities. The variation in these capabilities allows cloud
+administrators to provide a storage service catalog to their end users.
+Share types can be used to create this storage service catalog.
+Cloud administrators can influence provisioning of users' shares with the
+help of Share types. All shares are associated with a share type. Share
+types are akin to ``flavors`` in the OpenStack Compute service (nova), or
+``volume types`` in the OpenStack Block Storage service (cinder), or ``storage
+classes`` in Kubernetes. You can allow a share type to be accessible to all
+users in your cloud if you wish. You can also create private share types that
+allow only users belonging to certain OpenStack projects to access them.
+You can have an unlimited number of share types in your
+cloud, but for practical purposes, you may want to create only a handful of
+publicly accessible share types.
 
-In the Shared File Systems configuration file ``manila.conf``, the
-administrator can set the share type used by default for the share creation
-and then create a default share type.
+Each share type is an object that encompasses ``extra-specs`` (extra
+specifications). These extra-specs can map to storage back-end capabilities,
+or can be directives to the service.
 
-To create a share type, use :command:`manila type-create` command as:
+Consider for example, offering three share types in your cloud to map
+to "service levels":
+
++--------+--------------------------------------------------------------------------------------------------+
+|  Type  |                                    Capabilities/Instructions                                     |
++========+==================================================================================================+
+| Gold   | Allow creating snapshots, reverting to snapshots and share replication, "thick" provision shares |
++--------+--------------------------------------------------------------------------------------------------+
+| Silver | Allow creating snapshots, "thin" provision shares                                                |
++--------+--------------------------------------------------------------------------------------------------+
+| Bronze | Don't allow creating snapshots, "thin" provision shares                                          |
++--------+--------------------------------------------------------------------------------------------------+
+
+Capabilities or instructions such as the ones above are coded as extra-specs
+that your users and the Shared File System service understand. Users in
+OpenStack projects can see all public share types along with private share
+types that are made accessible to them. Not all extra-specs that you
+configure in a share type are visible to your users. This design helps
+preserve the cloud abstraction. Along with the share type names, they can
+see the share type descriptions and "tenant-visible" extra-specs.
+
+For more details on extra-specs, see :ref:`capabilities_and_extra_specs`.
+
+The Shared File Systems service also allows using quota controls with share
+types. Quotas can help you maintain your SLAs by limiting the number of
+consumable resources or aid in billing. See :ref:`shared_file_systems_quotas`
+for more details.
+
+Driver Handles Share Servers (DHSS)
+-----------------------------------
+
+To provide secure and hard multi-tenancy on the network data path, the
+Shared File Systems service allows users to use their own "share networks".
+When shares are created on a share network, users can be sure they have
+their own isolated "share servers" that export their shares on the share
+network that have the ability plug into user-determined authentication
+domains ("security services"). Not all Shared File System service storage
+drivers support share networks. Those that do assert the capability
+``driver_handles_share_servers=True``.
+
+When creating a share type, you are *required* to set an extra-spec that
+matches this capability. It is visible to end users.
+
+Default Share Type
+------------------
+
+When you are operating a cloud where all your tenants are trusted, you may
+want to create a "default" share type that applies to all of them. It
+simplifies share creation for your end users since they don't need to worry
+about share types.
+
+Use of a default share type is not recommended in a multi-tenant cloud where
+you may want to separate your user workloads, or offer different service
+capabilities. In such instances, you must always encourage your users to
+specify a share type at share creation time, and not rely on the default
+share type.
+
+.. important::
+
+    If you do not create and configure a default share type, users *must*
+    specify a valid share type during share creation, or share creation
+    requests will fail.
+
+To configure the default share type, edit the ``manila.conf`` file, and set
+the configuration option [DEFAULT]/default_share_type.
+
+You must then create a share type, using :command:`manila type-create`:
 
 .. code-block:: console
 
-   manila type-create [--snapshot_support <snapshot_support>]
-                      [--is_public <is_public>]
+   manila type-create [--is_public <is_public>]
+                      [--description <description>]
+                      [--extra-specs <other-extra-specs>]
                       <name> <spec_driver_handles_share_servers>
 
-where the ``name`` is the share type name, ``--is_public`` defines the level of
-the visibility for the share type, ``snapshot_support`` and
-``spec_driver_handles_share_servers`` are the extra specifications used to
-filter back ends. Administrators can create share types with these extra
-specifications for the back ends filtering:
+where:
 
-- ``driver_handles_share_servers``. Required. Defines the driver mode for share
-  server lifecycle management. Valid values are ``true``/``1`` and
-  ``false``/``0``.
-  Set to True when the share driver can manage, or handle, the share server
-  lifecycle.
-  Set to False when an administrator, rather than a share driver, manages
-  the bare metal storage with some net interface instead of the presence
-  of the share servers.
-
-- ``snapshot_support``. Filters back ends by whether they do or do not support
-  share snapshots. Default is ``True``.
-  Set to True to find back ends that support share snapshots.
-  Set to False to find back ends that do not support share snapshots.
-
-.. note::
-
-   The extra specifications set in the share types are operated in the
-   :ref:`shared_file_systems_scheduling`.
-
-Administrators can also set additional extra specifications for a share type
-for the following purposes:
-
-- *Filter back ends*. Unqualified extra specifications written in
-  this format: ``extra_spec=value``. For example, **netapp_raid_type=raid4**.
-
-- *Set data for the driver*. Qualified extra specifications always written
-  with the prefix with a colon, except for the special ``capabilities``
-  prefix, in this format: ``vendor:extra_spec=value``. For example,
-  **netapp:thin_provisioned=true**.
-
-The scheduler uses the special capabilities prefix for filtering. The scheduler
-can only create a share on a back end that reports capabilities matching the
-un-scoped extra-spec keys for the share type. For details, see `Capabilities
-and Extra-Specs <https://docs.openstack.org/manila/latest/admin/
-capabilities_and_extra_specs.html>`_.
-
-Each driver implementation determines which extra specification keys it uses.
-For details, see the documentation for the driver.
-
-An administrator can use the ``policy.json`` file to grant permissions for
-share type creation with extra specifications to other roles.
-
-You set a share type to private or public and
-:ref:`manage the access<share_type_access>` to the private share types. By
-default a share type is created as publicly accessible. Set
-``--is_public`` to ``False`` to make the share type private.
+- ``name`` is the share type name
+- ``is_public`` defines the visibility for the share type (true/false)
+- ``description`` is a free form text field to describe the characteristics
+  of the share type for your users' benefit
+- ``extra-specs`` defines a comma separated set of key=value pairs of
+  optional extra specifications
+- ``spec_driver_handles_share_servers`` is the mandatory extra-spec
+  (true/false)
 
 Share type operations
 ---------------------
 
 To create a new share type you need to specify the name of the new share
 type. You also require an extra spec ``driver_handles_share_servers``.
-The new share type can also be public.
+The new share type can be public or private.
 
 .. code-block:: console
 
-   $ manila type-create netapp1 False --is_public True
+   $ manila manila type-create default-shares False \
+     --description "Default share type for the cloud, no fancy capabilities"
 
    $ manila type-list
-   +-----+--------+-----------+-----------+-----------------------------------+-----------------------+
-   | ID  | Name   | Visibility| is_default| required_extra_specs              | optional_extra_specs  |
-   +-----+--------+-----------+-----------+-----------------------------------+-----------------------+
-   | c0..| netapp1| public    | -         | driver_handles_share_servers:False| snapshot_support:True |
-   +-----+--------+-----------+-----------+-----------------------------------+-----------------------+
+    +--------------------------------------+-----------------------------------+------------+------------+--------------------------------------+-------------------------------------------+---------------------------------------------------------+
+    | ID                                   | Name                              | visibility | is_default | required_extra_specs                 | optional_extra_specs                      | Description                                             |
+    +--------------------------------------+-----------------------------------+------------+------------+--------------------------------------+-------------------------------------------+---------------------------------------------------------+
+    | cf1f92ec-4d0a-4b79-8f18-6bb82c22840a | default-shares                    | public     | -          | driver_handles_share_servers : False |                                           | Default share type for the cloud, no fancy capabilities |
+    +--------------------------------------+-----------------------------------+------------+------------+--------------------------------------+-------------------------------------------+---------------------------------------------------------+
+
+    $ manila type-show default-shares
+    +----------------------+---------------------------------------------------------+
+    | Property             | Value                                                   |
+    +----------------------+---------------------------------------------------------+
+    | id                   | cf1f92ec-4d0a-4b79-8f18-6bb82c22840a                    |
+    | name                 | default-shares                                          |
+    | visibility           | public                                                  |
+    | is_default           | NO                                                      |
+    | description          | Default share type for the cloud, no fancy capabilities |
+    | required_extra_specs | driver_handles_share_servers : False                    |
+    | optional_extra_specs |                                                         |
+    +----------------------+---------------------------------------------------------+
+
+You did not provide optional capabilities, so they are all *assumed to be off
+by default*. So, Non-privileged users see some tenant-visible capabilities
+explicitly.
+
+.. code-block:: console
+
+
+    $ source demorc
+    $ manila type-list
+    +--------------------------------------+-----------------------------------+------------+------------+--------------------------------------+--------------------------------------------+---------------------------------------------------------+
+    | ID                                   | Name                              | visibility | is_default | required_extra_specs                 | optional_extra_specs                       | Description                                             |
+    +--------------------------------------+-----------------------------------+------------+------------+--------------------------------------+--------------------------------------------+---------------------------------------------------------+
+    | cf1f92ec-4d0a-4b79-8f18-6bb82c22840a | default-shares                    | public     | -          | driver_handles_share_servers : False | snapshot_support : False                   | Default share type for the cloud, no fancy capabilities |
+    +--------------------------------------+-----------------------------------+------------+------------+--------------------------------------+--------------------------------------------+---------------------------------------------------------+
+
+    $ manila type-show default-shares
+    +----------------------+---------------------------------------------------------+
+    | Property             | Value                                                   |
+    +----------------------+---------------------------------------------------------+
+    | id                   | cf1f92ec-4d0a-4b79-8f18-6bb82c22840a                    |
+    | name                 | default-shares                                          |
+    | visibility           | public                                                  |
+    | is_default           | NO                                                      |
+    | description          | Default share type for the cloud, no fancy capabilities |
+    | required_extra_specs | driver_handles_share_servers : False                    |
+    | optional_extra_specs | snapshot_support : False                                |
+    |                      | create_share_from_snapshot_support : False              |
+    |                      | revert_to_snapshot_support : False                      |
+    |                      | mount_snapshot_support : False                          |
+    +----------------------+---------------------------------------------------------+
+
 
 You can set or unset extra specifications for a share type
-using **manila type-key <share_type> set <key=value>** command. Since it is up
-to each driver what extra specification keys it uses, see the documentation
-for the specified driver.
+using **manila type-key <share_type> set <key=value>** command.
 
 .. code-block:: console
 
-   $ manila type-key netapp1 set thin_provisioned=True
+   $ manila type-key default-shares set snapshot_support=True
 
-It is also possible to view a list of current share types and extra
-specifications:
-
-.. code-block:: console
-
-   $ manila extra-specs-list
-   +-------------+---------+-------------------------------------+
-   | ID          | Name    | all_extra_specs                     |
-   +-------------+---------+-------------------------------------+
-   | c0086582-...| netapp1 | snapshot_support : True             |
-   |             |         | thin_provisioned : True             |
-   |             |         | driver_handles_share_servers : True |
-   +-------------+---------+-------------------------------------+
+   $ manila type-show default-shares
+    +----------------------+---------------------------------------------------------+
+    | Property             | Value                                                   |
+    +----------------------+---------------------------------------------------------+
+    | id                   | cf1f92ec-4d0a-4b79-8f18-6bb82c22840a                    |
+    | name                 | default-shares                                          |
+    | visibility           | public                                                  |
+    | is_default           | NO                                                      |
+    | description          | Default share type for the cloud, no fancy capabilities |
+    | required_extra_specs | driver_handles_share_servers : False                    |
+    | optional_extra_specs | snapshot_support : True                                 |
+    +----------------------+---------------------------------------------------------+
 
 Use :command:`manila type-key <share_type> unset <key>` to unset an extra
 specification.
 
-The public or private share type can be deleted with the
-:command:`manila type-delete <share_type>` command.
+A share type can be deleted with the :command:`manila type-delete
+<share_type>` command. However, a share type can only be deleted if there
+are no shares, share groups or share group types associated with the share
+type.
 
 .. _share_type_access:
 
-Share type access
------------------
+Share type access control
+-------------------------
 
-You can manage access to a private share type for different projects.
-Administrators can provide access, remove access, and retrieve
-information about access for a specified private share.
+You can provide access, revoke access, and retrieve list of allowed projects
+for a specified private share.
 
 Create a private type:
 
 .. code-block:: console
 
-   $ manila type-create my_type1 True --is_public False
+   $ manila type-create my_type1 True \
+            --is_public False \
+            --extra-specs snapshot_support=True
    +----------------------+--------------------------------------+
    | Property             | Value                                |
    +----------------------+--------------------------------------+
@@ -148,8 +230,7 @@ Create a private type:
 .. note::
 
    If you run :command:`manila type-list` only public share types appear.
-   To see private share types, run :command:`manila type-list` with
-   ``--all`` optional argument.
+   To see private share types, run :command:`manila type-list --all``.
 
 Grant access to created private type for a demo and alt_demo projects
 by providing their IDs:
@@ -171,9 +252,8 @@ To view information about access for a private share, type ``my_type1``:
    | e4970f57f1824faab2701db61ee7efdf |
    +----------------------------------+
 
-After granting access to the share, the target project
-can see the share type in the list, and create private
-shares.
+After granting access to the share, the users in the allowed projects
+can see the share type and use it to create shares.
 
 To deny access for a specified project, use
 :command:`manila type-access-remove <share_type> <project_id>` command.
