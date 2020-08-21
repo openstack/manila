@@ -90,6 +90,10 @@ Known restrictions
   effective because generic driver shrinks only filesystem size and doesn't
   shrink the size of Cinder volume.
 
+- Modifying network-related configuration options, such as
+  ``service_network_cidr`` or ``service_network_division_mask``, after manila
+  has already created some shares using those options is not supported.
+
 Using Windows instances
 ~~~~~~~~~~~~~~~~~~~~~~~
 
