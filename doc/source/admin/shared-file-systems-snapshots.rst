@@ -68,8 +68,8 @@ Check that status of a snapshot is ``available``:
 
 To create a copy of your data from a snapshot, use :command:`manila create`
 with key ``--snapshot-id``. This creates a new share from an
-existing snapshot. Create a share from a snapshot and check whether
-it is available:
+existing snapshot. Create a share from a snapshot and check whether it is
+available:
 
 .. code-block:: console
 
@@ -127,6 +127,33 @@ it is available:
    | project_id                  | 20787a7ba11946adad976463b57d8a2f          |
    | metadata                    | {u'source': u'snapshot'}                  |
    +-----------------------------+-------------------------------------------+
+
+By default, the Shared File Systems service will place the new share in the
+source share's pool, unless a different destination availability zone is
+provided by the user, using the key ``--availability-zone``.
+
+Starting from Ussuri release, a new filter and weigher were added to the
+scheduler to enhance the selection of a destination pool when creating shares
+from snapshot. Drivers that support creating shares from snapshots across back
+ends also need the back end configuration option ``replication_domain`` to be
+specified. This option can be an arbitrary string. As an administrator, you are
+expected to determine which back ends are compatible to copy data between each
+other. Once you have identified these back ends, configure
+``replication_domain`` in their respective configuration sections to the same
+string. Refer to the
+:ref:`feature support mapping <share_back_ends_feature_support_mapping>`
+for identifying which back ends support this feature. The use of scheduler when
+creating share from a snapshot must be enabled using the configuration flag
+``[DEFAULT]/use_scheduler_creating_share_from_snapshot``. This option is
+disabled by default.
+
+.. note::
+
+   When combining both ``--snapshot-id`` and ``--availability-zone`` keys,
+   you'll need to make sure that the configuration flag
+   ``[DEFAULT]/use_scheduler_creating_share_from_snapshot`` is enabled, or the
+   operation will be denied when source and destination availability zones are
+   different.
 
 You can soft-delete a snapshot using :command:`manila snapshot-delete
 <snapshot_name_or_ID>`. If a snapshot is in busy state, and during
