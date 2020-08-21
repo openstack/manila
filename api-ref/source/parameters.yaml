@@ -227,7 +227,10 @@ extra_specs_query:
     The extra specifications as a set of one or more
     key-value pairs. In each pair, the key is the name of the extra
     specification and the value is the share type that was used to
-    filter search share type list.
+    filter search share type list. The query must be a “percent-encoded” string,
+    for example, the following query parameters: {'extra-specs':
+    {'snapshot_support': 'true', 'availability_zones': 'az1'}} is encoded as
+    'extra_specs=%7B%27snapshot_support%27%3A+%27true%27%2C+%27availability_zones%27%3A+%27az1%27%7D'
   in: query
   required: false
   type: string

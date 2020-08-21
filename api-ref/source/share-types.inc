@@ -4,16 +4,21 @@
 Share types
 ===========
 
-A share type enables you to filter or choose back ends before you
-create a share. A share type behaves in the same way as a Block
-Storage volume type behaves.
+A share type provides hints to the scheduler service to aid placement of new
+workloads. It contains extra specifications that can either match back end
+storage capabilities or provide instructions to the Shared File Systems
+service with regard to the workload being requested. A share type behaves in
+the same way as a Block Storage volume type behaves. See the
+`administration reference on share
+types <https://docs.openstack.org/manila/latest/admin/shared-file-systems-share-types.html>`_
+for more information.
 
-You set a share type to private or public and manage the access to
-the private share types.
+You can create publicly visible share type that are visible to all projects
+and users within the cloud, or make them private and control which projects
+can access them.
 
-When you issue a create a share type request, you can submit a
-request body with either a ``share_type`` or ``volume_type``
-object.
+When you issue a create a share type request, you can submit a request body
+with either a ``share_type`` or ``volume_type`` object.
 
 .. important::
 
@@ -88,7 +93,7 @@ other roles.
 List share types
 ================
 
-.. rest_method::  GET /v2/{project_id}/types
+.. rest_method::  GET /v2/{project_id}/types?is_public={is_public}&extra-specs={extra-specs-as-dict}
 
 Lists all share types.
 
@@ -105,6 +110,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
+   - is_public: is_public_query
    - extra_specs: extra_specs_query
 
 Response parameters
