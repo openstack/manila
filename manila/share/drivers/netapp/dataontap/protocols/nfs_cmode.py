@@ -72,12 +72,19 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
     def update_access(self, share, share_name, rules):
         """Replaces the list of access rules known to the backend storage."""
 
+        valid_rules = []
         # Ensure rules are valid
         for rule in rules:
+            if share['share_proto'].lower() == 'multi':
+                # multi-export share case, filter user rules:
+                if rule['access_type'] == 'user':
+                    continue
+
             self._validate_access_rule(rule)
+            valid_rules.append(rule)
 
         # Sort rules by ascending network size
-        new_rules = {rule['access_to']: rule['access_level'] for rule in rules}
+        new_rules = {r['access_to']: r['access_level'] for r in valid_rules}
         addresses = sorted(new_rules, reverse=True)
 
         # Ensure current export policy has the name we expect

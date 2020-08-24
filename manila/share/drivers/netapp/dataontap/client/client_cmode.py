@@ -1514,14 +1514,22 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def configure_ldap(self, security_service):
         """Configures LDAP on Vserver."""
         config_name = hashlib.md5(six.b(security_service['id'])).hexdigest()
+        LOG.debug("Configuring LDAP Security Service: %s",
+                  security_service['id'])
+
+        for conf in ('user', 'domain', 'ou'):
+            if not security_service.get(conf):
+                msg = _('Missing option %s for LDAP configuration.')
+                raise exception.NetAppException(msg % conf)
+
+        bind_dn = security_service['user'] + '@' + security_service['domain']
         api_args = {
             'ldap-client-config': config_name,
-            'servers': {
-                'ip-address': security_service['server'],
-            },
+            'ad-domain': security_service['domain'],
             'tcp-port': '389',
-            'schema': 'RFC-2307',
-            'bind-password': security_service['password'],
+            'schema': 'MS-AD-BIS',
+            'base-dn': security_service['ou'].lower(),
+            'bind-dn': bind_dn.lower(),
         }
         self.send_request('ldap-client-create', api_args)
 
@@ -1553,12 +1561,18 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if security_service['ou'] is not None:
             api_args['organizational-unit'] = security_service['ou']
 
-        try:
-            LOG.debug("Trying to setup CIFS server with data: %s", api_args)
-            self.send_request('cifs-server-create', api_args)
-        except netapp_api.NaApiError as e:
-            msg = _("Failed to create CIFS server entry. %s")
-            raise exception.NetAppException(msg % e.message)
+        for attempt in range(3):
+            try:
+                LOG.debug("Trying to setup CIFS server with args: %s",
+                          api_args)
+                self.send_request('cifs-server-create', api_args)
+                return
+            except netapp_api.NaApiError as e:
+                LOG.debug("Failed to create CIFS server entry. %s", e.message)
+                time.sleep(3)
+                continue
+        msg = _('Cannot setup CIFS server after 3 attempts.')
+        raise exception.NetAppException(msg)
 
     @na_utils.trace
     def create_kerberos_realm(self, security_service):
@@ -1708,6 +1722,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if adaptive_qos_policy_group is not None:
             api_args['qos-adaptive-policy-group-name'] = (
                 adaptive_qos_policy_group)
+
+        if options.get('unix-permissions') is not None:
+            # special case for multi-protocol shares:
+            unix_perm = options.pop('unix-permissions')
+            api_args['unix-permissions'] = unix_perm
 
         if encrypt is not None:
             if encrypt is True and not self.features.FLEXVOL_ENCRYPTION:

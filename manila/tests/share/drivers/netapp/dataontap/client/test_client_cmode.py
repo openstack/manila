@@ -2528,10 +2528,11 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         ldap_client_create_args = {
             'ldap-client-config': config_name,
-            'servers': {'ip-address': fake.LDAP_SECURITY_SERVICE['server']},
             'tcp-port': '389',
-            'schema': 'RFC-2307',
-            'bind-password': fake.LDAP_SECURITY_SERVICE['password']
+            'schema': 'MS-AD-BIS',
+            'base-dn': fake.LDAP_SECURITY_SERVICE['ou'],
+            'ad-domain': fake.LDAP_SECURITY_SERVICE['domain'],
+            'bind-dn': 'fake_user@fake_domain'
         }
         ldap_config_create_args = {
             'client-config': config_name,

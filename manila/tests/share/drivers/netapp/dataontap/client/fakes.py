@@ -467,6 +467,9 @@ LDAP_SECURITY_SERVICE = {
     'password': 'fake_password',
     'server': 'fake_server',
     'id': 'fake_id',
+    'user': 'fake_user',
+    'domain': 'fake_domain',
+    'ou': 'fake_ou'
 }
 
 KERBEROS_SECURITY_SERVICE = {

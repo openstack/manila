@@ -135,7 +135,7 @@ global_opts = [
                      'names should be backed by a unique [CONFIG] group '
                      'with its options.'),
     cfg.ListOpt('enabled_share_protocols',
-                default=['NFS', 'CIFS'],
+                default=['NFS', 'CIFS', 'MULTI'],
                 help="Specify list of protocols to be allowed for share "
                      "creation. Available values are '%s'" % six.text_type(
                          constants.SUPPORTED_SHARE_PROTOCOLS)),
