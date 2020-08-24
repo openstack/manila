@@ -41,8 +41,9 @@ from manila import utils
     3.1.0 - Access Host details prevents a read-only share mounts
             (bug #1845147)
     3.2.0 - Wrong format of export locations (bug #1871999)
+    3.3.0 - Victoria release
 """
-VERSION = "3.2.0"
+VERSION = "3.3.0"
 
 LOG = log.getLogger(__name__)
 
