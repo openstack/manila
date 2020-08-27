@@ -421,7 +421,8 @@ class WsgiLimiterProxy(object):
 
         resp = conn.getresponse()
 
-        if 200 >= resp.status < 300:
+        if resp.status >= 200 and resp.status < 300:
+            # there's nothing to rate-limit
             return None, None
 
         return resp.getheader("X-Wait-Seconds"), resp.read() or None
