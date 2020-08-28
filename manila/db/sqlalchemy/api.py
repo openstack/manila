@@ -3867,6 +3867,20 @@ def share_server_backend_details_delete(context, share_server_id,
         item.soft_delete(session)
 
 
+@require_admin_context
+def share_servers_host_update(context, current_host, new_host):
+    session = get_session()
+    host_field = models.ShareServer.host
+    with session.begin():
+        query = model_query(
+            context, models.ShareServer, session=session, read_deleted="no",
+        ).filter(host_field.like('{}%'.format(current_host)))
+        result = query.update(
+            {host_field: func.replace(host_field, current_host, new_host)},
+            synchronize_session=False)
+    return result
+
+
 ###################
 
 def _driver_private_data_query(session, context, entity_id, key=None,

@@ -991,6 +991,11 @@ def share_server_backend_details_set(context, share_server_id, server_details):
                                                  server_details)
 
 
+def share_servers_host_update(context, current_host, new_host):
+    """Update the host attr of all share servers that are on current_host."""
+    return IMPL.share_servers_host_update(context, current_host, new_host)
+
+
 ##################
 
 
