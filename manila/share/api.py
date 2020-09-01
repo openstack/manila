@@ -666,17 +666,27 @@ class API(base.Base):
         self.share_rpcapi.update_share_replica(context, share_replica)
 
     def manage(self, context, share_data, driver_options):
-        shares = self.get_all(context, {
+
+        # Check whether there's a share already with the provided options:
+        filters = {
+            'export_location_path': share_data['export_location_path'],
             'host': share_data['host'],
-            'export_location': share_data['export_location'],
-            'share_proto': share_data['share_proto'],
-            'share_type_id': share_data['share_type_id']
-        })
+        }
+        share_server_id = share_data.get('share_server_id')
+        if share_server_id:
+            filters['share_server_id'] = share_data['share_server_id']
+
+        already_managed = self.db.share_instances_get_all(context,
+                                                          filters=filters)
+
+        if already_managed:
+            LOG.error("Found an existing share with export location %s!",
+                      share_data['export_location_path'])
+            msg = _("A share already exists with the export path specified.")
+            raise exception.InvalidShare(reason=msg)
 
         share_type_id = share_data['share_type_id']
         share_type = share_types.get_share_type(context, share_type_id)
-
-        share_server_id = share_data.get('share_server_id')
 
         dhss = share_types.parse_boolean_extra_spec(
             'driver_handles_share_servers',
@@ -717,18 +727,11 @@ class API(base.Base):
         share_data.update(
             self.get_share_attributes_from_share_type(share_type))
 
-        LOG.debug("Manage: Found shares %s.", len(shares))
+        share = self.db.share_create(context, share_data)
 
-        export_location = share_data.pop('export_location')
-
-        if len(shares) == 0:
-            share = self.db.share_create(context, share_data)
-        else:
-            msg = _("Share already exists.")
-            raise exception.InvalidShare(reason=msg)
-
+        export_location_path = share_data.pop('export_location_path')
         self.db.share_export_locations_update(context, share.instance['id'],
-                                              export_location)
+                                              export_location_path)
 
         request_spec = self._get_request_spec_dict(
             share, share_type, size=0, share_proto=share_data['share_proto'],
