@@ -1502,6 +1502,19 @@ def share_instances_get_all(context, filters=None):
                 models.ShareInstanceExportLocations.uuid ==
                 export_location_id)
 
+    # TODO(gouthamr): This DB API method needs to be generalized for all
+    # share instance fields.
+    host = filters.get('host')
+    if host:
+        query = query.filter(
+            or_(models.ShareInstance.host == host,
+                models.ShareInstance.host.like("{0}#%".format(host)))
+        )
+    share_server_id = filters.get('share_server_id')
+    if share_server_id:
+        query = query.filter(
+            models.ShareInstance.share_server_id == share_server_id)
+
     # Returns list of share instances that satisfy filters.
     query = query.all()
     return query

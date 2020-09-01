@@ -60,7 +60,9 @@ class ShareManageTest(test.TestCase):
 
     @ddt.data({},
               {'shares': {}},
-              {'share': get_fake_manage_body('', None, None)})
+              {'share': get_fake_manage_body('', None, None)},
+              {'share': get_fake_manage_body(
+                  export_path={'not_path': '/fake'})})
     def test_share_manage_invalid_body(self, body):
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
                           self.controller.create,
@@ -193,6 +195,8 @@ class ShareManageTest(test.TestCase):
         get_fake_manage_body(display_name='foo', display_description='bar'),
         get_fake_manage_body(display_name='foo', display_description='bar',
                              driver_options=dict(volume_id='quuz')),
+        get_fake_manage_body(display_name='foo', display_description='bar',
+                             export_path={'path': '/fake'}),
     )
     def test_share_manage(self, data):
         self._setup_manage_mocks()
@@ -201,7 +205,7 @@ class ShareManageTest(test.TestCase):
             share_api.API, 'manage', mock.Mock(return_value=return_share))
         share = {
             'host': data['share']['service_host'],
-            'export_location': data['share']['export_path'],
+            'export_location_path': data['share']['export_path'],
             'share_proto': data['share']['protocol'].upper(),
             'share_type_id': 'fake',
             'display_name': 'foo',
@@ -209,6 +213,10 @@ class ShareManageTest(test.TestCase):
         }
         data['share']['is_public'] = 'foo'
         driver_options = data['share'].get('driver_options', {})
+        if isinstance(share['export_location_path'], dict):
+            share['export_location_path'] = (
+                share['export_location_path']['path']
+            )
 
         actual_result = self.controller.create(self.request, data)
 
@@ -226,7 +234,7 @@ class ShareManageTest(test.TestCase):
             share_api.API, 'manage', mock.Mock(return_value=return_share))
         share = {
             'host': data['share']['service_host'],
-            'export_location': data['share']['export_path'],
+            'export_location_path': data['share']['export_path'],
             'share_proto': data['share']['protocol'].upper(),
             'share_type_id': 'fake',
             'display_name': 'foo',
