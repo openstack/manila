@@ -4003,16 +4003,18 @@ class BackendInfoDatabaseAPITestCase(test.TestCase):
 
 
 @ddt.ddt
-class ShareInstancesTestCase(test.TestCase):
+class ShareResourcesAPITestCase(test.TestCase):
 
     def setUp(self):
-        super(ShareInstancesTestCase, self).setUp()
+        super(ShareResourcesAPITestCase, self).setUp()
         self.context = context.get_admin_context()
 
     @ddt.data('controller-100', 'controller-0@otherstore03',
               'controller-0@otherstore01#pool200')
-    def test_share_instances_host_update_no_matches(self, current_host):
+    def test_share_resources_host_update_no_matches(self, current_host):
         share_id = uuidutils.generate_uuid()
+        share_network_id = uuidutils.generate_uuid()
+        share_network_subnet_id = uuidutils.generate_uuid()
         if '@' in current_host:
             if '#' in current_host:
                 new_host = 'new-controller-X@backendX#poolX'
@@ -4020,7 +4022,8 @@ class ShareInstancesTestCase(test.TestCase):
                 new_host = 'new-controller-X@backendX'
         else:
             new_host = 'new-controller-X'
-        instances = [
+        resources = [  # noqa
+            # share instances
             db_utils.create_share_instance(
                 share_id=share_id,
                 host='controller-0@fancystore01#pool100',
@@ -4033,28 +4036,71 @@ class ShareInstancesTestCase(test.TestCase):
                 share_id=share_id,
                 host='controller-2@beststore07#pool200',
                 status=constants.STATUS_DELETING),
-        ]
-        db_utils.create_share(id=share_id, instances=instances)
+            # share groups
+            db_utils.create_share_group(
+                share_network_id=share_network_id,
+                host='controller-0@fancystore01#pool200',
+                status=constants.STATUS_AVAILABLE),
+            db_utils.create_share_group(
+                share_network_id=share_network_id,
+                host='controller-0@otherstore02#pool100',
+                status=constants.STATUS_ERROR),
+            db_utils.create_share_group(
+                share_network_id=share_network_id,
+                host='controller-2@beststore07#pool100',
+                status=constants.STATUS_DELETING),
+            # share servers
+            db_utils.create_share_server(
+                share_network_subnet_id=share_network_subnet_id,
+                host='controller-0@fancystore01',
+                status=constants.STATUS_ACTIVE),
+            db_utils.create_share_server(
+                share_network_subnet_id=share_network_subnet_id,
+                host='controller-0@otherstore02#pool100',
+                status=constants.STATUS_ERROR),
+            db_utils.create_share_server(
+                share_network_subnet_id=share_network_subnet_id,
+                host='controller-2@beststore07',
+                status=constants.STATUS_DELETING),
 
-        updates = db_api.share_instances_host_update(self.context,
+        ]
+
+        updates = db_api.share_resources_host_update(self.context,
                                                      current_host,
                                                      new_host)
 
+        expected_updates = {'instances': 0, 'servers': 0, 'groups': 0}
+        self.assertDictMatch(expected_updates, updates)
+        # validate that resources are unmodified:
         share_instances = db_api.share_instances_get_all(
             self.context, filters={'share_id': share_id})
-        self.assertEqual(0, updates)
+        share_groups = db_api.share_group_get_all(
+            self.context, filters={'share_network_id': share_network_id})
+        share_servers = db_api._server_get_query(self.context).filter_by(
+            share_network_subnet_id=share_network_subnet_id).all()
+        self.assertEqual(3, len(share_instances))
+        self.assertEqual(3, len(share_groups))
+        self.assertEqual(3, len(share_servers))
         for share_instance in share_instances:
             self.assertTrue(not share_instance['host'].startswith(new_host))
+        for share_group in share_groups:
+            self.assertTrue(not share_group['host'].startswith(new_host))
+        for share_server in share_servers:
+            self.assertTrue(not share_server['host'].startswith(new_host))
 
-    @ddt.data({'current_host': 'controller-2', 'expected_updates': 1},
-              {'current_host': 'controller-0@fancystore01',
-               'expected_updates': 2},
-              {'current_host': 'controller-0@fancystore01#pool100',
-               'expected_updates': 1})
+    @ddt.data(
+        {'current_host': 'controller-2',
+         'expected_updates': {'instances': 1, 'servers': 2, 'groups': 1}},
+        {'current_host': 'controller-0@fancystore01',
+         'expected_updates': {'instances': 2, 'servers': 1, 'groups': 2}},
+        {'current_host': 'controller-0@fancystore01#pool100',
+         'expected_updates': {'instances': 1, 'servers': 1, 'groups': 0}})
     @ddt.unpack
-    def test_share_instance_host_update_partial_matches(self, current_host,
-                                                        expected_updates):
+    def test_share_resources_host_update_partial_matches(self, current_host,
+                                                         expected_updates):
         share_id = uuidutils.generate_uuid()
+        share_network_id = uuidutils.generate_uuid()
+        share_network_subnet_id = uuidutils.generate_uuid()
         if '@' in current_host:
             if '#' in current_host:
                 new_host = 'new-controller-X@backendX#poolX'
@@ -4062,7 +4108,11 @@ class ShareInstancesTestCase(test.TestCase):
                 new_host = 'new-controller-X@backendX'
         else:
             new_host = 'new-controller-X'
-        instances = [
+        total_updates_expected = (expected_updates['instances']
+                                  + expected_updates['groups']
+                                  + expected_updates['servers'])
+        resources = [  # noqa
+            # share instances
             db_utils.create_share_instance(
                 share_id=share_id,
                 host='controller-0@fancystore01#pool100',
@@ -4075,19 +4125,50 @@ class ShareInstancesTestCase(test.TestCase):
                 share_id=share_id,
                 host='controller-2@beststore07#pool200',
                 status=constants.STATUS_DELETING),
+            # share groups
+            db_utils.create_share_group(
+                share_network_id=share_network_id,
+                host='controller-0@fancystore01#pool101',
+                status=constants.STATUS_ACTIVE),
+            db_utils.create_share_group(
+                share_network_id=share_network_id,
+                host='controller-0@fancystore01#pool101',
+                status=constants.STATUS_ERROR),
+            db_utils.create_share_group(
+                share_network_id=share_network_id,
+                host='controller-2@beststore07#pool200',
+                status=constants.STATUS_DELETING),
+            # share servers
+            db_utils.create_share_server(
+                share_network_subnet_id=share_network_subnet_id,
+                host='controller-0@fancystore01#pool100',
+                status=constants.STATUS_ACTIVE),
+            db_utils.create_share_server(
+                share_network_subnet_id=share_network_subnet_id,
+                host='controller-2@fancystore01',
+                status=constants.STATUS_ERROR),
+            db_utils.create_share_server(
+                share_network_subnet_id=share_network_subnet_id,
+                host='controller-2@beststore07#pool200',
+                status=constants.STATUS_DELETING),
         ]
-        db_utils.create_share(id=share_id, instances=instances)
 
-        actual_updates = db_api.share_instances_host_update(
+        actual_updates = db_api.share_resources_host_update(
             self.context, current_host, new_host)
 
         share_instances = db_api.share_instances_get_all(
             self.context, filters={'share_id': share_id})
+        share_groups = db_api.share_group_get_all(
+            self.context, filters={'share_network_id': share_network_id})
+        share_servers = db_api._server_get_query(self.context).filter_by(
+            share_network_subnet_id=share_network_subnet_id).all()
 
-        host_updates = [si for si in share_instances if
-                        si['host'].startswith(new_host)]
-        self.assertEqual(actual_updates, expected_updates)
-        self.assertEqual(expected_updates, len(host_updates))
+        updated_resources = [
+            res for res in share_instances + share_groups + share_servers
+            if res['host'].startswith(new_host)
+        ]
+        self.assertEqual(expected_updates, actual_updates)
+        self.assertEqual(total_updates_expected, len(updated_resources))
 
     def test_share_instances_status_update(self):
         for i in range(1, 3):

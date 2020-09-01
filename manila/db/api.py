@@ -339,11 +339,6 @@ def share_instances_status_update(context, share_instance_ids, values):
         context, share_instance_ids, values)
 
 
-def share_instances_host_update(context, current_host, new_host):
-    """Update the host attr of all share instances that are on current_host."""
-    return IMPL.share_instances_host_update(context, current_host, new_host)
-
-
 def share_instances_get_all(context, filters=None):
     """Returns all share instances."""
     return IMPL.share_instances_get_all(context, filters=filters)
@@ -1026,11 +1021,6 @@ def share_server_backend_details_set(context, share_server_id, server_details):
                                                  server_details)
 
 
-def share_servers_host_update(context, current_host, new_host):
-    """Update the host attr of all share servers that are on current_host."""
-    return IMPL.share_servers_host_update(context, current_host, new_host)
-
-
 ##################
 
 
@@ -1302,6 +1292,11 @@ def share_group_snapshot_member_update(context, member_id, values):
     Raises NotFound if share_group_snapshot member does not exist.
     """
     return IMPL.share_group_snapshot_member_update(context, member_id, values)
+
+
+def share_resources_host_update(context, current_host, new_host):
+    """Update the host attr of all share resources that are on current_host."""
+    return IMPL.share_resources_host_update(context, current_host, new_host)
 
 
 ####################

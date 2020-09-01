@@ -391,6 +391,33 @@ QUOTA_SYNC_FUNCTIONS = {
 
 ###################
 
+@require_admin_context
+def share_resources_host_update(context, current_host, new_host):
+    """Updates the 'host' attribute of resources"""
+
+    resources = {
+        'instances': models.ShareInstance,
+        'servers': models.ShareServer,
+        'groups': models.ShareGroup,
+    }
+    result = {}
+
+    session = get_session()
+    with session.begin():
+        for res_name, res_model in resources.items():
+            host_field = res_model.host
+            query = model_query(
+                context, res_model, session=session, read_deleted="no",
+            ).filter(host_field.like('{}%'.format(current_host)))
+            count = query.update(
+                {host_field: func.replace(host_field, current_host, new_host)},
+                synchronize_session=False)
+            result.update({res_name: count})
+    return result
+
+
+###################
+
 
 @require_admin_context
 def service_destroy(context, service_id):
@@ -1393,20 +1420,6 @@ def _share_instance_create(context, share_id, values, session):
 
     return share_instance_get(context, share_instance_ref['id'],
                               session=session)
-
-
-@require_admin_context
-def share_instances_host_update(context, current_host, new_host):
-    session = get_session()
-    host_field = models.ShareInstance.host
-    with session.begin():
-        query = model_query(
-            context, models.ShareInstance, session=session, read_deleted="no",
-        ).filter(host_field.like('{}%'.format(current_host)))
-        result = query.update(
-            {host_field: func.replace(host_field, current_host, new_host)},
-            synchronize_session=False)
-    return result
 
 
 @require_context
@@ -4049,20 +4062,6 @@ def share_server_backend_details_delete(context, share_server_id,
                             .filter_by(share_server_id=share_server_id).all())
     for item in share_server_details:
         item.soft_delete(session)
-
-
-@require_admin_context
-def share_servers_host_update(context, current_host, new_host):
-    session = get_session()
-    host_field = models.ShareServer.host
-    with session.begin():
-        query = model_query(
-            context, models.ShareServer, session=session, read_deleted="no",
-        ).filter(host_field.like('{}%'.format(current_host)))
-        result = query.update(
-            {host_field: func.replace(host_field, current_host, new_host)},
-            synchronize_session=False)
-    return result
 
 
 ###################

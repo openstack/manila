@@ -375,24 +375,28 @@ class ShareCommands(object):
     @args('--force', required=False, type=bool, default=False,
           help="Ignore validations.")
     def update_host(self, current_host, new_host, force=False):
-        """Modify the host name associated with a share and share server.
+        """Modify the host name associated with resources.
 
            Particularly to recover from cases where one has moved
            their Manila Share node, or modified their 'host' opt
            or their backend section name in the manila configuration file.
+           Affects shares, share servers and share groups
         """
         if not force:
             self._validate_hosts(current_host, new_host)
         ctxt = context.get_admin_context()
-        updated = db.share_instances_host_update(ctxt, current_host, new_host)
-        print("Updated host of %(count)s share instances on %(chost)s "
-              "to %(nhost)s." % {'count': updated, 'chost': current_host,
-                                 'nhost': new_host})
-
-        servers = db.share_servers_host_update(ctxt, current_host, new_host)
-        print("Updated host of %(count)s share servers on %(chost)s "
-              "to %(nhost)s." % {'count': servers, 'chost': current_host,
-                                 'nhost': new_host})
+        updated = db.share_resources_host_update(ctxt, current_host, new_host)
+        msg = ("Updated host of %(si_count)d share instances, "
+               "%(sg_count)d share groups and %(ss_count)d share servers on "
+               "%(chost)s to %(nhost)s.")
+        msg_args = {
+            'si_count': updated['instances'],
+            'sg_count': updated['groups'],
+            'ss_count': updated['servers'],
+            'chost': current_host,
+            'nhost': new_host,
+        }
+        print(msg % msg_args)
 
 
 CATEGORIES = {
