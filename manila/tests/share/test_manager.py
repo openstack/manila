@@ -2165,8 +2165,15 @@ class ShareManagerTestCase(test.TestCase):
         )
         fake_share = db_utils.create_share(
             share_network_id=share_network['id'], size=1)
+        fake_metadata = {
+            'request_host': 'fake_host',
+            'share_type_id': 'fake_share_type_id',
+        }
         fake_server = db_utils.create_share_server(
             id='fake_srv_id', status=constants.STATUS_CREATING)
+
+        self.mock_object(self.share_manager, '_build_server_metadata',
+                         mock.Mock(return_value=fake_metadata))
         self.mock_object(db, 'share_server_create',
                          mock.Mock(return_value=fake_server))
         self.mock_object(db, 'share_instance_update',
@@ -2214,7 +2221,7 @@ class ShareManagerTestCase(test.TestCase):
         ])
         self.share_manager._setup_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), fake_server,
-            metadata={'request_host': 'fake_host'})
+            fake_metadata)
         manager.LOG.error.assert_called_with(mock.ANY,
                                              fake_share.instance['id'])
         self.share_manager.message_api.create.assert_called_once_with(
@@ -2326,6 +2333,13 @@ class ShareManagerTestCase(test.TestCase):
             'id': 'fake_srv_id',
             'status': constants.STATUS_CREATING,
         }
+        fake_metadata = {
+            'request_host': 'fake_host',
+            'share_type_id': 'fake_share_type_id',
+        }
+
+        self.mock_object(self.share_manager, '_build_server_metadata',
+                         mock.Mock(return_value=fake_metadata))
         self.mock_object(db, 'share_server_create',
                          mock.Mock(return_value=fake_server))
         self.mock_object(self.share_manager, '_setup_server',
@@ -2343,7 +2357,7 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext), mock.ANY)
         self.share_manager._setup_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), fake_server,
-            metadata={'request_host': 'fake_host'})
+            fake_metadata)
 
     def test_create_share_instance_update_replica_state(self):
         share_net = db_utils.create_share_network()
@@ -2362,6 +2376,12 @@ class ShareManagerTestCase(test.TestCase):
             'id': 'fake_srv_id',
             'status': constants.STATUS_CREATING,
         }
+        fake_metadata = {
+            'request_host': 'fake_host',
+            'share_type_id': 'fake_share_type_id',
+        }
+        self.mock_object(self.share_manager, '_build_server_metadata',
+                         mock.Mock(return_value=fake_metadata))
         self.mock_object(db, 'share_server_create',
                          mock.Mock(return_value=fake_server))
         self.mock_object(self.share_manager, '_setup_server',
@@ -2384,7 +2404,7 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext), mock.ANY)
         self.share_manager._setup_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), fake_server,
-            metadata={'request_host': 'fake_host'})
+            fake_metadata)
 
     @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
     def test_create_delete_share_instance(self, mock_notify):
@@ -3220,7 +3240,7 @@ class ShareManagerTestCase(test.TestCase):
 
         # execute method _setup_server
         result = self.share_manager._setup_server(
-            self.context, share_server, metadata=metadata)
+            self.context, share_server, metadata)
 
         # verify results
         self.assertEqual(share_server, result)
@@ -3287,7 +3307,7 @@ class ShareManagerTestCase(test.TestCase):
 
         # execute method _setup_server
         result = self.share_manager._setup_server(
-            self.context, share_server, metadata=metadata)
+            self.context, share_server, metadata)
 
         # verify results
         self.assertEqual(share_server, result)
@@ -3308,6 +3328,7 @@ class ShareManagerTestCase(test.TestCase):
 
     def setup_server_raise_exception(self, detail_data_proper):
         # Setup required test data
+        metadata = {'fake_metadata_key': 'fake_metadata_value'}
         server_info = {'details_key': 'value'}
         share_network = {'id': 'fake_sn_id'}
         share_net_subnet = {'id': 'fake_sns_id',
@@ -3350,6 +3371,7 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager._setup_server,
             self.context,
             share_server,
+            metadata,
         )
 
         # verify results
@@ -3400,6 +3422,7 @@ class ShareManagerTestCase(test.TestCase):
         share_server = db_utils.create_share_server(
             id='fake', share_network_subnet_id=share_net_subnet['id'])
         details = get_server_details_from_data(data)
+        metadata = {'fake_metadata_key': 'fake_metadata_value'}
 
         exc_mock = mock.Mock(side_effect=exception.ManilaException(**data))
         details_mock = mock.Mock(side_effect=exception.ManilaException())
@@ -3417,6 +3440,7 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager._setup_server,
             self.context,
             share_server,
+            metadata,
         )
 
         self.assertTrue(self.share_manager.db.share_network_get.called)
@@ -5935,21 +5959,32 @@ class ShareManagerTestCase(test.TestCase):
     def test_create_share_server(self):
 
         server = db_utils.create_share_server()
+        share = db_utils.create_share()
+        fake_metadata = {
+            'request_host': 'fake_host',
+            'share_type_id': 'fake_share_type_id',
+        }
 
         # mocks
         self.mock_object(self.share_manager.db, 'share_server_get',
                          mock.Mock(return_value=server))
+        self.mock_object(self.share_manager.db, 'share_instance_get',
+                         mock.Mock(return_value=share))
         self.mock_object(self.share_manager, '_create_share_server_in_backend')
+        self.mock_object(self.share_manager, '_build_server_metadata',
+                         mock.Mock(return_value=fake_metadata))
 
         # run
         self.share_manager.create_share_server(
-            self.context, 'server_id')
+            self.context, 'server_id', 'share_instance_id')
 
         # asserts
         self.share_manager.db.share_server_get.assert_called_once_with(
             self.context, 'server_id')
+        self.share_manager.db.share_instance_get.assert_called_once_with(
+            self.context, 'share_instance_id', with_share_data=True)
         (self.share_manager._create_share_server_in_backend.
-         assert_called_once_with(self.context, server))
+         assert_called_once_with(self.context, server, fake_metadata))
 
     @ddt.data({'admin_network_api': mock.Mock(),
                'driver_return': ('new_identifier', {'some_id': 'some_value'})},
@@ -7631,6 +7666,15 @@ class ShareManagerTestCase(test.TestCase):
             resource_type=message_field.Resource.SHARE,
             resource_id=instance['share_id'],
             detail=message_field.Detail.DRIVER_FAILED_CREATING_FROM_SNAP)
+
+    def test__build_server_metadata(self):
+        share = {'host': 'host', 'share_type_id': 'id'}
+        expected_metadata = {'request_host': 'host', 'share_type_id': 'id'}
+
+        metadata = self.share_manager._build_server_metadata(
+            share['host'], share['share_type_id'])
+
+        self.assertDictEqual(expected_metadata, metadata)
 
 
 @ddt.ddt

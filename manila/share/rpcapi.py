@@ -76,6 +76,7 @@ class ShareAPI(object):
         1.17 - Add snapshot_update_access()
         1.18 - Remove unused "share_id" parameter from revert_to_snapshot()
         1.19 - Add manage_share_server() and unmanage_share_server()
+        1.20 - Add share_instance_id parameter for create_share_server() method
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -84,7 +85,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.19')
+        self.client = rpc.get_client(target, version_cap='1.20')
 
     def create_share_instance(self, context, share_instance, host,
                               request_spec, filter_properties,
@@ -355,10 +356,11 @@ class ShareAPI(object):
 
     def create_share_server(self, context, share_instance, share_server_id):
         new_host = utils.extract_host(share_instance['host'])
-        call_context = self.client.prepare(server=new_host, version='1.12')
+        call_context = self.client.prepare(server=new_host, version='1.20')
         call_context.cast(context,
                           'create_share_server',
-                          share_server_id=share_server_id)
+                          share_server_id=share_server_id,
+                          share_instance_id=share_instance['id'])
 
     def snapshot_update_access(self, context, snapshot_instance):
         host = utils.extract_host(snapshot_instance['share_instance']['host'])
