@@ -435,6 +435,10 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                 gmgr.set_vol_option(USER_MANILA_SHARE, 'NONE')
                 gmgr.set_vol_option('nfs.disable', 'on')
 
+            # When deleting the share instance, we need to
+            # update'self.gluster_used_vols' again
+            self.gluster_used_vols = set()
+            self.gluster_used_vols.add(gmgr.qualified)
             self._push_gluster_vol(gmgr.qualified)
         except exception.GlusterfsException:
             msg = ("Error during delete_share request for "
