@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed `bug #1894362  <https://bugs.launchpad.net/manila/+bug/1894362>`_
+    Fixed the problem of Couldn't find the'gluster_used_vols' error when
+    deploying glusterfs driver multi-backend service and deleting share
+    instance.
