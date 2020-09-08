@@ -37,10 +37,11 @@ class IsolationTestCase(test.TestCase):
         class NeverCalled(object):
 
             def __getattribute__(self, name):
-                if name == 'target':
-                    # oslo.messaging 5.31.0 explicitly looks for 'target'
+                if name == 'target' or name == 'oslo_rpc_server_ping':
+                    # oslo.messaging >=5.31.0 explicitly looks for 'target'
                     # on the endpoint and checks its type, so we can't avoid
-                    # it here.  Just ignore it if that's the case.
+                    # it here. In 12.4.0, the package added a ping endpoint
+                    # Just ignore if either case.
                     return
                 assert False, "I should never get called - name: %s" % name
 
