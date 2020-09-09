@@ -148,13 +148,14 @@ REST_API_VERSION_HISTORY = """
              "progress" which indicates the completion of a share creation
              operation as a percentage.
     * 2.55 - Share groups feature is no longer considered experimental.
+    * 2.56 - Share replication feature is no longer considered experimental.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.55"
+_MAX_API_VERSION = "2.56"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

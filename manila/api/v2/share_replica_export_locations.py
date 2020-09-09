@@ -21,6 +21,9 @@ from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
 
+PRE_GRADUATION_VERSION = '2.55'
+GRADUATION_VERSION = '2.56'
+
 
 class ShareReplicaExportLocationController(wsgi.Controller):
     """The Share Instance Export Locations API controller."""
@@ -37,9 +40,19 @@ class ShareReplicaExportLocationController(wsgi.Controller):
             msg = _("Share replica '%s' not found.") % share_replica_id
             raise exc.HTTPNotFound(explanation=msg)
 
-    @wsgi.Controller.api_version('2.47', experimental=True)
-    @wsgi.Controller.authorize
+    @wsgi.Controller.api_version(
+        '2.47', PRE_GRADUATION_VERSION, experimental=True)
     def index(self, req, share_replica_id):
+        return self._index(req, share_replica_id)
+
+    # pylint: disable=function-redefined
+    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    def index(self, req, share_replica_id):
+        return self._index(req, share_replica_id)
+
+    # pylint: enable=function-redefined
+    @wsgi.Controller.authorize('index')
+    def _index(self, req, share_replica_id):
         """Return a list of export locations for the share instance."""
         context = req.environ['manila.context']
         self._verify_share_replica(context, share_replica_id)
@@ -51,9 +64,19 @@ class ShareReplicaExportLocationController(wsgi.Controller):
         return self._view_builder.summary_list(req, export_locations,
                                                replica=True)
 
-    @wsgi.Controller.api_version('2.47', experimental=True)
-    @wsgi.Controller.authorize
+    @wsgi.Controller.api_version(
+        '2.47', PRE_GRADUATION_VERSION, experimental=True)
     def show(self, req, share_replica_id, export_location_uuid):
+        return self._show(req, share_replica_id, export_location_uuid)
+
+    # pylint: disable=function-redefined
+    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    def show(self, req, share_replica_id, export_location_uuid):
+        return self._show(req, share_replica_id, export_location_uuid)
+
+    # pylint: enable=function-redefined
+    @wsgi.Controller.authorize('show')
+    def _show(self, req, share_replica_id, export_location_uuid):
         """Return data about the requested export location."""
         context = req.environ['manila.context']
         self._verify_share_replica(context, share_replica_id)

@@ -1,0 +1,9 @@
+---
+prelude: >
+    - |
+    Share replication APIs have graduated from their `experimental feature state
+    <https://docs.openstack.org/manila/latest/contributor/experimental_apis.html>`_
+    from API version ``2.56``. One or more share replicas can be created from a
+    given share. They can also be promoted to be considered the active share,
+    resynchronized and deleted. These actions no longer require the inclusion of
+    ``X-OpenStack-Manila-API-Experimental`` header in the API requests.

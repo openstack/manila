@@ -28,6 +28,9 @@ from manila.tests.api import fakes
 from manila.tests import db_utils
 
 
+GRADUATION_VERSION = '2.56'
+
+
 @ddt.ddt
 class ShareReplicaExportLocationsAPITest(test.TestCase):
 
@@ -84,8 +87,9 @@ class ShareReplicaExportLocationsAPITest(test.TestCase):
         db.share_export_locations_update(
             self.ctxt, self.share_replica3.id, replica3_exports)
 
-    @ddt.data('user', 'admin')
-    def test_list_and_show(self, role):
+    @ddt.data(('user', '2.47'), ('admin', GRADUATION_VERSION))
+    @ddt.unpack
+    def test_list_and_show(self, role, microversion):
         summary_keys = [
             'id', 'path', 'replica_state', 'availability_zone', 'preferred'
         ]
@@ -96,12 +100,15 @@ class ShareReplicaExportLocationsAPITest(test.TestCase):
         admin_detail_keys = admin_summary_keys + ['created_at', 'updated_at']
 
         self._test_list_and_show(role, summary_keys, detail_keys,
-                                 admin_summary_keys, admin_detail_keys)
+                                 admin_summary_keys, admin_detail_keys,
+                                 microversion=microversion)
 
     def _test_list_and_show(self, role, summary_keys, detail_keys,
-                            admin_summary_keys, admin_detail_keys):
+                            admin_summary_keys, admin_detail_keys,
+                            microversion='2.47'):
 
-        req = self._get_request(use_admin_context=(role == 'admin'))
+        req = self._get_request(version=microversion,
+                                use_admin_context=(role == 'admin'))
         for replica_id in (self.active_replica_id, self.share_replica2.id,
                            self.share_replica3.id):
             index_result = self.controller.index(req, replica_id)

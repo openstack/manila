@@ -31,6 +31,8 @@ from manila import share
 
 
 MIN_SUPPORTED_API_VERSION = '2.11'
+PRE_GRADUATION_VERSION = '2.55'
+GRADUATION_VERSION = '2.56'
 
 
 class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
@@ -55,13 +57,25 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         except exception.ReplicationException as e:
             raise exc.HTTPBadRequest(explanation=six.text_type(e))
 
-    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
+    @wsgi.Controller.api_version(
+        MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
     def index(self, req):
         """Return a summary list of replicas."""
         return self._get_replicas(req)
 
-    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
+    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    def index(self, req):  # pylint: disable=function-redefined
+        """Return a summary list of replicas."""
+        return self._get_replicas(req)
+
+    @wsgi.Controller.api_version(
+        MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
     def detail(self, req):
+        """Returns a detailed list of replicas."""
+        return self._get_replicas(req, is_detail=True)
+
+    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    def detail(self, req):  # pylint: disable=function-redefined
         """Returns a detailed list of replicas."""
         return self._get_replicas(req, is_detail=True)
 
@@ -89,9 +103,19 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         return replicas
 
-    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
-    @wsgi.Controller.authorize
+    @wsgi.Controller.api_version(
+        MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
     def show(self, req, id):
+        """Returns a detailed list of replicas."""
+        return self._show(req, id)
+
+    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    def show(self, req, id):  # pylint: disable=function-redefined
+        """Returns a detailed list of replicas."""
+        return self._show(req, id)
+
+    @wsgi.Controller.authorize('show')
+    def _show(self, req, id):
         """Return data about the given replica."""
         context = req.environ['manila.context']
 
@@ -103,10 +127,19 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         return self._view_builder.detail(req, replica)
 
-    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
+    @wsgi.Controller.api_version(
+        MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
     @wsgi.response(202)
-    @wsgi.Controller.authorize
     def create(self, req, body):
+        return self._create(req, body)
+
+    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    @wsgi.response(202)
+    def create(self, req, body):  # pylint: disable=function-redefined
+        return self._create(req, body)
+
+    @wsgi.Controller.authorize('create')
+    def _create(self, req, body):
         """Add a replica to an existing share."""
         context = req.environ['manila.context']
 
@@ -142,9 +175,17 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         return self._view_builder.detail(req, new_replica)
 
-    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
-    @wsgi.Controller.authorize
+    @wsgi.Controller.api_version(
+        MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
     def delete(self, req, id):
+        return self._delete_share_replica(req, id)
+
+    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    def delete(self, req, id):  # pylint: disable=function-redefined
+        return self._delete_share_replica(req, id)
+
+    @wsgi.Controller.authorize('delete')
+    def _delete_share_replica(self, req, id):
         """Delete a replica."""
         context = req.environ['manila.context']
 
@@ -161,11 +202,21 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
-    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
-    @wsgi.action('promote')
+    @wsgi.Controller.api_version(
+        MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
     @wsgi.response(202)
-    @wsgi.Controller.authorize
+    @wsgi.action('promote')
     def promote(self, req, id, body):
+        return self._promote(req, id, body)
+
+    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    @wsgi.response(202)
+    @wsgi.action('promote')
+    def promote(self, req, id, body):  # pylint: disable=function-redefined
+        return self._promote(req, id, body)
+
+    @wsgi.Controller.authorize('promote')
+    def _promote(self, req, id, body):
         """Promote a replica to active state."""
         context = req.environ['manila.context']
 
@@ -189,30 +240,68 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         return self._view_builder.detail(req, replica)
 
-    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
+    @wsgi.Controller.api_version(
+        MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
     @wsgi.action('reset_status')
     def reset_status(self, req, id, body):
         """Reset the 'status' attribute in the database."""
         return self._reset_status(req, id, body)
 
-    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
+    # pylint: disable=function-redefined
+    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    @wsgi.action('reset_status')
+    def reset_status(self, req, id, body):
+        """Reset the 'status' attribute in the database."""
+        return self._reset_status(req, id, body)
+
+    # pylint: enable=function-redefined
+    @wsgi.Controller.api_version(
+        MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
     @wsgi.action('force_delete')
     def force_delete(self, req, id, body):
         """Force deletion on the database, attempt on the backend."""
         return self._force_delete(req, id, body)
 
-    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
+    # pylint: disable=function-redefined
+    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    @wsgi.action('force_delete')
+    def force_delete(self, req, id, body):
+        """Force deletion on the database, attempt on the backend."""
+        return self._force_delete(req, id, body)
+
+    # pylint: enable=function-redefined
+    @wsgi.Controller.api_version(
+        MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
     @wsgi.action('reset_replica_state')
     @wsgi.Controller.authorize
     def reset_replica_state(self, req, id, body):
         """Reset the 'replica_state' attribute in the database."""
         return self._reset_status(req, id, body, status_attr='replica_state')
 
-    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
-    @wsgi.action('resync')
-    @wsgi.response(202)
+    # pylint: disable=function-redefined
+    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    @wsgi.action('reset_replica_state')
     @wsgi.Controller.authorize
+    def reset_replica_state(self, req, id, body):
+        """Reset the 'replica_state' attribute in the database."""
+        return self._reset_status(req, id, body, status_attr='replica_state')
+
+    # pylint: enable=function-redefined
+    @wsgi.Controller.api_version(
+        MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
+    @wsgi.response(202)
+    @wsgi.action('resync')
     def resync(self, req, id, body):
+        return self._resync(req, id, body)
+
+    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    @wsgi.response(202)
+    @wsgi.action('resync')
+    def resync(self, req, id, body):  # pylint: disable=function-redefined
+        return self._resync(req, id, body)
+
+    @wsgi.Controller.authorize('resync')
+    def _resync(self, req, id, body):
         """Attempt to update/sync the replica with its source."""
         context = req.environ['manila.context']
         try:

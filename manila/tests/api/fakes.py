@@ -202,11 +202,19 @@ fixture_reset_replica_status_with_different_roles = (
         'role': 'admin',
         'valid_code': 202,
         'valid_status': constants.STATUS_ERROR,
+        'microversion': '2.55'
+    },
+    {
+        'role': 'admin',
+        'valid_code': 202,
+        'valid_status': constants.STATUS_ERROR,
+        'microversion': '2.56'
     },
     {
         'role': 'member',
         'valid_code': 403,
         'valid_status': constants.STATUS_AVAILABLE,
+        'microversion': '2.55'
     },
 )
 
@@ -216,26 +224,31 @@ fixture_reset_replica_state_with_different_roles = (
         'role': 'admin',
         'valid_code': 202,
         'valid_status': constants.REPLICA_STATE_ACTIVE,
+        'microversion': '2.55'
     },
     {
         'role': 'admin',
         'valid_code': 202,
         'valid_status': constants.REPLICA_STATE_OUT_OF_SYNC,
+        'microversion': '2.56'
     },
     {
         'role': 'admin',
         'valid_code': 202,
         'valid_status': constants.REPLICA_STATE_IN_SYNC,
+        'microversion': '2.55'
     },
     {
         'role': 'admin',
         'valid_code': 202,
         'valid_status': constants.STATUS_ERROR,
+        'microversion': '2.56'
     },
     {
         'role': 'member',
         'valid_code': 403,
         'valid_status': constants.REPLICA_STATE_IN_SYNC,
+        'microversion': '2.55'
     },
 )
 
