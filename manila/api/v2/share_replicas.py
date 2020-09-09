@@ -106,12 +106,12 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
     @wsgi.Controller.api_version(
         MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
     def show(self, req, id):
-        """Returns a detailed list of replicas."""
+        """Return data about the given replica."""
         return self._show(req, id)
 
     @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
     def show(self, req, id):  # pylint: disable=function-redefined
-        """Returns a detailed list of replicas."""
+        """Return data about the given replica."""
         return self._show(req, id)
 
     @wsgi.Controller.authorize('show')
