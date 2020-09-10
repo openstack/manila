@@ -695,6 +695,114 @@ class DummyDriver(driver.ShareDriver):
                   })
         return {"total_progress": total_progress}
 
+    def share_server_migration_check_compatibility(
+            self, context, share_server, dest_host, old_share_network,
+            new_share_network, shares_request_spec):
+        """Is called to check migration compatibility for a share server."""
+        backend_name = share_utils.extract_host(
+            dest_host, level='backend_name')
+        config = get_backend_configuration(backend_name)
+        compatible = 'Dummy' in config.share_driver
+        return {
+            'compatible': compatible,
+            'writable': compatible,
+            'preserve_snapshots': compatible,
+            'nondisruptive': False,
+            'share_network_id': new_share_network['id'],
+            'migration_cancel': compatible,
+            'migration_get_progress': compatible
+        }
+
+    @slow_me_down
+    def share_server_migration_start(self, context, src_share_server,
+                                     dest_share_server, shares, snapshots):
+        """Is called to perform 1st phase of migration of a share server."""
+        LOG.debug(
+            "Migration of dummy share server with ID '%s' has been started.",
+            src_share_server["id"])
+        self.migration_progress[src_share_server['id']] = 0
+
+    @slow_me_down
+    def share_server_migration_continue(self, context, src_share_server,
+                                        dest_share_server, shares, snapshots):
+        """Is called to continue the migration of a share server."""
+        if src_share_server["id"] not in self.migration_progress:
+            self.migration_progress[src_share_server["id"]] = 0
+
+        self.migration_progress[src_share_server["id"]] += 50
+
+        LOG.debug(
+            "Migration of dummy share server with ID '%s' is continuing, %s.",
+            src_share_server["id"],
+            self.migration_progress[src_share_server["id"]])
+
+        return self.migration_progress[src_share_server["id"]] >= 100
+
+    @slow_me_down
+    def share_server_migration_complete(self, context, source_share_server,
+                                        dest_share_server, shares, snapshots,
+                                        new_network_allocations):
+        """Is called to complete the migration of a share server."""
+        shares_updates = {}
+        pools = self._get_pools_info()
+        for instance in shares:
+
+            share_name = self._get_share_name(instance)
+            mountpoint = "/path/to/fake/share/%s" % share_name
+            export_locations = self._generate_export_locations(
+                mountpoint, share_server=dest_share_server)
+            dest_pool = pools[0]['pool_name']
+            shares_updates.update(
+                {instance['id']: {'export_locations': export_locations,
+                                  'pool_name': dest_pool}}
+            )
+
+        snapshot_updates = {}
+        for instance in snapshots:
+            snapshot_name = self._get_snapshot_name(instance)
+            mountpoint = "/path/to/fake/snapshot/%s" % snapshot_name
+            snap_export_locations = self._generate_export_locations(
+                mountpoint, share_server=dest_share_server)
+            snapshot_updates.update(
+                {instance['id']: {
+                    'provider_location': mountpoint,
+                    'export_locations': snap_export_locations}}
+            )
+
+        LOG.debug(
+            "Migration of dummy share server with ID '%s' has been completed.",
+            source_share_server["id"])
+        self.migration_progress.pop(source_share_server["id"], None)
+
+        return {
+            'share_updates': shares_updates,
+            'snapshot_updates': snapshot_updates,
+        }
+
+    @slow_me_down
+    def share_server_migration_cancel(self, context, src_share_server,
+                                      dest_share_server, shares, snapshots):
+        """Is called to cancel a share server migration."""
+        LOG.debug(
+            "Migration of dummy share server with ID '%s' has been canceled.",
+            src_share_server["id"])
+        self.migration_progress.pop(src_share_server["id"], None)
+
+    @slow_me_down
+    def share_server_migration_get_progress(self, context, src_share_server,
+                                            dest_share_server, shares,
+                                            snapshots):
+        """Is called to get share server migration progress."""
+        if src_share_server["id"] not in self.migration_progress:
+            self.migration_progress[src_share_server["id"]] = 0
+        total_progress = self.migration_progress[src_share_server["id"]]
+        LOG.debug("Progress of current dummy share server migration "
+                  "with ID '%(id)s' is %(progress)s.", {
+                      "id": src_share_server["id"],
+                      "progress": total_progress
+                  })
+        return {"total_progress": total_progress}
+
     def update_share_usage_size(self, context, shares):
         share_updates = []
         gathered_at = timeutils.utcnow()
