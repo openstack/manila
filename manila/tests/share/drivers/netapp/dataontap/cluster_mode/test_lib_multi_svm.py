@@ -30,6 +30,7 @@ from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_multi_svm
 from manila.share.drivers.netapp import utils as na_utils
+from manila.share import share_types
 from manila.share import utils as share_utils
 from manila import test
 from manila.tests.share.drivers.netapp.dataontap.client import fakes as c_fake
@@ -84,6 +85,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.fake_new_client = mock.Mock()
         self.fake_client = mock.Mock()
+        self.library._default_nfs_config = fake.NFS_CONFIG_DEFAULT
 
     def test_check_for_setup_error_cluster_creds_no_vserver(self):
         self.library._have_cluster_creds = True
@@ -229,8 +231,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         }
         self.assertEqual(expected, result)
 
-    @ddt.data('fake', fake.IDENTIFIER)
-    def test_manage_server(self, fake_vserver_name):
+    @ddt.data({'fake_vserver_name': fake, 'nfs_config_support': False},
+              {'fake_vserver_name': fake.IDENTIFIER,
+               'nfs_config_support': True})
+    @ddt.unpack
+    def test_manage_server(self, fake_vserver_name, nfs_config_support):
 
         self.mock_object(context,
                          'get_admin_context',
@@ -238,6 +243,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_vserver_name = self.mock_object(
             self.library, '_get_vserver_name',
             mock.Mock(return_value=fake_vserver_name))
+        self.library.is_nfs_config_supported = nfs_config_support
+        mock_get_nfs_config = self.mock_object(
+            self.library._client, 'get_nfs_config',
+            mock.Mock(return_value=fake.NFS_CONFIG_DEFAULT))
 
         new_identifier, new_details = self.library.manage_server(
             context, fake.SHARE_SERVER, fake.IDENTIFIER, {})
@@ -245,6 +254,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_vserver_name.assert_called_once_with(fake.SHARE_SERVER['id'])
         self.assertEqual(fake_vserver_name, new_details['vserver_name'])
         self.assertEqual(fake_vserver_name, new_identifier)
+        if nfs_config_support:
+            mock_get_nfs_config.assert_called_once_with(
+                list(self.library.NFS_CONFIG_EXTRA_SPECS_MAP.values()),
+                fake_vserver_name)
+            self.assertEqual(jsonutils.dumps(fake.NFS_CONFIG_DEFAULT),
+                             new_details['nfs_config'])
+        else:
+            mock_get_nfs_config.assert_not_called()
 
     def test_get_share_server_network_info(self):
 
@@ -318,20 +335,37 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertListEqual([fake.AGGREGATES[0]], result)
         mock_list_non_root_aggregates.assert_called_once_with()
 
-    def test_setup_server(self):
-
+    @ddt.data({'nfs_config_support': False},
+              {'nfs_config_support': True,
+               'nfs_config': fake.NFS_CONFIG_UDP_MAX},
+              {'nfs_config_support': True,
+               'nfs_config': fake.NFS_CONFIG_DEFAULT})
+    @ddt.unpack
+    def test_setup_server(self, nfs_config_support, nfs_config=None):
         mock_get_vserver_name = self.mock_object(
             self.library,
             '_get_vserver_name',
             mock.Mock(return_value=fake.VSERVER1))
 
         mock_create_vserver = self.mock_object(self.library, '_create_vserver')
-
         mock_validate_network_type = self.mock_object(
             self.library,
             '_validate_network_type')
+        self.library.is_nfs_config_supported = nfs_config_support
+        mock_get_extra_spec = self.mock_object(
+            share_types, "get_share_type_extra_specs",
+            mock.Mock(return_value=fake.EXTRA_SPEC))
+        mock_check_extra_spec = self.mock_object(
+            self.library,
+            '_check_nfs_config_extra_specs_validity',
+            mock.Mock())
+        mock_get_nfs_config = self.mock_object(
+            self.library,
+            "_get_nfs_config_provisioning_options",
+            mock.Mock(return_value=nfs_config))
 
-        result = self.library.setup_server(fake.NETWORK_INFO)
+        result = self.library.setup_server(fake.NETWORK_INFO,
+                                           fake.SERVER_METADATA)
 
         ports = {}
         for network_allocation in fake.NETWORK_INFO['network_allocations']:
@@ -340,11 +374,28 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertTrue(mock_validate_network_type.called)
         self.assertTrue(mock_get_vserver_name.called)
         self.assertTrue(mock_create_vserver.called)
-        self.assertDictEqual({'vserver_name': fake.VSERVER1,
-                              'ports': jsonutils.dumps(ports)}, result)
+        if nfs_config_support:
+            mock_get_extra_spec.assert_called_once_with(
+                fake.SERVER_METADATA['share_type_id'])
+            mock_check_extra_spec.assert_called_once_with(
+                fake.EXTRA_SPEC)
+            mock_get_nfs_config.assert_called_once_with(
+                fake.EXTRA_SPEC)
+        else:
+            mock_get_extra_spec.assert_not_called()
+            mock_check_extra_spec.assert_not_called()
+            mock_get_nfs_config.assert_not_called()
+
+        expected = {
+            'vserver_name': fake.VSERVER1,
+            'ports': jsonutils.dumps(ports),
+        }
+        if nfs_config_support:
+            expected.update({'nfs_config': jsonutils.dumps(nfs_config)})
+        self.assertDictEqual(expected, result)
 
     def test_setup_server_with_error(self):
-
+        self.library.is_nfs_config_supported = False
         mock_get_vserver_name = self.mock_object(
             self.library,
             '_get_vserver_name',
@@ -363,7 +414,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(
             exception.ManilaException,
             self.library.setup_server,
-            fake.NETWORK_INFO)
+            fake.NETWORK_INFO,
+            fake.SERVER_METADATA)
 
         ports = {}
         for network_allocation in fake.NETWORK_INFO['network_allocations']:
@@ -372,9 +424,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertTrue(mock_validate_network_type.called)
         self.assertTrue(mock_get_vserver_name.called)
         self.assertTrue(mock_create_vserver.called)
+
         self.assertDictEqual(
-            {'server_details': {'vserver_name': fake.VSERVER1,
-                                'ports': jsonutils.dumps(ports)}},
+            {'server_details': {
+                'vserver_name': fake.VSERVER1,
+                'ports': jsonutils.dumps(ports),
+            }},
             fake_exception.detail_data)
 
     @ddt.data(
@@ -442,7 +497,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_create_vserver_admin_lif')
         self.mock_object(self.library, '_create_vserver_routes')
 
-        self.library._create_vserver(vserver_name, fake.NETWORK_INFO)
+        self.library._create_vserver(vserver_name, fake.NETWORK_INFO,
+                                     fake.NFS_CONFIG_TCP_UDP_MAX)
 
         get_ipspace_name_for_vlan_port.assert_called_once_with(
             fake.CLUSTER_NODES[0],
@@ -462,7 +518,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             vserver_name, vserver_client, fake.NETWORK_INFO, fake.IPSPACE)
         self.library._create_vserver_routes.assert_called_once_with(
             vserver_client, fake.NETWORK_INFO)
-        vserver_client.enable_nfs.assert_called_once_with(versions)
+        vserver_client.enable_nfs.assert_called_once_with(
+            versions, nfs_config=fake.NFS_CONFIG_TCP_UDP_MAX)
         self.library._client.setup_security_services.assert_called_once_with(
             fake.NETWORK_INFO['security_services'], vserver_client,
             vserver_name)
@@ -482,7 +539,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.NetAppException,
                           self.library._create_vserver,
                           vserver_name,
-                          fake.NETWORK_INFO)
+                          fake.NETWORK_INFO,
+                          fake.NFS_CONFIG_TCP_UDP_MAX)
 
     @ddt.data(
         {'lif_exception': netapp_api.NaApiError,
@@ -534,7 +592,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(lif_exception,
                           self.library._create_vserver,
                           vserver_name,
-                          fake.NETWORK_INFO)
+                          fake.NETWORK_INFO,
+                          fake.NFS_CONFIG_TCP_UDP_MAX)
 
         self.library._get_api_client.assert_called_with(vserver=vserver_name)
         self.assertTrue(self.library._client.create_vserver.called)
@@ -1213,3 +1272,360 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_create_from_snap.assert_called_once_with(
             None, fake.SHARE, fake.SNAPSHOT, share_server=fake.SHARE_SERVER,
             parent_share=fake_parent_share)
+
+    def test_check_if_extra_spec_is_positive_with_negative_integer(self):
+        self.assertRaises(exception.NetAppException,
+                          self.library._check_if_max_files_is_valid,
+                          fake.SHARE, -1)
+
+    def test_check_if_extra_spec_is_positive_with_string(self):
+        self.assertRaises(ValueError,
+                          self.library._check_if_max_files_is_valid,
+                          fake.SHARE, 'abc')
+
+    def test_check_nfs_config_extra_specs_validity(self):
+        result = self.library._check_nfs_config_extra_specs_validity(
+            fake.EXTRA_SPEC)
+
+        self.assertIsNone(result)
+
+    def test_check_nfs_config_extra_specs_validity_empty_spec(self):
+        result = self.library._check_nfs_config_extra_specs_validity({})
+
+        self.assertIsNone(result)
+
+    @ddt.data(fake.INVALID_TCP_MAX_XFER_SIZE_EXTRA_SPEC,
+              fake.INVALID_UDP_MAX_XFER_SIZE_EXTRA_SPEC)
+    def test_check_nfs_config_extra_specs_validity_invalid_value(self,
+                                                                 extra_specs):
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._check_nfs_config_extra_specs_validity,
+            extra_specs)
+
+    @ddt.data({}, fake.STRING_EXTRA_SPEC)
+    def test_get_nfs_config_provisioning_options_empty(self, extra_specs):
+        result = self.library._get_nfs_config_provisioning_options(
+            extra_specs)
+
+        self.assertDictEqual(result, fake.NFS_CONFIG_DEFAULT)
+
+    @ddt.data(
+        {'extra_specs': fake.NFS_CONFIG_TCP_MAX_DDT['extra_specs'],
+         'expected': fake.NFS_CONFIG_TCP_MAX_DDT['expected']},
+        {'extra_specs': fake.NFS_CONFIG_UDP_MAX_DDT['extra_specs'],
+         'expected': fake.NFS_CONFIG_UDP_MAX_DDT['expected']},
+        {'extra_specs': fake.NFS_CONFIG_TCP_UDP_MAX_DDT['extra_specs'],
+         'expected': fake.NFS_CONFIG_TCP_UDP_MAX_DDT['expected']},
+    )
+    @ddt.unpack
+    def test_get_nfs_config_provisioning_options_valid(self, extra_specs,
+                                                       expected):
+        result = self.library._get_nfs_config_provisioning_options(
+            extra_specs)
+
+        self.assertDictEqual(expected, result)
+
+    @ddt.data({'fake_share_server': fake.SHARE_SERVER_NFS_TCP,
+               'expected_nfs_config': fake.NFS_CONFIG_TCP_MAX},
+              {'fake_share_server': fake.SHARE_SERVER_NFS_UDP,
+               'expected_nfs_config': fake.NFS_CONFIG_UDP_MAX},
+              {'fake_share_server': fake.SHARE_SERVER_NFS_TCP_UDP,
+               'expected_nfs_config': fake.NFS_CONFIG_TCP_UDP_MAX},
+              {'fake_share_server': fake.SHARE_SERVER_NO_DETAILS,
+               'expected_nfs_config': fake.NFS_CONFIG_DEFAULT},
+              {'fake_share_server': fake.SHARE_SERVER_NFS_DEFAULT,
+               'expected_nfs_config': None},
+              {'fake_share_server': fake.SHARE_SERVER_NO_NFS_NONE,
+               'expected_nfs_config': fake.NFS_CONFIG_DEFAULT})
+    @ddt.unpack
+    def test_is_share_server_compatible_true(self, fake_share_server,
+                                             expected_nfs_config):
+        is_same = self.library._is_share_server_compatible(
+            fake_share_server, expected_nfs_config)
+        self.assertTrue(is_same)
+
+    @ddt.data({'fake_share_server': fake.SHARE_SERVER_NFS_TCP,
+               'expected_nfs_config': fake.NFS_CONFIG_UDP_MAX},
+              {'fake_share_server': fake.SHARE_SERVER_NFS_UDP,
+               'expected_nfs_config': fake.NFS_CONFIG_TCP_MAX},
+              {'fake_share_server': fake.SHARE_SERVER_NFS_TCP_UDP,
+               'expected_nfs_config': fake.NFS_CONFIG_TCP_MAX},
+              {'fake_share_server': fake.SHARE_SERVER_NFS_TCP_UDP,
+               'expected_nfs_config': fake.NFS_CONFIG_UDP_MAX},
+              {'fake_share_server': fake.SHARE_SERVER_NFS_TCP_UDP,
+               'expected_nfs_config': None},
+              {'fake_share_server': fake.SHARE_SERVER_NFS_TCP_UDP,
+               'expected_nfs_config': {}},
+              {'fake_share_server': fake.SHARE_SERVER_NFS_TCP_UDP,
+               'expected_nfs_config': fake.NFS_CONFIG_DEFAULT},
+              {'fake_share_server': fake.SHARE_SERVER_NO_DETAILS,
+               'expected_nfs_config': fake.NFS_CONFIG_UDP_MAX},
+              {'fake_share_server': fake.SHARE_SERVER_NFS_DEFAULT,
+               'expected_nfs_config': fake.NFS_CONFIG_UDP_MAX},
+              {'fake_share_server': fake.SHARE_SERVER_NO_NFS_NONE,
+               'expected_nfs_config': fake.NFS_CONFIG_TCP_MAX})
+    @ddt.unpack
+    def test_is_share_server_compatible_false(self, fake_share_server,
+                                              expected_nfs_config):
+        is_same = self.library._is_share_server_compatible(
+            fake_share_server, expected_nfs_config)
+        self.assertFalse(is_same)
+
+    @ddt.data(
+        {'expected_server': fake.SHARE_SERVER_NFS_TCP,
+         'share_group': {'share_server_id': fake.SHARE_SERVER_NFS_TCP['id']},
+         'nfs_config': fake.NFS_CONFIG_TCP_MAX},
+        {'expected_server': fake.SHARE_SERVER_NFS_UDP,
+         'share_group': {'share_server_id': fake.SHARE_SERVER_NFS_UDP['id']},
+         'nfs_config': fake.NFS_CONFIG_UDP_MAX},
+        {'expected_server': fake.SHARE_SERVER_NFS_TCP_UDP,
+         'share_group': {
+             'share_server_id': fake.SHARE_SERVER_NFS_TCP_UDP['id']},
+         'nfs_config': fake.NFS_CONFIG_TCP_UDP_MAX},
+        {'expected_server': fake.SHARE_SERVER_NFS_DEFAULT,
+         'share_group': {
+             'share_server_id': fake.SHARE_SERVER_NFS_DEFAULT['id']},
+         'nfs_config': fake.NFS_CONFIG_DEFAULT},
+        {'expected_server': None,
+         'share_group': {'share_server_id': 'invalid_id'},
+         'nfs_config': fake.NFS_CONFIG_TCP_MAX})
+    @ddt.unpack
+    def test_choose_share_server_compatible_with_share_group_and_nfs_config(
+            self, expected_server, share_group, nfs_config):
+        self.library.is_nfs_config_supported = True
+        mock_get_extra_spec = self.mock_object(
+            share_types, "get_extra_specs_from_share",
+            mock.Mock(return_value=fake.EXTRA_SPEC))
+        mock_get_nfs_config = self.mock_object(
+            self.library,
+            "_get_nfs_config_provisioning_options",
+            mock.Mock(return_value=nfs_config))
+
+        server = self.library.choose_share_server_compatible_with_share(
+            None, fake.SHARE_SERVERS, fake.SHARE, None, share_group)
+
+        mock_get_extra_spec.assert_called_once_with(fake.SHARE)
+        mock_get_nfs_config.assert_called_once_with(fake.EXTRA_SPEC)
+        self.assertEqual(expected_server, server)
+
+    @ddt.data(
+        {'expected_server': fake.SHARE_SERVER_NO_NFS_NONE,
+         'share_group': {'share_server_id':
+                         fake.SHARE_SERVER_NO_NFS_NONE['id']}},
+        {'expected_server': fake.SHARE_SERVER_NO_DETAILS,
+         'share_group': {'share_server_id':
+                         fake.SHARE_SERVER_NO_DETAILS['id']}},
+        {'expected_server': fake.SHARE_SERVER_NO_DETAILS,
+         'share_group': {
+             'share_server_id': fake.SHARE_SERVER_NO_DETAILS['id']},
+         'nfs_config_support': False},
+        {'expected_server': None,
+         'share_group': {'share_server_id': 'invalid_id'}})
+    @ddt.unpack
+    def test_choose_share_server_compatible_with_share_group_only(
+            self, expected_server, share_group, nfs_config_support=True):
+        self.library.is_nfs_config_supported = nfs_config_support
+        mock_get_extra_spec = self.mock_object(
+            share_types, "get_extra_specs_from_share",
+            mock.Mock(return_value=fake.EMPTY_EXTRA_SPEC))
+        mock_get_nfs_config = self.mock_object(
+            self.library,
+            "_get_nfs_config_provisioning_options",
+            mock.Mock(return_value=fake.NFS_CONFIG_DEFAULT))
+
+        server = self.library.choose_share_server_compatible_with_share(
+            None, fake.SHARE_SERVERS, fake.SHARE, None, share_group)
+
+        self.assertEqual(expected_server, server)
+        if nfs_config_support:
+            mock_get_extra_spec.assert_called_once_with(fake.SHARE)
+            mock_get_nfs_config.assert_called_once_with(fake.EMPTY_EXTRA_SPEC)
+
+    @ddt.data(
+        {'expected_server': fake.SHARE_SERVER_NFS_TCP,
+         'nfs_config': fake.NFS_CONFIG_TCP_MAX},
+        {'expected_server': fake.SHARE_SERVER_NFS_UDP,
+         'nfs_config': fake.NFS_CONFIG_UDP_MAX},
+        {'expected_server': fake.SHARE_SERVER_NFS_TCP_UDP,
+         'nfs_config': fake.NFS_CONFIG_TCP_UDP_MAX},
+        {'expected_server': fake.SHARE_SERVER_NFS_DEFAULT,
+         'nfs_config': fake.NFS_CONFIG_DEFAULT},
+        {'expected_server': None,
+         'nfs_config': {'invalid': 'invalid'}},
+        {'expected_server': fake.SHARE_SERVER_NFS_TCP,
+         'nfs_config': None, 'nfs_config_support': False},
+    )
+    @ddt.unpack
+    def test_choose_share_server_compatible_with_share_nfs_config_only(
+            self, expected_server, nfs_config, nfs_config_support=True):
+        self.library.is_nfs_config_supported = nfs_config_support
+        mock_get_extra_spec = self.mock_object(
+            share_types, "get_extra_specs_from_share",
+            mock.Mock(return_value=fake.EXTRA_SPEC))
+        mock_get_nfs_config = self.mock_object(
+            self.library,
+            "_get_nfs_config_provisioning_options",
+            mock.Mock(return_value=nfs_config))
+
+        server = self.library.choose_share_server_compatible_with_share(
+            None, fake.SHARE_SERVERS, fake.SHARE)
+
+        self.assertEqual(expected_server, server)
+        if nfs_config_support:
+            mock_get_extra_spec.assert_called_once_with(fake.SHARE)
+            mock_get_nfs_config.assert_called_once_with(fake.EXTRA_SPEC)
+
+    @ddt.data(
+        {'expected_server': fake.SHARE_SERVER_NO_DETAILS,
+         'share_servers': [
+             fake.SHARE_SERVER_NFS_TCP, fake.SHARE_SERVER_NO_DETAILS]},
+        {'expected_server': fake.SHARE_SERVER_NO_NFS_NONE,
+         'share_servers': [
+             fake.SHARE_SERVER_NFS_UDP, fake.SHARE_SERVER_NO_NFS_NONE]},
+        {'expected_server': fake.SHARE_SERVER_NFS_DEFAULT,
+         'share_servers': [
+             fake.SHARE_SERVER_NFS_UDP, fake.SHARE_SERVER_NFS_DEFAULT]},
+        {'expected_server': None,
+         'share_servers': [
+             fake.SHARE_SERVER_NFS_TCP, fake.SHARE_SERVER_NFS_UDP]},
+        {'expected_server': fake.SHARE_SERVER_NO_DETAILS,
+         'share_servers': [fake.SHARE_SERVER_NO_DETAILS],
+         'nfs_config_support': False}
+    )
+    @ddt.unpack
+    def test_choose_share_server_compatible_with_share_no_specification(
+            self, expected_server, share_servers, nfs_config_support=True):
+        self.library.is_nfs_config_supported = nfs_config_support
+        mock_get_extra_spec = self.mock_object(
+            share_types, "get_extra_specs_from_share",
+            mock.Mock(return_value=fake.EMPTY_EXTRA_SPEC))
+        mock_get_nfs_config = self.mock_object(
+            self.library,
+            "_get_nfs_config_provisioning_options",
+            mock.Mock(return_value=fake.NFS_CONFIG_DEFAULT))
+
+        server = self.library.choose_share_server_compatible_with_share(
+            None, share_servers, fake.SHARE)
+
+        self.assertEqual(expected_server, server)
+        if nfs_config_support:
+            mock_get_extra_spec.assert_called_once_with(fake.SHARE)
+            mock_get_nfs_config.assert_called_once_with(fake.EMPTY_EXTRA_SPEC)
+
+    def test_manage_existing_error(self):
+        fake_server = {'id': 'id'}
+        fake_nfs_config = 'fake_nfs_config'
+        self.library.is_nfs_config_supported = True
+
+        mock_get_extra_spec = self.mock_object(
+            share_types, "get_extra_specs_from_share",
+            mock.Mock(return_value=fake.EXTRA_SPEC))
+        mock_get_nfs_config = self.mock_object(
+            self.library,
+            "_get_nfs_config_provisioning_options",
+            mock.Mock(return_value=fake_nfs_config))
+        mock_is_compatible = self.mock_object(
+            self.library,
+            "_is_share_server_compatible",
+            mock.Mock(return_value=False))
+
+        self.assertRaises(exception.NetAppException,
+                          self.library.manage_existing,
+                          fake.SHARE, 'opts', fake_server)
+
+        mock_get_extra_spec.assert_called_once_with(fake.SHARE)
+        mock_get_nfs_config.assert_called_once_with(fake.EXTRA_SPEC)
+        mock_is_compatible.assert_called_once_with(fake_server,
+                                                   fake_nfs_config)
+
+    def test_choose_share_server_compatible_with_share_group_no_share_server(
+            self):
+        server = self.library.choose_share_server_compatible_with_share_group(
+            None, [], fake.SHARE_GROUP_REF)
+
+        self.assertIsNone(server)
+
+    @ddt.data(
+        [fake.NFS_CONFIG_DEFAULT, fake.NFS_CONFIG_TCP_MAX],
+        [fake.NFS_CONFIG_TCP_MAX, fake.NFS_CONFIG_UDP_MAX],
+        [fake.NFS_CONFIG_TCP_UDP_MAX, fake.NFS_CONFIG_TCP_MAX],
+        [fake.NFS_CONFIG_DEFAULT, fake.NFS_CONFIG_TCP_UDP_MAX])
+    def test_choose_share_server_compatible_with_share_group_nfs_conflict(
+            self, nfs_config_list):
+        self.library.is_nfs_config_supported = True
+        self.mock_object(
+            share_types, "get_share_type_extra_specs",
+            mock.Mock(return_value=fake.EXTRA_SPEC))
+        mock_get_nfs_config = self.mock_object(
+            self.library,
+            "_get_nfs_config_provisioning_options",
+            mock.Mock(side_effect=nfs_config_list))
+        mock_check_extra_spec = self.mock_object(
+            self.library,
+            '_check_nfs_config_extra_specs_validity',
+            mock.Mock())
+
+        self.assertRaises(exception.InvalidInput,
+                          self.library.
+                          choose_share_server_compatible_with_share_group,
+                          None, fake.SHARE_SERVERS, fake.SHARE_GROUP_REF)
+
+        mock_get_nfs_config.assert_called_with(fake.EXTRA_SPEC)
+        mock_check_extra_spec.assert_called_once_with(fake.EXTRA_SPEC)
+
+    @ddt.data(
+        {'expected_server': fake.SHARE_SERVER_NO_DETAILS,
+         'nfs_config': fake.NFS_CONFIG_DEFAULT,
+         'share_servers': [
+             fake.SHARE_SERVER_NFS_TCP, fake.SHARE_SERVER_NO_DETAILS]},
+        {'expected_server': fake.SHARE_SERVER_NO_NFS_NONE,
+         'nfs_config': fake.NFS_CONFIG_DEFAULT,
+         'share_servers': [
+             fake.SHARE_SERVER_NFS_UDP, fake.SHARE_SERVER_NO_NFS_NONE]},
+        {'expected_server': fake.SHARE_SERVER_NFS_DEFAULT,
+         'nfs_config': fake.NFS_CONFIG_DEFAULT,
+         'share_servers': [
+             fake.SHARE_SERVER_NFS_UDP, fake.SHARE_SERVER_NFS_DEFAULT]},
+        {'expected_server': None,
+         'nfs_config': fake.NFS_CONFIG_DEFAULT,
+         'share_servers': [
+             fake.SHARE_SERVER_NFS_TCP, fake.SHARE_SERVER_NFS_UDP,
+             fake.SHARE_SERVER_NFS_TCP_UDP]},
+        {'expected_server': fake.SHARE_SERVER_NFS_TCP_UDP,
+         'nfs_config': fake.NFS_CONFIG_TCP_UDP_MAX,
+         'share_servers': [
+             fake.SHARE_SERVER_NFS_TCP, fake.SHARE_SERVER_NFS_UDP,
+             fake.SHARE_SERVER_NFS_DEFAULT, fake.SHARE_SERVER_NFS_TCP_UDP]},
+        {'expected_server': fake.NFS_CONFIG_DEFAULT,
+         'nfs_config': None,
+         'share_servers': [fake.NFS_CONFIG_DEFAULT],
+         'nfs_config_supported': False}
+    )
+    @ddt.unpack
+    def test_choose_share_server_compatible_with_share_group(
+            self, expected_server, nfs_config, share_servers,
+            nfs_config_supported=True):
+        self.library.is_nfs_config_supported = nfs_config_supported
+        self.mock_object(
+            share_types, "get_share_type_extra_specs",
+            mock.Mock(return_value=fake.EXTRA_SPEC))
+        mock_get_nfs_config = self.mock_object(
+            self.library,
+            "_get_nfs_config_provisioning_options",
+            mock.Mock(return_value=nfs_config))
+        mock_check_extra_spec = self.mock_object(
+            self.library,
+            '_check_nfs_config_extra_specs_validity',
+            mock.Mock())
+
+        server = self.library.choose_share_server_compatible_with_share_group(
+            None, share_servers, fake.SHARE_GROUP_REF)
+
+        if nfs_config_supported:
+            mock_get_nfs_config.assert_called_with(fake.EXTRA_SPEC)
+            mock_check_extra_spec.assert_called_once_with(fake.EXTRA_SPEC)
+        else:
+            mock_get_nfs_config.assert_not_called()
+            mock_check_extra_spec.assert_not_called()
+        self.assertEqual(expected_server, server)

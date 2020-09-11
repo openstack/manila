@@ -14,6 +14,7 @@
 #    under the License.
 
 import copy
+from oslo_serialization import jsonutils
 
 from manila.common import constants
 import manila.tests.share.drivers.netapp.fakes as na_fakes
@@ -173,6 +174,64 @@ EXTRA_SPEC = {
     'netapp_disk_type': 'FCAL',
     'netapp_raid_type': 'raid4',
     'netapp_flexvol_encryption': 'true',
+    'netapp:tcp_max_xfer_size': 100,
+    'netapp:udp_max_xfer_size': 100,
+}
+
+NFS_CONFIG_DEFAULT = {
+    'tcp-max-xfer-size': 65536,
+    'udp-max-xfer-size': 32768,
+}
+
+NFS_CONFIG_TCP_MAX_DDT = {
+    'extra_specs': {
+        'netapp:tcp_max_xfer_size': 100,
+    },
+    'expected': {
+        'tcp-max-xfer-size': 100,
+        'udp-max-xfer-size': NFS_CONFIG_DEFAULT['udp-max-xfer-size'],
+    }
+}
+
+NFS_CONFIG_UDP_MAX_DDT = {
+    'extra_specs': {
+        'netapp:udp_max_xfer_size': 100,
+    },
+    'expected': {
+        'tcp-max-xfer-size': NFS_CONFIG_DEFAULT['tcp-max-xfer-size'],
+        'udp-max-xfer-size': 100,
+    }
+}
+
+NFS_CONFIG_TCP_UDP_MAX = {
+    'tcp-max-xfer-size': 100,
+    'udp-max-xfer-size': 100,
+}
+
+NFS_CONFIG_TCP_MAX = {
+    'tcp-max-xfer-size': 100,
+    'udp-max-xfer-size': NFS_CONFIG_DEFAULT['udp-max-xfer-size'],
+}
+
+NFS_CONFIG_UDP_MAX = {
+    'tcp-max-xfer-size': NFS_CONFIG_DEFAULT['tcp-max-xfer-size'],
+    'udp-max-xfer-size': 100,
+}
+
+NFS_CONFIG_TCP_UDP_MAX_DDT = {
+    'extra_specs': {
+        'netapp:tcp_max_xfer_size': 100,
+        'netapp:udp_max_xfer_size': 100,
+    },
+    'expected': NFS_CONFIG_TCP_UDP_MAX,
+}
+
+SHARE_GROUP_REF = {
+    'share_types': [
+        {'share_type_id': 'id1'},
+        {'share_type_id': 'id2'},
+        {'share_type_id': 'id3'},
+    ],
 }
 
 EXTRA_SPEC_WITH_QOS = copy.deepcopy(EXTRA_SPEC)
@@ -268,6 +327,14 @@ INVALID_EXTRA_SPEC_COMBO = {
 
 INVALID_MAX_FILE_EXTRA_SPEC = {
     'netapp:max_files': -1,
+}
+
+INVALID_TCP_MAX_XFER_SIZE_EXTRA_SPEC = {
+    'netapp:tcp_max_xfer_size': -1,
+}
+
+INVALID_UDP_MAX_XFER_SIZE_EXTRA_SPEC = {
+    'netapp:udp_max_xfer_size': -1,
 }
 
 EMPTY_EXTRA_SPEC = {}
@@ -382,6 +449,58 @@ SHARE_SERVER_2 = {
     'network_allocations': (USER_NETWORK_ALLOCATIONS +
                             ADMIN_NETWORK_ALLOCATIONS),
 }
+
+SHARE_SERVER_NFS_TCP = {
+    'id': 'fake_nfs_id_tcp',
+    'backend_details': {
+        'vserver_name': VSERVER2,
+        'nfs_config': jsonutils.dumps(NFS_CONFIG_TCP_MAX),
+    },
+}
+
+SHARE_SERVER_NFS_UDP = {
+    'id': 'fake_nfs_id_udp',
+    'backend_details': {
+        'vserver_name': VSERVER2,
+        'nfs_config': jsonutils.dumps(NFS_CONFIG_UDP_MAX),
+    },
+}
+
+SHARE_SERVER_NFS_TCP_UDP = {
+    'id': 'fake_nfs_id_tcp_udp',
+    'backend_details': {
+        'vserver_name': VSERVER2,
+        'nfs_config': jsonutils.dumps(NFS_CONFIG_TCP_UDP_MAX),
+    },
+}
+
+SHARE_SERVER_NO_NFS_NONE = {
+    'id': 'fake_no_nfs_id_none',
+    'backend_details': {
+        'vserver_name': VSERVER2,
+    },
+}
+
+SHARE_SERVER_NO_DETAILS = {
+    'id': 'id_no_datails',
+}
+
+SHARE_SERVER_NFS_DEFAULT = {
+    'id': 'fake_id_nfs_default',
+    'backend_details': {
+        'vserver_name': VSERVER2,
+        'nfs_config': jsonutils.dumps(NFS_CONFIG_DEFAULT),
+    },
+}
+
+SHARE_SERVERS = [
+    SHARE_SERVER_NFS_TCP,
+    SHARE_SERVER_NFS_UDP,
+    SHARE_SERVER_NFS_TCP_UDP,
+    SHARE_SERVER_NFS_DEFAULT,
+    SHARE_SERVER_NO_NFS_NONE,
+    SHARE_SERVER_NO_DETAILS,
+]
 
 VSERVER_PEER = [{
     'vserver': VSERVER1,
@@ -1204,6 +1323,11 @@ PROCESSOR_INSTANCE_UUIDS = [
     'cluster1-01:kernel:processor1',
 ]
 PROCESSOR_INSTANCE_NAMES = ['processor0', 'processor1']
+
+SERVER_METADATA = {
+    'share_type_id': 'fake_id',
+    'host': 'fake_host',
+}
 
 PROCESSOR_COUNTERS = [
     {

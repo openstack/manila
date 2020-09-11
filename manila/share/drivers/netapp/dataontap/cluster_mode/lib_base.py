@@ -108,6 +108,13 @@ class NetAppCmodeFileStorageLibrary(object):
 
     SIZE_DEPENDENT_QOS_SPECS = {'maxiopspergib', 'maxbpspergib'}
 
+    # Maps the NFS config used by share-servers
+    NFS_CONFIG_EXTRA_SPECS_MAP = {
+
+        'netapp:tcp_max_xfer_size': 'tcp-max-xfer-size',
+        'netapp:udp_max_xfer_size': 'udp-max-xfer-size',
+    }
+
     def __init__(self, driver_name, **kwargs):
         na_utils.validate_driver_instantiation(**kwargs)
 
@@ -132,6 +139,8 @@ class NetAppCmodeFileStorageLibrary(object):
         self._have_cluster_creds = None
         self._revert_to_snapshot_support = False
         self._cluster_info = {}
+        self._default_nfs_config = None
+        self.is_nfs_config_supported = False
 
         self._app_version = kwargs.get('app_version', 'unknown')
 
@@ -152,6 +161,17 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # Performance monitoring library
         self._perf_library = performance.PerformanceLibrary(self._client)
+
+        # NOTE(felipe_rodrigues): In case adding a parameter that can be
+        # configured in old versions too, the "is_nfs_config_supported" should
+        # be removed (always supporting), adding the logic of skipping the
+        # transfer limit parameters when building the server nfs_config.
+        if self._client.features.TRANSFER_LIMIT_NFS_CONFIG:
+            self.is_nfs_config_supported = True
+            self._default_nfs_config = self._client.get_nfs_config_default(
+                list(self.NFS_CONFIG_EXTRA_SPECS_MAP.values()))
+            LOG.debug('The default NFS configuration: %s',
+                      self._default_nfs_config)
 
     @na_utils.trace
     def _set_cluster_info(self):
@@ -929,7 +949,7 @@ class NetAppCmodeFileStorageLibrary(object):
         return dict(zip(provisioning_args, provisioning_values))
 
     @na_utils.trace
-    def _get_string_provisioning_options(self, specs, string_specs_map):
+    def get_string_provisioning_options(self, specs, string_specs_map):
         """Given extra specs, return corresponding client library kwargs.
 
         Build a full set of client library provisioning kwargs, filling in a
@@ -1027,7 +1047,7 @@ class NetAppCmodeFileStorageLibrary(object):
         boolean_args = self._get_boolean_provisioning_options(
             specs, self.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP)
 
-        string_args = self._get_string_provisioning_options(
+        string_args = self.get_string_provisioning_options(
             specs, self.STRING_QUALIFIED_EXTRA_SPECS_MAP)
         result = boolean_args.copy()
         result.update(string_args)
@@ -2330,6 +2350,12 @@ class NetAppCmodeFileStorageLibrary(object):
                     destination_share)
                 self._check_extra_specs_validity(
                     destination_share, extra_specs)
+
+                # NOTE (felipe_rodrigues): NetApp only can migrate within the
+                # same server, so it does not need to check that the
+                # destination share has the same NFS config as the destination
+                # server.
+
                 # TODO(gouthamr): Check whether QoS min-throughputs can be
                 # honored on the destination aggregate when supported.
                 self._check_aggregate_extra_specs_validity(
