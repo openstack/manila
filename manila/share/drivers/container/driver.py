@@ -304,14 +304,9 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
     def _delete_export_and_umount_storage(
             self, share, server_id, share_name, ignore_errors=False):
 
-        self._get_helper(share).delete_share(server_id, share_name,
-                                             ignore_errors=ignore_errors)
+        self._umount_storage(
+            share, server_id, share_name, ignore_errors=ignore_errors)
 
-        self.container.execute(
-            server_id,
-            ["umount", "/shares/%s" % share_name],
-            ignore_errors=ignore_errors
-        )
         # (aovchinnikov): bug 1621784 manifests itself here as well as in
         # storage helper. There is a chance that we won't be able to remove
         # this directory, despite the fact that it is not shared anymore and
@@ -323,11 +318,25 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
             ignore_errors=True
         )
 
+    def _umount_storage(
+            self, share, server_id, share_name, ignore_errors=False):
+
+        self._get_helper(share).delete_share(server_id, share_name,
+                                             ignore_errors=ignore_errors)
+        self.container.execute(
+            server_id,
+            ["umount", "/shares/%s" % share_name],
+            ignore_errors=ignore_errors
+        )
+
     def _create_export_and_mount_storage(self, share, server_id, share_name):
         self.container.execute(
             server_id,
             ["mkdir", "-m", "750", "/shares/%s" % share_name]
         )
+        return self._mount_storage(share, server_id, share_name)
+
+    def _mount_storage(self, share, server_id, share_name):
         lv_device = self.storage._get_lv_device(share_name)
         self.container.execute(
             server_id,
@@ -382,3 +391,161 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         if not self.container.container_exists(name):
             return self._get_container_name(name)
         return name
+
+    def migration_check_compatibility(self, context, source_share,
+                                      destination_share, share_server=None,
+                                      destination_share_server=None):
+        return self.storage.migration_check_compatibility(
+            context, source_share, destination_share,
+            share_server=share_server,
+            destination_share_server=destination_share_server)
+
+    def migration_start(self, context, source_share, destination_share,
+                        source_snapshots, snapshot_mappings,
+                        share_server=None, destination_share_server=None):
+        self.storage.migration_start(
+            context, source_share, destination_share,
+            source_snapshots, snapshot_mappings,
+            share_server=share_server,
+            destination_share_server=destination_share_server)
+
+    def migration_continue(self, context, source_share, destination_share,
+                           source_snapshots, snapshot_mappings,
+                           share_server=None, destination_share_server=None):
+        return self.storage.migration_continue(
+            context, source_share, destination_share,
+            source_snapshots, snapshot_mappings, share_server=share_server,
+            destination_share_server=destination_share_server)
+
+    def migration_get_progress(self, context, source_share,
+                               destination_share, source_snapshots,
+                               snapshot_mappings, share_server=None,
+                               destination_share_server=None):
+        return self.storage.migration_get_progress(
+            context, source_share, destination_share,
+            source_snapshots, snapshot_mappings, share_server=share_server,
+            destination_share_server=destination_share_server)
+
+    def migration_cancel(self, context, source_share, destination_share,
+                         source_snapshots, snapshot_mappings,
+                         share_server=None, destination_share_server=None):
+        self.storage.migration_cancel(
+            context, source_share, destination_share,
+            source_snapshots, snapshot_mappings, share_server=share_server,
+            destination_share_server=destination_share_server)
+
+    def migration_complete(self, context, source_share, destination_share,
+                           source_snapshots, snapshot_mappings,
+                           share_server=None, destination_share_server=None):
+        # Removes the source share reference from the source container
+        source_server_id = self._get_container_name(share_server["id"])
+        self._umount_storage(
+            source_share, source_server_id, source_share.share_id)
+
+        # storage removes source share
+        self.storage.migration_complete(
+            context, source_share, destination_share,
+            source_snapshots, snapshot_mappings, share_server=share_server,
+            destination_share_server=destination_share_server)
+
+        # Enables the access on the destination container
+        destination_server_id = self._get_container_name(
+            destination_share_server["id"])
+        new_export_location = self._mount_storage(
+            destination_share, destination_server_id,
+            destination_share.share_id)
+
+        msg = ("Volume move operation for share %(shr)s was completed "
+               "successfully. Share has been moved from %(src)s to "
+               "%(dest)s.")
+        msg_args = {
+            'shr': source_share['id'],
+            'src': source_share['host'],
+            'dest': destination_share['host'],
+        }
+        LOG.info(msg, msg_args)
+
+        return {
+            'export_locations': new_export_location,
+        }
+
+    def share_server_migration_check_compatibility(
+            self, context, share_server, dest_host, old_share_network,
+            new_share_network, shares_request_spec):
+        """Is called to check migration compatibility for a share server."""
+        return self.storage.share_server_migration_check_compatibility(
+            context, share_server, dest_host, old_share_network,
+            new_share_network, shares_request_spec)
+
+    def share_server_migration_start(self, context, src_share_server,
+                                     dest_share_server, shares, snapshots):
+        """Is called to perform 1st phase of migration of a share server."""
+        LOG.debug(
+            "Migration of share server with ID '%s' has been started.",
+            src_share_server["id"])
+        self.storage.share_server_migration_start(
+            context, src_share_server, dest_share_server, shares, snapshots)
+
+    def share_server_migration_continue(self, context, src_share_server,
+                                        dest_share_server, shares, snapshots):
+
+        return self.storage.share_server_migration_continue(
+            context, src_share_server, dest_share_server, shares, snapshots)
+
+    def share_server_migration_cancel(self, context, src_share_server,
+                                      dest_share_server, shares, snapshots):
+        """Is called to cancel a share server migration."""
+        self.storage.share_server_migration_cancel(
+            context, src_share_server, dest_share_server, shares, snapshots)
+        LOG.debug(
+            "Migration of share server with ID '%s' has been canceled.",
+            src_share_server["id"])
+        return
+
+    def share_server_migration_get_progress(self, context, src_share_server,
+                                            dest_share_server, shares,
+                                            snapshots):
+        """Is called to get share server migration progress."""
+        return self.storage.share_server_migration_get_progress(
+            context, src_share_server, dest_share_server, shares, snapshots)
+
+    def share_server_migration_complete(self, context, source_share_server,
+                                        dest_share_server, shares, snapshots,
+                                        new_network_allocations):
+        # Removes the source shares reference from the source container
+        source_server_id = self._get_container_name(source_share_server["id"])
+        for source_share in shares:
+            self._umount_storage(
+                source_share, source_server_id, source_share.share_id)
+
+        # storage removes source share
+        self.storage.share_server_migration_complete(
+            context, source_share_server, dest_share_server, shares, snapshots,
+            new_network_allocations)
+
+        destination_server_id = self._get_container_name(
+            dest_share_server["id"])
+        shares_updates = {}
+        for destination_share in shares:
+            share_id = destination_share.share_id
+            new_export_location = self._mount_storage(
+                destination_share, destination_server_id, share_id)
+
+            shares_updates[destination_share['id']] = {
+                'export_locations': new_export_location,
+                'pool_name': self.storage.get_share_pool_name(share_id),
+            }
+
+        msg = ("Volumes move operation from server %(server)s were completed "
+               "successfully. Share server has been moved from %(src)s to "
+               "%(dest)s.")
+        msg_args = {
+            'serv': source_share_server['id'],
+            'src': source_share_server['host'],
+            'dest': dest_share_server['host'],
+        }
+        LOG.info(msg, msg_args)
+
+        return {
+            'share_updates': shares_updates,
+        }

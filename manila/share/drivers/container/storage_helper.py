@@ -22,7 +22,7 @@ from oslo_log import log
 from manila import exception
 from manila.i18n import _
 from manila.share import driver
-
+from manila.share import utils as share_utils
 
 CONF = cfg.CONF
 
@@ -140,3 +140,183 @@ class LVMHelper(driver.ExecuteMixin):
         LOG.debug("Found size %(size)s for LVM device "
                   "%(lvm)s.", {'size': size[0], 'lvm': share_name})
         return size[0]
+
+    def migration_check_compatibility(self, context, source_share,
+                                      destination_share, share_server=None,
+                                      destination_share_server=None):
+        """Checks compatibility between self.host and destination host."""
+        # They must be in same vg and host
+        compatible = False
+        destination_host = destination_share['host']
+        source_host = source_share['host']
+        destination_vg = share_utils.extract_host(
+            destination_host, level='pool')
+        source_vg = share_utils.extract_host(
+            source_host, level='pool')
+
+        if destination_vg != source_vg:
+            msg = ("Cannot migrate share %(shr)s between "
+                   "%(src)s and %(dest)s, they must be in the same volume "
+                   "group.")
+            msg_args = {
+                'shr': source_share['id'],
+                'src': source_share['host'],
+                'dest': destination_host,
+            }
+            LOG.exception(msg, msg_args)
+        else:
+            compatible = True
+
+        compatibility = {
+            'compatible': compatible,
+            'writable': True,
+            'nondisruptive': False,
+            'preserve_metadata': True,
+            'preserve_snapshots': False,
+        }
+
+        return compatibility
+
+    def migration_start(self, context, source_share, destination_share,
+                        source_snapshots, snapshot_mappings,
+                        share_server=None, destination_share_server=None):
+        """Starts the migration of the share from one host to another."""
+
+        # NOTE(felipe_rodrigues): Since they are in the same volume group,
+        # there is no need to copy the data between the volumes.
+        return
+
+    def migration_continue(self, context, source_share, destination_share,
+                           source_snapshots, snapshot_mappings,
+                           share_server=None, destination_share_server=None):
+        """Check the progress of the migration."""
+        return True
+
+    def migration_get_progress(self, context, source_share,
+                               destination_share, source_snapshots,
+                               snapshot_mappings, share_server=None,
+                               destination_share_server=None):
+        """Return detailed progress of the migration in progress."""
+        return {
+            'total_progress': 100,
+        }
+
+    def migration_cancel(self, context, source_share, destination_share,
+                         source_snapshots, snapshot_mappings,
+                         share_server=None, destination_share_server=None):
+        """Abort an ongoing migration."""
+
+        # NOTE(felipe_rodrigues): Since they are in the same volume group,
+        # there is no need to cancel the copy of the data.
+        return
+
+    def migration_complete(self, context, source_share, destination_share,
+                           source_snapshots, snapshot_mappings,
+                           share_server=None, destination_share_server=None):
+        """Completes by removing the source local volume."""
+
+        # NOTE(felipe_rodrigues): Since they are in the same volume group,
+        # there is no need to remove source lv.
+        return
+
+    def share_server_migration_check_compatibility(
+            self, context, share_server, dest_host, old_share_network,
+            new_share_network, shares_request_spec):
+        """Is called to check migration compatibility for a share server."""
+        not_compatible = {
+            'compatible': False,
+            'writable': None,
+            'nondisruptive': None,
+            'preserve_snapshots': None,
+            'migration_cancel': None,
+            'migration_get_progress': None
+        }
+
+        dest_backend_name = share_utils.extract_host(dest_host,
+                                                     level='backend_name')
+        source_backend_name = share_utils.extract_host(share_server['host'],
+                                                       level='backend_name')
+        if dest_backend_name == source_backend_name:
+            msg = _("Cannot perform server migration %(server)s within the "
+                    "same backend. Please choose a destination host different "
+                    "from the source.")
+            msg_args = {
+                'server': share_server['id'],
+            }
+            LOG.error(msg, msg_args)
+            return not_compatible
+
+        # The container backend has only one pool, gets its pool name from the
+        # first instance.
+        first_share = shares_request_spec['shares_req_spec'][0]
+        source_host = first_share['share_instance_properties']['host']
+        source_vg = share_utils.extract_host(
+            source_host, level='pool')
+        dest_vg = share_utils.extract_host(
+            dest_host, level='pool')
+        if dest_vg and dest_vg != source_vg:
+            msg = ("Cannot migrate share server %(server)s between %(src)s "
+                   "and %(dest)s. They must be in the same volume group.")
+            msg_args = {
+                'server': share_server['id'],
+                'src': source_host,
+                'dest': dest_host,
+            }
+            LOG.error(msg, msg_args)
+            return not_compatible
+
+        # NOTE(felipe_rodrigues): it is not required to check the capacity,
+        # because it is migrating in the same volume group.
+
+        return {
+            'compatible': True,
+            'writable': True,
+            'nondisruptive': False,
+            'preserve_snapshots': False,
+            'migration_cancel': True,
+            'migration_get_progress': True
+        }
+
+    def share_server_migration_start(self, context, src_share_server,
+                                     dest_share_server, shares, snapshots):
+        """Is called to perform 1st phase of migration of a share server."""
+
+        # NOTE(felipe_rodrigues): Since they are in the same volume group,
+        # there is no need to copy the data between the volumes.
+        return
+
+    def share_server_migration_continue(self, context, src_share_server,
+                                        dest_share_server, shares, snapshots):
+        """Check the progress of the migration."""
+        return True
+
+    def share_server_migration_complete(self, context, source_share_server,
+                                        dest_share_server, shares, snapshots,
+                                        new_network_allocations):
+        """Completes by removing the source local volume."""
+
+        # NOTE(felipe_rodrigues): Since they are in the same volume group,
+        # there is no need to remove source lv.
+        return
+
+    def share_server_migration_cancel(self, context, src_share_server,
+                                      dest_share_server, shares, snapshots):
+        """Abort an ongoing migration."""
+
+        # NOTE(felipe_rodrigues): Since they are in the same volume group,
+        # there is no need to cancel the copy of the data.
+        return
+
+    def share_server_migration_get_progress(self, context, src_share_server,
+                                            dest_share_server, shares,
+                                            snapshots):
+        """Return detailed progress of the server migration in progress."""
+
+        return {
+            'total_progress': 100,
+        }
+
+    def get_share_pool_name(self, share_id):
+        """Return the pool name where the share is allocated"""
+
+        return self.configuration.container_volume_group

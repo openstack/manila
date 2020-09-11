@@ -74,6 +74,7 @@ def fake_share(**kwargs):
         'name': 'fakename',
         'size': 1,
         'share_proto': 'NFS',
+        'host': 'host@backend#vg',
         'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
     }
     share.update(kwargs)
