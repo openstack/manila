@@ -2600,8 +2600,7 @@ class API(base.Base):
                 'task_state': dest_share_server['task_state'],
             }
         # Source server still exists so it must be in 'server_migrating' status
-        if (share_server and
-                share_server['status'] != constants.STATUS_SERVER_MIGRATING):
+        if share_server['status'] != constants.STATUS_SERVER_MIGRATING:
             msg = _("Migration progress of share server %s cannot be "
                     "obtained. The provided share server is not being "
                     "migrated.") % share_server['id']

@@ -8032,7 +8032,7 @@ class ShareManagerTestCase(test.TestCase):
             (self.share_manager._cast_access_rules_to_readonly_for_server.
                 assert_called_once_with(
                     self.context, fake_share_instances, fake_old_share_server,
-                    fake_old_share_server['host']))
+                    dest_host=fake_old_share_server['host']))
         else:
             (self.share_manager._cast_access_rules_to_readonly_for_server.
              assert_not_called())

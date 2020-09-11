@@ -2966,6 +2966,8 @@ class ShareServerTaskState(BaseMigrationChecks):
         for ss in engine.execute(ss_table.select()):
             self.test_case.assertTrue(hasattr(ss, 'task_state'))
             self.test_case.assertTrue(hasattr(ss, 'source_share_server_id'))
+            self.test_case.assertIsNone(ss['task_state'])
+            self.test_case.assertIsNone(ss['source_share_server_id'])
 
     def check_downgrade(self, engine):
         ss_table = utils.load_table('share_servers', engine)

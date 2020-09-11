@@ -1103,7 +1103,7 @@ class ShareManager(manager.SchedulerDependentManager):
     def _cast_access_rules_to_readonly(self, context, src_share_instance,
                                        share_server, dest_host=None):
         self._cast_access_rules_to_readonly_for_server(
-            context, [src_share_instance], share_server, dest_host)
+            context, [src_share_instance], share_server, dest_host=dest_host)
 
     def _cast_access_rules_to_readonly_for_server(
             self, context, src_share_instances, share_server, dest_host=None):
@@ -4873,7 +4873,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 # driver doesn't support 'writable'.
                 self._cast_access_rules_to_readonly_for_server(
                     context, share_instances, source_share_server,
-                    source_share_server['host'])
+                    dest_host=source_share_server['host'])
 
             LOG.debug("Initiating driver migration for share server %s.",
                       source_share_server['id'])
@@ -5012,7 +5012,7 @@ class ShareManager(manager.SchedulerDependentManager):
         try:
             if not self.driver.driver_handles_share_servers:
                 LOG.error('This operation is supported only on backends that '
-                          'handles share servers.')
+                          'handle share servers.')
                 raise
 
             self._share_server_migration_start_driver(
