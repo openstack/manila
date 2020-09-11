@@ -149,13 +149,20 @@ REST_API_VERSION_HISTORY = """
              operation as a percentage.
     * 2.55 - Share groups feature is no longer considered experimental.
     * 2.56 - Share replication feature is no longer considered experimental.
+    * 2.57 - Added Share server migration operations:
+             'share_server_migration_check'
+             'share_server_migration_cancel'
+             'share_server_migration_complete'
+             'share_server_migration_start'
+             'share_server_migration_get_progress'
+             'share_server_reset_task_state'
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.56"
+_MAX_API_VERSION = "2.57"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

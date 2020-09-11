@@ -174,8 +174,7 @@ class ShareManageTest(test.TestCase):
         body = get_fake_manage_body()
         self._setup_manage_mocks()
         error = mock.Mock(
-            side_effect=exception.InvalidShareServer(message="",
-                                                     share_server_id="")
+            side_effect=exception.InvalidShareServer(reason="")
         )
         self.mock_object(share_api.API, 'manage', mock.Mock(side_effect=error))
 

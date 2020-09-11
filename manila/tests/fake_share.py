@@ -42,6 +42,7 @@ def fake_share(**kwargs):
             'id': 'fake_share_instance_id',
             'host': 'fakehost',
             'share_type_id': '1',
+            'share_network_id': 'fake share network id',
         },
         'mount_snapshot_support': False,
     }

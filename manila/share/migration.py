@@ -23,6 +23,7 @@ from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila.share import api as share_api
+from manila.share import rpcapi as share_rpcapi
 import manila.utils as utils
 
 
@@ -47,10 +48,9 @@ CONF.register_opts(migration_opts)
 
 class ShareMigrationHelper(object):
 
-    def __init__(self, context, db, share, access_helper):
+    def __init__(self, context, db, access_helper):
 
         self.db = db
-        self.share = share
         self.context = context
         self.access_helper = access_helper
         self.api = share_api.API()
@@ -132,36 +132,50 @@ class ShareMigrationHelper(object):
         try:
             self.delete_instance_and_wait(new_instance)
         except Exception:
-            LOG.warning("Failed to cleanup new instance during generic"
-                        " migration for share %s.", self.share['id'])
+            LOG.warning("Failed to cleanup new instance during generic "
+                        "migration for share %s.", new_instance['share_id'])
 
-    def cleanup_access_rules(self, share_instance, share_server):
+    def cleanup_access_rules(self, share_instances, share_server,
+                             dest_host=None):
 
         try:
-            self.revert_access_rules(share_instance, share_server)
+            self.revert_access_rules(share_instances, share_server, dest_host)
         except Exception:
             LOG.warning("Failed to cleanup access rules during generic"
-                        " migration for share %s.", self.share['id'])
+                        " migration.")
 
-    def revert_access_rules(self, share_instance, share_server):
+    def revert_access_rules(self, share_instances, share_server,
+                            dest_host=None):
+        shares_instance_ids = []
+        for share_instance in share_instances:
+            # Cast all rules to 'queued_to_apply' so that they can be
+            # re-applied.
+            shares_instance_ids.append(share_instance['id'])
+            updates = {'state': constants.ACCESS_STATE_QUEUED_TO_APPLY}
+            self.access_helper.get_and_update_share_instance_access_rules(
+                self.context, updates=updates,
+                share_instance_id=share_instance['id'])
 
-        # Cast all rules to 'queued_to_apply' so that they can be re-applied.
-        updates = {'state': constants.ACCESS_STATE_QUEUED_TO_APPLY}
-        self.access_helper.get_and_update_share_instance_access_rules(
-            self.context, updates=updates,
-            share_instance_id=share_instance['id'])
+        if dest_host:
+            rpcapi = share_rpcapi.ShareAPI()
+            rpcapi.update_access_for_instances(self.context, dest_host,
+                                               shares_instance_ids,
+                                               share_server)
+        else:
+            for share_instance in share_instances:
+                self.access_helper.update_access_rules(
+                    self.context, share_instance['id'],
+                    share_server=share_server)
 
-        self.access_helper.update_access_rules(
-            self.context, share_instance['id'], share_server=share_server)
+        for share_instance in share_instances:
+            utils.wait_for_access_update(
+                self.context, self.db, share_instance,
+                self.migration_wait_access_rules_timeout)
 
-        utils.wait_for_access_update(
-            self.context, self.db, share_instance,
-            self.migration_wait_access_rules_timeout)
-
-    def apply_new_access_rules(self, new_share_instance):
+    def apply_new_access_rules(self, new_share_instance, share_id):
 
         rules = self.db.share_instance_access_copy(
-            self.context, self.share['id'], new_share_instance['id'])
+            self.context, share_id, new_share_instance['id'])
 
         if rules:
             self.api.allow_access_to_instance(self.context, new_share_instance)

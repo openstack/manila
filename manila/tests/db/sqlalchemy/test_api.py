@@ -507,6 +507,23 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual('share-%s' % instance['id'], instance['name'])
 
+    def test_share_instance_get_all_by_ids(self):
+        fake_share = db_utils.create_share()
+        expected_share_instance = db_utils.create_share_instance(
+            share_id=fake_share['id'])
+
+        # Populate the db with a dummy share
+        db_utils.create_share_instance(share_id=fake_share['id'])
+
+        instances = db_api.share_instances_get_all(
+            self.ctxt,
+            filters={'instance_ids': [expected_share_instance['id']]})
+
+        self.assertEqual(1, len(instances))
+        instance = instances[0]
+
+        self.assertEqual('share-%s' % instance['id'], instance['name'])
+
     @ddt.data('host', 'share_group_id')
     def test_share_get_all_sort_by_share_instance_fields(self, sort_key):
         shares = [db_utils.create_share(**{sort_key: n, 'size': 1})
@@ -1698,6 +1715,33 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
         for key in keys:
             self.assertEqual(self.snapshot_instance_export_locations[0][key],
                              out[0][key])
+
+    def test_share_snapshot_instance_export_locations_update(self):
+        snapshot = db_utils.create_snapshot(with_share=True)
+        initial_locations = ['fake1/1/', 'fake2/2', 'fake3/3']
+        update_locations = ['fake4/4', 'fake2/2', 'fake3/3']
+
+        # add initial locations
+        db_api.share_snapshot_instance_export_locations_update(
+            self.ctxt, snapshot.instance['id'], initial_locations, False)
+        # update locations
+        db_api.share_snapshot_instance_export_locations_update(
+            self.ctxt, snapshot.instance['id'], update_locations, True)
+
+        get_result = db_api.share_snapshot_instance_export_locations_get_all(
+            self.ctxt, snapshot.instance['id'])
+        result_locations = [el['path'] for el in get_result]
+
+        self.assertEqual(sorted(result_locations), sorted(update_locations))
+
+    def test_share_snapshot_instance_export_locations_update_wrong_type(self):
+        snapshot = db_utils.create_snapshot(with_share=True)
+        new_export_locations = [1]
+
+        self.assertRaises(
+            exception.ManilaException,
+            db_api.share_snapshot_instance_export_locations_update,
+            self.ctxt, snapshot.instance['id'], new_export_locations, False)
 
 
 class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
@@ -3024,6 +3068,32 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
             self.ctxt, host, updated_before)
         self.assertEqual(expected_len, len(unused_deletable))
 
+    @ddt.data({'host': 'fakepool@fakehost'},
+              {'status': constants.STATUS_SERVER_MIGRATING_TO},
+              {'source_share_server_id': 'fake_ss_id'})
+    def test_share_server_get_all_with_filters(self, filters):
+        db_utils.create_share_server(**filters)
+        db_utils.create_share_server()
+        filter_keys = filters.keys()
+
+        results = db_api.share_server_get_all_with_filters(self.ctxt, filters)
+
+        self.assertEqual(1, len(results))
+        for result in results:
+            for key in filter_keys:
+                self.assertEqual(result[key], filters[key])
+
+    @ddt.data('fake@fake', 'host1@backend1')
+    def test_share_server_get_all_by_host(self, host):
+        db_utils.create_share_server(host='fake@fake')
+        db_utils.create_share_server(host='host1@backend1')
+
+        share_servers = db_api.share_server_get_all_by_host(self.ctxt, host)
+
+        self.assertEqual(1, len(share_servers))
+        for share_server in share_servers:
+            self.assertEqual(host, share_server['host'])
+
 
 class ServiceDatabaseAPITestCase(test.TestCase):
 
@@ -4018,3 +4088,127 @@ class ShareInstancesTestCase(test.TestCase):
                         si['host'].startswith(new_host)]
         self.assertEqual(actual_updates, expected_updates)
         self.assertEqual(expected_updates, len(host_updates))
+
+    def test_share_instances_status_update(self):
+        for i in range(1, 3):
+            instances = [db_utils.create_share_instance(
+                status=constants.STATUS_SERVER_MIGRATING, share_id='fake')]
+        share_instance_ids = [instance['id'] for instance in instances]
+        values = {'status': constants.STATUS_AVAILABLE}
+
+        db_api.share_instances_status_update(
+            self.context, share_instance_ids, values)
+
+        instances = [
+            db_api.share_instance_get(self.context, instance_id)
+            for instance_id in share_instance_ids]
+
+        for instance in instances:
+            self.assertEqual(constants.STATUS_AVAILABLE, instance['status'])
+
+    def test_share_snapshot_instances_status_update(self):
+        share_instance = db_utils.create_share_instance(
+            status=constants.STATUS_AVAILABLE, share_id='fake')
+        for i in range(1, 3):
+            instances = [db_utils.create_snapshot_instance(
+                'fake_snapshot_id_1', status=constants.STATUS_CREATING,
+                share_instance_id=share_instance['id'])]
+
+        snapshot_instance_ids = [instance['id'] for instance in instances]
+        values = {'status': constants.STATUS_AVAILABLE}
+
+        db_api.share_snapshot_instances_status_update(
+            self.context, snapshot_instance_ids, values)
+
+        instances = [
+            db_api.share_snapshot_instance_get(self.context, instance_id)
+            for instance_id in snapshot_instance_ids]
+
+        for instance in instances:
+            self.assertEqual(constants.STATUS_AVAILABLE, instance['status'])
+
+    def test_share_and_snapshot_instances_status_update(self):
+        share_instance = db_utils.create_share_instance(
+            status=constants.STATUS_AVAILABLE, share_id='fake')
+        share_instance_ids = [share_instance['id']]
+        fake_session = db_api.get_session()
+        for i in range(1, 3):
+            snap_instances = [db_utils.create_snapshot_instance(
+                'fake_snapshot_id_1', status=constants.STATUS_CREATING,
+                share_instance_id=share_instance['id'])]
+
+        snapshot_instance_ids = [instance['id'] for instance in snap_instances]
+        values = {'status': constants.STATUS_AVAILABLE}
+
+        mock_update_share_instances = self.mock_object(
+            db_api, 'share_instances_status_update',
+            mock.Mock(return_value=[share_instance]))
+        mock_update_snap_instances = self.mock_object(
+            db_api, 'share_snapshot_instances_status_update',
+            mock.Mock(return_value=snap_instances))
+        mock_get_session = self.mock_object(
+            db_api, 'get_session', mock.Mock(return_value=fake_session))
+
+        updated_share_instances, updated_snap_instances = (
+            db_api.share_and_snapshot_instances_status_update(
+                self.context, values, share_instance_ids=share_instance_ids,
+                snapshot_instance_ids=snapshot_instance_ids))
+
+        mock_get_session.assert_called()
+        mock_update_share_instances.assert_called_once_with(
+            self.context, share_instance_ids, values, session=fake_session)
+        mock_update_snap_instances.assert_called_once_with(
+            self.context, snapshot_instance_ids, values, session=fake_session)
+        self.assertEqual(updated_share_instances, [share_instance])
+        self.assertEqual(updated_snap_instances, snap_instances)
+
+    @ddt.data(
+        {
+            'share_instance_status': constants.STATUS_ERROR,
+            'snap_instance_status': constants.STATUS_AVAILABLE,
+            'expected_exc': exception.InvalidShareInstance
+        },
+        {
+            'share_instance_status': constants.STATUS_AVAILABLE,
+            'snap_instance_status': constants.STATUS_ERROR,
+            'expected_exc': exception.InvalidShareSnapshotInstance
+        }
+    )
+    @ddt.unpack
+    def test_share_and_snapshot_instances_status_update_invalid_status(
+            self, share_instance_status, snap_instance_status, expected_exc):
+        share_instance = db_utils.create_share_instance(
+            status=share_instance_status, share_id='fake')
+        share_snapshot_instance = db_utils.create_snapshot_instance(
+            'fake_snapshot_id_1', status=snap_instance_status,
+            share_instance_id=share_instance['id'])
+        share_instance_ids = [share_instance['id']]
+        snap_instance_ids = [share_snapshot_instance['id']]
+        values = {'status': constants.STATUS_AVAILABLE}
+        fake_session = db_api.get_session()
+
+        mock_get_session = self.mock_object(
+            db_api, 'get_session', mock.Mock(return_value=fake_session))
+        mock_instances_get_all = self.mock_object(
+            db_api, 'share_instances_get_all',
+            mock.Mock(return_value=[share_instance]))
+        mock_snap_instances_get_all = self.mock_object(
+            db_api, 'share_snapshot_instance_get_all_with_filters',
+            mock.Mock(return_value=[share_snapshot_instance]))
+
+        self.assertRaises(expected_exc,
+                          db_api.share_and_snapshot_instances_status_update,
+                          self.context,
+                          values,
+                          share_instance_ids=share_instance_ids,
+                          snapshot_instance_ids=snap_instance_ids,
+                          current_expected_status=constants.STATUS_AVAILABLE)
+
+        mock_get_session.assert_called()
+        mock_instances_get_all.assert_called_once_with(
+            self.context, filters={'instance_ids': share_instance_ids},
+            session=fake_session)
+        if snap_instance_status == constants.STATUS_ERROR:
+            mock_snap_instances_get_all.assert_called_once_with(
+                self.context, {'instance_ids': snap_instance_ids},
+                session=fake_session)

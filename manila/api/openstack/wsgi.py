@@ -1204,6 +1204,7 @@ class AdminActionsMixin(object):
             constants.STATUS_ERROR_DELETING,
             constants.STATUS_MIGRATING,
             constants.STATUS_MIGRATING_TO,
+            constants.STATUS_SERVER_MIGRATING,
         ]),
         'replica_state': set([
             constants.REPLICA_STATE_ACTIVE,

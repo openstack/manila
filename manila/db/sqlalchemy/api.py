@@ -1425,6 +1425,68 @@ def share_instance_update(context, share_instance_id, values,
         return instance_ref
 
 
+def share_and_snapshot_instances_status_update(
+        context, values, share_instance_ids=None, snapshot_instance_ids=None,
+        current_expected_status=None):
+    updated_share_instances = None
+    updated_snapshot_instances = None
+    session = get_session()
+    with session.begin():
+        if current_expected_status and share_instance_ids:
+            filters = {'instance_ids': share_instance_ids}
+            share_instances = share_instances_get_all(
+                context, filters=filters, session=session)
+            all_instances_are_compliant = all(
+                instance['status'] == current_expected_status
+                for instance in share_instances)
+
+            if not all_instances_are_compliant:
+                msg = _('At least one of the shares is not in the %(status)s '
+                        'status.') % {
+                    'status': current_expected_status
+                }
+                raise exception.InvalidShareInstance(reason=msg)
+
+        if current_expected_status and snapshot_instance_ids:
+            filters = {'instance_ids': snapshot_instance_ids}
+            snapshot_instances = share_snapshot_instance_get_all_with_filters(
+                context, filters, session=session)
+            all_snap_instances_are_compliant = all(
+                snap_instance['status'] == current_expected_status
+                for snap_instance in snapshot_instances)
+            if not all_snap_instances_are_compliant:
+                msg = _('At least one of the snapshots is not in the '
+                        '%(status)s status.') % {
+                    'status': current_expected_status
+                }
+                raise exception.InvalidShareSnapshotInstance(reason=msg)
+
+        if share_instance_ids:
+            updated_share_instances = share_instances_status_update(
+                context, share_instance_ids, values, session=session)
+
+        if snapshot_instance_ids:
+            updated_snapshot_instances = (
+                share_snapshot_instances_status_update(
+                    context, snapshot_instance_ids, values, session=session))
+
+    return updated_share_instances, updated_snapshot_instances
+
+
+@require_context
+def share_instances_status_update(
+        context, share_instance_ids, values, session=None):
+    session = session or get_session()
+
+    result = (
+        model_query(
+            context, models.ShareInstance, read_deleted="no",
+            session=session).filter(
+            models.ShareInstance.id.in_(share_instance_ids)).update(
+            values, synchronize_session=False))
+    return result
+
+
 def _share_instance_update(context, share_instance_id, values, session):
     share_instance_ref = share_instance_get(context, share_instance_id,
                                             session=session)
@@ -1457,8 +1519,8 @@ def share_instance_get(context, share_instance_id, session=None,
 
 
 @require_admin_context
-def share_instances_get_all(context, filters=None):
-    session = get_session()
+def share_instances_get_all(context, filters=None, session=None):
+    session = session or get_session()
     query = model_query(
         context, models.ShareInstance, session=session, read_deleted="no",
     ).options(
@@ -1482,6 +1544,10 @@ def share_instances_get_all(context, filters=None):
             query = query.filter(
                 models.ShareInstanceExportLocations.uuid ==
                 export_location_id)
+
+    instance_ids = filters.get('instance_ids')
+    if instance_ids:
+        query = query.filter(models.ShareInstance.id.in_(instance_ids))
 
     # Returns list of share instances that satisfy filters.
     query = query.all()
@@ -1612,13 +1678,19 @@ def share_instances_get_all_by_share_network(context, share_network_id):
 
 
 @require_context
-def share_instances_get_all_by_share_server(context, share_server_id):
+def share_instances_get_all_by_share_server(context, share_server_id,
+                                            with_share_data=False):
     """Returns list of share instance with given share server."""
+    session = get_session()
     result = (
         model_query(context, models.ShareInstance).filter(
             models.ShareInstance.share_server_id == share_server_id,
         ).all()
     )
+
+    if with_share_data:
+        result = _set_instances_share_data(context, result, session)
+
     return result
 
 
@@ -2738,6 +2810,21 @@ def share_snapshot_update(context, snapshot_id, values):
 
         return snapshot_ref
 
+
+@require_context
+def share_snapshot_instances_status_update(
+        context, snapshot_instance_ids, values, session=None):
+    session = session or get_session()
+
+    result = (
+        model_query(
+            context, models.ShareSnapshotInstance,
+            read_deleted="no", session=session).filter(
+            models.ShareSnapshotInstance.id.in_(snapshot_instance_ids)
+            ).update(values, synchronize_session=False))
+
+    return result
+
 #################################
 
 
@@ -2974,9 +3061,10 @@ def share_snapshot_export_locations_get(context, snapshot_id):
 
 @require_context
 def share_snapshot_instance_export_locations_get_all(
-        context, share_snapshot_instance_id):
+        context, share_snapshot_instance_id, session=None):
 
-    session = get_session()
+    if not session:
+        session = get_session()
     export_locations = _share_snapshot_instance_export_locations_get_query(
         context, session,
         {'share_snapshot_instance_id': share_snapshot_instance_id}).all()
@@ -3008,6 +3096,82 @@ def share_snapshot_instance_export_location_delete(context, el_id):
             exception.NotFound()
 
         el.soft_delete(session=session)
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def share_snapshot_instance_export_locations_update(
+        context, share_snapshot_instance_id, export_locations, delete):
+    # NOTE(dviroel): Lets keep this backward compatibility for driver that
+    # may still return export_locations as string
+    if not isinstance(export_locations, (list, tuple, set)):
+        export_locations = (export_locations, )
+    export_locations_as_dicts = []
+    for el in export_locations:
+        export_location = el
+        if isinstance(el, six.string_types):
+            export_location = {
+                "path": el,
+                "is_admin_only": False,
+            }
+        elif not isinstance(export_location, dict):
+            raise exception.ManilaException(
+                _("Wrong export location type '%s'.") % type(export_location))
+        export_locations_as_dicts.append(export_location)
+    export_locations = export_locations_as_dicts
+
+    export_locations_paths = [el['path'] for el in export_locations]
+
+    session = get_session()
+
+    current_el_rows = share_snapshot_instance_export_locations_get_all(
+        context, share_snapshot_instance_id, session=session)
+
+    def get_path_list_from_rows(rows):
+        return set([row['path'] for row in rows])
+
+    current_el_paths = get_path_list_from_rows(current_el_rows)
+
+    def create_indexed_time_dict(key_list):
+        base = timeutils.utcnow()
+        return {
+            # NOTE(u_glide): Incrementing timestamp by microseconds to make
+            # timestamp order match index order.
+            key: base + datetime.timedelta(microseconds=index)
+            for index, key in enumerate(key_list)
+        }
+
+    indexed_update_time = create_indexed_time_dict(export_locations_paths)
+
+    for el in current_el_rows:
+        if delete and el['path'] not in export_locations_paths:
+            el.soft_delete(session)
+        else:
+            updated_at = indexed_update_time[el['path']]
+            el.update({
+                'updated_at': updated_at,
+            })
+            el.save(session=session)
+
+    # Now add new export locations
+    for el in export_locations:
+        if el['path'] in current_el_paths:
+            # Already updated
+            continue
+
+        location_ref = models.ShareSnapshotInstanceExportLocation()
+        location_ref.update({
+            'id': uuidutils.generate_uuid(),
+            'path': el['path'],
+            'share_snapshot_instance_id': share_snapshot_instance_id,
+            'updated_at': indexed_update_time[el['path']],
+            'is_admin_only': el.get('is_admin_only', False),
+        })
+        location_ref.save(session=session)
+
+    return get_path_list_from_rows(
+        share_snapshot_instance_export_locations_get_all(
+            context, share_snapshot_instance_id, session=session))
 
 #################################
 
@@ -3816,8 +3980,28 @@ def share_server_get_all(context):
 
 
 @require_context
-def share_server_get_all_by_host(context, host):
-    return _server_get_query(context).filter_by(host=host).all()
+def share_server_get_all_with_filters(context, filters):
+
+    query = _server_get_query(context)
+
+    if filters.get('host'):
+        query = query.filter_by(host=filters.get('host'))
+    if filters.get('status'):
+        query = query.filter_by(status=filters.get('status'))
+    if filters.get('source_share_server_id'):
+        query = query.filter_by(
+            source_share_server_id=filters.get('source_share_server_id'))
+
+    return query.all()
+
+
+@require_context
+def share_server_get_all_by_host(context, host, filters=None):
+    if filters:
+        filters.update({'host': host})
+    else:
+        filters = {'host': host}
+    return share_server_get_all_with_filters(context, filters=filters)
 
 
 @require_context

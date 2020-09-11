@@ -4413,6 +4413,1106 @@ class ShareAPITestCase(test.TestCase):
         self.api.share_rpcapi.migration_get_progress.assert_called_once_with(
             self.context, instance1, instance2['id'])
 
+    @ddt.data(True, False)
+    def test__migration_initial_checks(self, create_share_network):
+        type_data = {
+            'extra_specs': {
+                'availability_zones': 'fake_az1,fake_az2'
+            }
+        }
+        fake_server_host = 'fake@backend'
+        fake_share_server = db_utils.create_share_server(host=fake_server_host)
+        share_type = db_utils.create_share_type(**type_data)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        fake_share = db_utils.create_share(
+            host='fake@backend#pool', status=constants.STATUS_AVAILABLE,
+            share_type_id=share_type['id'])
+        fake_az = {
+            'id': 'fake_az_id',
+            'name': 'fake_az1'
+        }
+        fake_share_network = (
+            db_utils.create_share_network() if create_share_network else None)
+        fake_share_network_id = (
+            fake_share_network['id']
+            if create_share_network else fake_share['share_network_id'])
+        fake_subnet = db_utils.create_share_network_subnet(
+            availability_zone_id=fake_az['id'])
+
+        fake_host = 'test@fake'
+        service = {'availability_zone_id': fake_az['id'],
+                   'availability_zone': {'name': fake_az['name']}}
+
+        mock_shares_get_all = self.mock_object(
+            db_api, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[fake_share]))
+        mock_get_type = self.mock_object(
+            share_types, 'get_share_type', mock.Mock(return_value=share_type))
+        mock_validate_service = self.mock_object(
+            utils, 'validate_service_host')
+        mock_service_get = self.mock_object(
+            db_api, 'service_get_by_args', mock.Mock(return_value=service))
+        mock_az_get = self.mock_object(
+            db_api, 'availability_zone_get', mock.Mock(return_value=fake_az))
+        mock_get_subnet = self.mock_object(
+            db_api, 'share_network_subnet_get_by_availability_zone_id',
+            mock.Mock(return_value=fake_subnet))
+
+        exp_shares, exp_types, exp_service, exp_share_network_id = (
+            self.api._migration_initial_checks(
+                self.context, fake_share_server, fake_host,
+                fake_share_network))
+
+        self.assertEqual(exp_shares, [fake_share])
+        self.assertEqual(exp_types, [share_type])
+        self.assertEqual(exp_service, service)
+        self.assertEqual(exp_share_network_id, fake_share_network_id)
+        mock_shares_get_all.assert_has_calls([
+            mock.call(self.context, fake_share_server['id']),
+            mock.call(self.context, fake_share_server['id'])])
+        mock_get_type.assert_called_once_with(self.context, share_type['id'])
+        mock_validate_service.assert_called_once_with(self.context, fake_host)
+        mock_service_get.assert_called_once_with(
+            self.context, fake_host, 'manila-share')
+        mock_get_subnet.assert_called_once_with(
+            self.context, fake_share_network_id, fake_az['id'])
+        mock_az_get.assert_called_once_with(
+            self.context, service['availability_zone']['name']
+        )
+
+    def test_share_server_migration_get_destination(self):
+        fake_source_server_id = 'fake_source_id'
+        server_data = {
+            'id': 'fake',
+            'source_share_server_id': fake_source_server_id,
+            'status': constants.STATUS_SERVER_MIGRATING_TO,
+        }
+        server = db_utils.create_share_server(**server_data)
+        mock_get_all = self.mock_object(
+            db_api, 'share_server_get_all_with_filters',
+            mock.Mock(return_value=[server]))
+        filters = {
+            'status': constants.STATUS_SERVER_MIGRATING_TO,
+            'source_share_server_id': fake_source_server_id,
+        }
+
+        filtered_server = self.api.share_server_migration_get_destination(
+            self.context, fake_source_server_id,
+            status=constants.STATUS_SERVER_MIGRATING_TO
+        )
+        self.assertEqual(filtered_server['id'], server['id'])
+        mock_get_all.assert_called_once_with(self.context, filters=filters)
+
+    def test_share_server_migration_get_destination_no_share_server(self):
+        fake_source_server_id = 'fake_source_id'
+        server_data = {
+            'id': 'fake',
+            'source_share_server_id': fake_source_server_id,
+            'status': constants.STATUS_SERVER_MIGRATING_TO,
+        }
+        db_utils.create_share_server(**server_data)
+        mock_get_all = self.mock_object(
+            db_api, 'share_server_get_all_with_filters',
+            mock.Mock(return_value=[]))
+        filters = {
+            'status': constants.STATUS_SERVER_MIGRATING_TO,
+            'source_share_server_id': fake_source_server_id,
+        }
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api.share_server_migration_get_destination,
+            self.context, fake_source_server_id,
+            status=constants.STATUS_SERVER_MIGRATING_TO
+        )
+        mock_get_all.assert_called_once_with(self.context, filters=filters)
+
+    def test_share_server_migration_get_destination_multiple_servers(self):
+        fake_source_server_id = 'fake_source_id'
+        server_data = {
+            'id': 'fake',
+            'source_share_server_id': fake_source_server_id,
+            'status': constants.STATUS_SERVER_MIGRATING_TO,
+        }
+        server_1 = db_utils.create_share_server(**server_data)
+        server_data['id'] = 'fake_id_2'
+        server_2 = db_utils.create_share_server(**server_data)
+        mock_get_all = self.mock_object(
+            db_api, 'share_server_get_all_with_filters',
+            mock.Mock(return_value=[server_1, server_2]))
+        filters = {
+            'status': constants.STATUS_SERVER_MIGRATING_TO,
+            'source_share_server_id': fake_source_server_id,
+        }
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api.share_server_migration_get_destination,
+            self.context, fake_source_server_id,
+            status=constants.STATUS_SERVER_MIGRATING_TO
+        )
+        mock_get_all.assert_called_once_with(self.context, filters=filters)
+
+    def test__migration_initial_checks_no_shares(self):
+        fake_share_server = fakes.fake_share_server_get()
+        fake_share_network = {}
+        fake_host = 'test@fake'
+        mock_shares_get_all = self.mock_object(
+            db_api, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[]))
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api._migration_initial_checks,
+            self.context, fake_share_server, fake_host, fake_share_network,
+        )
+        mock_shares_get_all.assert_called_once_with(
+            self.context, fake_share_server['id'])
+
+    def test__migration_initial_checks_server_not_active(self):
+        fake_share_server = fakes.fake_share_server_get()
+        fake_share_server['status'] = 'error'
+        fake_share = fakes.fake_share()
+        fake_share_network = {}
+        fake_host = 'test@fake'
+
+        mock_shares_get_all = self.mock_object(
+            db_api, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[fake_share]))
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api._migration_initial_checks,
+            self.context, fake_share_server, fake_host, fake_share_network,
+        )
+        mock_shares_get_all.assert_called_once_with(
+            self.context, fake_share_server['id'])
+
+    def test__migration_initial_checks_share_group_related_to_server(self):
+        fake_share_server = db_utils.create_share_server()
+        fake_share = db_utils.create_share()
+        fake_share_group = db_utils.create_share_group()
+        fake_share_network = {}
+        fake_host = 'test@fake'
+
+        mock_shares_get_all = self.mock_object(
+            db_api, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[fake_share]))
+        mock_get_groups = self.mock_object(
+            db_api, 'share_group_get_all_by_share_server',
+            mock.Mock(return_value=[fake_share_group]))
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api._migration_initial_checks,
+            self.context, fake_share_server, fake_host, fake_share_network,
+        )
+        mock_shares_get_all.assert_called_once_with(
+            self.context, fake_share_server['id'])
+        mock_get_groups.assert_called_once_with(self.context,
+                                                fake_share_server['id'])
+
+    def _setup_mocks_for_initial_checks(self, fake_share, share_type, service,
+                                        fake_az, fake_subnet):
+        self.mock_object(
+            db_api, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[fake_share]))
+        self.mock_object(
+            db_api, 'share_group_get_all_by_share_server',
+            mock.Mock(return_value=[]))
+        self.mock_object(
+            share_types, 'get_share_type', mock.Mock(return_value=share_type))
+        self.mock_object(
+            utils, 'validate_service_host')
+        self.mock_object(
+            db_api, 'service_get_by_args', mock.Mock(return_value=service))
+        self.mock_object(
+            db_api, 'availability_zone_get', mock.Mock(return_value=fake_az))
+        self.mock_object(
+            db_api, 'share_network_subnet_get_by_availability_zone_id',
+            mock.Mock(return_value=fake_subnet))
+
+    def test__migration_initial_checks_share_not_available(self):
+        fake_share_server = fakes.fake_share_server_get()
+        fake_share_server['host'] = 'fake@backend'
+        type_data = {
+            'extra_specs': {
+                'availability_zones': 'fake_az1,fake_az2'
+            }
+        }
+        fake_server_host = 'fake@backend'
+        fake_share_server = db_utils.create_share_server(host=fake_server_host)
+        share_type = db_utils.create_share_type(**type_data)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        fake_share = db_utils.create_share(
+            host='fake@backend#pool', status=constants.STATUS_ERROR,
+            share_type_id=share_type['id'])
+        fake_az = {
+            'id': 'fake_az_id',
+            'name': 'fake_az1'
+        }
+        fake_share_network = None
+        fake_share_network_id = fake_share['share_network_id']
+        fake_subnet = db_utils.create_share_network_subnet(
+            availability_zone_id=fake_az['id'])
+        fake_host = 'test@fake'
+        service = {'availability_zone_id': fake_az['id'],
+                   'availability_zone': {'name': fake_az['name']}}
+        self._setup_mocks_for_initial_checks(fake_share, share_type, service,
+                                             fake_az, fake_subnet)
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api._migration_initial_checks,
+            self.context, fake_share_server, fake_host, fake_share_network,
+        )
+        db_api.share_get_all_by_share_server.assert_has_calls([
+            mock.call(self.context, fake_share_server['id']),
+            mock.call(self.context, fake_share_server['id'])])
+        share_types.get_share_type.assert_called_once_with(
+            self.context, share_type['id'])
+        utils.validate_service_host.assert_called_once_with(
+            self.context, fake_host)
+        db_api.service_get_by_args.assert_called_once_with(
+            self.context, fake_host, 'manila-share')
+        db_api.availability_zone_get.assert_called_once_with(
+            self.context, service['availability_zone']['name']
+        )
+        (db_api.share_network_subnet_get_by_availability_zone_id.
+            assert_called_once_with(
+                self.context, fake_share_network_id, fake_az['id']))
+        db_api.share_group_get_all_by_share_server.assert_called_once_with(
+            self.context, fake_share_server['id'])
+
+    def test__migration_initial_checks_share_with_replicas(self):
+        fake_share_server = fakes.fake_share_server_get()
+        fake_share_server['host'] = 'fake@backend'
+        type_data = {
+            'extra_specs': {
+                'availability_zones': 'fake_az1,fake_az2'
+            }
+        }
+        fake_server_host = 'fake@backend'
+        fake_share_server = db_utils.create_share_server(host=fake_server_host)
+        share_type = db_utils.create_share_type(**type_data)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        fake_share = db_utils.create_share(
+            host='fake@backend#pool', status=constants.STATUS_AVAILABLE,
+            replication_type='dr', share_type_id=share_type['id'])
+        for i in range(1, 4):
+            db_utils.create_share_replica(
+                share_id=fake_share['id'], replica_state='in_sync')
+        fake_share = db_api.share_get(self.context, fake_share['id'])
+        fake_az = {
+            'id': 'fake_az_id',
+            'name': 'fake_az1'
+        }
+        fake_share_network = None
+        fake_share_network_id = fake_share['share_network_id']
+        fake_subnet = db_utils.create_share_network_subnet(
+            availability_zone_id=fake_az['id'])
+        fake_host = 'test@fake'
+        service = {'availability_zone_id': fake_az['id'],
+                   'availability_zone': {'name': fake_az['name']}}
+        self._setup_mocks_for_initial_checks(fake_share, share_type, service,
+                                             fake_az, fake_subnet)
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api._migration_initial_checks,
+            self.context, fake_share_server, fake_host, fake_share_network,
+        )
+        db_api.share_get_all_by_share_server.assert_has_calls([
+            mock.call(self.context, fake_share_server['id']),
+            mock.call(self.context, fake_share_server['id'])])
+        share_types.get_share_type.assert_called_once_with(
+            self.context, share_type['id'])
+        utils.validate_service_host.assert_called_once_with(
+            self.context, fake_host)
+        db_api.service_get_by_args.assert_called_once_with(
+            self.context, fake_host, 'manila-share')
+        db_api.availability_zone_get.assert_called_once_with(
+            self.context, service['availability_zone']['name']
+        )
+        (db_api.share_network_subnet_get_by_availability_zone_id.
+            assert_called_once_with(
+                self.context, fake_share_network_id, fake_az['id']))
+        db_api.share_group_get_all_by_share_server.assert_called_once_with(
+            self.context, fake_share_server['id'])
+
+    def test__migration_initial_checks_share_in_share_group(self):
+        fake_share_server = fakes.fake_share_server_get()
+        fake_share_server['host'] = 'fake@backend'
+        type_data = {
+            'extra_specs': {
+                'availability_zones': 'fake_az1,fake_az2'
+            }
+        }
+        fake_server_host = 'fake@backend'
+        fake_share_server = db_utils.create_share_server(host=fake_server_host)
+        share_type = db_utils.create_share_type(**type_data)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        fake_share = db_utils.create_share(
+            host='fake@backend#pool', status=constants.STATUS_AVAILABLE,
+            share_type_id=share_type['id'], share_group_id='fake_group_id')
+        fake_az = {
+            'id': 'fake_az_id',
+            'name': 'fake_az1'
+        }
+        fake_share_network = None
+        fake_share_network_id = fake_share['share_network_id']
+        fake_subnet = db_utils.create_share_network_subnet(
+            availability_zone_id=fake_az['id'])
+        fake_host = 'test@fake'
+        service = {'availability_zone_id': fake_az['id'],
+                   'availability_zone': {'name': fake_az['name']}}
+        self._setup_mocks_for_initial_checks(fake_share, share_type, service,
+                                             fake_az, fake_subnet)
+        mock_snapshots_get = self.mock_object(
+            db_api, 'share_snapshot_get_all_for_share',
+            mock.Mock(return_value=[]))
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api._migration_initial_checks,
+            self.context, fake_share_server, fake_host, fake_share_network,
+        )
+        db_api.share_get_all_by_share_server.assert_has_calls([
+            mock.call(self.context, fake_share_server['id']),
+            mock.call(self.context, fake_share_server['id'])])
+        share_types.get_share_type.assert_called_once_with(
+            self.context, share_type['id'])
+        utils.validate_service_host.assert_called_once_with(
+            self.context, fake_host)
+        db_api.service_get_by_args.assert_called_once_with(
+            self.context, fake_host, 'manila-share')
+        db_api.availability_zone_get.assert_called_once_with(
+            self.context, service['availability_zone']['name']
+        )
+        (db_api.share_network_subnet_get_by_availability_zone_id.
+            assert_called_once_with(
+                self.context, fake_share_network_id, fake_az['id']))
+        mock_snapshots_get.assert_called_once_with(
+            self.context, fake_share['id'])
+        db_api.share_group_get_all_by_share_server.assert_called_once_with(
+            self.context, fake_share_server['id'])
+
+    def test__migration_initial_checks_same_backend_and_network(self):
+        fake_server_host = 'fake@backend'
+        fake_share_network = {'id': 'fake_share_network_id'}
+        fake_share_server = db_utils.create_share_server(host=fake_server_host)
+        fake_share = db_utils.create_share(
+            host=fake_server_host, status=constants.STATUS_AVAILABLE,
+            share_group_id='fake_group_id',
+            share_network_id=fake_share_network['id'])
+
+        mock_shares_get_all = self.mock_object(
+            db_api, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[fake_share]))
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api._migration_initial_checks,
+            self.context, fake_share_server, fake_server_host,
+            fake_share_network,
+        )
+        mock_shares_get_all.assert_called_once_with(
+            self.context, fake_share_server['id'])
+
+    def test__migration_initial_checks_another_migration_found(self):
+        fake_server_host = 'fake@backend2'
+        fake_share_network = {'id': 'fake_share_network_id'}
+        fake_share_server = db_utils.create_share_server(host=fake_server_host)
+        fake_share = db_utils.create_share(
+            host='fake@backend#pool', status=constants.STATUS_AVAILABLE,
+            share_group_id='fake_group_id', share_network=fake_share_network)
+
+        mock_shares_get_all = self.mock_object(
+            db_api, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[fake_share]))
+        mock_shares_get_servers_filters = self.mock_object(
+            db_api, 'share_server_get_all_with_filters',
+            mock.Mock(return_value=['fake_share_server']))
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api._migration_initial_checks,
+            self.context, fake_share_server, fake_server_host,
+            fake_share_network,
+        )
+        mock_shares_get_all.assert_called_once_with(
+            self.context, fake_share_server['id'])
+        filters = {'source_share_server_id': fake_share_server['id'],
+                   'status': constants.STATUS_SERVER_MIGRATING_TO}
+        mock_shares_get_servers_filters.assert_called_once_with(
+            self.context, filters=filters)
+
+    def test_share_server_migration_get_request_spec_dict(self):
+        share_instances = [
+            db_utils.create_share_instance(share_id='fake_id')
+            for i in range(1, 3)]
+        snapshot_instances = [
+            db_utils.create_snapshot_instance(
+                snapshot_id='fake_' + str(i), share_instance_id='fake')
+            for i in range(1, 3)]
+        shares_req_spec = [{} for instance in share_instances]
+        total_shares_size = sum(
+            [instance.get('size', 0) for instance in share_instances])
+        total_snapshots_size = sum(
+            [instance.get('size', 0) for instance in snapshot_instances])
+        expected_result = {
+            'shares_size': total_shares_size,
+            'snapshots_size': total_snapshots_size,
+            'shares_req_spec': shares_req_spec,
+        }
+        fake_share_type = db_utils.create_share_type()
+        get_type_calls = []
+        get_request_spec_calls = []
+        for instance in share_instances:
+            get_type_calls.append(
+                mock.call(self.context, instance['share_type_id']))
+            get_request_spec_calls.append(
+                mock.call(instance, fake_share_type))
+
+        mock_get_type = self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=fake_share_type))
+        mock_get_request_spec = self.mock_object(
+            self.api, '_get_request_spec_dict', mock.Mock(return_value={}))
+
+        result = self.api.get_share_server_migration_request_spec_dict(
+            self.context, share_instances, snapshot_instances)
+
+        self.assertEqual(result, expected_result)
+        mock_get_type.assert_has_calls(get_type_calls)
+        mock_get_request_spec.assert_has_calls(get_request_spec_calls)
+
+    def test__migration_initial_checks_instance_rules_error_status(self):
+        fake_share_server = fakes.fake_share_server_get()
+        fake_share_server['host'] = 'fake@backend'
+        type_data = {
+            'extra_specs': {
+                'availability_zones': 'fake_az1,fake_az2'
+            }
+        }
+        fake_server_host = 'fake@backend'
+        fake_share_server = db_utils.create_share_server(host=fake_server_host)
+        share_type = db_utils.create_share_type(**type_data)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        fake_share = db_utils.create_share(
+            host='fake@backend#pool', status=constants.STATUS_AVAILABLE,
+            share_type_id=share_type['id'], share_group_id='fake_group_id')
+        fake_share['instance']['access_rules_status'] = constants.STATUS_ERROR
+        fake_az = {
+            'id': 'fake_az_id',
+            'name': 'fake_az1'
+        }
+        fake_share_network = None
+        fake_share_network_id = fake_share['share_network_id']
+        fake_subnet = db_utils.create_share_network_subnet(
+            availability_zone_id=fake_az['id'])
+        fake_host = 'test@fake'
+        service = {'availability_zone_id': fake_az['id'],
+                   'availability_zone': {'name': fake_az['name']}}
+        self._setup_mocks_for_initial_checks(fake_share, share_type, service,
+                                             fake_az, fake_subnet)
+
+        mock_snapshots_get = self.mock_object(
+            db_api, 'share_snapshot_get_all_for_share',
+            mock.Mock(return_value=[]))
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api._migration_initial_checks,
+            self.context, fake_share_server, fake_host, fake_share_network,
+        )
+
+        db_api.share_get_all_by_share_server.assert_has_calls([
+            mock.call(self.context, fake_share_server['id']),
+            mock.call(self.context, fake_share_server['id'])])
+        share_types.get_share_type.assert_called_once_with(
+            self.context, share_type['id'])
+        utils.validate_service_host.assert_called_once_with(
+            self.context, fake_host)
+        db_api.service_get_by_args.assert_called_once_with(
+            self.context, fake_host, 'manila-share')
+        db_api.availability_zone_get.assert_called_once_with(
+            self.context, service['availability_zone']['name']
+        )
+        (db_api.share_network_subnet_get_by_availability_zone_id.
+            assert_called_once_with(
+                self.context, fake_share_network_id, fake_az['id']))
+        mock_snapshots_get.assert_called_once_with(
+            self.context, fake_share['id'])
+        db_api.share_group_get_all_by_share_server.assert_called_once_with(
+            self.context, fake_share_server['id'])
+
+    def test__migration_initial_checks_dest_az_not_match_host_az(self):
+        type_data = {
+            'extra_specs': {
+                'availability_zones': 'zone1,zone2'
+            }
+        }
+        fake_server_host = 'fake@backend'
+        fake_share_server = db_utils.create_share_server(host=fake_server_host)
+        share_type = db_utils.create_share_type(**type_data)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        fake_share = db_utils.create_share(
+            host='fake@backend#pool', status=constants.STATUS_AVAILABLE,
+            share_type_id=share_type['id'])
+        fake_share_network = {}
+        fake_host = 'test@fake'
+        service = {'availability_zone_id': 'fake_az_id',
+                   'availability_zone': {'name': 'fake_az1'}}
+
+        mock_shares_get_all = self.mock_object(
+            db_api, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[fake_share]))
+        mock_get_type = self.mock_object(
+            share_types, 'get_share_type', mock.Mock(return_value=share_type))
+        mock_validate_service = self.mock_object(
+            utils, 'validate_service_host')
+        mock_service_get = self.mock_object(
+            db_api, 'service_get_by_args', mock.Mock(return_value=service))
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api._migration_initial_checks,
+            self.context, fake_share_server, fake_host, fake_share_network,
+        )
+        mock_shares_get_all.assert_called_once_with(
+            self.context, fake_share_server['id'])
+        mock_get_type.assert_called_once_with(self.context, share_type['id'])
+        mock_validate_service.assert_called_once_with(self.context, fake_host)
+        mock_service_get.assert_called_once_with(
+            self.context, fake_host, 'manila-share')
+
+    def test__migration_initial_checks_no_matching_subnet(self):
+        type_data = {
+            'extra_specs': {
+                'availability_zones': 'fake_az1,fake_az2'
+            }
+        }
+        fake_server_host = 'fake@backend'
+        fake_share_server = db_utils.create_share_server(host=fake_server_host)
+        share_type = db_utils.create_share_type(**type_data)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        fake_share = db_utils.create_share(
+            host='fake@backend#pool', status=constants.STATUS_AVAILABLE,
+            share_type_id=share_type['id'])
+        fake_share_network = db_utils.create_share_network()
+        fake_az = {
+            'id': 'fake_az_id',
+            'name': 'fake_az1'
+        }
+
+        db_utils.create_share_network_subnet(
+            availability_zone_id='fake',
+            share_network_id=fake_share_network['id'])
+        fake_share_network = db_api.share_network_get(
+            self.context, fake_share_network['id'])
+        fake_host = 'test@fake'
+        service = {'availability_zone_id': fake_az['id'],
+                   'availability_zone': {'name': fake_az['name']}}
+
+        mock_shares_get_all = self.mock_object(
+            db_api, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[fake_share]))
+        mock_get_type = self.mock_object(
+            share_types, 'get_share_type', mock.Mock(return_value=share_type))
+        mock_validate_service = self.mock_object(
+            utils, 'validate_service_host')
+        mock_service_get = self.mock_object(
+            db_api, 'service_get_by_args', mock.Mock(return_value=service))
+        mock_az_get = self.mock_object(
+            db_api, 'availability_zone_get', mock.Mock(return_value=fake_az))
+        mock_get_subnet = self.mock_object(
+            db_api, 'share_network_subnet_get_by_availability_zone_id',
+            mock.Mock(return_value=None))
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api._migration_initial_checks,
+            self.context, fake_share_server, fake_host, fake_share_network,
+        )
+        mock_shares_get_all.assert_called_once_with(
+            self.context, fake_share_server['id'])
+        mock_get_type.assert_called_once_with(self.context, share_type['id'])
+        mock_validate_service.assert_called_once_with(self.context, fake_host)
+        mock_service_get.assert_called_once_with(
+            self.context, fake_host, 'manila-share')
+        mock_get_subnet.assert_called_once_with(
+            self.context, fake_share_network['id'], fake_az['id'])
+        mock_az_get.assert_called_once_with(
+            self.context, service['availability_zone']['name']
+        )
+
+    def test_share_server_migration_check(self):
+        type_data = {
+            'extra_specs': {
+                'availability_zones': 'fake_az1,fake_az2'
+            }
+        }
+        fake_share_server = db_utils.create_share_server()
+        share_type = db_utils.create_share_type(**type_data)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        fake_share = db_utils.create_share(
+            host='fake@backend#pool', status=constants.STATUS_AVAILABLE,
+            share_type_id=share_type['id'])
+        fake_shares = [fake_share]
+        fake_types = [share_type]
+        fake_share_network = db_utils.create_share_network()
+        fake_az = {
+            'id': 'fake_az_id',
+            'name': 'fake_az1'
+        }
+        writable = True
+        nondisruptive = True
+        preserve_snapshots = True
+        fake_share_network = db_api.share_network_get(
+            self.context, fake_share_network['id'])
+        fake_host = 'test@fake'
+        service = {'availability_zone_id': fake_az['id'],
+                   'availability_zone': {'name': fake_az['name']}}
+        expected_result = {
+            'requested_capabilities': {},
+            'supported_capabilities': {}
+        }
+
+        mock_initial_checks = self.mock_object(
+            self.api, '_migration_initial_checks',
+            mock.Mock(return_value=[fake_shares, fake_types, service,
+                                    fake_share_network['id']]))
+        # NOTE(carloss): Returning an "empty" dictionary should be enough for
+        # this test case. The unit test to check the values being returned to
+        # the user should be placed in the share manager, where the dict is
+        # populated with the real info. At this level we only forward the
+        # received response to the user.
+        mock_migration_check = self.mock_object(
+            self.share_rpcapi, 'share_server_migration_check',
+            mock.Mock(return_value=expected_result))
+
+        result = self.api.share_server_migration_check(
+            self.context, fake_share_server, fake_host, writable,
+            nondisruptive, preserve_snapshots, fake_share_network
+        )
+
+        mock_initial_checks.assert_called_once_with(
+            self.context, fake_share_server, fake_host, fake_share_network)
+        mock_migration_check.assert_called_once_with(
+            self.context, fake_share_server['id'], fake_host, writable,
+            nondisruptive, preserve_snapshots, fake_share_network['id']
+        )
+        self.assertEqual(result, expected_result)
+
+    def test_share_server_migration_start(self):
+        type_data = {
+            'extra_specs': {
+                'availability_zones': 'fake_az1,fake_az2'
+            }
+        }
+        fake_share_server = db_utils.create_share_server()
+        share_type = db_utils.create_share_type(**type_data)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        fake_shares = [db_utils.create_share(
+            host='fake@backend#pool', status=constants.STATUS_AVAILABLE,
+            share_type_id=share_type['id']) for x in range(4)]
+        fake_snapshots = [
+            db_utils.create_snapshot(share_id=fake_shares[0]['id'])]
+        instance_ids = [share['instance']['id'] for share in fake_shares]
+        snap_instance_ids = []
+        for fake_share in fake_shares:
+            for snapshot in fake_snapshots:
+                snap_instance_ids.append(snapshot['instance']['id'])
+        fake_types = [share_type]
+        fake_share_network = db_utils.create_share_network()
+        writable = True
+        nondisruptive = True
+        preserve_snapshots = True
+        fake_share_network = db_api.share_network_get(
+            self.context, fake_share_network['id'])
+        fake_host = 'test@fake'
+        service = {'availability_zone_id': 'fake_az_id',
+                   'availability_zone': {'name': 'fake_az1'}}
+        server_expected_update = {
+            'task_state': constants.TASK_STATE_MIGRATION_STARTING,
+            'status': constants.STATUS_SERVER_MIGRATING
+        }
+        share_expected_update = {
+            'status': constants.STATUS_SERVER_MIGRATING
+        }
+        snapshot_get_calls = [
+            mock.call(self.context, share['id']) for share in fake_shares]
+
+        mock_initial_checks = self.mock_object(
+            self.api, '_migration_initial_checks',
+            mock.Mock(return_value=[fake_shares, fake_types, service,
+                                    fake_share_network['id']]))
+        mock_migration_start = self.mock_object(
+            self.share_rpcapi, 'share_server_migration_start')
+        mock_server_update = self.mock_object(db_api, 'share_server_update')
+        mock_snapshots_get = self.mock_object(
+            db_api, 'share_snapshot_get_all_for_share',
+            mock.Mock(return_value=fake_snapshots))
+        mock_update_instances = self.mock_object(
+            db_api, 'share_and_snapshot_instances_status_update')
+
+        self.api.share_server_migration_start(
+            self.context, fake_share_server, fake_host, writable,
+            nondisruptive, preserve_snapshots, fake_share_network
+        )
+
+        mock_initial_checks.assert_called_once_with(
+            self.context, fake_share_server, fake_host, fake_share_network)
+        mock_migration_start.assert_called_once_with(
+            self.context, fake_share_server, fake_host, writable,
+            nondisruptive, preserve_snapshots, fake_share_network['id']
+        )
+        mock_server_update.assert_called_once_with(
+            self.context, fake_share_server['id'], server_expected_update)
+        mock_snapshots_get.assert_has_calls(
+            snapshot_get_calls)
+        mock_update_instances.assert_called_once_with(
+            self.context, share_expected_update,
+            current_expected_status=constants.STATUS_AVAILABLE,
+            share_instance_ids=instance_ids,
+            snapshot_instance_ids=snap_instance_ids)
+
+    @ddt.data(
+        (constants.STATUS_ACTIVE, None),
+        (constants.STATUS_SERVER_MIGRATING,
+         constants.TASK_STATE_MIGRATION_STARTING)
+    )
+    @ddt.unpack
+    def test_share_server_migration_complete_invalid_status(self, status,
+                                                            task_state):
+        fake_host = 'fakehost@fakebackend'
+        fake_share_server = db_utils.create_share_server(
+            status=status, task_state=task_state, host=fake_host)
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api.share_server_migration_complete,
+            self.context, fake_share_server)
+
+    def test_share_server_migration_complete(self):
+        fake_service_host = 'fakehost@fakebackend'
+        fake_share_server = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING,
+            task_state=constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE,
+            host=fake_service_host)
+        fake_share_server_dest = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING_TO,
+            host=fake_service_host)
+        fake_service = {'availability_zone_id': 'fake_az_id',
+                        'availability_zone': {'name': 'fake_az1'}}
+
+        mock_get_destination = self.mock_object(
+            self.api, 'share_server_migration_get_destination',
+            mock.Mock(return_value=fake_share_server_dest))
+        mock_validate_service_host = self.mock_object(
+            utils, 'validate_service_host',
+            mock.Mock(return_value=fake_service))
+        mock_migration_complete = self.mock_object(
+            self.share_rpcapi, 'share_server_migration_complete')
+
+        result = self.api.share_server_migration_complete(
+            self.context, fake_share_server)
+
+        expected = {
+            'destination_share_server_id': fake_share_server_dest['id']
+        }
+        self.assertEqual(expected, result)
+        mock_get_destination.assert_called_once_with(
+            self.context, fake_share_server['id'],
+            status=constants.STATUS_SERVER_MIGRATING_TO)
+        mock_validate_service_host.assert_called_once_with(
+            self.context, fake_service_host)
+        mock_migration_complete.assert_called_once_with(
+            self.context, fake_share_server['host'], fake_share_server,
+            fake_share_server_dest
+        )
+
+    @ddt.data(
+        (constants.STATUS_ACTIVE, None),
+        (constants.STATUS_SERVER_MIGRATING,
+         constants.TASK_STATE_MIGRATION_STARTING)
+    )
+    @ddt.unpack
+    def test_share_server_migration_cancel_server_not_migrating(
+            self, status, task_state):
+        fake_share_server = db_utils.create_share_server(
+            status=status, task_state=task_state)
+
+        self.mock_object(self.api, '_migration_validate_error_message',
+                         mock.Mock(return_value=None))
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api.share_server_migration_cancel,
+            self.context,
+            fake_share_server
+        )
+
+    @ddt.data(constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE,
+              constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS)
+    def test_share_server_migration_cancel_service_not_up(self, task_state):
+        fake_service_host = 'host@backend'
+        fake_share_server = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING,
+            task_state=task_state,
+            host=fake_service_host)
+        fake_share_server_dest = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING_TO,
+            host=fake_service_host)
+
+        mock_get_destination = self.mock_object(
+            self.api, 'share_server_migration_get_destination',
+            mock.Mock(return_value=fake_share_server_dest))
+        mock_validate_service_host = self.mock_object(
+            utils, 'validate_service_host',
+            mock.Mock(side_effect=exception.ServiceIsDown(
+                service="fake_service")))
+
+        self.assertRaises(
+            exception.ServiceIsDown,
+            self.api.share_server_migration_cancel,
+            self.context,
+            fake_share_server
+        )
+        mock_get_destination.assert_called_once_with(
+            self.context, fake_share_server['id'],
+            status=constants.STATUS_SERVER_MIGRATING_TO)
+        mock_validate_service_host.assert_called_once_with(
+            self.context, fake_service_host)
+
+    @ddt.data(constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE,
+              constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS)
+    def test_share_server_migration_cancel(self, task_state):
+        fake_service_host = 'host@backend'
+        fake_share_server = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING,
+            task_state=task_state,
+            host=fake_service_host)
+        fake_share_server_dest = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING_TO,
+            host=fake_service_host)
+        fake_service = {'availability_zone_id': 'fake_az_id',
+                        'availability_zone': {'name': 'fake_az1'}}
+
+        mock_get_destination = self.mock_object(
+            self.api, 'share_server_migration_get_destination',
+            mock.Mock(return_value=fake_share_server_dest))
+        mock_validate_service_host = self.mock_object(
+            utils, 'validate_service_host',
+            mock.Mock(return_value=fake_service))
+
+        self.api.share_server_migration_cancel(
+            self.context, fake_share_server)
+
+        mock_get_destination.assert_called_once_with(
+            self.context, fake_share_server['id'],
+            status=constants.STATUS_SERVER_MIGRATING_TO)
+        mock_validate_service_host.assert_called_once_with(
+            self.context, fake_service_host)
+
+    def test_share_server_migration_get_progress_not_migrating(self):
+        fake_share_server = db_utils.create_share_server(
+            status=constants.STATUS_ACTIVE)
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api.share_server_migration_get_progress,
+            self.context, fake_share_server['id']
+        )
+
+    def test_share_server_migration_get_progress_service_not_up(self):
+        fake_service_host = 'host@backend'
+        fake_share_server = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING,
+            task_state=constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS,
+            host=fake_service_host)
+        fake_share_server_dest = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING_TO,
+            host=fake_service_host)
+
+        mock_get_destination = self.mock_object(
+            self.api, 'share_server_migration_get_destination',
+            mock.Mock(return_value=fake_share_server_dest))
+        mock_validate_service_host = self.mock_object(
+            utils, 'validate_service_host',
+            mock.Mock(side_effect=exception.ServiceIsDown(
+                service="fake_service")))
+
+        self.assertRaises(
+            exception.ServiceIsDown,
+            self.api.share_server_migration_get_progress,
+            self.context, fake_share_server['id']
+        )
+
+        mock_get_destination.assert_called_once_with(
+            self.context, fake_share_server['id'],
+            status=constants.STATUS_SERVER_MIGRATING_TO)
+        mock_validate_service_host.assert_called_once_with(
+            self.context, fake_service_host)
+
+    def test_share_server_migration_get_progress_rpcapi_exception(self):
+        fake_service_host = 'host@backend'
+        fake_share_server = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING,
+            task_state=constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS,
+            host=fake_service_host)
+        fake_share_server_dest = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING_TO,
+            host=fake_service_host)
+        fake_service = {'availability_zone_id': 'fake_az_id',
+                        'availability_zone': {'name': 'fake_az1'}}
+
+        mock_server_get = self.mock_object(
+            db_api, 'share_server_get',
+            mock.Mock(return_value=fake_share_server))
+        mock_get_destination = self.mock_object(
+            self.api, 'share_server_migration_get_destination',
+            mock.Mock(return_value=fake_share_server_dest))
+        mock_validate_service_host = self.mock_object(
+            utils, 'validate_service_host',
+            mock.Mock(return_value=fake_service))
+        mock_migration_get_progress = self.mock_object(
+            self.share_rpcapi, 'share_server_migration_get_progress',
+            mock.Mock(side_effect=Exception))
+
+        self.assertRaises(
+            exception.ShareServerMigrationError,
+            self.api.share_server_migration_get_progress,
+            self.context,
+            fake_share_server['id']
+        )
+
+        mock_server_get.assert_called_once_with(self.context,
+                                                fake_share_server['id'])
+        mock_get_destination.assert_called_once_with(
+            self.context, fake_share_server['id'],
+            status=constants.STATUS_SERVER_MIGRATING_TO)
+        mock_validate_service_host.assert_called_once_with(
+            self.context, fake_service_host)
+        mock_migration_get_progress.assert_called_once_with(
+            self.context, fake_share_server_dest['host'], fake_share_server,
+            fake_share_server_dest)
+
+    @ddt.data(constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS,
+              constants.TASK_STATE_MIGRATION_SUCCESS)
+    def test_share_server_migration_get_progress(self, task_state):
+        fake_service_host = 'host@backend'
+        fake_share_server = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING,
+            task_state=task_state, host=fake_service_host)
+        fake_share_server_dest = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING_TO,
+            host=fake_service_host)
+        fake_service = {'availability_zone_id': 'fake_az_id',
+                        'availability_zone': {'name': 'fake_az1'}}
+
+        mock_server_get = self.mock_object(
+            db_api, 'share_server_get',
+            mock.Mock(return_value=fake_share_server))
+        mock_get_destination = self.mock_object(
+            self.api, 'share_server_migration_get_destination',
+            mock.Mock(return_value=fake_share_server_dest))
+        mock_validate_service_host = self.mock_object(
+            utils, 'validate_service_host',
+            mock.Mock(return_value=fake_service))
+        mock_migration_get_progress = self.mock_object(
+            self.share_rpcapi, 'share_server_migration_get_progress',
+            mock.Mock(return_value={'total_progress': 50}))
+        self.mock_object(utils, 'service_is_up', mock.Mock(return_value=True))
+
+        result = self.api.share_server_migration_get_progress(
+            self.context, fake_share_server['id'])
+
+        self.assertIn('total_progress', result)
+        mock_server_get.assert_called_once_with(self.context,
+                                                fake_share_server['id'])
+        if task_state == constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS:
+            mock_get_destination.assert_called_once_with(
+                self.context, fake_share_server['id'],
+                status=constants.STATUS_SERVER_MIGRATING_TO)
+            mock_validate_service_host.assert_called_once_with(
+                self.context, fake_service_host)
+            mock_migration_get_progress.assert_called_once_with(
+                self.context, fake_share_server_dest['host'],
+                fake_share_server, fake_share_server_dest)
+
+    @ddt.data(constants.STATUS_SERVER_MIGRATING_TO,
+              constants.STATUS_SERVER_MIGRATING)
+    def test_share_server_migration_get_progress_invalid_share_server(self,
+                                                                      status):
+        fake_service_host = 'host@backend'
+        fake_share_server = db_utils.create_share_server(
+            status=status,
+            task_state=None,
+            host=fake_service_host)
+        mock_server_get = self.mock_object(
+            db_api, 'share_server_get',
+            mock.Mock(return_value=fake_share_server))
+        mock_get_progress_state = self.mock_object(
+            self.api, '_migration_get_progress_state',
+            mock.Mock(return_value=None))
+        self.mock_object(self.api, 'share_server_migration_get_destination')
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api.share_server_migration_get_progress,
+            self.context, fake_share_server['id'])
+
+        mock_server_get.assert_called_once_with(self.context,
+                                                fake_share_server['id'])
+        if status == constants.STATUS_SERVER_MIGRATING:
+            mock_get_progress_state.assert_called_once_with(fake_share_server)
+
+    def test_share_server_migration_get_progress_source_not_found(self):
+        fake_dest_hare_server = db_utils.create_share_server(
+            status=constants.STATUS_ACTIVE,
+            task_state=constants.TASK_STATE_MIGRATION_SUCCESS)
+        mock_server_get = self.mock_object(
+            db_api, 'share_server_get',
+            mock.Mock(side_effect=exception.ShareServerNotFound(
+                share_server_id='fake_id')))
+        mock_get_destination = self.mock_object(
+            self.api, 'share_server_migration_get_destination',
+            mock.Mock(return_value=fake_dest_hare_server))
+
+        result = self.api.share_server_migration_get_progress(
+            self.context, 'fake_source_server_id')
+        expected = {
+            'total_progress': 100,
+            'destination_share_server_id': fake_dest_hare_server['id'],
+            'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
+        }
+
+        self.assertEqual(expected, result)
+        mock_server_get.assert_called_once_with(self.context,
+                                                'fake_source_server_id')
+        mock_get_destination.assert_called_once_with(
+            self.context, 'fake_source_server_id',
+            status=constants.STATUS_ACTIVE)
+
+    def test_share_server_migration_get_progress_has_destination_only(self):
+        mock_server_get = self.mock_object(
+            db_api, 'share_server_get',
+            mock.Mock(side_effect=exception.ShareServerNotFound(
+                share_server_id='fake_id')))
+        mock_get_destination = self.mock_object(
+            self.api, 'share_server_migration_get_destination',
+            mock.Mock(side_effect=exception.InvalidShareServer(reason='')))
+
+        self.assertRaises(
+            exception.InvalidShareServer,
+            self.api.share_server_migration_get_progress,
+            self.context, 'fake_src_server_id')
+
+        mock_server_get.assert_called_once_with(self.context,
+                                                'fake_src_server_id')
+        mock_get_destination.assert_called_once_with(
+            self.context, 'fake_src_server_id', status=constants.STATUS_ACTIVE)
+
 
 class OtherTenantsShareActionsTestCase(test.TestCase):
     def setUp(self):

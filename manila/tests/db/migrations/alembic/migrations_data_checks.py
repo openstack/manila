@@ -2946,3 +2946,29 @@ class ShareInstanceProgressFieldChecks(BaseMigrationChecks):
         for si_record in engine.execute(si_table.select()):
             self.test_case.assertFalse(hasattr(si_record,
                                                self.progress_field_name))
+
+
+@map_to_migration('5aa813ae673d')
+class ShareServerTaskState(BaseMigrationChecks):
+
+    def setup_upgrade_data(self, engine):
+        # Create share server
+        share_server_data = {
+            'id': uuidutils.generate_uuid(),
+            'host': 'fake_host',
+            'status': 'active',
+        }
+        ss_table = utils.load_table('share_servers', engine)
+        engine.execute(ss_table.insert(share_server_data))
+
+    def check_upgrade(self, engine, data):
+        ss_table = utils.load_table('share_servers', engine)
+        for ss in engine.execute(ss_table.select()):
+            self.test_case.assertTrue(hasattr(ss, 'task_state'))
+            self.test_case.assertTrue(hasattr(ss, 'source_share_server_id'))
+
+    def check_downgrade(self, engine):
+        ss_table = utils.load_table('share_servers', engine)
+        for ss in engine.execute(ss_table.select()):
+            self.test_case.assertFalse(hasattr(ss, 'task_state'))
+            self.test_case.assertFalse(hasattr(ss, 'source_share_server_id'))

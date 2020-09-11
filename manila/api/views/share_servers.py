@@ -22,7 +22,8 @@ class ViewBuilder(common.ViewBuilder):
     _collection_name = 'share_servers'
     _detail_version_modifiers = [
         "add_is_auto_deletable_and_identifier_fields",
-        "add_share_network_subnet_id_field"
+        "add_share_network_subnet_id_field",
+        "add_task_state_and_source_server_fields"
     ]
 
     def build_share_server(self, request, share_server):
@@ -74,3 +75,10 @@ class ViewBuilder(common.ViewBuilder):
         share_server_dict['is_auto_deletable'] = (
             share_server['is_auto_deletable'])
         share_server_dict['identifier'] = share_server['identifier']
+
+    @common.ViewBuilder.versioned_method("2.57")
+    def add_task_state_and_source_server_fields(
+            self, context, share_server_dict, share_server):
+        share_server_dict['task_state'] = share_server['task_state']
+        share_server_dict['source_share_server_id'] = (
+            share_server['source_share_server_id'])
