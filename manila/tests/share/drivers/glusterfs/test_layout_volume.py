@@ -587,6 +587,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         gmgr1.set_vol_option = mock.Mock()
         gmgr1.get_vol_option = mock.Mock(return_value=clone_of)
+        new_vol_addr = self.glusterfs_target1
         self.mock_object(self._layout, '_glustermanager',
                          mock.Mock(return_value=gmgr1))
         self._layout.gluster_used_vols = set([self.glusterfs_target1])
@@ -596,6 +597,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         gmgr1.get_vol_option.assert_called_once_with(
             'user.manila-cloned-from')
         self._layout._wipe_gluster_vol.assert_called_once_with(gmgr1)
+        self.assertIn(new_vol_addr, self._layout.gluster_used_vols)
         self._layout._push_gluster_vol.assert_called_once_with(
             self.glusterfs_target1)
         self._layout.private_storage.delete.assert_called_once_with(
