@@ -149,7 +149,7 @@ class DockerExecHelper(driver.ExecuteMixin):
         interfaces = self._execute("ovs-vsctl", "list", "interface",
                                    run_as_root=True)[0]
         veths = set(re.findall("veth[0-9a-zA-Z]{7}", interfaces))
-        manila_re = "manila-container=\".*\""
+        manila_re = "manila-container=\"?.{%s}\"?" % len(name)
         for veth in veths:
             try:
                 iface_data = self._execute("ovs-vsctl", "list", "interface",
