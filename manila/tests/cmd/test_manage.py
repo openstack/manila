@@ -404,13 +404,13 @@ class ManilaCmdManageTestCase(test.TestCase):
     def test_share_update_host_fail_validation(self, current_host, new_host):
         self.mock_object(context, 'get_admin_context',
                          mock.Mock(return_value='admin_ctxt'))
-        self.mock_object(db, 'share_instances_host_update')
+        self.mock_object(db, 'share_resources_host_update')
 
         self.assertRaises(SystemExit,
                           self.share_cmds.update_host,
                           current_host, new_host)
 
-        self.assertFalse(db.share_instances_host_update.called)
+        self.assertFalse(db.share_resources_host_update.called)
 
     @ddt.data({'current_host': 'controller-0@fancystore01#pool100',
                'new_host': 'controller-0@fancystore02#pool0'},
@@ -422,23 +422,18 @@ class ManilaCmdManageTestCase(test.TestCase):
                'new_host': 'controller-1@fancystore02', 'force': True})
     @ddt.unpack
     def test_share_update_host(self, current_host, new_host, force=False):
+        db_op = {'instances': 3, 'groups': 4, 'servers': 2}
         self.mock_object(context, 'get_admin_context',
                          mock.Mock(return_value='admin_ctxt'))
-        self.mock_object(db, 'share_instances_host_update',
-                         mock.Mock(return_value=20))
-        self.mock_object(db, 'share_servers_host_update',
-                         mock.Mock(return_value=5))
+        self.mock_object(db, 'share_resources_host_update',
+                         mock.Mock(return_value=db_op))
 
         with mock.patch('sys.stdout', new=six.StringIO()) as intercepted_op:
             self.share_cmds.update_host(current_host, new_host, force)
 
-        expected_op_si = ("Updated host of 20 share instances on "
-                          "%(chost)s to %(nhost)s." %
-                          {'chost': current_host, 'nhost': new_host})
-        expected_op_sv = ("Updated host of 5 share servers on "
-                          "%(chost)s to %(nhost)s." %
-                          {'chost': current_host, 'nhost': new_host})
-        self.assertEqual(expected_op_si + "\n" + expected_op_sv,
-                         intercepted_op.getvalue().strip())
-        db.share_instances_host_update.assert_called_once_with(
+        expected_op = ("Updated host of 3 share instances, 4 share groups and "
+                       "2 share servers on %(chost)s to %(nhost)s." %
+                       {'chost': current_host, 'nhost': new_host})
+        self.assertEqual(expected_op, intercepted_op.getvalue().strip())
+        db.share_resources_host_update.assert_called_once_with(
             'admin_ctxt', current_host, new_host)
