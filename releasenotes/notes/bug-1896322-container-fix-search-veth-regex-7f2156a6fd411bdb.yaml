@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed an issue on Container driver when managing share servers. The regex
+    used to search for container-name in the available network interfaces
+    was updated to support newer versions of Open vSwitch. Refer to the
+    `Bug #1896322 <https://bugs.launchpad.net/manila/+bug/1896322>`_ for more
+    details.
