@@ -33,7 +33,8 @@ share group type for the following purposes:
 
 .. note::
 
-    Share Group Types APIs are `experimental APIs <#experimental-apis>`_.
+    Share Group Type APIs are no longer considered experimental since API
+    version 2.55.
 
 List share group types
 ======================

@@ -18,8 +18,8 @@ share groups, and show information for delete a share group.
 
 .. note::
 
-    Share Group APIs are `experimental APIs <#experimental-apis>`_.
-    The ``availability_zone_id`` and ``consistent_snapshot_support``
+    Share Group APIs are no longer considered experimental since API version
+    2.55. The ``availability_zone_id`` and ``consistent_snapshot_support``
     fields were added to ``share_group`` object since version 2.34.
 
 List share groups

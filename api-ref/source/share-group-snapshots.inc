@@ -19,7 +19,8 @@ roles.
 
 .. note::
 
-    Share Group Snapshot APIs are `experimental APIs <#experimental-apis>`_.
+    Share Group Snapshot APIs are no longer considered experimental since API
+    version 2.55.
 
 List share group snapshots
 ==========================
