@@ -167,8 +167,8 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
     def _update_share_stats(self):
         stats = self.volume_client.rados.get_cluster_stats()
 
-        total_capacity_gb = stats['kb'] * units.Mi
-        free_capacity_gb = stats['kb_avail'] * units.Mi
+        total_capacity_gb = round(stats['kb'] / units.Mi, 2)
+        free_capacity_gb = round(stats['kb_avail'] / units.Mi, 2)
 
         data = {
             'vendor_name': 'Ceph',
@@ -182,7 +182,8 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                     'total_capacity_gb': total_capacity_gb,
                     'free_capacity_gb': free_capacity_gb,
                     'qos': 'False',
-                    'reserved_percentage': 0,
+                    'reserved_percentage': self.configuration.safe_get(
+                        'reserved_share_percentage'),
                     'dedupe': [False],
                     'compression': [False],
                     'thin_provisioning': [False]

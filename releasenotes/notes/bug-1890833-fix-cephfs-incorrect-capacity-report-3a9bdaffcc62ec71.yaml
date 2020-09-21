@@ -1,0 +1,22 @@
+---
+upgrade:
+  - |
+    This version includes a fix to the CephFS drivers to address `an issue
+    <https://launchpad.net/bugs/1890833>`_ with total and free space calculation
+    in the CephFS driver. When you update, you will notice that the space
+    calculations reflect reality in your Ceph clusters, and provisioning may
+    fail if the share sizes exceed the cluster's free space. CephFS shares are
+    always thin provisioned, and the driver does not support oversubscription
+    via Manila; so space can be claimed for new shares as long as there is free
+    space on the cluster. Use the "reserved_share_percentage" back end
+    configuration option to ensure there's always space left aside for
+    provisioned workloads to grow over time.
+fixes:
+  - |
+    The CephFS driver has now been fixed to report total and available space on
+    the storage system correctly. See `Launchpad bug#1890833
+    <https://launchpad.net/bugs/1890833>`_ for more details.
+  - |
+    The CephFS driver now honors the configuration option
+    "reserved_share_percentage", and it can be used to prevent save
+    space for provisioned workloads to grow over time.
