@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed `bug #1886232 <https://bugs.launchpad.net/manila/+bug/1886232>`_
+    that causes an INFO message saying the python-manila package was not found.
+    Now, the package name was updated to python3-manila. This fix solves only in
+    the case that the user installed the manila using the default packages found
+    in OS.
