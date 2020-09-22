@@ -55,6 +55,10 @@ def get_backend_configuration(backend_name):
 
     config = configuration.Configuration(driver.share_opts,
                                          config_group=backend_name)
+    if config.driver_handles_share_servers:
+        # NOTE(dviroel): avoid using a pre-create vserver on DHSS == True mode
+        # when retrieving remote backend configuration.
+        config.netapp_vserver = None
     config.append_config_values(na_opts.netapp_cluster_opts)
     config.append_config_values(na_opts.netapp_connection_opts)
     config.append_config_values(na_opts.netapp_basicauth_opts)

@@ -1920,7 +1920,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       language=None, dedup_enabled=False,
                       compression_enabled=False, max_files=None,
                       qos_policy_group=None, hide_snapdir=None,
-                      **options):
+                      autosize_attributes=None, **options):
         """Update backend volume for a share as necessary."""
         api_args = {
             'query': {
@@ -1936,6 +1936,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     'volume-inode-attributes': {},
                     'volume-language-attributes': {},
                     'volume-snapshot-attributes': {},
+                    'volume-autosize-attributes': (autosize_attributes
+                                                   if autosize_attributes
+                                                   else {}),
                     'volume-space-attributes': {
                         'space-guarantee': ('none' if thin_provisioned else
                                             'volume'),
@@ -2136,6 +2139,26 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         }
         result = self.send_iter_request('volume-get-iter', api_args)
         return self._has_records(result)
+
+    @na_utils.trace
+    def get_volume_autosize_attributes(self, volume_name):
+        """Returns autosize attributes for a given volume name."""
+        api_args = {
+            'volume': volume_name,
+        }
+
+        result = self.send_request('volume-autosize-get', api_args)
+        # NOTE(dviroel): 'is-enabled' is deprecated since ONTAP 8.2, use 'mode'
+        # to identify if autosize is enabled or not.
+        return {
+            'mode': result.get_child_content('mode'),
+            'grow-threshold-percent': result.get_child_content(
+                'grow-threshold-percent'),
+            'shrink-threshold-percent': result.get_child_content(
+                'shrink-threshold-percent'),
+            'maximum-size': result.get_child_content('maximum-size'),
+            'minimum-size': result.get_child_content('minimum-size'),
+        }
 
     @na_utils.trace
     def get_volume(self, volume_name):

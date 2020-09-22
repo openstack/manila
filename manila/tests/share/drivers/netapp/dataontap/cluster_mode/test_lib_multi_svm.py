@@ -21,6 +21,7 @@ from unittest import mock
 import ddt
 from oslo_log import log
 from oslo_serialization import jsonutils
+from oslo_utils import units
 
 from manila.common import constants
 from manila import context
@@ -2173,6 +2174,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_create_export',
                          mock.Mock(return_value=fake.NFS_EXPORTS))
         self.mock_object(self.library, '_delete_share')
+        mock_update_share_attrs = self.mock_object(
+            self.library, '_update_share_attributes_after_server_migration')
 
         result = self.library.share_server_migration_complete(
             None,
@@ -2229,6 +2232,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         )
         self.mock_dest_client.get_volume.assert_called_once_with(
             fake_share_name)
+        mock_update_share_attrs.assert_called_once_with(
+            fake.SHARE_INSTANCE, self.mock_src_client,
+            fake_volume['aggregate'], self.mock_dest_client)
         self.library._delete_share.assert_called_once_with(
             fake.SHARE_INSTANCE, self.mock_src_client, remove_export=True)
 
@@ -2505,3 +2511,36 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._get_node_data_port.assert_has_calls(get_node_port_calls)
         self.library._client.create_port_and_broadcast_domain.assert_has_calls(
             create_port_calls)
+
+    def test___update_share_attributes_after_server_migration(self):
+        fake_aggregate = 'fake_aggr_0'
+        mock_get_extra_spec = self.mock_object(
+            share_types, "get_extra_specs_from_share",
+            mock.Mock(return_value=fake.EXTRA_SPEC))
+        mock__get_provisioning_opts = self.mock_object(
+            self.library, '_get_provisioning_options',
+            mock.Mock(return_value=copy.deepcopy(fake.PROVISIONING_OPTIONS)))
+        fake_share_name = self.library._get_backend_share_name(
+            fake.SHARE_INSTANCE['id'])
+        mock_get_vol_autosize_attrs = self.mock_object(
+            self.mock_src_client, 'get_volume_autosize_attributes',
+            mock.Mock(return_value=fake.VOLUME_AUTOSIZE_ATTRS)
+        )
+        fake_provisioning_opts = copy.copy(fake.PROVISIONING_OPTIONS)
+        fake_autosize_attrs = copy.copy(fake.VOLUME_AUTOSIZE_ATTRS)
+        for key in ('minimum-size', 'maximum-size'):
+            fake_autosize_attrs[key] = int(fake_autosize_attrs[key]) * units.Ki
+        fake_provisioning_opts['autosize_attributes'] = fake_autosize_attrs
+        mock_modify_volume = self.mock_object(self.mock_dest_client,
+                                              'modify_volume')
+        fake_provisioning_opts.pop('snapshot_policy', None)
+
+        self.library._update_share_attributes_after_server_migration(
+            fake.SHARE_INSTANCE, self.mock_src_client, fake_aggregate,
+            self.mock_dest_client)
+
+        mock_get_extra_spec.assert_called_once_with(fake.SHARE_INSTANCE)
+        mock__get_provisioning_opts.assert_called_once_with(fake.EXTRA_SPEC)
+        mock_get_vol_autosize_attrs.assert_called_once_with(fake_share_name)
+        mock_modify_volume.assert_called_once_with(
+            fake_aggregate, fake_share_name, **fake_provisioning_opts)
