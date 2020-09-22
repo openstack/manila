@@ -318,3 +318,8 @@ user documentation.
 2.58
 ----
   Added 'share_groups' and 'share_group_snapshots' to the limits view.
+
+2.59
+----
+  Added 'details' field to migration get progress api, which optionally may hold
+  additional driver data related to the progress of share migration.

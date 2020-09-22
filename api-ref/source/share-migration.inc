@@ -189,6 +189,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - details: migration_progress_details
    - total_progress: total_progress
    - task_state: task_state
 

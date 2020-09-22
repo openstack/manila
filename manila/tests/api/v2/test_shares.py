@@ -1160,7 +1160,7 @@ class ShareAPITest(test.TestCase):
                          mock.Mock(return_value=share))
 
         self.mock_object(share_api.API, 'migration_get_progress',
-                         mock.Mock(return_value=expected))
+                         mock.Mock(return_value=copy.deepcopy(expected)))
 
         response = self.controller.migration_get_progress(req, share['id'],
                                                           body)

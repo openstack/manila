@@ -1473,6 +1473,13 @@ migration_complete:
   in: body
   required: true
   type: object
+migration_progress_details:
+  description: |
+    Additional driver specific details of the migration progress.
+  in: body
+  required: true
+  type: object
+  min_version: 2.59
 mount_snapshot_support:
   description: |
     Boolean extra spec used for filtering of back ends
