@@ -550,6 +550,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 share, snapshot, src_vserver, src_vserver_client)
             return self._create_export(share, share_server, src_vserver,
                                        src_vserver_client)
+
         parent_share_server = {}
         if parent_share['share_server'] is not None:
             # Get only the information needed by Data Motion
@@ -1040,20 +1041,9 @@ class NetAppCmodeFileStorageLibrary(object):
         self._check_extra_specs_validity(share, extra_specs)
         provisioning_options = self._get_provisioning_options(extra_specs)
         qos_specs = self._get_normalized_qos_specs(extra_specs)
-        if (provisioning_options.get('adaptive_qos_policy_group') is not None
-                and qos_specs):
-            msg = _('Share cannot be provisioned with both qos_specs '
-                    '%(qos_specs_string)s and adaptive_qos_policy_group '
-                    '%(adaptive_qos_policy_group)s.')
-            qos_specs_string = ""
-            for key in qos_specs:
-                qos_specs_string += key + "=" + str(qos_specs[key]) + " "
-            msg_args = {
-                'adaptive_qos_policy_group':
-                    provisioning_options['adaptive_qos_policy_group'],
-                'qos_specs_string': qos_specs_string
-            }
-            raise exception.NetAppException(msg % msg_args)
+        self.validate_provisioning_options_for_share(provisioning_options,
+                                                     extra_specs=extra_specs,
+                                                     qos_specs=qos_specs)
         if qos_specs and not replica:
             qos_policy_group = self._create_qos_policy_group(
                 share, vserver, qos_specs, vserver_client)
@@ -1074,6 +1064,41 @@ class NetAppCmodeFileStorageLibrary(object):
         result['encrypt'] = self._get_nve_option(specs)
 
         return result
+
+    @na_utils.trace
+    def validate_provisioning_options_for_share(self, provisioning_options,
+                                                extra_specs=None,
+                                                qos_specs=None):
+        """Checks if provided provisioning options are valid."""
+        adaptive_qos = provisioning_options.get('adaptive_qos_policy_group')
+        replication_type = (extra_specs.get('replication_type')
+                            if extra_specs else None)
+        if adaptive_qos and qos_specs:
+            msg = _('Share cannot be provisioned with both qos_specs '
+                    '%(qos_specs_string)s and adaptive_qos_policy_group '
+                    '%(adaptive_qos_policy_group)s.')
+            qos_specs_string = ""
+            for key in qos_specs:
+                qos_specs_string += key + "=" + str(qos_specs[key]) + " "
+            msg_args = {
+                'adaptive_qos_policy_group':
+                    provisioning_options['adaptive_qos_policy_group'],
+                'qos_specs_string': qos_specs_string
+            }
+            raise exception.NetAppException(msg % msg_args)
+
+        if adaptive_qos and replication_type:
+            msg = _("The extra spec 'adaptive_qos_policy_group' is not "
+                    "supported by share replication feature.")
+            raise exception.NetAppException(msg)
+
+        # NOTE(dviroel): This validation will need to be updated if newer
+        # versions of ONTAP stop requiring cluster credentials to associate
+        # QoS to volumes.
+        if (adaptive_qos or qos_specs) and not self._have_cluster_creds:
+            msg = _('Share cannot be provisioned with QoS without having '
+                    'cluster credentials.')
+            raise exception.NetAppException(msg)
 
     def _get_nve_option(self, specs):
         if 'netapp_flexvol_encryption' in specs:
@@ -1407,6 +1432,10 @@ class NetAppCmodeFileStorageLibrary(object):
         self._validate_volume_for_manage(volume, vserver_client)
 
         provisioning_options = self._get_provisioning_options(extra_specs)
+        qos_specs = self._get_normalized_qos_specs(extra_specs)
+        self.validate_provisioning_options_for_share(provisioning_options,
+                                                     extra_specs=extra_specs,
+                                                     qos_specs=qos_specs)
 
         debug_args = {
             'share': share_name,
@@ -2393,6 +2422,14 @@ class NetAppCmodeFileStorageLibrary(object):
                     destination_share)
                 self._check_extra_specs_validity(
                     destination_share, extra_specs)
+                # NOTE(dviroel): Check if the destination share-type has valid
+                # provisioning options.
+                provisioning_options = self._get_provisioning_options(
+                    extra_specs)
+                qos_specs = self._get_normalized_qos_specs(extra_specs)
+                self.validate_provisioning_options_for_share(
+                    provisioning_options, extra_specs=extra_specs,
+                    qos_specs=qos_specs)
 
                 # NOTE (felipe_rodrigues): NetApp only can migrate within the
                 # same server, so it does not need to check that the
@@ -2411,6 +2448,10 @@ class NetAppCmodeFileStorageLibrary(object):
                 share_volume = self._get_backend_share_name(
                     source_share['id'])
 
+                # NOTE(dviroel): If source and destination vservers are
+                # compatible for volume move, the provisioning option
+                # 'adaptive_qos_policy_group' will also be supported since the
+                # share will remain in the same vserver.
                 self._check_destination_vserver_for_vol_move(
                     source_share, source_vserver, destination_share_server)
 

@@ -1409,6 +1409,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         qos = True if fake.QOS_EXTRA_SPEC in extra_specs else False
         vserver_client = mock.Mock()
+        self.library._have_cluster_creds = True
         mock_get_extra_specs_from_share = self.mock_object(
             share_types, 'get_extra_specs_from_share',
             mock.Mock(return_value=extra_specs))
@@ -2208,6 +2209,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_manage_container_with_qos(self, qos):
 
         vserver_client = mock.Mock()
+        self.library._have_cluster_creds = True
         qos_policy_group_name = fake.QOS_POLICY_GROUP_NAME if qos else None
         extra_specs = fake.EXTRA_SPEC_WITH_QOS if qos else fake.EXTRA_SPEC
         provisioning_opts = self.library._get_provisioning_options(extra_specs)
@@ -4960,6 +4962,34 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_exception_log.assert_called_once()
         self.assertFalse(data_motion.get_backend_configuration.called)
 
+    def test_migration_check_compatibility_invalid_qos_configuration(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_check_extra_specs_validity')
+        self.mock_object(
+            self.library, '_get_provisioning_options',
+            mock.Mock(return_value=fake.PROVISIONING_OPTS_WITH_ADAPT_QOS))
+        self.mock_object(self.library, '_get_normalized_qos_specs',
+                         mock.Mock(return_value=fake.QOS_NORMALIZED_SPEC))
+
+        migration_compatibility = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), share_server=fake.SHARE_SERVER,
+            destination_share_server=None)
+
+        expected_compatibility = {
+            'compatible': False,
+            'writable': False,
+            'nondisruptive': False,
+            'preserve_metadata': False,
+            'preserve_snapshots': False,
+        }
+        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        mock_exception_log.assert_called_once()
+
     def test_migration_check_compatibility_destination_not_configured(self):
         self.library._have_cluster_creds = True
         self.mock_object(self.library, '_get_backend_share_name',
@@ -4974,6 +5004,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(share_types, 'get_extra_specs_from_share')
         self.mock_object(self.library, '_check_extra_specs_validity')
         self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
+        self.mock_object(self.library, '_get_provisioning_options')
+        self.mock_object(self.library, '_get_normalized_qos_specs')
+        self.mock_object(self.library,
+                         'validate_provisioning_options_for_share')
         mock_vserver_compatibility_check = self.mock_object(
             self.library, '_check_destination_vserver_for_vol_move')
         self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
@@ -5012,6 +5046,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(self.library, '_get_provisioning_options')
+        self.mock_object(self.library, '_get_normalized_qos_specs')
+        self.mock_object(self.library,
+                         'validate_provisioning_options_for_share')
         self.mock_object(data_motion, 'get_backend_configuration')
         self.mock_object(self.library, '_get_vserver',
                          mock.Mock(side_effect=side_effects))
@@ -5047,6 +5085,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
         self.mock_object(data_motion, 'get_backend_configuration')
+        self.mock_object(self.library, '_get_provisioning_options')
+        self.mock_object(self.library, '_get_normalized_qos_specs')
+        self.mock_object(self.library,
+                         'validate_provisioning_options_for_share')
         mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
         get_vserver_returns = [
             (fake.VSERVER1, mock.Mock()),
@@ -5084,6 +5126,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(share_types, 'get_extra_specs_from_share')
         self.mock_object(self.library, '_check_extra_specs_validity')
         self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
+        self.mock_object(self.library, '_get_provisioning_options')
+        self.mock_object(self.library, '_get_normalized_qos_specs')
+        self.mock_object(self.library,
+                         'validate_provisioning_options_for_share')
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
         mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
@@ -5136,6 +5182,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_move_check = self.mock_object(self.client, 'check_volume_move')
         self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
                          mock.Mock(return_value=False))
+        self.mock_object(self.library, '_get_provisioning_options')
+        self.mock_object(self.library, '_get_normalized_qos_specs')
+        self.mock_object(self.library,
+                         'validate_provisioning_options_for_share')
 
         migration_compatibility = self.library.migration_check_compatibility(
             self.context, fake_share.fake_share_instance(),
@@ -5177,6 +5227,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_check_extra_specs_validity')
         self.mock_object(self.library,
                          '_check_aggregate_extra_specs_validity')
+        self.mock_object(self.library, '_get_provisioning_options')
+        self.mock_object(self.library, '_get_normalized_qos_specs')
+        self.mock_object(self.library,
+                         'validate_provisioning_options_for_share')
 
         migration_compatibility = self.library.migration_check_compatibility(
             self.context, fake_share.fake_share_instance(),
@@ -5941,3 +5995,30 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result = self.library._check_capacity_compatibility(pools, thin, size)
 
         self.assertEqual(compatible, result)
+
+    @ddt.data({'provisioning_opts': fake.PROVISIONING_OPTS_WITH_ADAPT_QOS,
+               'qos_specs': {fake.QOS_NORMALIZED_SPEC: 3000},
+               'extra_specs': None,
+               'cluster_credentials': True},
+              {'provisioning_opts': fake.PROVISIONING_OPTS_WITH_ADAPT_QOS,
+               'qos_specs': None,
+               'extra_specs': fake.EXTRA_SPEC_WITH_REPLICATION,
+               'cluster_credentials': True},
+              {'provisioning_opts': fake.PROVISIONING_OPTIONS,
+               'qos_specs': {fake.QOS_NORMALIZED_SPEC: 3000},
+               'extra_specs': None,
+               'cluster_credentials': False},
+              {'provisioning_opts': fake.PROVISIONING_OPTS_WITH_ADAPT_QOS,
+               'qos_specs': None,
+               'extra_specs': None,
+               'cluster_credentials': False},)
+    @ddt.unpack
+    def test_validate_provisioning_options_for_share_invalid_params(
+            self, provisioning_opts, qos_specs, extra_specs,
+            cluster_credentials):
+        self.library._have_cluster_creds = cluster_credentials
+
+        self.assertRaises(exception.NetAppException,
+                          self.library.validate_provisioning_options_for_share,
+                          provisioning_opts, extra_specs=extra_specs,
+                          qos_specs=qos_specs)

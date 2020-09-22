@@ -13,4 +13,6 @@ features:
     configuration in order to use QoS in clustered ONTAP.  Other notes:
 
     - This only works for backends without share server management.
-    - This does not work for share replicas or share migration.
+    - This does not work for share replicas or can fail when creating share
+      from snapshot across backends, if the destination backend does not have
+      the pre-created "adaptive_qos_policy_group".

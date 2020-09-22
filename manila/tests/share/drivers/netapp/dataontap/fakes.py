@@ -194,6 +194,11 @@ EXTRA_SPEC = {
     'netapp:adaptive_qos_policy_group': None,
 }
 
+EXTRA_SPEC_WITH_REPLICATION = copy.copy(EXTRA_SPEC)
+EXTRA_SPEC_WITH_REPLICATION.update({
+    'replication_type': 'dr'
+})
+
 NFS_CONFIG_DEFAULT = {
     'tcp-max-xfer-size': 65536,
     'udp-max-xfer-size': 32768,

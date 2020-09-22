@@ -2544,3 +2544,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_vol_autosize_attrs.assert_called_once_with(fake_share_name)
         mock_modify_volume.assert_called_once_with(
             fake_aggregate, fake_share_name, **fake_provisioning_opts)
+
+    def test_validate_provisioning_options_for_share(self):
+        mock_create_from_snap = self.mock_object(
+            lib_base.NetAppCmodeFileStorageLibrary,
+            'validate_provisioning_options_for_share')
+
+        self.library.validate_provisioning_options_for_share(
+            fake.PROVISIONING_OPTIONS, extra_specs=fake.EXTRA_SPEC,
+            qos_specs=fake.QOS_NORMALIZED_SPEC)
+
+        mock_create_from_snap.assert_called_once_with(
+            fake.PROVISIONING_OPTIONS, extra_specs=fake.EXTRA_SPEC,
+            qos_specs=fake.QOS_NORMALIZED_SPEC)
+
+    def test_validate_provisioning_options_for_share_aqos_not_supported(self):
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.validate_provisioning_options_for_share,
+            fake.PROVISIONING_OPTS_WITH_ADAPT_QOS, qos_specs=None)

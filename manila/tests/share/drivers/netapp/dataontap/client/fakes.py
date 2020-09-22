@@ -74,6 +74,7 @@ DELETED_EXPORT_POLICIES = {
 }
 QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
 QOS_MAX_THROUGHPUT = '5000B/s'
+ADAPTIVE_QOS_POLICY_GROUP_NAME = 'fake_adaptive_qos_policy_group_name'
 VSERVER_TYPE_DEFAULT = 'default'
 VSERVER_TYPE_DP_DEST = 'dp_destination'
 VSERVER_OP_STATE_RUNNING = 'running'
