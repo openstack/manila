@@ -52,9 +52,6 @@ class ShareMixin(object):
     def _delete(self, *args, **kwargs):
         return self.share_api.delete(*args, **kwargs)
 
-    def _migrate(self, *args, **kwargs):
-        return self.share_api.migrate_share(*args, **kwargs)
-
     def show(self, req, id):
         """Return data about the given share."""
         context = req.environ['manila.context']
