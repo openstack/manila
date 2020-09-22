@@ -25,7 +25,7 @@ class ViewBuilder(common.ViewBuilder):
     def get_progress(self, request, share, progress):
         """View of share migration job progress."""
         result = {
-            'total_progress': progress['total_progress'],
+            **progress,
             'task_state': share['task_state'],
         }
         self.update_versioned_resource_dict(request, result, progress)
