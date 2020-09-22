@@ -32,6 +32,9 @@ Shared File Systems API
 .. include:: user-messages.inc
 .. include:: share-access-rules.inc
 .. include:: share-access-rule-metadata.inc
+.. include:: share-groups.inc
+.. include:: share-group-types.inc
+.. include:: share-group-snapshots.inc
 
 ======================================
 Shared File Systems API (EXPERIMENTAL)
@@ -42,6 +45,3 @@ Shared File Systems API (EXPERIMENTAL)
 .. include:: experimental.inc
 .. include:: share-migration.inc
 .. include:: share-replica-export-locations.inc
-.. include:: share-groups.inc
-.. include:: share-group-types.inc
-.. include:: share-group-snapshots.inc
