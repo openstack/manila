@@ -169,3 +169,13 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
             return match.group('host_ip'), match.group('share_name')
         else:
             return '', ''
+
+    @na_utils.trace
+    def cleanup_demoted_replica(self, share, share_name):
+        """Cleans up some things regarding a demoted replica."""
+        # NOTE(carloss): This is necessary due to bug 1879368. If we do not
+        # remove this CIFS share, in case the demoted replica is promoted
+        # back, the promotion will fail due to a duplicated entry for the
+        # share, since a create share request is sent to the backend every
+        # time a promotion occurs.
+        self._client.remove_cifs_share(share_name)
