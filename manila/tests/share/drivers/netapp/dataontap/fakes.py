@@ -386,6 +386,14 @@ REMAPPED_OVERLAPPING_EXTRA_SPEC = {
     'netapp:thin_provisioned': 'false',
 }
 
+VOLUME_AUTOSIZE_ATTRS = {
+    'mode': 'off',
+    'grow-threshold-percent': '85',
+    'shrink-threshold-percent': '50',
+    'maximum-size': '1258288',
+    'minimum-size': '1048576',
+}
+
 USER_NETWORK_ALLOCATIONS = [
     {
         'id': '132dbb10-9a36-46f2-8d89-3d909830c356',

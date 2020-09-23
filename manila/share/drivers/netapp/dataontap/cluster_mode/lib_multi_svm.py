@@ -26,6 +26,7 @@ import re
 from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
+from oslo_utils import units
 
 from manila import exception
 from manila.i18n import _
@@ -1210,9 +1211,15 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         share_updates = {}
         for instance in share_instances:
             # Get the volume to find out the associated aggregate
+            # Update post-migration info that can't be replicated
             try:
                 share_name = self._get_backend_share_name(instance['id'])
                 volume = dest_client.get_volume(share_name)
+                dest_aggregate = volume.get('aggregate')
+                # Update share attributes according with share extra specs
+                self._update_share_attributes_after_server_migration(
+                    instance, src_client, dest_aggregate, dest_client)
+
             except Exception:
                 msg_args = {
                     'src': source_share_server['id'],
@@ -1284,3 +1291,30 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                             snapshots):
         # TODO(dviroel): get snapmirror info to infer the progress
         return {'total_progress': 0}
+
+    def _update_share_attributes_after_server_migration(
+            self, src_share_instance, src_client, dest_aggregate, dest_client):
+        """Updates destination share instance with share type extra specs."""
+        extra_specs = share_types.get_extra_specs_from_share(
+            src_share_instance)
+        provisioning_options = self._get_provisioning_options(extra_specs)
+        volume_name = self._get_backend_share_name(src_share_instance['id'])
+        # NOTE(dviroel): Need to retrieve current autosize attributes since
+        # they aren't being updated by SVM DR.
+        autosize_attrs = src_client.get_volume_autosize_attributes(volume_name)
+        # NOTE(dviroel): In order to modify maximum and minimum size, we must
+        # convert from Kbytes to bytes.
+        for key in ('minimum-size', 'maximum-size'):
+            autosize_attrs[key] = int(autosize_attrs[key]) * units.Ki
+        provisioning_options['autosize_attributes'] = autosize_attrs
+        # NOTE(dviroel): SVM DR already creates a copy of the snapshot policies
+        # at the destination, using a different name. If we update the snapshot
+        # policy in these volumes, might end up with an error if the policy
+        # still does not exist in the destination cluster. Administrators will
+        # have the opportunity to add the snapshot policy after a successful
+        # migration.
+        provisioning_options.pop('snapshot_policy', None)
+
+        # Modify volume to match extra specs
+        dest_client.modify_volume(dest_aggregate, volume_name,
+                                  **provisioning_options)

@@ -167,6 +167,15 @@ QOS_POLICY_GROUP = {
     'num-workloads': 1,
 }
 
+VOLUME_AUTOSIZE_ATTRS = {
+    'mode': 'off',
+    'grow-threshold-percent': '85',
+    'shrink-threshold-percent': '50',
+    'maximum-size': '1258288',
+    'minimum-size': '1048576',
+}
+
+
 NO_RECORDS_RESPONSE = etree.XML("""
   <results status="passed">
     <num-records>0</num-records>
@@ -2006,6 +2015,22 @@ GET_AGGREGATE_FOR_VOLUME_RESPONSE = etree.XML("""
     'aggr': SHARE_AGGREGATE_NAME,
     'share': SHARE_NAME
 })
+
+VOLUME_AUTOSIZE_GET_RESPONSE = etree.XML("""
+  <results status="passed">
+    <grow-threshold-percent>%(grow_percent)s</grow-threshold-percent>
+    <is-enabled>false</is-enabled>
+    <maximum-size>%(max_size)s</maximum-size>
+    <minimum-size>%(min_size)s</minimum-size>
+    <mode>%(mode)s</mode>
+    <shrink-threshold-percent>%(shrink_percent)s</shrink-threshold-percent>
+  </results>
+""" % {'grow_percent': VOLUME_AUTOSIZE_ATTRS.get('grow-threshold-percent'),
+       'max_size': VOLUME_AUTOSIZE_ATTRS.get('maximum-size'),
+       'min_size': VOLUME_AUTOSIZE_ATTRS.get('minimum-size'),
+       'mode': VOLUME_AUTOSIZE_ATTRS.get('mode'),
+       'shrink_percent': VOLUME_AUTOSIZE_ATTRS.get(
+           'shrink-threshold-percent')})
 
 GET_VOLUME_FOR_ENCRYPTED_RESPONSE = etree.XML("""
   <results status="passed">

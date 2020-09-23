@@ -3201,6 +3201,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     'volume-space-attributes': {
                         'space-guarantee': 'volume',
                     },
+                    'volume-autosize-attributes': {},
                 },
             },
         }
@@ -3216,16 +3217,18 @@ class NetAppClientCmodeTestCase(test.TestCase):
         mock_update_volume_efficiency_attributes = self.mock_object(
             self.client, 'update_volume_efficiency_attributes')
 
-        self.client.modify_volume(fake.SHARE_AGGREGATE_NAME,
-                                  fake.SHARE_NAME,
-                                  thin_provisioned=True,
-                                  snapshot_policy=fake.SNAPSHOT_POLICY_NAME,
-                                  language=fake.LANGUAGE,
-                                  dedup_enabled=True,
-                                  compression_enabled=False,
-                                  max_files=fake.MAX_FILES,
-                                  qos_policy_group=fake.QOS_POLICY_GROUP_NAME,
-                                  hide_snapdir=True)
+        self.client.modify_volume(
+            fake.SHARE_AGGREGATE_NAME,
+            fake.SHARE_NAME,
+            thin_provisioned=True,
+            snapshot_policy=fake.SNAPSHOT_POLICY_NAME,
+            language=fake.LANGUAGE,
+            dedup_enabled=True,
+            compression_enabled=False,
+            max_files=fake.MAX_FILES,
+            qos_policy_group=fake.QOS_POLICY_GROUP_NAME,
+            autosize_attributes=fake.VOLUME_AUTOSIZE_ATTRS,
+            hide_snapdir=True)
 
         volume_modify_iter_api_args = {
             'query': {
@@ -3254,7 +3257,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     'volume-qos-attributes': {
                         'policy-group-name': fake.QOS_POLICY_GROUP_NAME,
                     },
-
+                    'volume-autosize-attributes': fake.VOLUME_AUTOSIZE_ATTRS,
                 },
             },
         }
@@ -7424,3 +7427,21 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertEqual(expected_result, result)
         self.client.send_iter_request.assert_called_once_with(
             'cifs-share-get-iter', cifs_share_get_iter_args)
+
+    def test_get_volume_autosize_attributes(self):
+        api_response = netapp_api.NaElement(fake.VOLUME_AUTOSIZE_GET_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_volume_autosize_attributes(fake.SHARE_NAME)
+
+        expected_result = {}
+        expected_keys = ['mode', 'grow-threshold-percent', 'minimum-size',
+                         'shrink-threshold-percent', 'maximum-size']
+        for key in expected_keys:
+            expected_result[key] = fake.VOLUME_AUTOSIZE_ATTRS[key]
+
+        self.assertEqual(expected_result, result)
+        self.client.send_request.assert_called_once_with(
+            'volume-autosize-get', {'volume': fake.SHARE_NAME})
