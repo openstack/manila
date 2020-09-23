@@ -23,6 +23,7 @@ as needed to provision shares.
 import copy
 import re
 
+from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
@@ -39,6 +40,15 @@ from manila.share import share_types
 from manila.share import utils as share_utils
 from manila import utils
 
+lib_multi_svm_opts = [
+    cfg.BoolOpt('keep_share_server_on_failure',
+                default=False,
+                help='Whether share servers will '
+                     'be deleted on failures.'),
+]
+
+CONF = cfg.CONF
+CONF.register_opts(lib_multi_svm_opts)
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
 SEGMENTED_NETWORK_TYPES = ('vlan',)
@@ -272,9 +282,11 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     LOG.warning("Failed to configure Vserver.")
                     # NOTE(dviroel): At this point, the lock was already
                     # acquired by the caller of _create_vserver.
-                    self._delete_vserver(vserver_name,
-                                         security_services=security_services,
-                                         needs_lock=False)
+                    # NOTE(carthaca): keep debris for analysis in debug
+                    if not CONF.keep_share_server_on_failure:
+                        self._delete_vserver(vserver_name,
+                                             security_services=security_services,  # noqa: E501
+                                             needs_lock=False)
 
     def _setup_network_for_vserver(self, vserver_name, vserver_client,
                                    network_info, ipspace_name,
