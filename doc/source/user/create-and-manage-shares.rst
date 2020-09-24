@@ -877,3 +877,22 @@ Share metadata
   .. code-block:: console
 
      $ manila metadata myshare unset year_started
+
+Share revert to snapshot
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Share revert to snapshot
+
+  .. note::
+
+   -  To revert a share to its snapshot, the share type of the share must
+      contain the capability extra-spec ``revert_to_snapshot_support=True``.
+   -  The revert operation can only be performed to the most recent available
+      snapshot of the share known to manila. If revert to an earlier snapshot
+      is desired, later snapshots must explicitly be deleted.
+
+  .. code-block:: console
+
+     $ manila revert-to-snapshot mysnapshot
+
+
