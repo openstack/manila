@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed an issue on ONTAP NetApp driver that caused access rules not to be
+    applied to a promoted replica using CIFS protocol. Please refer to the
+    `Launchpad bug #1896949 <https://bugs.launchpad.net/manila/+bug/1896949>`_
+    for more details.
