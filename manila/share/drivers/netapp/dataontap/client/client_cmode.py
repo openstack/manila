@@ -1650,6 +1650,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       qos_policy_group=None, adaptive_qos_policy_group=None,
                       encrypt=False, **options):
         """Creates a volume."""
+        if adaptive_qos_policy_group and not self.features.ADAPTIVE_QOS:
+            msg = 'Adaptive QoS not supported on this backend ONTAP version.'
+            raise exception.NetAppException(msg)
+
         api_args = {
             'containing-aggr-name': aggregate_name,
             'size': six.text_type(size_gb) + 'g',
@@ -1920,8 +1924,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       language=None, dedup_enabled=False,
                       compression_enabled=False, max_files=None,
                       qos_policy_group=None, hide_snapdir=None,
-                      autosize_attributes=None, **options):
+                      autosize_attributes=None,
+                      adaptive_qos_policy_group=None, **options):
         """Update backend volume for a share as necessary."""
+        if adaptive_qos_policy_group and not self.features.ADAPTIVE_QOS:
+            msg = 'Adaptive QoS not supported on this backend ONTAP version.'
+            raise exception.NetAppException(msg)
+
         api_args = {
             'query': {
                 'volume-attributes': {
@@ -1960,6 +1969,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             api_args['attributes']['volume-attributes'][
                 'volume-qos-attributes'] = {
                 'policy-group-name': qos_policy_group,
+            }
+        if adaptive_qos_policy_group:
+            api_args['attributes']['volume-attributes'][
+                'volume-qos-attributes'] = {
+                'adaptive-policy-group-name': adaptive_qos_policy_group,
             }
         if hide_snapdir in (True, False):
             # Value of hide_snapdir needs to be inverted for ZAPI parameter
