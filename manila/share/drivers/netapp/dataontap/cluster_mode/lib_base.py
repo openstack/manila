@@ -2103,6 +2103,9 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # 3. Setup access rules
         new_active_replica = replica.copy()
+        new_active_replica['export_locations'] = self._create_export(
+            new_active_replica, share_server, vserver, vserver_client)
+
         helper = self._get_helper(replica)
         helper.set_client(vserver_client)
         try:
@@ -2113,8 +2116,6 @@ class NetAppCmodeFileStorageLibrary(object):
         else:
             new_active_replica['access_rules_status'] = constants.STATUS_ACTIVE
 
-        new_active_replica['export_locations'] = self._create_export(
-            new_active_replica, share_server, vserver, vserver_client)
         new_active_replica['replica_state'] = constants.REPLICA_STATE_ACTIVE
 
         # 4. Set File system size fixed to false
