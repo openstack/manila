@@ -811,6 +811,15 @@ cidr:
   required: true
   type: string
   max_version: 2.50
+compatible:
+  description: |
+    Whether the destination backend can or can't handle the share server
+    migration considering the received entries for ``share_network_id``,
+    ``host``, ``nondisruptive``, ``writable`` and ``preserve_snapshots``
+    matched with the driver supported capabilities.
+  in: body
+  required: true
+  type: boolean
 consistent_snapshot_support:
   description: |
     The consistency snapshot support.
@@ -877,6 +886,13 @@ description_request:
     limited to 255 characters.
   in: body
   required: false
+  type: string
+destination_share_server_id:
+  description: |
+    UUID of the share server that was created in the destination backend during
+    a share server migration operation.
+  in: body
+  required: true
   type: string
 detail_id_body:
   in: body
@@ -1178,6 +1194,13 @@ host_9:
 host_share_server_body:
   description: |
     The share server host name or IP address.
+  in: body
+  required: true
+  type: string
+host_share_server_migration:
+  description: |
+    The target backend to which the share server should be migrated to,
+    in format ``host@backend``. E.g. ``ubuntu@generic1``.
   in: body
   required: true
   type: string
@@ -1551,6 +1574,14 @@ new_share_network_id:
   in: body
   required: false
   type: string
+new_share_network_id_server_migration:
+  description:  |
+    If willing to change the share server’s share-network so it can be
+    allocated in the desired destination backend, the invoker may
+    supply a new share network to be used.
+  in: body
+  required: false
+  type: string
 new_share_type_id:
   description: |
      If willing to retype the share so it can be allocated in the
@@ -1589,6 +1620,17 @@ nondisruptive:
     migration, migration will result in an error status.
     As of Ocata release, host-assisted migration cannot provide
     this capability.
+  in: body
+  required: true
+  type: boolean
+nondisruptive_server_migration:
+  description: |
+    Specifies whether share server migration should only be performed
+    without disrupting clients during migration. For such,
+    it is also expected that the export location does not change.
+    When set to ``True`` and drivers are not capable of allowing
+    the share server to remain accessible through the two phases of the
+    migration, migration will result in an error status.
   in: body
   required: true
   type: boolean
@@ -1635,6 +1677,15 @@ preserve_snapshots:
     snapshots, migration will result in an error status.
     As of Ocata release, host-assisted migration cannot
     provide this capability.
+  in: body
+  required: true
+  type: boolean
+preserve_snapshots_server_migration:
+  description: |
+    Specifies whether migration should enforce the preservation
+    of all existing snapshots at the destination. When set to
+    ``True`` and drivers are not capable of migrating the
+    snapshots, migration will result in an error status.
   in: body
   required: true
   type: boolean
@@ -1962,6 +2013,15 @@ request_id_body:
   in: body
   required: true
   type: string
+requested_capabilities:
+  description: |
+    The parameters that were sent to the server in order to check if the
+    destination host can handle the share server migration. This object
+    contains the following attributes: ``writable``, ``nondisruptive``,
+    ``preserve_snapshots``, ``share_network_id`` and ``host``.
+  in: body
+  required: true
+  type: object
 required_extra_specs:
   description: |
     The required extra specifications for the share
@@ -3040,6 +3100,17 @@ status_share_server_body:
   in: body
   required: true
   type: string
+supported_capabilities:
+  description: |
+    The driver's supported attributes for a share server migration. It
+    will contain the following items: ``writable``, ``nondisruptive``,
+    ``preserve_snapshots`` and ``share_network_id``. Drivers will also report
+    if they can perform ``migration_cancel`` and ``migration_get_progress``
+    operations. All of the mentioned parameters will be present in this
+    object. All parameters but the ``share_network_id`` are boolean values.
+  in: body
+  required: true
+  type: object
 task_state:
   description: |
     For the share migration, the migration task state.  A valid
@@ -3052,6 +3123,16 @@ task_state:
   required: true
   type: string
   min_version: 2.5
+task_state_server_migration:
+  description: |
+    For the share server migration, the migration task state. A valid
+    value is ``null``, ``migration_in_progress``,
+    ``migration_cancel_in_progress``, ``migration_cancelled``,
+    ``migration_driver_starting``, ``migration_driver_in_progress``, or
+    ``migration_phase_1_done``.
+  in: body
+  required: true
+  type: string
 timestamp:
   description: |
     The date and time stamp when the API request was issued.
@@ -3073,6 +3154,12 @@ timestamp:
 total_progress:
   description: |
     Defines a total progress of share migration.
+  in: body
+  required: true
+  type: integer
+total_progress_server_migration:
+  description: |
+    Defines a total progress of share server migration.
   in: body
   required: true
   type: integer
@@ -3283,6 +3370,20 @@ writable:
      at the destination, causing the share to be rendered inaccessible for
      the duration of this phase. As of Ocata release, host-assisted
      migration cannot provide this capability.
+  in: body
+  required: true
+  type: boolean
+writable_server_migration:
+  description: |
+     Specifies whether migration should only be performed
+     if the shares can remain writable. When this behavior is set to ``True``
+     and drivers are not capable of allowing the shares to remain writable,
+     migration will result in an error status. If drivers are not capable
+     of performing a nondisruptive migration, manila will ensure that the
+     shares will remain writable through the data copy phase of migration.
+     However, during the switchover phase all shares will be re-exported
+     at the destination, causing the shares to be rendered inaccessible for
+     the duration of this phase.
   in: body
   required: true
   type: boolean
