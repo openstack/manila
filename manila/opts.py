@@ -72,6 +72,7 @@ import manila.share.drivers.hitachi.hnas.driver
 import manila.share.drivers.hitachi.hsp.driver
 import manila.share.drivers.hpe.hpe_3par_driver
 import manila.share.drivers.huawei.huawei_nas
+import manila.share.drivers.zte.clovestorage.clovestorage_nas
 import manila.share.drivers.ibm.gpfs
 import manila.share.drivers.infinidat.infinibox
 import manila.share.drivers.infortrend.driver
@@ -159,6 +160,7 @@ _global_opt_lists = [
     manila.share.drivers.hitachi.hsp.driver.hitachi_hsp_opts,
     manila.share.drivers.hpe.hpe_3par_driver.HPE3PAR_OPTS,
     manila.share.drivers.huawei.huawei_nas.huawei_opts,
+    manila.share.drivers.zte.clovestorage.clovestorage_nas.zte_clovestorage_opts,
     manila.share.drivers.ibm.gpfs.gpfs_share_opts,
     manila.share.drivers.infinidat.infinibox.infinidat_auth_opts,
     manila.share.drivers.infinidat.infinibox.infinidat_connection_opts,
