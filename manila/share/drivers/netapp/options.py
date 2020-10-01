@@ -134,7 +134,13 @@ netapp_provisioning_opts = [
                default='fpolicy_policy_%(share_id)s'),
     cfg.StrOpt('netapp_fpolicy_event_name_template',
                help='NetApp FPolicy policy name template.',
-               default='fpolicy_event_%(protocol)s_%(share_id)s'), ]
+               default='fpolicy_event_%(protocol)s_%(share_id)s'),
+    cfg.IntOpt('netapp_cached_aggregates_status_lifetime',
+               min=0,
+               default=60,
+               help='The maximum time in seconds that the cached aggregates '
+                    'status will be considered valid. Trying to read the '
+                    'expired cache leads to refreshing it.'), ]
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',
