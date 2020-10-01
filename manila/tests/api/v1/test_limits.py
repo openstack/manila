@@ -39,7 +39,8 @@ TEST_LIMITS = [
     limits.Limit("PUT", "*", "", 10, limits.PER_MINUTE),
     limits.Limit("PUT", "/shares", "^/shares", 5, limits.PER_MINUTE),
 ]
-SHARE_REPLICAS_LIMIT_MICROVERSION = "2.53"
+SHARE_REPLICAS_LIMIT_MICROVERSION = "2.58"
+SHARE_GROUP_QUOTA_MICROVERSION = "2.40"
 
 
 class BaseLimitTestSuite(test.TestCase):
@@ -130,6 +131,12 @@ class LimitsControllerTest(BaseLimitTestSuite):
             },
         }
 
+        if microversion == SHARE_GROUP_QUOTA_MICROVERSION:
+            self.absolute_limits['limit']['share_groups'] = 20
+            self.absolute_limits['limit']['share_group_snapshots'] = 20
+            self.absolute_limits['in_use']['share_groups'] = 3
+            self.absolute_limits['in_use']['share_group_snapshots'] = 3
+
         if microversion == SHARE_REPLICAS_LIMIT_MICROVERSION:
             self.absolute_limits['limit']['share_replicas'] = 20
             self.absolute_limits['limit']['replica_gigabytes'] = 20
@@ -190,6 +197,12 @@ class LimitsControllerTest(BaseLimitTestSuite):
                 },
             },
         }
+        if microversion == SHARE_GROUP_QUOTA_MICROVERSION:
+            expected['limits']['absolute']["maxTotalShareGroups"] = 20
+            expected['limits']['absolute']["totalShareGroupsUsed"] = 3
+            expected['limits']['absolute']["maxTotalShareGroupSnapshots"] = 20
+            expected['limits']['absolute']["totalShareGroupSnapshots"] = 3
+
         if microversion == SHARE_REPLICAS_LIMIT_MICROVERSION:
             expected['limits']['absolute']["maxTotalShareReplicas"] = 20
             expected['limits']['absolute']["totalShareReplicasUsed"] = 3

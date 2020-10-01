@@ -310,7 +310,11 @@ user documentation.
 ----
   Share replication feature is no longer considered experimental.
 
-2.57
-----
+2.57 (Maximum in Victoria)
+--------------------------
   Added share server migration feature. A two-phase approach that migrates
   a share server and all its resources to a new host.
+
+2.58
+----
+  Added 'share_groups' and 'share_group_snapshots' to the limits view.

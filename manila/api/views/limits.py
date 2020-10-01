@@ -25,6 +25,7 @@ class ViewBuilder(common.ViewBuilder):
     _collection_name = "limits"
     _detail_version_modifiers = [
         "add_share_replica_quotas",
+        "add_share_group_quotas"
     ]
 
     def build(self, request, rate_limits, absolute_limits):
@@ -109,6 +110,15 @@ class ViewBuilder(common.ViewBuilder):
             "unit": rate_limit["unit"],
             "next-available": utils.isotime(at=next_avail),
         }
+
+    @common.ViewBuilder.versioned_method("2.58")
+    def add_share_group_quotas(self, request, limit_names, absolute_limits):
+        limit_names["limit"]["share_groups"] = ["maxTotalShareGroups"]
+        limit_names["limit"]["share_group_snapshots"] = (
+            ["maxTotalShareGroupSnapshots"])
+        limit_names["in_use"]["share_groups"] = ["totalShareGroupsUsed"]
+        limit_names["in_use"]["share_group_snapshots"] = (
+            ["totalShareGroupSnapshotsUsed"])
 
     @common.ViewBuilder.versioned_method("2.53")
     def add_share_replica_quotas(self, request, limit_names, absolute_limits):
