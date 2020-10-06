@@ -175,6 +175,7 @@ class NetAppCmodeFileStorageLibrary(object):
         if not client:
             client = client_cmode.NetAppCmodeClient(
                 transport_type=self.configuration.netapp_transport_type,
+                ssl_cert_path=self.configuration.netapp_ssl_cert_path,
                 username=self.configuration.netapp_login,
                 password=self.configuration.netapp_password,
                 hostname=self.configuration.netapp_server_hostname,
