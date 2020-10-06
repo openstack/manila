@@ -45,7 +45,15 @@ netapp_transport_opts = [
                default='http',
                help=('The transport protocol used when communicating with '
                      'the storage system or proxy server. Valid values are '
-                     'http or https.')), ]
+                     'http or https.')),
+    cfg.StrOpt('netapp_ssl_cert_path',
+               help=('The path to a CA_BUNDLE file or directory with '
+                     'certificates of trusted CA. If set to a directory, it '
+                     'must have been processed using the c_rehash utility '
+                     'supplied with OpenSSL. If not informed, it will use the '
+                     'Mozilla\'s carefully curated collection of Root '
+                     'Certificates for validating the trustworthiness of SSL '
+                     'certificates.')), ]
 
 netapp_basicauth_opts = [
     cfg.StrOpt('netapp_login',

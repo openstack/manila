@@ -84,6 +84,7 @@ CLIENT_KWARGS = {
     'hostname': '127.0.0.1',
     'vserver': None,
     'transport_type': 'https',
+    'ssl_cert_path': '/etc/ssl/certs/',
     'password': 'pass',
     'port': '443',
     'api_trace_pattern': '(.*)',
@@ -1308,6 +1309,7 @@ def get_config_cmode():
     config.netapp_password = CLIENT_KWARGS['password']
     config.netapp_server_hostname = CLIENT_KWARGS['hostname']
     config.netapp_transport_type = CLIENT_KWARGS['transport_type']
+    config.netapp_ssl_cert_path = CLIENT_KWARGS['ssl_cert_path']
     config.netapp_server_port = CLIENT_KWARGS['port']
     config.netapp_volume_name_template = VOLUME_NAME_TEMPLATE
     config.netapp_aggregate_name_search_pattern = AGGREGATE_NAME_SEARCH_PATTERN

@@ -62,7 +62,6 @@ class NaServer(object):
 
     TRANSPORT_TYPE_HTTP = 'http'
     TRANSPORT_TYPE_HTTPS = 'https'
-    SSL_CERT_DEFAULT = "/etc/ssl/certs/"
     SERVER_TYPE_FILER = 'filer'
     SERVER_TYPE_DFM = 'dfm'
     URL_FILER = 'servlets/netapp.servlets.admin.XMLrequest_filer'
@@ -73,7 +72,7 @@ class NaServer(object):
 
     def __init__(self, host, server_type=SERVER_TYPE_FILER,
                  transport_type=TRANSPORT_TYPE_HTTP,
-                 style=STYLE_LOGIN_PASSWORD, username=None,
+                 style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None, username=None,
                  password=None, port=None, trace=False,
                  api_trace_pattern=utils.API_TRACE_PATTERN):
         self._host = host
@@ -87,6 +86,12 @@ class NaServer(object):
         self._trace = trace
         self._api_trace_pattern = api_trace_pattern
         self._refresh_conn = True
+        if ssl_cert_path is not None:
+            self._ssl_verify = ssl_cert_path
+        else:
+            # Note(felipe_rodrigues): it will verify with the mozila CA roots,
+            # given by certifi package.
+            self._ssl_verify = True
 
         LOG.debug('Using NetApp controller: %s', self._host)
 
@@ -350,7 +355,7 @@ class NaServer(object):
 
         self._session = requests.Session()
         self._session.auth = auth_handler
-        self._session.verify = NaServer.SSL_CERT_DEFAULT
+        self._session.verify = self._ssl_verify
         self._session.headers = {
             'Content-Type': 'text/xml', 'charset': 'utf-8'}
 
