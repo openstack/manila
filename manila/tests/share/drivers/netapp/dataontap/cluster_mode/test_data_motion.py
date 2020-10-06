@@ -64,6 +64,8 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                           group=self.backend)
         CONF.set_override("netapp_server_port", 8866,
                           group=self.backend)
+        CONF.set_override("netapp_ssl_cert_path", "/etc/ssl/certs",
+                          group=self.backend)
 
     def test_get_client_for_backend(self):
         self.mock_object(data_motion, "get_backend_configuration",
@@ -74,7 +76,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         self.mock_cmode_client.assert_called_once_with(
             hostname='fake.hostname', password='fake_password',
             username='fake_user', transport_type='https', port=8866,
-            trace=mock.ANY, vserver=None)
+            ssl_cert_path='/etc/ssl/certs', trace=mock.ANY, vserver=None)
 
     def test_get_client_for_backend_with_vserver(self):
         self.mock_object(data_motion, "get_backend_configuration",
@@ -88,7 +90,8 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         self.mock_cmode_client.assert_called_once_with(
             hostname='fake.hostname', password='fake_password',
             username='fake_user', transport_type='https', port=8866,
-            trace=mock.ANY, vserver='fake_vserver')
+            ssl_cert_path='/etc/ssl/certs', trace=mock.ANY,
+            vserver='fake_vserver')
 
     def test_get_config_for_backend(self):
         self.mock_object(data_motion, "CONF")
