@@ -12,8 +12,9 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from http import client as http_client
+
 from oslo_log import log
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -61,9 +62,9 @@ class ShareUnmanageMixin(object):
                 raise exc.HTTPForbidden(explanation=msg)
             self.share_api.unmanage(context, share)
         except exception.NotFound as e:
-            raise exc.HTTPNotFound(explanation=e)
+            raise exc.HTTPNotFound(explanation=e.msg)
         except (exception.InvalidShare, exception.PolicyNotAuthorized) as e:
-            raise exc.HTTPForbidden(explanation=e)
+            raise exc.HTTPForbidden(explanation=e.msg)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 

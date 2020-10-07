@@ -16,12 +16,11 @@
 """The share type API controller module.."""
 
 import ast
+from http import client as http_client
 
 from oslo_log import log
 from oslo_utils import strutils
 from oslo_utils import uuidutils
-import six
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -85,7 +84,6 @@ class ShareTypesController(wsgi.Controller):
             msg = _("Share type not found.")
             raise exc.HTTPNotFound(explanation=msg)
 
-        share_type['id'] = six.text_type(share_type['id'])
         req.cache_db_share_type(share_type)
         return self._view_builder.show(req, share_type)
 
@@ -117,7 +115,6 @@ class ShareTypesController(wsgi.Controller):
             msg = _("Default share type not found")
             raise exc.HTTPNotFound(explanation=msg)
 
-        share_type['id'] = six.text_type(share_type['id'])
         return self._view_builder.show(req, share_type)
 
     def _get_share_types(self, req):
@@ -210,17 +207,17 @@ class ShareTypesController(wsgi.Controller):
                 context, 'share_type.create', share_type)
 
         except exception.InvalidExtraSpec as e:
-            raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise webob.exc.HTTPBadRequest(explanation=e.message)
         except exception.ShareTypeExists as err:
             notifier_err = dict(share_types=share_type,
-                                error_message=six.text_type(err))
+                                error_message=err.message)
             self._notify_share_type_error(context, 'share_type.create',
                                           notifier_err)
 
-            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
+            raise webob.exc.HTTPConflict(explanation=err.message)
         except exception.NotFound as err:
             notifier_err = dict(share_types=share_type,
-                                error_message=six.text_type(err))
+                                error_message=err.message)
             self._notify_share_type_error(context, 'share_type.create',
                                           notifier_err)
             raise webob.exc.HTTPNotFound()
@@ -239,13 +236,13 @@ class ShareTypesController(wsgi.Controller):
             self._notify_share_type_info(
                 context, 'share_type.delete', share_type)
         except exception.ShareTypeInUse as err:
-            notifier_err = dict(id=id, error_message=six.text_type(err))
+            notifier_err = dict(id=id, error_message=err.message)
             self._notify_share_type_error(context, 'share_type.delete',
                                           notifier_err)
             msg = 'Target share type is still in use.'
             raise webob.exc.HTTPBadRequest(explanation=msg)
         except exception.NotFound as err:
-            notifier_err = dict(id=id, error_message=six.text_type(err))
+            notifier_err = dict(id=id, error_message=err.message)
             self._notify_share_type_error(context, 'share_type.delete',
                                           notifier_err)
 
@@ -361,7 +358,7 @@ class ShareTypesController(wsgi.Controller):
         try:
             share_types.add_share_type_access(context, id, project)
         except exception.ShareTypeAccessExists as err:
-            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
+            raise webob.exc.HTTPConflict(explanation=err.message)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
@@ -377,7 +374,7 @@ class ShareTypesController(wsgi.Controller):
         try:
             share_types.remove_share_type_access(context, id, project)
         except exception.ShareTypeAccessNotFound as err:
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
+            raise webob.exc.HTTPNotFound(explanation=err.message)
         return webob.Response(status_int=http_client.ACCEPTED)
 
     def _verify_if_non_public_share_type(self, context, share_type_id):
@@ -390,7 +387,7 @@ class ShareTypesController(wsgi.Controller):
                 raise webob.exc.HTTPConflict(explanation=msg)
 
         except exception.ShareTypeNotFound as err:
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
+            raise webob.exc.HTTPNotFound(explanation=err.message)
 
 
 def create_resource():

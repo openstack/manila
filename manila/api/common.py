@@ -16,15 +16,14 @@
 import ipaddress
 import os
 import re
-import six
 import string
+from urllib import parse
 
 from operator import xor
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import encodeutils
 from oslo_utils import strutils
-from six.moves.urllib import parse
 import webob
 
 from manila.api.openstack import api_version_request as api_version
@@ -134,7 +133,7 @@ def _validate_integer(value, name, min_value=None, max_value=None):
         value = strutils.validate_integer(value, name, min_value, max_value)
         return value
     except ValueError as e:
-        raise webob.exc.HTTPBadRequest(explanation=e)
+        raise webob.exc.HTTPBadRequest(explanation=str(e))
 
 
 def _validate_pagination_query(request, max_limit=CONF.osapi_max_limit):
@@ -277,7 +276,7 @@ def parse_is_public(is_public):
     if is_public is None:
         # preserve default value of showing only public types
         return True
-    elif six.text_type(is_public).lower() == "all":
+    elif str(is_public).lower() == "all":
         return None
     else:
         try:
@@ -483,7 +482,7 @@ def validate_ip(access_to, enable_ipv6):
             validator = ipaddress.ip_network
         else:
             validator = ipaddress.IPv4Network
-        validator(six.text_type(access_to))
+        validator(str(access_to))
     except ValueError as error:
         err_msg = encodeutils.exception_to_unicode(error)
         raise webob.exc.HTTPBadRequest(explanation=err_msg)
@@ -551,7 +550,7 @@ def validate_public_share_policy(context, api_params, api='create'):
         api_params['is_public'] = strutils.bool_from_string(
             api_params['is_public'], strict=True)
     except ValueError as e:
-        raise exception.InvalidParameterValue(six.text_type(e))
+        raise exception.InvalidParameterValue(str(e))
 
     public_shares_allowed = policy.check_policy(
         context, 'share', policy_to_check, do_raise=False)

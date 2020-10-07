@@ -15,7 +15,6 @@
 #    under the License.
 
 import re
-import six
 
 from manila.api.openstack import versioned_method
 from manila import exception
@@ -282,9 +281,9 @@ class APIVersionRequest(utils.ComparableMixin):
         if not self.experimental and experimental:
             return False
 
-        if isinstance(min_version, six.string_types):
+        if isinstance(min_version, str):
             min_version = APIVersionRequest(version_string=min_version)
-        if isinstance(max_version, six.string_types):
+        if isinstance(max_version, str):
             max_version = APIVersionRequest(version_string=max_version)
 
         if not (min_version or max_version):

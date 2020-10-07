@@ -16,12 +16,11 @@
 """The shares api."""
 
 import ast
+from http import client as http_client
 
 from oslo_log import log
 from oslo_utils import strutils
 from oslo_utils import uuidutils
-import six
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -91,9 +90,9 @@ class ShareMixin(object):
         except exception.NotFound:
             raise exc.HTTPNotFound()
         except exception.InvalidShare as e:
-            raise exc.HTTPForbidden(explanation=six.text_type(e))
+            raise exc.HTTPForbidden(explanation=e.message)
         except exception.Conflict as e:
-            raise exc.HTTPConflict(explanation=six.text_type(e))
+            raise exc.HTTPConflict(explanation=e.message)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
@@ -273,14 +272,14 @@ class ShareMixin(object):
                 availability_zone_id = availability_zone_db.id
                 availability_zone = availability_zone_db.name
             except exception.AvailabilityZoneNotFound as e:
-                raise exc.HTTPNotFound(explanation=six.text_type(e))
+                raise exc.HTTPNotFound(explanation=e.message)
 
         share_group_id = share.get('share_group_id')
         if share_group_id:
             try:
                 share_group = db.share_group_get(context, share_group_id)
             except exception.ShareGroupNotFound as e:
-                raise exc.HTTPNotFound(explanation=six.text_type(e))
+                raise exc.HTTPNotFound(explanation=e.message)
             sg_az_id = share_group['availability_zone_id']
             if availability_zone and availability_zone_id != sg_az_id:
                 msg = _("Share cannot have AZ ('%(s_az)s') different than "
@@ -503,7 +502,7 @@ class ShareMixin(object):
                 raise exception.NotFound()
             share = self.share_api.get(context, id)
         except exception.NotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(error))
+            raise webob.exc.HTTPNotFound(explanation=error.message)
         self.share_api.deny_access(context, share, access)
         return webob.Response(status_int=http_client.ACCEPTED)
 
@@ -525,9 +524,9 @@ class ShareMixin(object):
         try:
             self.share_api.extend(context, share, size, force=force)
         except (exception.InvalidInput, exception.InvalidShare) as e:
-            raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise webob.exc.HTTPBadRequest(explanation=e.message)
         except exception.ShareSizeExceedsAvailableQuota as e:
-            raise webob.exc.HTTPForbidden(explanation=six.text_type(e))
+            raise webob.exc.HTTPForbidden(explanation=e.message)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
@@ -540,7 +539,7 @@ class ShareMixin(object):
         try:
             self.share_api.shrink(context, share, size)
         except (exception.InvalidInput, exception.InvalidShare) as e:
-            raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise webob.exc.HTTPBadRequest(explanation=e.message)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
@@ -548,7 +547,7 @@ class ShareMixin(object):
         try:
             share = self.share_api.get(context, id)
         except exception.NotFound as e:
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(e))
+            raise webob.exc.HTTPNotFound(explanation=e.message)
 
         try:
             size = int(body.get(action, body.get('extend'))['new_size'])
@@ -574,7 +573,7 @@ class ShareMixin(object):
         try:
             share = self.share_api.get(context, id)
         except exception.NotFound as e:
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(e))
+            raise webob.exc.HTTPNotFound(explanation=e.message)
 
         try:
             size = int(body.get(action, body.get('shrink'))['new_size'])

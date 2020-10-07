@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import client as http_client
+
 from oslo_log import log
 from oslo_utils import uuidutils
-import six
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -77,7 +77,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
             self.share_group_api.delete_share_group_snapshot(
                 context, sg_snapshot)
         except exception.InvalidShareGroupSnapshot as e:
-            raise exc.HTTPConflict(explanation=six.text_type(e))
+            raise exc.HTTPConflict(explanation=e.message)
         return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
@@ -183,7 +183,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
             raise exc.HTTPBadRequest(explanation=msg)
         if not uuidutils.is_uuid_like(share_group_id):
             msg = _("The 'share_group_id' attribute must be a uuid.")
-            raise exc.HTTPBadRequest(explanation=six.text_type(msg))
+            raise exc.HTTPBadRequest(explanation=msg)
 
         kwargs = {"share_group_id": share_group_id}
         if 'name' in share_group_snapshot:
@@ -195,9 +195,9 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
             new_snapshot = self.share_group_api.create_share_group_snapshot(
                 context, **kwargs)
         except exception.ShareGroupNotFound as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=e.message)
         except exception.InvalidShareGroup as e:
-            raise exc.HTTPConflict(explanation=six.text_type(e))
+            raise exc.HTTPConflict(explanation=e.message)
 
         return self._view_builder.detail(req, dict(new_snapshot.items()))
 

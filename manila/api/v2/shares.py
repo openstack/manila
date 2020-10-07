@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import client as http_client
+
 from oslo_log import log
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -150,13 +151,13 @@ class ShareController(shares.ShareMixin,
 
             self.share_api.revert_to_snapshot(context, share, snapshot)
         except exception.ShareNotFound as e:
-            raise exc.HTTPNotFound(explanation=e)
+            raise exc.HTTPNotFound(explanation=e.msg)
         except exception.ShareSnapshotNotFound as e:
-            raise exc.HTTPBadRequest(explanation=e)
+            raise exc.HTTPBadRequest(explanation=e.msg)
         except exception.ShareSizeExceedsAvailableQuota as e:
-            raise exc.HTTPForbidden(explanation=e)
+            raise exc.HTTPForbidden(explanation=e.msg)
         except exception.ReplicationException as e:
-            raise exc.HTTPBadRequest(explanation=e)
+            raise exc.HTTPBadRequest(explanation=e.msg)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
@@ -297,7 +298,7 @@ class ShareController(shares.ShareMixin,
                 new_share_network=new_share_network,
                 new_share_type=new_share_type)
         except exception.Conflict as e:
-            raise exc.HTTPConflict(explanation=e)
+            raise exc.HTTPConflict(explanation=e.msg)
 
         return webob.Response(status_int=return_code)
 

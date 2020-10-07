@@ -14,10 +14,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import client as http_client
+from urllib import parse
+
 from oslo_log import log
 from oslo_utils import strutils
-from six.moves import http_client
-from six.moves.urllib import parse
 import webob
 
 from manila.api.openstack import api_version_request as api_version

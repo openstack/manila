@@ -10,9 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import client as http_client
+
 import copy
-import six
-from six.moves import http_client
 import webob
 
 from manila.api import common
@@ -43,7 +43,7 @@ class ShareGroupTypeSpecsController(wsgi.Controller):
     def _verify_group_specs(self, group_specs):
 
         def is_valid_string(v):
-            return isinstance(v, six.string_types) and len(v) in range(1, 256)
+            return isinstance(v, str) and len(v) in range(1, 256)
 
         def is_valid_spec(k, v):
             valid_spec_key = is_valid_string(k)

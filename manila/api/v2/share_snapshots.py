@@ -16,8 +16,9 @@
 
 """The share snapshots api."""
 
+from http import client as http_client
+
 from oslo_log import log
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -76,7 +77,7 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
 
             self.share_api.unmanage_snapshot(context, snapshot, share['host'])
         except (exception.ShareSnapshotNotFound, exception.ShareNotFound) as e:
-            raise exc.HTTPNotFound(explanation=e)
+            raise exc.HTTPNotFound(explanation=e.msg)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
@@ -128,10 +129,10 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
             snapshot_ref = self.share_api.manage_snapshot(context, snapshot,
                                                           driver_options)
         except (exception.ShareNotFound, exception.ShareSnapshotNotFound) as e:
-            raise exc.HTTPNotFound(explanation=e)
+            raise exc.HTTPNotFound(explanation=e.msg)
         except (exception.InvalidShare,
                 exception.ManageInvalidShareSnapshot) as e:
-            raise exc.HTTPConflict(explanation=e)
+            raise exc.HTTPConflict(explanation=e.msg)
 
         return self._view_builder.detail(req, snapshot_ref)
 

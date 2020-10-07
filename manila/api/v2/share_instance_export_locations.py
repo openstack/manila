@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
 from webob import exc
 
 from manila.api.openstack import wsgi
@@ -66,7 +65,7 @@ class ShareInstanceExportLocationController(wsgi.Controller):
                 context, export_location_uuid)
             return self._view_builder.detail(req, export_location)
         except exception.ExportLocationNotFound as e:
-            raise exc.HTTPNotFound(explanation=six.text_type(e))
+            raise exc.HTTPNotFound(explanation=e.message)
 
 
 def create_resource():

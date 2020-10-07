@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import client as http_client
+
 from oslo_log import log
 from oslo_utils import uuidutils
-import six
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -78,7 +78,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
         try:
             self.share_group_api.delete(context, share_group)
         except exception.InvalidShareGroup as e:
-            raise exc.HTTPConflict(explanation=six.text_type(e))
+            raise exc.HTTPConflict(explanation=e.message)
         return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
@@ -241,7 +241,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
                 kwargs['availability_zone_id'] = az.id
                 kwargs['availability_zone'] = az.name
             except exception.AvailabilityZoneNotFound as e:
-                raise exc.HTTPNotFound(explanation=six.text_type(e))
+                raise exc.HTTPNotFound(explanation=e.message)
 
         if 'source_share_group_snapshot_id' in share_group:
             source_share_group_snapshot_id = share_group.get(
@@ -249,21 +249,21 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
             if not uuidutils.is_uuid_like(source_share_group_snapshot_id):
                 msg = _("The 'source_share_group_snapshot_id' attribute "
                         "must be a uuid.")
-                raise exc.HTTPBadRequest(explanation=six.text_type(msg))
+                raise exc.HTTPBadRequest(explanation=msg)
             kwargs['source_share_group_snapshot_id'] = (
                 source_share_group_snapshot_id)
         elif 'share_network_id' in share_group:
             share_network_id = share_group.get('share_network_id')
             if not uuidutils.is_uuid_like(share_network_id):
                 msg = _("The 'share_network_id' attribute must be a uuid.")
-                raise exc.HTTPBadRequest(explanation=six.text_type(msg))
+                raise exc.HTTPBadRequest(explanation=msg)
             kwargs['share_network_id'] = share_network_id
 
         if 'share_group_type_id' in share_group:
             share_group_type_id = share_group.get('share_group_type_id')
             if not uuidutils.is_uuid_like(share_group_type_id):
                 msg = _("The 'share_group_type_id' attribute must be a uuid.")
-                raise exc.HTTPBadRequest(explanation=six.text_type(msg))
+                raise exc.HTTPBadRequest(explanation=msg)
             kwargs['share_group_type_id'] = share_group_type_id
         else:  # get default
             def_share_group_type = share_group_types.get_default()
@@ -277,10 +277,10 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
         try:
             new_share_group = self.share_group_api.create(context, **kwargs)
         except exception.InvalidShareGroupSnapshot as e:
-            raise exc.HTTPConflict(explanation=six.text_type(e))
+            raise exc.HTTPConflict(explanation=e.message)
         except (exception.ShareGroupSnapshotNotFound,
                 exception.InvalidInput) as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=e.message)
 
         return self._view_builder.detail(
             req, {k: v for k, v in new_share_group.items()})

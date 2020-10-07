@@ -15,7 +15,6 @@
 #    under the License.
 
 from oslo_log import log
-import six
 import webob.dec
 import webob.exc
 
@@ -68,7 +67,7 @@ class FaultWrapper(base_wsgi.Middleware):
         # including those that are safe to expose, see bug 1021373
         if safe:
             outer.explanation = '%s: %s' % (inner.__class__.__name__,
-                                            six.text_type(inner))
+                                            inner)
         return wsgi.Fault(outer)
 
     @webob.dec.wsgify(RequestClass=wsgi.Request)

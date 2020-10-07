@@ -16,10 +16,11 @@
 """The shares api."""
 
 import copy
+from http import client as http_client
+
 from oslo_db import exception as db_exception
 from oslo_log import log
 from oslo_utils import timeutils
-from six.moves import http_client
 import webob
 from webob import exc
 

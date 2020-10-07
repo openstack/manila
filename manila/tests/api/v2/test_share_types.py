@@ -55,7 +55,7 @@ def stub_share_type(id):
         description = 'description_%s' % str(id)
         is_public = True
     share_type = {
-        'id': id,
+        'id': str(id),
         'name': name,
         'description': description,
         'is_public': is_public,

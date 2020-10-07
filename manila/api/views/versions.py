@@ -16,8 +16,7 @@
 
 import copy
 import re
-
-from six.moves import urllib
+import urllib
 
 
 def get_view_builder(req):

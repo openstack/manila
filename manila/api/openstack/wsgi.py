@@ -14,6 +14,7 @@
 #    under the License.
 
 import functools
+from http import client as http_client
 import inspect
 import math
 import time
@@ -22,8 +23,6 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import encodeutils
 from oslo_utils import strutils
-import six
-from six.moves import http_client
 import webob
 import webob.exc
 
@@ -259,7 +258,7 @@ class ActionDispatcher(object):
     def dispatch(self, *args, **kwargs):
         """Find and call local method."""
         action = kwargs.pop('action', 'default')
-        action_method = getattr(self, six.text_type(action), self.default)
+        action_method = getattr(self, str(action), self.default)
         return action_method(*args, **kwargs)
 
     def default(self, data):
@@ -303,7 +302,7 @@ class JSONDictSerializer(DictSerializer):
     """Default JSON request body serialization."""
 
     def default(self, data):
-        return six.b(jsonutils.dumps(data))
+        return jsonutils.dump_as_bytes(data)
 
 
 def serializers(**serializers):
@@ -466,8 +465,8 @@ class ResponseObject(object):
         response = webob.Response()
         response.status_int = self.code
         for hdr, value in self._headers.items():
-            response.headers[hdr] = six.text_type(value)
-        response.headers['Content-Type'] = six.text_type(content_type)
+            response.headers[hdr] = str(value)
+        response.headers['Content-Type'] = str(content_type)
         if self.obj is not None:
             response.body = serializer.serialize(self.obj)
 
@@ -519,14 +518,14 @@ class ResourceExceptionHandler(object):
         if not ex_value:
             return True
 
+        msg = str(ex_value)
         if isinstance(ex_value, exception.NotAuthorized):
-            msg = six.text_type(ex_value)
             raise Fault(webob.exc.HTTPForbidden(explanation=msg))
         elif isinstance(ex_value, exception.VersionNotFoundForAPIMethod):
             raise
         elif isinstance(ex_value, exception.Invalid):
             raise Fault(exception.ConvertedException(
-                code=ex_value.code, explanation=six.text_type(ex_value)))
+                code=ex_value.code, explanation=msg))
         elif isinstance(ex_value, TypeError):
             exc_info = (ex_type, ex_value, ex_traceback)
             LOG.error('Exception handling resource: %s',
@@ -745,10 +744,10 @@ class Resource(wsgi.Application):
                 request.set_api_version_request()
             except exception.InvalidAPIVersionString as e:
                 return Fault(webob.exc.HTTPBadRequest(
-                    explanation=six.text_type(e)))
+                    explanation=e.message))
             except exception.InvalidGlobalAPIVersion as e:
                 return Fault(webob.exc.HTTPNotAcceptable(
-                    explanation=six.text_type(e)))
+                    explanation=e.message))
 
         # Identify the action, its arguments, and the requested
         # content type
@@ -786,7 +785,7 @@ class Resource(wsgi.Application):
             method_name = meth.__qualname__
         except AttributeError:
             method_name = 'Controller: %s Method: %s' % (
-                six.text_type(self.controller), meth.__name__)
+                str(self.controller), meth.__name__)
 
         if body:
             decoded_body = encodeutils.safe_decode(body, errors='ignore')
@@ -1021,8 +1020,7 @@ class ControllerMetaclass(type):
                                                        cls_dict)
 
 
-@six.add_metaclass(ControllerMetaclass)
-class Controller(object):
+class Controller(metaclass=ControllerMetaclass):
     """Default controller."""
 
     _view_builder_class = None
@@ -1233,7 +1231,7 @@ class AdminActionsMixin(object):
             raise webob.exc.HTTPBadRequest(explanation=msg)
         if update[status_attr] not in self.valid_statuses[status_attr]:
             expl = (_("Invalid state. Valid states: %s.") %
-                    ", ".join(six.text_type(i) for i in
+                    ", ".join(str(i) for i in
                               self.valid_statuses[status_attr]))
             raise webob.exc.HTTPBadRequest(explanation=expl)
         return update
@@ -1252,7 +1250,7 @@ class AdminActionsMixin(object):
         try:
             self._update(context, id, update)
         except exception.NotFound as e:
-            raise webob.exc.HTTPNotFound(six.text_type(e))
+            raise webob.exc.HTTPNotFound(e.message)
         return webob.Response(status_int=http_client.ACCEPTED)
 
     @Controller.authorize('force_delete')
@@ -1262,7 +1260,7 @@ class AdminActionsMixin(object):
         try:
             resource = self._get(context, id)
         except exception.NotFound as e:
-            raise webob.exc.HTTPNotFound(six.text_type(e))
+            raise webob.exc.HTTPNotFound(e.message)
         self._delete(context, resource, force=True)
         return webob.Response(status_int=http_client.ACCEPTED)
 

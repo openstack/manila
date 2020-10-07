@@ -15,8 +15,8 @@
 
 """The Share Replication API."""
 
-import six
-from six.moves import http_client
+from http import client as http_client
+
 import webob
 from webob import exc
 
@@ -55,7 +55,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         try:
             self.share_api.delete_share_replica(context, resource, force=True)
         except exception.ReplicationException as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=e.message)
 
     @wsgi.Controller.api_version(
         MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
@@ -171,11 +171,11 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
                 context, share_ref, availability_zone=availability_zone,
                 share_network_id=share_network_id)
         except exception.AvailabilityZoneNotFound as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=e.message)
         except exception.ReplicationException as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=e.message)
         except exception.ShareBusyException as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=e.message)
 
         return self._view_builder.detail(req, new_replica)
 
@@ -202,7 +202,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         try:
             self.share_api.delete_share_replica(context, replica)
         except exception.ReplicationException as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=e.message)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
@@ -243,9 +243,9 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         try:
             replica = self.share_api.promote_share_replica(context, replica)
         except exception.ReplicationException as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=e.message)
         except exception.AdminRequired as e:
-            raise exc.HTTPForbidden(explanation=six.text_type(e))
+            raise exc.HTTPForbidden(explanation=e.message)
 
         return self._view_builder.detail(req, replica)
 
@@ -327,7 +327,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         try:
             self.share_api.update_share_replica(context, replica)
         except exception.InvalidHost as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=e.message)
 
 
 def create_resource():

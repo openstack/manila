@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import client as http_client
+
 from oslo_log import log
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -194,19 +195,19 @@ class ShareServerController(share_servers.ShareServerController,
             utils.validate_service_host(
                 context, share_utils.extract_host(host))
         except exception.ServiceNotFound as e:
-            raise exc.HTTPBadRequest(explanation=e)
+            raise exc.HTTPBadRequest(explanation=e.msg)
         except exception.PolicyNotAuthorized as e:
-            raise exc.HTTPForbidden(explanation=e)
+            raise exc.HTTPForbidden(explanation=e.msg)
         except exception.AdminRequired as e:
-            raise exc.HTTPForbidden(explanation=e)
+            raise exc.HTTPForbidden(explanation=e.msg)
         except exception.ServiceIsDown as e:
-            raise exc.HTTPBadRequest(explanation=e)
+            raise exc.HTTPBadRequest(explanation=e.msg)
 
         try:
             share_network = db_api.share_network_get(
                 context, share_network_id)
         except exception.ShareNetworkNotFound as e:
-            raise exc.HTTPBadRequest(explanation=e)
+            raise exc.HTTPBadRequest(explanation=e.msg)
 
         driver_opts = data.get('driver_options')
         if driver_opts is not None and not isinstance(driver_opts, dict):

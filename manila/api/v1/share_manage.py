@@ -61,11 +61,11 @@ class ShareManageMixin(object):
         try:
             share_ref = self.share_api.manage(context, share, driver_options)
         except exception.PolicyNotAuthorized as e:
-            raise exc.HTTPForbidden(explanation=e)
+            raise exc.HTTPForbidden(explanation=e.msg)
         except (exception.InvalidShare, exception.InvalidShareServer) as e:
-            raise exc.HTTPConflict(explanation=e)
+            raise exc.HTTPConflict(explanation=e.msg)
         except exception.InvalidInput as e:
-            raise exc.HTTPBadRequest(explanation=e)
+            raise exc.HTTPBadRequest(explanation=e.msg)
 
         return self._view_builder.detail(req, share_ref)
 
@@ -103,13 +103,13 @@ class ShareManageMixin(object):
             utils.validate_service_host(
                 context, share_utils.extract_host(data['service_host']))
         except exception.ServiceNotFound as e:
-            raise exc.HTTPNotFound(explanation=e)
+            raise exc.HTTPNotFound(explanation=e.msg)
         except exception.PolicyNotAuthorized as e:
-            raise exc.HTTPForbidden(explanation=e)
+            raise exc.HTTPForbidden(explanation=e.msg)
         except exception.AdminRequired as e:
-            raise exc.HTTPForbidden(explanation=e)
+            raise exc.HTTPForbidden(explanation=e.msg)
         except exception.ServiceIsDown as e:
-            raise exc.HTTPBadRequest(explanation=e)
+            raise exc.HTTPBadRequest(explanation=e.msg)
 
         data['share_type_id'] = self._get_share_type_id(
             context, data.get('share_type'))
@@ -123,7 +123,7 @@ class ShareManageMixin(object):
                                                              share_type)
             return stype['id']
         except exception.ShareTypeNotFound as e:
-            raise exc.HTTPNotFound(explanation=e)
+            raise exc.HTTPNotFound(explanation=e.msg)
 
 
 class ShareManageController(ShareManageMixin, wsgi.Controller):

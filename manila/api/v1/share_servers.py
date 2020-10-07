@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import client as http_client
+
 from oslo_log import log
-from six.moves import http_client
 import webob
 from webob import exc
 

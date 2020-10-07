@@ -13,9 +13,8 @@
 """The group type API controller module."""
 import ast
 
+from http import client as http_client
 from oslo_utils import uuidutils
-import six
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -69,7 +68,7 @@ class ShareGroupTypesController(wsgi.Controller):
             msg = _("Share group type with id %s not found.")
             raise exc.HTTPNotFound(explanation=msg % id)
 
-        share_group_type['id'] = six.text_type(share_group_type['id'])
+        share_group_type['id'] = str(share_group_type['id'])
         return self._view_builder.show(req, share_group_type)
 
     @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
@@ -89,7 +88,7 @@ class ShareGroupTypesController(wsgi.Controller):
             msg = _("Default share group type not found.")
             raise exc.HTTPNotFound(explanation=msg)
 
-        share_group_type['id'] = six.text_type(share_group_type['id'])
+        share_group_type['id'] = str(share_group_type['id'])
         return self._view_builder.show(req, share_group_type)
 
     @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
@@ -152,7 +151,7 @@ class ShareGroupTypesController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
         if specs:
             for element in list(specs.keys()) + list(specs.values()):
-                if not isinstance(element, six.string_types):
+                if not isinstance(element, str):
                     msg = _("Group specs keys and values should be strings.")
                     raise webob.exc.HTTPBadRequest(explanation=msg)
         try:
@@ -161,9 +160,9 @@ class ShareGroupTypesController(wsgi.Controller):
             share_group_type = share_group_types.get_by_name(
                 context, name)
         except exception.ShareGroupTypeExists as err:
-            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
+            raise webob.exc.HTTPConflict(explanation=err.message)
         except exception.ShareTypeDoesNotExist as err:
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
+            raise webob.exc.HTTPNotFound(explanation=err.message)
         except exception.NotFound:
             raise webob.exc.HTTPNotFound()
         return self._view_builder.show(req, share_group_type)
@@ -243,7 +242,7 @@ class ShareGroupTypesController(wsgi.Controller):
             share_group_types.add_share_group_type_access(
                 context, id, project)
         except exception.ShareGroupTypeAccessExists as err:
-            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
+            raise webob.exc.HTTPConflict(explanation=err.message)
         return webob.Response(status_int=http_client.ACCEPTED)
 
     # pylint: enable=function-redefined
@@ -268,7 +267,7 @@ class ShareGroupTypesController(wsgi.Controller):
             share_group_types.remove_share_group_type_access(
                 context, id, project)
         except exception.ShareGroupTypeAccessNotFound as err:
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
+            raise webob.exc.HTTPNotFound(explanation=err.message)
         return webob.Response(status_int=http_client.ACCEPTED)
 
     # pylint: enable=function-redefined
@@ -292,7 +291,7 @@ class ShareGroupTypesController(wsgi.Controller):
                         "public share group type.")
                 raise webob.exc.HTTPConflict(explanation=msg)
         except exception.ShareGroupTypeNotFound as err:
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
+            raise webob.exc.HTTPNotFound(explanation=err.message)
 
 
 def create_resource():

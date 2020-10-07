@@ -18,8 +18,9 @@ GET /messages/<message_id>
 DELETE /messages/<message_id>
 """
 
+from http import client as http_client
+
 from oslo_utils import timeutils
-from six.moves import http_client
 import webob
 from webob import exc
 
