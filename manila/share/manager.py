@@ -2455,8 +2455,6 @@ class ShareManager(manager.SchedulerDependentManager):
 
     @locked_share_replica_operation
     def _share_replica_update(self, context, share_replica, share_id=None):
-        share_server = self._get_share_server(context, share_replica)
-
         # Re-grab the replica:
         try:
             share_replica = self.db.share_replica_get(
@@ -2472,6 +2470,8 @@ class ShareManager(manager.SchedulerDependentManager):
             or share_replica['replica_state'] ==
                 constants.REPLICA_STATE_ACTIVE):
             return
+
+        share_server = self._get_share_server(context, share_replica)
 
         access_rules = self.db.share_access_get_all_for_share(
             context, share_replica['share_id'])

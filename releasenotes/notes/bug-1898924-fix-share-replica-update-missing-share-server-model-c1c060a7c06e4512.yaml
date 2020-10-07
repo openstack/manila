@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed an issue that can lead a share replica to fail during the status
+    update operation, due to a concurrency between `share replica create` and
+    `shara replica update` operations. Refer to
+    `Launchpad Bug #1898924 <https://bugs.launchpad.net/manila/+bug/1898924>`_
+    for more details.
