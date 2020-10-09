@@ -16,7 +16,6 @@
 import netaddr
 from oslo_config import cfg
 from oslo_log import log
-import six
 
 from manila.common import constants
 from manila import exception
@@ -107,7 +106,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
             dict(
                 config_group=self.config_group_name,
                 ip_version=self.ip_version,
-                net=six.text_type(self.net),
+                net=str(self.net),
                 gateway=self.gateway,
                 network_type=self.network_type,
                 segmentation_id=self.segmentation_id,
@@ -152,18 +151,18 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
         self.net = self._get_network()
         self.allowed_cidrs = self._get_list_of_allowed_addresses()
         self.reserved_addresses = (
-            six.text_type(self.net.network),
+            str(self.net.network),
             self.gateway,
-            six.text_type(self.net.broadcast))
+            str(self.net.broadcast))
         self.mtu = self.configuration.standalone_network_plugin_mtu
 
     def _get_network(self):
         """Returns IPNetwork object calculated from gateway and netmask."""
-        if not isinstance(self.gateway, six.string_types):
+        if not isinstance(self.gateway, str):
             raise exception.NetworkBadConfigurationException(
                 _("Configuration option 'standalone_network_plugin_gateway' "
                   "is required and has improper value '%s'.") % self.gateway)
-        if not isinstance(self.mask, six.string_types):
+        if not isinstance(self.mask, str):
             raise exception.NetworkBadConfigurationException(
                 _("Configuration option 'standalone_network_plugin_mask' is "
                   "required and has improper value '%s'.") % self.mask)
@@ -213,8 +212,8 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
 
                 if range_instance not in self.net:
                     data = dict(
-                        range=six.text_type(range_instance),
-                        net=six.text_type(self.net),
+                        range=str(range_instance),
+                        net=str(self.net),
                         gateway=self.gateway,
                         netmask=self.net.netmask)
                     msg = _("One of provided allowed IP ranges ('%(range)s') "
@@ -225,14 +224,14 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                         reason=msg)
 
                 cidrs.extend(
-                    six.text_type(cidr) for cidr in range_instance.cidrs())
+                    str(cidr) for cidr in range_instance.cidrs())
         else:
             if self.net.version != self.ip_version:
                 msg = _("Configured invalid IP version '%(conf_v)s', network "
                         "has version ""'%(net_v)s'") % dict(
                             conf_v=self.ip_version, net_v=self.net.version)
                 raise exception.NetworkBadConfigurationException(reason=msg)
-            cidrs.append(six.text_type(self.net))
+            cidrs.append(str(self.net))
 
         return cidrs
 
@@ -247,7 +246,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
             return ips
         iterator = netaddr.iter_unique_ips(*self.allowed_cidrs)
         for ip in iterator:
-            ip = six.text_type(ip)
+            ip = str(ip)
             if (ip in self.reserved_addresses or
                     self.db.network_allocations_get_by_ip_address(context,
                                                                   ip)):
@@ -269,8 +268,8 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
         data = {
             'network_type': self.network_type,
             'segmentation_id': self.segmentation_id,
-            'cidr': six.text_type(self.net.cidr),
-            'gateway': six.text_type(self.gateway),
+            'cidr': str(self.net.cidr),
+            'gateway': str(self.gateway),
             'ip_version': self.ip_version,
             'mtu': self.mtu,
         }
@@ -345,7 +344,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
 
         for ip in ips:
             if any(ip in cidr for cidr in cidrs):
-                allocation = six.text_type(ip)
+                allocation = str(ip)
                 selected_allocations.append(allocation)
 
         for allocation in selected_allocations:

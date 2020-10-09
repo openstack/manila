@@ -17,7 +17,6 @@ import operator
 import re
 
 import pyparsing
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -40,16 +39,16 @@ class EvalConstant(object):
 
     def eval(self):
         result = self.value
-        if (isinstance(result, six.string_types) and
+        if (isinstance(result, str) and
                 re.match(r"^[a-zA-Z_]+\.[a-zA-Z_]+$", result)):
             (which_dict, entry) = result.split('.')
             try:
                 result = _vars[which_dict][entry]
             except KeyError as e:
-                msg = _("KeyError: %s") % six.text_type(e)
+                msg = _("KeyError: %s") % e
                 raise exception.EvaluatorParseException(reason=msg)
             except TypeError as e:
-                msg = _("TypeError: %s") % six.text_type(e)
+                msg = _("TypeError: %s") % e
                 raise exception.EvaluatorParseException(reason=msg)
 
         try:
@@ -58,7 +57,7 @@ class EvalConstant(object):
             try:
                 result = float(result)
             except ValueError as e:
-                msg = _("ValueError: %s") % six.text_type(e)
+                msg = _("ValueError: %s") % e
                 raise exception.EvaluatorParseException(reason=msg)
 
         return result
@@ -104,7 +103,7 @@ class EvalMultOp(object):
                 elif op == '/':
                     prod /= float(val.eval())
             except ZeroDivisionError as e:
-                msg = _("ZeroDivisionError: %s") % six.text_type(e)
+                msg = _("ZeroDivisionError: %s") % e
                 raise exception.EvaluatorParseException(reason=msg)
         return prod
 
@@ -292,7 +291,7 @@ def evaluate(expression, **kwargs):
     try:
         result = _parser.parseString(expression, parseAll=True)[0]
     except pyparsing.ParseException as e:
-        msg = _("ParseException: %s") % six.text_type(e)
+        msg = _("ParseException: %s") % e
         raise exception.EvaluatorParseException(reason=msg)
 
     return result.eval()

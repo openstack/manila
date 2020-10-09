@@ -28,7 +28,6 @@ down_revision = '3db9992c30f3'
 
 from alembic import op
 from sqlalchemy import Column, DateTime, ForeignKey, String
-import six
 
 from manila.db.migrations import utils
 
@@ -241,7 +240,7 @@ def upgrade_export_locations_table(connection):
         op.execute(
             share_el_table.update().where(
                 share_el_table.c.id == export.id
-            ).values({'share_instance_id': six.text_type(share_instance.id)})
+            ).values({'share_instance_id': str(share_instance.id)})
         )
     with op.batch_alter_table("share_export_locations") as batch_op:
         batch_op.drop_constraint('sel_id_fk', type_='foreignkey')
@@ -272,7 +271,7 @@ def downgrade_export_locations_table(connection):
         op.execute(
             share_el_table.update().where(
                 share_el_table.c.id == export.id
-            ).values({'share_id': six.text_type(share_instance.share_id)})
+            ).values({'share_id': str(share_instance.share_id)})
         )
 
     with op.batch_alter_table("share_export_locations") as batch_op:

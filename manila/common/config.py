@@ -31,11 +31,9 @@ from oslo_log import log
 from oslo_middleware import cors
 from oslo_policy import opts as policy_opts
 from oslo_utils import netutils
-import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _
 
 CONF = cfg.CONF
 log.register_options(CONF)
@@ -138,8 +136,8 @@ global_opts = [
     cfg.ListOpt('enabled_share_protocols',
                 default=['NFS', 'CIFS'],
                 help="Specify list of protocols to be allowed for share "
-                     "creation. Available values are '%s'" % six.text_type(
-                         constants.SUPPORTED_SHARE_PROTOCOLS)),
+                     "creation. Available values are '%s'" %
+                     list(constants.SUPPORTED_SHARE_PROTOCOLS)),
 ]
 
 CONF.register_opts(global_opts)
@@ -164,10 +162,7 @@ def verify_share_protocols():
     if msg:
         msg += ("Please specify one or more protocols using "
                 "configuration option 'enabled_share_protocols'.")
-        # NOTE(vponomaryov): use translation to unicode explicitly,
-        # because of 'lazy' translations.
-        msg = six.text_type(_(msg) % data)  # noqa H701
-        raise exception.ManilaException(message=msg)
+        raise exception.ManilaException(message=msg % data)
 
 
 def set_lib_defaults():

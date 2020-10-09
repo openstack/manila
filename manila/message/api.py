@@ -17,7 +17,6 @@ import datetime
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
-import six
 
 from manila.db import base
 from manila.message import message_field
@@ -76,8 +75,7 @@ class API(base.Base):
     def get_all(self, context, search_opts=None, limit=None,
                 offset=None, sort_key=None, sort_dir=None):
         """Return messages for the given context."""
-        LOG.debug("Searching for messages by: %s",
-                  six.text_type(search_opts))
+        LOG.debug("Searching for messages by: %s", search_opts)
 
         search_opts = search_opts or {}
         messages = self.db.message_get_all(context, filters=search_opts,

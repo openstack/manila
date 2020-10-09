@@ -39,7 +39,6 @@ from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
-import six
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -2023,7 +2022,7 @@ def _metadata_refs(metadata_dict, meta_class):
     metadata_refs = []
     if metadata_dict:
         for k, v in metadata_dict.items():
-            value = six.text_type(v) if isinstance(v, bool) else v
+            value = str(v) if isinstance(v, bool) else v
 
             metadata_ref = meta_class()
             metadata_ref['key'] = k
@@ -2516,8 +2515,8 @@ def _check_for_existing_access(context, resource, resource_id, access_type,
 
             matching_rules = [
                 rule for rule in rules if
-                ipaddress.ip_network(six.text_type(access_to)) ==
-                ipaddress.ip_network(six.text_type(rule['access_to']))
+                ipaddress.ip_network(str(access_to)) ==
+                ipaddress.ip_network(str(rule['access_to']))
             ]
             return len(matching_rules) > 0
         else:
@@ -2842,7 +2841,7 @@ def _share_snapshot_get_all_with_filters(context, project_id=None,
             msg = _("Wrong 'usage' key provided - '%(key)s'. "
                     "Expected keys are '%(ek)s'.") % {
                         'key': filters['usage'],
-                        'ek': six.text_type(usage_filter_keys)}
+                        'ek': usage_filter_keys}
             raise exception.InvalidInput(reason=msg)
 
     # Apply sorting
@@ -3221,7 +3220,7 @@ def share_snapshot_instance_export_locations_update(
     export_locations_as_dicts = []
     for el in export_locations:
         export_location = el
-        if isinstance(el, six.string_types):
+        if isinstance(el, str):
             export_location = {
                 "path": el,
                 "is_admin_only": False,
@@ -3496,7 +3495,7 @@ def share_export_locations_update(context, share_instance_id, export_locations,
     for el in export_locations:
         # NOTE(vponomaryov): transform old export locations view to new one
         export_location = el
-        if isinstance(el, six.string_types):
+        if isinstance(el, str):
             export_location = {
                 "path": el,
                 "is_admin_only": False,
@@ -4216,7 +4215,7 @@ def driver_private_data_update(context, entity_id, details,
             in_new_details = data_ref['key'] in new_details
 
             if in_new_details:
-                new_value = six.text_type(new_details.pop(data_ref['key']))
+                new_value = str(new_details.pop(data_ref['key']))
                 data_ref.update({
                     "value": new_value,
                     "deleted": 0,
@@ -4235,7 +4234,7 @@ def driver_private_data_update(context, entity_id, details,
             data_ref.update({
                 "entity_uuid": entity_id,
                 "key": key,
-                "value": six.text_type(value)
+                "value": str(value)
             })
             data_ref.save(session=session)
 
@@ -4808,7 +4807,7 @@ def purge_deleted_records(context, age_in_days):
             try:
                 mds = [m for m in models.__dict__.values() if
                        (hasattr(m, '__tablename__') and
-                        m.__tablename__ == six.text_type(table))]
+                        m.__tablename__ == str(table))]
                 if len(mds) > 0:
                     # collect all soft-deleted records
                     with session.begin_nested():
@@ -4949,12 +4948,12 @@ def share_group_get_all_by_share_server(context, share_server_id, filters=None,
 def share_group_create(context, values):
     share_group = models.ShareGroup()
     if not values.get('id'):
-        values['id'] = six.text_type(uuidutils.generate_uuid())
+        values['id'] = uuidutils.generate_uuid()
 
     mappings = []
     for item in values.get('share_types') or []:
         mapping = models.ShareGroupShareTypeMapping()
-        mapping['id'] = six.text_type(uuidutils.generate_uuid())
+        mapping['id'] = uuidutils.generate_uuid()
         mapping['share_type_id'] = item
         mapping['share_group_id'] = values['id']
         mappings.append(mapping)
@@ -5208,7 +5207,7 @@ def share_group_snapshot_get_all_by_project(
 def share_group_snapshot_create(context, values):
     share_group_snapshot = models.ShareGroupSnapshot()
     if not values.get('id'):
-        values['id'] = six.text_type(uuidutils.generate_uuid())
+        values['id'] = uuidutils.generate_uuid()
 
     session = get_session()
     with session.begin():
@@ -5267,7 +5266,7 @@ def share_group_snapshot_member_get(context, member_id, session=None):
 def share_group_snapshot_member_create(context, values):
     member = models.ShareSnapshotInstance()
     if not values.get('id'):
-        values['id'] = six.text_type(uuidutils.generate_uuid())
+        values['id'] = uuidutils.generate_uuid()
 
     _change_size_to_instance_size(values)
 
@@ -5319,7 +5318,7 @@ def share_group_type_create(context, values, projects=None):
                 if not share_type:
                     raise exception.ShareTypeDoesNotExist(share_type=item)
                 mapping = models.ShareGroupTypeShareTypeMapping()
-                mapping['id'] = six.text_type(uuidutils.generate_uuid())
+                mapping['id'] = uuidutils.generate_uuid()
                 mapping['share_type_id'] = share_type['id']
                 mapping['share_group_type_id'] = values['id']
                 mappings.append(mapping)

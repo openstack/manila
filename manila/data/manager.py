@@ -20,7 +20,6 @@ import os
 
 from oslo_config import cfg
 from oslo_log import log
-import six
 
 from manila.common import constants
 from manila import context
@@ -143,7 +142,7 @@ class DataManager(manager.Manager):
             LOG.info("Obtained following data copy information "
                      "of share %(share)s: %(info)s.",
                      {'share': share_id,
-                      'info': six.text_type(result)})
+                      'info': result})
             return result
         else:
             msg = _("Migration of share %s data copy progress cannot be "

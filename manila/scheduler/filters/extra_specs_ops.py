@@ -14,7 +14,6 @@
 #    under the License.
 
 import operator
-import six
 
 from oslo_utils import strutils
 
@@ -41,7 +40,7 @@ _op_methods = {'=': lambda x, y: float(x) >= float(y),
 
 def match(value, req):
     # Make case-insensitive
-    if (isinstance(value, six.string_types)):
+    if (isinstance(value, str)):
         value = value.lower()
     req = req.lower()
     words = req.split()

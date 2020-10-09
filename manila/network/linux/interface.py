@@ -18,7 +18,6 @@ import abc
 import netaddr
 from oslo_config import cfg
 from oslo_log import log
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -54,8 +53,7 @@ def device_name_synchronized(f):
     return wrapped_func
 
 
-@six.add_metaclass(abc.ABCMeta)
-class LinuxInterfaceDriver(object):
+class LinuxInterfaceDriver(metaclass=abc.ABCMeta):
 
     # from linux IF_NAMESIZE
     DEV_NAME_LEN = 14
@@ -117,14 +115,14 @@ class LinuxInterfaceDriver(object):
             # this is a concurrency problem, it would not fix the problem.
             addr_list = device.addr.list()
         except Exception as e:
-            if 'does not exist' in six.text_type(e):
+            if 'does not exist' in str(e):
                 LOG.warning(
                     "Device %s does not exist anymore.", device.name)
             else:
                 raise
         for addr in addr_list:
             if addr['ip_version'] == 4:
-                cidrs.add(six.text_type(netaddr.IPNetwork(addr['cidr']).cidr))
+                cidrs.add(str(netaddr.IPNetwork(addr['cidr']).cidr))
         return cidrs
 
     def check_bridge_exists(self, bridge):

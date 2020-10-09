@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
-
 from oslo_log import log as logging
 
 from manila.scheduler.evaluator import evaluator
@@ -69,7 +67,7 @@ class DriverFilter(base_host.BaseHostFilter):
 
         msg = "Filter function result for host %(host)s: %(result)s."
         args = {'host': stats['host_stats']['host'],
-                'result': six.text_type(filter_result)}
+                'result': str(filter_result)}
         LOG.info(msg, args)
 
         return filter_result
@@ -97,7 +95,7 @@ class DriverFilter(base_host.BaseHostFilter):
 
         if ('filter_function' in host_state.capabilities and
                 host_state.capabilities['filter_function'] is not None):
-            filter_function = six.text_type(
+            filter_function = str(
                 host_state.capabilities['filter_function'])
 
         stats = utils.generate_stats(host_state, filter_properties)

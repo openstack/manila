@@ -15,7 +15,6 @@
 #    under the License.
 
 import ipaddress
-import six
 import socket
 
 from oslo_config import cfg
@@ -189,7 +188,7 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
             remaining_allocations, port_list)
 
         LOG.debug("Found matching allocations in Neutron:"
-                  " %s", six.text_type(selected_ports))
+                  " %s", selected_ports)
 
         for selected_port in selected_ports:
             port_dict = {
@@ -275,7 +274,7 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
 
         for ip in fixed_ips:
             try:
-                address = ipaddress.ip_address(six.text_type(ip['ip_address']))
+                address = ipaddress.ip_address(str(ip['ip_address']))
                 if address.version == ip_version:
                     return ip['ip_address']
             except ValueError:
