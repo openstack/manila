@@ -23,7 +23,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import units
-import six
 
 from manila.common import constants as const
 from manila import compute
@@ -299,7 +298,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                       "permanently on server '%(instance_id)s'.",
                       {"share_id": share_id,
                        "instance_id": server_details['instance_id']})
-            raise exception.ShareBackendException(msg=six.text_type(e))
+            raise exception.ShareBackendException(msg=str(e))
         try:
             # Remount it to avoid postponed point of failure
             self._ssh_exec(server_details, ['sudo', 'mount', '-a'])
@@ -320,7 +319,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                       "permanently on server '%(instance_id)s'.",
                       {"share_id": share_id,
                        "instance_id": server_details['instance_id']})
-            raise exception.ShareBackendException(msg=six.text_type(e))
+            raise exception.ShareBackendException(msg=str(e))
 
     def _mount_device(self, share, server_details, volume):
         """Mounts block device to the directory on service vm.
@@ -368,7 +367,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     LOG.warning("Mount point '%(path)s' already exists on "
                                 "server '%(server)s'.", log_data)
             except exception.ProcessExecutionError as e:
-                raise exception.ShareBackendException(msg=six.text_type(e))
+                raise exception.ShareBackendException(msg=str(e))
         return _mount_device_with_lock()
 
     @utils.retry(retry_param=exception.ProcessExecutionError)
@@ -716,7 +715,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.ShareShrinkingPossibleDataLoss(
                 share_id=share['id'])
         except Exception as e:
-            msg = _("Cannot shrink share: %s") % six.text_type(e)
+            msg = _("Cannot shrink share: %s") % str(e)
             raise exception.Invalid(msg)
         finally:
             self._mount_device(share, server_details, volume)
@@ -730,17 +729,17 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         command = ['sudo', 'resize2fs', volume['mountpoint']]
 
         if new_size:
-            command.append("%sG" % six.text_type(new_size))
+            command.append("%sG" % new_size)
 
         try:
             self._ssh_exec(server_details, command)
         except processutils.ProcessExecutionError as e:
             if e.stderr.find('New size smaller than minimum') != -1:
                 msg = (_("Invalid 'new_size' provided: %s")
-                       % six.text_type(new_size))
+                       % new_size)
                 raise exception.Invalid(msg)
             else:
-                msg = _("Cannot resize file-system: %s") % six.text_type(e)
+                msg = _("Cannot resize file-system: %s") % e
                 raise exception.ManilaException(msg)
 
     def _is_share_server_active(self, context, share_server):
@@ -941,7 +940,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     return self.volume_api.get(
                         self.admin_context, driver_options['volume_id'])
                 except exception.VolumeNotFound as e:
-                    raise exception.ManageInvalidShare(reason=six.text_type(e))
+                    raise exception.ManageInvalidShare(reason=e.message)
 
             # NOTE(vponomaryov): Manila can only combine volume name by itself,
             # nowhere to get volume ID from. Return None since Cinder volume
@@ -956,8 +955,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 self.admin_context, server_details['instance_id'])
 
             attached_volumes = [vol.id for vol in instance_volumes]
-            LOG.debug('Manage: attached volumes = %s',
-                      six.text_type(attached_volumes))
+            LOG.debug('Manage: attached volumes = %s', attached_volumes)
 
             if share_volume['id'] not in attached_volumes:
                 msg = _("Provided volume %s is not attached "
@@ -999,7 +997,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 provider_location)
         except exception.VolumeSnapshotNotFound as e:
             raise exception.ManageInvalidShareSnapshot(
-                reason=six.text_type(e))
+                reason=e.message)
 
         if volume_snapshot:
             snapshot_size = volume_snapshot['size']
@@ -1046,7 +1044,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except Exception as e:
             msg = _("Cannot calculate size of share %(path)s : %(error)s") % {
                 'path': mount_path,
-                'error': six.text_type(e)
+                'error': e
             }
             raise exception.ManageInvalidShare(reason=msg)
 
@@ -1061,7 +1059,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             msg = _("Cannot calculate consumed space on share "
                     "%(path)s : %(error)s") % {
                 'path': mount_path,
-                'error': six.text_type(e)
+                'error': e
             }
             raise exception.InvalidShare(reason=msg)
 

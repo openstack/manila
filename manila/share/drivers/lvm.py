@@ -27,7 +27,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import timeutils
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -91,7 +90,7 @@ class LVMMixin(driver.ExecuteMixin):
                 rsize = int(2 ** math.ceil(math.log(terras) / math.log(2)))
                 # NOTE(vish): Next power of two for region size. See:
                 #             http://red.ht/U2BPOD
-                cmd += ['-R', six.text_type(rsize)]
+                cmd += ['-R', str(rsize)]
 
         self._try_execute(*cmd, run_as_root=True)
         device_name = self._get_local_path(share)
@@ -460,7 +459,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                 self.configured_ip_version = []
                 for ip in self.configuration.lvm_share_export_ips:
                     self.configured_ip_version.append(
-                        ipaddress.ip_address(six.text_type(ip)).version)
+                        ipaddress.ip_address(str(ip)).version)
             except Exception:
                 message = (_("Invalid 'lvm_share_export_ips' option supplied "
                              "%s.") % self.configuration.lvm_share_export_ips)

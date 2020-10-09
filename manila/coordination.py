@@ -18,7 +18,6 @@ import decorator
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import uuidutils
-import six
 from tooz import coordination
 from tooz import locking
 
@@ -117,14 +116,14 @@ class Lock(locking.Lock):
     Available field names are keys of lock_data.
     """
     def __init__(self, lock_name, lock_data=None, coordinator=None):
-        super(Lock, self).__init__(six.text_type(id(self)))
+        super(Lock, self).__init__(str(id(self)))
         lock_data = lock_data or {}
         self.coordinator = coordinator or LOCK_COORDINATOR
         self.blocking = True
         self.lock = self._prepare_lock(lock_name, lock_data)
 
     def _prepare_lock(self, lock_name, lock_data):
-        if not isinstance(lock_name, six.string_types):
+        if not isinstance(lock_name, str):
             raise ValueError(_('Not a valid string: %s') % lock_name)
         return self.coordinator.get_lock(lock_name.format(**lock_data))
 

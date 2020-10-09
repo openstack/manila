@@ -26,7 +26,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import netutils
-import six
 
 from manila.common import constants as const
 from manila import compute
@@ -320,7 +319,7 @@ class ServiceInstanceManager(object):
             msg = _("Failed to get service instance IP address. "
                     "Service network name is '%(net_name)s' "
                     "and provided data are '%(data)s'.")
-            msg = msg % {'net_name': net_name, 'data': six.text_type(server)}
+            msg = msg % {'net_name': net_name, 'data': str(server)}
             raise exception.ServiceInstanceException(msg)
         return net_ips[0]
 
@@ -725,8 +724,7 @@ class ServiceInstanceManager(object):
                                        soft_reboot)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseNetworkhelper(object):
+class BaseNetworkhelper(metaclass=abc.ABCMeta):
 
     @abc.abstractproperty
     def NAME(self):
@@ -954,7 +952,7 @@ class NeutronNetworkHelper(BaseNetworkhelper):
             self.get_config_option("service_network_cidr"))
         division_mask = self.get_config_option("service_network_division_mask")
         for subnet in serv_cidr.subnet(division_mask):
-            cidr = six.text_type(subnet.cidr)
+            cidr = str(subnet.cidr)
             if cidr not in used_cidrs:
                 return cidr
         else:

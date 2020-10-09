@@ -26,7 +26,6 @@ import abc
 
 from oslo_config import cfg
 from oslo_log import log
-import six
 
 from manila import context as ctxt
 
@@ -67,8 +66,7 @@ CONF.register_opts(hook_options)
 LOG = log.getLogger(__name__)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class HookBase(object):
+class HookBase(metaclass=abc.ABCMeta):
 
     def get_config_option(self, key):
         if self.configuration:

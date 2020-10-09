@@ -26,7 +26,6 @@ import re
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
-import six
 import webob.exc
 
 from manila.i18n import _
@@ -82,7 +81,7 @@ class ManilaException(Exception):
                 pass
         for k, v in self.kwargs.items():
             if isinstance(v, Exception):
-                self.kwargs[k] = six.text_type(v)
+                self.kwargs[k] = str(v)
 
         if not message:
             try:
@@ -101,7 +100,7 @@ class ManilaException(Exception):
                     # at least get the core message out if something happened
                     message = self.message
         elif isinstance(message, Exception):
-            message = six.text_type(message)
+            message = str(message)
 
         if re.match(r'.*[^\.]\.\.$', message):
             message = message[:-1]

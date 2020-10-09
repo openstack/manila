@@ -18,7 +18,6 @@ Drivers for shares.
 
 """
 
-import six
 import time
 
 from oslo_config import cfg
@@ -627,7 +626,7 @@ class ShareDriver(object):
         }
 
         LOG.debug("Migration info obtained for share %(share_id)s: %(info)s.",
-                  {'share_id': share['id'], 'info': six.text_type(info)})
+                  {'share_id': share['id'], 'info': str(info)})
 
         return info
 

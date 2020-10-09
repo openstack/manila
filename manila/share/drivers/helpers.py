@@ -17,7 +17,6 @@ import copy
 import ipaddress
 import os
 import re
-import six
 
 from oslo_log import log
 
@@ -182,11 +181,11 @@ def nfs_synchronized(f):
 
 
 def escaped_address(address):
-    addr = ipaddress.ip_address(six.text_type(address))
+    addr = ipaddress.ip_address(str(address))
     if addr.version == 4:
-        return six.text_type(addr)
+        return str(addr)
     else:
-        return '[%s]' % six.text_type(addr)
+        return '[%s]' % addr
 
 
 class NFSHelper(NASHelperBase):
@@ -317,9 +316,9 @@ class NFSHelper(NASHelperBase):
 
     @staticmethod
     def _get_parsed_address_or_cidr(access_to):
-        network = ipaddress.ip_network(six.text_type(access_to))
+        network = ipaddress.ip_network(str(access_to))
         mask_length = network.prefixlen
-        address = six.text_type(network.network_address)
+        address = str(network.network_address)
         if mask_length == 0:
             # Special case because Linux exports don't support /0 netmasks
             return '*'

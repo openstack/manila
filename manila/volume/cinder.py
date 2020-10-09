@@ -23,7 +23,6 @@ from cinderclient import exceptions as cinder_exception
 from cinderclient.v3 import client as cinder_client
 from keystoneauth1 import loading as ks_loading
 from oslo_config import cfg
-import six
 
 from manila.common import client_auth
 from manila.common.config import core_opts
@@ -137,7 +136,7 @@ def translate_volume_exception(method):
             if isinstance(e, cinder_exception.NotFound):
                 raise exception.VolumeNotFound(volume_id=volume_id)
             elif isinstance(e, cinder_exception.BadRequest):
-                raise exception.InvalidInput(reason=six.text_type(e))
+                raise exception.InvalidInput(reason=str(e))
         return res
     return wrapper
 
@@ -255,7 +254,7 @@ class API(base.Base):
             item = cinderclient(context).volumes.create(size, **kwargs)
             return _untranslate_volume_summary_view(context, item)
         except cinder_exception.BadRequest as e:
-            raise exception.InvalidInput(reason=six.text_type(e))
+            raise exception.InvalidInput(reason=str(e))
         except cinder_exception.NotFound:
             raise exception.NotFound(
                 _("Error in creating cinder "

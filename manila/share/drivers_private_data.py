@@ -23,7 +23,6 @@ import abc
 from oslo_config import cfg
 from oslo_utils import importutils
 from oslo_utils import uuidutils
-import six
 
 from manila.db import api as db_api
 from manila.i18n import _
@@ -38,8 +37,7 @@ private_data_opts = [
 CONF = cfg.CONF
 
 
-@six.add_metaclass(abc.ABCMeta)
-class StorageDriver(object):
+class StorageDriver(metaclass=abc.ABCMeta):
 
     def __init__(self, context, backend_host):
         # Backend shouldn't access data stored by another backend
@@ -153,7 +151,7 @@ class DriverPrivateData(object):
 
         if not isinstance(details, dict):
             msg = (_("Provided details %s is not valid dict.")
-                   % six.text_type(details))
+                   % details)
             raise ValueError(msg)
 
         return self._storage.update(
@@ -172,5 +170,5 @@ class DriverPrivateData(object):
     def _validate_entity_id(entity_id):
         if not uuidutils.is_uuid_like(entity_id):
             msg = (_("Provided entity_id %s is not valid UUID.")
-                   % six.text_type(entity_id))
+                   % entity_id)
             raise ValueError(msg)

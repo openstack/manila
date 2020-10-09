@@ -27,7 +27,6 @@ from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
-import six
 
 from manila.api import common as api_common
 from manila.common import constants
@@ -288,7 +287,7 @@ class API(base.Base):
             try:
                 share_group = self.db.share_group_get(context, share_group_id)
             except exception.NotFound as e:
-                raise exception.InvalidParameterValue(six.text_type(e))
+                raise exception.InvalidParameterValue(e.message)
 
             if (not share_group_snapshot_member and
                     not (share_group['status'] == constants.STATUS_AVAILABLE)):
@@ -1863,7 +1862,7 @@ class API(base.Base):
             filters['metadata'] = search_opts.pop('metadata')
             if not isinstance(filters['metadata'], dict):
                 msg = _("Wrong metadata filter provided: "
-                        "%s.") % six.text_type(filters['metadata'])
+                        "%s.") % filters['metadata']
                 raise exception.InvalidInput(reason=msg)
         if 'extra_specs' in search_opts:
             # Verify policy for extra-specs access
@@ -1871,16 +1870,16 @@ class API(base.Base):
             filters['extra_specs'] = search_opts.pop('extra_specs')
             if not isinstance(filters['extra_specs'], dict):
                 msg = _("Wrong extra specs filter provided: "
-                        "%s.") % six.text_type(filters['extra_specs'])
+                        "%s.") % filters['extra_specs']
                 raise exception.InvalidInput(reason=msg)
 
-        if not (isinstance(sort_key, six.string_types) and sort_key):
+        if not (isinstance(sort_key, str) and sort_key):
             msg = _("Wrong sort_key filter provided: "
-                    "'%s'.") % six.text_type(sort_key)
+                    "'%s'.") % sort_key
             raise exception.InvalidInput(reason=msg)
-        if not (isinstance(sort_dir, six.string_types) and sort_dir):
+        if not (isinstance(sort_dir, str) and sort_dir):
             msg = _("Wrong sort_dir filter provided: "
-                    "'%s'.") % six.text_type(sort_dir)
+                    "'%s'.") % sort_dir
             raise exception.InvalidInput(reason=msg)
 
         is_public = search_opts.pop('is_public', False)
@@ -1941,7 +1940,7 @@ class API(base.Base):
         string_args = {'sort_key': sort_key, 'sort_dir': sort_dir}
         string_args.update(search_opts)
         for k, v in string_args.items():
-            if not (isinstance(v, six.string_types) and v):
+            if not (isinstance(v, str) and v):
                 msg = _("Wrong '%(k)s' filter provided: "
                         "'%(v)s'.") % {'k': k, 'v': string_args[k]}
                 raise exception.InvalidInput(reason=msg)
@@ -2352,7 +2351,7 @@ class API(base.Base):
     def shrink(self, context, share, new_size):
         policy.check_policy(context, 'share', 'shrink')
 
-        status = six.text_type(share['status']).lower()
+        status = str(share['status']).lower()
         valid_statuses = (constants.STATUS_AVAILABLE,
                           constants.STATUS_SHRINKING_POSSIBLE_DATA_LOSS_ERROR)
 

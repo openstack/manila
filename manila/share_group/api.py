@@ -21,7 +21,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import strutils
-import six
 
 from manila.api import common as api_common
 from manila.common import constants
@@ -334,7 +333,7 @@ class API(base.Base):
             search_opts = {}
 
         LOG.debug("Searching for share_groups by: %s",
-                  six.text_type(search_opts))
+                  search_opts)
 
         # Get filtered list of share_groups
         if search_opts.pop('all_tenants', 0) and context.is_admin:
@@ -489,7 +488,7 @@ class API(base.Base):
         if search_opts is None:
             search_opts = {}
         LOG.debug("Searching for share group snapshots by: %s",
-                  six.text_type(search_opts))
+                  search_opts)
 
         # Get filtered list of share group snapshots
         if search_opts.pop('all_tenants', 0) and context.is_admin:

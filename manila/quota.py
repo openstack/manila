@@ -22,7 +22,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import timeutils
-import six
 
 from manila import db
 from manila import exception
@@ -499,7 +498,7 @@ class DbQuotaDriver(object):
         # Set up the reservation expiration
         if expire is None:
             expire = CONF.quota.reservation_expire
-        if isinstance(expire, six.integer_types):
+        if isinstance(expire, int):
             expire = datetime.timedelta(seconds=expire)
         if isinstance(expire, datetime.timedelta):
             expire = timeutils.utcnow() + expire
@@ -793,8 +792,8 @@ class QuotaEngine(object):
         if self.__driver:
             return self.__driver
         if not self._driver_cls:
-            self._driver_cls = CONF.quota.driver
-        if isinstance(self._driver_cls, six.string_types):
+            self._driver_cls = CONF.quota_driver
+        if isinstance(self._driver_cls, str):
             self._driver_cls = importutils.import_object(self._driver_cls)
         self.__driver = self._driver_cls
         return self.__driver

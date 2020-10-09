@@ -22,8 +22,6 @@ from manila.common import constants
 from manila.i18n import _
 from manila import utils
 
-import six
-
 LOG = log.getLogger(__name__)
 
 
@@ -494,7 +492,7 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
         for rule in rules:
             if rule['access_type'] == 'ip':
                 ip_version = ipaddress.ip_network(
-                    six.text_type(rule['access_to'])).version
+                    str(rule['access_to'])).version
                 if 6 == ip_version:
                     continue
             filtered.append(rule)

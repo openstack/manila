@@ -33,7 +33,6 @@ from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
-import six
 
 from manila.common import constants
 from manila import context
@@ -397,7 +396,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     {'host': self.host})
 
         if new_backend_info:
-            new_backend_info_hash = hashlib.sha1(six.text_type(
+            new_backend_info_hash = hashlib.sha1(str(
                 sorted(new_backend_info.items())).encode('utf-8')).hexdigest()
         if (old_backend_info_hash == new_backend_info_hash and
                 backend_info_implemented):
@@ -1927,7 +1926,7 @@ class ShareManager(manager.SchedulerDependentManager):
             dest_share_server)
 
     def _get_share_instance(self, context, share):
-        if isinstance(share, six.string_types):
+        if isinstance(share, str):
             id = share
         else:
             id = share.instance['id']
@@ -3168,8 +3167,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     if len(remaining_allocations) > 0:
                         msg = ("Failed to manage all allocations. "
                                "Allocations %s were not "
-                               "managed." % six.text_type(
-                                   remaining_allocations))
+                               "managed." % remaining_allocations)
                         raise exception.ManageShareServerError(reason=msg)
 
                 else:
@@ -4125,14 +4123,14 @@ class ShareManager(manager.SchedulerDependentManager):
                                     context, share_server['id'], {key: value})
                             except Exception:
                                 invalid_details.append("%(key)s: %(value)s" % {
-                                    'key': six.text_type(key),
-                                    'value': six.text_type(value)
+                                    'key': key,
+                                    'value': value
                                 })
                         if invalid_details:
                             LOG.debug(
                                 ("Following server details "
                                  "cannot be written to db : %s"),
-                                six.text_type("\n".join(invalid_details)))
+                                "\n".join(invalid_details))
                 else:
                     LOG.debug(
                         ("Cannot save non-dict data (%(data)s) provided as "
@@ -4265,7 +4263,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     {'status': constants.STATUS_EXTENDING_ERROR}
                 )
                 raise exception.ShareExtendingError(
-                    reason=six.text_type(e), share_id=share_id)
+                    reason=str(e), share_id=share_id)
             finally:
                 QUOTAS.rollback(
                     context, reservations, project_id=project_id,
@@ -4326,7 +4324,7 @@ class ShareManager(manager.SchedulerDependentManager):
             self.db.share_update(context, share['id'], {'status': status})
 
             raise exception.ShareShrinkingError(
-                reason=six.text_type(exc), share_id=share_id)
+                reason=str(exc), share_id=share_id)
 
         reservations = None
 

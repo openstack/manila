@@ -22,7 +22,6 @@ from oslo_db import exception as db_exception
 from oslo_log import log
 from oslo_utils import strutils
 from oslo_utils import uuidutils
-import six
 
 from manila.api import common
 from manila.common import constants
@@ -48,7 +47,7 @@ def create(context, name, extra_specs=None, is_public=True,
         get_valid_required_extra_specs(extra_specs)
         get_valid_optional_extra_specs(extra_specs)
     except exception.InvalidExtraSpec as e:
-        raise exception.InvalidShareType(reason=six.text_type(e))
+        raise exception.InvalidShareType(reason=e.message)
 
     extra_specs = sanitize_extra_specs(extra_specs)
 
@@ -320,8 +319,8 @@ def get_valid_required_extra_specs(extra_specs):
 
 
 def is_valid_csv(extra_spec_value):
-    if not isinstance(extra_spec_value, six.string_types):
-        extra_spec_value = six.text_type(extra_spec_value)
+    if not isinstance(extra_spec_value, str):
+        extra_spec_value = str(extra_spec_value)
     values = extra_spec_value.split(',')
     return all([v.strip() for v in values])
 
@@ -416,8 +415,8 @@ def parse_boolean_extra_spec(extra_spec_key, extra_spec_value):
     the value does not conform to the standard boolean pattern, it raises
     an InvalidExtraSpec exception.
     """
-    if not isinstance(extra_spec_value, six.string_types):
-        extra_spec_value = six.text_type(extra_spec_value)
+    if not isinstance(extra_spec_value, str):
+        extra_spec_value = str(extra_spec_value)
 
     match = re.match(r'^<is>\s*(?P<value>True|False)$',
                      extra_spec_value.strip(),
