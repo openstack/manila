@@ -22,7 +22,6 @@ import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 from oslo_utils import uuidutils
-import six
 import webob
 import webob.exc
 
@@ -2458,7 +2457,7 @@ class ShareAdminActionsAPITest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.headers['X-Openstack-Manila-Api-Version'] = version
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.environ['manila.context'] = ctxt
 
         resp = req.get_response(fakes.app())
@@ -2511,7 +2510,7 @@ class ShareAdminActionsAPITest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.headers['X-Openstack-Manila-Api-Version'] = version
-        req.body = six.b(jsonutils.dumps({action_name: {}}))
+        req.body = jsonutils.dumps({action_name: {}}).encode("utf-8")
         req.environ['manila.context'] = ctxt
 
         resp = req.get_response(fakes.app())

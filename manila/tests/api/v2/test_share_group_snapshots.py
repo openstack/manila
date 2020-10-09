@@ -21,7 +21,6 @@ import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 from oslo_utils import uuidutils
-import six
 import webob
 
 from manila.api.openstack import wsgi
@@ -139,7 +138,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
     @ddt.unpack
     def test_create(self, microversion, experimental):
         fake_snap, expected_snap = self._get_fake_share_group_snapshot()
-        fake_id = six.text_type(uuidutils.generate_uuid())
+        fake_id = uuidutils.generate_uuid()
         body = {"share_group_snapshot": {"share_group_id": fake_id}}
         mock_create = self.mock_object(
             self.controller.share_group_api, 'create_share_group_snapshot',
@@ -158,12 +157,12 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         self.assertEqual(expected_snap, res_dict['share_group_snapshot'])
 
     def test_create_group_does_not_exist(self):
-        fake_id = six.text_type(uuidutils.generate_uuid())
+        fake_id = uuidutils.generate_uuid()
         body = {"share_group_snapshot": {"share_group_id": fake_id}}
         self.mock_object(
             self.controller.share_group_api, 'create_share_group_snapshot',
             mock.Mock(side_effect=exception.ShareGroupNotFound(
-                share_group_id=six.text_type(uuidutils.generate_uuid()))))
+                share_group_id=uuidutils.generate_uuid())))
 
         self.assertRaises(
             webob.exc.HTTPBadRequest,
@@ -188,7 +187,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_create_invalid_share_group(self):
-        fake_id = six.text_type(uuidutils.generate_uuid())
+        fake_id = uuidutils.generate_uuid()
         body = {"share_group_snapshot": {"share_group_id": fake_id}}
         self.mock_object(
             self.controller.share_group_api, 'create_share_group_snapshot',
@@ -205,7 +204,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         fake_name = 'fake_name'
         fake_snap, expected_snap = self._get_fake_share_group_snapshot(
             name=fake_name)
-        fake_id = six.text_type(uuidutils.generate_uuid())
+        fake_id = uuidutils.generate_uuid()
         mock_create = self.mock_object(
             self.controller.share_group_api, 'create_share_group_snapshot',
             mock.Mock(return_value=fake_snap))
@@ -229,7 +228,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         fake_description = 'fake_description'
         fake_snap, expected_snap = self._get_fake_share_group_snapshot(
             description=fake_description)
-        fake_id = six.text_type(uuidutils.generate_uuid())
+        fake_id = uuidutils.generate_uuid()
         mock_create = self.mock_object(
             self.controller.share_group_api, 'create_share_group_snapshot',
             mock.Mock(return_value=fake_snap))
@@ -253,7 +252,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
     def test_create_with_name_and_description(self):
         fake_name = 'fake_name'
         fake_description = 'fake_description'
-        fake_id = six.text_type(uuidutils.generate_uuid())
+        fake_id = uuidutils.generate_uuid()
         fake_snap, expected_snap = self._get_fake_share_group_snapshot(
             description=fake_description, name=fake_name)
         mock_create = self.mock_object(
@@ -285,7 +284,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
                                               experimental):
         fake_name = 'fake_name'
         fake_description = 'fake_description'
-        fake_id = six.text_type(uuidutils.generate_uuid())
+        fake_id = uuidutils.generate_uuid()
         fake_snap, expected_snap = self._get_fake_share_group_snapshot(
             description=fake_description, name=fake_name)
         self.mock_object(
@@ -340,7 +339,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         exc = self.assertRaises(webob.exc.HTTPBadRequest,
                                 self.controller.update,
                                 self.request, 'fake_id', body)
-        self.assertIn('unknown_field', six.text_type(exc))
+        self.assertIn('unknown_field', str(exc))
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'update')
 
@@ -349,7 +348,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         exc = self.assertRaises(webob.exc.HTTPBadRequest,
                                 self.controller.update,
                                 self.request, 'fake_id', body)
-        self.assertIn('created_at', six.text_type(exc))
+        self.assertIn('created_at', str(exc))
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'update')
 
@@ -603,7 +602,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         req.headers['content-type'] = 'application/json'
         action_name = 'force_delete'
         body = {action_name: {'status': constants.STATUS_ERROR}}
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.headers['X-Openstack-Manila-Api-Version'] = self.api_version
         req.headers['X-Openstack-Manila-Api-Experimental'] = True
         req.environ['manila.context'] = ctxt
@@ -638,7 +637,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         body = {action_name: {'status': constants.STATUS_ERROR}}
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.headers['X-Openstack-Manila-Api-Version'] = self.api_version
         req.headers['X-Openstack-Manila-Api-Experimental'] = True
         req.environ['manila.context'] = ctxt

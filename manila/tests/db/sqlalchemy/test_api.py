@@ -26,7 +26,6 @@ import ddt
 from oslo_db import exception as db_exception
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
-import six
 
 from manila.common import constants
 from manila import context
@@ -2049,7 +2048,7 @@ class DriverPrivateDataDatabaseAPITestCase(test.TestCase):
     @ddt.data({"details": {"foo": "bar", "tee": "too"},
                "valid": {"foo": "bar", "tee": "too"}},
               {"details": {"foo": "bar", "tee": ["test"]},
-               "valid": {"foo": "bar", "tee": six.text_type(["test"])}})
+               "valid": {"foo": "bar", "tee": str(["test"])}})
     @ddt.unpack
     def test_update(self, details, valid):
         test_id = self._get_driver_test_data()

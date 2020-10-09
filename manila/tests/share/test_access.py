@@ -18,7 +18,6 @@ import random
 from unittest import mock
 
 import ddt
-import six
 
 from manila.common import constants
 from manila import context
@@ -771,7 +770,7 @@ class ShareInstanceAccessTestCase(test.TestCase):
         self.assertEqual(fake_expect_driver_update_rules, driver_update_rules)
 
     def _get_pass_rules_and_fail_rules(self):
-        random_value = six.text_type(random.randint(10, 32))
+        random_value = str(random.randint(10, 32))
         pass_rules = [
             {
                 'access_type': 'ip',

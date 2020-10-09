@@ -21,10 +21,10 @@ from unittest import mock
 
 import ddt
 from oslo_config import cfg
+from oslo_utils import encodeutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import paramiko
-import six
 from webob import exc
 
 import manila
@@ -325,7 +325,7 @@ class SSHPoolTestCase(test.TestCase):
             self.assertNotEqual(first_id, third_id)
             paramiko.SSHClient.assert_called_once_with()
 
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
     def test_sshpool_remove(self, mock_isfile, mock_sshclient, mock_open):
@@ -340,7 +340,7 @@ class SSHPoolTestCase(test.TestCase):
 
         self.assertNotIn(ssh_to_remove, list(sshpool.free_items))
 
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
     def test_sshpool_remove_object_not_in_pool(self, mock_isfile,
@@ -804,36 +804,23 @@ class ShareMigrationHelperTestCase(test.TestCase):
 class ConvertStrTestCase(test.TestCase):
 
     def test_convert_str_str_input(self):
-        self.mock_object(utils.encodeutils, 'safe_encode')
-        input_value = six.text_type("string_input")
+        self.mock_object(encodeutils, 'safe_encode')
+        input_value = "string_input"
 
         output_value = utils.convert_str(input_value)
 
-        if six.PY2:
-            utils.encodeutils.safe_encode.assert_called_once_with(input_value)
-            self.assertEqual(
-                utils.encodeutils.safe_encode.return_value, output_value)
-        else:
-            self.assertEqual(0, utils.encodeutils.safe_encode.call_count)
-            self.assertEqual(input_value, output_value)
+        self.assertEqual(0, encodeutils.safe_encode.call_count)
+        self.assertEqual(input_value, output_value)
 
     def test_convert_str_bytes_input(self):
-        self.mock_object(utils.encodeutils, 'safe_encode')
-        if six.PY2:
-            input_value = six.binary_type("binary_input")
-        else:
-            input_value = six.binary_type("binary_input", "utf-8")
+        self.mock_object(encodeutils, 'safe_encode')
+        input_value = bytes("binary_input", "utf-8")
 
         output_value = utils.convert_str(input_value)
 
-        if six.PY2:
-            utils.encodeutils.safe_encode.assert_called_once_with(input_value)
-            self.assertEqual(
-                utils.encodeutils.safe_encode.return_value, output_value)
-        else:
-            self.assertEqual(0, utils.encodeutils.safe_encode.call_count)
-            self.assertIsInstance(output_value, six.string_types)
-            self.assertEqual(six.text_type("binary_input"), output_value)
+        self.assertEqual(0, encodeutils.safe_encode.call_count)
+        self.assertIsInstance(output_value, str)
+        self.assertEqual(str("binary_input"), output_value)
 
 
 @ddt.ddt

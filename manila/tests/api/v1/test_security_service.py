@@ -14,9 +14,9 @@
 #    under the License.
 
 from unittest import mock
+from urllib import parse
 
 import ddt
-from six.moves.urllib import parse
 import webob
 
 from manila.api.v1 import security_service

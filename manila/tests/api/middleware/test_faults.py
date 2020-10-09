@@ -14,7 +14,6 @@
 #    under the License.
 
 from oslo_serialization import jsonutils
-import six
 import webob
 import webob.dec
 import webob.exc
@@ -92,7 +91,7 @@ class TestFaults(test.TestCase):
         resp = req.get_response(raiser)
         self.assertEqual("application/json", resp.content_type)
         self.assertEqual(404, resp.status_int)
-        self.assertIn(six.b('whut?'), resp.body)
+        self.assertIn('whut?'.encode("utf-8"), resp.body)
 
     def test_raise_403(self):
         """Ensure the ability to raise :class:`Fault` in WSGI-ified methods."""
@@ -104,8 +103,8 @@ class TestFaults(test.TestCase):
         resp = req.get_response(raiser)
         self.assertEqual("application/json", resp.content_type)
         self.assertEqual(403, resp.status_int)
-        self.assertNotIn(six.b('resizeNotAllowed'), resp.body)
-        self.assertIn(six.b('forbidden'), resp.body)
+        self.assertNotIn('resizeNotAllowed'.encode("utf-8"), resp.body)
+        self.assertIn('forbidden'.encode("utf-8"), resp.body)
 
     def test_fault_has_status_int(self):
         """Ensure the status_int is set correctly on faults."""
@@ -128,11 +127,11 @@ class ExceptionTest(test.TestCase):
 
         api = self._wsgi_app(fail)
         resp = webob.Request.blank('/').get_response(api)
-        self.assertIn('{"computeFault', six.text_type(resp.body), resp.body)
+        self.assertIn('{"computeFault', str(resp.body), resp.body)
         expected = ('ExceptionWithSafety: some explanation' if expose else
                     'The server has either erred or is incapable '
                     'of performing the requested operation.')
-        self.assertIn(expected, six.text_type(resp.body), resp.body)
+        self.assertIn(expected, str(resp.body), resp.body)
         self.assertEqual(500, resp.status_int, resp.body)
 
     def test_safe_exceptions_are_described_in_faults(self):
@@ -148,7 +147,7 @@ class ExceptionTest(test.TestCase):
 
         api = self._wsgi_app(fail)
         resp = webob.Request.blank('/').get_response(api)
-        self.assertIn(msg, six.text_type(resp.body), resp.body)
+        self.assertIn(msg, str(resp.body), resp.body)
         self.assertEqual(exception_type.code, resp.status_int, resp.body)
 
         if hasattr(exception_type, 'headers'):

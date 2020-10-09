@@ -39,7 +39,6 @@ import datetime
 
 from oslo_db import exception as oslo_db_exc
 from oslo_utils import uuidutils
-import six
 from sqlalchemy import exc as sa_exc
 
 from manila.common import constants
@@ -84,9 +83,7 @@ def map_to_migration(revision):
     return decorator
 
 
-class BaseMigrationChecks(object):
-
-    six.add_metaclass(abc.ABCMeta)
+class BaseMigrationChecks(metaclass=abc.ABCMeta):
 
     def __init__(self):
         self.test_case = None

@@ -15,11 +15,11 @@
 
 import copy
 from unittest import mock
+from urllib import parse
 
 import ddt
 from oslo_db import exception as db_exception
 from oslo_utils import timeutils
-from six.moves.urllib import parse
 from webob import exc as webob_exc
 
 from manila.api import common

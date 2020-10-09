@@ -15,7 +15,6 @@
 #    under the License.
 
 import ddt
-import six
 
 from manila.api.openstack import api_version_request
 from manila.api.openstack import versioned_method
@@ -192,7 +191,7 @@ class APIVersionRequestTests(test.TestCase):
         request_input = '%s.%s' % (major, minor)
         request = api_version_request.APIVersionRequest(
             request_input, experimental=experimental)
-        request_string = six.text_type(request)
+        request_string = str(request)
 
         self.assertEqual('API Version Request '
                          'Major: %s, Minor: %s, Experimental: %s' %

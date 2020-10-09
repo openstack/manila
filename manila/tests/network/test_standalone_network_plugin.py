@@ -18,7 +18,6 @@ from unittest import mock
 import ddt
 import netaddr
 from oslo_config import cfg
-import six
 
 from manila.common import constants
 from manila import context
@@ -317,8 +316,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
         instance.db.share_network_subnet_update.assert_called_once_with(
             fake_context, fake_share_network_subnet['id'],
             dict(network_type=None, segmentation_id=None,
-                 cidr=six.text_type(instance.net.cidr),
-                 gateway=six.text_type(instance.gateway),
+                 cidr=str(instance.net.cidr),
+                 gateway=str(instance.gateway),
                  ip_version=4,
                  mtu=1500))
 
@@ -342,8 +341,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
         instance.db.share_network_subnet_update.assert_called_once_with(
             fake_context, fake_share_network_subnet['id'],
             dict(network_type=None, segmentation_id=None,
-                 cidr=six.text_type(instance.net.cidr),
-                 gateway=six.text_type(instance.gateway),
+                 cidr=str(instance.net.cidr),
+                 gateway=str(instance.gateway),
                  ip_version=6,
                  mtu=1500))
 
@@ -419,8 +418,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
         na_data = {
             'network_type': None,
             'segmentation_id': None,
-            'cidr': six.text_type(instance.net.cidr),
-            'gateway': six.text_type(instance.gateway),
+            'cidr': str(instance.net.cidr),
+            'gateway': str(instance.gateway),
             'ip_version': 4,
             'mtu': 1500,
         }
@@ -466,8 +465,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
         instance.db.share_network_subnet_update.assert_called_once_with(
             fake_context, fake_share_network_subnet['id'],
             dict(network_type=None, segmentation_id=None,
-                 cidr=six.text_type(instance.net.cidr),
-                 gateway=six.text_type(instance.gateway),
+                 cidr=str(instance.net.cidr),
+                 gateway=str(instance.gateway),
                  ip_version=4,
                  mtu=1500))
         instance.db.network_allocations_get_by_ip_address.assert_has_calls(
@@ -504,8 +503,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
         network_data = {
             'network_type': instance.network_type,
             'segmentation_id': instance.segmentation_id,
-            'cidr': six.text_type(instance.net.cidr),
-            'gateway': six.text_type(instance.gateway),
+            'cidr': str(instance.net.cidr),
+            'gateway': str(instance.gateway),
             'ip_version': instance.ip_version,
             'mtu': instance.mtu,
         }

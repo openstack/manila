@@ -17,7 +17,6 @@ from unittest import mock
 
 import ddt
 from oslo_serialization import jsonutils
-import six
 import webob
 
 from manila.api.v1 import share_snapshots
@@ -378,7 +377,7 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
             body = {action_name: {'status': constants.STATUS_ERROR}}
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.environ['manila.context'] = ctxt
 
         resp = req.get_response(fakes.app())
@@ -414,7 +413,7 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
         action_name = 'os-force_delete'
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = six.b(jsonutils.dumps({action_name: {}}))
+        req.body = jsonutils.dumps({action_name: {}}).encode("utf-8")
         req.environ['manila.context'] = ctxt
 
         resp = req.get_response(fakes.app())

@@ -21,7 +21,6 @@ import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 from oslo_utils import uuidutils
-import six
 import webob
 
 from manila.api.openstack import wsgi
@@ -51,9 +50,9 @@ class ShareGroupAPITest(test.TestCase):
         super(ShareGroupAPITest, self).setUp()
         self.controller = share_groups.ShareGroupController()
         self.resource_name = self.controller.resource_name
-        self.fake_share_type = {'id': six.text_type(uuidutils.generate_uuid())}
+        self.fake_share_type = {'id': uuidutils.generate_uuid()}
         self.fake_share_group_type = {
-            'id': six.text_type(uuidutils.generate_uuid())}
+            'id': uuidutils.generate_uuid()}
         self.api_version = '2.34'
         self.request = fakes.HTTPRequest.blank(
             '/share-groups', version=self.api_version, experimental=True)
@@ -167,7 +166,7 @@ class ShareGroupAPITest(test.TestCase):
             req_context, self.resource_name, 'create')
 
     def test_group_create_invalid_group_snapshot_state(self):
-        fake_snap_id = six.text_type(uuidutils.generate_uuid())
+        fake_snap_id = uuidutils.generate_uuid()
         self.mock_object(
             self.controller.share_group_api, 'create',
             mock.Mock(side_effect=exception.InvalidShareGroupSnapshot(
@@ -399,8 +398,8 @@ class ShareGroupAPITest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_sg_create_with_source_sg_snapshot_id_and_share_network(self):
-        fake_snap_id = six.text_type(uuidutils.generate_uuid())
-        fake_net_id = six.text_type(uuidutils.generate_uuid())
+        fake_snap_id = uuidutils.generate_uuid()
+        fake_net_id = uuidutils.generate_uuid()
         self.mock_object(share_types, 'get_default_share_type',
                          mock.Mock(return_value=self.fake_share_type))
         mock_api_call = self.mock_object(
@@ -421,7 +420,7 @@ class ShareGroupAPITest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_share_group_create_with_source_sg_snapshot_id(self):
-        fake_snap_id = six.text_type(uuidutils.generate_uuid())
+        fake_snap_id = uuidutils.generate_uuid()
         fake_share_group, expected_group = self._get_fake_share_group(
             source_share_group_snapshot_id=fake_snap_id)
         self.mock_object(share_types, 'get_default_share_type',
@@ -445,7 +444,7 @@ class ShareGroupAPITest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_share_group_create_with_share_network_id(self):
-        fake_net_id = six.text_type(uuidutils.generate_uuid())
+        fake_net_id = uuidutils.generate_uuid()
         fake_group, expected_group = self._get_fake_share_group(
             share_network_id=fake_net_id)
 
@@ -470,7 +469,7 @@ class ShareGroupAPITest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_sg_create_no_default_share_type_with_share_group_snapshot(self):
-        fake_snap_id = six.text_type(uuidutils.generate_uuid())
+        fake_snap_id = uuidutils.generate_uuid()
         fake, expected = self._get_fake_share_group()
         self.mock_object(share_types, 'get_default_share_type',
                          mock.Mock(return_value=None))
@@ -540,7 +539,7 @@ class ShareGroupAPITest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_share_group_create_source_group_snapshot_not_in_available(self):
-        fake_snap_id = six.text_type(uuidutils.generate_uuid())
+        fake_snap_id = uuidutils.generate_uuid()
         body = {
             "share_group": {
                 "source_share_group_snapshot_id": fake_snap_id,
@@ -556,7 +555,7 @@ class ShareGroupAPITest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_share_group_create_source_group_snapshot_does_not_exist(self):
-        fake_snap_id = six.text_type(uuidutils.generate_uuid())
+        fake_snap_id = uuidutils.generate_uuid()
         body = {
             "share_group": {"source_share_group_snapshot_id": fake_snap_id}
         }
@@ -612,7 +611,7 @@ class ShareGroupAPITest(test.TestCase):
                                 self.controller.create,
                                 self.request, body)
 
-        self.assertIn('unknown_field', six.text_type(exc))
+        self.assertIn('unknown_field', str(exc))
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
@@ -694,7 +693,7 @@ class ShareGroupAPITest(test.TestCase):
                                 self.controller.update,
                                 self.request, 'fake_id', body)
 
-        self.assertIn('unknown_field', six.text_type(exc))
+        self.assertIn('unknown_field', str(exc))
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'update')
 
@@ -705,7 +704,7 @@ class ShareGroupAPITest(test.TestCase):
                                 self.controller.update,
                                 self.request, 'fake_id', body)
 
-        self.assertIn('share_types', six.text_type(exc))
+        self.assertIn('share_types', str(exc))
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'update')
 
@@ -973,7 +972,7 @@ class ShareGroupAPITest(test.TestCase):
         body = {action_name: {'status': constants.STATUS_ERROR}}
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.headers['X-Openstack-Manila-Api-Version'] = self.api_version
         req.environ['manila.context'] = ctxt
 
@@ -997,7 +996,7 @@ class ShareGroupAPITest(test.TestCase):
         req.headers['content-type'] = 'application/json'
         action_name = 'force_delete'
         body = {action_name: {}}
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.headers['X-Openstack-Manila-Api-Version'] = self.api_version
         req.environ['manila.context'] = ctxt
 

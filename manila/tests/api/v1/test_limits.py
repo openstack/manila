@@ -17,11 +17,10 @@
 Tests dealing with HTTP rate-limiting.
 """
 import ddt
+import http.client as http_client
+import io
 
 from oslo_serialization import jsonutils
-import six
-from six import moves
-from six.moves import http_client
 import webob
 
 from manila.api.openstack import api_version_request as api_version
@@ -395,7 +394,7 @@ class ParseLimitsTest(BaseLimitTestSuite):
                 '(POST, /bar*, /bar.*, 5, second);'
                 '(Say, /derp*, /derp.*, 1, day)')
         except ValueError as e:
-            assert False, six.text_type(e)
+            assert False, str(e)
 
         # Make sure the number of returned limits are correct
         self.assertEqual(4, len(lim))
@@ -433,7 +432,7 @@ class LimiterTest(BaseLimitTestSuite):
 
     def _check(self, num, verb, url, username=None):
         """Check and yield results from checks."""
-        for x in moves.range(num):
+        for x in range(num):
             yield self.limiter.check_for_delay(verb, url, username)[0]
 
     def _check_sum(self, num, verb, url, username=None):
@@ -582,7 +581,7 @@ class WsgiLimiterTest(BaseLimitTestSuite):
 
     def _request_data(self, verb, path):
         """Get data describing a limit request verb/path."""
-        return six.b(jsonutils.dumps({"verb": verb, "path": path}))
+        return jsonutils.dumps({"verb": verb, "path": path}).encode("utf-8")
 
     def _request(self, verb, url, username=None):
         """Send request.
@@ -648,7 +647,7 @@ class FakeHttplibSocket(object):
 
     def __init__(self, response_string):
         """Initialize new `FakeHttplibSocket`."""
-        self._buffer = six.BytesIO(six.b(response_string))
+        self._buffer = io.BytesIO(response_string.encode("utf-8"))
 
     def makefile(self, _mode, _other=None):
         """Returns the socket's internal buffer."""
@@ -677,7 +676,7 @@ class FakeHttplibConnection(object):
         req.method = method
         req.headers = headers
         req.host = self.host
-        req.body = six.b(body)
+        req.body = body.encode("utf-8")
 
         resp = str(req.get_response(self.app))
         resp = "HTTP/1.0 %s" % resp
@@ -761,8 +760,9 @@ class WsgiLimiterProxyTest(BaseLimitTestSuite):
         delay, error = self.proxy.check_for_delay("GET", "/delayed")
         error = error.strip()
 
-        expected = ("60.00", six.b("403 Forbidden\n\nOnly 1 GET request(s) "
-                                   "can be made to /delayed every minute."))
+        expected = ("60.00", (
+            "403 Forbidden\n\nOnly 1 GET request(s) can be made to /delayed "
+            "every minute.").encode("utf-8"))
 
         self.assertEqual(expected, (delay, error))
 
