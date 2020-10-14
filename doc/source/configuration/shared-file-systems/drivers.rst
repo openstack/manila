@@ -1,3 +1,5 @@
+.. _share_drivers:
+
 =============
 Share drivers
 =============
