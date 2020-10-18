@@ -42,10 +42,7 @@ echo "IDENTITY_API_VERSION=3" >> $localconf
 # bigger than 1.0, because in CI we do not need such small value.
 # It will allow us to avoid exceeding real capacity in CI test runs.
 echo "CINDER_OVERSUBSCRIPTION_RATIO=100.0" >> $localconf
-echo "MANILA_BACKEND1_CONFIG_GROUP_NAME=london" >> $localconf
-echo "MANILA_BACKEND2_CONFIG_GROUP_NAME=paris" >> $localconf
-echo "MANILA_SHARE_BACKEND1_NAME=LONDON" >> $localconf
-echo "MANILA_SHARE_BACKEND2_NAME=PARIS" >> $localconf
+echo "MANILA_ENABLED_BACKENDS=london,paris" >> $localconf
 
 echo "MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=${MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE:=True}" >> $localconf
 
@@ -67,12 +64,6 @@ echo "MANILA_OPTGROUP_london_driver_handles_share_servers=$DHSS" >> $localconf
 echo "MANILA_OPTGROUP_paris_driver_handles_share_servers=$DHSS" >> $localconf
 echo "MANILA_USE_SERVICE_INSTANCE_PASSWORD=True" >> $localconf
 echo "MANILA_USE_DOWNGRADE_MIGRATIONS=True" >> $localconf
-
-if [[ "$BACK_END_TYPE" == "multibackend" ]]; then
-    echo "MANILA_MULTI_BACKEND=True" >> $localconf
-else
-    echo "MANILA_MULTI_BACKEND=False" >> $localconf
-fi
 
 # Set MANILA_ADMIN_NET_RANGE for admin_network and data_service IP
 echo "MANILA_ADMIN_NET_RANGE=${MANILA_ADMIN_NET_RANGE:=10.2.5.0/24}" >> $localconf

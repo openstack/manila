@@ -81,16 +81,12 @@ function _config_manila_apache_wsgi {
     " -i $manila_api_apache_conf
 }
 
-# configure_default_backends - configures default Manila backends with generic driver.
-function configure_default_backends {
-    # Configure two default backends with generic drivers onboard
-    for group_name in $MANILA_BACKEND1_CONFIG_GROUP_NAME $MANILA_BACKEND2_CONFIG_GROUP_NAME; do
+# configure_backends - Configures backends enabled by MANILA_ENABLED_BACKENDS
+function configure_backends {
+    # Configure MANILA_ENABLED_BACKENDS backends
+    for group_name in $(echo $MANILA_ENABLED_BACKENDS | sed "s/,/ /g"); do
         iniset $MANILA_CONF $group_name share_driver $SHARE_DRIVER
-        if [ "$MANILA_BACKEND1_CONFIG_GROUP_NAME" == "$group_name" ]; then
-            iniset $MANILA_CONF $group_name share_backend_name $MANILA_SHARE_BACKEND1_NAME
-        else
-            iniset $MANILA_CONF $group_name share_backend_name $MANILA_SHARE_BACKEND2_NAME
-        fi
+        iniset $MANILA_CONF $group_name share_backend_name ${group_name^^}
         iniset $MANILA_CONF $group_name path_to_public_key $MANILA_PATH_TO_PUBLIC_KEY
         iniset $MANILA_CONF $group_name path_to_private_key $MANILA_PATH_TO_PRIVATE_KEY
         iniset $MANILA_CONF $group_name service_image_name $MANILA_SERVICE_IMAGE_NAME
@@ -270,17 +266,13 @@ function configure_manila {
     if is_service_enabled glance; then
         configure_keystone_authtoken_middleware $MANILA_CONF glance glance
     fi
-    # Note: set up config group does not mean that this backend will be enabled.
-    # To enable it, specify its name explicitly using "enabled_share_backends" opt.
-    configure_default_backends
-    default_backends=$MANILA_BACKEND1_CONFIG_GROUP_NAME
-    if [ "$MANILA_MULTI_BACKEND" = "True" ]; then
-        default_backends+=,$MANILA_BACKEND2_CONFIG_GROUP_NAME
-    fi
     if [ ! $MANILA_ENABLED_BACKENDS ]; then
-        # If $MANILA_ENABLED_BACKENDS is not set, use configured backends by default
-        export MANILA_ENABLED_BACKENDS=$default_backends
+        # MANILA_ENABLED_BACKENDS is a required option
+        echo -"No configured backends, please set a value to MANILA_ENABLED_BACKENDS"
+        exit 1
     fi
+
+    configure_backends
     iniset $MANILA_CONF DEFAULT enabled_share_backends $MANILA_ENABLED_BACKENDS
 
     if [ ! -f $MANILA_PATH_TO_PRIVATE_KEY ]; then
@@ -1008,13 +1000,11 @@ function remove_docker_service_image {
 
 
 function install_libraries {
-    if [ $(trueorfalse False MANILA_MULTI_BACKEND) == True ]; then
-        if [ $(trueorfalse True RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS) == True ]; then
-            if is_ubuntu; then
-                install_package nfs-common
-            else
-                install_package nfs-utils
-            fi
+    if [ $(trueorfalse True RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS) == True ]; then
+        if is_ubuntu; then
+            install_package nfs-common
+        else
+            install_package nfs-utils
         fi
     fi
 }

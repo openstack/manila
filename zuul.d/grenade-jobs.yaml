@@ -29,6 +29,8 @@
           MANILA_CONFIGURE_DEFAULT_TYPES: true
           SHARE_DRIVER: manila.share.drivers.lvm.LVMShareDriver
           MANILA_ENABLED_BACKENDS: london,paris
+          # TODO(vkmc) Grenade uses prior branch for running tests
+          # Drop this variables in Xena once Wallaby is shipped
           MANILA_BACKEND1_CONFIG_GROUP_NAME: london
           MANILA_BACKEND2_CONFIG_GROUP_NAME: paris
           MANILA_SHARE_BACKEND1_NAME: LONDON

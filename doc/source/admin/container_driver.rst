@@ -61,8 +61,7 @@ local.conf:
 .. code-block:: ini
 
  enable_plugin manila https://opendev.org/openstack/manila <ref>
- MANILA_BACKEND1_CONFIG_GROUP_NAME=london
- MANILA_SHARE_BACKEND1_NAME=LONDON
+ MANILA_ENABLED_BACKENDS=london
  MANILA_OPTGROUP_london_driver_handles_share_servers=True
  MANILA_OPTGROUP_london_neutron_host_id=<hostname>
  SHARE_DRIVER=manila.share.drivers.container.driver.ContainerShareDriver

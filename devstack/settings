@@ -14,14 +14,7 @@
 # 'MANILA_ENABLED_BACKENDS'.
 # DEFAULT group is always defined, no need to specify it within 'MANILA_CONFIGURE_GROUPS'.
 #
-# 3) Two default backends are used for compatibility with previous approach.
-# They have same configuration except name of backend. Both use generic driver.
-# They can be enabled by adding values of following env vars:
-# 'MANILA_BACKEND1_CONFIG_GROUP_NAME' and 'MANILA_BACKEND2_CONFIG_GROUP_NAME'
-# to the env var 'MANILA_ENABLED_BACKENDS' or will be enabled
-# if 'MANILA_ENABLED_BACKENDS' is empty.
-#
-# 4) 'CINDER_OVERSUBSCRIPTION_RATIO' - manila devstack-plugin env var that is
+# 3) 'CINDER_OVERSUBSCRIPTION_RATIO' - manila devstack-plugin env var that is
 # useful for all share drivers that use Cinder. If it is set, then it will be
 # applied for two Cinder options: 'max_over_subscription_ratio' and
 # 'lvm_max_over_subscription_ratio'. Should be float. Example:
@@ -92,6 +85,7 @@ fi
 # Common opts
 SHARE_NAME_PREFIX=${SHARE_NAME_PREFIX:-share-}
 MANILA_ENABLED_SHARE_PROTOCOLS=${ENABLED_SHARE_PROTOCOLS:-"NFS,CIFS"}
+MANILA_ENABLED_BACKENDS=${MANILA_ENABLED_BACKENDS:-generic1,generic2}
 MANILA_SCHEDULER_DRIVER=${MANILA_SCHEDULER_DRIVER:-manila.scheduler.filter_scheduler.FilterScheduler}
 MANILA_SERVICE_SECGROUP="manila-service"
 
@@ -141,24 +135,6 @@ MANILA_SERVICE_VM_FLAVOR_NAME=${MANILA_SERVICE_VM_FLAVOR_NAME:-"manila-service-f
 MANILA_SERVICE_VM_FLAVOR_RAM=${MANILA_SERVICE_VM_FLAVOR_RAM:-320}
 MANILA_SERVICE_VM_FLAVOR_DISK=${MANILA_SERVICE_VM_FLAVOR_DISK:-3}
 MANILA_SERVICE_VM_FLAVOR_VCPUS=${MANILA_SERVICE_VM_FLAVOR_VCPUS:-1}
-
-# Support for multi backend configuration (default is no support)
-MANILA_MULTI_BACKEND=$(trueorfalse False MANILA_MULTI_BACKEND)
-DEPRECATED_TEXT="$DEPRECATED_TEXT\n'MANILA_MULTI_BACKEND' is deprecated,
-    it makes influence only when is set to True and 'MANILA_ENABLED_BACKENDS' is not set.
-    Use 'MANILA_ENABLED_BACKENDS' instead if you want to use custom setting.
-    Set there a list of back end names to be enabled.\n
-    To configure custom back ends use (any opt in any group can be set in this way) following:
-    MANILA_OPTGROUP_foo_bar=value
-    where 'foo' is name of config group and 'bar' is name of option.\n"
-
-# First share backend data, that will be used in any installation
-MANILA_BACKEND1_CONFIG_GROUP_NAME=${MANILA_BACKEND1_CONFIG_GROUP_NAME:-generic1}  # deprecated
-MANILA_SHARE_BACKEND1_NAME=${MANILA_SHARE_BACKEND1_NAME:-GENERIC1}  # deprecated
-
-# Second share backend data, that will be used only with MANILA_MULTI_BACKEND=True
-MANILA_BACKEND2_CONFIG_GROUP_NAME=${MANILA_BACKEND2_CONFIG_GROUP_NAME:-generic2}  # deprecated
-MANILA_SHARE_BACKEND2_NAME=${MANILA_SHARE_BACKEND2_NAME:-GENERIC2}  # deprecated
 
 # Enable this option when using a storage backend that is on the same host
 # as the devstack host, these iptable rules are necessary to allow mounting
