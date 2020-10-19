@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    Two new backend capabilities were added to Manila in order to help
+    administrators to control and balance their cloud resources. The capability
+    called `max_shares_per_share_server` allows the administrators to define a
+    maximum amount of shares that a share server can have. The capability called
+    `max_share_server_size` allows the administrator to set a maximum number of
+    gigabytes a share server can grow to, considering its instances, replicas and
+    snapshots. Both capabilities accept only integer values. If at least one of
+    these limits is reached, Manila won't consider reusing the referred share
+    server. If there aren't share servers available to reuse, Manila will create
+    another one to place incoming request. If none of these limits were specified
+    in the backend stanza, Manila will consider them as unlimited and allow share
+    servers to be reused regardless the amount of shares or the size they have.

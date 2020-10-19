@@ -453,7 +453,7 @@ class DummyDriver(driver.ShareDriver):
             "pools": self._get_pools_info(),
             "share_group_stats": {
                 "consistent_snapshot_support": "pool",
-            }
+            },
         }
         if self.configuration.replication_domain:
             data["replication_type"] = "readable"
