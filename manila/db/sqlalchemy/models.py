@@ -776,7 +776,10 @@ class ShareSnapshotInstance(BASE, ManilaBase):
     def size(self):
         # NOTE(silvacarlose) for backwards compatibility
         if self.instance_size is None:
-            return self.snapshot.size
+            if self.snapshot is None:
+                return 0
+            else:
+                return self.snapshot.size
         else:
             return self.instance_size
 

@@ -142,6 +142,8 @@ class ACCESSShareDriverTestCase(test.TestCase):
         self.configuration.replication_domain = 'Disable'
         self.configuration.filter_function = 'Disable'
         self.configuration.goodness_function = 'Disable'
+        self.configuration.max_shares_per_share_server = -1
+        self.configuration.max_share_server_size = -1
 
     def test_create_share(self):
         self.mock_object(self._driver, '_get_va_share_name')
@@ -443,7 +445,9 @@ class ACCESSShareDriverTestCase(test.TestCase):
             'replication_domain': 'Disable',
             'revert_to_snapshot_support': False,
             'share_group_stats': {'consistent_snapshot_support': None},
-            'snapshot_support': True
+            'snapshot_support': True,
+            'max_shares_per_share_server': -1,
+            'max_share_server_size': -1,
         }
 
         self.assertEqual(data, self._driver._stats)

@@ -746,6 +746,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'goodness_function': None,
             'ipv4_support': True,
             'ipv6_support': False,
+            'max_share_server_size': -1,
+            'max_shares_per_share_server': -1,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -823,6 +825,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'goodness_function': None,
             'ipv4_support': True,
             'ipv6_support': False,
+            'max_share_server_size': -1,
+            'max_shares_per_share_server': -1,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -867,6 +871,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'goodness_function': None,
             'ipv4_support': True,
             'ipv6_support': False,
+            'max_share_server_size': -1,
+            'max_shares_per_share_server': -1,
         }
 
         result = self.driver.get_share_stats(refresh=True)

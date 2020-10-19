@@ -888,6 +888,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.configuration.replication_domain = None
         self.configuration.filter_function = None
         self.configuration.goodness_function = None
+        self.configuration.max_share_server_size = -1
+        self.configuration.max_shares_per_share_server = -1
 
         self.tmp_dir = tempfile.mkdtemp()
         self.fake_conf_file = self.tmp_dir + '/manila_huawei_conf.xml'
@@ -2434,6 +2436,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
             "share_group_stats": {"consistent_snapshot_support": None},
             "ipv4_support": True,
             "ipv6_support": False,
+            "max_shares_per_share_server": -1,
+            "max_share_server_size": -1,
         }
 
         if replication_support:

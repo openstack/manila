@@ -341,6 +341,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
     @ddt.data(None, '', 'foo_replication_domain')
     def test__update_share_stats(self, replication_domain):
         self.configuration.replication_domain = replication_domain
+        self.configuration.max_shares_per_share_server = -1
+        self.configuration.max_share_server_size = -1
         self.mock_object(self.driver, '_get_pools_info')
         self.assertEqual({}, self.driver._stats)
         expected = {
@@ -365,6 +367,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'goodness_function': None,
             'ipv4_support': True,
             'ipv6_support': False,
+            'max_shares_per_share_server': -1,
+            'max_share_server_size': -1,
         }
         if replication_domain:
             expected['replication_type'] = 'readable'
