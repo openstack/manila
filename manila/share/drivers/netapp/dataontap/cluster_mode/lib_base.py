@@ -159,6 +159,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self._ssc_stats = {}
         self._have_cluster_creds = None
         self._revert_to_snapshot_support = False
+        self._channel_binding_support = False
         self._cluster_info = {}
         self._default_nfs_config = None
         self.is_nfs_config_supported = False
@@ -193,6 +194,10 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # Performance monitoring library
         self._perf_library = performance.PerformanceLibrary(self._client)
+
+
+        if self._client.features.CIFS_CHANNEL_BINDING:
+            self._channel_binding_support = True
 
         # NOTE(felipe_rodrigues): In case adding a parameter that can be
         # configured in old versions too, the "is_nfs_config_supported" should
@@ -407,7 +412,7 @@ class NetAppCmodeFileStorageLibrary(object):
             'share_backend_name': self._backend_name,
             'driver_name': self.driver_name,
             'vendor_name': 'NetApp',
-            'driver_version': '1.0',
+            'driver_version': self._client.get_system_version()['version-tuple'],
             'netapp_storage_family': 'ontap_cluster',
             'storage_protocol': 'NFS_CIFS_MULTI',
             'pools': self._get_pools(get_filter_function=get_filter_function,
@@ -531,6 +536,7 @@ class NetAppCmodeFileStorageLibrary(object):
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': self._revert_to_snapshot_support,
             'security_service_update_support': True,
+            'channel_binding_support': self._channel_binding_support,
         }
 
         # Add storage service catalog data.

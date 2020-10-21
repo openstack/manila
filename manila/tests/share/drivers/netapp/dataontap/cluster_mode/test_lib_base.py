@@ -459,6 +459,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         if flexgroup:
             self.library._flexgroup_pools = {'pool': ['aggr']}
 
+        system_version = {'version-tuple': (9, 1, 0)}
+        self.mock_object(
+            self.library._client,
+            'get_system_version',
+            mock.Mock(return_value=system_version))
+
         mock_get_pools = self.mock_object(
             self.library, '_get_pools',
             mock.Mock(return_value=fake.POOLS))
@@ -470,7 +476,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'share_backend_name': fake.BACKEND_NAME,
             'driver_name': fake.DRIVER_NAME,
             'vendor_name': 'NetApp',
-            'driver_version': '1.0',
+            'driver_version': system_version['version-tuple'],
             'netapp_storage_family': 'ontap_cluster',
             'storage_protocol': 'NFS_CIFS_MULTI',
             'pools': fake.POOLS,

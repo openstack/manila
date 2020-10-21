@@ -2557,6 +2557,28 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('export-rule-create', export_rule_create_args),
             mock.call('export-rule-create', export_rule_create_args2)])
 
+    def test_configure_certificates(self):
+        from cryptography import x509
+        import datetime
+        import os
+
+        for cert_pem_path in self.client._cert_pem_paths:
+            self.assertTrue(os.path.exists(cert_pem_path),
+                            f'{cert_pem_path} not found')
+
+            with open(cert_pem_path, 'r', encoding='utf-8') as f:
+                cert_pem_data = f.read()
+
+            cert = x509.load_pem_x509_certificate(
+                bytes(cert_pem_data, encoding='utf-8'))
+            cert_will_expire_at = cert.not_valid_after
+            until_expiry = cert_will_expire_at - datetime.datetime.utcnow()
+
+            self.assertTrue(
+                until_expiry > datetime.timedelta(days=60),
+                f'cert {cert_pem_path} will expire in {until_expiry} '
+                f'at {cert_will_expire_at}')
+
     @ddt.data(fake.LDAP_LINUX_SECURITY_SERVICE, fake.LDAP_AD_SECURITY_SERVICE)
     def test_configure_ldap(self, sec_service):
         self.client.features.add_feature('LDAP_LDAP_SERVERS')
@@ -2627,7 +2649,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_configure_active_directory(self):
 
         self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, 'configure_dns')
         self.mock_object(self.client, 'set_preferred_dc')
 
         self.client.configure_active_directory(fake.CIFS_SECURITY_SERVICE,
@@ -2646,8 +2667,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'domain': fake.CIFS_SECURITY_SERVICE['domain'],
         }
 
-        self.client.configure_dns.assert_called_with(
-            fake.CIFS_SECURITY_SERVICE)
         self.client.set_preferred_dc.assert_called_with(
             fake.CIFS_SECURITY_SERVICE)
         self.client.send_request.assert_has_calls([
@@ -2757,7 +2776,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_configure_kerberos(self):
         self.client.features.add_feature('KERBEROS_VSERVER')
         self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, 'configure_dns')
         self.mock_object(self.client,
                          'list_network_interfaces',
                          mock.Mock(return_value=['lif1', 'lif2']))
@@ -2783,8 +2801,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'service-principal-name': spn
         }
 
-        self.client.configure_dns.assert_called_with(
-            fake.KERBEROS_SECURITY_SERVICE)
         self.client.send_request.assert_has_calls([
             mock.call('kerberos-config-modify',
                       kerberos_config_modify_args1),
@@ -2794,7 +2810,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_configure_kerberos_no_network_interfaces(self):
         self.client.features.add_feature('KERBEROS_VSERVER')
         self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, 'configure_dns')
         self.mock_object(self.client,
                          'list_network_interfaces',
                          mock.Mock(return_value=[]))
@@ -2803,9 +2818,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           self.client.configure_kerberos,
                           fake.KERBEROS_SECURITY_SERVICE,
                           fake.VSERVER_NAME)
-
-        self.client.configure_dns.assert_called_with(
-            fake.KERBEROS_SECURITY_SERVICE)
 
     def test_disable_kerberos(self):
         self.mock_object(self.client, 'send_request')
