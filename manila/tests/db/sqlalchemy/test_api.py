@@ -569,6 +569,57 @@ class ShareDatabaseAPITestCase(test.TestCase):
         self.assertEqual(0, len(
             set(shares_requested_ids) & set(shares_not_requested_ids)))
 
+    @ddt.data(
+        ({'status': constants.STATUS_AVAILABLE}, 'status',
+         [constants.STATUS_AVAILABLE, constants.STATUS_ERROR]),
+        ({'share_group_id': 'fake_group_id'}, 'share_group_id',
+         ['fake_group_id', 'group_id']),
+        ({'snapshot_id': 'fake_snapshot_id'}, 'snapshot_id',
+         ['fake_snapshot_id', 'snapshot_id']),
+        ({'share_type_id': 'fake_type_id'}, 'share_type_id',
+         ['fake_type_id', 'type_id']),
+        ({'host': 'fakehost@fakebackend#fakepool'}, 'host',
+         ['fakehost@fakebackend#fakepool', 'foo@bar#test']),
+        ({'share_network_id': 'fake_net_id'}, 'share_network_id',
+         ['fake_net_id', 'net_id']),
+        ({'display_name': 'fake_share_name'}, 'display_name',
+         ['fake_share_name', 'share_name']),
+        ({'display_description': 'fake description'}, 'display_description',
+         ['fake description', 'description'])
+    )
+    @ddt.unpack
+    def test_share_get_all_with_filters(self, filters, key, share_values):
+        for value in share_values:
+            kwargs = {key: value}
+            db_utils.create_share(**kwargs)
+
+        results = db_api.share_get_all(self.ctxt, filters=filters)
+
+        for share in results:
+            self.assertEqual(share[key], filters[key])
+
+    @ddt.data(
+        ('display_name~', 'display_name',
+         ['fake_name_1', 'fake_name_2', 'fake_name_3'], 'fake_name'),
+        ('display_description~', 'display_description',
+         ['fake desc 1', 'fake desc 2', 'fake desc 3'], 'fake desc')
+    )
+    @ddt.unpack
+    def test_share_get_all_like_filters(
+            self, filter_name, key, share_values, like_value):
+        for value in share_values:
+            kwargs = {key: value}
+            db_utils.create_share(**kwargs)
+        db_utils.create_share(
+            display_name='irrelevant_name',
+            display_description='should not be queried')
+
+        filters = {filter_name: like_value}
+
+        results = db_api.share_get_all(self.ctxt, filters=filters)
+
+        self.assertEqual(len(share_values), len(results))
+
     @ddt.data(None, 'writable')
     def test_share_get_has_replicas_field(self, replication_type):
         share = db_utils.create_share(replication_type=replication_type)
