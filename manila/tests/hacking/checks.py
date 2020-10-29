@@ -197,55 +197,6 @@ def check_explicit_underscore_import(logical_line, filename):
         yield(0, "M323: Found use of _() without explicit import of _ !")
 
 
-class CheckForStrUnicodeExc(BaseASTChecker):
-    """Checks for the use of str() or unicode() on an exception.
-
-    This currently only handles the case where str() or unicode()
-    is used in the scope of an exception handler.  If the exception
-    is passed into a function, returned from an assertRaises, or
-    used on an exception created in the same scope, this does not
-    catch it.
-    """
-
-    name = "check_for_str_unicode_exc"
-    version = "1.0"
-    CHECK_DESC = ('M325 str() and unicode() cannot be used on an '
-                  'exception.  Remove or use six.text_type()')
-
-    def __init__(self, tree, filename):
-        super(CheckForStrUnicodeExc, self).__init__(tree, filename)
-        self.name = []
-        self.already_checked = []
-
-    # Python 2
-    def visit_TryExcept(self, node):
-        for handler in node.handlers:
-            if handler.name:
-                self.name.append(handler.name.id)
-                super(CheckForStrUnicodeExc, self).generic_visit(node)
-                self.name = self.name[:-1]
-            else:
-                super(CheckForStrUnicodeExc, self).generic_visit(node)
-
-    # Python 3
-    def visit_ExceptHandler(self, node):
-        if node.name:
-            self.name.append(node.name)
-            super(CheckForStrUnicodeExc, self).generic_visit(node)
-            self.name = self.name[:-1]
-        else:
-            super(CheckForStrUnicodeExc, self).generic_visit(node)
-
-    def visit_Call(self, node):
-        if self._check_call_names(node, ['str', 'unicode']):
-            if node not in self.already_checked:
-                self.already_checked.append(node)
-                if isinstance(node.args[0], ast.Name):
-                    if node.args[0].id in self.name:
-                        self.add_error(node.args[0])
-        super(CheckForStrUnicodeExc, self).generic_visit(node)
-
-
 class CheckForTransAdd(BaseASTChecker):
     """Checks for the use of concatenation on a translated string.
 
