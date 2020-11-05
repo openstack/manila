@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver is now fixed to properly configure and clean up share
+    servers with Kerberos security service, for clustered ONTAP 8.3 or higher.
+    Access rules are now configured with the correct NFS authentication methods
+    based on the security service configured in the share server. Please refer to
+    `Launchpad Bug #1901189 <https://bugs.launchpad.net/manila/+bug/1901189>`_,
+    `Launchpad Bug #1904746 <https://bugs.launchpad.net/manila/+bug/1904746>`_,
+    and `Launchpad Bug #1907669 <https://bugs.launchpad.net/manila/+bug/1907669>`_
+    for more details.
+
+

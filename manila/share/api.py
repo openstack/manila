@@ -1143,7 +1143,7 @@ class API(base.Base):
         statuses = (constants.STATUS_AVAILABLE, constants.STATUS_ERROR,
                     constants.STATUS_INACTIVE)
         if not (force or share_instance['status'] in statuses):
-            msg = _("Share instance status must be one of %(statuses)s") % {
+            msg = _("Share instance status must be  one of %(statuses)s") % {
                 "statuses": statuses}
             raise exception.InvalidShareInstance(reason=msg)
 

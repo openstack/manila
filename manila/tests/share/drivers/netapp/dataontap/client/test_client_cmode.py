@@ -2374,7 +2374,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_setup_security_services_kerberos(self):
 
         self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, 'create_kerberos_realm')
+        self.mock_object(self.vserver_client, 'create_kerberos_realm')
         self.mock_object(self.vserver_client, 'configure_kerberos')
 
         self.client.setup_security_services([fake.KERBEROS_SECURITY_SERVICE],
@@ -2394,7 +2394,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
         self.client.send_request.assert_has_calls([
             mock.call('vserver-modify', vserver_modify_args)])
-        self.client.create_kerberos_realm.assert_has_calls([
+        self.vserver_client.create_kerberos_realm.assert_has_calls([
             mock.call(fake.KERBEROS_SECURITY_SERVICE)])
         self.vserver_client.configure_kerberos.assert_has_calls([
             mock.call(fake.KERBEROS_SECURITY_SERVICE, fake.VSERVER_NAME)])
@@ -2574,7 +2574,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.VSERVER_NAME)
 
     def test_create_kerberos_realm(self):
-
+        self.client.features.add_feature('KERBEROS_VSERVER')
         self.mock_object(self.client, 'send_request')
 
         self.client.create_kerberos_realm(fake.KERBEROS_SECURITY_SERVICE)
@@ -2584,7 +2584,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'admin-server-port': '749',
             'clock-skew': '5',
             'comment': '',
-            'config-name': fake.KERBEROS_SECURITY_SERVICE['id'],
             'kdc-ip': fake.KERBEROS_SECURITY_SERVICE['server'],
             'kdc-port': '88',
             'kdc-vendor': 'other',
@@ -2597,7 +2596,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('kerberos-realm-create', kerberos_realm_create_args)])
 
     def test_create_kerberos_realm_already_present(self):
-
+        self.client.features.add_feature('KERBEROS_VSERVER')
         self.mock_object(self.client,
                          'send_request',
                          self._mock_api_error(code=netapp_api.EDUPLICATEENTRY))
@@ -2609,7 +2608,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'admin-server-port': '749',
             'clock-skew': '5',
             'comment': '',
-            'config-name': fake.KERBEROS_SECURITY_SERVICE['id'],
             'kdc-ip': fake.KERBEROS_SECURITY_SERVICE['server'],
             'kdc-port': '88',
             'kdc-vendor': 'other',
@@ -2623,7 +2621,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertEqual(1, client_cmode.LOG.debug.call_count)
 
     def test_create_kerberos_realm_api_error(self):
-
+        self.client.features.add_feature('KERBEROS_VSERVER')
         self.mock_object(self.client, 'send_request', self._mock_api_error())
 
         self.assertRaises(exception.NetAppException,
@@ -2631,7 +2629,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.KERBEROS_SECURITY_SERVICE)
 
     def test_configure_kerberos(self):
-
+        self.client.features.add_feature('KERBEROS_VSERVER')
         self.mock_object(self.client, 'send_request')
         self.mock_object(self.client, 'configure_dns')
         self.mock_object(self.client,
@@ -2668,7 +2666,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                       kerberos_config_modify_args2)])
 
     def test_configure_kerberos_no_network_interfaces(self):
-
+        self.client.features.add_feature('KERBEROS_VSERVER')
         self.mock_object(self.client, 'send_request')
         self.mock_object(self.client, 'configure_dns')
         self.mock_object(self.client,
@@ -2682,6 +2680,82 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.configure_dns.assert_called_with(
             fake.KERBEROS_SECURITY_SERVICE)
+
+    def test_disable_kerberos(self):
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client,
+                         'list_network_interfaces',
+                         mock.Mock(return_value=['lif1', 'lif2']))
+
+        self.client.disable_kerberos(fake.KERBEROS_SECURITY_SERVICE)
+
+        kerberos_config_modify_args1 = {
+            'admin-password': fake.KERBEROS_SECURITY_SERVICE['password'],
+            'admin-user-name': fake.KERBEROS_SECURITY_SERVICE['user'],
+            'interface-name': 'lif1',
+            'is-kerberos-enabled': 'false',
+        }
+        kerberos_config_modify_args2 = {
+            'admin-password': fake.KERBEROS_SECURITY_SERVICE['password'],
+            'admin-user-name': fake.KERBEROS_SECURITY_SERVICE['user'],
+            'interface-name': 'lif2',
+            'is-kerberos-enabled': 'false',
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('kerberos-config-modify',
+                      kerberos_config_modify_args1),
+            mock.call('kerberos-config-modify',
+                      kerberos_config_modify_args2)])
+        self.client.list_network_interfaces.assert_called_once()
+
+    def test_disable_kerberos_already_disabled(self):
+        self.mock_object(self.client, 'send_request',
+                         self._mock_api_error(
+                             code=netapp_api.EAPIERROR,
+                             message='Kerberos is already disabled'))
+        self.mock_object(self.client,
+                         'list_network_interfaces',
+                         mock.Mock(return_value=['lif1']))
+
+        self.client.disable_kerberos(fake.KERBEROS_SECURITY_SERVICE)
+
+        kerberos_config_modify_args = {
+            'admin-password': fake.KERBEROS_SECURITY_SERVICE['password'],
+            'admin-user-name': fake.KERBEROS_SECURITY_SERVICE['user'],
+            'interface-name': 'lif1',
+            'is-kerberos-enabled': 'false',
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'kerberos-config-modify', kerberos_config_modify_args)
+        self.client.list_network_interfaces.assert_called_once()
+
+    def test_is_kerberos_enabled(self):
+        self.client.features.add_feature('KERBEROS_VSERVER')
+        api_response = netapp_api.NaElement(
+            fake.KERBEROS_CONFIG_GET_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+        self.mock_object(self.client,
+                         'list_network_interfaces',
+                         mock.Mock(return_value=['lif1']))
+
+        result = self.client.is_kerberos_enabled()
+
+        kerberos_config_get_args = {
+            'interface-name': 'lif1',
+            'desired-attributes': {
+                'kerberos-config-info': {
+                    'is-kerberos-enabled': None,
+                }
+            }
+        }
+
+        self.assertTrue(result)
+        self.client.send_request.assert_called_once_with(
+            'kerberos-config-get', kerberos_config_get_args)
+        self.client.list_network_interfaces.assert_called_once()
 
     def test_get_kerberos_service_principal_name(self):
 
@@ -4796,15 +4870,17 @@ class NetAppClientCmodeTestCase(test.TestCase):
             self.client, '_add_nfs_export_rule')
         mock_update_nfs_export_rule = self.mock_object(
             self.client, '_update_nfs_export_rule')
+        auth_methods = ['sys']
 
         self.client.add_nfs_export_rule(fake.EXPORT_POLICY_NAME,
                                         fake.IP_ADDRESS,
-                                        False)
+                                        False,
+                                        auth_methods)
 
         mock_get_nfs_export_rule_indices.assert_called_once_with(
             fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS)
         mock_add_nfs_export_rule.assert_called_once_with(
-            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS, False)
+            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS, False, auth_methods)
         self.assertFalse(mock_update_nfs_export_rule.called)
 
     def test_add_nfs_export_rule_single_existing(self):
@@ -4818,16 +4894,19 @@ class NetAppClientCmodeTestCase(test.TestCase):
             self.client, '_update_nfs_export_rule')
         mock_remove_nfs_export_rules = self.mock_object(
             self.client, '_remove_nfs_export_rules')
+        auth_methods = ['sys']
 
         self.client.add_nfs_export_rule(fake.EXPORT_POLICY_NAME,
                                         fake.IP_ADDRESS,
-                                        False)
+                                        False,
+                                        auth_methods)
 
         mock_get_nfs_export_rule_indices.assert_called_once_with(
             fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS)
         self.assertFalse(mock_add_nfs_export_rule.called)
         mock_update_nfs_export_rule.assert_called_once_with(
-            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS, False, '1')
+            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS, False, '1',
+            auth_methods)
         mock_remove_nfs_export_rules.assert_called_once_with(
             fake.EXPORT_POLICY_NAME, [])
 
@@ -4842,71 +4921,82 @@ class NetAppClientCmodeTestCase(test.TestCase):
             self.client, '_update_nfs_export_rule')
         mock_remove_nfs_export_rules = self.mock_object(
             self.client, '_remove_nfs_export_rules')
-
+        auth_methods = ['sys']
         self.client.add_nfs_export_rule(fake.EXPORT_POLICY_NAME,
                                         fake.IP_ADDRESS,
-                                        False)
+                                        False,
+                                        auth_methods)
 
         mock_get_nfs_export_rule_indices.assert_called_once_with(
             fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS)
         self.assertFalse(mock_add_nfs_export_rule.called)
         mock_update_nfs_export_rule.assert_called_once_with(
-            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS, False, '2')
+            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS, False, '2', auth_methods)
         mock_remove_nfs_export_rules.assert_called_once_with(
             fake.EXPORT_POLICY_NAME, ['4', '6'])
 
-    @ddt.data({'readonly': False, 'rw_security_flavor': 'sys'},
-              {'readonly': True, 'rw_security_flavor': 'never'})
+    @ddt.data({'readonly': False, 'auth_method': 'sys'},
+              {'readonly': True, 'auth_method': 'sys'})
     @ddt.unpack
-    def test__add_nfs_export_rule(self, readonly, rw_security_flavor):
+    def test__add_nfs_export_rule(self, readonly, auth_method):
 
         self.mock_object(self.client, 'send_request')
 
         self.client._add_nfs_export_rule(fake.EXPORT_POLICY_NAME,
                                          fake.IP_ADDRESS,
-                                         readonly)
-
+                                         readonly,
+                                         [auth_method])
         export_rule_create_args = {
             'policy-name': fake.EXPORT_POLICY_NAME,
             'client-match': fake.IP_ADDRESS,
-            'ro-rule': {
-                'security-flavor': 'sys',
-            },
-            'rw-rule': {
-                'security-flavor': rw_security_flavor,
-            },
-            'super-user-security': {
-                'security-flavor': 'sys',
-            },
+            'ro-rule': [
+                {'security-flavor': auth_method},
+            ],
+            'rw-rule': [
+                {'security-flavor': auth_method},
+            ],
+            'super-user-security': [
+                {'security-flavor': auth_method},
+            ],
         }
+        if readonly:
+            export_rule_create_args['rw-rule'] = [
+                {'security-flavor': 'never'}
+            ]
+
         self.client.send_request.assert_has_calls(
             [mock.call('export-rule-create', export_rule_create_args)])
 
-    @ddt.data({'readonly': False, 'rw_security_flavor': 'sys', 'index': '2'},
-              {'readonly': True, 'rw_security_flavor': 'never', 'index': '4'})
+    @ddt.data({'readonly': False, 'auth_method': 'sys', 'index': '2'},
+              {'readonly': True, 'auth_method': 'krb5', 'index': '4'})
     @ddt.unpack
-    def test_update_nfs_export_rule(self, readonly, rw_security_flavor, index):
+    def test_update_nfs_export_rule(self, readonly, auth_method, index):
 
         self.mock_object(self.client, 'send_request')
         self.client._update_nfs_export_rule(fake.EXPORT_POLICY_NAME,
                                             fake.IP_ADDRESS,
                                             readonly,
-                                            index)
+                                            index,
+                                            [auth_method])
 
         export_rule_modify_args = {
             'policy-name': fake.EXPORT_POLICY_NAME,
             'rule-index': index,
             'client-match': fake.IP_ADDRESS,
-            'ro-rule': {
-                'security-flavor': 'sys',
-            },
-            'rw-rule': {
-                'security-flavor': rw_security_flavor,
-            },
-            'super-user-security': {
-                'security-flavor': 'sys',
-            },
+            'ro-rule': [
+                {'security-flavor': auth_method},
+            ],
+            'rw-rule': [
+                {'security-flavor': auth_method},
+            ],
+            'super-user-security': [
+                {'security-flavor': auth_method},
+            ],
         }
+        if readonly:
+            export_rule_modify_args['rw-rule'] = [
+                {'security-flavor': 'never'}
+            ]
 
         self.client.send_request.assert_has_calls(
             [mock.call('export-rule-modify', export_rule_modify_args)])

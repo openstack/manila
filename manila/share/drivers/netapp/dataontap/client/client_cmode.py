@@ -83,6 +83,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.features.add_feature('CLUSTER_PEER_POLICY', supported=ontapi_1_30)
         self.features.add_feature('ADVANCED_DISK_PARTITIONING',
                                   supported=ontapi_1_30)
+        self.features.add_feature('KERBEROS_VSERVER', supported=ontapi_1_30)
         self.features.add_feature('FLEXVOL_ENCRYPTION', supported=ontapi_1_110)
         self.features.add_feature('SVM_DR', supported=ontapi_1_140)
         self.features.add_feature('ADAPTIVE_QOS', supported=ontapi_1_140)
@@ -452,7 +453,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def _terminate_vserver_services(self, vserver_name, vserver_client,
                                     security_services):
         for service in security_services:
-            if service['type'] == 'active_directory':
+            if service['type'].lower() == 'active_directory':
                 api_args = {
                     'admin-password': service['password'],
                     'admin-username': service['user'],
@@ -465,6 +466,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                   'Vserver %s.', vserver_name)
                     else:
                         vserver_client.send_request('cifs-server-delete')
+            elif service['type'].lower() == 'kerberos':
+                vserver_client.disable_kerberos(service)
 
     @na_utils.trace
     def is_nve_supported(self):
@@ -1435,7 +1438,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                                           vserver_name)
 
             elif security_service['type'].lower() == 'kerberos':
-                self.create_kerberos_realm(security_service)
+                vserver_client.create_kerberos_realm(security_service)
                 vserver_client.configure_kerberos(security_service,
                                                   vserver_name)
 
@@ -1549,12 +1552,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def create_kerberos_realm(self, security_service):
         """Creates Kerberos realm on cluster."""
 
+        if not self.features.KERBEROS_VSERVER:
+            msg = _('Kerberos realms owned by Vserver are supported on ONTAP '
+                    '8.3 or later.')
+            raise exception.NetAppException(msg)
+
         api_args = {
             'admin-server-ip': security_service['server'],
             'admin-server-port': '749',
             'clock-skew': '5',
             'comment': '',
-            'config-name': security_service['id'],
             'kdc-ip': security_service['server'],
             'kdc-port': '88',
             'kdc-vendor': 'other',
@@ -1575,6 +1582,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def configure_kerberos(self, security_service, vserver_name):
         """Configures Kerberos for NFS on Vserver."""
 
+        if not self.features.KERBEROS_VSERVER:
+            msg = _('Kerberos realms owned by Vserver are supported on ONTAP '
+                    '8.3 or later.')
+            raise exception.NetAppException(msg)
+
         self.configure_dns(security_service)
         spn = self._get_kerberos_service_principal_name(
             security_service, vserver_name)
@@ -1590,8 +1602,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'admin-user-name': security_service['user'],
                 'interface-name': lif_name,
                 'is-kerberos-enabled': 'true',
-                'service-principal-name': spn,
+                'service-principal-name': spn
             }
+
             self.send_request('kerberos-config-modify', api_args)
 
     @na_utils.trace
@@ -1600,6 +1613,69 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return ('nfs/' + vserver_name.replace('_', '-') + '.' +
                 security_service['domain'] + '@' +
                 security_service['domain'].upper())
+
+    @na_utils.trace
+    def disable_kerberos(self, security_service):
+        """Disable Kerberos in all Vserver LIFs."""
+
+        lifs = self.list_network_interfaces()
+        # NOTE(dviroel): If the Vserver has no LIFs, there are no Kerberos
+        # to be disabled.
+        for lif_name in lifs:
+            api_args = {
+                'admin-password': security_service['password'],
+                'admin-user-name': security_service['user'],
+                'interface-name': lif_name,
+                'is-kerberos-enabled': 'false',
+            }
+            try:
+                self.send_request('kerberos-config-modify', api_args)
+            except netapp_api.NaApiError as e:
+                disabled_msg = "Kerberos is already disabled"
+                if (e.code == netapp_api.EAPIERROR and
+                        disabled_msg in e.message):
+                    # NOTE(dviroel): do not raise an error for 'Kerberos is
+                    # already disabled in this LIF'.
+                    continue
+                msg = _("Failed to disable Kerberos: %s.")
+                raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def is_kerberos_enabled(self):
+        """Check if Kerberos in enabled in all LIFs."""
+
+        if not self.features.KERBEROS_VSERVER:
+            msg = _('Kerberos realms owned by Vserver are supported on ONTAP '
+                    '8.3 or later.')
+            raise exception.NetAppException(msg)
+
+        lifs = self.list_network_interfaces()
+        if not lifs:
+            LOG.debug("There are no LIFs configured for this Vserver. "
+                      "Kerberos is disabled.")
+            return False
+
+        # NOTE(dviroel): All LIFs must have kerberos enabled
+        for lif in lifs:
+            api_args = {
+                'interface-name': lif,
+                'desired-attributes': {
+                    'kerberos-config-info': {
+                        'is-kerberos-enabled': None,
+                    }
+                }
+            }
+            result = self.send_request('kerberos-config-get', api_args)
+
+            attributes = result.get_child_by_name('attributes')
+            kerberos_info = attributes.get_child_by_name(
+                'kerberos-config-info')
+            kerberos_enabled = kerberos_info.get_child_content(
+                'is-kerberos-enabled')
+            if kerberos_enabled == 'false':
+                return False
+
+        return True
 
     @na_utils.trace
     def configure_dns(self, security_service):
@@ -2922,51 +2998,58 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('cifs-share-delete', {'share-name': share_name})
 
     @na_utils.trace
-    def add_nfs_export_rule(self, policy_name, client_match, readonly):
+    def add_nfs_export_rule(self, policy_name, client_match, readonly,
+                            auth_methods):
         rule_indices = self._get_nfs_export_rule_indices(policy_name,
                                                          client_match)
         if not rule_indices:
-            self._add_nfs_export_rule(policy_name, client_match, readonly)
+            self._add_nfs_export_rule(policy_name, client_match, readonly,
+                                      auth_methods)
         else:
             # Update first rule and delete the rest
             self._update_nfs_export_rule(
-                policy_name, client_match, readonly, rule_indices.pop(0))
+                policy_name, client_match, readonly, rule_indices.pop(0),
+                auth_methods)
             self._remove_nfs_export_rules(policy_name, rule_indices)
 
     @na_utils.trace
-    def _add_nfs_export_rule(self, policy_name, client_match, readonly):
+    def _add_nfs_export_rule(self, policy_name, client_match, readonly,
+                             auth_methods):
         api_args = {
             'policy-name': policy_name,
             'client-match': client_match,
-            'ro-rule': {
-                'security-flavor': 'sys',
-            },
-            'rw-rule': {
-                'security-flavor': 'sys' if not readonly else 'never',
-            },
-            'super-user-security': {
-                'security-flavor': 'sys',
-            },
+            'ro-rule': [],
+            'rw-rule': [],
+            'super-user-security': [],
         }
+        for am in auth_methods:
+            api_args['ro-rule'].append({'security-flavor': am})
+            api_args['rw-rule'].append({'security-flavor': am})
+            api_args['super-user-security'].append({'security-flavor': am})
+        if readonly:
+            # readonly, overwrite with auth method 'never'
+            api_args['rw-rule'] = [{'security-flavor': 'never'}]
+
         self.send_request('export-rule-create', api_args)
 
     @na_utils.trace
     def _update_nfs_export_rule(self, policy_name, client_match, readonly,
-                                rule_index):
+                                rule_index, auth_methods):
         api_args = {
             'policy-name': policy_name,
             'rule-index': rule_index,
             'client-match': client_match,
-            'ro-rule': {
-                'security-flavor': 'sys'
-            },
-            'rw-rule': {
-                'security-flavor': 'sys' if not readonly else 'never'
-            },
-            'super-user-security': {
-                'security-flavor': 'sys'
-            },
+            'ro-rule': [],
+            'rw-rule': [],
+            'super-user-security': [],
         }
+        for am in auth_methods:
+            api_args['ro-rule'].append({'security-flavor': am})
+            api_args['rw-rule'].append({'security-flavor': am})
+            api_args['super-user-security'].append({'security-flavor': am})
+        if readonly:
+            api_args['rw-rule'] = [{'security-flavor': 'never'}]
+
         self.send_request('export-rule-modify', api_args)
 
     @na_utils.trace
