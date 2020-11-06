@@ -16,6 +16,7 @@ Shared File Systems API
 .. include:: snapshots.inc
 .. include:: snapshot-instances.inc
 .. include:: share-replicas.inc
+.. include:: share-replica-export-locations.inc
 .. include:: share-networks.inc
 .. include:: share-network-subnets.inc
 .. include:: security-services.inc
@@ -44,4 +45,3 @@ Shared File Systems API (EXPERIMENTAL)
 
 .. include:: experimental.inc
 .. include:: share-migration.inc
-.. include:: share-replica-export-locations.inc
