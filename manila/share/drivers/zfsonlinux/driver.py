@@ -273,29 +273,26 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                     msg=_("Could not destroy '%s' dataset, "
                           "because it had opened files.") % name)
 
-        # NOTE(vponomaryov): Now, when no file usages and mounts of dataset
-        # exist, destroy dataset.
-        try:
+        @utils.retry(exception.ProcessExecutionError)
+        def _zfs_destroy_with_retry():
+            """Retry destroying dataset ten times with exponential backoff."""
+            # NOTE(bswartz): There appears to be a bug in ZFS when creating and
+            # destroying datasets concurrently where the filesystem remains
+            # mounted even though ZFS thinks it's unmounted. The most reliable
+            # workaround I've found is to force the unmount, then attempt the
+            # destroy, with short pauses around the unmount. (See bug#1546723)
+            try:
+                self.execute('sudo', 'umount', mountpoint)
+            except exception.ProcessExecutionError:
+                # Ignore failed umount, it's normal
+                pass
+            time.sleep(2)
+
+            # NOTE(vponomaryov): Now, when no file usages and mounts of dataset
+            # exist, destroy dataset.
             self.zfs('destroy', '-f', name)
-            return
-        except exception.ProcessExecutionError:
-            LOG.info("Failed to destroy ZFS dataset, retrying one time")
 
-        # NOTE(bswartz): There appears to be a bug in ZFS when creating and
-        # destroying datasets concurrently where the filesystem remains mounted
-        # even though ZFS thinks it's unmounted. The most reliable workaround
-        # I've found is to force the unmount, then retry the destroy, with
-        # short pauses around the unmount.
-        time.sleep(1)
-        try:
-            self.execute('sudo', 'umount', mountpoint)
-        except exception.ProcessExecutionError:
-            # Ignore failed umount, it's normal
-            pass
-        time.sleep(1)
-
-        # This time the destroy is expected to succeed.
-        self.zfs('destroy', '-f', name)
+        _zfs_destroy_with_retry()
 
     def _setup_helpers(self):
         """Setups share helper for ZFS backend."""
