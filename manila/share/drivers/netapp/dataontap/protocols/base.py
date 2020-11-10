@@ -71,3 +71,7 @@ class NetAppBaseHelper(object):
     @abc.abstractmethod
     def get_share_name_for_share(self, share):
         """Returns the flexvol name that hosts a share."""
+
+    @abc.abstractmethod
+    def cleanup_demoted_replica(self, share, share_name):
+        """Do some cleanup regarding the former active replica"""
