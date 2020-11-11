@@ -17,7 +17,7 @@ Install and configure components
 
    .. code-block:: console
 
-      # apt-get install manila-api manila-scheduler python-manilaclient
+      # apt-get install manila-api manila-scheduler python3-manilaclient
 
 #. Edit the ``/etc/manila/manila.conf`` file and complete the
    following actions:
