@@ -19,7 +19,7 @@ Install and configure components
 
    .. code-block:: console
 
-      # apt-get install manila-share python-pymysql
+      # apt-get install manila-share python3-pymysql
 
 #. Edit the ``/etc/manila/manila.conf`` file and complete the following
    actions:
