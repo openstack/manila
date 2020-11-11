@@ -20,7 +20,7 @@ Install and configure components
 
    .. code-block:: console
 
-      # yum install openstack-manila-share python2-PyMySQL
+      # yum install openstack-manila-share python3-PyMySQL
 
 #. Edit the ``/etc/manila/manila.conf`` file and complete the following
    actions:
