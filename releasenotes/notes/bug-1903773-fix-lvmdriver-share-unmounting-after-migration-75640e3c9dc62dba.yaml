@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Share cleanup for the LVM driver has been enhanced to retry on known
+    errors that could occur due to mount propagation. See `bug 1903773
+    <https://bugs.launchpad.net/manila/+bug/1903773>`_ for more details.
