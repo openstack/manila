@@ -96,6 +96,11 @@ netapp_provisioning_opts = [
                deprecated_name='netapp_root_volume_name',
                default='root',
                help='Root volume name.'),
+    cfg.IntOpt('netapp_delete_retention_hours',
+               min=0,
+               default=12,
+               help='The number of hours that a deleted volume should be '
+                    'retained before the delete is completed.'),
     cfg.IntOpt('netapp_volume_snapshot_reserve_percent',
                min=0,
                max=90,

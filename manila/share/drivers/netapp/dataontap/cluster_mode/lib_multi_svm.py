@@ -258,7 +258,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             self._client.create_vserver_dp_destination(
                 vserver_name,
                 self._find_matching_aggregates(),
-                ipspace_name)
+                ipspace_name,
+                self.configuration.netapp_delete_retention_hours)
             # Set up port and broadcast domain for the current ipspace
             self._create_port_and_broadcast_domain(ipspace_name, network_info)
         else:
@@ -268,7 +269,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 self.configuration.netapp_root_volume_aggregate,
                 self.configuration.netapp_root_volume,
                 self._find_matching_aggregates(),
-                ipspace_name)
+                ipspace_name,
+                self.configuration.netapp_delete_retention_hours)
 
             vserver_client = self._get_api_client(vserver=vserver_name)
 
@@ -470,8 +472,13 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     @na_utils.trace
     def _update_vserver(self, vserver, network_info):
         """Update a Vserver as needed."""
-        vserver_client = self._get_api_client(vserver=vserver)
+        self._client.modify_vserver(
+            vserver_name=vserver,
+            aggregate_names=self._find_matching_aggregates(),
+            retention_hours=self.configuration.netapp_delete_retention_hours
+            )
 
+        vserver_client = self._get_api_client(vserver=vserver)
         self._create_vserver_routes(vserver_client, network_info)
         vserver_client.enable_nfs(
             self.configuration.netapp_enabled_share_protocols)

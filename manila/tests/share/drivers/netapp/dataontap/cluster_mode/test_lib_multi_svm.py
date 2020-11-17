@@ -547,7 +547,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 fake.NETWORK_INFO)
         self.library._client.create_vserver.assert_called_once_with(
             vserver_name, fake.ROOT_VOLUME_AGGREGATE, fake.ROOT_VOLUME,
-            fake.AGGREGATES, fake.IPSPACE)
+            fake.AGGREGATES, fake.IPSPACE, 12)
         self.library._get_api_client.assert_called_once_with(
             vserver=vserver_name)
         self.library._create_vserver_lifs.assert_called_once_with(
@@ -606,7 +606,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 fake.NETWORK_INFO)
         create_server_mock = self.library._client.create_vserver_dp_destination
         create_server_mock.assert_called_once_with(
-            vserver_name, fake.AGGREGATES, fake.IPSPACE)
+            vserver_name, fake.AGGREGATES, fake.IPSPACE, 12)
         self.library._create_port_and_broadcast_domain.assert_called_once_with(
             fake.IPSPACE, fake.NETWORK_INFO)
 

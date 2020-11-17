@@ -161,26 +161,28 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def create_vserver(self, vserver_name, root_volume_aggregate_name,
-                       root_volume_name, aggregate_names, ipspace_name):
+                       root_volume_name, aggregate_names, ipspace_name,
+                       delete_retention_hours):
         """Creates new vserver and assigns aggregates."""
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
-            root_volume_name=root_volume_name,
+            delete_retention_hours, root_volume_name=root_volume_name,
             root_volume_aggregate_name=root_volume_aggregate_name,
             root_volume_security_style='unix',
             name_server_switch='file')
 
     @na_utils.trace
     def create_vserver_dp_destination(self, vserver_name, aggregate_names,
-                                      ipspace_name):
+                                      ipspace_name, delete_retention_hours):
         """Creates new 'dp_destination' vserver and assigns aggregates."""
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
-            subtype='dp_destination')
+            delete_retention_hours, subtype='dp_destination')
 
     @na_utils.trace
     def _create_vserver(self, vserver_name, aggregate_names, ipspace_name,
-                        root_volume_name=None, root_volume_aggregate_name=None,
+                        delete_retention_hours, root_volume_name=None,
+                        root_volume_aggregate_name=None,
                         root_volume_security_style=None,
                         name_server_switch=None, subtype=None):
         """Creates new vserver and assigns aggregates."""
@@ -209,9 +211,18 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         self.send_request('vserver-create', create_args)
 
+        self.modify_vserver(
+            vserver_name=vserver_name,
+            aggregate_names=aggregate_names,
+            retention_hours=delete_retention_hours
+        )
+
+    @na_utils.trace
+    def modify_vserver(self, vserver_name, aggregate_names, retention_hours):
         aggr_list = [{'aggr-name': aggr_name} for aggr_name in aggregate_names]
         modify_args = {
             'aggr-list': aggr_list,
+            'volume-delete-retention-hours': retention_hours,
             'vserver-name': vserver_name,
         }
         self.send_request('vserver-modify', modify_args)
