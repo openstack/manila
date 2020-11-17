@@ -468,16 +468,29 @@ class LVMShareDriverTestCase(test.TestCase):
     def _get_mount_path(self, share):
         return os.path.join(CONF.lvm_share_export_root, share['name'])
 
-    def test__unmount_device(self):
+    @ddt.data(True, False)
+    def test__unmount_device_with_retry_busy_device(self, retry_busy_device):
+        execute_sideeffects = [
+            exception.ProcessExecutionError(stderr='device is busy'),
+            exception.ProcessExecutionError(stderr='target is busy'),
+            None, None
+        ] if retry_busy_device else [None, None]
         mount_path = self._get_mount_path(self.share)
         self._os.path.exists.return_value = True
-        self.mock_object(self._driver, '_execute')
-        self._driver._unmount_device(self.share)
-        self._driver._execute.assert_any_call('umount', '-f', mount_path,
-                                              run_as_root=True)
-        self._driver._execute.assert_any_call('rmdir', mount_path,
-                                              run_as_root=True)
+        self.mock_object(self._driver, '_execute', mock.Mock(
+            side_effect=execute_sideeffects))
+
+        self._driver._unmount_device(self.share,
+                                     retry_busy_device=retry_busy_device)
+
+        num_of_times_umount_is_called = 3 if retry_busy_device else 1
+
         self._os.path.exists.assert_called_with(mount_path)
+        self._driver._execute.assert_has_calls([
+            mock.call('umount', '-f', mount_path, run_as_root=True),
+        ] * num_of_times_umount_is_called + [
+            mock.call('rmdir', mount_path, run_as_root=True)
+        ])
 
     def test_extend_share(self):
         local_path = self._driver._get_local_path(self.share)

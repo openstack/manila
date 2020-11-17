@@ -33,7 +33,8 @@ from manila import exception
 from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers import generic
-from manila.share import utils
+from manila.share import utils as share_utils
+from manila import utils
 
 LOG = log.getLogger(__name__)
 
@@ -258,28 +259,36 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         return location
 
     def delete_share(self, context, share, share_server=None):
-        self._unmount_device(share, raise_if_missing=False)
+        self._unmount_device(share, raise_if_missing=False,
+                             retry_busy_device=True)
         self._delete_share(context, share)
         self._deallocate_container(share['name'])
 
-    def _unmount_device(self, share_or_snapshot, raise_if_missing=True):
+    def _unmount_device(self, share_or_snapshot, raise_if_missing=True,
+                        retry_busy_device=False):
         """Unmount the filesystem of a share or snapshot LV."""
         mount_path = self._get_mount_path(share_or_snapshot)
         if os.path.exists(mount_path):
-            # umount, may be busy
-            try:
-                self._execute('umount', '-f', mount_path, run_as_root=True)
-            except exception.ProcessExecutionError as exc:
-                if 'device is busy' in exc.stderr.lower():
-                    raise exception.ShareBusyException(
-                        reason=share_or_snapshot['name'])
-                elif 'not mounted' in exc.stderr.lower():
-                    if raise_if_missing:
-                        LOG.error('Unable to find device: %s', exc)
+
+            retries = 10 if retry_busy_device else 1
+
+            @utils.retry(exception.ShareBusyException, retries=retries)
+            def _unmount_device_with_retry():
+                try:
+                    self._execute('umount', '-f', mount_path, run_as_root=True)
+                except exception.ProcessExecutionError as exc:
+                    if 'is busy' in exc.stderr.lower():
+                        raise exception.ShareBusyException(
+                            reason=share_or_snapshot['name'])
+                    elif 'not mounted' in exc.stderr.lower():
+                        if raise_if_missing:
+                            LOG.error('Unable to find device: %s', exc)
+                            raise
+                    else:
+                        LOG.error('Unable to umount: %s', exc)
                         raise
-                else:
-                    LOG.error('Unable to umount: %s', exc)
-                    raise
+
+            _unmount_device_with_retry()
             # remove dir
             self._execute('rmdir', mount_path, run_as_root=True)
 
@@ -416,7 +425,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                                               share['name'],
                                               share_access_rules,
                                               [], [])
-        snapshot_access_rules, __, __ = utils.change_rules_to_readonly(
+        snapshot_access_rules, __, __ = share_utils.change_rules_to_readonly(
             snapshot_access_rules, [], [])
         self._get_helper(share).update_access(self.share_server,
                                               snapshot['name'],
@@ -478,8 +487,10 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         :param share_server: None or Share server model
         """
         helper = self._get_helper(snapshot['share'])
-        access_rules, add_rules, delete_rules = utils.change_rules_to_readonly(
-            access_rules, add_rules, delete_rules)
+        access_rules, add_rules, delete_rules = (
+            share_utils.change_rules_to_readonly(
+                access_rules, add_rules, delete_rules)
+        )
 
         helper.update_access(self.share_server,
                              snapshot['name'], access_rules,
@@ -515,5 +526,5 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
     def get_backend_info(self, context):
         return {
             'export_ips': ','.join(self.share_server['public_addresses']),
-            'db_version': utils.get_recent_db_migration_id(),
+            'db_version': share_utils.get_recent_db_migration_id(),
         }
