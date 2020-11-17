@@ -2939,6 +2939,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume-type': 'rw',
             'junction-path': '/%s' % fake.SHARE_NAME,
             'volume-comment': '',
+            'encrypt': 'false',
         }
 
         self.client.send_request.assert_called_once_with('volume-create',
@@ -6722,7 +6723,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'vserver': fake.VSERVER_NAME,
             'dest-aggr': fake.SHARE_AGGREGATE_NAME,
             'cutover-action': 'wait',
-            'encrypt-destination': 'false'
         }
         if method_name.startswith('check'):
             expected_api_args['perform-validation-only'] = 'true'

@@ -1075,7 +1075,9 @@ class NetAppCmodeFileStorageLibrary(object):
         result = boolean_args.copy()
         result.update(string_args)
 
-        result['encrypt'] = self._get_nve_option(specs)
+        nve_option = self._get_nve_option(specs)
+        if nve_option is not None:
+            result['encrypt'] = nve_option
 
         return result
 
@@ -1115,10 +1117,9 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.NetAppException(msg)
 
     def _get_nve_option(self, specs):
+        nve = None
         if 'netapp_flexvol_encryption' in specs:
             nve = specs['netapp_flexvol_encryption'].lower() == 'true'
-        else:
-            nve = False
 
         return nve
 
@@ -2652,8 +2653,10 @@ class NetAppCmodeFileStorageLibrary(object):
         dest_share_type_encrypted_val = share_types.get_share_type_extra_specs(
             destination_share['share_type_id'],
             'netapp_flexvol_encryption')
-        encrypt_destination = share_types.parse_boolean_extra_spec(
-            'netapp_flexvol_encryption', dest_share_type_encrypted_val)
+        encrypt_destination = None
+        if dest_share_type_encrypted_val:
+            encrypt_destination = share_types.parse_boolean_extra_spec(
+                'netapp_flexvol_encryption', dest_share_type_encrypted_val)
 
         return encrypt_destination
 
