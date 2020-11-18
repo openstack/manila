@@ -29,6 +29,7 @@ class NetAppBaseClient(object):
         self.connection = netapp_api.NaServer(
             host=kwargs['hostname'],
             transport_type=kwargs['transport_type'],
+            ssl_cert_path=kwargs['ssl_cert_path'],
             port=kwargs['port'],
             username=kwargs['username'],
             password=kwargs['password'],

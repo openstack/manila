@@ -74,6 +74,7 @@ def get_client_for_backend(backend_name, vserver_name=None):
     config = get_backend_configuration(backend_name)
     client = client_cmode.NetAppCmodeClient(
         transport_type=config.netapp_transport_type,
+        ssl_cert_path=config.netapp_ssl_cert_path,
         username=config.netapp_login,
         password=config.netapp_password,
         hostname=config.netapp_server_hostname,
