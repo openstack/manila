@@ -311,6 +311,24 @@ works with NFS-Ganesha v2.1 to v2.3.
     access the shares allowed for her at the respective
     ``share-<share-id>--<access-id>`` subdirectories.
 
+Deployment considerations
+-------------------------
+
+When using `NFS-Ganesha`_ v2.4 or later and manila's
+``ganesha.GaneshaNASHelper2`` class, dynamic export of
+access rules is implemented by using the `dbus-send`_ command to
+signal `NFS-Ganesha`_ to update its exports.
+The `dbus-send`_ command is executed on the host where `NFS-Ganesha`_
+runs.  This may be the same host where the :term:`manila-share`
+service runs, or it may be remote to :term:`manila-share` depending on
+how the relevant driver has been configured.  Either way, the `dbus-send`_
+command and `NFS-Ganesha`_ must be able to communicate over an *abstract
+socket* and *must be in the same namespace*.  Consequently, if you deploy
+`NFS-Ganesha`_ in a container you likely should run the container in
+the host namespace (e.g. 'docker run --net=host ...') rather than in its
+own network namespace.  For details, see this
+`article <https://stackoverflow.com/questions/38455283/docker-containers-share-unix-abstract-socket-or-dbus>`_.
+
 The :mod:`manila.share.drivers.ganesha` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -319,3 +337,7 @@ The :mod:`manila.share.drivers.ganesha` Module
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. _NFS-Ganesha: https://github.com/nfs-ganesha/nfs-ganesha/wiki
+.. _dbus-send: https://dbus.freedesktop.org/doc/dbus-send.1.html
+
