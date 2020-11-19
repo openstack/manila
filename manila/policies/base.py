@@ -59,6 +59,9 @@ PROJECT_READER = 'role:reader and project_id:%(project_id)s'
 # protecting APIs designed to operate with multiple scopes (e.g., a system
 # administrator should be able to delete any share in the deployment, a
 # project member should only be able to delete shares in their project).
+SYSTEM_ADMIN_OR_PROJECT_ADMIN = (
+    '(' + SYSTEM_ADMIN + ') or (' + PROJECT_ADMIN + ')'
+)
 SYSTEM_ADMIN_OR_PROJECT_MEMBER = (
     '(' + SYSTEM_ADMIN + ') or (' + PROJECT_MEMBER + ')'
 )
