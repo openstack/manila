@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,11 +18,25 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'scheduler_stats:pools:%s'
 
+DEPRECATED_REASON = """
+The storage pool statistics API now support system scope and default roles.
+"""
+
+deprecated_pool_index = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'index',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_pool_detail = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'detail',
+    check_str=base.RULE_ADMIN_API
+)
+
 
 scheduler_stats_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER,
+        scope_types=['system'],
         description="Get information regarding backends "
                     "(and storage pools) known to the scheduler.",
         operations=[
@@ -33,10 +48,15 @@ scheduler_stats_policies = [
                 'method': 'GET',
                 'path': '/scheduler-stats/pools?{query}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_pool_index,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'detail',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER,
+        scope_types=['system'],
         description="Get detailed information regarding backends "
                     "(and storage pools) known to the scheduler.",
         operations=[
@@ -48,7 +68,11 @@ scheduler_stats_policies = [
                 'method': 'GET',
                 'path': '/scheduler-stats/pools/detail'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_pool_detail,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
