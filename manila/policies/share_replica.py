@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,20 +18,68 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'share_replica:%s'
 
+DEPRECATED_REASON = """
+The share replica API now supports system scope and default roles.
+"""
+
+deprecated_replica_create = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'create',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_replica_get_all = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_all',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_replica_show = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'show',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_replica_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_replica_force_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'force_delete',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_replica_promote = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'promote',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_replica_resync = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'resync',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_replica_reset_state = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'reset_replica_state',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_replica_reset_status = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'reset_status',
+    check_str=base.RULE_ADMIN_API
+)
+
+
 share_replica_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Create share replica.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-replicas',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_replica_create,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get all share replicas.",
         operations=[
             {
@@ -45,77 +94,116 @@ share_replica_policies = [
                 'method': 'GET',
                 'path': '/share-replicas/detail?share_id={share_id}',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_replica_get_all,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get details of a share replica.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/share-replicas/{share_replica_id}',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_replica_show,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Delete a share replica.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/share-replicas/{share_replica_id}',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_replica_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description="Force delete a share replica.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-replicas/{share_replica_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_replica_force_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'promote',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Promote a non-active share replica to active.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-replicas/{share_replica_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_replica_promote,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'resync',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description="Resync a share replica that is out of sync.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-replicas/{share_replica_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_replica_resync,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_replica_state',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description="Reset share replica's replica_state attribute.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-replicas/{share_replica_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_replica_reset_state,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description="Reset share replica's status.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-replicas/{share_replica_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_replica_reset_status,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
