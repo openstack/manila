@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,11 +18,21 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'availability_zone:%s'
 
+DEPRECATED_REASON = """
+The availability zone API now supports system scope and default roles.
+"""
+
+deprecated_get_availability_zone = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'index',
+    check_str=base.RULE_DEFAULT
+)
+
 
 availability_zone_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description=("Get all storage availability zones."),
         operations=[
             {
@@ -32,7 +43,11 @@ availability_zone_policies = [
                 'method': 'GET',
                 'path': '/availability-zone',
             },
-        ]),
+        ],
+        deprecated_rule=deprecated_get_availability_zone,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
