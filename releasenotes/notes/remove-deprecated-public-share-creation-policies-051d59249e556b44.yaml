@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    The ability to create a public share (RBAC: "share:create_public_share")
+    and to update a share to become publicly visible
+    (RBAC: "share:set_public_share") are now restricted to administator
+    users operating at system scope. Adjust your policy file overrides if
+    you would like to retain the older behavior of allowing all users to
+    create public shares or to update private ones to public. If you do
+    that, be sure that your users are aware of the security implications of
+    publicly accessible shares.

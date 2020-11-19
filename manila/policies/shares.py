@@ -17,17 +17,6 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'share:%s'
 
-# These deprecated rules can be removed in the 'Train' release.
-deprecated_create_public_share_rule = policy.DeprecatedRule(
-    name=BASE_POLICY_NAME % 'create_public_share',
-    check_str=base.RULE_DEFAULT,
-)
-
-deprecated_set_public_share_rule = policy.DeprecatedRule(
-    name=BASE_POLICY_NAME % 'set_public_share',
-    check_str=base.RULE_DEFAULT,
-)
-
 
 shares_policies = [
     policy.DocumentedRuleDefault(
@@ -43,16 +32,7 @@ shares_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create_public_share',
         check_str=base.RULE_ADMIN_API,
-        description="Create shares visible across all projects in the cloud. "
-                    "This option will default to rule:admin_api in the "
-                    "9.0.0 (Train) release of the OpenStack Shared File "
-                    "Systems (manila) service.",
-        deprecated_rule=deprecated_create_public_share_rule,
-        deprecated_reason="Public shares must be accessible across the "
-                          "cloud, irrespective of project namespaces. To "
-                          "avoid unintended consequences, rule:admin_api "
-                          "serves as a better default for this policy.",
-        deprecated_since='S',
+        description="Create shares visible across all projects in the cloud.",
         operations=[
             {
                 'method': 'POST',
@@ -97,15 +77,7 @@ shares_policies = [
         name=BASE_POLICY_NAME % 'set_public_share',
         check_str=base.RULE_ADMIN_API,
         description="Update shares to be visible across all projects in the "
-                    "cloud. This option will default to rule:admin_api in the "
-                    "9.0.0 (Train) release of the OpenStack Shared File "
-                    "Systems (manila) service.",
-        deprecated_rule=deprecated_set_public_share_rule,
-        deprecated_reason="Public shares must be accessible across the "
-                          "cloud, irrespective of project namespaces. To "
-                          "avoid unintended consequences, rule:admin_api "
-                          "serves as a better default for this policy.",
-        deprecated_since='S',
+                    "cloud.",
         operations=[
             {
                 'method': 'PUT',
