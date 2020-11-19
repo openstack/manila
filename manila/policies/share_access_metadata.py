@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -20,28 +21,51 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'share_access_metadata:%s'
 
+DEPRECATED_REASON = """
+The share access metadata API now support system scope and default roles.
+"""
+
+deprecated_access_metadata_update = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_access_metadata_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete',
+    check_str=base.RULE_DEFAULT
+)
+
 
 share_access_rule_metadata_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Set metadata for a share access rule.",
         operations=[
             {
                 'method': 'PUT',
                 'path': '/share-access-rules/{share_access_id}/metadata'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_access_metadata_update,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Delete metadata for a share access rule.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/share-access-rules/{share_access_id}/metadata/{key}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_access_metadata_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
