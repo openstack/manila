@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,11 +18,25 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'quota_class_set:%s'
 
+DEPRECATED_REASON = """
+The quota class API now supports system scope and default roles.
+"""
+
+deprecated_quota_class_update = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_quota_class_show = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'show',
+    check_str=base.RULE_DEFAULT
+)
+
 
 quota_class_set_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Update quota class.",
         operations=[
             {
@@ -32,10 +47,15 @@ quota_class_set_policies = [
                 'method': 'PUT',
                 'path': '/os-quota-class-sets/{class_name}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_quota_class_update,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get quota class.",
         operations=[
             {
@@ -46,7 +66,11 @@ quota_class_set_policies = [
                 'method': 'GET',
                 'path': '/os-quota-class-sets/{class_name}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_quota_class_show,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
