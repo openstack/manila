@@ -2892,7 +2892,7 @@ class ShareManageTest(test.TestCase):
             mock.Mock(side_effect=lambda *args, **kwargs: args[1]))
         share = {
             'host': data['share']['service_host'],
-            'export_location': data['share']['export_path'],
+            'export_location_path': data['share']['export_path'],
             'share_proto': data['share']['protocol'].upper(),
             'share_type_id': 'fake',
             'display_name': 'foo',
