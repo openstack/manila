@@ -33,7 +33,7 @@ def set_defaults(conf):
     _safe_set_of_opts(conf, 'connection', "sqlite://", group='database')
     _safe_set_of_opts(conf, 'sqlite_synchronous', False)
     _POLICY_PATH = os.path.abspath(os.path.join(CONF.state_path,
-                                                'manila/tests/policy.json'))
+                                                'manila/tests/policy.yaml'))
     opts.set_defaults(conf, policy_file=_POLICY_PATH)
     _safe_set_of_opts(conf, 'share_export_ip', '0.0.0.0')
     _safe_set_of_opts(conf, 'service_instance_user', 'fake_user')

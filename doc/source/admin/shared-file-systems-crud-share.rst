@@ -562,13 +562,13 @@ You also can force-delete a share.
 The shares cannot be deleted in transitional states. The transitional
 states are ``creating``, ``deleting``, ``managing``, ``unmanaging``,
 ``migrating``, ``extending``, and ``shrinking`` statuses for the shares.
-Force-deletion deletes an object in any state. Use the ``policy.json`` file
+Force-deletion deletes an object in any state. Use the ``policy.yaml`` file
 to grant permissions for this action to other roles.
 
 .. tip::
 
-   The configuration file ``policy.json`` may be used from different places.
-   The path ``/etc/manila/policy.json`` is one of expected paths by default.
+   The configuration file ``policy.yaml`` may be used from different places.
+   The path ``/etc/manila/policy.yaml`` is one of expected paths by default.
 
 Use **manila delete <share_name_or_ID>** command to delete a specified share:
 

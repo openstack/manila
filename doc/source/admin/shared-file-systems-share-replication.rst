@@ -599,7 +599,7 @@ Use the :command:`manila share-replica-delete` command with the
 .. note::
    This command has no output.
 
-Use the ``policy.json`` file to grant permissions for these actions to other
+Use the ``policy.yaml`` file to grant permissions for these actions to other
 roles.
 
 
