@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    `Bug #1900755 <https://bugs.launchpad.net/manila/+bug/1900755>`_:
+    Added a driver-agnostic exception to handle insufficient privileges on a
+    security service when trying to create a share.
+    Added a user message to provide useful information to end users.
+    Note that vendors will need to implement the exception provided in this
+    patch in their drivers to take advantage of the more convenient user
+    message.

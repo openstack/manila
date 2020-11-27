@@ -615,6 +615,10 @@ class ShareNetworkSecurityServiceDissociationError(ManilaException):
                 " and security service %(security_service_id)s: %(reason)s.")
 
 
+class SecurityServiceFailedAuth(ManilaException):
+    message = _("Failed to authenticate user against security service.")
+
+
 class InvalidVolume(Invalid):
     message = _("Invalid volume.")
 
