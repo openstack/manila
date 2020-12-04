@@ -2326,7 +2326,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(self.client, 'send_request')
         self.mock_object(self.vserver_client, 'configure_ldap')
 
-        self.client.setup_security_services([fake.LDAP_SECURITY_SERVICE],
+        self.client.setup_security_services([fake.LDAP_LINUX_SECURITY_SERVICE],
                                             self.vserver_client,
                                             fake.VSERVER_NAME)
 
@@ -2344,7 +2344,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('vserver-modify', vserver_modify_args)])
         self.vserver_client.configure_ldap.assert_has_calls([
-            mock.call(fake.LDAP_SECURITY_SERVICE)])
+            mock.call(fake.LDAP_LINUX_SECURITY_SERVICE, timeout=30)])
 
     def test_setup_security_services_active_directory(self):
 
@@ -2509,22 +2509,38 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('export-rule-create', export_rule_create_args),
             mock.call('export-rule-create', export_rule_create_args2)])
 
-    def test_configure_ldap(self):
+    @ddt.data(fake.LDAP_LINUX_SECURITY_SERVICE, fake.LDAP_AD_SECURITY_SERVICE)
+    def test_configure_ldap(self, sec_service):
+        self.client.features.add_feature('LDAP_LDAP_SERVERS')
 
         self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'configure_dns')
 
-        self.client.configure_ldap(fake.LDAP_SECURITY_SERVICE)
+        self.client.configure_ldap(sec_service)
 
-        config_name = hashlib.md5(
-            six.b(fake.LDAP_SECURITY_SERVICE['id'])).hexdigest()
+        config_name = hashlib.md5(six.b(sec_service['id'])).hexdigest()
 
         ldap_client_create_args = {
             'ldap-client-config': config_name,
-            'servers': {'ip-address': fake.LDAP_SECURITY_SERVICE['server']},
             'tcp-port': '389',
-            'schema': 'RFC-2307',
-            'bind-password': fake.LDAP_SECURITY_SERVICE['password']
+            'bind-password': sec_service['password'],
         }
+
+        if sec_service.get('domain'):
+            ldap_client_create_args['schema'] = 'MS-AD-BIS'
+            ldap_client_create_args['bind-dn'] = (
+                sec_service['user'] + '@' + sec_service['domain'])
+            ldap_client_create_args['ad-domain'] = sec_service['domain']
+        else:
+            ldap_client_create_args['schema'] = 'RFC-2307'
+            ldap_client_create_args['bind-dn'] = sec_service['user']
+            ldap_client_create_args['ldap-servers'] = [{
+                'string': sec_service['server']
+            }]
+
+        if sec_service.get('ou'):
+            ldap_client_create_args['base-dn'] = sec_service['ou']
+
         ldap_config_create_args = {
             'client-config': config_name,
             'client-enabled': 'true'
@@ -2533,6 +2549,32 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('ldap-client-create', ldap_client_create_args),
             mock.call('ldap-config-create', ldap_config_create_args)])
+
+    @ddt.data({'server': None, 'domain': None},
+              {'server': 'fake_server', 'domain': 'fake_domain'})
+    @ddt.unpack
+    def test_configure_ldap_invalid_parameters(self, server, domain):
+        fake_ldap_sec_service = copy.deepcopy(fake.LDAP_AD_SECURITY_SERVICE)
+        fake_ldap_sec_service['server'] = server
+        fake_ldap_sec_service['domain'] = domain
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.configure_ldap,
+                          fake_ldap_sec_service)
+
+    def test__enable_ldap_client_timeout(self):
+        mock_warning_log = self.mock_object(client_cmode.LOG, 'warning')
+        na_api_error = netapp_api.NaApiError(code=netapp_api.EAPIERROR)
+        mock_send_request = self.mock_object(
+            self.client, 'send_request', mock.Mock(side_effect=na_api_error))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client._enable_ldap_client,
+                          'fake_config_name',
+                          timeout=6)
+
+        self.assertEqual(2, mock_send_request.call_count)
+        self.assertEqual(2, mock_warning_log.call_count)
 
     def test_configure_active_directory(self):
 
@@ -2767,11 +2809,13 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_configure_dns_for_active_directory(self):
 
         self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value={}))
 
         self.client.configure_dns(fake.CIFS_SECURITY_SERVICE)
 
         net_dns_create_args = {
-            'domains': {'string': fake.CIFS_SECURITY_SERVICE['domain']},
+            'domains': [{'string': fake.CIFS_SECURITY_SERVICE['domain']}],
             'name-servers': [{
                 'ip-address': fake.CIFS_SECURITY_SERVICE['dns_ip']
             }],
@@ -2784,29 +2828,26 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_configure_dns_multiple_dns_ip(self):
 
         self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value={}))
         mock_dns_ips = ['10.0.0.1', '10.0.0.2', '10.0.0.3']
         security_service = fake.CIFS_SECURITY_SERVICE
         security_service['dns_ip'] = ', '.join(mock_dns_ips)
 
         self.client.configure_dns(security_service)
 
-        net_dns_create_args = {
-            'domains': {'string': security_service['domain']},
-            'dns-state': 'enabled',
-            'name-servers': [{'ip-address': dns_ip} for dns_ip in mock_dns_ips]
-        }
-
-        self.client.send_request.assert_has_calls([
-            mock.call('net-dns-create', net_dns_create_args)])
+        self.client.send_request.assert_called_once()
 
     def test_configure_dns_for_kerberos(self):
 
         self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value={}))
 
         self.client.configure_dns(fake.KERBEROS_SECURITY_SERVICE)
 
         net_dns_create_args = {
-            'domains': {'string': fake.KERBEROS_SECURITY_SERVICE['domain']},
+            'domains': [{'string': fake.KERBEROS_SECURITY_SERVICE['domain']}],
             'name-servers': [{
                 'ip-address': fake.KERBEROS_SECURITY_SERVICE['dns_ip']
             }],
@@ -2817,15 +2858,19 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('net-dns-create', net_dns_create_args)])
 
     def test_configure_dns_already_present(self):
-
-        self.mock_object(self.client,
-                         'send_request',
-                         self._mock_api_error(code=netapp_api.EDUPLICATEENTRY))
+        dns_config = {
+            'dns-state': 'enabled',
+            'domains': [fake.KERBEROS_SECURITY_SERVICE['domain']],
+            'dns-ips': [fake.KERBEROS_SECURITY_SERVICE['dns_ip']],
+        }
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value=dns_config))
+        self.mock_object(self.client, 'send_request')
 
         self.client.configure_dns(fake.KERBEROS_SECURITY_SERVICE)
 
         net_dns_create_args = {
-            'domains': {'string': fake.KERBEROS_SECURITY_SERVICE['domain']},
+            'domains': [{'string': fake.KERBEROS_SECURITY_SERVICE['domain']}],
             'name-servers': [{
                 'ip-address': fake.KERBEROS_SECURITY_SERVICE['dns_ip']
             }],
@@ -2833,16 +2878,33 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
 
         self.client.send_request.assert_has_calls([
-            mock.call('net-dns-create', net_dns_create_args)])
-        self.assertEqual(1, client_cmode.LOG.error.call_count)
+            mock.call('net-dns-modify', net_dns_create_args)])
 
     def test_configure_dns_api_error(self):
 
         self.mock_object(self.client, 'send_request', self._mock_api_error())
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value={}))
 
         self.assertRaises(exception.NetAppException,
                           self.client.configure_dns,
                           fake.KERBEROS_SECURITY_SERVICE)
+
+    def test_get_dns_configuration(self):
+        api_response = netapp_api.NaElement(
+            fake.DNS_CONFIG_GET_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_dns_config()
+
+        expected_result = {
+            'dns-state': 'enabled',
+            'domains': ['fake_domain.com'],
+            'dns-ips': ['fake_dns_1', 'fake_dns_2']
+        }
+        self.assertEqual(expected_result, result)
+        self.client.send_request.assert_called_once_with('net-dns-get', {})
 
     @ddt.data(
         {
