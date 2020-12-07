@@ -21,7 +21,8 @@ class ViewBuilder(common.ViewBuilder):
 
     _collection_name = 'share_networks'
     _detail_version_modifiers = ["add_gateway", "add_mtu", "add_nova_net_id",
-                                 "add_subnets"]
+                                 "add_subnets",
+                                 "add_status_and_sec_service_update_fields"]
 
     def build_share_network(self, request, share_network):
         """View of a share network."""
@@ -34,6 +35,25 @@ class ViewBuilder(common.ViewBuilder):
                 [self._build_share_network_view(
                     request, share_network, is_detail)
                  for share_network in share_networks]}
+
+    def build_security_service_update_check(self, request, params, result):
+        """View of security service add or update check."""
+        context = request.environ['manila.context']
+        requested_operation = {
+            'operation': ('update_security_service'
+                          if params.get('current_service_id')
+                          else 'add_security_service'),
+            'current_security_service': params.get('current_service_id'),
+            'new_security_service': (params.get('new_service_id') or
+                                     params.get('security_service_id'))
+        }
+        view = {
+            'compatible': result['compatible'],
+            'requested_operation': requested_operation,
+        }
+        if context.is_admin:
+            view['hosts_check_result'] = result['hosts_check_result']
+        return view
 
     def _update_share_network_info(self, request, share_network):
         for sns in share_network.get('share_network_subnets') or []:
@@ -108,3 +128,10 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("1.0", "2.25")
     def add_nova_net_id(self, context, network_dict, network):
         network_dict['nova_net_id'] = None
+
+    @common.ViewBuilder.versioned_method("2.63")
+    def add_status_and_sec_service_update_fields(
+            self, context, network_dict, network):
+        network_dict['status'] = network.get('status')
+        network_dict['security_service_update_support'] = network.get(
+            'security_service_update_support')

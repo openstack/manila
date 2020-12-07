@@ -15,11 +15,13 @@
 
 from unittest import mock
 
+import copy
 import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 from webob import exc
 
+from manila.api import common
 from manila.api.openstack import api_version_request as api_version
 from manila.api.v2 import share_replicas
 from manila.common import constants
@@ -56,6 +58,17 @@ class ShareReplicasApiTest(test.TestCase):
             experimental=True, use_admin_context=True)
         self.admin_context = self.replicas_req_admin.environ['manila.context']
         self.mock_policy_check = self.mock_object(policy, 'check_policy')
+        self.fake_share_network = {
+            'id': 'fake network id',
+            'project_id': 'fake project',
+            'updated_at': None,
+            'name': 'fake name',
+            'description': 'fake description',
+            'security_services': [],
+            'share_network_subnets': [],
+            'security_service_update_support': True,
+            'status': 'active'
+        }
 
     def _get_context(self, role):
         return getattr(self, '%s_context' % role)
@@ -370,6 +383,7 @@ class ShareReplicasApiTest(test.TestCase):
         mock__view_builder_call = self.mock_object(
             share_replicas.replication_view.ReplicationViewBuilder,
             'detail_list')
+        share_network = db_utils.create_share_network()
         body = {
             'share_replica': {
                 'share_id': 'FAKE_SHAREID',
@@ -381,6 +395,10 @@ class ShareReplicasApiTest(test.TestCase):
                          mock.Mock(return_value=fake_replica))
         self.mock_object(share.API, 'create_share_replica',
                          mock.Mock(side_effect=exception_type(**exc_args)))
+        self.mock_object(share_replicas.db, 'share_network_get',
+                         mock.Mock(return_value=share_network))
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
 
         self.assertRaises(exc.HTTPBadRequest,
                           self.controller.create,
@@ -388,6 +406,10 @@ class ShareReplicasApiTest(test.TestCase):
         self.assertFalse(mock__view_builder_call.called)
         self.mock_policy_check.assert_called_once_with(
             self.member_context, self.resource_name, 'create')
+        share_replicas.db.share_network_get.assert_called_once_with(
+            self.member_context, fake_replica['share_network_id'])
+        common.check_share_network_is_active.assert_called_once_with(
+            share_network)
 
     @ddt.data((True, PRE_GRADUATION_VERSION), (False, GRADUATION_VERSION))
     @ddt.unpack
@@ -395,6 +417,7 @@ class ShareReplicasApiTest(test.TestCase):
         fake_replica, expected_replica = self._get_fake_replica(
             replication_type='writable', admin=is_admin,
             microversion=microversion)
+        share_network = db_utils.create_share_network()
         body = {
             'share_replica': {
                 'share_id': 'FAKE_SHAREID',
@@ -408,6 +431,10 @@ class ShareReplicasApiTest(test.TestCase):
         self.mock_object(share_replicas.db,
                          'share_replicas_get_available_active_replica',
                          mock.Mock(return_value=[{'id': 'active1'}]))
+        self.mock_object(share_replicas.db, 'share_network_get',
+                         mock.Mock(return_value=share_network))
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
 
         req = self._get_request(microversion, is_admin)
         req_context = req.environ['manila.context']
@@ -417,6 +444,10 @@ class ShareReplicasApiTest(test.TestCase):
         self.assertEqual(expected_replica, res_dict['share_replica'])
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'create')
+        share_replicas.db.share_network_get.assert_called_once_with(
+            req_context, fake_replica['share_network_id'])
+        common.check_share_network_is_active.assert_called_once_with(
+            share_network)
 
     def test_delete_invalid_replica(self):
         fake_exception = exception.ShareReplicaNotFound(
@@ -492,6 +523,8 @@ class ShareReplicasApiTest(test.TestCase):
             replica_state=constants.REPLICA_STATE_ACTIVE)
         self.mock_object(share_replicas.db, 'share_replica_get',
                          mock.Mock(return_value=replica))
+        self.mock_object(share_replicas.db, 'share_network_get',
+                         mock.Mock(return_value=self.fake_share_network))
         mock_api_promote_replica_call = self.mock_object(
             share.API, 'promote_share_replica')
 
@@ -509,6 +542,8 @@ class ShareReplicasApiTest(test.TestCase):
         exception_type = exception.ReplicationException(reason='xyz')
         self.mock_object(share_replicas.db, 'share_replica_get',
                          mock.Mock(return_value=replica))
+        self.mock_object(share_replicas.db, 'share_network_get',
+                         mock.Mock(return_value=self.fake_share_network))
         mock_api_promote_replica_call = self.mock_object(
             share.API, 'promote_share_replica',
             mock.Mock(side_effect=exception_type))
@@ -522,12 +557,33 @@ class ShareReplicasApiTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.member_context, self.resource_name, 'promote')
 
+    def test_promote_share_network_not_active(self):
+        body = {'promote': None}
+        replica, expected_replica = self._get_fake_replica(
+            replica_state=constants.REPLICA_STATE_IN_SYNC)
+        fake_share_network = copy.deepcopy(self.fake_share_network)
+        fake_share_network['status'] = constants.STATUS_NETWORK_CHANGE
+        self.mock_object(share_replicas.db, 'share_replica_get',
+                         mock.Mock(return_value=replica))
+        self.mock_object(share_replicas.db, 'share_network_get',
+                         mock.Mock(return_value=fake_share_network))
+
+        self.assertRaises(exc.HTTPBadRequest,
+                          self.controller.promote,
+                          self.replicas_req,
+                          replica['id'],
+                          body)
+        self.mock_policy_check.assert_called_once_with(
+            self.member_context, self.resource_name, 'promote')
+
     def test_promote_admin_required_exception(self):
         body = {'promote': None}
         replica, expected_replica = self._get_fake_replica(
             replica_state=constants.REPLICA_STATE_IN_SYNC)
         self.mock_object(share_replicas.db, 'share_replica_get',
                          mock.Mock(return_value=replica))
+        self.mock_object(share_replicas.db, 'share_network_get',
+                         mock.Mock(return_value=self.fake_share_network))
         mock_api_promote_replica_call = self.mock_object(
             share.API, 'promote_share_replica',
             mock.Mock(side_effect=exception.AdminRequired))
@@ -549,6 +605,8 @@ class ShareReplicasApiTest(test.TestCase):
             microversion=microversion)
         self.mock_object(share_replicas.db, 'share_replica_get',
                          mock.Mock(return_value=replica))
+        self.mock_object(share_replicas.db, 'share_network_get',
+                         mock.Mock(return_value=self.fake_share_network))
         mock_api_promote_replica_call = self.mock_object(
             share.API, 'promote_share_replica',
             mock.Mock(return_value=replica))

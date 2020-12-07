@@ -140,6 +140,7 @@ class DummyDriver(driver.ShareDriver):
         self.backend_name = self.configuration.safe_get(
             "share_backend_name") or "DummyDriver"
         self.migration_progress = {}
+        self.security_service_update_support = True
 
     def _verify_configuration(self):
         allowed_driver_methods = [m for m in dir(self) if m[0] != '_']
@@ -852,3 +853,34 @@ class DummyDriver(driver.ShareDriver):
             'export_locations': self.private_storage.get(share['id'],
                                                          key='export_location')
         }
+
+    @slow_me_down
+    def update_share_server_security_service(self, context, share_server,
+                                             network_info, share_instances,
+                                             share_instance_rules,
+                                             new_security_service,
+                                             current_security_service=None):
+        if current_security_service:
+            msg = _("Replacing security service %(cur_sec_serv_id)s by "
+                    "security service %(new_sec_serv_id)s on share server "
+                    "%(server_id)s."
+                    ) % {
+                'cur_sec_serv_id': current_security_service['id'],
+                'new_sec_serv_id': new_security_service['id'],
+                'server_id': share_server['id']
+            }
+        else:
+            msg = _("Adding security service %(sec_serv_id)s on share server "
+                    "%(server_id)s."
+                    ) % {
+                'sec_serv_id': new_security_service['id'],
+                'server_id': share_server['id']
+            }
+
+        LOG.debug(msg)
+
+    def check_update_share_server_security_service(
+            self, context, share_server, network_info, share_instances,
+            share_instance_rules, new_security_service,
+            current_security_service=None):
+        return True

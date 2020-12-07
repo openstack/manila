@@ -945,6 +945,31 @@ class ShareDriverTestCase(test.TestCase):
         self.assertIsNone(share_group_update)
         self.assertEqual(expected_share_updates, share_update)
 
+    def test_update_share_server_security_service(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        self.assertRaises(NotImplementedError,
+                          share_driver.update_share_server_security_service,
+                          'fake_context',
+                          {'id', 'share_server_id'},
+                          {'fake', 'fake_net_info'},
+                          [{"id": "fake_instance_id"}],
+                          [{"id": "fake_rule_id"}],
+                          {'id', 'fake_sec_service_id'},
+                          current_security_service=None)
+
+    def test_check_update_share_server_security_service(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        self.assertRaises(
+            NotImplementedError,
+            share_driver.check_update_share_server_security_service,
+            'fake_context',
+            {'id', 'share_server_id'},
+            {'fake', 'fake_net_info'},
+            [{"id": "fake_instance_id"}],
+            [{"id": "fake_rule_id"}],
+            {'id', 'fake_sec_service_id'},
+            current_security_service=None)
+
     def test_create_share_group_from_sg_snapshot_with_no_members(self):
         share_driver = self._instantiate_share_driver(None, False)
         fake_share_group_dict = {}

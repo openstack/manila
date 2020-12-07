@@ -57,7 +57,22 @@ deprecated_share_network_get_all = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get_all_share_networks',
     check_str=base.RULE_ADMIN_API
 )
-
+deprecated_share_network_add_security_service_check = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'add_security_service_check',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_network_update_security_service = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update_security_service',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_network_update_security_service_check = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update_security_service_check',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_network_reset_status = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'reset_status',
+    check_str=base.RULE_ADMIN_API
+)
 
 share_network_policies = [
     policy.DocumentedRuleDefault(
@@ -174,6 +189,22 @@ share_network_policies = [
         deprecated_since=versionutils.deprecated.WALLABY
     ),
     policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'add_security_service_check',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Check the feasibility of add security service to a share "
+                    "network.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-networks/{share_network_id}/action'
+            }
+        ],
+        deprecated_rule=deprecated_share_network_add_security_service_check,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
+    policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'remove_security_service',
         check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         scope_types=['system', 'project'],
@@ -185,6 +216,52 @@ share_network_policies = [
             }
         ],
         deprecated_rule=deprecated_share_network_remove_security_service,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'update_security_service',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Update security service from share network.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-networks/{share_network_id}/action'
+            }
+        ],
+        deprecated_rule=deprecated_share_network_update_security_service,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'update_security_service_check',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Check the feasibility of update a security service from "
+                    "share network.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-networks/{share_network_id}/action'
+            }
+        ],
+        deprecated_rule=deprecated_share_network_update_security_service_check,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'reset_status',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
+        description="Reset share network`s status.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-networks/{share_network_id}/action'
+            }
+        ],
+        deprecated_rule=deprecated_share_network_reset_status,
         deprecated_reason=DEPRECATED_REASON,
         deprecated_since=versionutils.deprecated.WALLABY
     ),

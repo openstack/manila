@@ -78,6 +78,10 @@ HOST_UPDATE_HELP_MSG = ("A fully qualified host string is of the format "
 HOST_UPDATE_CURRENT_HOST_HELP = ("Current share host name. %s" %
                                  HOST_UPDATE_HELP_MSG)
 HOST_UPDATE_NEW_HOST_HELP = "New share host name. %s" % HOST_UPDATE_HELP_MSG
+SHARE_SERVERS_UPDATE_HELP = ("List of share servers to be updated, separated "
+                             "by commas.")
+SHARE_SERVERS_UPDATE_CAPABILITIES_HELP = (
+    "List of share server capabilities to be updated, separated by commas.")
 
 
 # Decorators for actions
@@ -399,6 +403,42 @@ class ShareCommands(object):
         print(msg % msg_args)
 
 
+class ShareServerCommands(object):
+    @args('--share_servers', required=True,
+          help=SHARE_SERVERS_UPDATE_HELP)
+    @args('--capabilities', required=True,
+          help=SHARE_SERVERS_UPDATE_CAPABILITIES_HELP)
+    @args('--value', required=False, type=bool, default=False,
+          help="If those capabilities will be enabled (True) or disabled "
+               "(False)")
+    def update_share_server_capabilities(self, share_servers, capabilities,
+                                         value=False):
+        """Update the share server capabilities.
+
+           This method receives a list of share servers and capabilities
+           in order to have it updated with the value specified. If the value
+           was not specified the default is False.
+        """
+        share_servers = [server.strip() for server in share_servers.split(",")]
+        capabilities = [cap.strip() for cap in capabilities.split(",")]
+        supported_capabilities = ['security_service_update_support']
+
+        values = dict()
+        for capability in capabilities:
+            if capability not in supported_capabilities:
+                print("One or more capabilities are invalid for this "
+                      "operation. The supported capability(ies) is(are) %s."
+                      % supported_capabilities)
+                sys.exit(1)
+            values[capability] = value
+
+        ctxt = context.get_admin_context()
+        db.share_servers_update(ctxt, share_servers, values)
+        print("The capability(ies) %s of the following share server(s)"
+              " %s was(were) updated to %s." %
+              (capabilities, share_servers, value))
+
+
 CATEGORIES = {
     'config': ConfigCommands,
     'db': DbCommands,
@@ -406,6 +446,7 @@ CATEGORIES = {
     'logs': GetLogCommands,
     'service': ServiceCommands,
     'share': ShareCommands,
+    'share_server': ShareServerCommands,
     'shell': ShellCommands,
     'version': VersionCommands
 }

@@ -188,7 +188,8 @@ class Share(BASE, ManilaBase):
     __tablename__ = 'shares'
     _extra_keys = ['name', 'export_location', 'export_locations', 'status',
                    'host', 'share_server_id', 'share_network_id',
-                   'availability_zone', 'access_rules_status', 'share_type_id']
+                   'availability_zone', 'access_rules_status', 'share_type_id',
+                   'share_network_status']
 
     @property
     def name(self):
@@ -227,7 +228,8 @@ class Share(BASE, ManilaBase):
     def __getattr__(self, item):
         proxified_properties = ('status', 'host', 'share_server_id',
                                 'share_network_id', 'availability_zone',
-                                'share_type_id', 'share_type')
+                                'share_type_id', 'share_type',
+                                'share_network_status')
 
         if item in proxified_properties:
             return getattr(self.instance, item, None)
@@ -920,6 +922,10 @@ class ShareNetwork(BASE, ManilaBase):
     user_id = Column(String(255), nullable=False)
     name = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)
+    status = Column(Enum(
+        constants.STATUS_NETWORK_ACTIVE, constants.STATUS_NETWORK_ERROR,
+        constants.STATUS_NETWORK_CHANGE),
+        default=constants.STATUS_NETWORK_ACTIVE)
     security_services = orm.relationship(
         "SecurityService",
         secondary="share_network_security_service_association",
@@ -935,7 +941,7 @@ class ShareNetwork(BASE, ManilaBase):
         'SecurityService.deleted == "False")')
     share_instances = orm.relationship(
         "ShareInstance",
-        backref='share_network',
+        backref=orm.backref('share_network'),
         primaryjoin='and_('
                     'ShareNetwork.id == ShareInstance.share_network_id,'
                     'ShareInstance.deleted == "False")')
@@ -946,6 +952,18 @@ class ShareNetwork(BASE, ManilaBase):
         primaryjoin='and_'
                     '(ShareNetwork.id == ShareNetworkSubnet.share_network_id,'
                     'ShareNetworkSubnet.deleted == "False")')
+
+    @property
+    def security_service_update_support(self):
+        share_servers_support_updating = []
+        for network_subnet in self.share_network_subnets:
+            for server in network_subnet['share_servers']:
+                share_servers_support_updating.append(
+                    server['security_service_update_support'])
+        # NOTE(carloss): all share servers within this share network must
+        # support updating security services in order to have this property
+        # set to True.
+        return all(share_servers_support_updating)
 
 
 class ShareNetworkSubnet(BASE, ManilaBase):
@@ -998,6 +1016,10 @@ class ShareNetworkSubnet(BASE, ManilaBase):
     def share_network_name(self):
         return self.share_network['name']
 
+    @property
+    def share_network_status(self):
+        return self.share_network['status']
+
 
 class ShareServer(BASE, ManilaBase):
     """Represents share server used by share."""
@@ -1013,6 +1035,8 @@ class ShareServer(BASE, ManilaBase):
     task_state = Column(String(255), nullable=True)
     source_share_server_id = Column(String(36), ForeignKey('share_servers.id'),
                                     nullable=True)
+    security_service_update_support = Column(
+        Boolean, nullable=False, default=False)
     status = Column(Enum(
         constants.STATUS_INACTIVE, constants.STATUS_ACTIVE,
         constants.STATUS_ERROR, constants.STATUS_DELETING,
@@ -1020,7 +1044,8 @@ class ShareServer(BASE, ManilaBase):
         constants.STATUS_MANAGING, constants.STATUS_UNMANAGING,
         constants.STATUS_UNMANAGE_ERROR, constants.STATUS_MANAGE_ERROR,
         constants.STATUS_SERVER_MIGRATING,
-        constants.STATUS_SERVER_MIGRATING_TO),
+        constants.STATUS_SERVER_MIGRATING_TO,
+        constants.STATUS_SERVER_NETWORK_CHANGE),
         default=constants.STATUS_INACTIVE)
     network_allocations = orm.relationship(
         "NetworkAllocation",
@@ -1052,6 +1077,10 @@ class ShareServer(BASE, ManilaBase):
     def backend_details(self):
         return {model['key']: model['value']
                 for model in self._backend_details}
+
+    @property
+    def share_network_status(self):
+        return self.share_network_subnet['share_network']['status']
 
     _extra_keys = ['backend_details']
 
@@ -1307,6 +1336,14 @@ class BackendInfo(BASE, ManilaBase):
     __tablename__ = "backend_info"
     host = Column(String(255), primary_key=True)
     info_hash = Column(String(255))
+
+
+class AsynchronousOperationData(BASE, ManilaBase):
+    """Represents data as key-value pairs for asynchronous operations."""
+    __tablename__ = 'async_operation_data'
+    entity_uuid = Column(String(36), nullable=False, primary_key=True)
+    key = Column(String(255), nullable=False, primary_key=True)
+    value = Column(String(1023), nullable=False)
 
 
 def register_models():

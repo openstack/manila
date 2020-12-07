@@ -165,13 +165,19 @@ REST_API_VERSION_HISTORY = """
              which can add minimum and maximum share size restrictions
              on a per share-type granularity.
     * 2.62 - Added quota control to per share size.
+    * 2.63 - Changed the existing behavior of 'add_security_service' action on
+             the share network's endpoint to allow the addition of security
+             services, even when the share network is in use. Also, added new
+             actions on the share network's endpoint:
+             'update_security_service', 'update_security_service_check' and
+             'add_security_service_check'.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.62"
+_MAX_API_VERSION = "2.63"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

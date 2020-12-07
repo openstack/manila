@@ -3848,6 +3848,21 @@ def share_network_add_security_service(context, id, security_service_id):
 
 
 @require_context
+def share_network_security_service_association_get(
+        context, share_network_id, security_service_id):
+    session = get_session()
+
+    with session.begin():
+        association = (model_query(
+            context,
+            models.ShareNetworkSecurityServiceAssociation,
+            session=session).filter_by(
+                share_network_id=share_network_id).filter_by(
+                    security_service_id=security_service_id).first())
+        return association
+
+
+@require_context
 def share_network_remove_security_service(context, id, security_service_id):
     session = get_session()
 
@@ -3872,6 +3887,43 @@ def share_network_remove_security_service(context, id, security_service_id):
                 reason=msg)
 
     return share_nw_ref
+
+
+@require_context
+def share_network_update_security_service(context, id,
+                                          current_security_service_id,
+                                          new_security_service_id):
+    session = get_session()
+
+    with session.begin():
+        share_nw_ref = share_network_get(context, id, session=session)
+        # Check if the old security service exists
+        security_service_get(context, current_security_service_id,
+                             session=session)
+        new_security_service_ref = security_service_get(
+            context, new_security_service_id, session=session)
+
+        assoc_ref = (model_query(
+            context,
+            models.ShareNetworkSecurityServiceAssociation,
+            session=session).filter_by(
+            share_network_id=id).filter_by(
+            security_service_id=current_security_service_id).first())
+
+        if assoc_ref:
+            assoc_ref.soft_delete(session)
+        else:
+            msg = "No association defined"
+            raise exception.ShareNetworkSecurityServiceDissociationError(
+                share_network_id=id,
+                security_service_id=current_security_service_id,
+                reason=msg)
+
+        # Add new association
+        share_nw_ref.security_services += [new_security_service_ref]
+        share_nw_ref.save(session=session)
+
+        return share_nw_ref
 
 
 @require_context
@@ -4117,7 +4169,10 @@ def share_server_get_all_with_filters(context, filters):
     if filters.get('source_share_server_id'):
         query = query.filter_by(
             source_share_server_id=filters.get('source_share_server_id'))
-
+    if filters.get('share_network_id'):
+        query = query.filter(
+            models.ShareNetworkSubnet.share_network_id ==
+            filters.get('share_network_id'))
     return query.all()
 
 
@@ -4175,6 +4230,20 @@ def share_server_backend_details_delete(context, share_server_id,
                             .filter_by(share_server_id=share_server_id).all())
     for item in share_server_details:
         item.soft_delete(session)
+
+
+@require_context
+def share_servers_update(
+        context, share_server_ids, values, session=None):
+    session = session or get_session()
+
+    result = (
+        model_query(
+            context, models.ShareServer, read_deleted="no",
+            session=session).filter(
+            models.ShareServer.id.in_(share_server_ids)).update(
+            values, synchronize_session=False))
+    return result
 
 
 ###################
@@ -5775,3 +5844,92 @@ def _backend_info_query(session, context, host, read_deleted=False):
     ).first()
 
     return result
+
+###################
+
+
+def _async_operation_data_query(session, context, entity_id, key=None,
+                                read_deleted=False):
+    query = model_query(
+        context, models.AsynchronousOperationData, session=session,
+        read_deleted=read_deleted,
+    ).filter_by(
+        entity_uuid=entity_id,
+    )
+
+    if isinstance(key, list):
+        return query.filter(models.AsynchronousOperationData.key.in_(key))
+    elif key is not None:
+        return query.filter_by(key=key)
+
+    return query
+
+
+@require_context
+def async_operation_data_get(context, entity_id, key=None,
+                             default=None, session=None):
+    if not session:
+        session = get_session()
+
+    query = _async_operation_data_query(session, context, entity_id, key)
+
+    if key is None or isinstance(key, list):
+        return {item.key: item.value for item in query.all()}
+    else:
+        result = query.first()
+        return result["value"] if result is not None else default
+
+
+@require_context
+def async_operation_data_update(context, entity_id, details,
+                                delete_existing=False, session=None):
+    new_details = copy.deepcopy(details)
+
+    if not session:
+        session = get_session()
+
+    with session.begin():
+        # Process existing data
+        original_data = session.query(
+            models.AsynchronousOperationData).filter_by(
+            entity_uuid=entity_id).all()
+
+        for data_ref in original_data:
+            in_new_details = data_ref['key'] in new_details
+
+            if in_new_details:
+                new_value = str(new_details.pop(data_ref['key']))
+                data_ref.update({
+                    "value": new_value,
+                    "deleted": 0,
+                    "deleted_at": None
+                })
+                data_ref.save(session=session)
+            elif delete_existing and data_ref['deleted'] != 1:
+                data_ref.update({
+                    "deleted": 1, "deleted_at": timeutils.utcnow()
+                })
+                data_ref.save(session=session)
+
+        # Add new data
+        for key, value in new_details.items():
+            data_ref = models.AsynchronousOperationData()
+            data_ref.update({
+                "entity_uuid": entity_id,
+                "key": key,
+                "value": str(value)
+            })
+            data_ref.save(session=session)
+
+        return details
+
+
+@require_context
+def async_operation_data_delete(context, entity_id, key=None, session=None):
+    if not session:
+        session = get_session()
+
+    with session.begin():
+        query = _async_operation_data_query(session, context,
+                                            entity_id, key)
+        query.update({"deleted": 1, "deleted_at": timeutils.utcnow()})

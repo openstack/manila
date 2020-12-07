@@ -251,7 +251,7 @@ def create_share_network(**kwargs):
     net = {
         'user_id': 'fake',
         'project_id': 'fake',
-        'status': 'new',
+        'status': 'active',
         'name': 'whatever',
         'description': 'fake description',
     }

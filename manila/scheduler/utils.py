@@ -57,6 +57,8 @@ def generate_stats(host_state, properties):
             host_state.sg_consistent_snapshot_support),
         'ipv4_support': host_state.ipv4_support,
         'ipv6_support': host_state.ipv6_support,
+        'security_service_update_support': (
+            host_state.security_service_update_support)
     }
 
     host_caps = host_state.capabilities

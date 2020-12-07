@@ -23,6 +23,7 @@ import ddt
 from oslo_config import cfg
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
+from webob import exc as webob_exc
 
 from manila.common import constants
 from manila import context
@@ -1098,6 +1099,7 @@ class ShareAPITestCase(test.TestCase):
         share_server = db_utils.create_share_server(
             status=constants.STATUS_ACTIVE, id=share_server_id,
             share_network_subnet_id=fake_subnet['id'])
+        share_network = db_utils.create_share_network(id='fake')
         fake_share_data = {
             'id': 'fakeid',
             'status': constants.STATUS_CREATING,
@@ -1130,6 +1132,8 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(return_value=fake_subnet))
         self.mock_object(db_api, 'share_instances_get_all',
                          mock.Mock(return_value=[]))
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value=share_network))
 
         self.api.manage(self.context, copy.deepcopy(share_data),
                         driver_options)
@@ -5663,6 +5667,262 @@ class ShareAPITestCase(test.TestCase):
 
         self.api.share_rpcapi.migration_get_progress.assert_called_once_with(
             self.context, instance1, instance2['id'])
+
+    def test__share_network_update_initial_checks_network_not_active(self):
+        share_network = db_utils.create_share_network(
+            status=constants.STATUS_NETWORK_CHANGE)
+        new_sec_service = db_utils.create_security_service(
+            share_network_id=share_network['id'], type='ldap')
+
+        self.assertRaises(
+            webob_exc.HTTPBadRequest,
+            self.api._share_network_update_initial_checks,
+            self.context, share_network, new_sec_service
+        )
+
+    def test__share_network_update_initial_checks_server_not_active(self):
+        db_utils.create_share_server(
+            share_network_subnet_id='fakeid', status=constants.STATUS_ERROR,
+            security_service_update_support=True)
+        db_utils.create_share_network_subnet(
+            id='fakeid', share_network_id='fakenetid')
+        share_network = db_utils.create_share_network(id='fakenetid')
+        new_sec_service = db_utils.create_security_service(
+            share_network_id='fakenetid', type='ldap')
+
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api._share_network_update_initial_checks,
+            self.context, share_network, new_sec_service,
+        )
+
+    def test__share_network_update_initial_checks_shares_not_available(self):
+        db_utils.create_share_server(share_network_subnet_id='fakeid',
+                                     security_service_update_support=True)
+        db_utils.create_share_network_subnet(
+            id='fakeid', share_network_id='fake_network_id')
+        share_network = db_utils.create_share_network(
+            id='fake_network_id')
+        new_sec_service = db_utils.create_security_service(
+            share_network_id='fake_network_id', type='ldap')
+        shares = [db_utils.create_share(status=constants.STATUS_ERROR)]
+
+        self.mock_object(utils, 'validate_service_host')
+        self.mock_object(
+            self.api, 'get_all', mock.Mock(return_value=shares))
+
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api._share_network_update_initial_checks,
+            self.context, share_network, new_sec_service
+        )
+        utils.validate_service_host.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), 'host1')
+        self.api.get_all.assert_called_once_with(
+            self.context,
+            search_opts={'share_network_id': share_network['id']})
+
+    def test__share_network_update_initial_checks_rules_in_error(self):
+        db_utils.create_share_server(share_network_subnet_id='fakeid',
+                                     security_service_update_support=True)
+        db_utils.create_share_network_subnet(
+            id='fakeid', share_network_id='fake_network_id')
+        share_network = db_utils.create_share_network(
+            id='fake_network_id')
+        new_sec_service = db_utils.create_security_service(
+            share_network_id='fake_network_id', type='ldap')
+        shares = [db_utils.create_share(status=constants.STATUS_AVAILABLE)]
+        shares[0]['instance']['access_rules_status'] = (
+            constants.ACCESS_STATE_ERROR)
+
+        self.mock_object(utils, 'validate_service_host')
+        self.mock_object(
+            self.api, 'get_all', mock.Mock(return_value=shares))
+
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api._share_network_update_initial_checks,
+            self.context, share_network, new_sec_service
+        )
+        utils.validate_service_host.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), 'host1')
+        self.api.get_all.assert_called_once_with(
+            self.context,
+            search_opts={'share_network_id': share_network['id']})
+
+    def test__share_network_update_initial_checks_share_is_busy(self):
+        db_utils.create_share_server(share_network_subnet_id='fakeid',
+                                     security_service_update_support=True)
+        db_utils.create_share_network_subnet(
+            id='fakeid', share_network_id='fake_net_id')
+        share_network = db_utils.create_share_network(id='fake_net_id')
+        new_sec_service = db_utils.create_security_service(
+            share_network_id='fake_net_id', type='ldap')
+        shares = [db_utils.create_share(status=constants.STATUS_AVAILABLE)]
+
+        self.mock_object(utils, 'validate_service_host')
+        self.mock_object(
+            self.api, 'get_all', mock.Mock(return_value=shares))
+        self.mock_object(
+            self.api, '_check_is_share_busy',
+            mock.Mock(side_effect=exception.ShareBusyException(message='fake'))
+        )
+
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api._share_network_update_initial_checks,
+            self.context, share_network, new_sec_service
+        )
+        utils.validate_service_host.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), 'host1')
+        self.api.get_all.assert_called_once_with(
+            self.context,
+            search_opts={'share_network_id': share_network['id']})
+        self.api._check_is_share_busy.assert_called_once_with(shares[0])
+
+    def test__share_network_update_initial_checks_unsupported_server(self):
+        db_utils.create_share_server(share_network_subnet_id='fakeid',
+                                     security_service_update_support=False)
+        db_utils.create_share_network_subnet(
+            id='fakeid', share_network_id='fake_net_id')
+        share_network = db_utils.create_share_network(id='fake_net_id')
+
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api._share_network_update_initial_checks,
+            self.context, share_network, None
+        )
+
+    def test__share_network_update_initial_checks_update_different_types(self):
+        db_utils.create_share_server(share_network_subnet_id='fakeid',
+                                     security_service_update_support=True)
+        db_utils.create_share_network_subnet(
+            id='fakeid', share_network_id='fake_net_id')
+        share_network = db_utils.create_share_network(id='fake_net_id')
+        new_sec_service = db_utils.create_security_service(
+            share_network_id='fake_net_id', type='ldap')
+        curr_sec_service = db_utils.create_security_service(
+            share_network_id='fake_net_id', type='kerberos')
+
+        self.assertRaises(
+            exception.InvalidSecurityService,
+            self.api._share_network_update_initial_checks,
+            self.context, share_network, new_sec_service,
+            current_security_service=curr_sec_service
+        )
+
+    def test__share_network_update_initial_checks_add_type_conflict(self):
+        db_utils.create_share_server(share_network_subnet_id='fakeid',
+                                     security_service_update_support=True)
+        db_utils.create_share_network_subnet(
+            id='fakeid', share_network_id='fake_net_id')
+        share_network = db_utils.create_share_network(id='fake_net_id')
+        db_utils.create_security_service(
+            share_network_id='fake_net_id', type='ldap')
+        share_network = db_api.share_network_get(self.context,
+                                                 share_network['id'])
+        new_sec_service = db_utils.create_security_service(
+            share_network_id='fake_net_id', type='ldap')
+
+        self.assertRaises(
+            exception.InvalidSecurityService,
+            self.api._share_network_update_initial_checks,
+            self.context, share_network, new_sec_service,
+        )
+
+    def test_update_share_network_security_service_backend_host_failure(self):
+        share_network = db_utils.create_share_network()
+        security_service = db_utils.create_security_service()
+        backend_host = 'fakehost'
+
+        mock_initial_checks = self.mock_object(
+            self.api, '_share_network_update_initial_checks',
+            mock.Mock(return_value=(['fake_server'], [backend_host])))
+        mock_get_update_key = self.mock_object(
+            self.api, 'get_security_service_update_key',
+            mock.Mock(return_value='fake_key'))
+        mock_db_async_op = self.mock_object(
+            db_api, 'async_operation_data_get',
+            mock.Mock(return_value='fake_update_value'))
+        mock_validate_host = self.mock_object(
+            self.api, '_security_service_update_validate_hosts',
+            mock.Mock(return_value=(False, None)))
+
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api.update_share_network_security_service,
+            self.context, share_network, security_service)
+
+        mock_initial_checks.assert_called_once_with(
+            self.context, share_network, security_service,
+            current_security_service=None)
+        mock_db_async_op.assert_called_once_with(
+            self.context, share_network['id'], 'fake_key')
+        mock_get_update_key.assert_called_once_with(
+            'hosts_check', security_service['id'],
+            current_security_service_id=None)
+        mock_validate_host.assert_called_once_with(
+            self.context, share_network, [backend_host], ['fake_server'],
+            new_security_service_id=security_service['id'],
+            current_security_service_id=None)
+
+    def test_update_share_network_security_service(self):
+        share_network = db_utils.create_share_network()
+        security_service = db_utils.create_security_service()
+        backend_hosts = ['fakehost']
+        fake_update_key = 'fake_key'
+        servers = [
+            db_utils.create_share_server() for i in range(2)]
+        server_ids = [server['id'] for server in servers]
+
+        mock_initial_checks = self.mock_object(
+            self.api, '_share_network_update_initial_checks',
+            mock.Mock(return_value=(servers, backend_hosts)))
+        mock_get_update_key = self.mock_object(
+            self.api, 'get_security_service_update_key',
+            mock.Mock(return_value=fake_update_key))
+        mock_db_async_op = self.mock_object(
+            db_api, 'async_operation_data_get',
+            mock.Mock(return_value='fake_update_value'))
+        mock_validate_host = self.mock_object(
+            self.api, '_security_service_update_validate_hosts',
+            mock.Mock(return_value=(True, None)))
+        mock_network_update = self.mock_object(
+            db_api, 'share_network_update')
+        mock_servers_update = self.mock_object(
+            db_api, 'share_servers_update')
+        mock_update_security_services = self.mock_object(
+            self.share_rpcapi, 'update_share_network_security_service')
+        mock_db_async_op_del = self.mock_object(
+            db_api, 'async_operation_data_delete',)
+
+        self.api.update_share_network_security_service(
+            self.context, share_network, security_service)
+
+        mock_initial_checks.assert_called_once_with(
+            self.context, share_network, security_service,
+            current_security_service=None)
+        mock_db_async_op.assert_called_once_with(
+            self.context, share_network['id'], fake_update_key)
+        mock_get_update_key.assert_called_once_with(
+            'hosts_check', security_service['id'],
+            current_security_service_id=None)
+        mock_validate_host.assert_called_once_with(
+            self.context, share_network, backend_hosts, servers,
+            new_security_service_id=security_service['id'],
+            current_security_service_id=None)
+        mock_network_update.assert_called_once_with(
+            self.context, share_network['id'],
+            {'status': constants.STATUS_NETWORK_CHANGE})
+        mock_servers_update.assert_called_once_with(
+            self.context, server_ids,
+            {'status': constants.STATUS_SERVER_NETWORK_CHANGE}
+        )
+        mock_update_security_services.assert_called_once_with(
+            self.context, backend_hosts[0], share_network['id'],
+            security_service['id'], current_security_service_id=None)
+        mock_db_async_op_del.assert_called_once_with(
+            self.context, share_network['id'], fake_update_key)
 
 
 class OtherTenantsShareActionsTestCase(test.TestCase):

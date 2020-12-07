@@ -242,6 +242,10 @@ class ShareServerNotFoundByFilters(ShareServerNotFound):
                 "filters: %(filters_description)s.")
 
 
+class InvalidShareNetwork(Invalid):
+    message = _("Invalid share network: %(reason)s")
+
+
 class ShareServerInUse(InUse):
     message = _("Share server %(share_server_id)s is in use.")
 
@@ -595,6 +599,10 @@ class InvalidMetadataSize(Invalid):
 
 class SecurityServiceNotFound(NotFound):
     message = _("Security service %(security_service_id)s could not be found.")
+
+
+class InvalidSecurityService(Invalid):
+    message = _("Invalid security service: %(reason)s")
 
 
 class ShareNetworkSecurityServiceAssociationError(ManilaException):

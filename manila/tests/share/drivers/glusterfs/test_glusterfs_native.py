@@ -268,6 +268,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'goodness_function': None,
             'ipv4_support': True,
             'ipv6_support': False,
+            'security_service_update_support': False,
         }
         self.assertEqual(test_data, self._driver._stats)
 

@@ -142,6 +142,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         data['ipv6_support'] = False
         data['max_shares_per_share_server'] = -1
         data['max_share_server_size'] = -1
+        data['security_service_update_support'] = False
         self.assertEqual(data, self.driver._stats)
 
     def _fake_safe_get(self, value):

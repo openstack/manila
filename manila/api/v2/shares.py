@@ -18,6 +18,7 @@ from six.moves import http_client
 import webob
 from webob import exc
 
+from manila.api import common
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.v1 import share_manage
@@ -256,6 +257,13 @@ class ShareController(shares.ShareMixin,
                 msg = _("Share network %s not "
                         "found.") % new_share_network_id
                 raise exc.HTTPBadRequest(explanation=msg)
+            common.check_share_network_is_active(new_share_network)
+        else:
+            share_network_id = share.get('share_network_id', None)
+            if share_network_id:
+                current_share_network = db.share_network_get(
+                    context, share_network_id)
+                common.check_share_network_is_active(current_share_network)
 
         new_share_type_id = params.get('new_share_type_id', None)
         if new_share_type_id:

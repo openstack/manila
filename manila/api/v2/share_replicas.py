@@ -162,6 +162,10 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         share_network_id = share_ref.get('share_network_id', None)
 
+        if share_network_id:
+            share_network = db.share_network_get(context, share_network_id)
+            common.check_share_network_is_active(share_network)
+
         try:
             new_replica = self.share_api.create_share_replica(
                 context, share_ref, availability_zone=availability_zone,
@@ -225,6 +229,11 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         except exception.ShareReplicaNotFound:
             msg = _("No replica exists with ID %s.")
             raise exc.HTTPNotFound(explanation=msg % id)
+
+        share_network_id = replica.get('share_network_id')
+        if share_network_id:
+            share_network = db.share_network_get(context, share_network_id)
+            common.check_share_network_is_active(share_network)
 
         replica_state = replica.get('replica_state')
 

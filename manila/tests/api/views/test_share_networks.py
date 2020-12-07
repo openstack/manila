@@ -62,6 +62,9 @@ class ViewBuilderTestCase(test.TestCase):
                                     <= api_version.APIVersionRequest('2.49'))
         subnets_support = (api_version.APIVersionRequest(microversion) >
                            api_version.APIVersionRequest('2.49'))
+        status_and_sec_serv_update = (
+            api_version.APIVersionRequest(microversion) >=
+            api_version.APIVersionRequest('2.63'))
         req = fakes.HTTPRequest.blank('/share-networks', version=microversion)
         expected_keys = {
             'id', 'name', 'project_id', 'created_at', 'updated_at',
@@ -80,6 +83,8 @@ class ViewBuilderTestCase(test.TestCase):
                 expected_keys.add('mtu')
             if nova_net_support:
                 expected_keys.add('nova_net_id')
+        if status_and_sec_serv_update:
+            expected_keys.update({'status', 'security_service_update_support'})
 
         result = self.builder.build_share_network(req, share_network_data)
         self.assertEqual(1, len(result))
@@ -129,6 +134,9 @@ class ViewBuilderTestCase(test.TestCase):
                                     <= api_version.APIVersionRequest('2.49'))
         subnets_support = (api_version.APIVersionRequest(microversion) >
                            api_version.APIVersionRequest('2.49'))
+        status_and_sec_serv_update = (
+            api_version.APIVersionRequest(microversion) >=
+            api_version.APIVersionRequest('2.63'))
         req = fakes.HTTPRequest.blank('/share-networks', version=microversion)
         expected_networks_list = []
         for share_network in share_networks:
@@ -166,6 +174,13 @@ class ViewBuilderTestCase(test.TestCase):
                 if nova_net_support:
                     share_network.update({'nova_net_id': 'fake_nova_net_id'})
                     expected_data.update({'nova_net_id': None})
+            if status_and_sec_serv_update:
+                share_network.update(
+                    {'status': 'active',
+                     'security_service_update_support': False})
+                expected_data.update(
+                    {'status': 'active',
+                     'security_service_update_support': False})
             expected_networks_list.append(expected_data)
         expected = {'share_networks': expected_networks_list}
 

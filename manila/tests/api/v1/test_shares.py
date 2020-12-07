@@ -228,6 +228,7 @@ class ShareAPITest(test.TestCase):
             "availability_zone": "zone1:host1",
             "share_network_id": "fakenetid"
         }
+        fake_network = {'id': 'fakenetid'}
         create_mock = mock.Mock(return_value=stubs.stub_share('1',
                                 display_name=shr['name'],
                                 display_description=shr['description'],
@@ -237,7 +238,9 @@ class ShareAPITest(test.TestCase):
                                 share_network_id=shr['share_network_id']))
         self.mock_object(share_api.API, 'create', create_mock)
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
-            return_value={'id': 'fakenetid'}))
+            return_value=fake_network))
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
         self.mock_object(
             db, 'share_network_subnet_get_by_availability_zone_id',
             mock.Mock(return_value={'id': 'fakesubnetid'}))
@@ -250,10 +253,49 @@ class ShareAPITest(test.TestCase):
             req.environ['manila.context'], self.resource_name, 'create')
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
+        common.check_share_network_is_active.assert_called_once_with(
+            fake_network)
         self.assertEqual(expected, res_dict)
         # pylint: disable=unsubscriptable-object
         self.assertEqual("fakenetid",
                          create_mock.call_args[1]['share_network_id'])
+
+    def test_share_create_with_share_net_not_active(self):
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "share_network_id": "fakenetid"
+        }
+        share_network = db_utils.create_share_network(
+            status=constants.STATUS_NETWORK_CHANGE)
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=shr['size'],
+                                share_proto=shr['share_proto'].upper(),
+                                availability_zone=shr['availability_zone'],
+                                share_network_id=shr['share_network_id']))
+        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'get_share_network', mock.Mock(
+            return_value=share_network))
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(side_effect=webob.exc.HTTPBadRequest()))
+
+        body = {"share": copy.deepcopy(shr)}
+        req = fakes.HTTPRequest.blank('/shares')
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.create,
+            req,
+            body)
+
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
+        common.check_share_network_is_active.assert_called_once_with(
+            share_network)
 
     def test_share_create_from_snapshot_without_share_net_no_parent(self):
         shr = {
@@ -296,6 +338,7 @@ class ShareAPITest(test.TestCase):
             "share_network_id": None,
         }
         parent_share_net = 444
+        fake_share_net = {'id': parent_share_net}
         create_mock = mock.Mock(return_value=stubs.stub_share('1',
                                 display_name=shr['name'],
                                 display_description=shr['description'],
@@ -314,7 +357,9 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'get', mock.Mock(
             return_value=parent_share))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
-            return_value={'id': parent_share_net}))
+            return_value=fake_share_net))
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
         self.mock_object(
             db, 'share_network_subnet_get_by_availability_zone_id')
 
@@ -327,6 +372,8 @@ class ShareAPITest(test.TestCase):
             req.environ['manila.context'], self.resource_name, 'create')
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
+        common.check_share_network_is_active.assert_called_once_with(
+            fake_share_net)
         self.assertEqual(expected, res_dict)
         # pylint: disable=unsubscriptable-object
         self.assertEqual(parent_share_net,
@@ -343,6 +390,7 @@ class ShareAPITest(test.TestCase):
             "snapshot_id": 333,
             "share_network_id": parent_share_net
         }
+        fake_share_net = {'id': parent_share_net}
         create_mock = mock.Mock(return_value=stubs.stub_share('1',
                                 display_name=shr['name'],
                                 display_description=shr['description'],
@@ -355,13 +403,15 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'create', create_mock)
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
         parent_share = stubs.stub_share(
             '1', instance={'share_network_id': parent_share_net},
             create_share_from_snapshot_support=True)
         self.mock_object(share_api.API, 'get', mock.Mock(
             return_value=parent_share))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
-            return_value={'id': parent_share_net}))
+            return_value=fake_share_net))
         self.mock_object(
             db, 'share_network_subnet_get_by_availability_zone_id')
 
@@ -374,6 +424,8 @@ class ShareAPITest(test.TestCase):
             req.environ['manila.context'], self.resource_name, 'create')
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
+        common.check_share_network_is_active.assert_called_once_with(
+            fake_share_net)
         self.assertEqual(expected, res_dict)
         # pylint: disable=unsubscriptable-object
         self.assertEqual(parent_share_net,
@@ -415,6 +467,7 @@ class ShareAPITest(test.TestCase):
             "snapshot_id": 333,
             "share_network_id": parent_share_net
         }
+        fake_share_net = {'id': parent_share_net}
         create_mock = mock.Mock(return_value=stubs.stub_share('1',
                                 display_name=shr['name'],
                                 display_description=shr['description'],
@@ -427,13 +480,15 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'create', create_mock)
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
         parent_share = stubs.stub_share(
             '1', instance={'share_network_id': parent_share_net},
             create_share_from_snapshot_support=False)
         self.mock_object(share_api.API, 'get', mock.Mock(
             return_value=parent_share))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
-            return_value={'id': parent_share_net}))
+            return_value=fake_share_net))
         self.mock_object(
             db, 'share_network_subnet_get_by_availability_zone_id')
 
@@ -446,6 +501,8 @@ class ShareAPITest(test.TestCase):
             req.environ['manila.context'], self.resource_name, 'create')
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
+        common.check_share_network_is_active.assert_called_once_with(
+            fake_share_net)
         self.assertDictEqual(expected, res_dict)
         # pylint: disable=unsubscriptable-object
         self.assertEqual(parent_share_net,
@@ -503,6 +560,7 @@ class ShareAPITest(test.TestCase):
         self.mock_object(
             db, 'share_network_subnet_get_by_availability_zone_id',
             mock.Mock(return_value=None))
+        self.mock_object(common, 'check_share_network_is_active')
 
         body = {"share": fake_share_with_sn}
 
@@ -903,6 +961,29 @@ class ShareActionsTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], 'share', 'allow_access')
 
+    def test_allow_access_with_network_id(self):
+        share_network = db_utils.create_share_network()
+        share = db_utils.create_share(share_network_id=share_network['id'])
+        access = {'access_type': 'user', 'access_to': '1' * 4}
+
+        self.mock_object(share_api.API,
+                         'allow_access',
+                         mock.Mock(return_value={'fake': 'fake'}))
+        self.mock_object(self.controller._access_view_builder, 'view',
+                         mock.Mock(return_value={'access': {'fake': 'fake'}}))
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+
+        id = 'fake_share_id'
+        body = {'os-allow_access': access}
+        expected = {'access': {'fake': 'fake'}}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+
+        res = self.controller._allow_access(req, id, body)
+
+        self.assertEqual(expected, res)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], 'share', 'allow_access')
+
     @ddt.data(
         {'access_type': 'error_type', 'access_to': '127.0.0.1'},
         {'access_type': 'ip', 'access_to': 'localhost'},
@@ -940,6 +1021,23 @@ class ShareActionsTest(test.TestCase):
         id = 'fake_share_id'
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
         req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id)
+
+        res = self.controller._deny_access(req, id, body)
+
+        self.assertEqual(202, res.status_int)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], 'share', 'deny_access')
+
+    def test_deny_access_with_share_network_id(self):
+        self.mock_object(share_api.API, "deny_access", mock.Mock())
+        self.mock_object(share_api.API, "access_get", _fake_access_get)
+        share_network = db_utils.create_share_network()
+        share = db_utils.create_share(share_network_id=share_network['id'])
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+
+        id = 'fake_share_id'
+        body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
 
         res = self.controller._deny_access(req, id, body)
 

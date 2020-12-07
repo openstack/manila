@@ -330,12 +330,14 @@ class ShareMixin(object):
 
         if share_network_id:
             try:
-                self.share_api.get_share_network(
+                share_network = self.share_api.get_share_network(
                     context,
                     share_network_id)
             except exception.ShareNetworkNotFound as e:
                 raise exc.HTTPNotFound(explanation=e.msg)
-            kwargs['share_network_id'] = share_network_id
+
+            common.check_share_network_is_active(share_network)
+
             if availability_zone_id:
                 if not db.share_network_subnet_get_by_availability_zone_id(
                         context, share_network_id,
@@ -402,6 +404,8 @@ class ShareMixin(object):
 
         if share_type:
             kwargs['share_type'] = share_type
+        if share_network_id:
+            kwargs['share_network_id'] = share_network_id
         new_share = self.share_api.create(context,
                                           share_proto,
                                           size,
@@ -429,6 +433,11 @@ class ShareMixin(object):
         if not enable_metadata:
             access_data.pop('metadata', None)
         share = self.share_api.get(context, id)
+
+        share_network_id = share.get('share_network_id')
+        if share_network_id:
+            share_network = db.share_network_get(context, share_network_id)
+            common.check_share_network_is_active(share_network)
 
         if (not allow_on_error_status and
                 self._any_instance_has_errored_rules(share)):
@@ -470,6 +479,13 @@ class ShareMixin(object):
 
         access_id = body.get(
             'deny_access', body.get('os-deny_access'))['access_id']
+
+        share = self.share_api.get(context, id)
+        share_network_id = share.get('share_network_id', None)
+
+        if share_network_id:
+            share_network = db.share_network_get(context, share_network_id)
+            common.check_share_network_is_active(share_network)
 
         try:
             access = self.share_api.access_get(context, access_id)

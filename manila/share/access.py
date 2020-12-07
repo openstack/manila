@@ -94,6 +94,25 @@ class ShareInstanceAccessDatabaseMixin(object):
                 context, share_instance_id, updates, with_share_data=True)
             return share_instance
 
+    def update_share_instances_access_rules_status(
+            self, context, status, share_instance_ids):
+        """Update the access_rules_status of all share instances.
+
+        .. note::
+            Before making this call, make sure that all share instances have
+            their status set to a value that will block new operations to
+            happen during this update.
+
+        :param status: Force a state change on all share instances regardless
+               of the prior state.
+        :param share_instance_ids: List of share instance ids to have their
+               access rules status updated.
+        """
+        updates = {'access_rules_status': status}
+
+        self.db.share_instances_status_update(
+            context, share_instance_ids, updates)
+
     @locked_access_rules_operation
     def get_and_update_share_instance_access_rules(self, context,
                                                    filters=None, updates=None,
@@ -321,7 +340,7 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
                 add_rules, delete_rules, rules_to_be_removed_from_db,
                 share_server)
 
-            self._process_driver_rule_updates(
+            self.process_driver_rule_updates(
                 context, driver_rule_updates, share_instance_id)
 
             # Update access rules that are still in 'applying' state
@@ -434,8 +453,8 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
                     context, conditionally_change=conditionally_change,
                     share_instance_id=share_instance_id)
 
-    def _process_driver_rule_updates(self, context, driver_rule_updates,
-                                     share_instance_id):
+    def process_driver_rule_updates(self, context, driver_rule_updates,
+                                    share_instance_id):
         for rule_id, rule_updates in driver_rule_updates.items():
             if 'state' in rule_updates:
                 # We allow updates *only* if the state is unchanged from

@@ -2434,6 +2434,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             "share_group_stats": {"consistent_snapshot_support": None},
             "ipv4_support": True,
             "ipv6_support": False,
+            "security_service_update_support": False,
         }
 
         if replication_support:

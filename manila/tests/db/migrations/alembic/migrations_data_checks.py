@@ -2971,3 +2971,76 @@ class ShareServerTaskState(BaseMigrationChecks):
         for ss in engine.execute(ss_table.select()):
             self.test_case.assertFalse(hasattr(ss, 'task_state'))
             self.test_case.assertFalse(hasattr(ss, 'source_share_server_id'))
+
+
+@map_to_migration('478c445d8d3e')
+class AddUpdateSecurityServiceControlFields(BaseMigrationChecks):
+
+    def setup_upgrade_data(self, engine):
+        user_id = 'user_id'
+        project_id = 'project_id'
+
+        # Create share network
+        share_network_data = {
+            'id': uuidutils.generate_uuid(),
+            'user_id': user_id,
+            'project_id': project_id,
+        }
+        sn_table = utils.load_table('share_networks', engine)
+        engine.execute(sn_table.insert(share_network_data))
+
+        share_network_subnet_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_network_id': share_network_data['id']
+        }
+
+        sns_table = utils.load_table('share_network_subnets', engine)
+        engine.execute(sns_table.insert(share_network_subnet_data))
+
+        # Create share server
+        share_server_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_network_subnet_id': share_network_subnet_data['id'],
+            'host': 'fake_host',
+            'status': 'active',
+        }
+        ss_table = utils.load_table('share_servers', engine)
+        engine.execute(ss_table.insert(share_server_data))
+
+    def check_upgrade(self, engine, data):
+        ss_table = utils.load_table('share_servers', engine)
+        for ss in engine.execute(ss_table.select()):
+            self.test_case.assertTrue(
+                hasattr(ss, 'security_service_update_support'))
+            self.test_case.assertEqual(
+                False, ss.security_service_update_support)
+
+        sn_table = utils.load_table('share_networks', engine)
+        for sn in engine.execute(sn_table.select()):
+            self.test_case.assertTrue(hasattr(sn, 'status'))
+            self.test_case.assertEqual(constants.STATUS_NETWORK_ACTIVE,
+                                       sn.status)
+        async_op_data = {
+            'created_at': datetime.datetime(2021, 3, 12, 17, 40, 34),
+            'updated_at': None,
+            'deleted_at': None,
+            'deleted': 0,
+            'entity_uuid': uuidutils.generate_uuid(),
+            'key': 't' * 255,
+            'value': 'v' * 1023,
+        }
+        async_op_data_table = utils.load_table('async_operation_data', engine)
+        engine.execute(async_op_data_table.insert(async_op_data))
+
+    def check_downgrade(self, engine):
+        ss_table = utils.load_table('share_servers', engine)
+        for ss in engine.execute(ss_table.select()):
+            self.test_case.assertFalse(
+                hasattr(ss, 'security_service_update_support'))
+        sn_table = utils.load_table('share_networks', engine)
+        for sn in engine.execute(sn_table.select()):
+            self.test_case.assertFalse(hasattr(sn, 'status'))
+
+        self.test_case.assertRaises(
+            sa_exc.NoSuchTableError,
+            utils.load_table, 'async_operation_data', engine)

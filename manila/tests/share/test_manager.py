@@ -579,6 +579,7 @@ class ShareManagerTestCase(test.TestCase):
                 'source_share_group_snapshot_member_id'),
             'availability_zone': share_instance.get('availability_zone'),
             'export_locations': share_instance.get('export_locations') or [],
+            'share_network_status': share_instance.get('share_network_status')
         }
         return share_instance_ref
 
@@ -1115,7 +1116,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(db, 'share_instance_access_get',
                          mock.Mock(return_value=fake_access_rules[0]))
         mock_share_replica_access_update = self.mock_object(
-            self.share_manager, '_update_share_replica_access_rules_state')
+            self.share_manager, '_update_share_instance_access_rules_state')
         driver_call = self.mock_object(
             self.share_manager.driver, 'create_replica',
             mock.Mock(return_value=replica))
@@ -2828,6 +2829,7 @@ class ShareManagerTestCase(test.TestCase):
             'host': self.share_manager.host,
             'share_network_subnet_id': fake_data['fake_network_subnet']['id'],
             'status': constants.STATUS_CREATING,
+            'security_service_update_support': False,
         }
         fake_metadata = {
             'migration_destination': True,
@@ -9033,6 +9035,377 @@ class ShareManagerTestCase(test.TestCase):
         mock_migration_get_progress.assert_called_once_with(
             self.context, fake_source_share_server, fake_dest_share_server,
             fake_share_instances, fake_snapshot_instances)
+
+    @ddt.data([constants.STATUS_ERROR, constants.STATUS_ACTIVE],
+              [constants.STATUS_ACTIVE, constants.STATUS_ACTIVE])
+    def test__check_share_network_update_finished(self, server_statuses):
+        share_servers = [
+            db_utils.create_share_server(status=status)
+            for status in server_statuses]
+        share_network = db_utils.create_share_network(
+            status=constants.STATUS_SERVER_NETWORK_CHANGE)
+        all_servers_are_active = (
+            all(server_statuses) == constants.STATUS_ACTIVE)
+
+        self.mock_object(db, 'share_network_get',
+                         mock.Mock(return_value=share_network))
+        self.mock_object(
+            db, 'share_server_get_all_with_filters',
+            mock.Mock(return_value=share_servers))
+        self.mock_object(db, 'share_network_update')
+
+        self.share_manager._check_share_network_update_finished(
+            self.context, share_network['id'])
+
+        db.share_server_get_all_with_filters.assert_called_once_with(
+            self.context, {'share_network_id': share_network['id']})
+        db.share_network_get.assert_called_once_with(
+            self.context, share_network['id'])
+        if all_servers_are_active:
+            db.share_network_update.assert_called_once_with(
+                self.context, share_network['id'],
+                {'status': constants.STATUS_NETWORK_ACTIVE})
+
+    def test__check_share_network_update_finished_already_active(self):
+        share_network = db_utils.create_share_network()
+
+        self.mock_object(db, 'share_network_get',
+                         mock.Mock(return_value=share_network))
+        self.mock_object(db, 'share_server_get_all_with_filters')
+
+        self.share_manager._check_share_network_update_finished(
+            self.context, share_network['id'])
+
+        db.share_network_get.assert_called_once_with(
+            self.context, share_network['id'])
+        db.share_server_get_all_with_filters.assert_not_called()
+
+    def _setup_mocks_for_sec_service_update(
+            self, service_get_effect, share_network, share_servers, subnet,
+            network_info, share_instances, fake_rules,
+            driver_support_update=True, driver_update_action=mock.Mock()):
+
+        self.mock_object(
+            db, 'security_service_get',
+            mock.Mock(side_effect=service_get_effect))
+        self.mock_object(
+            db, 'share_network_get',
+            mock.Mock(return_value=share_network))
+        self.mock_object(
+            db, 'share_server_get_all_by_host',
+            mock.Mock(return_value=share_servers))
+        self.mock_object(
+            db, 'share_network_subnet_get', mock.Mock(return_value=subnet))
+        self.mock_object(
+            self.share_manager, '_form_server_setup_info',
+            mock.Mock(return_value=network_info))
+        self.mock_object(
+            db, 'share_instances_get_all_by_share_server',
+            mock.Mock(return_value=share_instances))
+        self.mock_object(
+            db, 'share_access_get_all_for_instance',
+            mock.Mock(return_value=fake_rules))
+        self.mock_object(
+            self.share_manager.driver,
+            'check_update_share_server_security_service',
+            mock.Mock(return_value=driver_support_update))
+        self.mock_object(db, 'share_server_backend_details_set')
+        self.mock_object(
+            self.share_manager.driver,
+            'update_share_server_security_service', driver_update_action)
+        self.mock_object(db, 'share_server_update')
+        self.mock_object(
+            self.share_manager, '_check_share_network_update_finished')
+        self.mock_object(
+            self.share_manager.access_helper,
+            'get_and_update_share_instance_access_rules')
+        self.mock_object(
+            self.share_manager.access_helper,
+            'update_share_instances_access_rules_status')
+        self.mock_object(
+            self.share_manager.access_helper, 'process_driver_rule_updates')
+
+    @ddt.data(False, True)
+    def test__update_share_network_security_service(self, is_check_only):
+        security_services = [
+            db_utils.create_security_service() for i in range(2)]
+        share_network = db_utils.create_share_network()
+        share_network_subnet = db_utils.create_share_network_subnet()
+        share_servers = [
+            db_utils.create_share_server(
+                share_network_subnet_id=share_network_subnet['id'])]
+        security_services_effect = mock.Mock(side_effect=security_services)
+        share_network_id = share_network['id']
+        current_security_service_id = security_services[0]['id']
+        new_security_service_id = security_services[1]['id']
+        share_network_subnet_id = share_servers[0]['share_network_subnet_id']
+        share_instances = [db_utils.create_share()['instance']]
+        fake_rules = ['fake_rules']
+        network_info = {'fake': 'fake'}
+        backend_details_keys = [
+            'name', 'ou', 'domain', 'server', 'dns_ip', 'user', 'type',
+            'password']
+        backend_details_data = {}
+        [backend_details_data.update(
+            {key: security_services[0][key]}) for key in backend_details_keys]
+        backend_details_exp_update = {
+            'security_service_' + security_services[0]['type']:
+                jsonutils.dumps(backend_details_data)
+        }
+        expected_instance_rules = [{
+            'share_instance_id': share_instances[0]['id'],
+            'access_rules': fake_rules
+        }]
+        rule_updates = {
+            share_instances[0]['id']: {
+                'access_rule_id': {
+                    'access_key': 'fake_access_key',
+                    'state': 'active',
+                },
+            },
+
+        }
+        expected_rule_updates_value = rule_updates[share_instances[0]['id']]
+        driver_return = mock.Mock(return_value=rule_updates)
+
+        self._setup_mocks_for_sec_service_update(
+            security_services_effect, share_network, share_servers,
+            share_network_subnet, network_info, share_instances, fake_rules,
+            driver_update_action=driver_return)
+
+        result = self.share_manager._update_share_network_security_service(
+            self.context, share_network_id, new_security_service_id,
+            current_security_service_id=current_security_service_id,
+            check_only=is_check_only)
+
+        db.security_service_get.assert_has_calls(
+            [mock.call(self.context, security_services[1]['id']),
+             mock.call(self.context, security_services[0]['id'])]
+        )
+        db.share_network_get.assert_called_once_with(
+            self.context, share_network_id)
+        db.share_server_get_all_by_host.assert_called_once_with(
+            self.context, self.share_manager.host,
+            filters={'share_network_id': share_network_id})
+        db.share_network_subnet_get.assert_called_once_with(
+            self.context, share_network_subnet_id)
+        self.share_manager._form_server_setup_info.assert_called_once_with(
+            self.context, share_servers[0], share_network, share_network_subnet
+        )
+        db.share_instances_get_all_by_share_server.assert_called_once_with(
+            self.context, share_servers[0]['id'], with_share_data=True)
+        db.share_access_get_all_for_instance.assert_called_once_with(
+            self.context, share_instances[0]['id'])
+        if not is_check_only:
+            (self.share_manager.driver.update_share_server_security_service.
+                assert_called_once_with(
+                    self.context, share_servers[0], network_info,
+                    share_instances,
+                    expected_instance_rules,
+                    security_services[0],
+                    current_security_service=security_services[1]))
+            db.share_server_backend_details_set.assert_called_once_with(
+                self.context, share_servers[0]['id'],
+                backend_details_exp_update)
+            db.share_server_update.assert_called_once_with(
+                self.context, share_servers[0]['id'],
+                {'status': constants.STATUS_ACTIVE})
+            (self.share_manager.access_helper.process_driver_rule_updates.
+                assert_called_once_with(
+                    self.context, expected_rule_updates_value,
+                    share_instances[0]['id']))
+        else:
+            (self.share_manager.driver.
+                check_update_share_server_security_service.
+                assert_called_once_with(
+                    self.context, share_servers[0], network_info,
+                    share_instances,
+                    expected_instance_rules,
+                    security_services[0],
+                    current_security_service=security_services[1]))
+            self.assertEqual(result, True)
+
+    def test__update_share_network_security_service_no_support(self):
+        security_services = [
+            db_utils.create_security_service() for i in range(2)]
+        share_network = db_utils.create_share_network()
+        share_network_subnet = db_utils.create_share_network_subnet()
+        share_servers = [
+            db_utils.create_share_server(
+                share_network_subnet_id=share_network_subnet['id'])]
+        security_services_effect = mock.Mock(side_effect=security_services)
+        share_network_id = share_network['id']
+        current_security_service_id = security_services[0]['id']
+        new_security_service_id = security_services[1]['id']
+        share_network_subnet_id = share_servers[0]['share_network_subnet_id']
+        network_info = {'fake': 'fake'}
+        share_instances = [db_utils.create_share()['instance']]
+        fake_rules = ['fake_rules']
+        expected_instance_rules = [{
+            'share_instance_id': share_instances[0]['id'],
+            'access_rules': fake_rules
+        }]
+
+        self._setup_mocks_for_sec_service_update(
+            security_services_effect, share_network, share_servers,
+            share_network_subnet, network_info, share_instances, fake_rules,
+            driver_support_update=False)
+
+        result = self.share_manager._update_share_network_security_service(
+            self.context, share_network_id, new_security_service_id,
+            current_security_service_id=current_security_service_id,
+            check_only=True)
+
+        db.security_service_get.assert_has_calls(
+            [mock.call(self.context, security_services[1]['id']),
+             mock.call(self.context, security_services[0]['id'])]
+        )
+        db.share_network_get.assert_called_once_with(
+            self.context, share_network_id)
+        db.share_server_get_all_by_host.assert_called_once_with(
+            self.context, self.share_manager.host,
+            filters={'share_network_id': share_network_id})
+        db.share_network_subnet_get.assert_called_once_with(
+            self.context, share_network_subnet_id)
+        self.share_manager._form_server_setup_info.assert_called_once_with(
+            self.context, share_servers[0], share_network, share_network_subnet
+        )
+        db.share_instances_get_all_by_share_server.assert_called_once_with(
+            self.context, share_servers[0]['id'], with_share_data=True)
+        db.share_access_get_all_for_instance.assert_called_once_with(
+            self.context, share_instances[0]['id'])
+        (self.share_manager.driver.check_update_share_server_security_service.
+            assert_called_once_with(
+                self.context, share_servers[0], network_info,
+                share_instances,
+                expected_instance_rules,
+                security_services[0],
+                current_security_service=security_services[1]))
+        self.assertEqual(result, False)
+
+    def test__update_share_network_security_service_exception(self):
+        security_services = [
+            db_utils.create_security_service() for i in range(2)]
+        share_network = db_utils.create_share_network()
+        share_network_subnet = db_utils.create_share_network_subnet()
+        share_servers = [
+            db_utils.create_share_server(
+                share_network_subnet_id=share_network_subnet['id'])]
+        share_instances = [db_utils.create_share_instance(share_id='fake')]
+        share_instance_ids = [instance['id'] for instance in share_instances]
+        security_services_effect = mock.Mock(side_effect=security_services)
+        share_network_id = share_network['id']
+        current_security_service_id = security_services[0]['id']
+        new_security_service_id = security_services[1]['id']
+        share_network_subnet_id = share_servers[0]['share_network_subnet_id']
+        network_info = {'fake': 'fake'}
+        backend_details_keys = [
+            'name', 'ou', 'domain', 'server', 'dns_ip', 'user', 'type',
+            'password']
+        backend_details_data = {}
+        [backend_details_data.update(
+            {key: security_services[0][key]}) for key in backend_details_keys]
+        backend_details_exp_update = {
+            'security_service_' + security_services[0]['type']:
+                jsonutils.dumps(backend_details_data)
+        }
+        driver_exception = mock.Mock(side_effect=Exception())
+        share_instances = [db_utils.create_share()['instance']]
+        fake_rules = ['fake_rules']
+        expected_instance_rules = [{
+            'share_instance_id': share_instances[0]['id'],
+            'access_rules': fake_rules
+        }]
+
+        self._setup_mocks_for_sec_service_update(
+            security_services_effect, share_network, share_servers,
+            share_network_subnet, network_info, share_instances, fake_rules,
+            driver_update_action=driver_exception)
+
+        self.mock_object(
+            self.share_manager.access_helper,
+            'update_share_instances_access_rules_status')
+        self.mock_object(
+            db, 'share_instances_get_all_by_share_server',
+            mock.Mock(return_value=share_instances))
+
+        self.share_manager._update_share_network_security_service(
+            self.context, share_network_id, new_security_service_id,
+            current_security_service_id=current_security_service_id)
+
+        db.security_service_get.assert_has_calls(
+            [mock.call(self.context, security_services[1]['id']),
+             mock.call(self.context, security_services[0]['id'])]
+        )
+        db.share_network_get.assert_called_once_with(
+            self.context, share_network_id)
+        db.share_server_get_all_by_host.assert_called_once_with(
+            self.context, self.share_manager.host,
+            filters={'share_network_id': share_network_id})
+        db.share_network_subnet_get.assert_called_once_with(
+            self.context, share_network_subnet_id)
+        self.share_manager._form_server_setup_info.assert_called_once_with(
+            self.context, share_servers[0], share_network, share_network_subnet
+        )
+        (self.share_manager.driver.update_share_server_security_service.
+            assert_called_once_with(
+                self.context, share_servers[0], network_info,
+                share_instances,
+                expected_instance_rules,
+                security_services[0],
+                current_security_service=security_services[1]))
+        db.share_server_backend_details_set.assert_called_once_with(
+            self.context, share_servers[0]['id'],
+            backend_details_exp_update)
+        db.share_server_update.assert_called_once_with(
+            self.context, share_servers[0]['id'],
+            {'status': constants.STATUS_ERROR})
+        db.share_instances_get_all_by_share_server.assert_called_once_with(
+            self.context, share_servers[0]['id'], with_share_data=True)
+        db.share_access_get_all_for_instance.assert_called_once_with(
+            self.context, share_instances[0]['id'])
+        (self.share_manager.access_helper.
+            update_share_instances_access_rules_status(
+                self.context, constants.SHARE_INSTANCE_RULES_ERROR,
+                share_instance_ids))
+        (self.share_manager.access_helper.
+            get_and_update_share_instance_access_rules(
+                self.context, updates={'state': constants.STATUS_ERROR},
+                share_instance_id=share_instances[0]['id']))
+
+    def test_update_share_network_security_service(self):
+        share_network_id = 'fake_sn_id'
+        new_security_service_id = 'new_sec_service_id'
+        current_security_service_id = 'current_sec_service_id'
+
+        self.mock_object(
+            self.share_manager, '_update_share_network_security_service')
+
+        self.share_manager.update_share_network_security_service(
+            self.context, share_network_id, new_security_service_id,
+            current_security_service_id=current_security_service_id)
+        (self.share_manager._update_share_network_security_service.
+            assert_called_once_with(
+                self.context, share_network_id, new_security_service_id,
+                current_security_service_id=current_security_service_id,
+                check_only=False))
+
+    def test_check_update_share_network_security_service(self):
+        share_network_id = 'fake_sn_id'
+        new_security_service_id = 'new_sec_service_id'
+        current_security_service_id = 'current_sec_service_id'
+
+        self.mock_object(
+            self.share_manager, '_update_share_network_security_service')
+
+        self.share_manager.check_update_share_network_security_service(
+            self.context, share_network_id, new_security_service_id,
+            current_security_service_id=current_security_service_id)
+        (self.share_manager._update_share_network_security_service.
+            assert_called_once_with(
+                self.context, share_network_id, new_security_service_id,
+                current_security_service_id=current_security_service_id,
+                check_only=True))
 
 
 @ddt.ddt

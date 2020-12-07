@@ -273,6 +273,10 @@ class ShareDriver(object):
         self._stats = {}
         self.ip_versions = None
         self.ipv6_implemented = False
+        # Indicates whether a driver supports update of security services for
+        # in-use share networks. This property will be saved in every new share
+        # server.
+        self.security_service_update_support = False
 
         self.pools = []
         if self.configuration:
@@ -1315,6 +1319,8 @@ class ShareDriver(object):
             replication_domain=self.replication_domain,
             filter_function=self.get_filter_function(),
             goodness_function=self.get_goodness_function(),
+            security_service_update_support=(
+                self.security_service_update_support),
         )
         if isinstance(data, dict):
             common.update(data)
@@ -3182,5 +3188,136 @@ class ShareDriver(object):
                     }
                 }
 
+        """
+        raise NotImplementedError()
+
+    def update_share_server_security_service(
+            self, context, share_server, network_info, share_instances,
+            share_instance_rules, new_security_service,
+            current_security_service=None):
+        """Updates share server security service configuration.
+
+        If the driver supports different security services, the user can
+        request the addition of a new security service, with a different type.
+        If the user wants to update the current security service configuration,
+        the driver will receive both current and new security services, which
+        will always be of the same type.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param share_server: Reference to the share server object that will be
+            updated.
+        :param network_info: All network allocation associated with the share
+            server that will be updated.
+        :param share_instances: A list of share instances that belong to the
+            share server that is being updated.
+        :param share_instance_rules: A list of access rules, grouped by share
+            instance, in the following format.
+
+        Example::
+
+            [
+               {
+                'share_instance_id': '3bc10d67-2598-4122-bb62-0bdeaa8c6db3',
+                'access_rules':
+                [
+                    {
+                    'access_id':'906d0094-3e34-4d6c-a184-d08a908033e3',
+                    'access_type':'ip',
+                    'access_key':None,
+                    'access_to':'10.0.0.1',
+                    'access_level':'rw'
+                     ...
+                    },
+                ],
+                },
+            ]
+
+        :param new_security_service: New security service object to be
+            configured in the share server.
+        :param current_security_service: When provided, represents the current
+            security service that will be replaced by the
+            'new_security_service'.
+
+        :raises: ShareBackendException.
+            A ShareBackendException should only be raised if the share server
+            failed to update the security service, compromising all its access
+            rules. By raising an exception, the share server and all its share
+            instances will be set to 'error'.
+        :return: None, or a dictionary of updates in the following format.
+
+        Example::
+
+            {
+                '3bc10d67-2598-4122-bb62-0bdeaa8c6db3':
+                {
+                    '09960614-8574-4e03-89cf-7cf267b0bd08':
+                    {
+                        'access_key': 'alice31493e5441b8171d2310d80e37e',
+                        'state': 'error',
+                    },
+                    '28f6eabb-4342-486a-a7f4-45688f0c0295':
+                    {
+                        'access_key': 'bob0078aa042d5a7325480fd13228b',
+                        'state': 'active',
+                    },
+                },
+            }
+
+        The top level keys are share_instance_id's which should provide
+        another dictionary of access rules to be updated, indexed by their
+        'access_id'. The inner access rules dictionary should only contain the
+        access rules that need to be updated.
+        """
+        raise NotImplementedError()
+
+    def check_update_share_server_security_service(
+            self, context, share_server, network_info, share_instances,
+            share_instance_rules, new_security_service,
+            current_security_service=None):
+        """Check if the current share server security service is supported.
+
+        If the driver supports different security services, the user can
+        request the addition of a new security service, with a different type.
+        If the user wants to update the current security service configuration,
+        the driver will receive both current and new security services, which
+        will always be of the same type.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param share_server: Reference to the share server object that will be
+            updated.
+        :param network_info: All network allocation associated with the share
+            server that will be updated.
+        :param share_instances: A list of share instances that belong to the
+            share server that is affected by the update.
+        :param share_instance_rules: A list of access rules, grouped by share
+            instance, in the following format.
+
+        Example::
+
+            [
+               {
+                'share_instance_id': '3bc10d67-2598-4122-bb62-0bdeaa8c6db3',
+                'access_rules':
+                [
+                    {
+                    'access_id':'906d0094-3e34-4d6c-a184-d08a908033e3',
+                    'access_type':'ip',
+                    'access_key':None,
+                    'access_to':'10.0.0.1',
+                    'access_level':'rw'
+                     ...
+                    },
+                ],
+                },
+            ]
+
+        :param new_security_service: New security service object to be
+            configured in the share server.
+        :param current_security_service: When provided, represents the current
+            security service that will be replaced by the
+            'new_security_service'.
+
+        :return: 'True' if the driver support the requested update, 'False'
+            otherwise.
         """
         raise NotImplementedError()
