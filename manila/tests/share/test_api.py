@@ -120,6 +120,15 @@ class ShareAPITestCase(test.TestCase):
         self.mock_object(timeutils, 'utcnow',
                          mock.Mock(return_value=self.dt_utc))
         self.mock_object(share_api.policy, 'check_policy')
+        self._setup_sized_share_types()
+
+    def _setup_sized_share_types(self):
+        """create a share type with size limit"""
+        spec_dict = {share_types.MIN_SIZE_KEY: 2,
+                     share_types.MAX_SIZE_KEY: 4}
+        db_utils.create_share_type(name='limit', extra_specs=spec_dict)
+        self.sized_sha_type = db_api.share_type_get_by_name(self.context,
+                                                            'limit')
 
     def _setup_create_mocks(self, protocol='nfs', **kwargs):
         share = db_utils.create_share(
@@ -735,6 +744,24 @@ class ShareAPITestCase(test.TestCase):
         db_get_azs_with_subnet.assert_has_calls(expected_get_az_calls)
 
         self.assertEqual(expected_az_names, compatible_azs)
+
+    def test_create_share_with_share_type_size_limit(self):
+        self.assertRaises(exception.InvalidInput,
+                          self.api.create,
+                          self.context,
+                          'nfs',
+                          1,
+                          'display_name',
+                          'display_description',
+                          share_type=self.sized_sha_type)
+        self.assertRaises(exception.InvalidInput,
+                          self.api.create,
+                          self.context,
+                          'nfs',
+                          5,
+                          'display_name',
+                          'display_description',
+                          share_type=self.sized_sha_type)
 
     @ddt.data(
         {'availability_zones': None, 'azs_with_subnet': ['fake_az_1']},
@@ -2794,6 +2821,17 @@ class ShareAPITestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self.api.extend, self.context, share, new_size)
 
+    def test_extend_with_share_type_size_limit(self):
+        share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
+                                      size=3)
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=self.sized_sha_type))
+        new_size = 5
+
+        self.assertRaises(exception.InvalidInput,
+                          self.api.extend, self.context,
+                          share, new_size)
+
     def _setup_extend_mocks(self, supports_replication):
         replica_list = []
         if supports_replication:
@@ -2932,6 +2970,17 @@ class ShareAPITestCase(test.TestCase):
         self.api.share_rpcapi.shrink_share.assert_called_once_with(
             self.context, share, new_size
         )
+
+    def test_shrink_with_share_type_size_limit(self):
+        share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
+                                      size=3)
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=self.sized_sha_type))
+        new_size = 1
+
+        self.assertRaises(exception.InvalidInput,
+                          self.api.shrink, self.context,
+                          share, new_size)
 
     def test_snapshot_allow_access(self):
         access_to = '1.1.1.1'
@@ -3177,6 +3226,19 @@ class ShareAPITestCase(test.TestCase):
         db_api.share_instance_update.assert_called_once_with(
             self.context, share.instance['id'],
             {'status': constants.STATUS_MIGRATING})
+
+    def test_migration_start_with_new_share_type_limit(self):
+        host = 'fake2@backend#pool'
+        self.mock_object(utils, 'validate_service_host')
+        share = db_utils.create_share(
+            status=constants.STATUS_AVAILABLE,
+            size=1)
+        self.assertRaises(exception.InvalidInput,
+                          self.api.migration_start,
+                          self.context,
+                          share, host, False, True,
+                          True, True, True, None,
+                          self.sized_sha_type)
 
     def test_migration_start_destination_az_unsupported(self):
         host = 'fake2@backend#pool'

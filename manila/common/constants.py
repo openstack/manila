@@ -235,6 +235,8 @@ class ExtraSpecs(object):
     REVERT_TO_SNAPSHOT_SUPPORT = "revert_to_snapshot_support"
     MOUNT_SNAPSHOT_SUPPORT = "mount_snapshot_support"
     AVAILABILITY_ZONES = "availability_zones"
+    PROVISIONING_MAX_SHARE_SIZE = "provisioning:max_share_size"
+    PROVISIONING_MIN_SHARE_SIZE = "provisioning:min_share_size"
 
     # Extra specs containers
     REQUIRED = (
@@ -248,6 +250,8 @@ class ExtraSpecs(object):
         REPLICATION_TYPE_SPEC,
         MOUNT_SNAPSHOT_SUPPORT,
         AVAILABILITY_ZONES,
+        PROVISIONING_MAX_SHARE_SIZE,
+        PROVISIONING_MIN_SHARE_SIZE
     )
 
     # NOTE(cknight): Some extra specs are necessary parts of the Manila API and

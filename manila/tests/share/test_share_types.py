@@ -526,3 +526,58 @@ class ShareTypesTestCase(test.TestCase):
                           share_types.parse_boolean_extra_spec,
                           'fake_key',
                           spec_value)
+
+    def test_provision_filter_on_size(self):
+        share_types.create(self.context, "type1",
+                           extra_specs={
+                               "key1": "val1",
+                               "key2": "val2",
+                               "driver_handles_share_servers": False})
+        share_types.create(self.context, "type2",
+                           extra_specs={
+                               share_types.MIN_SIZE_KEY: "12",
+                               "key3": "val3",
+                               "driver_handles_share_servers": False})
+        share_types.create(self.context, "type3",
+                           extra_specs={
+                               share_types.MAX_SIZE_KEY: "99",
+                               "key4": "val4",
+                               "driver_handles_share_servers": False})
+        share_types.create(self.context, "type4",
+                           extra_specs={
+                               share_types.MIN_SIZE_KEY: "24",
+                               share_types.MAX_SIZE_KEY: "99",
+                               "key4": "val4",
+                               "driver_handles_share_servers": False})
+
+        # Make sure we don't raise if there are no min/max set
+        type1 = share_types.get_share_type_by_name(self.context, 'type1')
+        share_types.provision_filter_on_size(self.context, type1, "11")
+
+        # verify minimum size requirements
+        type2 = share_types.get_share_type_by_name(self.context, 'type2')
+        self.assertRaises(exception.InvalidInput,
+                          share_types.provision_filter_on_size,
+                          self.context, type2, "11")
+        share_types.provision_filter_on_size(self.context, type2, "12")
+        share_types.provision_filter_on_size(self.context, type2, "100")
+
+        # verify max size requirements
+        type3 = share_types.get_share_type_by_name(self.context, 'type3')
+        self.assertRaises(exception.InvalidInput,
+                          share_types.provision_filter_on_size,
+                          self.context, type3, "100")
+        share_types.provision_filter_on_size(self.context, type3, "99")
+        share_types.provision_filter_on_size(self.context, type3, "1")
+
+        # verify min and max
+        type4 = share_types.get_share_type_by_name(self.context, 'type4')
+        self.assertRaises(exception.InvalidInput,
+                          share_types.provision_filter_on_size,
+                          self.context, type4, "20")
+        self.assertRaises(exception.InvalidInput,
+                          share_types.provision_filter_on_size,
+                          self.context, type4, "100")
+        share_types.provision_filter_on_size(self.context, type4, "24")
+        share_types.provision_filter_on_size(self.context, type4, "99")
+        share_types.provision_filter_on_size(self.context, type4, "30")

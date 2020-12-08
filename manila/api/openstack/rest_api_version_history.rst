@@ -331,3 +331,9 @@ user documentation.
   equivalent to https://$(controller)s/share/v2/shares. When interacting
   with the manila service as system or domain scoped users, project_id should
   not be specified in the API path.
+
+2.61
+----
+  Ability to add minimum and maximum share size restrictions which
+  can be set on a per share-type granularity. Added new extra specs
+  'provisioning:max_share_size' and 'provisioning:min_share_size'.

@@ -482,6 +482,22 @@ def validate_access(*args, **kwargs):
         raise webob.exc.HTTPBadRequest(explanation=exc_str)
 
 
+def validate_integer(value, name, min_value=None, max_value=None):
+    """Make sure that value is a valid integer, potentially within range.
+
+    :param value: the value of the integer
+    :param name: the name of the integer
+    :param min_length: the min_length of the integer
+    :param max_length: the max_length of the integer
+    :returns: integer
+    """
+    try:
+        value = strutils.validate_integer(value, name, min_value, max_value)
+        return value
+    except ValueError as e:
+        raise webob.exc.HTTPBadRequest(explanation=str(e))
+
+
 def validate_public_share_policy(context, api_params, api='create'):
     """Validates if policy allows is_public parameter to be set to True.
 

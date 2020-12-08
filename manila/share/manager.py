@@ -2566,6 +2566,8 @@ class ShareManager(manager.SchedulerDependentManager):
         context = context.elevated()
         share_ref = self.db.share_get(context, share_id)
         share_instance = self._get_share_instance(context, share_ref)
+        share_type = share_types.get_share_type(
+            context, share_instance['share_type_id'])
         share_type_extra_specs = self._get_extra_specs_from_share_type(
             context, share_instance['share_type_id'])
         share_type_supports_replication = share_type_extra_specs.get(
@@ -2595,6 +2597,10 @@ class ShareManager(manager.SchedulerDependentManager):
             if not share_update.get('size'):
                 msg = _("Driver cannot calculate share size.")
                 raise exception.InvalidShare(reason=msg)
+            else:
+                share_types.provision_filter_on_size(context,
+                                                     share_type,
+                                                     share_update.get('size'))
 
             deltas = {
                 'project_id': project_id,

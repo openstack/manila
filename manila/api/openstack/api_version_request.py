@@ -160,13 +160,17 @@ REST_API_VERSION_HISTORY = """
              view.
     * 2.59 - Add driver ``details`` field to migration get progress.
     * 2.60 - API URLs no longer need to include a project_id parameter.
+    * 2.61 - Added optional provisioning:max_share_size and
+             provisioning:min_share_size extra spec,
+             which was add minimum and maximum share size restrictions
+             on a per share-type granularity.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.60"
+_MAX_API_VERSION = "2.61"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

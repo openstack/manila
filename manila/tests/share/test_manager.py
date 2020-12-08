@@ -2616,6 +2616,8 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager, '_get_extra_specs_from_share_type',
             mock.Mock(return_value={}))
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
+        self.mock_object(share_types, 'get_share_type', mock.Mock())
+        self.mock_object(share_types, 'provision_filter_on_size', mock.Mock())
         share = db_utils.create_share()
         share_id = share['id']
         driver_options = {'fake': 'fake'}
@@ -2722,6 +2724,8 @@ class ShareManagerTestCase(test.TestCase):
                          "manage_existing",
                          mock.Mock(return_value=None))
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
+        self.mock_object(share_types, 'get_share_type', mock.Mock())
+        self.mock_object(share_types, 'provision_filter_on_size', mock.Mock())
         self.mock_object(
             self.share_manager, '_get_extra_specs_from_share_type',
             mock.Mock(return_value={}))
@@ -2755,6 +2759,8 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(quota.QUOTAS, 'reserve',
                          mock.Mock(side_effect=exception.QuotaError))
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
+        self.mock_object(share_types, 'get_share_type', mock.Mock())
+        self.mock_object(share_types, 'provision_filter_on_size', mock.Mock())
         self.mock_object(
             self.share_manager, '_get_extra_specs_from_share_type',
             mock.Mock(return_value={}))
@@ -2780,6 +2786,8 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager, 'driver')
         self.share_manager.driver.driver_handles_share_servers = False
         share = db_utils.create_share()
+        self.mock_object(share_types, 'get_share_type', mock.Mock())
+        self.mock_object(share_types, 'provision_filter_on_size', mock.Mock())
         self.mock_object(share_types,
                          'get_share_type_extra_specs',
                          mock.Mock(return_value="True"))
@@ -2813,6 +2821,8 @@ class ShareManagerTestCase(test.TestCase):
         export_locations = driver_data.get('export_locations')
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
         self.mock_object(quota.QUOTAS, 'reserve', mock.Mock())
+        self.mock_object(share_types, 'get_share_type', mock.Mock())
+        self.mock_object(share_types, 'provision_filter_on_size', mock.Mock())
         self.mock_object(
             self.share_manager.db,
             'share_export_locations_update',

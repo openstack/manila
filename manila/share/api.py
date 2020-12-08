@@ -190,6 +190,9 @@ class API(base.Base):
                      "than snapshot size") % size)
             raise exception.InvalidInput(reason=msg)
 
+        # ensure we pass the share_type provisioning filter on size
+        share_types.provision_filter_on_size(context, share_type, size)
+
         if snapshot is None:
             share_type_id = share_type['id'] if share_type else None
         else:
@@ -1412,6 +1415,9 @@ class API(base.Base):
 
         if new_share_type:
             share_type = new_share_type
+            # ensure pass the size limitations in the share type
+            size = share['size']
+            share_types.provision_filter_on_size(context, share_type, size)
             new_share_type_id = new_share_type['id']
             dhss = share_type['extra_specs']['driver_handles_share_servers']
             dhss = strutils.bool_from_string(dhss, strict=True)
@@ -2088,6 +2094,14 @@ class API(base.Base):
                                                     'size': share['size']})
             raise exception.InvalidInput(reason=msg)
 
+        # ensure we pass the share_type provisioning filter on size
+        try:
+            share_type = share_types.get_share_type(
+                context, share['instance']['share_type_id'])
+        except (exception.InvalidShareType, exception.ShareTypeNotFound):
+            share_type = None
+        share_types.provision_filter_on_size(context, share_type, new_size)
+
         replicas = self.db.share_replicas_get_all_by_share(
             context, share['id'])
         supports_replication = len(replicas) > 0
@@ -2179,6 +2193,14 @@ class API(base.Base):
                      " new: %(new_size)s)") % {'new_size': new_size,
                                                'size': share['size']})
             raise exception.InvalidInput(reason=msg)
+
+        # ensure we pass the share_type provisioning filter on size
+        try:
+            share_type = share_types.get_share_type(
+                context, share['instance']['share_type_id'])
+        except (exception.InvalidShareType, exception.ShareTypeNotFound):
+            share_type = None
+        share_types.provision_filter_on_size(context, share_type, new_size)
 
         self.update(context, share, {'status': constants.STATUS_SHRINKING})
         self.share_rpcapi.shrink_share(context, share, new_size)

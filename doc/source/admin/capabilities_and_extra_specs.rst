@@ -257,3 +257,13 @@ Share type common capability extra-specs that are not visible to end users:
   can be accessed via IPv6 protocol. If administrators do not set this
   capability as an extra-spec in a share type, the scheduler can place new
   shares of that type in pools without regard for whether IPv6 is supported.
+
+* **provisioning:max_share_size** can set the max size of share, the value
+  must be integers and greater than 0. If administrators set this capability
+  as an extra-spec in a share type, the size of share created with the share
+  type can not greater than the specified value.
+
+* **provisioning:min_share_size** can set the min size of share, the value
+  must be integers and greater than 0. If administrators set this capability
+  as an extra-spec in a share type, the size of share created with the share
+  type can not less than the specified value.

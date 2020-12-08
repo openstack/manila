@@ -24,6 +24,7 @@ from oslo_utils import strutils
 from oslo_utils import uuidutils
 import six
 
+from manila.api import common
 from manila.common import constants
 from manila import context
 from manila import db
@@ -32,6 +33,9 @@ from manila.i18n import _
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
+
+MIN_SIZE_KEY = "provisioning:min_share_size"
+MAX_SIZE_KEY = "provisioning:max_share_size"
 
 
 def create(context, name, extra_specs=None, is_public=True,
@@ -350,6 +354,13 @@ def is_valid_optional_extra_spec(key, value):
         return parse_boolean_extra_spec(key, value) is not None
     elif key == constants.ExtraSpecs.AVAILABILITY_ZONES:
         return is_valid_csv(value)
+    elif key in [constants.ExtraSpecs.PROVISIONING_MAX_SHARE_SIZE,
+                 constants.ExtraSpecs.PROVISIONING_MIN_SHARE_SIZE]:
+        try:
+            common.validate_integer(value, 'share_size', min_value=1)
+            return True
+        except ValueError:
+            return False
 
     return False
 
@@ -419,3 +430,33 @@ def parse_boolean_extra_spec(extra_spec_key, extra_spec_value):
         msg = (_('Invalid boolean extra spec %(key)s : %(value)s') %
                {'key': extra_spec_key, 'value': extra_spec_value})
         raise exception.InvalidExtraSpec(reason=msg)
+
+
+def provision_filter_on_size(context, share_type, size):
+    """This function filters share provisioning requests on size limits.
+
+    If a share type has provisioning size min/max set, this filter
+    will ensure that the share size requested is within the size
+    limits specified in the share type.
+    """
+    if not share_type:
+        share_type = get_default_share_type()
+    if share_type:
+        size_int = int(size)
+        extra_specs = share_type.get('extra_specs', {})
+        min_size = extra_specs.get(MIN_SIZE_KEY)
+        if min_size and size_int < int(min_size):
+            msg = _("Specified share size of '%(req_size)d' is less "
+                    "than the minimum required size of '%(min_size)s' "
+                    "for share type '%(sha_type)s'."
+                    ) % {'req_size': size_int, 'min_size': min_size,
+                         'sha_type': share_type['name']}
+            raise exception.InvalidInput(reason=msg)
+        max_size = extra_specs.get(MAX_SIZE_KEY)
+        if max_size and size_int > int(max_size):
+            msg = _("Specified share size of '%(req_size)d' is "
+                    "greater than the maximum allowable size of "
+                    "'%(max_size)s' for share type '%(sha_type)s'."
+                    ) % {'req_size': size_int, 'max_size': max_size,
+                         'sha_type': share_type['name']}
+            raise exception.InvalidInput(reason=msg)
