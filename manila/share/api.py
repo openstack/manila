@@ -199,20 +199,13 @@ class API(base.Base):
         else:
             snapshot = None
 
-        def as_int(s):
-            try:
-                return int(s)
-            except (ValueError, TypeError):
-                return s
-
-        # tolerate size as stringified int
-        size = as_int(size)
-
-        if not isinstance(size, int) or size <= 0:
+        if not strutils.is_int_like(size) or int(size) <= 0:
             msg = (_("Share size '%s' must be an integer and greater than 0")
                    % size)
             raise exception.InvalidInput(reason=msg)
 
+        # make sure size has been convert to int.
+        size = int(size)
         if snapshot and size < snapshot['size']:
             msg = (_("Share size '%s' must be equal or greater "
                      "than snapshot size") % size)
