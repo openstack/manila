@@ -22,6 +22,7 @@ deprecation==2.0
 docutils==0.14
 dogpile.cache==0.6.5
 dulwich==0.19.0
+enum34===1.1.6
 enum-compat==0.0.2
 eventlet==0.22.0
 extras==1.0.0
@@ -45,7 +46,7 @@ linecache2==1.0.0
 lxml==3.4.1
 Mako==1.0.7
 MarkupSafe==1.0
-mccabe==0.2.1
+mccabe==0.6.0
 monotonic==1.4
 mox3==0.25.0
 msgpack==0.5.6
