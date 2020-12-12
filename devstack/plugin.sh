@@ -1324,10 +1324,12 @@ elif [[ "$1" == "stack" && "$2" == "test-config" ]]; then
 fi
 
 if [[ "$1" == "unstack" ]]; then
+    stop_manila
     cleanup_manila
 fi
 
 if [[ "$1" == "clean" ]]; then
+    stop_manila
     cleanup_manila
     sudo rm -rf /etc/manila
 fi
