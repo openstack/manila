@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    The `API to import shares into manila
+    <https://docs.openstack.org/api-ref/shared-file-system/#manage-share-since-api-v2-7>`_
+    could sometimes allow a share to be "managed" into manila multiple times
+    via different export paths. This API could also incorrectly
+    disallow a manage operation citing a new share in question was already
+    managed. Both issues have now been fixed. See `bug
+    #1848608 <https://launchpad.net/bugs/1848608>`_ and `bug #1893718
+    <https://launchpad.net/bugs/1893718>`_ for more details.
