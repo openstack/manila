@@ -112,21 +112,14 @@ class HostManagerTestCase(test.TestCase):
         host2_share_capabs = dict(free_capacity_gb=5432, timestamp=1)
         host3_share_capabs = dict(free_capacity_gb=6543, timestamp=1)
         service_name = 'share'
-        with mock.patch.object(timeutils, 'utcnow',
-                               mock.Mock(return_value=31337)):
-            self.host_manager.update_service_capabilities(
-                service_name, 'host1', host1_share_capabs)
-            timeutils.utcnow.assert_called_once_with()
-        with mock.patch.object(timeutils, 'utcnow',
-                               mock.Mock(return_value=31338)):
-            self.host_manager.update_service_capabilities(
-                service_name, 'host2', host2_share_capabs)
-            timeutils.utcnow.assert_called_once_with()
-        with mock.patch.object(timeutils, 'utcnow',
-                               mock.Mock(return_value=31339)):
-            self.host_manager.update_service_capabilities(
-                service_name, 'host3', host3_share_capabs)
-            timeutils.utcnow.assert_called_once_with()
+        self.host_manager.update_service_capabilities(
+            service_name, 'host1', host1_share_capabs, 31337)
+
+        self.host_manager.update_service_capabilities(
+            service_name, 'host2', host2_share_capabs, 31338)
+
+        self.host_manager.update_service_capabilities(
+            service_name, 'host3', host3_share_capabs, 31339)
 
         # Make sure dictionary isn't re-assigned
         self.assertEqual(service_states, self.host_manager.service_states)

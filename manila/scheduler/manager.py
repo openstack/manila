@@ -19,11 +19,14 @@
 Scheduler Service
 """
 
+from datetime import datetime
+
 from oslo_config import cfg
 from oslo_log import log
 from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
+from oslo_utils import timeutils
 
 from manila.common import constants
 from manila import context
@@ -96,13 +99,18 @@ class SchedulerManager(manager.Manager):
         return self.driver.get_service_capabilities()
 
     def update_service_capabilities(self, context, service_name=None,
-                                    host=None, capabilities=None, **kwargs):
+                                    host=None, capabilities=None,
+                                    timestamp=None, **kwargs):
         """Process a capability update from a service node."""
         if capabilities is None:
             capabilities = {}
+        elif timestamp:
+            timestamp = datetime.strptime(timestamp,
+                                          timeutils.PERFECT_TIME_FORMAT)
         self.driver.update_service_capabilities(service_name,
                                                 host,
-                                                capabilities)
+                                                capabilities,
+                                                timestamp)
 
     def create_share_instance(self, context, request_spec=None,
                               filter_properties=None):

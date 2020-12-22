@@ -47,12 +47,14 @@ class SchedulerTestCase(test.TestCase):
         service_name = 'fake_service'
         host = 'fake_host'
         capabilities = {'fake_capability': 'fake_value'}
+        timestamp = 1111
         with mock.patch.object(self.driver.host_manager,
                                'update_service_capabilities', mock.Mock()):
             self.driver.update_service_capabilities(
-                service_name, host, capabilities)
+                service_name, host, capabilities, timestamp)
             (self.driver.host_manager.update_service_capabilities.
-                assert_called_once_with(service_name, host, capabilities))
+                assert_called_once_with(service_name, host,
+                                        capabilities, timestamp))
 
     def test_hosts_up(self):
         service1 = {'host': 'host1'}
