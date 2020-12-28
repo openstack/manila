@@ -1009,3 +1009,72 @@ class InfortrendCLIException(ShareBackendException):
 
 class InfortrendNASException(ShareBackendException):
     message = _("Infortrend NAS exception: %(err)s")
+
+
+# Zadara storage driver
+class ZadaraUnknownCmd(ShareBackendException):
+    message = _("Unknown or unsupported command %(cmd)s")
+
+
+class ZadaraSessionRequestException(ShareBackendException):
+    message = _("%(msg)s")
+
+
+class ZadaraBadHTTPResponseStatus(ShareBackendException):
+    message = _("Bad HTTP response status %(status)s")
+
+
+class ZadaraFailedCmdWithDump(ShareBackendException):
+    message = _("Operation failed with status=%(status)s. Full dump: %(data)s")
+
+
+class ZadaraVPSANoActiveController(ShareBackendException):
+    message = _("Unable to find any active VPSA controller")
+
+
+class ZadaraServerCreateFailure(ShareBackendException):
+    message = _("Unable to create server object for initiator %(name)s")
+
+
+class ZadaraAttachmentsNotFound(ShareBackendException):
+    message = _("Failed to retrieve attachments for volume %(name)s")
+
+
+class ZadaraManilaInvalidAccessKey(ShareBackendException):
+    message = _("Invalid VPSA access key")
+
+
+class ZadaraVPSAVolumeShareFailed(ShareBackendException):
+    message = _("Failed to create VPSA backend share. Error: %(error)s")
+
+
+class ZadaraInvalidShareAccessType(ShareBackendException):
+    message = _("Only ip access type allowed for the Zadara manila share.")
+
+
+class ZadaraShareNotFound(ShareBackendException):
+    message = _("Share %(name)s could not be found.")
+
+
+class ZadaraExtendShareFailed(ShareBackendException):
+    message = _("Failed to extend VPSA backend share. Error: %(error)s")
+
+
+class ZadaraInvalidProtocol(ShareBackendException):
+    message = _("The type of protocol %(protocol_type)s for Zadara "
+                "manila driver is not supported. Only NFS or CIFS "
+                "protocol is supported.")
+
+
+class ZadaraShareNotValid(ShareBackendException):
+    message = _("Share %(name)s is not valid.")
+
+
+class ZadaraVPSASnapshotCreateFailed(ShareBackendException):
+    message = _("Failed to create VPSA share %(name)s snapshot. "
+                "Error: %(error)s")
+
+
+class ZadaraVPSASnapshotManageFailed(ShareBackendException):
+    message = _("Failed to manage VPSA share snapshot with id %(snap_id)s. "
+                "Error: %(error)s")

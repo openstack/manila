@@ -94,3 +94,4 @@ each back end.
    tegile_driver
    nexentastor5_driver
    ../configuration/shared-file-systems/drivers/windows-smb-driver
+   zadara_driver
