@@ -17,7 +17,7 @@ Install and configure components
 
    .. code-block:: console
 
-      # yum install openstack-manila python-manilaclient
+      # yum install openstack-manila python3-manilaclient
 
 #. Edit the ``/etc/manila/manila.conf`` file and complete the
    following actions:

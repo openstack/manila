@@ -66,16 +66,16 @@ Install the prerequisite packages.
     libmysqlclient-dev libxml2-dev libxslt-dev libpq-dev git \
     git-review libffi-dev gettext graphviz libjpeg-dev
 
-- On Fedora 21/RHEL7/Centos7::
+- On RHEL8/Centos8::
 
-    sudo yum install python-devel openssl-devel python-pip mysql-devel \
+    sudo dnf install openssl-devel python3-pip mysql-devel \
     libxml2-devel libxslt-devel postgresql-devel git git-review \
     libffi-devel gettext graphviz gcc libjpeg-turbo-devel \
-    python-tox python3-devel python3
+    python3-tox python3-devel python3
 
 .. note::
 
-   If using RHEL and yum reports "No package python-pip available" and "No
+   If using RHEL and yum reports "No package python3-pip available" and "No
    package git-review available", use the EPEL software repository.
    Instructions can be found at `<http://fedoraproject.org/wiki/EPEL/FAQ#howtouse>`_.
 
