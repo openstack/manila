@@ -39,6 +39,9 @@ quota_opts = [
     cfg.IntOpt('quota_gigabytes',
                default=1000,
                help='Number of share gigabytes allowed per project.'),
+    cfg.IntOpt('quota_per_share_gigabytes',
+               default=-1,
+               help='Max size allowed per share, in gigabytes.'),
     cfg.IntOpt('quota_snapshot_gigabytes',
                default=1000,
                help='Number of snapshot gigabytes allowed per project.'),
@@ -383,6 +386,50 @@ class DbQuotaDriver(object):
 
         return {k: v['limit'] for k, v in quotas.items()}
 
+    def limit_check(self, context, resources, values, project_id=None):
+        """Check simple quota limits.
+
+        For limits--those quotas for which there is no usage
+        synchronization function--this method checks that a set of
+        proposed values are permitted by the limit restriction.
+
+        This method will raise a QuotaResourceUnknown exception if a
+        given resource is unknown or if it is not a simple limit
+        resource.
+
+        If any of the proposed values is over the defined quota, an
+        OverQuota exception will be raised with the sorted list of the
+        resources which are too high.  Otherwise, the method returns
+        nothing.
+
+        :param context: The request context, for access checks.
+        :param resources: A dictionary of the registered resources.
+        :param values: A dictionary of the values to check against the
+                       quota.
+        :param project_id: Specify the project_id if current context
+                           is admin and admin wants to impact on
+                           common user's tenant.
+        """
+
+        # Ensure no value is less than zero
+        unders = [key for key, val in values.items() if val < 0]
+        if unders:
+            raise exception.InvalidQuotaValue(unders=sorted(unders))
+
+        # If project_id is None, then we use the project_id in context
+        if project_id is None:
+            project_id = context.project_id
+
+        quotas = self._get_quotas(context, resources, values.keys(),
+                                  has_sync=False, project_id=project_id)
+        # Check the quotas and construct a list of the resources that
+        # would be put over limit by the desired values
+        overs = [key for key, val in values.items()
+                 if quotas[key] >= 0 and quotas[key] < val]
+        if overs:
+            raise exception.OverQuota(overs=sorted(overs), quotas=quotas,
+                                      usages={})
+
     def reserve(self, context, resources, deltas, expire=None,
                 project_id=None, user_id=None, share_type_id=None,
                 overquota_allowed=False):
@@ -657,7 +704,8 @@ class ReservableResource(BaseResource):
         """
 
         super(ReservableResource, self).__init__(name, flag=flag)
-        self.sync = sync
+        if sync:
+            self.sync = sync
 
 
 class AbsoluteResource(BaseResource):
@@ -876,6 +924,34 @@ class QuotaEngine(object):
 
         return res.count(context, *args, **kwargs)
 
+    def limit_check(self, context, project_id=None, **values):
+        """Check simple quota limits.
+
+        For limits--those quotas for which there is no usage
+        synchronization function--this method checks that a set of
+        proposed values are permitted by the limit restriction.  The
+        values to check are given as keyword arguments, where the key
+        identifies the specific quota limit to check, and the value is
+        the proposed value.
+
+        This method will raise a QuotaResourceUnknown exception if a
+        given resource is unknown or if it is not a simple limit
+        resource.
+
+        If any of the proposed values is over the defined quota, an
+        OverQuota exception will be raised with the sorted list of the
+        resources which are too high.  Otherwise, the method returns
+        nothing.
+
+        :param context: The request context, for access checks.
+        :param project_id: Specify the project_id if current context
+                           is admin and admin wants to impact on
+                           common user's tenant.
+        """
+
+        return self._driver.limit_check(context, self._resources, values,
+                                        project_id=project_id)
+
     def reserve(self, context, expire=None, project_id=None, user_id=None,
                 share_type_id=None, overquota_allowed=False, **deltas):
         """Check quotas and reserve resources.
@@ -1059,6 +1135,8 @@ resources = [
     ReservableResource('shares', '_sync_shares', 'quota_shares'),
     ReservableResource('snapshots', '_sync_snapshots', 'quota_snapshots'),
     ReservableResource('gigabytes', '_sync_gigabytes', 'quota_gigabytes'),
+    ReservableResource('per_share_gigabytes', None,
+                       'quota_per_share_gigabytes'),
     ReservableResource('snapshot_gigabytes', '_sync_snapshot_gigabytes',
                        'quota_snapshot_gigabytes'),
     ReservableResource('share_networks', '_sync_share_networks',

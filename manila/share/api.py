@@ -236,6 +236,8 @@ class API(base.Base):
                          supported=CONF.enabled_share_protocols))
             raise exception.InvalidInput(reason=msg)
 
+        self._check_is_share_size_within_per_share_quota_limit(context, size)
+
         deltas = {'shares': 1, 'gigabytes': size}
         share_type_attributes = self.get_share_attributes_from_share_type(
             share_type)
@@ -2020,6 +2022,17 @@ class API(base.Base):
             }
             raise exception.ShareBusyException(reason=msg)
 
+    def _check_is_share_size_within_per_share_quota_limit(self, context, size):
+        """Raises an exception if share size above per share quota limit."""
+        try:
+            values = {'per_share_gigabytes': size}
+            QUOTAS.limit_check(context, project_id=context.project_id,
+                               **values)
+        except exception.OverQuota as e:
+            quotas = e.kwargs['quotas']
+            raise exception.ShareSizeExceedsLimit(
+                size=size, limit=quotas['per_share_gigabytes'])
+
     def _check_metadata_properties(self, metadata=None):
         if not metadata:
             metadata = {}
@@ -2097,6 +2110,9 @@ class API(base.Base):
                      "extended: %(new_size)s).") % {'new_size': new_size,
                                                     'size': share['size']})
             raise exception.InvalidInput(reason=msg)
+
+        self._check_is_share_size_within_per_share_quota_limit(context,
+                                                               new_size)
 
         # ensure we pass the share_type provisioning filter on size
         try:

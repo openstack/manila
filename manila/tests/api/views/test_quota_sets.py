@@ -43,6 +43,9 @@ class ViewBuilderTestCase(test.TestCase):
         (None, 'fake_share_type_id', "2.53"),
         ('fake_project_id', None, "2.53"),
         (None, None, "2.53"),
+        (None, 'fake_share_type_id', "2.62"),
+        ('fake_project_id', None, "2.62"),
+        (None, None, "2.62"),
     )
     @ddt.unpack
     def test_detail_list_with_share_type(self, project_id, share_type,
@@ -85,6 +88,12 @@ class ViewBuilderTestCase(test.TestCase):
                 "replica_gigabytes"] = fake_replica_gigabytes_value
             quota_set['share_replicas'] = fake_share_replicas_value
             quota_set['replica_gigabytes'] = fake_replica_gigabytes_value
+
+        if req.api_version_request >= api_version.APIVersionRequest("2.62"):
+            fake_per_share_gigabytes = 10
+            expected[self.builder._collection_name]["per_share_gigabytes"] = (
+                fake_per_share_gigabytes)
+            quota_set['per_share_gigabytes'] = fake_per_share_gigabytes
 
         result = self.builder.detail_list(
             req, quota_set, project_id=project_id, share_type=share_type)

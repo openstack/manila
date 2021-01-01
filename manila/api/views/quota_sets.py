@@ -22,6 +22,7 @@ class ViewBuilder(common.ViewBuilder):
     _detail_version_modifiers = [
         "add_share_group_quotas",
         "add_share_replica_quotas",
+        "add_per_share_gigabytes_quotas",
     ]
 
     def detail_list(self, request, quota_set, project_id=None,
@@ -59,3 +60,7 @@ class ViewBuilder(common.ViewBuilder):
     def add_share_replica_quotas(self, context, view, quota_class_set):
         view['share_replicas'] = quota_class_set.get('share_replicas')
         view['replica_gigabytes'] = quota_class_set.get('replica_gigabytes')
+
+    @common.ViewBuilder.versioned_method("2.62")
+    def add_per_share_gigabytes_quotas(self, context, view, quota_set):
+        view['per_share_gigabytes'] = quota_set.get('per_share_gigabytes')

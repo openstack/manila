@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    'quota_per_share_gigabytes' config option allows admin to set per share
+    size limit for a project. The default value is -1["No Limit"] always
+    unless changed in manila.conf by admin.

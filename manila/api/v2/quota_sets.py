@@ -329,6 +329,9 @@ class QuotaSetsController(QuotaSetsMixin, wsgi.Controller):
         elif req.api_version_request < api_version.APIVersionRequest("2.53"):
             self._ensure_specific_microversion_args_are_absent(
                 body, ['share_replicas', 'replica_gigabytes'], "2.53")
+        elif req.api_version_request < api_version.APIVersionRequest("2.62"):
+            self._ensure_specific_microversion_args_are_absent(
+                body, ['per_share_gigabytes'], "2.62")
         return self._update(req, id, body)
 
     @wsgi.Controller.api_version('2.7')

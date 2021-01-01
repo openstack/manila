@@ -2601,6 +2601,16 @@ class ShareManager(manager.SchedulerDependentManager):
                 share_types.provision_filter_on_size(context,
                                                      share_type,
                                                      share_update.get('size'))
+                try:
+                    values = {'per_share_gigabytes': share_update.get('size')}
+                    QUOTAS.limit_check(context, project_id=context.project_id,
+                                       **values)
+                except exception.OverQuota as e:
+                    quotas = e.kwargs['quotas']
+                    LOG.warning("Requested share size %(size)d is larger than "
+                                "maximum allowed limit %(limit)d.",
+                                {'size': share_update.get('size'),
+                                 'limit': quotas['per_share_gigabytes']})
 
             deltas = {
                 'project_id': project_id,
