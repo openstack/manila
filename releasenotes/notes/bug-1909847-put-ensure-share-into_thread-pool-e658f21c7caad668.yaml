@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    This fix introduces a new configuration item, which named
+    "share_service_inithost_offload", default value is False, if set it True,
+    will put ensure_share operation into thread pool to speed up startup of
+    manila share service.
+fixes:
+  - |
+    The manila share servie now can put ensure_share operation into thread
+    pool during service startup process. See `Launchpad bug#1890833
+    <https://launchpad.net/bugs/1909847>`_ for more details.
+  - |
+    The manila share service now honors the configuration option
+    "share_service_inithost_offload", and it can be used to reduce the time
+    required for the manila share aervice to start up.
