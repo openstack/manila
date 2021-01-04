@@ -667,7 +667,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 server_details['instance_id'],
                 volume)
 
-        self._resize_filesystem(server_details, volume)
+        self._resize_filesystem(server_details, volume, new_size=new_size)
         self._mount_device(share, server_details, volume)
         helper.restore_access_after_maintenance(server_details,
                                                 share['name'])
