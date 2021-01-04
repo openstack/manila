@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed a bug that if extend a volume after shrink it under generic
+    driver, it may have a wrong real size. Please see
+    `Launchpad bug <https://bugs.launchpad.net/manila/+bug/1909951>`_
+    for more details.
