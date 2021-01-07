@@ -23,6 +23,7 @@ import datetime
 from functools import wraps
 import ipaddress
 import sys
+import threading
 import warnings
 
 # NOTE(uglide): Required to override default oslo_db Query class
@@ -37,8 +38,10 @@ from oslo_db.sqlalchemy import session
 from oslo_db.sqlalchemy import utils as db_utils
 from oslo_log import log
 from oslo_utils import excutils
+from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
+import sqlalchemy
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -54,7 +57,11 @@ from manila import exception
 from manila.i18n import _
 from manila import quota
 
+
+osprofiler_sqlalchemy = importutils.try_import('osprofiler.sqlalchemy')
+
 CONF = cfg.CONF
+CONF.import_group("profiler", "manila.service")
 
 LOG = log.getLogger(__name__)
 QUOTAS = quota.QUOTAS
@@ -63,6 +70,8 @@ _DEFAULT_QUOTA_NAME = 'default'
 PER_PROJECT_QUOTAS = []
 
 _FACADE = None
+_LOCK = threading.Lock()
+
 
 _DEFAULT_SQL_CONNECTION = 'sqlite://'
 db_options.set_defaults(cfg.CONF,
@@ -70,9 +79,15 @@ db_options.set_defaults(cfg.CONF,
 
 
 def _create_facade_lazily():
-    global _FACADE
+    global _LOCK, _FACADE
     if _FACADE is None:
-        _FACADE = session.EngineFacade.from_config(cfg.CONF)
+        with _LOCK:
+            if _FACADE is None:
+                _FACADE = session.EngineFacade.from_config(cfg.CONF)
+            if CONF.profiler.enabled and CONF.profiler.trace_sqlalchemy:
+                osprofiler_sqlalchemy.add_tracing(sqlalchemy,
+                                                  _FACADE.get_engine(),
+                                                  "db")
     return _FACADE
 
 
