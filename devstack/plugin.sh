@@ -1088,7 +1088,7 @@ function setup_ipv6 {
     # Configure interfaces due to NEUTRON_CREATE_INITIAL_NETWORKS=False
     local ipv4_cidr_len=${FLOATING_RANGE#*/}
     sudo ip -6 addr add "$public_gateway_ipv6"/$SUBNETPOOL_SIZE_V6 dev $PUBLIC_BRIDGE
-    sudo ip addr add $PUBLIC_NETWORK_GATEWAY/"$ipv4_cidr_len" dev $PUBLIC_BRIDGE
+    sudo ip addr add "$public_gateway_ipv4"/"$ipv4_cidr_len" dev $PUBLIC_BRIDGE
 
     # Enabling interface is needed due to NEUTRON_CREATE_INITIAL_NETWORKS=False
     sudo ip link set $PUBLIC_BRIDGE up
