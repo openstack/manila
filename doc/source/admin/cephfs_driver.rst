@@ -69,9 +69,12 @@ Ceph testing matrix
 
 As Ceph and Manila continue to grow, it is essential to test and support
 combinations of releases supported by both projects. However, there is
-little community bandwidth to cover all of them. Below is the current state of
-testing for Ceph releases with this project. Adjacent components such as
-`devstack-plugin-ceph <https://opendev.org/openstack/devstack-plugin-ceph>`_
+little community bandwidth to cover all of them. For simplicity sake,
+we are focused on testing (and therefore supporting) the current Ceph
+active releases. Check out the list of Ceph active releases `here <https://docs.ceph.com/en/latest/releases/general/>`_.
+
+Below is the current state of testing for Ceph releases with this project.
+Adjacent components such as `devstack-plugin-ceph <https://opendev.org/openstack/devstack-plugin-ceph>`_
 and `tripleo <https://opendev.org/openstack/tripleo-heat-templates>`_ are
 added to the table below. Contributors to those projects can determine what
 versions of ceph are tested and supported with manila by those components;
@@ -97,9 +100,17 @@ however, their state is presented here for ease of access.
 +-------------------+----------+----------------------+-----------+
 | Ussuri            | Nautilus | Luminous, Nautilus   | Nautilus  |
 +-------------------+----------+----------------------+-----------+
-| Victoria          | Nautilus | Nautilus             | Nautilus  |
+| Victoria          | Nautilus | Nautilus, Octopus    | Nautilus  |
++-------------------+----------+----------------------+-----------+
+| Wallaby           | Octopus  | Nautilus, Octopus    | Nautilus  |
 +-------------------+----------+----------------------+-----------+
 
+Additionally, it is expected that the version of the Ceph client
+available to manila is aligned with the Ceph server version. Mixing
+server and client versions is strongly unadvised.
+
+In case of using the NFS Ganesha driver, it's also a good practice to use
+the versions that align with the Ceph version of choice.
 
 Common Prerequisites
 --------------------
