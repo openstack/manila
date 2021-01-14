@@ -1772,12 +1772,18 @@ class API(base.Base):
 
         # Prepare filters
         filters = {}
-        if 'export_location_id' in search_opts:
-            filters['export_location_id'] = search_opts.pop(
-                'export_location_id')
-        if 'export_location_path' in search_opts:
-            filters['export_location_path'] = search_opts.pop(
-                'export_location_path')
+
+        filter_keys = [
+            'display_name', 'share_group_id', 'display_name~',
+            'display_description', 'display_description~', 'snapshot_id',
+            'status', 'share_type_id', 'project_id', 'export_location_id',
+            'export_location_path', 'limit', 'offset', 'host',
+            'share_network_id']
+
+        for key in filter_keys:
+            if key in search_opts:
+                filters[key] = search_opts.pop(key)
+
         if 'metadata' in search_opts:
             filters['metadata'] = search_opts.pop('metadata')
             if not isinstance(filters['metadata'], dict):
@@ -1792,10 +1798,7 @@ class API(base.Base):
                 msg = _("Wrong extra specs filter provided: "
                         "%s.") % six.text_type(filters['extra_specs'])
                 raise exception.InvalidInput(reason=msg)
-        if 'limit' in search_opts:
-            filters['limit'] = search_opts.pop('limit')
-        if 'offset' in search_opts:
-            filters['offset'] = search_opts.pop('offset')
+
         if not (isinstance(sort_key, six.string_types) and sort_key):
             msg = _("Wrong sort_key filter provided: "
                     "'%s'.") % six.text_type(sort_key)
@@ -1809,7 +1812,7 @@ class API(base.Base):
         is_public = strutils.bool_from_string(is_public, strict=True)
 
         # Get filtered list of shares
-        if 'host' in search_opts:
+        if 'host' in filters:
             policy.check_policy(context, 'share', 'list_by_host')
         if 'share_server_id' in search_opts:
             # NOTE(vponomaryov): this is project_id independent

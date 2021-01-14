@@ -207,9 +207,19 @@ def apply_sorting(model, query, sort_key, sort_dir):
                     "sort_key": sort_key, "sort_dir": sort_dir}
         raise exception.InvalidInput(reason=msg)
 
-    sort_attr = getattr(model, sort_key)
-    sort_method = getattr(sort_attr, sort_dir.lower())
-    return query.order_by(sort_method())
+    # NOTE(maaoyu): We add the additional sort by ID in this case to
+    # get deterministic results. Without the ordering by ID this could
+    # lead to flapping return lists.
+    sort_keys = [sort_key]
+    if sort_key != 'id':
+        sort_keys.append('id')
+
+    for sort_key in sort_keys:
+        sort_attr = getattr(model, sort_key)
+        sort_method = getattr(sort_attr, sort_dir.lower())
+        query = query.order_by(sort_method())
+
+    return query
 
 
 def handle_db_data_error(f):
@@ -1911,11 +1921,102 @@ def share_replica_delete(context, share_replica_id, session=None,
 ################
 
 
+@require_context
 def _share_get_query(context, session=None):
     if session is None:
         session = get_session()
     return (model_query(context, models.Share, session=session).
             options(joinedload('share_metadata')))
+
+
+def _process_share_filters(query, filters, project_id=None, is_public=False):
+    if filters is None:
+        filters = {}
+
+    share_filter_keys = ['share_group_id', 'snapshot_id']
+    instance_filter_keys = ['share_server_id', 'status', 'share_type_id',
+                            'host', 'share_network_id']
+    share_filters = {}
+    instance_filters = {}
+
+    for k, v in filters.items():
+        share_filters.update({k: v}) if k in share_filter_keys else None
+        instance_filters.update({k: v}) if k in instance_filter_keys else None
+
+    no_key = 'key_is_absent'
+
+    def _filter_data(query, model, desired_filters):
+        for key, value in desired_filters.items():
+            filter_attr = getattr(model, key, no_key)
+            if filter_attr == no_key:
+                pass
+            query = query.filter(filter_attr == value)
+        return query
+
+    if share_filters:
+        query = _filter_data(query, models.Share, share_filters)
+    if instance_filters:
+        query = _filter_data(query, models.ShareInstance, instance_filters)
+
+    if project_id:
+        if is_public:
+            query = query.filter(or_(models.Share.project_id == project_id,
+                                     models.Share.is_public))
+        else:
+            query = query.filter(models.Share.project_id == project_id)
+
+    display_name = filters.get('display_name')
+    if display_name:
+        query = query.filter(
+            models.Share.display_name == display_name)
+    else:
+        display_name = filters.get('display_name~')
+        if display_name:
+            query = query.filter(models.Share.display_name.op('LIKE')(
+                u'%' + display_name + u'%'))
+
+    display_description = filters.get('display_description')
+    if display_description:
+        query = query.filter(
+            models.Share.display_description == display_description)
+    else:
+        display_description = filters.get('display_description~')
+        if display_description:
+            query = query.filter(models.Share.display_description.op('LIKE')(
+                u'%' + display_description + u'%'))
+
+    export_location_id = filters.pop('export_location_id', None)
+    export_location_path = filters.pop('export_location_path', None)
+    if export_location_id or export_location_path:
+        query = query.join(
+            models.ShareInstanceExportLocations,
+            models.ShareInstanceExportLocations.share_instance_id ==
+            models.ShareInstance.id)
+        if export_location_path:
+            query = query.filter(
+                models.ShareInstanceExportLocations.path ==
+                export_location_path)
+        if export_location_id:
+            query = query.filter(
+                models.ShareInstanceExportLocations.uuid ==
+                export_location_id)
+
+    if 'metadata' in filters:
+        for k, v in filters['metadata'].items():
+            # pylint: disable=no-member
+            query = query.filter(
+                or_(models.Share.share_metadata.any(
+                    key=k, value=v)))
+    if 'extra_specs' in filters:
+        query = query.join(
+            models.ShareTypeExtraSpecs,
+            models.ShareTypeExtraSpecs.share_type_id ==
+            models.ShareInstance.share_type_id)
+        for k, v in filters['extra_specs'].items():
+            query = query.filter(or_(models.ShareTypeExtraSpecs.key == k,
+                                     models.ShareTypeExtraSpecs.value == v))
+
+    return query
 
 
 def _metadata_refs(metadata_dict, meta_class):
@@ -2022,6 +2123,9 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     :returns: list -- models.Share
     :raises: exception.InvalidInput
     """
+    if filters is None:
+        filters = {}
+
     if not sort_key:
         sort_key = 'created_at'
     if not sort_dir:
@@ -2033,54 +2137,13 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
         )
     )
 
-    if project_id:
-        if is_public:
-            query = query.filter(or_(models.Share.project_id == project_id,
-                                     models.Share.is_public))
-        else:
-            query = query.filter(models.Share.project_id == project_id)
-    if share_server_id:
-        query = query.filter(
-            models.ShareInstance.share_server_id == share_server_id)
-
     if share_group_id:
-        query = query.filter(
-            models.Share.share_group_id == share_group_id)
+        filters['share_group_id'] = share_group_id
+    if share_server_id:
+        filters['share_server_id'] = share_server_id
 
-    # Apply filters
-    if not filters:
-        filters = {}
-
-    export_location_id = filters.get('export_location_id')
-    export_location_path = filters.get('export_location_path')
-    if export_location_id or export_location_path:
-        query = query.join(
-            models.ShareInstanceExportLocations,
-            models.ShareInstanceExportLocations.share_instance_id ==
-            models.ShareInstance.id)
-        if export_location_path:
-            query = query.filter(
-                models.ShareInstanceExportLocations.path ==
-                export_location_path)
-        if export_location_id:
-            query = query.filter(
-                models.ShareInstanceExportLocations.uuid ==
-                export_location_id)
-
-    if 'metadata' in filters:
-        for k, v in filters['metadata'].items():
-            # pylint: disable=no-member
-            query = query.filter(
-                or_(models.Share.share_metadata.any(
-                    key=k, value=v)))
-    if 'extra_specs' in filters:
-        query = query.join(
-            models.ShareTypeExtraSpecs,
-            models.ShareTypeExtraSpecs.share_type_id ==
-            models.ShareInstance.share_type_id)
-        for k, v in filters['extra_specs'].items():
-            query = query.filter(or_(models.ShareTypeExtraSpecs.key == k,
-                                     models.ShareTypeExtraSpecs.value == v))
+    query = _process_share_filters(
+        query, filters, project_id, is_public=is_public)
 
     try:
         query = apply_sorting(models.Share, query, sort_key, sort_dir)
@@ -2103,8 +2166,12 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
 
 @require_admin_context
 def share_get_all(context, filters=None, sort_key=None, sort_dir=None):
+    project_id = filters.pop('project_id', None) if filters else None
     query = _share_get_all_with_filters(
-        context, filters=filters, sort_key=sort_key, sort_dir=sort_dir)
+        context,
+        project_id=project_id,
+        filters=filters, sort_key=sort_key, sort_dir=sort_dir)
+
     return query
 
 
