@@ -9,15 +9,11 @@
     check:
       jobs:
         - manila-tox-genconfig
-        - manila-tempest-dsvm-mysql-generic:
-            voting: false
         - manila-tempest-dsvm-postgres-container:
             voting: false
         - manila-tempest-dsvm-postgres-zfsonlinux:
             voting: false
         - manila-tempest-dsvm-postgres-generic-singlebackend:
-            voting: false
-        - manila-tempest-dsvm-generic-no-share-servers:
             voting: false
         - manila-tempest-dsvm-scenario:
             voting: false
@@ -27,15 +23,7 @@
             voting: false
         - manila-tempest-minimal-dsvm-dummy
         - manila-tempest-dsvm-lvm-em-only
-        # manila-tempest-dsvm-lvm-em-only replaces below
-        # job because of LP #1888717
-        - manila-tempest-minimal-dsvm-lvm-centos-7:
-            voting: false
         - grenade-dsvm-manila:
-            voting: false
-        - rally-dsvm-manila-multibackend:
-            voting: false
-        - rally-dsvm-manila-multibackend-no-ss:
             voting: false
         - openstack-tox-cover:
             voting: false
@@ -44,20 +32,9 @@
     gate:
       queue: manila
       jobs:
-        - manila-tox-genconfig
         - manila-tempest-minimal-dsvm-dummy
         - manila-tempest-dsvm-lvm-em-only
-    experimental:
-      jobs:
-        - manila-tempest-dsvm-glusterfs-nfs
-        - manila-tempest-dsvm-glusterfs-native
-        - manila-tempest-dsvm-glusterfs-nfs-heketi
-        - manila-tempest-dsvm-glusterfs-native-heketi
-        - tripleo-ci-centos-7-scenario004-multinode-oooq-container
 
-    post:
-      jobs:
-        - openstack-tox-cover
 - job:
     name: grenade-dsvm-manila
     parent: legacy-dsvm-base
