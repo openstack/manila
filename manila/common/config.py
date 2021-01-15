@@ -29,6 +29,7 @@ import socket
 from oslo_config import cfg
 from oslo_log import log
 from oslo_middleware import cors
+from oslo_policy import opts as policy_opts
 from oslo_utils import netutils
 import six
 
@@ -169,8 +170,8 @@ def verify_share_protocols():
         raise exception.ManilaException(message=msg)
 
 
-def set_middleware_defaults():
-    """Update default configuration options for oslo.middleware."""
+def set_lib_defaults():
+    """Update default configuration options for external lib namespace"""
     cors.set_defaults(
         allow_headers=['X-Auth-Token',
                        'X-OpenStack-Request-ID',
@@ -193,3 +194,5 @@ def set_middleware_defaults():
                        'DELETE',
                        'PATCH']
     )
+    # Update default value of oslo.policy policy_file config option.
+    policy_opts.set_defaults(CONF, 'policy.yaml')

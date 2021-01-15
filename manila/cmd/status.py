@@ -15,6 +15,7 @@
 import sys
 
 from oslo_config import cfg
+from oslo_upgradecheck import common_checks
 from oslo_upgradecheck import upgradecheck
 
 from manila.i18n import _
@@ -42,6 +43,8 @@ class Checks(upgradecheck.UpgradeCommands):
     _upgrade_checks = (
         # In the future there should be some real checks added here
         (_('Placeholder'), _check_placeholder),
+        (_('Policy File JSON to YAML Migration'),
+         (common_checks.check_policy_json, {'conf': cfg.CONF})),
     )
 
 

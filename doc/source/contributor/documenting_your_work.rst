@@ -105,7 +105,7 @@ OpenStack Security Guide
 - Any feature that has a security impact needs to be documented here.
 - In general, administrators will follow the guidelines regarding best
   practices of setting up their manila deployments with this guide.
-- Any changes to ``policy.json`` based authorization, share network related
+- Any changes to ``policy.yaml`` based authorization, share network related
   security, ``access`` to manila resources, tenant and user related
   information needs to be documented here.
 - **Link**: `Security guide <http://docs.openstack.org/security-guide/>`_

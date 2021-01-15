@@ -48,7 +48,7 @@ The Shared File Systems service contains the following components:
    allowed to perform. In the default configuration, most actions do not
    require a particular role unless they are restricted to administrators, but
    this can be configured by the system administrator in the appropriate
-   ``policy.json`` file that maintains the rules. A user's access to manage
+   ``policy.yaml`` file that maintains the rules. A user's access to manage
    particular shares is limited by tenant. Guest access to mount and use shares
    is secured by IP and/or user access rules. Quotas used to control resource
    consumption across available hardware resources are per tenant.
