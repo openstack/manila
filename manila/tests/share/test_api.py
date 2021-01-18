@@ -1001,7 +1001,7 @@ class ShareAPITestCase(test.TestCase):
     def test_manage_new(self, replication_type, dhss, share_server_id):
         share_data = {
             'host': 'fake',
-            'export_location': 'fake',
+            'export_location_path': 'fake',
             'share_proto': 'fake',
             'share_type_id': 'fake',
         }
@@ -1045,7 +1045,8 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(return_value=share_server))
         self.mock_object(db_api, 'share_network_subnet_get',
                          mock.Mock(return_value=fake_subnet))
-        self.mock_object(self.api, 'get_all', mock.Mock(return_value=[]))
+        self.mock_object(db_api, 'share_instances_get_all',
+                         mock.Mock(return_value=[]))
 
         self.api.manage(self.context, copy.deepcopy(share_data),
                         driver_options)
@@ -1072,13 +1073,18 @@ class ShareAPITestCase(test.TestCase):
         if dhss:
             share_data.update({
                 'share_network_id': fake_subnet['share_network_id']})
-        export_location = share_data.pop('export_location')
-        self.api.get_all.assert_called_once_with(self.context, mock.ANY)
+        export_location = share_data.pop('export_location_path')
+        filters = {'export_location_path': export_location,
+                   'host': share_data['host']
+                   }
+        if share_server_id:
+            filters['share_server_id'] = share_server_id
+        db_api.share_instances_get_all.assert_called_once_with(
+            self.context, filters=filters)
         db_api.share_create.assert_called_once_with(self.context, share_data)
         db_api.share_get.assert_called_once_with(self.context, share['id'])
         db_api.share_export_locations_update.assert_called_once_with(
-            self.context, share.instance['id'], export_location
-        )
+            self.context, share.instance['id'], export_location)
         self.scheduler_rpcapi.manage_share.assert_called_once_with(
             self.context, share['id'], driver_options, expected_request_spec)
         if dhss:
@@ -1096,7 +1102,7 @@ class ShareAPITestCase(test.TestCase):
                                             has_share_server_id):
         share_data = {
             'host': 'fake',
-            'export_location': 'fake',
+            'export_location_path': 'fake',
             'share_proto': 'fake',
             'share_type_id': 'fake',
         }
@@ -1119,7 +1125,8 @@ class ShareAPITestCase(test.TestCase):
 
         self.mock_object(share_types, 'get_share_type',
                          mock.Mock(return_value=fake_type))
-        self.mock_object(self.api, 'get_all', mock.Mock(return_value=[]))
+        self.mock_object(db_api, 'share_instances_get_all',
+                         mock.Mock(return_value=[]))
 
         self.assertRaises(exception_type,
                           self.api.manage,
@@ -1130,19 +1137,18 @@ class ShareAPITestCase(test.TestCase):
         share_types.get_share_type.assert_called_once_with(
             self.context, share_data['share_type_id']
         )
-        self.api.get_all.assert_called_once_with(
-            self.context, {
-                'host': share_data['host'],
-                'export_location': share_data['export_location'],
-                'share_proto': share_data['share_proto'],
-                'share_type_id': share_data['share_type_id']
-            }
-        )
+        filters = {'export_location_path': share_data['export_location_path'],
+                   'host': share_data['host']
+                   }
+        if has_share_server_id:
+            filters['share_server_id'] = 'fake'
+        db_api.share_instances_get_all.assert_called_once_with(
+            self.context, filters=filters)
 
     def test_manage_new_share_server_not_found(self):
         share_data = {
             'host': 'fake',
-            'export_location': 'fake',
+            'export_location_path': 'fake',
             'share_proto': 'fake',
             'share_type_id': 'fake',
             'share_server_id': 'fake'
@@ -1166,7 +1172,8 @@ class ShareAPITestCase(test.TestCase):
 
         self.mock_object(share_types, 'get_share_type',
                          mock.Mock(return_value=fake_type))
-        self.mock_object(self.api, 'get_all', mock.Mock(return_value=[]))
+        self.mock_object(db_api, 'share_instances_get_all',
+                         mock.Mock(return_value=[]))
 
         self.assertRaises(exception.InvalidInput,
                           self.api.manage,
@@ -1177,19 +1184,18 @@ class ShareAPITestCase(test.TestCase):
         share_types.get_share_type.assert_called_once_with(
             self.context, share_data['share_type_id']
         )
-        self.api.get_all.assert_called_once_with(
-            self.context, {
+        db_api.share_instances_get_all.assert_called_once_with(
+            self.context, filters={
+                'export_location_path': share_data['export_location_path'],
                 'host': share_data['host'],
-                'export_location': share_data['export_location'],
-                'share_proto': share_data['share_proto'],
-                'share_type_id': share_data['share_type_id']
+                'share_server_id': share_data['share_server_id']
             }
         )
 
     def test_manage_new_share_server_not_active(self):
         share_data = {
             'host': 'fake',
-            'export_location': 'fake',
+            'export_location_path': 'fake',
             'share_proto': 'fake',
             'share_type_id': 'fake',
             'share_server_id': 'fake'
@@ -1219,7 +1225,8 @@ class ShareAPITestCase(test.TestCase):
 
         self.mock_object(share_types, 'get_share_type',
                          mock.Mock(return_value=fake_type))
-        self.mock_object(self.api, 'get_all', mock.Mock(return_value=[]))
+        self.mock_object(db_api, 'share_instances_get_all',
+                         mock.Mock(return_value=[]))
         self.mock_object(db_api, 'share_server_get',
                          mock.Mock(return_value=share))
 
@@ -1232,12 +1239,11 @@ class ShareAPITestCase(test.TestCase):
         share_types.get_share_type.assert_called_once_with(
             self.context, share_data['share_type_id']
         )
-        self.api.get_all.assert_called_once_with(
-            self.context, {
+        db_api.share_instances_get_all.assert_called_once_with(
+            self.context, filters={
+                'export_location_path': share_data['export_location_path'],
                 'host': share_data['host'],
-                'export_location': share_data['export_location'],
-                'share_proto': share_data['share_proto'],
-                'share_type_id': share_data['share_type_id']
+                'share_server_id': share_data['share_server_id']
             }
         )
         db_api.share_server_get.assert_called_once_with(
@@ -1248,7 +1254,7 @@ class ShareAPITestCase(test.TestCase):
     def test_manage_duplicate(self, status):
         share_data = {
             'host': 'fake',
-            'export_location': 'fake',
+            'export_location_path': 'fake',
             'share_proto': 'fake',
             'share_type_id': 'fake',
         }
@@ -1261,9 +1267,9 @@ class ShareAPITestCase(test.TestCase):
                 'driver_handles_share_servers': False,
             },
         }
-        shares = [{'id': 'fake', 'status': status}]
-        self.mock_object(self.api, 'get_all',
-                         mock.Mock(return_value=shares))
+        already_managed = [{'id': 'fake', 'status': status}]
+        self.mock_object(db_api, 'share_instances_get_all',
+                         mock.Mock(return_value=already_managed))
         self.mock_object(share_types, 'get_share_type',
                          mock.Mock(return_value=fake_type))
         self.assertRaises(exception.InvalidShare, self.api.manage,

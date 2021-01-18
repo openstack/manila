@@ -43,7 +43,7 @@ class ShareManageMixin(object):
 
         share = {
             'host': share_data['service_host'],
-            'export_location': share_data['export_path'],
+            'export_location_path': share_data['export_path'],
             'share_proto': share_data['protocol'].upper(),
             'share_type_id': share_data['share_type_id'],
             'display_name': name,
@@ -84,6 +84,15 @@ class ShareManageMixin(object):
                 raise exc.HTTPUnprocessableEntity(explanation=msg)
             if not data.get(parameter):
                 msg = _("Required parameter %s is empty") % parameter
+                raise exc.HTTPUnprocessableEntity(explanation=msg)
+
+        if isinstance(data['export_path'], dict):
+            # the path may be inside this dictionary
+            try:
+                data['export_path'] = data['export_path']['path']
+            except KeyError:
+                msg = ("Export path must be a string, or a dictionary "
+                       "with a 'path' item")
                 raise exc.HTTPUnprocessableEntity(explanation=msg)
 
         if not share_utils.extract_host(data['service_host'], 'pool'):
