@@ -2997,9 +2997,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  mock.Mock())))
+        protocol_helper = mock.Mock()
         self.mock_object(self.library,
                          '_get_helper',
-                         mock.Mock(return_value=mock.Mock()))
+                         mock.Mock(return_value=protocol_helper))
         self.mock_object(self.library, '_create_export',
                          mock.Mock(return_value='fake_export_location'))
         self.mock_object(self.library, '_unmount_orig_active_replica')
@@ -3010,6 +3011,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=mock_dm_session))
         self.mock_object(mock_dm_session, 'get_vserver_from_share',
                          mock.Mock(return_value=fake.VSERVER1))
+        self.mock_object(self.client, 'cleanup_demoted_replica')
 
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2],
@@ -3035,6 +3037,44 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._unmount_orig_active_replica.assert_called_once_with(
             self.fake_replica, fake.VSERVER1)
         self.library._handle_qos_on_replication_change.assert_called_once()
+        protocol_helper.cleanup_demoted_replica.assert_called_once_with(
+            self.fake_replica, fake.SHARE['name'])
+
+    def test_promote_replica_cleanup_demoted_storage_error(self):
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 mock.Mock())))
+        protocol_helper = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_helper',
+                         mock.Mock(return_value=protocol_helper))
+        self.mock_object(self.library, '_create_export',
+                         mock.Mock(return_value='fake_export_location'))
+        self.mock_object(self.library, '_unmount_orig_active_replica')
+        self.mock_object(self.library, '_handle_qos_on_replication_change')
+
+        mock_dm_session = mock.Mock()
+        self.mock_object(data_motion, "DataMotionSession",
+                         mock.Mock(return_value=mock_dm_session))
+        self.mock_object(mock_dm_session, 'get_vserver_from_share',
+                         mock.Mock(return_value=fake.VSERVER1))
+        self.mock_object(
+            protocol_helper, 'cleanup_demoted_replica',
+            mock.Mock(side_effect=exception.StorageCommunicationException))
+        mock_log = self.mock_object(lib_base.LOG, 'exception')
+
+        self.library.promote_replica(
+            None, [self.fake_replica, self.fake_replica_2],
+            self.fake_replica_2, [], share_server=None)
+
+        mock_dm_session.change_snapmirror_source.assert_called_once_with(
+            self.fake_replica, self.fake_replica, self.fake_replica_2,
+            mock.ANY
+        )
+        protocol_helper.cleanup_demoted_replica.assert_called_once_with(
+            self.fake_replica, fake.SHARE['name'])
+        mock_log.assert_called_once()
 
     def test_promote_replica_destination_unreachable(self):
         self.mock_object(self.library,
