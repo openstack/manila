@@ -156,13 +156,15 @@ REST_API_VERSION_HISTORY = """
              'share_server_migration_start'
              'share_server_migration_get_progress'
              'share_server_reset_task_state'
+    * 2.58 - Added 'share_groups' and 'share_group_snapshots' to the limits
+             view.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.57"
+_MAX_API_VERSION = "2.58"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 
