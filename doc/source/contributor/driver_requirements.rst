@@ -333,3 +333,10 @@ Drivers can update, for all the shares created on a particular backend, the
 consumed space in GiB. While the polling interval for drivers to update this
 information is configurable, drivers can choose to submit cached information
 as necessary, but specify a time at which this information was "gathered_at".
+
+Share Server Migration (Since Victoria)
+---------------------------------------
+
+Shares servers can be migrated between different backends. Driver vendors
+need to implement the share server migration functions in order to migrate
+share servers in an efficient way.

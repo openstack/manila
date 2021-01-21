@@ -97,6 +97,7 @@ Module Reference
    share_replication
    driver_filter_goodness_weigher
    share_migration
+   share_server_migration
 
 .. only:: html
 
