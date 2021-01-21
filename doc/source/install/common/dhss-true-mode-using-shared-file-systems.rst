@@ -73,7 +73,8 @@ server is an instance where NFS shares are served.
 
    .. code-block:: console
 
-      $ curl https://tarballs.openstack.org/manila-image-elements/images/manila-service-image-master.qcow2 | \
+      $ curl -L \
+      https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-master.qcow2 | \
       glance image-create \
       --name "manila-service-image" \
       --disk-format qcow2 \
