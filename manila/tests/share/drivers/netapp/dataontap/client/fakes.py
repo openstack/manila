@@ -471,7 +471,17 @@ CIFS_SECURITY_SERVICE = {
     'ou': 'fake_ou',
     'domain': 'fake_domain',
     'dns_ip': 'fake_dns_ip',
-    'server': '',
+    'server': 'fake_server',
+}
+
+CIFS_SECURITY_SERVICE_2 = {
+    'type': 'active_directory',
+    'password': 'fake_password_2',
+    'user': 'fake_user_2',
+    'ou': 'fake_ou_2',
+    'domain': 'fake_domain_2',
+    'dns_ip': 'fake_dns_ip_2',
+    'server': 'fake_server_2',
 }
 
 LDAP_LINUX_SECURITY_SERVICE = {
@@ -495,6 +505,7 @@ LDAP_AD_SECURITY_SERVICE = {
     'dns_ip': 'fake_dns_ip',
     'server': None,
 }
+
 
 KERBEROS_SECURITY_SERVICE = {
     'type': 'kerberos',

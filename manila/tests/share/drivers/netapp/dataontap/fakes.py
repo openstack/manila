@@ -911,6 +911,7 @@ POOLS = [
         'create_share_from_snapshot_support': True,
         'revert_to_snapshot_support': True,
         'qos': True,
+        'security_service_update_support': True,
     },
     {
         'pool_name': AGGREGATES[1],
@@ -934,6 +935,7 @@ POOLS = [
         'create_share_from_snapshot_support': True,
         'revert_to_snapshot_support': True,
         'qos': True,
+        'security_service_update_support': True,
     },
 ]
 
@@ -957,6 +959,7 @@ POOLS_VSERVER_CREDS = [
         'create_share_from_snapshot_support': True,
         'revert_to_snapshot_support': True,
         'qos': False,
+        'security_service_update_support': True,
     },
     {
         'pool_name': AGGREGATES[1],
@@ -977,6 +980,7 @@ POOLS_VSERVER_CREDS = [
         'create_share_from_snapshot_support': True,
         'revert_to_snapshot_support': True,
         'qos': False,
+        'security_service_update_support': True,
     },
 ]
 
@@ -1555,7 +1559,60 @@ CIFS_SECURITY_SERVICE = {
     'ou': 'fake_ou',
     'domain': 'fake_domain',
     'dns_ip': 'fake_dns_ip',
-    'server': '',
+    'server': 'fake_server',
+}
+
+CIFS_SECURITY_SERVICE_2 = {
+    'id': 'fake_id_2',
+    'type': 'active_directory',
+    'password': 'fake_password_2',
+    'user': 'fake_user_2',
+    'ou': 'fake_ou_2',
+    'domain': 'fake_domain_2',
+    'dns_ip': 'fake_dns_ip_2',
+    'server': 'fake_server_2',
+}
+LDAP_LINUX_SECURITY_SERVICE = {
+    'id': 'fake_id',
+    'type': 'ldap',
+    'user': 'fake_user',
+    'password': 'fake_password',
+    'server': 'fake_server',
+    'ou': 'fake_ou',
+    'dns_ip': None,
+    'domain': None
+}
+
+
+LDAP_AD_SECURITY_SERVICE = {
+    'id': 'fake_id',
+    'type': 'ldap',
+    'user': 'fake_user',
+    'password': 'fake_password',
+    'domain': 'fake_domain',
+    'ou': 'fake_ou',
+    'dns_ip': 'fake_dns_ip',
+    'server': None,
+}
+
+KERBEROS_SECURITY_SERVICE = {
+    'id': 'fake_id_3',
+    'type': 'kerberos',
+    'password': 'fake_password_3',
+    'user': 'fake_user_3',
+    'domain': 'fake_realm',
+    'dns_ip': 'fake_dns_ip_3',
+    'server': 'fake_server_3',
+}
+
+KERBEROS_SECURITY_SERVICE_2 = {
+    'id': 'fake_id_4',
+    'type': 'kerberos',
+    'password': 'fake_password_4',
+    'user': 'fake_user_4',
+    'domain': 'fake_realm_2',
+    'dns_ip': 'fake_dns_ip_4',
+    'server': 'fake_server_4',
 }
 
 SHARE_NETWORK_SUBNET = {

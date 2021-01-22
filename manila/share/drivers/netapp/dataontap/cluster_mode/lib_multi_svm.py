@@ -29,6 +29,7 @@ from oslo_utils import units
 
 from manila import exception
 from manila.i18n import _
+from manila.message import message_field
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
@@ -1365,3 +1366,157 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             .validate_provisioning_options_for_share(provisioning_options,
                                                      extra_specs=extra_specs,
                                                      qos_specs=qos_specs))
+
+    def _get_different_keys_for_equal_ss_type(self, current_sec_service,
+                                              new_sec_service):
+        different_keys = []
+
+        valid_keys = ['dns_ip', 'server', 'domain', 'user', 'password', 'ou']
+        for key, value in current_sec_service.items():
+            if (current_sec_service[key] != new_sec_service[key]
+                    and key in valid_keys):
+                different_keys.append(key)
+
+        return different_keys
+
+    def _is_security_service_valid(self, security_service):
+        mandatory_params = {
+            'ldap': ['user', 'password'],
+            'active_directory': ['dns_ip', 'domain', 'user', 'password'],
+            'kerberos': ['dns_ip', 'domain', 'user', 'password', 'server'],
+        }
+        ss_type = security_service['type']
+        if ss_type == 'ldap':
+            ad_domain = security_service.get('domain')
+            ldap_servers = security_service.get('server')
+            if not bool(ad_domain) ^ bool(ldap_servers):
+                msg = _("LDAP security service must have either 'server' or "
+                        "'domain' parameters. Use 'server' for Linux/Unix "
+                        "LDAP servers or 'domain' for Active Directory LDAP "
+                        "server.")
+                LOG.error(msg)
+                return False
+
+        if not all([security_service[key] is not None
+                    for key in mandatory_params[ss_type]]):
+            msg = _("The security service %s does not have all the "
+                    "parameters needed to used by the share driver."
+                    ) % security_service['id']
+            LOG.error(msg)
+            return False
+
+        return True
+
+    def update_share_server_security_service(self, context, share_server,
+                                             network_info,
+                                             new_security_service,
+                                             current_security_service=None):
+        current_type = (
+            current_security_service['type'].lower()
+            if current_security_service else '')
+        new_type = new_security_service['type'].lower()
+
+        vserver_name, vserver_client = self._get_vserver(
+            share_server=share_server)
+
+        # Check if this update is supported by our driver
+        if not self.check_update_share_server_security_service(
+                context, share_server, network_info, new_security_service,
+                current_security_service=current_security_service):
+            msg = _("The requested security service update is not supported "
+                    "by the NetApp driver.")
+            LOG.exception(msg)
+            raise exception.NetAppException(msg)
+
+        if current_security_service is None:
+            self._client.setup_security_services([new_security_service],
+                                                 vserver_client,
+                                                 vserver_name)
+            LOG.info("A new security service configuration was added to share "
+                     "server '%(share_server_id)s'",
+                     {'share_server_id': share_server['id']})
+            return
+
+        different_keys = self._get_different_keys_for_equal_ss_type(
+            current_security_service, new_security_service)
+        if not different_keys:
+            msg = _("The former and the latter security services are "
+                    "equal. Nothing to do.")
+            LOG.debug(msg)
+            return
+
+        if 'dns_ip' in different_keys:
+            dns_ips = set()
+            domains = set()
+            # Read all dns-ips and domains from other security services
+            for sec_svc in network_info['security_services']:
+                if sec_svc['type'] == current_type:
+                    # skip the one that we are replacing
+                    continue
+                if sec_svc.get('dns_ip') is not None:
+                    for dns_ip in sec_svc['dns_ip'].split(','):
+                        dns_ips.add(dns_ip.strip())
+                if sec_svc.get('domain') is not None:
+                    domains.add(sec_svc['domain'])
+            # Merge with the new dns configuration
+            if new_security_service.get('dns_ip') is not None:
+                for dns_ip in new_security_service['dns_ip'].split(','):
+                    dns_ips.add(dns_ip.strip())
+            if new_security_service.get('domain') is not None:
+                domains.add(new_security_service['domain'])
+
+            # Update vserver DNS configuration
+            vserver_client.update_dns_configuration(dns_ips, domains)
+
+        if new_type == 'kerberos':
+            if 'server' in different_keys:
+                # NOTE(dviroel): Only IPs will be updated here, new principals
+                # won't be configured here. It is expected that only the IP was
+                # changed, but the KDC remains the same.
+                LOG.debug('Updating kerberos realm on NetApp backend.')
+                vserver_client.update_kerberos_realm(new_security_service)
+
+        elif new_type == 'active_directory':
+            vserver_client.modify_active_directory_security_service(
+                vserver_name, different_keys, new_security_service,
+                current_security_service)
+        else:
+            vserver_client.modify_ldap(new_security_service,
+                                       current_security_service)
+
+        LOG.info("Security service configuration was updated for share server "
+                 "'%(share_server_id)s'",
+                 {'share_server_id': share_server['id']})
+
+    def check_update_share_server_security_service(
+            self, context, share_server, network_info,
+            new_security_service, current_security_service=None):
+        current_type = (
+            current_security_service['type'].lower()
+            if current_security_service else '')
+
+        if not self._is_security_service_valid(new_security_service):
+            self.message_api.create(
+                context,
+                message_field.Action.ADD_UPDATE_SECURITY_SERVICE,
+                new_security_service['project_id'],
+                resource_type=message_field.Resource.SECURITY_SERVICE,
+                resource_id=new_security_service['id'],
+                detail=(message_field.Detail
+                        .UNSUPPORTED_ADD_UDPATE_SECURITY_SERVICE))
+            return False
+
+        if current_security_service:
+            if current_type != 'ldap':
+                # NOTE(dviroel): We don't support domain/realm updates for
+                # Kerberos security service, because it might require a new SPN
+                # to be created and to destroy the old one, thus disrupting all
+                # shares hosted by this share server. Same issue can happen
+                # with AD domain modifications.
+                if (current_security_service['domain'].lower() !=
+                        new_security_service['domain'].lower()):
+                    msg = _("Currently the driver does not support updates "
+                            "in the security service 'domain'.")
+                    LOG.info(msg)
+                    return False
+        return True

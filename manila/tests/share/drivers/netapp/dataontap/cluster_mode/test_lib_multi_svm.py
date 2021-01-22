@@ -2627,3 +2627,164 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             exception.NetAppException,
             self.library.validate_provisioning_options_for_share,
             fake.PROVISIONING_OPTS_WITH_ADAPT_QOS, qos_specs=None)
+
+    def test__get_different_keys_for_equal_ss_type(self):
+        curr_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+        new_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_2)
+
+        expected_keys = ['password', 'user', 'ou',
+                         'domain', 'dns_ip', 'server']
+
+        result = self.library._get_different_keys_for_equal_ss_type(
+            curr_sec_service, new_sec_service)
+
+        self.assertEqual(expected_keys, result)
+
+    @ddt.data(
+        {'current': None,
+         'new': fake.CIFS_SECURITY_SERVICE,
+         'existing': []},
+
+        {'current': fake.CIFS_SECURITY_SERVICE,
+         'new': fake.CIFS_SECURITY_SERVICE_2,
+         'existing': [fake.CIFS_SECURITY_SERVICE,
+                      fake.KERBEROS_SECURITY_SERVICE]},
+
+        {'current': fake.KERBEROS_SECURITY_SERVICE,
+         'new': fake.KERBEROS_SECURITY_SERVICE_2,
+         'existing': [fake.CIFS_SECURITY_SERVICE,
+                      fake.KERBEROS_SECURITY_SERVICE]},
+
+        {'current': fake.CIFS_SECURITY_SERVICE,
+         'new': fake.CIFS_SECURITY_SERVICE,
+         'existing': [fake.CIFS_SECURITY_SERVICE]},
+    )
+    @ddt.unpack
+    def test_update_share_server_security_service(self, current, new,
+                                                  existing):
+        fake_context = mock.Mock()
+        fake_net_info = copy.deepcopy(fake.NETWORK_INFO)
+        new_sec_service = copy.deepcopy(new)
+        curr_sec_service = copy.deepcopy(current) if current else None
+        new_type = new_sec_service['type'].lower()
+        fake_net_info['security_services'] = existing
+
+        if curr_sec_service:
+            # domain modification aren't support
+            new_sec_service['domain'] = curr_sec_service['domain']
+
+        different_keys = []
+        if curr_sec_service != new_sec_service:
+            different_keys = ['dns_ip', 'server', 'domain', 'user', 'password']
+            if new_sec_service.get('ou') is not None:
+                different_keys.append('ou')
+
+        fake_vserver_client = mock.Mock()
+        mock_get_vserver = self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=[fake.VSERVER1, fake_vserver_client]))
+        mock_check_update = self.mock_object(
+            self.library, 'check_update_share_server_security_service',
+            mock.Mock(return_value=True))
+        mock_setup_sec_serv = self.mock_object(
+            self.library._client, 'setup_security_services')
+        mock_diff_keys = self.mock_object(
+            self.library, '_get_different_keys_for_equal_ss_type',
+            mock.Mock(return_value=different_keys))
+        mock_dns_update = self.mock_object(
+            fake_vserver_client, 'update_dns_configuration')
+        mock_update_krealm = self.mock_object(
+            fake_vserver_client, 'update_kerberos_realm')
+        mock_modify_ad = self.mock_object(
+            fake_vserver_client, 'modify_active_directory_security_service')
+
+        self.library.update_share_server_security_service(
+            fake_context, fake.SHARE_SERVER, fake_net_info,
+            new_sec_service, current_security_service=curr_sec_service)
+
+        dns_ips = set()
+        domains = set()
+        # we don't need to split and strip since we know that fake have only
+        # on dns-ip and domain configured
+        for ss in existing:
+            if ss['type'] != new_sec_service['type']:
+                dns_ips.add(ss['dns_ip'])
+                domains.add(ss['domain'])
+        dns_ips.add(new_sec_service['dns_ip'])
+        domains.add(new_sec_service['domain'])
+
+        mock_get_vserver.assert_called_once_with(
+            share_server=fake.SHARE_SERVER)
+        mock_check_update.assert_called_once_with(
+            fake_context, fake.SHARE_SERVER, fake_net_info, new_sec_service,
+            current_security_service=curr_sec_service)
+
+        if curr_sec_service is None:
+            mock_setup_sec_serv.assert_called_once_with(
+                [new_sec_service], fake_vserver_client, fake.VSERVER1)
+        else:
+            mock_diff_keys.assert_called_once_with(curr_sec_service,
+                                                   new_sec_service)
+            if different_keys:
+                mock_dns_update.assert_called_once_with(dns_ips, domains)
+                if new_type == 'kerberos':
+                    mock_update_krealm.assert_called_once_with(new_sec_service)
+                elif new_type == 'active_directory':
+                    mock_modify_ad.assert_called_once_with(
+                        fake.VSERVER1, different_keys, new_sec_service,
+                        curr_sec_service)
+
+    def test_update_share_server_security_service_check_error(self):
+        curr_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+        new_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_2)
+        fake_vserver_client = mock.Mock()
+        fake_context = mock.Mock()
+        fake_net_info = mock.Mock()
+
+        mock_get_vserver = self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=[fake.VSERVER1, fake_vserver_client]))
+        mock_check_update = self.mock_object(
+            self.library, 'check_update_share_server_security_service',
+            mock.Mock(return_value=False))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.update_share_server_security_service,
+            fake_context, fake.SHARE_SERVER, fake_net_info,
+            new_sec_service, current_security_service=curr_sec_service)
+
+        mock_get_vserver.assert_called_once_with(
+            share_server=fake.SHARE_SERVER)
+        mock_check_update.assert_called_once_with(
+            fake_context, fake.SHARE_SERVER, fake_net_info,
+            new_sec_service, current_security_service=curr_sec_service)
+
+    @ddt.data(
+        {'new': fake.LDAP_AD_SECURITY_SERVICE,
+         'current': fake.LDAP_LINUX_SECURITY_SERVICE,
+         'expected': True},
+
+        {'new': fake.CIFS_SECURITY_SERVICE,
+         'current': fake.KERBEROS_SECURITY_SERVICE,
+         'expected': False},
+
+        {'new': fake.CIFS_SECURITY_SERVICE,
+         'current': fake.CIFS_SECURITY_SERVICE,
+         'expected': True},
+
+        {'new': fake.KERBEROS_SECURITY_SERVICE,
+         'current': fake.KERBEROS_SECURITY_SERVICE,
+         'expected': True},
+
+        {'new': fake.CIFS_SECURITY_SERVICE,
+         'current': None,
+         'expected': True},
+    )
+    @ddt.unpack
+    def test_check_update_share_server_security_service(self, new, current,
+                                                        expected):
+        result = self.library.check_update_share_server_security_service(
+            None, None, None, new, current_security_service=current)
+
+        self.assertEqual(expected, result)

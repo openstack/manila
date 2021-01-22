@@ -1535,7 +1535,6 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             self.configure_dns(security_service)
 
         config_name = hashlib.md5(six.b(security_service['id'])).hexdigest()
-
         api_args = {
             'ldap-client-config': config_name,
             'tcp-port': '389',
@@ -1591,6 +1590,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             raise exception.NetAppException(message=msg)
 
     @na_utils.trace
+    def _delete_ldap_client(self, security_service):
+        config_name = (
+            hashlib.md5(six.b(security_service['id'])).hexdigest())
+        api_args = {'ldap-client-config': config_name}
+        self.send_request('ldap-client-delete', api_args)
+
+    @na_utils.trace
     def configure_ldap(self, security_service, timeout=30):
         """Configures LDAP on Vserver."""
         config_name = hashlib.md5(six.b(security_service['id'])).hexdigest()
@@ -1598,17 +1604,59 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self._enable_ldap_client(config_name, timeout=timeout)
 
     @na_utils.trace
-    def configure_active_directory(self, security_service, vserver_name):
-        """Configures AD on Vserver."""
-        self.configure_dns(security_service)
-        self.set_preferred_dc(security_service)
+    def modify_ldap(self, new_security_service, current_security_service):
+        """Modifies LDAP client on a Vserver."""
+        # Create a new ldap client
+        self._create_ldap_client(new_security_service)
 
+        # Delete current ldap config
+        try:
+            self.send_request('ldap-config-delete')
+        except netapp_api.NaApiError as e:
+            if e.code != netapp_api.EOBJECTNOTFOUND:
+                msg = _("An error occurred while deleting original LDAP "
+                        "configuration. %s")
+                raise exception.NetAppException(msg % e.message)
+            else:
+                msg = _("Original LDAP configuration was not found. "
+                        "LDAP modification will continue.")
+                LOG.debug(msg)
+
+        new_config_name = (
+            hashlib.md5(six.b(new_security_service['id'])).hexdigest())
+        # Create ldap config with the new client
+        api_args = {'client-config': new_config_name, 'client-enabled': 'true'}
+        self.send_request('ldap-config-create', api_args)
+
+        # Delete old client configuration
+        try:
+            self._delete_ldap_client(current_security_service)
+        except netapp_api.NaApiError as e:
+            if e.code != netapp_api.EOBJECTNOTFOUND:
+                msg = _("An error occurred while deleting original LDAP "
+                        "client configuration. %s")
+                raise exception.NetAppException(msg % e.message)
+            else:
+                msg = _("Original LDAP client configuration was not found.")
+                LOG.debug(msg)
+
+    @na_utils.trace
+    def _get_cifs_server_name(self, vserver_name):
         # 'cifs-server' is CIFS Server NetBIOS Name, max length is 15.
         # Should be unique within each domain (data['domain']).
         # Cut to 15 char with begin and end, attempt to make valid DNS hostname
         cifs_server = (vserver_name[0:8] +
                        '-' +
                        vserver_name[-6:]).replace('_', '-').upper()
+        return cifs_server
+
+    @na_utils.trace
+    def configure_active_directory(self, security_service, vserver_name):
+        """Configures AD on Vserver."""
+        self.configure_dns(security_service)
+        self.set_preferred_dc(security_service)
+
+        cifs_server = self._get_cifs_server_name(vserver_name)
 
         api_args = {
             'admin-username': security_service['user'],
@@ -1627,6 +1675,46 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         except netapp_api.NaApiError as e:
             msg = _("Failed to create CIFS server entry. %s")
             raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def modify_active_directory_security_service(
+            self, vserver_name, differring_keys, new_security_service,
+            current_security_service):
+        cifs_server = self._get_cifs_server_name(vserver_name)
+
+        current_user_name = current_security_service['user']
+        new_username = new_security_service['user']
+
+        current_cifs_username = cifs_server + '\\' + current_user_name
+
+        if 'password' in differring_keys:
+            api_args = {
+                'user-name': current_cifs_username,
+                'user-password': new_security_service['password']
+            }
+            try:
+                self.send_request('cifs-local-user-set-password', api_args)
+            except netapp_api.NaApiError as e:
+                msg = _("Failed to modify existing CIFS server password. %s")
+                raise exception.NetAppException(msg % e.message)
+
+        if 'user' in differring_keys:
+            api_args = {
+                'user-name': current_cifs_username,
+                'new-user-name': new_username
+            }
+            try:
+                self.send_request('cifs-local-user-rename', api_args)
+            except netapp_api.NaApiError as e:
+                msg = _("Failed to modify existing CIFS server user-name. %s")
+                raise exception.NetAppException(msg % e.message)
+
+        if 'server' in differring_keys:
+            if current_security_service['server'] is not None:
+                self.remove_preferred_dcs(current_security_service)
+
+            if new_security_service['server'] is not None:
+                self.set_preferred_dc(new_security_service)
 
     @na_utils.trace
     def create_kerberos_realm(self, security_service):
@@ -1693,6 +1781,26 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return ('nfs/' + vserver_name.replace('_', '-') + '.' +
                 security_service['domain'] + '@' +
                 security_service['domain'].upper())
+
+    @na_utils.trace
+    def update_kerberos_realm(self, security_service):
+        """Update Kerberos realm info. Only KDC IP can be changed."""
+        if not self.features.KERBEROS_VSERVER:
+            msg = _('Kerberos realms owned by Vserver are supported on ONTAP '
+                    '8.3 or later.')
+            raise exception.NetAppException(msg)
+
+        api_args = {
+            'admin-server-ip': security_service['server'],
+            'kdc-ip': security_service['server'],
+            'password-server-ip': security_service['server'],
+            'realm': security_service['domain'].upper(),
+        }
+        try:
+            self.send_request('kerberos-realm-modify', api_args)
+        except netapp_api.NaApiError as e:
+            msg = _('Failed to update Kerberos realm. %s')
+            raise exception.NetAppException(msg % e.message)
 
     @na_utils.trace
     def disable_kerberos(self, security_service):
@@ -1820,6 +1928,36 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return dns_config
 
     @na_utils.trace
+    def update_dns_configuration(self, dns_ips, domains):
+        """Overrides DNS configuration with the specified IPs and domains."""
+        current_dns_config = self.get_dns_config()
+        api_args = {
+            'domains': [],
+            'name-servers': [],
+            'dns-state': 'enabled',
+        }
+        for domain in domains:
+            api_args['domains'].append({'string': domain})
+
+        for dns_ip in dns_ips:
+            api_args['name-servers'].append({'ip-address': dns_ip})
+
+        empty_dns_config = (not api_args['domains'] and
+                            not api_args['name-servers'])
+        if current_dns_config:
+            api_name, api_args = (
+                ('net-dns-destroy', {}) if empty_dns_config
+                else ('net-dns-modify', api_args))
+        else:
+            api_name, api_args = 'net-dns-create', api_args
+
+        try:
+            self.send_request(api_name, api_args)
+        except netapp_api.NaApiError as e:
+            msg = _("Failed to update DNS configuration. %s")
+            raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
     def set_preferred_dc(self, security_service):
         # server is optional
         if not security_service['server']:
@@ -1840,6 +1978,20 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             self.send_request('cifs-domain-preferred-dc-add', api_args)
         except netapp_api.NaApiError as e:
             msg = _("Failed to set preferred DC. %s")
+            raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def remove_preferred_dcs(self, security_service):
+        """Drops all preferred DCs at once."""
+
+        api_args = {
+            'domain': security_service['domain'],
+        }
+
+        try:
+            self.send_request('cifs-domain-preferred-dc-remove', api_args)
+        except netapp_api.NaApiError as e:
+            msg = _("Failed to unset preferred DCs. %s")
             raise exception.NetAppException(msg % e.message)
 
     @na_utils.trace
