@@ -159,6 +159,7 @@ to use:
     ceph auth get-or-create client.manila -o manila.keyring \
     mds 'allow *' \
     osd 'allow rw' \
+    mgr 'allow r' \
     mon "$MON_CAPS"
 
 
