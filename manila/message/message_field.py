@@ -33,15 +33,19 @@ class Action(object):
     DELETE = ('007', _('delete'))
     EXTEND = ('008', _('extend'))
     SHRINK = ('009', _('shrink'))
-    ALL = (ALLOCATE_HOST,
-           CREATE,
-           DELETE_ACCESS_RULES,
-           PROMOTE,
-           UPDATE,
-           REVERT_TO_SNAPSHOT,
-           DELETE,
-           EXTEND,
-           SHRINK)
+    UPDATE_ACCESS_RULES = ('010', _('update access rules'))
+    ALL = (
+        ALLOCATE_HOST,
+        CREATE,
+        DELETE_ACCESS_RULES,
+        PROMOTE,
+        UPDATE,
+        REVERT_TO_SNAPSHOT,
+        DELETE,
+        EXTEND,
+        SHRINK,
+        UPDATE_ACCESS_RULES,
+    )
 
 
 class Detail(object):
@@ -98,26 +102,39 @@ class Detail(object):
         '019',
         _("Share Driver does not support shrinking shares."
           " Shrinking share operation failed."))
+    FORBIDDEN_CLIENT_ACCESS = (
+        '020',
+        _("Failed to grant access to client. The client ID used may be "
+          "forbidden. You may try again with a different client identifier."))
+    UNSUPPORTED_CLIENT_ACCESS = (
+        '021',
+        _("Failed to grant access to client. The access level or type may "
+          "be unsupported. You may try again with a different access level "
+          "or access type."))
 
-    ALL = (UNKNOWN_ERROR,
-           NO_VALID_HOST,
-           UNEXPECTED_NETWORK,
-           NO_SHARE_SERVER,
-           NO_ACTIVE_AVAILABLE_REPLICA,
-           NO_ACTIVE_REPLICA,
-           FILTER_AVAILABILITY,
-           FILTER_CAPABILITIES,
-           FILTER_CAPACITY,
-           FILTER_DRIVER,
-           FILTER_IGNORE,
-           FILTER_JSON,
-           FILTER_RETRY,
-           FILTER_REPLICATION,
-           DRIVER_FAILED_EXTEND,
-           FILTER_CREATE_FROM_SNAPSHOT,
-           DRIVER_FAILED_CREATING_FROM_SNAP,
-           DRIVER_REFUSED_SHRINK,
-           DRIVER_FAILED_SHRINK)
+    ALL = (
+        UNKNOWN_ERROR,
+        NO_VALID_HOST,
+        UNEXPECTED_NETWORK,
+        NO_SHARE_SERVER,
+        NO_ACTIVE_AVAILABLE_REPLICA,
+        NO_ACTIVE_REPLICA,
+        FILTER_AVAILABILITY,
+        FILTER_CAPABILITIES,
+        FILTER_CAPACITY,
+        FILTER_DRIVER,
+        FILTER_IGNORE,
+        FILTER_JSON,
+        FILTER_RETRY,
+        FILTER_REPLICATION,
+        DRIVER_FAILED_EXTEND,
+        FILTER_CREATE_FROM_SNAPSHOT,
+        DRIVER_FAILED_CREATING_FROM_SNAP,
+        DRIVER_REFUSED_SHRINK,
+        DRIVER_FAILED_SHRINK,
+        FORBIDDEN_CLIENT_ACCESS,
+        UNSUPPORTED_CLIENT_ACCESS,
+    )
 
     # Exception and detail mappings
     EXCEPTION_DETAIL_MAPPINGS = {

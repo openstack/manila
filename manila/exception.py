@@ -520,6 +520,10 @@ class InvalidShareAccessLevel(Invalid):
     message = _("Invalid or unsupported share access level: %(level)s.")
 
 
+class InvalidShareAccessType(Invalid):
+    message = _("Invalid or unsupported share access type: %(type)s.")
+
+
 class ShareBackendException(ManilaException):
     message = _("Share backend error: %(msg)s.")
 
