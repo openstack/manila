@@ -30,7 +30,7 @@
           cat << 'EOF' >>"/tmp/dg-local.conf"
           [[local|localrc]]
           enable_plugin manila https://opendev.org/openstack/manila
-          enable_plugin manila-tempest-plugin https://opendev.org/openstack/manila-tempest-plugin
+          TEMPEST_PLUGINS='/opt/stack/new/manila-tempest-plugin'
 
           # Enable devstack-plugin-glusterfs plugin, to install and configure GlusterFS.
           enable_plugin devstack-plugin-glusterfs https://opendev.org/x/devstack-plugin-glusterfs
@@ -40,6 +40,7 @@
 
           # Configure devstack-plugin-glusterfs to use respective GlusterFS driver variant.
           GLUSTERFS_MANILA_DRIVER_TYPE=glusterfs-nfs
+
 
           EOF
         executable: /bin/bash

@@ -31,9 +31,10 @@
           [[local|localrc]]
           SKIP_EPEL_INSTALL=True
           enable_plugin manila https://opendev.org/openstack/manila
-          enable_plugin manila-tempest-plugin https://opendev.org/openstack/manila-tempest-plugin
+          TEMPEST_PLUGINS='/opt/stack/new/manila-tempest-plugin'
           enable_plugin neutron-dynamic-routing https://opendev.org/openstack/neutron-dynamic-routing
           enable_plugin neutron-tempest-plugin https://opendev.org/openstack/neutron-tempest-plugin
+
           EOF
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
@@ -58,15 +59,12 @@
           OVERRIDE_ENABLED_SERVICES+=,g-api,g-reg
           # Enable nova for scenario tests
           OVERRIDE_ENABLED_SERVICES+=,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj
+          OVERRIDE_ENABLED_SERVICES+=,placement-api,placement-client
           # Enable neutron for scenario tests
           OVERRIDE_ENABLED_SERVICES+=,q-svc,q-dhcp,q-meta,q-l3,q-agt
           # Enable tls-proxy
           OVERRIDE_ENABLED_SERVICES+=,tls-proxy
 
-          # Enable mandatory placement services for nova starting with ocata
-          if [[ "stable/newton" != $ZUUL_BRANCH ]]; then
-               OVERRIDE_ENABLED_SERVICES+=,placement-api,placement-client
-          fi
           export OVERRIDE_ENABLED_SERVICES
 
           # Keep localrc to be able to set some vars in pre_test_hook
