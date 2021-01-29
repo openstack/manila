@@ -1,0 +1,20 @@
+---
+upgrade:
+  - Added a new config option `netapp_ssl_cert_path` for NetApp driver.
+    This option enables the user to choose the directory with certificates of
+    trusted CA or the CA bundle. If set to a directory, it must have been
+    processed using the c_rehash utility supplied with OpenSSL. If not
+    informed, it will use the Mozilla's carefully curated collection of Root
+    Certificates for validating the trustworthiness of SSL certificates.
+fixes:
+  - |
+    Fixed an issue on ONTAP NetApp driver that was forcing the location of
+    CA certificates for SSL verification during HTTPS requests. It adds the
+    `netapp_ssl_cert_path` configuration, enabling the user to choose the
+    directory with certificates of trusted CA or the CA bundle. If set to a
+    directory, it must have been processed using the c_rehash utility supplied
+    with OpenSSL. If not informed, it will use the Mozilla's carefully curated
+    collection of Root Certificates for validating the trustworthiness of SSL
+    certificates. Please refer to the
+    `Launchpad bug #1900191 <https://bugs.launchpad.net/manila/+bug/1900191>`_
+    for more details.
