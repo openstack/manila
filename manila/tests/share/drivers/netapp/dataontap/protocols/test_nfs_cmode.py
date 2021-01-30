@@ -83,6 +83,10 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
                          '_get_temp_export_policy_name',
                          mock.Mock(side_effect=['fake_new_export_policy',
                                                 'fake_old_export_policy']))
+        fake_auth_method = 'fake_auth_method'
+        self.mock_object(self.helper,
+                         '_get_auth_methods',
+                         mock.Mock(return_value=fake_auth_method))
 
         self.helper.update_access(fake.CIFS_SHARE,
                                   fake.SHARE_NAME,
@@ -91,7 +95,8 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         self.mock_client.create_nfs_export_policy.assert_called_once_with(
             'fake_new_export_policy')
         self.mock_client.add_nfs_export_rule.assert_called_once_with(
-            'fake_new_export_policy', fake.CLIENT_ADDRESS_1, False)
+            'fake_new_export_policy', fake.CLIENT_ADDRESS_1, False,
+            fake_auth_method)
         (self.mock_client.set_nfs_export_policy_for_volume.
             assert_called_once_with(fake.SHARE_NAME, 'fake_new_export_policy'))
         (self.mock_client.soft_delete_nfs_export_policy.
@@ -219,3 +224,12 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         self.assertFalse(self.mock_client.create_nfs_export_policy.called)
         self.mock_client.rename_nfs_export_policy.assert_called_once_with(
             'fake', fake.EXPORT_POLICY_NAME)
+
+    @ddt.data((False, ['sys']), (True, ['krb5', 'krb5i', 'krb5p']))
+    @ddt.unpack
+    def test__get_security_flavors(self, kerberos_enabled, security_flavors):
+        self.mock_client.is_kerberos_enabled.return_value = kerberos_enabled
+
+        result = self.helper._get_auth_methods()
+
+        self.assertEqual(security_flavors, result)

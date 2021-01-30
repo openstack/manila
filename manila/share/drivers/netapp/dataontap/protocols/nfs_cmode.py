@@ -92,11 +92,14 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
         # Create new export policy
         self._client.create_nfs_export_policy(temp_new_export_policy_name)
 
+        # Get authentication methods, based on Vserver configuration
+        auth_methods = self._get_auth_methods()
+
         # Add new rules to new policy
         for address in addresses:
             self._client.add_nfs_export_rule(
                 temp_new_export_policy_name, address,
-                self._is_readonly(new_rules[address]))
+                self._is_readonly(new_rules[address]), auth_methods)
 
         # Rename policy currently in force
         LOG.info('Renaming NFS export policy for share %(share)s to '
@@ -186,6 +189,19 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
         else:
             self._client.rename_nfs_export_policy(actual_export_policy,
                                                   expected_export_policy)
+
+    @na_utils.trace
+    def _get_auth_methods(self):
+        """Returns authentication methods for export policy rules.
+
+        This method returns the authentication methods to be configure in an
+        export policy rule, based on security services configuration set in
+        the current Vserver. If Kerberos is enabled in vServer LIFs, the auth
+        methods will be configure to support 'krb5', 'krb5i' and 'krb5p'. The
+        default authentication method is 'sys' (AUTH_SYS).
+        """
+        kerberos_enabled = self._client.is_kerberos_enabled()
+        return ['krb5', 'krb5i', 'krb5p'] if kerberos_enabled else ['sys']
 
     @na_utils.trace
     def cleanup_demoted_replica(self, share, share_name):

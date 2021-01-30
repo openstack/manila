@@ -2713,6 +2713,20 @@ SNAPMIRROR_POLICY_GET_ITER_RESPONSE = etree.XML("""
     'vserver_name': VSERVER_NAME,
 })
 
+KERBEROS_CONFIG_GET_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes>
+      <kerberos-config-info>
+        <interface-name>%(lif_name)s</interface-name>
+        <is-kerberos-enabled>true</is-kerberos-enabled>
+        <vserver>%(vserver_name)s</vserver>
+      </kerberos-config-info>
+    </attributes>
+  </results>""" % {
+    'lif_name': LIF_NAME,
+    'vserver_name': VSERVER_NAME,
+})
+
 FAKE_VOL_XML = """<volume-info>
     <name>open123</name>
     <state>online</state>
