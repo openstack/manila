@@ -16,12 +16,13 @@
 Handles all requests to Nova.
 """
 
+import functools
+
 from keystoneauth1 import loading as ks_loading
 from novaclient import client as nova_client
 from novaclient import exceptions as nova_exception
 from novaclient import utils
 from oslo_config import cfg
-import six
 
 from manila.common import client_auth
 from manila.common.config import core_opts
@@ -121,7 +122,7 @@ def translate_server_exception(method):
     Note: keeps its traceback intact.
     """
 
-    @six.wraps(method)
+    @functools.wraps(method)
     def wrapper(self, ctx, instance_id, *args, **kwargs):
         try:
             res = method(self, ctx, instance_id, *args, **kwargs)
@@ -130,7 +131,7 @@ def translate_server_exception(method):
             if isinstance(e, nova_exception.NotFound):
                 raise exception.InstanceNotFound(instance_id=instance_id)
             elif isinstance(e, nova_exception.BadRequest):
-                raise exception.InvalidInput(reason=six.text_type(e))
+                raise exception.InvalidInput(reason=str(e))
             else:
                 raise exception.ManilaException(e)
 

@@ -29,7 +29,6 @@ except ImportError:
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import timeutils
-import six
 
 from manila import db
 from manila import exception
@@ -373,11 +372,11 @@ class HostState(object):
 
         self.allocated_capacity_gb += share['size']
 
-        if (isinstance(self.free_capacity_gb, six.string_types)
+        if (isinstance(self.free_capacity_gb, str)
                 and self.free_capacity_gb != 'unknown'):
             raise exception.InvalidCapacity(
                 name='free_capacity_gb',
-                value=six.text_type(self.free_capacity_gb)
+                value=self.free_capacity_gb
             )
 
         if self.free_capacity_gb != 'unknown':

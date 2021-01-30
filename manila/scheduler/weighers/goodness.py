@@ -14,7 +14,6 @@
 #    under the License.
 
 from oslo_log import log as logging
-import six
 
 from manila.scheduler.evaluator import evaluator
 from manila.scheduler import utils
@@ -85,7 +84,7 @@ class GoodnessWeigher(base_host.BaseHostWeigher):
 
         msg = "Goodness function result for host %(host)s: %(result)s."
         args = {'host': stats['host_stats']['host'],
-                'result': six.text_type(goodness_rating)}
+                'result': str(goodness_rating)}
         LOG.info(msg, args)
 
         return goodness_rating
@@ -113,7 +112,7 @@ class GoodnessWeigher(base_host.BaseHostWeigher):
 
         if ('goodness_function' in host_state.capabilities and
                 host_state.capabilities['goodness_function'] is not None):
-            goodness_function = six.text_type(
+            goodness_function = str(
                 host_state.capabilities['goodness_function'])
 
         stats = utils.generate_stats(host_state, weight_properties)

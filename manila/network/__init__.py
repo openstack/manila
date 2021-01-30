@@ -17,7 +17,6 @@ import abc
 
 from oslo_config import cfg
 from oslo_utils import importutils
-import six
 
 from manila.db import base as db_base
 from manila import exception
@@ -64,8 +63,7 @@ def API(config_group_name=None, label='user'):
     return cls(config_group_name=config_group_name, label=label)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class NetworkBaseAPI(db_base.Base):
+class NetworkBaseAPI(db_base.Base, metaclass=abc.ABCMeta):
     """User network plugin for setting up main net interfaces."""
 
     def __init__(self, config_group_name=None, db_driver=None):
@@ -75,7 +73,7 @@ class NetworkBaseAPI(db_base.Base):
         else:
             CONF.register_opts(network_base_opts)
         self.configuration = getattr(CONF,
-                                     six.text_type(config_group_name), CONF)
+                                     str(config_group_name), CONF)
         super(NetworkBaseAPI, self).__init__(db_driver=db_driver)
 
     def _verify_share_network(self, share_server_id, share_network):
