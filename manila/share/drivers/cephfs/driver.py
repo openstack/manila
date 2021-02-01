@@ -27,6 +27,8 @@ import six
 from manila.common import constants
 from manila import exception
 from manila.i18n import _
+from manila.message import api as message_api
+from manila.message import message_field
 from manila.share import driver
 from manila.share.drivers import ganesha
 from manila.share.drivers.ganesha import utils as ganesha_utils
@@ -371,6 +373,7 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
 
     def __init__(self, execute, config, **kwargs):
         self.volume_client = kwargs.pop('ceph_vol_client')
+        self.message_api = message_api.API()
         super(NativeProtocolHelper, self).__init__(execute, config,
                                                    **kwargs)
 
@@ -400,8 +403,7 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
 
     def _allow_access(self, context, share, access, share_server=None):
         if access['access_type'] != CEPHX_ACCESS_TYPE:
-            raise exception.InvalidShareAccess(
-                reason=_("Only 'cephx' access type allowed."))
+            raise exception.InvalidShareAccessType(type=access['access_type'])
 
         ceph_auth_id = access['access_to']
 
@@ -414,7 +416,7 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
             error_message = (_('Ceph authentication ID %s must be different '
                              'than the one the Manila service uses.') %
                              ceph_auth_id)
-            raise exception.InvalidInput(message=error_message)
+            raise exception.InvalidShareAccess(reason=error_message)
 
         if not getattr(self.volume_client, 'version', None):
             if access['access_level'] == constants.ACCESS_LEVEL_RO:
@@ -427,9 +429,18 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
                 cephfs_share_path(share), ceph_auth_id)
         else:
             readonly = access['access_level'] == constants.ACCESS_LEVEL_RO
-            auth_result = self.volume_client.authorize(
-                cephfs_share_path(share), ceph_auth_id, readonly=readonly,
-                tenant_id=share['project_id'])
+            try:
+                auth_result = self.volume_client.authorize(
+                    cephfs_share_path(share), ceph_auth_id, readonly=readonly,
+                    tenant_id=share['project_id'])
+            except Exception as e:
+                if 'not allowed' in str(e).lower():
+                    msg = ("Access to client %(client)s is not allowed. "
+                           "Reason: %(reason)s")
+                    msg_payload = {'client': ceph_auth_id, 'reason': e}
+                    raise exception.InvalidShareAccess(
+                        reason=msg % msg_payload)
+                raise
 
         return auth_result['auth_key']
 
@@ -448,7 +459,7 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
-        access_keys = {}
+        access_updates = {}
 
         if not (add_rules or delete_rules):  # recovery/maintenance mode
             add_rules = access_rules
@@ -480,13 +491,48 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
         # access keys and ensure that after recovery, manila and the Ceph
         # backend are in sync.
         for rule in add_rules:
-            access_key = self._allow_access(context, share, rule)
-            access_keys.update({rule['access_id']: {'access_key': access_key}})
+            try:
+                access_key = self._allow_access(context, share, rule)
+            except (exception.InvalidShareAccessLevel,
+                    exception.InvalidShareAccessType):
+                self.message_api.create(
+                    context,
+                    message_field.Action.UPDATE_ACCESS_RULES,
+                    share['project_id'],
+                    resource_type=message_field.Resource.SHARE,
+                    resource_id=share['share_id'],
+                    detail=message_field.Detail.UNSUPPORTED_CLIENT_ACCESS)
+                log_args = {'id': rule['access_id'],
+                            'access_level': rule['access_level'],
+                            'access_to': rule['access_to']}
+                LOG.exception("Failed to provide %(access_level)s access to "
+                              "%(access_to)s (Rule ID: %(id)s). Setting rule "
+                              "to 'error' state.", log_args)
+                access_updates.update({rule['access_id']: {'state': 'error'}})
+            except exception.InvalidShareAccess:
+                self.message_api.create(
+                    context,
+                    message_field.Action.UPDATE_ACCESS_RULES,
+                    share['project_id'],
+                    resource_type=message_field.Resource.SHARE,
+                    resource_id=share['share_id'],
+                    detail=message_field.Detail.FORBIDDEN_CLIENT_ACCESS)
+                log_args = {'id': rule['access_id'],
+                            'access_level': rule['access_level'],
+                            'access_to': rule['access_to']}
+                LOG.exception("Failed to provide %(access_level)s access to "
+                              "%(access_to)s (Rule ID: %(id)s). Setting rule "
+                              "to 'error' state.", log_args)
+                access_updates.update({rule['access_id']: {'state': 'error'}})
+            else:
+                access_updates.update({
+                    rule['access_id']: {'access_key': access_key},
+                })
 
         for rule in delete_rules:
             self._deny_access(context, share, rule)
 
-        return access_keys
+        return access_updates
 
     def get_configured_ip_versions(self):
         return [4]

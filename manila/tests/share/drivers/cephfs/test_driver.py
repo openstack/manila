@@ -394,7 +394,7 @@ class NativeProtocolHelperTestCase(test.TestCase):
         super(NativeProtocolHelperTestCase, self).setUp()
         self.fake_conf = configuration.Configuration(None)
         self._context = context.get_admin_context()
-        self._share = fake_share.fake_share(share_proto='CEPHFS')
+        self._share = fake_share.fake_share_instance(share_proto='CEPHFS')
 
         self.fake_conf.set_default('driver_handles_share_servers', False)
 
@@ -477,7 +477,7 @@ class NativeProtocolHelperTestCase(test.TestCase):
                 tenant_id=self._share['project_id'])
 
     def test_allow_access_wrong_type(self):
-        self.assertRaises(exception.InvalidShareAccess,
+        self.assertRaises(exception.InvalidShareAccessType,
                           self._native_protocol_helper._allow_access,
                           self._context, self._share, {
                               'access_level': constants.ACCESS_LEVEL_RW,
@@ -486,12 +486,29 @@ class NativeProtocolHelperTestCase(test.TestCase):
                           })
 
     def test_allow_access_same_cephx_id_as_manila_service(self):
-        self.assertRaises(exception.InvalidInput,
+        self.assertRaises(exception.InvalidShareAccess,
                           self._native_protocol_helper._allow_access,
                           self._context, self._share, {
                               'access_level': constants.ACCESS_LEVEL_RW,
                               'access_type': 'cephx',
                               'access_to': 'manila',
+                          })
+
+    def test_allow_access_to_preexisting_ceph_user(self):
+
+        vc = self._native_protocol_helper.volume_client
+        msg = ("auth ID: admin exists and not created by "
+               "ceph_volume_client. Not allowed to modify")
+        self.mock_object(vc, 'authorize',
+                         mock.Mock(side_effect=Exception(msg)))
+
+        self.assertRaises(exception.InvalidShareAccess,
+                          self._native_protocol_helper._allow_access,
+                          self._context, self._share,
+                          {
+                              'access_level': constants.ACCESS_LEVEL_RW,
+                              'access_type': 'cephx',
+                              'access_to': 'admin'
                           })
 
     def test_deny_access(self):
@@ -508,7 +525,6 @@ class NativeProtocolHelperTestCase(test.TestCase):
             "alice", volume_path=driver.cephfs_share_path(self._share))
 
     def test_update_access_add_rm(self):
-        vc = self._native_protocol_helper.volume_client
         alice = {
             'id': 'instance_mapping_id1',
             'access_id': 'accessid1',
@@ -519,22 +535,66 @@ class NativeProtocolHelperTestCase(test.TestCase):
         bob = {
             'id': 'instance_mapping_id2',
             'access_id': 'accessid2',
-            'access_level': 'rw',
+            'access_level': 'ro',
             'access_type': 'cephx',
             'access_to': 'bob'
         }
+        manila = {
+            'id': 'instance_mapping_id3',
+            'access_id': 'accessid3',
+            'access_level': 'ro',
+            'access_type': 'cephx',
+            'access_to': 'manila'
+        }
+        admin = {
+            'id': 'instance_mapping_id4',
+            'access_id': 'accessid4',
+            'access_level': 'rw',
+            'access_type': 'cephx',
+            'access_to': 'admin'
+        }
+        dabo = {
+            'id': 'instance_mapping_id5',
+            'access_id': 'accessid5',
+            'access_level': 'rwx',
+            'access_type': 'cephx',
+            'access_to': 'dabo'
+        }
+
+        allow_access_side_effects = [
+            'abc123',
+            exception.InvalidShareAccess(reason='not'),
+            exception.InvalidShareAccess(reason='allowed'),
+            exception.InvalidShareAccessLevel(level='rwx')
+        ]
+        self.mock_object(self._native_protocol_helper.message_api, 'create')
+        self.mock_object(self._native_protocol_helper, '_deny_access')
+        self.mock_object(self._native_protocol_helper,
+                         '_allow_access',
+                         mock.Mock(side_effect=allow_access_side_effects))
 
         access_updates = self._native_protocol_helper.update_access(
-            self._context, self._share, access_rules=[alice],
-            add_rules=[alice], delete_rules=[bob])
+            self._context,
+            self._share,
+            access_rules=[alice, manila, admin, dabo],
+            add_rules=[alice, manila, admin, dabo],
+            delete_rules=[bob])
 
+        expected_access_updates = {
+            'accessid1': {'access_key': 'abc123'},
+            'accessid3': {'state': 'error'},
+            'accessid4': {'state': 'error'},
+            'accessid5': {'state': 'error'}
+        }
+        self.assertEqual(expected_access_updates, access_updates)
+        self._native_protocol_helper._allow_access.assert_has_calls(
+            [mock.call(self._context, self._share, alice),
+             mock.call(self._context, self._share, manila),
+             mock.call(self._context, self._share, admin)])
+        self._native_protocol_helper._deny_access.assert_called_once_with(
+            self._context, self._share, bob)
         self.assertEqual(
-            {'accessid1': {'access_key': 'abc123'}}, access_updates)
-        vc.authorize.assert_called_once_with(
-            driver.cephfs_share_path(self._share), "alice", readonly=False,
-            tenant_id=self._share['project_id'])
-        vc.deauthorize.assert_called_once_with(
-            driver.cephfs_share_path(self._share), "bob")
+            3, self._native_protocol_helper.message_api.create.call_count)
 
     @ddt.data(None, 1)
     def test_update_access_all(self, volume_client_version):
