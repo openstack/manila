@@ -14,6 +14,8 @@
 
 import ddt
 from oslo_config import cfg
+from oslo_serialization import jsonutils
+import requests
 
 from manila.tests.integrated import integrated_helpers
 
@@ -86,3 +88,17 @@ class TestCORSMiddleware(integrated_helpers._IntegratedTestBase):
         self.assertEqual(404, response.status)
         self.assertEqual(acao_header_expected,
                          response.getheader('Access-Control-Allow-Origin'))
+
+
+class TestHealthCheckMiddleware(integrated_helpers._IntegratedTestBase):
+
+    def test_healthcheck(self):
+        # We verify that we return a HTTP200 when calling api_get
+        url = 'http://%s:%s/healthcheck' % (self.osapi.host, self.osapi.port)
+        response = requests.request(
+            'GET',
+            url,
+            headers={'Accept': 'application/json'})
+        output = jsonutils.loads(response.content)
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(['OK'], output['reasons'])
