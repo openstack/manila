@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Microversion 2.59 adds optional driver `details` to the response of
+    migration get progress.

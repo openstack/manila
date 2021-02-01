@@ -20,13 +20,19 @@ class ViewBuilder(common.ViewBuilder):
     """Model share migration view data response as a python dictionary."""
 
     _collection_name = 'share_migration'
-    _detail_version_modifiers = []
+    _detail_version_modifiers = [
+        'add_progress_details',
+    ]
 
     def get_progress(self, request, share, progress):
         """View of share migration job progress."""
         result = {
-            'total_progress': progress['total_progress'],
+            'total_progress': progress.pop('total_progress'),
             'task_state': share['task_state'],
         }
         self.update_versioned_resource_dict(request, result, progress)
         return result
+
+    @common.ViewBuilder.versioned_method('2.59')
+    def add_progress_details(self, context, progress_dict, progress):
+        progress_dict['details'] = progress
