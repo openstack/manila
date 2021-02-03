@@ -488,9 +488,17 @@ function create_manila_accounts {
     get_or_create_endpoint "share" "$REGION_NAME" \
         "$MANILA_ENDPOINT_BASE/v1/\$(project_id)s"
 
-    # Set up Manila v2 service and endpoint
+    # Set up Manila v2 service and endpoint - as of microversion 2.60,
+    # project_id is no longer necessary in the v2 endpoint
     get_or_create_service "manilav2" "sharev2" "Manila Shared Filesystem Service V2"
     get_or_create_endpoint "sharev2" "$REGION_NAME" \
+        "$MANILA_ENDPOINT_BASE/v2"
+
+    # Set up Manila legacy v2 service and endpoint - as of microversion 2.60,
+    # project_id is no longer necessary in the v2 endpoint
+    get_or_create_service "manilav2_legacy" "sharev2_legacy" "Manila Shared
+    Filesystem Service V2 (Legacy 2.0)"
+    get_or_create_endpoint "sharev2_legacy" "$REGION_NAME" \
         "$MANILA_ENDPOINT_BASE/v2/\$(project_id)s"
 }
 
