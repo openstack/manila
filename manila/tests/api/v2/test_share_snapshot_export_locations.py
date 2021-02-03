@@ -32,7 +32,7 @@ class ShareSnapshotExportLocationsAPITest(test.TestCase):
 
     def _get_request(self, version="2.32", use_admin_context=True):
         req = fakes.HTTPRequest.blank(
-            '/snapshots/%s/export-locations' % self.snapshot['id'],
+            '/v2/fake/snapshots/%s/export-locations' % self.snapshot['id'],
             version=version, use_admin_context=use_admin_context)
         return req
 
@@ -75,12 +75,12 @@ class ShareSnapshotExportLocationsAPITest(test.TestCase):
                 'is_admin_only': True,
                 'id': self.exp_loc['id'],
                 'links': [{
-                    'href': 'http://localhost/v1/fake/'
+                    'href': 'http://localhost/share/v2/fake/'
                             'share_snapshot_export_locations/' +
                             self.exp_loc['id'],
                     'rel': 'self'
                 }, {
-                    'href': 'http://localhost/fake/'
+                    'href': 'http://localhost/share/fake/'
                             'share_snapshot_export_locations/' +
                             self.exp_loc['id'],
                     'rel': 'bookmark'

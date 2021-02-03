@@ -165,11 +165,11 @@ class ShareAPITest(test.TestCase):
             'share_type_name': None,
             'links': [
                 {
-                    'href': 'http://localhost/v1/fake/shares/1',
+                    'href': 'http://localhost/share/v2/fake/shares/1',
                     'rel': 'self'
                 },
                 {
-                    'href': 'http://localhost/fake/shares/1',
+                    'href': 'http://localhost/share/fake/shares/1',
                     'rel': 'bookmark'
                 }
             ],
@@ -205,8 +205,9 @@ class ShareAPITest(test.TestCase):
         snapshot = copy.deepcopy(self.snapshot)
         snapshot['status'] = constants.STATUS_AVAILABLE
         body = {'revert': {'snapshot_id': '2'}}
-        req = fakes.HTTPRequest.blank(
-            '/shares/1/action', use_admin_context=False, version='2.27')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      use_admin_context=False,
+                                      version='2.27')
         mock_validate_revert_parameters = self.mock_object(
             self.controller, '_validate_revert_parameters',
             mock.Mock(return_value=body['revert']))
@@ -243,8 +244,9 @@ class ShareAPITest(test.TestCase):
         snapshot['status'] = constants.STATUS_AVAILABLE
         snapshot['share_id'] = 'wrong_id'
         body = {'revert': {'snapshot_id': '2'}}
-        req = fakes.HTTPRequest.blank(
-            '/shares/1/action', use_admin_context=False, version='2.27')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      use_admin_context=False,
+                                      version='2.27')
         self.mock_object(
             self.controller, '_validate_revert_parameters',
             mock.Mock(return_value=body['revert']))
@@ -268,8 +270,9 @@ class ShareAPITest(test.TestCase):
         snapshot['status'] = constants.STATUS_AVAILABLE
         snapshot['share_id'] = 'wrong_id'
         body = {'revert': {'snapshot_id': '2'}}
-        req = fakes.HTTPRequest.blank(
-            '/shares/1/action', use_admin_context=False, version='2.27')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      use_admin_context=False,
+                                      version='2.27')
         self.mock_object(
             self.controller, '_validate_revert_parameters',
             mock.Mock(return_value=body['revert']))
@@ -309,8 +312,9 @@ class ShareAPITest(test.TestCase):
         snapshot = copy.deepcopy(self.snapshot)
         snapshot['status'] = snapshot_status
         body = {'revert': {'snapshot_id': '2'}}
-        req = fakes.HTTPRequest.blank(
-            '/shares/1/action', use_admin_context=False, version='2.27')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      use_admin_context=False,
+                                      version='2.27')
         self.mock_object(
             self.controller, '_validate_revert_parameters',
             mock.Mock(return_value=body['revert']))
@@ -333,8 +337,9 @@ class ShareAPITest(test.TestCase):
         snapshot = copy.deepcopy(self.snapshot)
         snapshot['status'] = constants.STATUS_AVAILABLE
         body = {'revert': {'snapshot_id': '2'}}
-        req = fakes.HTTPRequest.blank(
-            '/shares/1/action', use_admin_context=False, version='2.27')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      use_admin_context=False,
+                                      version='2.27')
         self.mock_object(
             self.controller, '_validate_revert_parameters',
             mock.Mock(return_value=body['revert']))
@@ -366,8 +371,9 @@ class ShareAPITest(test.TestCase):
         snapshot = copy.deepcopy(self.snapshot)
         snapshot['status'] = constants.STATUS_AVAILABLE
         body = {'revert': {'snapshot_id': '2'}}
-        req = fakes.HTTPRequest.blank(
-            '/shares/1/action', use_admin_context=False, version='2.27')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      use_admin_context=False,
+                                      version='2.27')
         self.mock_object(
             self.controller, '_validate_revert_parameters',
             mock.Mock(return_value=body['revert']))
@@ -396,8 +402,9 @@ class ShareAPITest(test.TestCase):
         latest_snapshot['status'] = constants.STATUS_AVAILABLE
         latest_snapshot['id'] = '3'
         body = {'revert': {'snapshot_id': '2'}}
-        req = fakes.HTTPRequest.blank(
-            '/shares/1/action', use_admin_context=False, version='2.27')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      use_admin_context=False,
+                                      version='2.27')
         self.mock_object(
             self.controller, '_validate_revert_parameters',
             mock.Mock(return_value=body['revert']))
@@ -442,8 +449,9 @@ class ShareAPITest(test.TestCase):
     def test__revert_exception(self, caught, exc_args, thrown):
 
         body = {'revert': {'snapshot_id': '2'}}
-        req = fakes.HTTPRequest.blank(
-            '/shares/1/action', use_admin_context=False, version='2.27')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      use_admin_context=False,
+                                      version='2.27')
         self.mock_object(
             self.controller, '_validate_revert_parameters',
             mock.Mock(return_value=body['revert']))
@@ -483,7 +491,7 @@ class ShareAPITest(test.TestCase):
     def test_share_create_original(self, microversion):
         self.mock_object(share_api.API, 'create', self.create_mock)
         body = {"share": copy.deepcopy(self.share)}
-        req = fakes.HTTPRequest.blank('/shares', version=microversion)
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version=microversion)
 
         res_dict = self.controller.create(req, body)
 
@@ -495,7 +503,7 @@ class ShareAPITest(test.TestCase):
     def test_share_create_with_snapshot_support_without_cg(self, microversion):
         self.mock_object(share_api.API, 'create', self.create_mock)
         body = {"share": copy.deepcopy(self.share)}
-        req = fakes.HTTPRequest.blank('/shares', version=microversion)
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version=microversion)
 
         res_dict = self.controller.create(req, body)
 
@@ -506,7 +514,7 @@ class ShareAPITest(test.TestCase):
     def test_share_create_with_share_group(self):
         self.mock_object(share_api.API, 'create', self.create_mock)
         body = {"share": copy.deepcopy(self.share)}
-        req = fakes.HTTPRequest.blank('/shares', version="2.31",
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version="2.31",
                                       experimental=True)
 
         res_dict = self.controller.create(req, body)
@@ -532,7 +540,7 @@ class ShareAPITest(test.TestCase):
             "share_group_id": sg_id,
         }}
         req = fakes.HTTPRequest.blank(
-            '/shares', version="2.31", experimental=True)
+            '/v2/fake/shares', version="2.31", experimental=True)
 
         self.controller.create(req, body)
 
@@ -570,7 +578,7 @@ class ShareAPITest(test.TestCase):
             "share_group_id": sg_id,
         }}
         req = fakes.HTTPRequest.blank(
-            '/shares', version="2.31", experimental=True)
+            '/v2/fake/shares', version="2.31", experimental=True)
 
         self.assertRaises(
             exception.InvalidInput, self.controller.create, req, body)
@@ -595,7 +603,7 @@ class ShareAPITest(test.TestCase):
             "share_group_id": sg_id,
         }}
         req = fakes.HTTPRequest.blank(
-            '/shares', version="2.31", experimental=True)
+            '/v2/fake/shares', version="2.31", experimental=True)
 
         self.assertRaises(
             webob.exc.HTTPNotFound, self.controller.create, req, body)
@@ -612,7 +620,7 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'create', self.create_mock)
 
         body = {"share": copy.deepcopy(self.share)}
-        req = fakes.HTTPRequest.blank('/shares', version='2.7')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version='2.7')
         res_dict = self.controller.create(req, body)
 
         expected = self._get_expected_share_detailed_response(self.share,
@@ -628,7 +636,7 @@ class ShareAPITest(test.TestCase):
                 self.vt['name'])),
         )
         CONF.set_default("default_share_type", self.vt['name'])
-        req = fakes.HTTPRequest.blank('/shares', version='2.7')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version='2.7')
         self.assertRaises(exception.ShareTypeNotFoundByName,
                           self.controller.create, req, {'share': self.share})
         share_types.get_default_share_type.assert_called_once_with()
@@ -638,7 +646,8 @@ class ShareAPITest(test.TestCase):
 
         body = {"share": copy.deepcopy(self.share)}
         req = fakes.HTTPRequest.blank(
-            '/shares', version=share_replicas.MIN_SUPPORTED_API_VERSION)
+            '/v2/fake/shares',
+            version=share_replicas.MIN_SUPPORTED_API_VERSION)
 
         res_dict = self.controller.create(req, body)
 
@@ -670,7 +679,7 @@ class ShareAPITest(test.TestCase):
             db, 'share_network_subnet_get_by_availability_zone_id')
 
         body = {"share": copy.deepcopy(shr)}
-        req = fakes.HTTPRequest.blank('/shares', version='2.7')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version='2.7')
         res_dict = self.controller.create(req, body)
 
         expected = self._get_expected_share_detailed_response(
@@ -684,7 +693,7 @@ class ShareAPITest(test.TestCase):
     def test_share_create_original_with_user_id(self, microversion):
         self.mock_object(share_api.API, 'create', self.create_mock)
         body = {"share": copy.deepcopy(self.share)}
-        req = fakes.HTTPRequest.blank('/shares', version=microversion)
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version=microversion)
 
         res_dict = self.controller.create(req, body)
 
@@ -693,10 +702,10 @@ class ShareAPITest(test.TestCase):
 
         self.assertEqual(expected, res_dict)
 
-    @ddt.data(test_utils.annotated('v2.0_az_unsupported', ('2.0', False)),
-              test_utils.annotated('v2.0_az_supported', ('2.0', True)),
-              test_utils.annotated('v2.47_az_unsupported', ('2.47', False)),
-              test_utils.annotated('v2.47_az_supported', ('2.47', True)))
+    @ddt.data(test_utils.annotated('/v2.0_az_unsupported', ('2.0', False)),
+              test_utils.annotated('/v2.0_az_supported', ('2.0', True)),
+              test_utils.annotated('/v2.47_az_unsupported', ('2.47', False)),
+              test_utils.annotated('/v2.47_az_supported', ('2.47', True)))
     @ddt.unpack
     def test_share_create_with_share_type_azs(self, version, az_supported):
         """For API version<2.48, AZ validation should not be performed."""
@@ -709,7 +718,7 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_types, 'get_share_type', mock.Mock(
             return_value=stype_with_azs))
 
-        req = fakes.HTTPRequest.blank('/shares', version=version)
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version=version)
 
         res_dict = self.controller.create(req, {'share': create_args})
 
@@ -742,7 +751,7 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
 
-        req = fakes.HTTPRequest.blank('/shares', version=version)
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version=version)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
@@ -753,8 +762,10 @@ class ShareAPITest(test.TestCase):
         share = db_utils.create_share()
         share_network = db_utils.create_share_network()
         share_type = {'share_type_id': 'fake_type_id'}
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.29')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.29')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -797,8 +808,8 @@ class ShareAPITest(test.TestCase):
 
     def test_migration_start_conflict(self):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True)
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'], use_admin_context=True)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request = api_version.APIVersionRequest('2.29')
@@ -825,9 +836,10 @@ class ShareAPITest(test.TestCase):
               'preserve_snapshots', 'host', 'body')
     def test_migration_start_missing_mandatory(self, param):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True,
-                                      version='2.29')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.29')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -861,9 +873,10 @@ class ShareAPITest(test.TestCase):
               'preserve_snapshots', 'force_host_assisted_migration')
     def test_migration_start_non_boolean(self, param):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True,
-                                      version='2.29')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.29')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -891,7 +904,7 @@ class ShareAPITest(test.TestCase):
                           req, 'fake_id', body)
 
     def test_migration_start_no_share_id(self):
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % 'fake_id',
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/%s/action' % 'fake_id',
                                       use_admin_context=True, version='2.29')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -908,8 +921,10 @@ class ShareAPITest(test.TestCase):
 
     def test_migration_start_new_share_network_not_found(self):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.29')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.29')
         context = req.environ['manila.context']
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -933,8 +948,10 @@ class ShareAPITest(test.TestCase):
 
     def test_migration_start_new_share_type_not_found(self):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.29')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.29')
         context = req.environ['manila.context']
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -958,8 +975,10 @@ class ShareAPITest(test.TestCase):
 
     def test_migration_start_invalid_force_host_assisted_migration(self):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.29')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.29')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -976,8 +995,10 @@ class ShareAPITest(test.TestCase):
     def test_migration_start_invalid_writable_preserve_metadata(
             self, parameter):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.29')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.29')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -992,8 +1013,10 @@ class ShareAPITest(test.TestCase):
     @ddt.data(constants.TASK_STATE_MIGRATION_ERROR, None)
     def test_reset_task_state(self, task_state):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.22')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -1012,8 +1035,10 @@ class ShareAPITest(test.TestCase):
 
     def test_reset_task_state_error_body(self):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.22')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -1027,8 +1052,10 @@ class ShareAPITest(test.TestCase):
 
     def test_reset_task_state_error_invalid(self):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.22')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -1042,8 +1069,10 @@ class ShareAPITest(test.TestCase):
 
     def test_reset_task_state_not_found(self):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.22')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -1063,8 +1092,10 @@ class ShareAPITest(test.TestCase):
 
     def test_migration_complete(self):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.22')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -1085,8 +1116,10 @@ class ShareAPITest(test.TestCase):
 
     def test_migration_complete_not_found(self):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.22')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -1103,8 +1136,10 @@ class ShareAPITest(test.TestCase):
 
     def test_migration_cancel(self):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.22')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -1125,8 +1160,10 @@ class ShareAPITest(test.TestCase):
 
     def test_migration_cancel_not_found(self):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.22')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -1144,8 +1181,10 @@ class ShareAPITest(test.TestCase):
     def test_migration_get_progress(self):
         share = db_utils.create_share(
             task_state=constants.TASK_STATE_MIGRATION_SUCCESS)
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.22')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -1172,8 +1211,10 @@ class ShareAPITest(test.TestCase):
 
     def test_migration_get_progress_not_found(self):
         share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.22')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -1209,7 +1250,7 @@ class ShareAPITest(test.TestCase):
                                     share_network_id=shr['share_network_id'])))
         self.mock_object(share_api.API, 'create', create_mock)
         body = {"share": copy.deepcopy(shr)}
-        req = fakes.HTTPRequest.blank('/shares', version='2.7')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version='2.7')
 
         res_dict = self.controller.create(req, body)
 
@@ -1251,7 +1292,7 @@ class ShareAPITest(test.TestCase):
             db, 'share_network_subnet_get_by_availability_zone_id')
 
         body = {"share": copy.deepcopy(shr)}
-        req = fakes.HTTPRequest.blank('/shares', version='2.7')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version='2.7')
 
         res_dict = self.controller.create(req, body)
 
@@ -1296,7 +1337,7 @@ class ShareAPITest(test.TestCase):
             db, 'share_network_subnet_get_by_availability_zone_id')
 
         body = {"share": copy.deepcopy(shr)}
-        req = fakes.HTTPRequest.blank('/shares', version='2.7')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version='2.7')
         res_dict = self.controller.create(req, body)
         expected = self._get_expected_share_detailed_response(
             shr, version='2.7')
@@ -1317,7 +1358,7 @@ class ShareAPITest(test.TestCase):
             "share_network_id": 1234,
         }
         body = {"share": shr}
-        req = fakes.HTTPRequest.blank('/shares', version='2.7')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version='2.7')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, body)
 
@@ -1370,14 +1411,14 @@ class ShareAPITest(test.TestCase):
         )
         body = {"share": copy.deepcopy(self.share)}
 
-        req = fakes.HTTPRequest.blank('/shares', version='2.7')
+        req = fakes.HTTPRequest.blank('/v2/shares', version='2.7')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.create,
                           req,
                           body)
 
     def test_share_show(self):
-        req = fakes.HTTPRequest.blank('/shares/1')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1')
         expected = self._get_expected_share_detailed_response()
 
         res_dict = self.controller.show(req, '1')
@@ -1386,7 +1427,7 @@ class ShareAPITest(test.TestCase):
 
     def test_share_show_with_share_group(self):
         req = fakes.HTTPRequest.blank(
-            '/shares/1', version='2.31', experimental=True)
+            '/v2/fake/shares/1', version='2.31', experimental=True)
         expected = self._get_expected_share_detailed_response(version='2.31')
 
         res_dict = self.controller.show(req, '1')
@@ -1395,7 +1436,7 @@ class ShareAPITest(test.TestCase):
 
     def test_share_show_with_share_group_earlier_version(self):
         req = fakes.HTTPRequest.blank(
-            '/shares/1', version='2.23', experimental=True)
+            '/v2/fake/shares/1', version='2.23', experimental=True)
         expected = self._get_expected_share_detailed_response(version='2.23')
 
         res_dict = self.controller.show(req, '1')
@@ -1403,7 +1444,7 @@ class ShareAPITest(test.TestCase):
         self.assertDictMatch(expected, res_dict)
 
     def test_share_show_with_share_type_name(self):
-        req = fakes.HTTPRequest.blank('/shares/1', version='2.6')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1', version='2.6')
 
         res_dict = self.controller.show(req, '1')
 
@@ -1412,7 +1453,8 @@ class ShareAPITest(test.TestCase):
 
     @ddt.data("2.15", "2.16")
     def test_share_show_with_user_id(self, microversion):
-        req = fakes.HTTPRequest.blank('/shares/1', version=microversion)
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1',
+                                      version=microversion)
 
         res_dict = self.controller.show(req, '1')
 
@@ -1422,7 +1464,8 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_share_show_admin(self):
-        req = fakes.HTTPRequest.blank('/shares/1', use_admin_context=True)
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1',
+                                      use_admin_context=True)
         expected = self._get_expected_share_detailed_response(admin=True)
 
         res_dict = self.controller.show(req, '1')
@@ -1432,18 +1475,17 @@ class ShareAPITest(test.TestCase):
     def test_share_show_no_share(self):
         self.mock_object(share_api.API, 'get',
                          stubs.stub_share_get_notfound)
-        req = fakes.HTTPRequest.blank('/shares/1')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.show,
                           req, '1')
 
     def test_share_show_with_replication_type(self):
-        req = fakes.HTTPRequest.blank(
-            '/shares/1', version=share_replicas.MIN_SUPPORTED_API_VERSION)
+        api_vers = share_replicas.MIN_SUPPORTED_API_VERSION
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1', version=api_vers)
         res_dict = self.controller.show(req, '1')
 
-        expected = self._get_expected_share_detailed_response(
-            version=share_replicas.MIN_SUPPORTED_API_VERSION)
+        expected = self._get_expected_share_detailed_response(version=api_vers)
 
         self.assertEqual(expected, res_dict)
 
@@ -1456,7 +1498,7 @@ class ShareAPITest(test.TestCase):
             status=constants.STATUS_AVAILABLE)
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         req = fakes.HTTPRequest.blank(
-            '/shares/%s' % share['id'], version=version)
+            '/v2/fake/shares/%s' % share['id'], version=version)
 
         res_dict = self.controller.show(req, share['id'])
 
@@ -1466,12 +1508,12 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(expected, res_dict['share']['access_rules_status'])
 
     def test_share_delete(self):
-        req = fakes.HTTPRequest.blank('/shares/1')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1')
         resp = self.controller.delete(req, 1)
         self.assertEqual(202, resp.status_int)
 
     def test_share_delete_has_replicas(self):
-        req = fakes.HTTPRequest.blank('/shares/1')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1')
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=self.share))
         self.mock_object(share_api.API, 'delete',
@@ -1485,7 +1527,7 @@ class ShareAPITest(test.TestCase):
                                       share_group_id='fake_group_id')
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=fake_share))
-        req = fakes.HTTPRequest.blank('/shares/1')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.delete, req, 1)
 
@@ -1495,7 +1537,7 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=fake_share))
         req = fakes.HTTPRequest.blank(
-            '/shares/1?share_group_id=fake_group_id')
+            '/v2/fake/shares/1?share_group_id=fake_group_id')
         resp = self.controller.delete(req, 1)
         self.assertEqual(202, resp.status_int)
 
@@ -1505,7 +1547,7 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=fake_share))
         req = fakes.HTTPRequest.blank(
-            '/shares/1?share_group_id=not_fake_group_id')
+            '/v2/fake/shares/1?share_group_id=not_fake_group_id')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.delete, req, 1)
 
@@ -1513,7 +1555,7 @@ class ShareAPITest(test.TestCase):
         shr = self.share
         body = {"share": shr}
 
-        req = fakes.HTTPRequest.blank('/share/1')
+        req = fakes.HTTPRequest.blank('/v2/fake/share/1')
         res_dict = self.controller.update(req, 1, body)
         self.assertEqual(shr["display_name"], res_dict['share']["name"])
         self.assertEqual(shr["display_description"],
@@ -1526,7 +1568,7 @@ class ShareAPITest(test.TestCase):
         body = {"share": shr}
 
         req = fakes.HTTPRequest.blank(
-            '/share/1', version="2.31", experimental=True)
+            '/v2/fake/share/1', version="2.31", experimental=True)
 
         res_dict = self.controller.update(req, 1, body)
 
@@ -1535,14 +1577,14 @@ class ShareAPITest(test.TestCase):
             res_dict['share']["source_share_group_snapshot_member_id"])
 
     def test_share_not_updates_size(self):
-        req = fakes.HTTPRequest.blank('/share/1')
+        req = fakes.HTTPRequest.blank('/v2/fake/share/1')
         res_dict = self.controller.update(req, 1, {"share": self.share})
         self.assertNotEqual(res_dict['share']["size"], self.share["size"])
 
     def test_share_delete_no_share(self):
         self.mock_object(share_api.API, 'get',
                          stubs.stub_share_get_notfound)
-        req = fakes.HTTPRequest.blank('/shares/1')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.delete,
                           req,
@@ -1587,7 +1629,7 @@ class ShareAPITest(test.TestCase):
         if use_admin_context:
             search_opts['host'] = 'fake_host'
         # fake_key should be filtered for non-admin
-        url = '/shares?fake_key=fake_value'
+        url = '/v2/fake/shares?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
         req = fakes.HTTPRequest.blank(url, version=version,
@@ -1659,7 +1701,7 @@ class ShareAPITest(test.TestCase):
         if use_admin_context:
             search_opts['host'] = 'fake_host'
         # fake_key should be filtered
-        url = '/shares?fake_key=fake_value'
+        url = '/v2/fake/shares?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
         req = fakes.HTTPRequest.blank(url, version=version,
@@ -1687,7 +1729,7 @@ class ShareAPITest(test.TestCase):
     def test_share_list_summary(self):
         self.mock_object(share_api.API, 'get_all',
                          stubs.stub_share_get_all_by_project)
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares')
         res_dict = self.controller.index(req)
         expected = {
             'shares': [
@@ -1696,11 +1738,11 @@ class ShareAPITest(test.TestCase):
                     'id': '1',
                     'links': [
                         {
-                            'href': 'http://localhost/v1/fake/shares/1',
+                            'href': 'http://localhost/share/v2/fake/shares/1',
                             'rel': 'self'
                         },
                         {
-                            'href': 'http://localhost/fake/shares/1',
+                            'href': 'http://localhost/share/fake/shares/1',
                             'rel': 'bookmark'
                         }
                     ],
@@ -1741,7 +1783,7 @@ class ShareAPITest(test.TestCase):
         if use_admin_context:
             search_opts['host'] = 'fake_host'
         # fake_key should be filtered for non-admin
-        url = '/shares/detail?fake_key=fake_value'
+        url = '/v2/fake/shares/detail?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
         req = fakes.HTTPRequest.blank(url, version=version,
@@ -1844,11 +1886,11 @@ class ShareAPITest(test.TestCase):
             'is_public': False,
             'links': [
                 {
-                    'href': 'http://localhost/v1/fake/shares/1',
+                    'href': 'http://localhost/share/v2/fake/shares/1',
                     'rel': 'self'
                 },
                 {
-                    'href': 'http://localhost/fake/shares/1',
+                    'href': 'http://localhost/share/fake/shares/1',
                     'rel': 'bookmark'
                 }
             ],
@@ -1867,15 +1909,17 @@ class ShareAPITest(test.TestCase):
 
     def test_share_list_detail(self):
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
-        req = fakes.HTTPRequest.blank('/shares/detail', environ=env)
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/detail', environ=env)
         expected = self._list_detail_common_expected()
         expected['shares'][0].pop('snapshot_support')
         self._list_detail_test_common(req, expected)
 
     def test_share_list_detail_with_share_group(self):
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
-        req = fakes.HTTPRequest.blank(
-            '/shares/detail', environ=env, version="2.31", experimental=True)
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/detail',
+                                      environ=env,
+                                      version="2.31",
+                                      experimental=True)
         expected = self._list_detail_common_expected()
         expected['shares'][0]['task_state'] = None
         expected['shares'][0]['share_type_name'] = None
@@ -1893,7 +1937,7 @@ class ShareAPITest(test.TestCase):
 
     def test_share_list_detail_with_task_state(self):
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
-        req = fakes.HTTPRequest.blank('/shares/detail', environ=env,
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/detail', environ=env,
                                       version="2.5")
         expected = self._list_detail_common_expected()
         expected['shares'][0]['task_state'] = None
@@ -1901,7 +1945,7 @@ class ShareAPITest(test.TestCase):
 
     def test_share_list_detail_without_export_locations(self):
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
-        req = fakes.HTTPRequest.blank('/shares/detail', environ=env,
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/detail', environ=env,
                                       version="2.9")
         expected = self._list_detail_common_expected()
         expected['shares'][0]['task_state'] = None
@@ -1915,7 +1959,7 @@ class ShareAPITest(test.TestCase):
                          stubs.stub_share_get_all_by_project)
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
         req = fakes.HTTPRequest.blank(
-            '/shares/detail', environ=env,
+            '/v2/fake/shares/detail', environ=env,
             version=share_replicas.MIN_SUPPORTED_API_VERSION)
         res_dict = self.controller.detail(req)
         expected = {
@@ -1944,11 +1988,11 @@ class ShareAPITest(test.TestCase):
                     'task_state': None,
                     'links': [
                         {
-                            'href': 'http://localhost/v1/fake/shares/1',
+                            'href': 'http://localhost/share/v2/fake/shares/1',
                             'rel': 'self'
                         },
                         {
-                            'href': 'http://localhost/fake/shares/1',
+                            'href': 'http://localhost/share/fake/shares/1',
                             'rel': 'bookmark'
                         }
                     ],
@@ -2292,7 +2336,7 @@ class ShareActionsTest(test.TestCase):
 
         id = 'fake_share_id'
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
-        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/v2/tenant1/shares/%s/action' % id)
         res = self.controller._deny_access(req, id, body)
         self.assertEqual(202, res.status_int)
 
@@ -2305,7 +2349,7 @@ class ShareActionsTest(test.TestCase):
 
         id = 'super_fake_share_id'
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
-        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/v2/tenant1/shares/%s/action' % id)
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller._deny_access,
                           req,
@@ -2357,7 +2401,7 @@ class ShareActionsTest(test.TestCase):
               {"os-extend": {"new_size": {'foo': 'bar'}}})
     def test_extend_invalid_body(self, body):
         id = 'fake_share_id'
-        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/v2/shares/%s/action' % id)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._extend, req, id, body)
@@ -2371,7 +2415,7 @@ class ShareActionsTest(test.TestCase):
     @ddt.unpack
     def test_extend_exception(self, source, target):
         id = 'fake_share_id'
-        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/v2/shares/%s/action' % id)
         body = {"os-extend": {'new_size': '123'}}
         self.mock_object(share_api.API, "extend",
                          mock.Mock(side_effect=source('fake')))
@@ -2404,7 +2448,7 @@ class ShareActionsTest(test.TestCase):
               {"os-shrink": {"new_size": {'foo': 'bar'}}})
     def test_shrink_invalid_body(self, body):
         id = 'fake_share_id'
-        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/v2/shares/%s/action' % id)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._shrink, req, id, body)
@@ -2416,7 +2460,7 @@ class ShareActionsTest(test.TestCase):
     @ddt.unpack
     def test_shrink_exception(self, source, target):
         id = 'fake_share_id'
-        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/v2/shares/%s/action' % id)
         body = {"os-shrink": {'new_size': '123'}}
         self.mock_object(share_api.API, "shrink",
                          mock.Mock(side_effect=source('fake')))
@@ -2561,7 +2605,7 @@ class ShareUnmanageTest(test.TestCase):
                          stubs.stub_snapshot_get)
         self.share_id = 'fake'
         self.request = fakes.HTTPRequest.blank(
-            '/share/%s/unmanage' % self.share_id,
+            '/v2/fake/share/%s/unmanage' % self.share_id,
             use_admin_context=True, version='2.7',
         )
 
@@ -2587,8 +2631,9 @@ class ShareUnmanageTest(test.TestCase):
 
     def test__unmanage(self):
         body = {}
-        req = fakes.HTTPRequest.blank(
-            '/shares/1/action', use_admin_context=False, version='2.49')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      use_admin_context=False,
+                                      version='2.49')
         share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
                      instance={})
         mock_unmanage = self.mock_object(self.controller, '_unmanage')
@@ -2673,7 +2718,7 @@ class ShareUnmanageTest(test.TestCase):
 
     def test_wrong_permissions(self):
         share_id = 'fake'
-        req = fakes.HTTPRequest.blank('/share/%s/unmanage' % share_id,
+        req = fakes.HTTPRequest.blank('/v2/fake/share/%s/unmanage' % share_id,
                                       use_admin_context=False, version='2.7')
 
         self.assertRaises(webob.exc.HTTPForbidden,
@@ -2683,7 +2728,7 @@ class ShareUnmanageTest(test.TestCase):
 
     def test_unsupported_version(self):
         share_id = 'fake'
-        req = fakes.HTTPRequest.blank('/share/%s/unmanage' % share_id,
+        req = fakes.HTTPRequest.blank('/v2/fake/share/%s/unmanage' % share_id,
                                       use_admin_context=False, version='2.6')
 
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
@@ -2867,11 +2912,11 @@ class ShareManageTest(test.TestCase):
                 'task_state': None,
                 'links': [
                     {
-                        'href': 'http://localhost/v1/fake/shares/fake',
+                        'href': 'http://localhost/share/v2/fake/shares/fake',
                         'rel': 'self'
                     },
                     {
-                        'href': 'http://localhost/fake/shares/fake',
+                        'href': 'http://localhost/share/fake/shares/fake',
                         'rel': 'bookmark'
                     }
                 ],
@@ -2923,7 +2968,8 @@ class ShareManageTest(test.TestCase):
                 api_version.APIVersionRequest('2.8')):
             share['is_public'] = data['share']['is_public']
 
-        req = fakes.HTTPRequest.blank('/v2/shares/manage', version=version,
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/manage',
+                                      version=version,
                                       use_admin_context=True)
 
         actual_result = self.controller.manage(req, data)
@@ -2942,15 +2988,16 @@ class ShareManageTest(test.TestCase):
         self.assertRaises(
             webob.exc.HTTPForbidden,
             self.controller.manage,
-            fakes.HTTPRequest.blank(
-                '/share/manage', use_admin_context=False, version='2.7'),
+            fakes.HTTPRequest.blank('/v2/fake/share/manage',
+                                    use_admin_context=False,
+                                    version='2.7'),
             body,
         )
 
     def test_unsupported_version(self):
         share_id = 'fake'
         req = fakes.HTTPRequest.blank(
-            '/share/manage', use_admin_context=False, version='2.6')
+            '/v2/fake/share/manage', use_admin_context=False, version='2.6')
 
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
                           self.controller.manage,
@@ -2962,8 +3009,9 @@ class ShareManageTest(test.TestCase):
         mock_revert = self.mock_object(
             self.controller, '_revert',
             mock.Mock(return_value='fake_response'))
-        req = fakes.HTTPRequest.blank(
-            '/shares/fake_id/action', use_admin_context=False, version='2.27')
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/fake_id/action',
+                                      use_admin_context=False,
+                                      version='2.27')
 
         result = self.controller.revert(req, 'fake_id', 'fake_body')
 
@@ -2973,8 +3021,9 @@ class ShareManageTest(test.TestCase):
 
     def test_revert_unsupported(self):
 
-        req = fakes.HTTPRequest.blank(
-            '/shares/fake_id/action', use_admin_context=False, version='2.24')
+        req = fakes.HTTPRequest.blank('/v2/shares/fake_id/action',
+                                      use_admin_context=False,
+                                      version='2.24')
 
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
                           self.controller.revert,

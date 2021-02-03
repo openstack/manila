@@ -159,13 +159,14 @@ REST_API_VERSION_HISTORY = """
     * 2.58 - Added 'share_groups' and 'share_group_snapshots' to the limits
              view.
     * 2.59 - Add driver ``details`` field to migration get progress.
+    * 2.60 - API URLs no longer need to include a project_id parameter.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.59"
+_MAX_API_VERSION = "2.60"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

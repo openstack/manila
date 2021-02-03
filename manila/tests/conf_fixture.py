@@ -41,6 +41,8 @@ def set_defaults(conf):
                                                    'etc/manila/api-paste.ini'))
     wsgi.register_opts(conf)
     _safe_set_of_opts(conf, 'api_paste_config', _API_PASTE_PATH)
+    # we use "fake" and "openstack" as project ID in a number of tests
+    _safe_set_of_opts(conf, 'project_id_regex', r"[0-9a-fopnstk\-]+")
     _safe_set_of_opts(conf, 'share_driver',
                       'manila.tests.fake_driver.FakeShareDriver')
     _safe_set_of_opts(conf, 'auth_strategy', 'noauth')

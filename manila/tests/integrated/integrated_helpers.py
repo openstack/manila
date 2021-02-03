@@ -65,12 +65,12 @@ class _IntegratedTestBase(test.TestCase):
         self.flags(**f)
 
         # set up services
-        self.volume = self.start_service('share')
+        self.share = self.start_service('share')
         self.scheduler = self.start_service('scheduler')
 
         self._start_api_service()
 
-        self.api = client.TestOpenStackClient('fake', 'fake', self.auth_url)
+        self.api = client.TestOpenStackClient('fake', 'fake', self.endpoint)
 
     def tearDown(self):
         self.osapi.stop()
@@ -79,10 +79,9 @@ class _IntegratedTestBase(test.TestCase):
     def _start_api_service(self):
         self.osapi = service.WSGIService("osapi_share")
         self.osapi.start()
-        # FIXME(ja): this is not the auth url - this is the service url
-        # FIXME(ja): this needs fixed in nova as well
-        self.auth_url = 'http://%s:%s/v1' % (self.osapi.host, self.osapi.port)
-        LOG.warning(self.auth_url)
+        self.endpoint = 'http://%s:%s/v2' % (self.osapi.host,
+                                             self.osapi.port)
+        LOG.info("Manila API started at %s", self.endpoint)
 
     def _get_flags(self):
         """An opportunity to setup flags, before the services are started."""

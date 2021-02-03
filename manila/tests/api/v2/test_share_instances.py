@@ -97,7 +97,7 @@ class ShareInstancesAPITest(test.TestCase):
             req_context, self.resource_name, 'index')
 
     def test_index_with_limit(self):
-        req = self._get_request('/share_instances')
+        req = self._get_request('/v2/fake/share_instances')
         req_context = req.environ['manila.context']
         share_instances_count = 3
         test_instances = [
@@ -107,13 +107,13 @@ class ShareInstancesAPITest(test.TestCase):
         expect_links = [
             {
                 'href': (
-                    'http://localhost/v1/fake/share_instances?'
+                    'http://localhost/share/v2/fake/share_instances?'
                     'limit=3&marker=%s' % test_instances[2]['id']),
                 'rel': 'next',
             }
         ]
 
-        url = 'share_instances?limit=3'
+        url = '/v2/fake/share_instances?limit=3'
         req = self._get_request(url)
         actual_result = self.controller.index(req)
 

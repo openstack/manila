@@ -87,7 +87,10 @@ class ShareSnapshotAPITest(test.TestCase):
                 'description': 'displaysnapdesc',
             }
         }
-        req = fakes.HTTPRequest.blank('/snapshots', version=version)
+        url = ('/v2/fake/snapshots'
+               if version.startswith('2.')
+               else '/v1/fake/snapshots')
+        req = fakes.HTTPRequest.blank(url, version=version)
 
         res_dict = self.controller.create(req, body)
 
@@ -110,7 +113,7 @@ class ShareSnapshotAPITest(test.TestCase):
                 'description': 'fake_share_description',
             }
         }
-        req = fakes.HTTPRequest.blank('/snapshots')
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots')
 
         self.assertRaises(
             webob.exc.HTTPUnprocessableEntity,
@@ -120,7 +123,7 @@ class ShareSnapshotAPITest(test.TestCase):
 
     def test_snapshot_create_no_body(self):
         body = {}
-        req = fakes.HTTPRequest.blank('/snapshots')
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots')
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
                           self.controller.create,
                           req,
@@ -129,14 +132,14 @@ class ShareSnapshotAPITest(test.TestCase):
     def test_snapshot_delete(self):
         self.mock_object(share_api.API, 'delete_snapshot',
                          stubs.stub_snapshot_delete)
-        req = fakes.HTTPRequest.blank('/snapshots/200')
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots/200')
         resp = self.controller.delete(req, 200)
         self.assertEqual(202, resp.status_int)
 
     def test_snapshot_delete_nofound(self):
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get_notfound)
-        req = fakes.HTTPRequest.blank('/snapshots/200')
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots/200')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.delete,
                           req,
@@ -144,7 +147,8 @@ class ShareSnapshotAPITest(test.TestCase):
 
     @ddt.data('2.0', '2.16', '2.17')
     def test_snapshot_show(self, version):
-        req = fakes.HTTPRequest.blank('/snapshots/200', version=version)
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots/200',
+                                      version=version)
         expected = fake_share.expected_snapshot(version=version, id=200)
 
         res_dict = self.controller.show(req, 200)
@@ -154,7 +158,7 @@ class ShareSnapshotAPITest(test.TestCase):
     def test_snapshot_show_nofound(self):
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get_notfound)
-        req = fakes.HTTPRequest.blank('/snapshots/200')
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots/200')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.show,
                           req, '200')
@@ -162,7 +166,7 @@ class ShareSnapshotAPITest(test.TestCase):
     def test_snapshot_list_summary(self):
         self.mock_object(share_api.API, 'get_all_snapshots',
                          stubs.stub_snapshot_get_all_by_project)
-        req = fakes.HTTPRequest.blank('/snapshots')
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots')
         res_dict = self.controller.index(req)
         expected = {
             'snapshots': [
@@ -171,12 +175,12 @@ class ShareSnapshotAPITest(test.TestCase):
                     'id': 2,
                     'links': [
                         {
-                            'href': 'http://localhost/v1/fake/'
+                            'href': 'http://localhost/share/v2/fake/'
                                     'snapshots/2',
                             'rel': 'self'
                         },
                         {
-                            'href': 'http://localhost/fake/snapshots/2',
+                            'href': 'http://localhost/share/fake/snapshots/2',
                             'rel': 'bookmark'
                         }
                     ],
@@ -193,7 +197,7 @@ class ShareSnapshotAPITest(test.TestCase):
             search_opts.pop('name')
             search_opts['display_name~'] = 'fake_name'
         # fake_key should be filtered for non-admin
-        url = '/snapshots?fake_key=fake_value'
+        url = '/v2/fake/snapshots?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
         req = fakes.HTTPRequest.blank(
@@ -244,7 +248,7 @@ class ShareSnapshotAPITest(test.TestCase):
     def _snapshot_list_detail_with_search_opts(self, use_admin_context):
         search_opts = fake_share.search_opts()
         # fake_key should be filtered for non-admin
-        url = '/shares/detail?fake_key=fake_value'
+        url = '/v2/fake/shares/detail?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
         req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
@@ -307,7 +311,8 @@ class ShareSnapshotAPITest(test.TestCase):
     @ddt.data('2.0', '2.16', '2.17')
     def test_snapshot_list_detail(self, version):
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
-        req = fakes.HTTPRequest.blank('/snapshots/detail', environ=env,
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots/detail',
+                                      environ=env,
                                       version=version)
         expected_s = fake_share.expected_snapshot(version=version, id=2)
         expected = {'snapshots': [expected_s['snapshot']]}
@@ -320,7 +325,7 @@ class ShareSnapshotAPITest(test.TestCase):
     def test_snapshot_updates_display_name_and_description(self, version):
         snp = self.snp_example
         body = {"snapshot": snp}
-        req = fakes.HTTPRequest.blank('/snapshot/1', version=version)
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshot/1', version=version)
 
         res_dict = self.controller.update(req, 1, body)
 
@@ -338,7 +343,7 @@ class ShareSnapshotAPITest(test.TestCase):
         snp = self.snp_example
         body = {"snapshot": snp}
 
-        req = fakes.HTTPRequest.blank('/snapshot/1')
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshot/1')
         res_dict = self.controller.update(req, 1, body)
 
         self.assertNotEqual(snp["size"], res_dict['snapshot']["size"])
@@ -358,7 +363,7 @@ class ShareSnapshotAPITest(test.TestCase):
                          mock.Mock(return_value=expected))
 
         id = 'fake_snap_id'
-        req = fakes.HTTPRequest.blank('/snapshots/%s/action' % id,
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots/%s/action' % id,
                                       version='2.32')
 
         actual = self.controller.access_list(req, id)
@@ -388,8 +393,8 @@ class ShareSnapshotAPITest(test.TestCase):
         allow_access = self.mock_object(share_api.API, 'snapshot_allow_access',
                                         mock.Mock(return_value=access))
         body = {'allow_access': access}
-        req = fakes.HTTPRequest.blank('/snapshots/%s/action' % snapshot['id'],
-                                      version=version)
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/snapshots/%s/action' % snapshot['id'], version=version)
 
         actual = self.controller.allow_access(req, snapshot['id'], body)
 
@@ -406,8 +411,8 @@ class ShareSnapshotAPITest(test.TestCase):
         share = db_utils.create_share(mount_snapshot_support=True)
         snapshot = db_utils.create_snapshot(
             status=constants.STATUS_AVAILABLE, share_id=share['id'])
-        req = fakes.HTTPRequest.blank('/snapshots/%s/action' % snapshot['id'],
-                                      version='2.32')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/snapshots/%s/action' % snapshot['id'], version='2.32')
         body = {}
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -418,8 +423,8 @@ class ShareSnapshotAPITest(test.TestCase):
         share = db_utils.create_share(mount_snapshot_support=True)
         snapshot = db_utils.create_snapshot(
             status=constants.STATUS_AVAILABLE, share_id=share['id'])
-        req = fakes.HTTPRequest.blank('/snapshots/%s/action' % snapshot['id'],
-                                      version='2.32')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/snapshots/%s/action' % snapshot['id'], version='2.32')
         access = {
             'id': 'fake_id',
             'access_type': 'ip',
@@ -468,8 +473,8 @@ class ShareSnapshotAPITest(test.TestCase):
                                mock.Mock(return_value=share))
 
         body = {'allow_access': access}
-        req = fakes.HTTPRequest.blank('/snapshots/%s/action' % snapshot['id'],
-                                      version='2.32')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/snapshots/%s/action' % snapshot['id'], version='2.32')
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.allow_access, req,
@@ -490,8 +495,8 @@ class ShareSnapshotAPITest(test.TestCase):
                   'access_to': ''}
 
         body = {'allow_access': access}
-        req = fakes.HTTPRequest.blank('/snapshots/%s/action' % snapshot['id'],
-                                      version='2.32')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/snapshots/%s/action' % snapshot['id'], version='2.32')
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.allow_access, req,
@@ -513,8 +518,8 @@ class ShareSnapshotAPITest(test.TestCase):
         deny_access = self.mock_object(share_api.API, 'snapshot_deny_access')
 
         body = {'deny_access': {'access_id': access.id}}
-        req = fakes.HTTPRequest.blank('/snapshots/%s/action' % snapshot['id'],
-                                      version='2.32')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/snapshots/%s/action' % snapshot['id'], version='2.32')
 
         resp = self.controller.deny_access(req, snapshot['id'], body)
 
@@ -533,8 +538,8 @@ class ShareSnapshotAPITest(test.TestCase):
         share = db_utils.create_share(mount_snapshot_support=True)
         snapshot = db_utils.create_snapshot(
             status=constants.STATUS_AVAILABLE, share_id=share['id'])
-        req = fakes.HTTPRequest.blank('/snapshots/%s/action' % snapshot['id'],
-                                      version='2.32')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/snapshots/%s/action' % snapshot['id'], version='2.32')
         body = {}
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -561,8 +566,8 @@ class ShareSnapshotAPITest(test.TestCase):
                                       mock.Mock(return_value=wrong_access))
 
         body = {'deny_access': {'access_id': access.id}}
-        req = fakes.HTTPRequest.blank('/snapshots/%s/action' % snapshot['id'],
-                                      version='2.32')
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/snapshots/%s/action' % snapshot['id'], version='2.32')
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.deny_access, req, snapshot['id'],
@@ -588,11 +593,11 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
 
         self.resource_name = self.controller.resource_name
         self.manage_request = fakes.HTTPRequest.blank(
-            '/snapshots/manage', use_admin_context=True,
+            '/v2/fake/snapshots/manage', use_admin_context=True,
             version=MIN_MANAGE_SNAPSHOT_API_VERSION)
         self.snapshot_id = 'fake'
         self.unmanage_request = fakes.HTTPRequest.blank(
-            '/snapshots/%s/unmanage' % self.snapshot_id,
+            '/v2/fake/snapshots/%s/unmanage' % self.snapshot_id,
             use_admin_context=True,
             version=MIN_MANAGE_SNAPSHOT_API_VERSION)
 
@@ -734,8 +739,9 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
             'display_description': 'bar',
         }
 
-        req = fakes.HTTPRequest.blank(
-            '/snapshots/manage', use_admin_context=True, version=version)
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots/manage',
+                                      use_admin_context=True,
+                                      version=version)
 
         actual_result = self.controller.manage(req, data)
 
@@ -793,7 +799,7 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
             share_id='fake', provider_location='fake_volume_snapshot_id',
             driver_options={})
         fake_req = fakes.HTTPRequest.blank(
-            '/snapshots/manage', use_admin_context=True,
+            '/v2/fake/snapshots/manage', use_admin_context=True,
             version=version)
 
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
@@ -804,10 +810,9 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
         body = {}
         snapshot = {'status': constants.STATUS_AVAILABLE, 'id': 'bar_id',
                     'share_id': 'bar_id'}
-        fake_req = fakes.HTTPRequest.blank(
-            '/snapshots/unmanage',
-            use_admin_context=True,
-            version='2.49')
+        fake_req = fakes.HTTPRequest.blank('/v2/fake/snapshots/unmanage',
+                                           use_admin_context=True,
+                                           version='2.49')
         mock_unmanage = self.mock_object(self.controller, '_unmanage')
 
         self.controller.unmanage(fake_req, snapshot['id'], body)
@@ -948,7 +953,7 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
     def test_unmanage_version_not_found(self, version):
         snapshot_id = 'fake'
         fake_req = fakes.HTTPRequest.blank(
-            '/snapshots/%s/unmanage' % snapshot_id,
+            '/v2/fake/snapshots/%s/unmanage' % snapshot_id,
             use_admin_context=True,
             version=version)
 

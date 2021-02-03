@@ -155,11 +155,13 @@ class APIRouter(manila.api.openstack.APIRouter):
                         collection={"detail": "GET"},
                         member={"action": "POST"})
 
-        mapper.connect("shares",
-                       "/{project_id}/shares/manage",
-                       controller=self.resources["shares"],
-                       action="manage",
-                       conditions={"method": ["POST"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("shares",
+                           "%s/shares/manage" % path_prefix,
+                           controller=self.resources["shares"],
+                           action="manage",
+                           conditions={"method": ["POST"]})
 
         self.resources["share_instances"] = share_instances.create_resource()
         mapper.resource("share_instance", "share_instances",
@@ -169,40 +171,46 @@ class APIRouter(manila.api.openstack.APIRouter):
 
         self.resources["share_instance_export_locations"] = (
             share_instance_export_locations.create_resource())
-        mapper.connect("share_instances",
-                       ("/{project_id}/share_instances/{share_instance_id}/"
-                        "export_locations"),
-                       controller=self.resources[
-                           "share_instance_export_locations"],
-                       action="index",
-                       conditions={"method": ["GET"]})
-        mapper.connect("share_instances",
-                       ("/{project_id}/share_instances/{share_instance_id}/"
-                        "export_locations/{export_location_uuid}"),
-                       controller=self.resources[
-                           "share_instance_export_locations"],
-                       action="show",
-                       conditions={"method": ["GET"]})
 
-        mapper.connect("share_instance",
-                       "/{project_id}/shares/{share_id}/instances",
-                       controller=self.resources["share_instances"],
-                       action="get_share_instances",
-                       conditions={"method": ["GET"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("share_instances",
+                           ("%s/share_instances/{share_instance_id}"
+                            "/export_locations" % path_prefix),
+                           controller=self.resources[
+                               "share_instance_export_locations"],
+                           action="index",
+                           conditions={"method": ["GET"]})
 
-        self.resources["share_export_locations"] = (
-            share_export_locations.create_resource())
-        mapper.connect("shares",
-                       "/{project_id}/shares/{share_id}/export_locations",
-                       controller=self.resources["share_export_locations"],
-                       action="index",
-                       conditions={"method": ["GET"]})
-        mapper.connect("shares",
-                       ("/{project_id}/shares/{share_id}/"
-                        "export_locations/{export_location_uuid}"),
-                       controller=self.resources["share_export_locations"],
-                       action="show",
-                       conditions={"method": ["GET"]})
+            mapper.connect("share_instances",
+                           ("%s/share_instances/{share_instance_id}"
+                            "/export_locations"
+                            "/{export_location_uuid}" % path_prefix),
+                           controller=self.resources[
+                               "share_instance_export_locations"],
+                           action="show",
+                           conditions={"method": ["GET"]})
+
+            mapper.connect("share_instance",
+                           "%s/shares/{share_id}/instances" % path_prefix,
+                           controller=self.resources["share_instances"],
+                           action="get_share_instances",
+                           conditions={"method": ["GET"]})
+
+            self.resources["share_export_locations"] = (
+                share_export_locations.create_resource())
+            mapper.connect("shares",
+                           "%s/shares/{share_id}"
+                           "/export_locations" % path_prefix,
+                           controller=self.resources["share_export_locations"],
+                           action="index",
+                           conditions={"method": ["GET"]})
+            mapper.connect("shares",
+                           ("%s/shares/{share_id}/export_locations"
+                            "/{export_location_uuid}" % path_prefix),
+                           controller=self.resources["share_export_locations"],
+                           action="show",
+                           conditions={"method": ["GET"]})
 
         self.resources["snapshots"] = share_snapshots.create_resource()
         mapper.resource("snapshot", "snapshots",
@@ -210,35 +218,38 @@ class APIRouter(manila.api.openstack.APIRouter):
                         collection={"detail": "GET"},
                         member={"action": "POST"})
 
-        mapper.connect("snapshots",
-                       "/{project_id}/snapshots/manage",
-                       controller=self.resources["snapshots"],
-                       action="manage",
-                       conditions={"method": ["POST"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("snapshots",
+                           "%s/snapshots/manage" % path_prefix,
+                           controller=self.resources["snapshots"],
+                           action="manage",
+                           conditions={"method": ["POST"]})
 
-        mapper.connect("snapshots",
-                       "/{project_id}/snapshots/{snapshot_id}/access-list",
-                       controller=self.resources["snapshots"],
-                       action="access_list",
-                       conditions={"method": ["GET"]})
+            mapper.connect("snapshots",
+                           "%s/snapshots/{snapshot_id}"
+                           "/access-list" % path_prefix,
+                           controller=self.resources["snapshots"],
+                           action="access_list",
+                           conditions={"method": ["GET"]})
 
-        self.resources["share_snapshot_export_locations"] = (
-            share_snapshot_export_locations.create_resource())
-        mapper.connect("snapshots",
-                       "/{project_id}/snapshots/{snapshot_id}/"
-                       "export-locations",
-                       controller=self.resources[
-                           "share_snapshot_export_locations"],
-                       action="index",
-                       conditions={"method": ["GET"]})
+            self.resources["share_snapshot_export_locations"] = (
+                share_snapshot_export_locations.create_resource())
+            mapper.connect("snapshots",
+                           "%s/snapshots/{snapshot_id}"
+                           "/export-locations" % path_prefix,
+                           controller=self.resources[
+                               "share_snapshot_export_locations"],
+                           action="index",
+                           conditions={"method": ["GET"]})
 
-        mapper.connect("snapshots",
-                       "/{project_id}/snapshots/{snapshot_id}/"
-                       "export-locations/{export_location_id}",
-                       controller=self.resources[
-                           "share_snapshot_export_locations"],
-                       action="show",
-                       conditions={"method": ["GET"]})
+            mapper.connect("snapshots",
+                           "%s/snapshots/{snapshot_id}/export-locations"
+                           "/{export_location_id}" % path_prefix,
+                           controller=self.resources[
+                               "share_snapshot_export_locations"],
+                           action="show",
+                           conditions={"method": ["GET"]})
 
         self.resources['snapshot_instances'] = (
             share_snapshot_instances.create_resource())
@@ -249,22 +260,25 @@ class APIRouter(manila.api.openstack.APIRouter):
 
         self.resources["share_snapshot_instance_export_locations"] = (
             share_snapshot_instance_export_locations.create_resource())
-        mapper.connect("snapshot-instance",
-                       "/{project_id}/snapshot-instances/"
-                       "{snapshot_instance_id}/export-locations",
-                       controller=self.resources[
-                           "share_snapshot_instance_export_locations"],
-                       action="index",
-                       conditions={"method": ["GET"]})
 
-        mapper.connect("snapshot-instance",
-                       "/{project_id}/snapshot-instances/"
-                       "{snapshot_instance_id}/export-locations/"
-                       "{export_location_id}",
-                       controller=self.resources[
-                           "share_snapshot_instance_export_locations"],
-                       action="show",
-                       conditions={"method": ["GET"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("snapshot-instance",
+                           "%s/snapshot-instances/{snapshot_instance_id}"
+                           "/export-locations" % path_prefix,
+                           controller=self.resources[
+                               "share_snapshot_instance_export_locations"],
+                           action="index",
+                           conditions={"method": ["GET"]})
+
+            mapper.connect("snapshot-instance",
+                           "%s/snapshot-instances/{snapshot_instance_id}"
+                           "/export-locations"
+                           "/{export_location_id}" % path_prefix,
+                           controller=self.resources[
+                               "share_snapshot_instance_export_locations"],
+                           action="show",
+                           conditions={"method": ["GET"]})
 
         self.resources["share_metadata"] = share_metadata.create_resource()
         share_metadata_controller = self.resources["share_metadata"]
@@ -274,11 +288,13 @@ class APIRouter(manila.api.openstack.APIRouter):
                         parent_resource=dict(member_name="share",
                                              collection_name="shares"))
 
-        mapper.connect("metadata",
-                       "/{project_id}/shares/{share_id}/metadata",
-                       controller=share_metadata_controller,
-                       action="update_all",
-                       conditions={"method": ["PUT"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("metadata",
+                           "%s/shares/{share_id}/metadata" % path_prefix,
+                           controller=share_metadata_controller,
+                           action="update_all",
+                           conditions={"method": ["PUT"]})
 
         self.resources["limits"] = limits.create_resource()
         mapper.resource("limit", "limits",
@@ -297,48 +313,53 @@ class APIRouter(manila.api.openstack.APIRouter):
                         collection={"detail": "GET"},
                         member={"action": "POST"})
 
-        self.resources["share_network_subnets"] = (
-            share_network_subnets.create_resource())
-        mapper.connect("share-networks",
-                       "/{project_id}/share-networks/{share_network_id}/"
-                       "subnets",
-                       controller=self.resources["share_network_subnets"],
-                       action="create",
-                       conditions={"method": ["POST"]})
-        mapper.connect("share-networks",
-                       "/{project_id}/share-networks/{share_network_id}/"
-                       "subnets/{share_network_subnet_id}",
-                       controller=self.resources["share_network_subnets"],
-                       action="delete",
-                       conditions={"method": ["DELETE"]})
-        mapper.connect("share-networks",
-                       "/{project_id}/share-networks/{share_network_id}/"
-                       "subnets/{share_network_subnet_id}",
-                       controller=self.resources["share_network_subnets"],
-                       action="show",
-                       conditions={"method": ["GET"]})
-        mapper.connect("share-networks",
-                       "/{project_id}/share-networks/{share_network_id}/"
-                       "subnets",
-                       controller=self.resources["share_network_subnets"],
-                       action="index",
-                       conditions={"method": ["GET"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            self.resources["share_network_subnets"] = (
+                share_network_subnets.create_resource())
+            mapper.connect("share-networks",
+                           "%s/share-networks/{share_network_id}"
+                           "/subnets" % path_prefix,
+                           controller=self.resources["share_network_subnets"],
+                           action="create",
+                           conditions={"method": ["POST"]})
+            mapper.connect("share-networks",
+                           "%s/share-networks/{share_network_id}"
+                           "/subnets/{share_network_subnet_id}" % path_prefix,
+                           controller=self.resources["share_network_subnets"],
+                           action="delete",
+                           conditions={"method": ["DELETE"]})
+            mapper.connect("share-networks",
+                           "%s/share-networks/{share_network_id}"
+                           "/subnets/{share_network_subnet_id}" % path_prefix,
+                           controller=self.resources["share_network_subnets"],
+                           action="show",
+                           conditions={"method": ["GET"]})
+            mapper.connect("share-networks",
+                           "%s/share-networks/{share_network_id}"
+                           "/subnets" % path_prefix,
+                           controller=self.resources["share_network_subnets"],
+                           action="index",
+                           conditions={"method": ["GET"]})
 
         self.resources["share_servers"] = share_servers.create_resource()
         mapper.resource("share_server",
                         "share-servers",
                         controller=self.resources["share_servers"],
                         member={"action": "POST"})
-        mapper.connect("details",
-                       "/{project_id}/share-servers/{id}/details",
-                       controller=self.resources["share_servers"],
-                       action="details",
-                       conditions={"method": ["GET"]})
-        mapper.connect("share_servers",
-                       "/{project_id}/share-servers/manage",
-                       controller=self.resources["share_servers"],
-                       action="manage",
-                       conditions={"method": ["POST"]})
+
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("details",
+                           "%s/share-servers/{id}/details" % path_prefix,
+                           controller=self.resources["share_servers"],
+                           action="details",
+                           conditions={"method": ["GET"]})
+            mapper.connect("share_servers",
+                           "%s/share-servers/manage" % path_prefix,
+                           controller=self.resources["share_servers"],
+                           action="manage",
+                           conditions={"method": ["POST"]})
 
         self.resources["types"] = share_types.create_resource()
         mapper.resource("type", "types",
@@ -356,14 +377,18 @@ class APIRouter(manila.api.openstack.APIRouter):
                                              collection_name="types"))
 
         self.resources["scheduler_stats"] = scheduler_stats.create_resource()
-        mapper.connect("pools", "/{project_id}/scheduler-stats/pools",
-                       controller=self.resources["scheduler_stats"],
-                       action="pools_index",
-                       conditions={"method": ["GET"]})
-        mapper.connect("pools", "/{project_id}/scheduler-stats/pools/detail",
-                       controller=self.resources["scheduler_stats"],
-                       action="pools_detail",
-                       conditions={"method": ["GET"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("pools",
+                           "%s/scheduler-stats/pools" % path_prefix,
+                           controller=self.resources["scheduler_stats"],
+                           action="pools_index",
+                           conditions={"method": ["GET"]})
+            mapper.connect("pools",
+                           "%s/scheduler-stats/pools/detail" % path_prefix,
+                           controller=self.resources["scheduler_stats"],
+                           action="pools_detail",
+                           conditions={"method": ["GET"]})
 
         self.resources["share-groups"] = share_groups.create_resource()
         mapper.resource(
@@ -371,12 +396,14 @@ class APIRouter(manila.api.openstack.APIRouter):
             "share-groups",
             controller=self.resources["share-groups"],
             collection={"detail": "GET"})
-        mapper.connect(
-            "share-groups",
-            "/{project_id}/share-groups/{id}/action",
-            controller=self.resources["share-groups"],
-            action="action",
-            conditions={"method": ["POST"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect(
+                "share-groups",
+                "%s/share-groups/{id}/action" % path_prefix,
+                controller=self.resources["share-groups"],
+                action="action",
+                conditions={"method": ["POST"]})
 
         self.resources["share-group-types"] = (
             share_group_types.create_resource())
@@ -386,47 +413,52 @@ class APIRouter(manila.api.openstack.APIRouter):
             controller=self.resources["share-group-types"],
             collection={"detail": "GET", "default": "GET"},
             member={"action": "POST"})
-        mapper.connect(
-            "share-group-types",
-            "/{project_id}/share-group-types/{id}/access",
-            controller=self.resources["share-group-types"],
-            action="share_group_type_access",
-            conditions={"method": ["GET"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect(
+                "share-group-types",
+                "%s/share-group-types/{id}/access" % path_prefix,
+                controller=self.resources["share-group-types"],
+                action="share_group_type_access",
+                conditions={"method": ["GET"]})
 
         # NOTE(ameade): These routes can be simplified when the following
         # issue is fixed: https://github.com/bbangert/routes/issues/68
         self.resources["group-specs"] = (
             share_group_type_specs.create_resource())
-        mapper.connect(
-            "share-group-types",
-            "/{project_id}/share-group-types/{id}/group-specs",
-            controller=self.resources["group-specs"],
-            action="index",
-            conditions={"method": ["GET"]})
-        mapper.connect(
-            "share-group-types",
-            "/{project_id}/share-group-types/{id}/group-specs",
-            controller=self.resources["group-specs"],
-            action="create",
-            conditions={"method": ["POST"]})
-        mapper.connect(
-            "share-group-types",
-            "/{project_id}/share-group-types/{id}/group-specs/{key}",
-            controller=self.resources["group-specs"],
-            action="show",
-            conditions={"method": ["GET"]})
-        mapper.connect(
-            "share-group-types",
-            "/{project_id}/share-group-types/{id}/group-specs/{key}",
-            controller=self.resources["group-specs"],
-            action="delete",
-            conditions={"method": ["DELETE"]})
-        mapper.connect(
-            "share-group-types",
-            "/{project_id}/share-group-types/{id}/group-specs/{key}",
-            controller=self.resources["group-specs"],
-            action="update",
-            conditions={"method": ["PUT"]})
+
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect(
+                "share-group-types",
+                "%s/share-group-types/{id}/group-specs" % path_prefix,
+                controller=self.resources["group-specs"],
+                action="index",
+                conditions={"method": ["GET"]})
+            mapper.connect(
+                "share-group-types",
+                "%s/share-group-types/{id}/group-specs" % path_prefix,
+                controller=self.resources["group-specs"],
+                action="create",
+                conditions={"method": ["POST"]})
+            mapper.connect(
+                "share-group-types",
+                "%s/share-group-types/{id}/group-specs/{key}" % path_prefix,
+                controller=self.resources["group-specs"],
+                action="show",
+                conditions={"method": ["GET"]})
+            mapper.connect(
+                "share-group-types",
+                "%s/share-group-types/{id}/group-specs/{key}" % path_prefix,
+                controller=self.resources["group-specs"],
+                action="delete",
+                conditions={"method": ["DELETE"]})
+            mapper.connect(
+                "share-group-types",
+                "%s/share-group-types/{id}/group-specs/{key}" % path_prefix,
+                controller=self.resources["group-specs"],
+                action="update",
+                conditions={"method": ["PUT"]})
 
         self.resources["share-group-snapshots"] = (
             share_group_snapshots.create_resource())
@@ -436,34 +468,41 @@ class APIRouter(manila.api.openstack.APIRouter):
             controller=self.resources["share-group-snapshots"],
             collection={"detail": "GET"},
             member={"members": "GET", "action": "POST"})
-        mapper.connect(
-            "share-group-snapshots",
-            "/{project_id}/share-group-snapshots/{id}/action",
-            controller=self.resources["share-group-snapshots"],
-            action="action",
-            conditions={"method": ["POST"]})
+
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect(
+                "share-group-snapshots",
+                "%s/share-group-snapshots/{id}/action" % path_prefix,
+                controller=self.resources["share-group-snapshots"],
+                action="action",
+                conditions={"method": ["POST"]})
 
         self.resources['share-replicas'] = share_replicas.create_resource()
         mapper.resource("share-replica", "share-replicas",
                         controller=self.resources['share-replicas'],
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
+
         self.resources["share-replica-export-locations"] = (
             share_replica_export_locations.create_resource())
-        mapper.connect("share-replicas",
-                       ("/{project_id}/share-replicas/{share_replica_id}/"
-                        "export-locations"),
-                       controller=self.resources[
-                           "share-replica-export-locations"],
-                       action="index",
-                       conditions={"method": ["GET"]})
-        mapper.connect("share-replicas",
-                       ("/{project_id}/share-replicas/{share_replica_id}/"
-                        "export-locations/{export_location_uuid}"),
-                       controller=self.resources[
-                           "share-replica-export-locations"],
-                       action="show",
-                       conditions={"method": ["GET"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("share-replicas",
+                           ("%s/share-replicas/{share_replica_id}"
+                            "/export-locations" % path_prefix),
+                           controller=self.resources[
+                               "share-replica-export-locations"],
+                           action="index",
+                           conditions={"method": ["GET"]})
+            mapper.connect("share-replicas",
+                           ("%s/share-replicas/{share_replica_id}"
+                            "/export-locations"
+                            "/{export_location_uuid}" % path_prefix),
+                           controller=self.resources[
+                               "share-replica-export-locations"],
+                           action="show",
+                           conditions={"method": ["GET"]})
 
         self.resources['messages'] = messages.create_resource()
         mapper.resource("message", "messages",
@@ -476,18 +515,21 @@ class APIRouter(manila.api.openstack.APIRouter):
             controller=self.resources["share-access-rules"],
             collection={"detail": "GET"})
 
-        self.resources["access-metadata"] = (
-            share_access_metadata.create_resource())
-        access_metadata_controller = self.resources["access-metadata"]
-        mapper.connect("share-access-rules",
-                       "/{project_id}/share-access-rules/{access_id}/metadata",
-                       controller=access_metadata_controller,
-                       action="update",
-                       conditions={"method": ["PUT"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            self.resources["access-metadata"] = (
+                share_access_metadata.create_resource())
+            access_metadata_controller = self.resources["access-metadata"]
+            mapper.connect("share-access-rules",
+                           "%s/share-access-rules"
+                           "/{access_id}/metadata" % path_prefix,
+                           controller=access_metadata_controller,
+                           action="update",
+                           conditions={"method": ["PUT"]})
 
-        mapper.connect("share-access-rules",
-                       "/{project_id}/share-access-rules/"
-                       "{access_id}/metadata/{key}",
-                       controller=access_metadata_controller,
-                       action="delete",
-                       conditions={"method": ["DELETE"]})
+            mapper.connect("share-access-rules",
+                           "%s/share-access-rules"
+                           "/{access_id}/metadata/{key}" % path_prefix,
+                           controller=access_metadata_controller,
+                           action="delete",
+                           conditions={"method": ["DELETE"]})
