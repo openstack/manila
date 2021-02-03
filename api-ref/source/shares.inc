@@ -89,7 +89,7 @@ A share has one of these status values:
 List shares
 ===========
 
-.. rest_method::  GET /v2/{project_id}/shares
+.. rest_method::  GET /v2/shares
 
 Lists all shares.
 
@@ -155,7 +155,7 @@ Response example
 List shares with details
 ========================
 
-.. rest_method::  GET /v2/{project_id}/shares/detail
+.. rest_method::  GET /v2/shares/detail
 
 Lists all shares, with details.
 
@@ -249,7 +249,7 @@ Response example
 Show share details
 ==================
 
-.. rest_method::  GET /v2/{project_id}/shares/{share_id}
+.. rest_method::  GET /v2/shares/{share_id}
 
 Shows details for a share.
 
@@ -321,7 +321,7 @@ Response example
 Create share
 ============
 
-.. rest_method::  POST /v2/{project_id}/shares
+.. rest_method::  POST /v2/shares
 
 Creates a share.
 
@@ -412,7 +412,7 @@ Response example
 Manage share (since API v2.7)
 =============================
 
-.. rest_method::  POST /v2/{project_id}/shares/manage
+.. rest_method::  POST /v2/shares/manage
 
 .. versionadded:: 2.7
 
@@ -511,7 +511,7 @@ Response example
 Update share
 ============
 
-.. rest_method::  PUT /v2/{project_id}/shares/{share_id}
+.. rest_method::  PUT /v2/shares/{share_id}
 
 Updates a share.
 
@@ -603,7 +603,7 @@ Response example
 Delete share
 ============
 
-.. rest_method::  DELETE /v2/{project_id}/shares/{share_id}
+.. rest_method::  DELETE /v2/shares/{share_id}
 
 Deletes a share.
 

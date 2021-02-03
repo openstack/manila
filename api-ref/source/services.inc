@@ -16,7 +16,7 @@ These APIs help in interacting with the Shared File Systems services,
 List services
 =============
 
-.. rest_method::  GET /v2/{project_id}/services?host={host}&binary={binary}&zone={zone}&state={state}&status={status}
+.. rest_method::  GET /v2/services?host={host}&binary={binary}&zone={zone}&state={state}&status={status}
 
 Lists all services optionally filtered with the specified search options.
 
@@ -69,7 +69,7 @@ Response example
 Enable service
 ==============
 
-.. rest_method::  PUT /v2/{project_id}/services/enable
+.. rest_method::  PUT /v2/services/enable
 
 Enables a service.
 
@@ -121,7 +121,7 @@ Response example
 Disable service
 ===============
 
-.. rest_method::  PUT /v2/{project_id}/services/disable
+.. rest_method::  PUT /v2/services/disable
 
 Disables a service.
 

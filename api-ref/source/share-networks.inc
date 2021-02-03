@@ -43,7 +43,7 @@ A share network resource can also have a user defined name and description.
 List share networks
 ===================
 
-.. rest_method::  GET /v2/{project_id}/share-networks
+.. rest_method::  GET /v2/share-networks
 
 Lists all share networks.
 
@@ -89,7 +89,7 @@ Response example
 List share networks with details
 ================================
 
-.. rest_method::  GET /v2/{project_id}/share-networks/detail
+.. rest_method::  GET /v2/share-networks/detail
 
 Lists all share networks with details.
 
@@ -153,7 +153,7 @@ Response example
 Show share network details
 ==========================
 
-.. rest_method::  GET /v2/{project_id}/share-networks/{share_network_id}
+.. rest_method::  GET /v2/share-networks/{share_network_id}
 
 Shows details for a share network.
 
@@ -215,7 +215,7 @@ Response example
 Create share network
 ====================
 
-.. rest_method::  POST /v2/{project_id}/share-networks
+.. rest_method::  POST /v2/share-networks
 
 Creates a share network.
 
@@ -302,7 +302,7 @@ Response example
 Add security service to share network
 =====================================
 
-.. rest_method::  POST /v2/{project_id}/share-networks/{share_network_id}/action
+.. rest_method::  POST /v2/share-networks/{share_network_id}/action
 
 Adds a security service to a share network.
 
@@ -373,7 +373,7 @@ Response example
 Remove security service from share network
 ==========================================
 
-.. rest_method::  POST /v2/{project_id}/share-networks/{share_network_id}/action
+.. rest_method::  POST /v2/share-networks/{share_network_id}/action
 
 Removes a security service from a share network.
 
@@ -443,7 +443,7 @@ Response example
 Update share network
 ====================
 
-.. rest_method::  PUT /v2/{project_id}/share-networks/{share_network_id}
+.. rest_method::  PUT /v2/share-networks/{share_network_id}
 
 Updates a share network.
 
@@ -522,7 +522,7 @@ Response example
 Delete share network
 ====================
 
-.. rest_method::  DELETE /v2/{project_id}/share-networks/{share_network_id}
+.. rest_method::  DELETE /v2/share-networks/{share_network_id}
 
 Deletes a share network.
 

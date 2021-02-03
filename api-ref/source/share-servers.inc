@@ -43,7 +43,7 @@ The possible share servers statuses are:
 List share servers
 ==================
 
-.. rest_method::  GET /v2/{project_id}/share-servers
+.. rest_method::  GET /v2/share-servers
 
 Lists all share servers.
 
@@ -91,7 +91,7 @@ Response example
 Show share server
 =================
 
-.. rest_method::  GET /v2/{project_id}/share-servers/{share_server_id}
+.. rest_method::  GET /v2/share-servers/{share_server_id}
 
 Show a share server's details.
 
@@ -145,7 +145,7 @@ Response example
 Show share server back end details
 ==================================
 
-.. rest_method::  GET /v2/{project_id}/share-servers/{share_server_id}/details
+.. rest_method::  GET /v2/share-servers/{share_server_id}/details
 
 Shows back end details of a share server.
 
@@ -188,7 +188,7 @@ Response example
 Delete share server
 ===================
 
-.. rest_method::  DELETE /v2/{project_id}/share-servers/{share_server_id}
+.. rest_method::  DELETE /v2/share-servers/{share_server_id}
 
 Deletes a share server.
 
@@ -222,7 +222,7 @@ Request
 Manage share server (since API v2.49)
 =====================================
 
-.. rest_method:: POST /v2/{project_id}/share-servers/manage
+.. rest_method:: POST /v2/share-servers/manage
 
 .. versionadded:: 2.49
 
@@ -291,7 +291,7 @@ Response examples
 Unmanage share server (since API v2.49)
 =======================================
 
-.. rest_method:: POST /v2/{project_id}/share-servers/{share_server_id}/action
+.. rest_method:: POST /v2/share-servers/{share_server_id}/action
 
 .. versionadded:: 2.49
 
@@ -343,7 +343,7 @@ There is no body content for the response.
 Reset status (since API v2.49)
 ==============================
 
-.. rest_method:: POST /v2/{project_id}/share-servers/{share_server_id}/action
+.. rest_method:: POST /v2/share-servers/{share_server_id}/action
 
 .. versionadded:: 2.49
 

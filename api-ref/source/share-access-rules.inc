@@ -11,7 +11,7 @@ Retrieve details about access rules
 Describe share access rule
 ==========================
 
-.. rest_method::  GET /v2/{project_id}/share-access-rules/{access_id}
+.. rest_method::  GET /v2/share-access-rules/{access_id}
 
 .. versionadded:: 2.45
 
@@ -65,7 +65,7 @@ Response example
 List share access rules
 =======================
 
-.. rest_method::  GET /v2/{project_id}/share-access-rules?share_id={share-id}
+.. rest_method::  GET /v2/share-access-rules?share_id={share-id}
 
 .. versionadded:: 2.45
 

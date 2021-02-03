@@ -25,7 +25,7 @@ share groups, and show information for delete a share group.
 List share groups
 =================
 
-.. rest_method::  GET /v2/{project_id}/share_groups
+.. rest_method::  GET /v2/share_groups
 
 .. versionadded:: 2.31
 
@@ -89,7 +89,7 @@ Response example
 Show share group details
 ========================
 
-.. rest_method::  GET /v2/{project_id}/share_groups/{share_group_id}
+.. rest_method::  GET /v2/share_groups/{share_group_id}
 
 .. versionadded:: 2.31
 
@@ -148,7 +148,7 @@ Response example
 Create share group
 ==================
 
-.. rest_method::  POST /v2/{project_id}/share_groups
+.. rest_method::  POST /v2/share_groups
 
 .. versionadded:: 2.31
 
@@ -220,7 +220,7 @@ Response example
 Reset share group state
 =======================
 
-.. rest_method::  POST /v2/{project_id}/share-groups/{share_group_id}/action
+.. rest_method::  POST /v2/share-groups/{share_group_id}/action
 
 .. versionadded:: 2.31
 
@@ -264,7 +264,7 @@ Request example
 Update share group
 ==================
 
-.. rest_method::  PUT /v2/{project_id}/share-groups/{share_group_id}
+.. rest_method::  PUT /v2/share-groups/{share_group_id}
 
 .. versionadded:: 2.31
 
@@ -332,7 +332,7 @@ Response example
 Delete share group
 ==================
 
-.. rest_method::  DELETE /v2/{project_id}/share-groups/{share_group_id}
+.. rest_method::  DELETE /v2/share-groups/{share_group_id}
 
 .. versionadded:: 2.31
 

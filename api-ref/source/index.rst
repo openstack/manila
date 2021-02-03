@@ -4,6 +4,22 @@
 Shared File Systems API
 =======================
 
+This is a reference for version 2 of the OpenStack Shared File Systems API
+which is provided by the Manila project. Manila provides a RESTful HTTP service
+through which it offers on-demand, scalable, self-service access to
+shared file system storage resources.
+
+.. important::
+
+   Prior to the Wallaby release, Shared File System service required the
+   caller to specify their "project_id" in the API URLs. This requirement has
+   been dropped. The API service now behaves the same way whether or not
+   "project_id" is included in the URLs. If your cloud does not yet support
+   version 2.60, all the resource URLs below will require a project ID. For
+   example:
+
+   GET /v2/{project_id}/shares
+
 .. rest_expand_all::
 
 .. include:: versions.inc

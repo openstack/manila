@@ -19,7 +19,7 @@ to grant permissions for these actions to other roles.
 List share snapshot instances
 =============================
 
-.. rest_method::  GET /v2/{project_id}/snapshot-instances
+.. rest_method::  GET /v2/snapshot-instances
 
 .. versionadded:: 2.19
 
@@ -65,7 +65,7 @@ Response example
 List share snapshot instances with details
 ==========================================
 
-.. rest_method::  GET /v2/{project_id}/snapshot-instances/detail
+.. rest_method::  GET /v2/snapshot-instances/detail
 
 .. versionadded:: 2.19
 
@@ -117,7 +117,7 @@ Response example
 Show share snapshot instance details
 ====================================
 
-.. rest_method::  GET /v2/{project_id}/snapshot-instances/{snapshot_instance_id}
+.. rest_method::  GET /v2/snapshot-instances/{snapshot_instance_id}
 
 .. versionadded:: 2.19
 
@@ -170,7 +170,7 @@ Response example
 Reset share snapshot instance state
 ===================================
 
-.. rest_method::  POST /v2/{project_id}/snapshot-instances/{snapshot_instance_id}/action
+.. rest_method::  POST /v2/snapshot-instances/{snapshot_instance_id}/action
 
 .. versionadded:: 2.19
 

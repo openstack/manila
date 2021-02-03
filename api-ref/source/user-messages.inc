@@ -20,7 +20,7 @@ creation request with different parameters.
 List user messages
 ==================
 
-.. rest_method::  GET /v2/{project_id}/messages
+.. rest_method::  GET /v2/messages
 
 .. versionadded:: 2.37
 
@@ -83,7 +83,7 @@ Response example
 Show user message details
 =========================
 
-.. rest_method::  GET /v2/{project_id}/messages/{message_id}
+.. rest_method::  GET /v2/messages/{message_id}
 
 .. versionadded:: 2.37
 
@@ -136,7 +136,7 @@ Response example
 Delete message
 ==============
 
-.. rest_method::  DELETE /v2/{project_id}/messages/{message_id}
+.. rest_method::  DELETE /v2/messages/{message_id}
 
 .. versionadded:: 2.37
 

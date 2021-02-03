@@ -69,7 +69,7 @@ Possible use cases for data migration include:
 Start Migration
 ===============
 
-.. rest_method:: POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method:: POST /v2/shares/{share_id}/action
 
 .. versionadded:: 2.22
 
@@ -117,7 +117,7 @@ Request example
 Complete Migration
 ==================
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/shares/{share_id}/action
 
 .. versionadded:: 2.22
 
@@ -157,7 +157,7 @@ Request example
 Migration Get Process
 =====================
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/shares/{share_id}/action
 
 .. versionadded:: 2.22
 
@@ -209,7 +209,7 @@ Response_parameters
 Cancel Migration
 ================
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/shares/{share_id}/action
 
 .. versionadded:: 2.22
 

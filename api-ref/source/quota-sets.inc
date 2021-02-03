@@ -33,7 +33,7 @@ Provides quotas management support.
 Show default quota set
 ======================
 
-.. rest_method::  GET /v2/{project_id}/quota-sets/{project_id}/defaults
+.. rest_method::  GET /v2/quota-sets/{project_id_quota_request_path}/defaults
 
 Shows default quotas for a given project.
 
@@ -56,7 +56,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - project_id: project_id_quota_request_path
+   - project_id_quota_request_path: project_id_quota_request_path
 
 Response parameters
 -------------------
@@ -86,7 +86,7 @@ Response example
 Show quota set
 ==============
 
-.. rest_method::  GET /v2/{project_id}/quota-sets/{project_id}?user_id={user_id}
+.. rest_method::  GET /v2/quota-sets/{project_id_quota_request_path}?user_id={user_id}
 
 Shows quotas for a given project..
 
@@ -113,7 +113,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - project_id: project_id_quota_request_path
+   - project_id_quota_request_path: project_id_quota_request_path
    - user_id: user_id_query
    - share_type: share_type_for_quota
 
@@ -144,7 +144,7 @@ Response example
 Show quota set in detail (since API v2.25)
 ==========================================
 
-.. rest_method::  GET /v2/{project_id}/quota-sets/{project_id}/detail?user_id={user_id}
+.. rest_method::  GET /v2/quota-sets/{project_id_quota_request_path}/detail?user_id={user_id}
 
 .. versionadded:: 2.25
 
@@ -173,7 +173,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - project_id: project_id_quota_request_path
+   - project_id_quota_request_path: project_id_quota_request_path
    - user_id: user_id_query
    - share_type: share_type_for_quota
 
@@ -204,7 +204,7 @@ Response example
 Update quota set
 ================
 
-.. rest_method::  PUT /v2/{project_id}/quota-sets/{project_id}?user_id={user_id}
+.. rest_method::  PUT /v2/quota-sets/{project_id_quota_request_path}?user_id={user_id}
 
 Updates quotas for a project.
 
@@ -231,7 +231,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - project_id: project_id_quota_request_path
+   - project_id_quota_request_path: project_id_quota_request_path
    - user_id: user_id_query
    - quota_set: quota_set
    - force: force
@@ -279,7 +279,7 @@ Response example
 Delete quota set
 ================
 
-.. rest_method::  DELETE /v2/{project_id}/quota-sets/{project_id}?user_id={user_id}
+.. rest_method::  DELETE /v2/quota-sets/{project_id_quota_request_path}?user_id={user_id}
 
 Deletes quotas for a project. The quota reverts to the default quota.
 
@@ -306,6 +306,6 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - project_id: project_id_quota_request_path
+   - project_id_quota_request_path: project_id_quota_request_path
    - user_id: user_id_query
    - share_type: share_type_for_quota

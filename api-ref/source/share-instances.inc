@@ -12,7 +12,7 @@ file to grant permissions for these actions to other roles.
 List share instances
 ====================
 
-.. rest_method::  GET /v2/{project_id}/share_instances
+.. rest_method::  GET /v2/share_instances
 
 .. versionadded:: 2.3
 
@@ -70,7 +70,7 @@ Response example
 Show share instance details
 ===========================
 
-.. rest_method::  GET /v2/{project_id}/share_instances/{share_instance_id}
+.. rest_method::  GET /v2/share_instances/{share_instance_id}
 
 .. versionadded:: 2.3
 
@@ -128,7 +128,7 @@ Response example
 Reset share instance state
 ==========================
 
-.. rest_method::  POST /v2/{project_id}/share_instances/{share_instance_id}/action
+.. rest_method::  POST /v2/share_instances/{share_instance_id}/action
 
 .. versionadded:: 2.3
 
@@ -170,7 +170,7 @@ Request example
 Force-delete share instance
 ===========================
 
-.. rest_method::  POST /v2/{project_id}/share_instances/{share_instance_id}/action
+.. rest_method::  POST /v2/share_instances/{share_instance_id}/action
 
 .. versionadded:: 2.3
 

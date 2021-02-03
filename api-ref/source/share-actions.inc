@@ -70,7 +70,7 @@ methods:
   an alphanumeric string that can contain some special characters
   and is from 4 to 255 characters long.
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/shares/{share_id}/action
 
 Grants access to a share.
 
@@ -133,7 +133,7 @@ Response example
 Revoke access
 =============
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/shares/{share_id}/action
 
 The shared file systems service stores each access rule in its database and
 assigns it a unique ID. This ID can be used to revoke access after access
@@ -181,7 +181,7 @@ List access rules (DEPRECATED)
    :ref:`List share access rules <get-access-rules-after-2-45>` API
    instead of this API from version 2.45.
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/shares/{share_id}/action
 
 Lists access rules for a share. The Access ID returned is necessary to deny
 access.
@@ -242,7 +242,7 @@ Response example
 Reset share state
 =================
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/shares/{share_id}/action
 
 Administrator only. Explicitly updates the state of a share.
 
@@ -284,7 +284,7 @@ Request example
 Force-delete share
 ==================
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/shares/{share_id}/action
 
 Administrator only. Force-deletes a share in any state.
 
@@ -324,7 +324,7 @@ Request example
 Extend share
 ============
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/shares/{share_id}/action
 
 Increases the size of a share.
 
@@ -363,7 +363,7 @@ Request example
 Shrink share
 ============
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/shares/{share_id}/action
 
 Shrinks the size of a share.
 
@@ -401,7 +401,7 @@ Request example
 Unmanage share (since API v2.7)
 ===============================
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/shares/{share_id}/action
 
 .. versionadded:: 2.7
 
@@ -462,7 +462,7 @@ There is no body content for the response.
 Revert share to snapshot (since API v2.27)
 ==========================================
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/shares/{share_id}/action
 
 .. versionadded:: 2.27
 

@@ -10,7 +10,7 @@ Shows, sets, updates, and unsets share metadata.
 Show all share metadata
 =======================
 
-.. rest_method::  GET /v2/{project_id}/shares/{share_id}/metadata
+.. rest_method::  GET /v2/shares/{share_id}/metadata
 
 Shows all the metadata for a share, as key and value pairs.
 
@@ -53,7 +53,7 @@ Response example
 Show share metadata item
 =========================
 
-.. rest_method::  GET /v2/{project_id}/shares/{share_id}/metadata/{key}
+.. rest_method::  GET /v2/shares/{share_id}/metadata/{key}
 
 Retrieves a specific metadata item from a share's metadata by its key. If
 the specified key does not represent a valid metadata item, the API will
@@ -99,7 +99,7 @@ Response example
 Set share metadata
 ==================
 
-.. rest_method::  POST /v2/{project_id}/shares/{share_id}/metadata
+.. rest_method::  POST /v2/shares/{share_id}/metadata
 
 Allows adding new metadata items as key-value pairs. This API will not delete
 pre-existing metadata items. If the request object contains metadata items
@@ -154,7 +154,7 @@ Response example
 Update share metadata
 =====================
 
-.. rest_method::  PUT /v2/{project_id}/shares/{share_id}/metadata
+.. rest_method::  PUT /v2/shares/{share_id}/metadata
 
 Replaces the metadata for a given share with the metadata (specified as
 key-value pairs) in the request object. All pre-existing metadata of the
@@ -223,7 +223,7 @@ Response example
 Delete share metadata item
 ==========================
 
-.. rest_method::  DELETE /v2/{project_id}/shares/{share_id}/metadata/{key}
+.. rest_method::  DELETE /v2/shares/{share_id}/metadata/{key}
 
 Deletes a single metadata item on a share, idetified by its key. If
 the specified key does not represent a valid metadata item, the API will

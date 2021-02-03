@@ -46,7 +46,7 @@ A share network subnet resource has these attributes:
 List share network subnets
 ==========================
 
-.. rest_method::  GET /v2/{project_id}/share-networks/{share_network_id}/subnets
+.. rest_method::  GET /v2/share-networks/{share_network_id}/subnets
 
 .. versionadded:: 2.51
 
@@ -102,7 +102,7 @@ Response example
 Show share network subnet details
 =================================
 
-.. rest_method::  GET /v2/{project_id}/share-networks/{share_network_id}/subnets/{share_network_subnet_id}
+.. rest_method::  GET /v2/share-networks/{share_network_id}/subnets/{share_network_subnet_id}
 
 .. versionadded:: 2.51
 
@@ -159,7 +159,7 @@ Response example
 Create share network subnet
 ===========================
 
-.. rest_method::  POST /v2/{project_id}/share-networks/{share_network_id}/subnets
+.. rest_method::  POST /v2/share-networks/{share_network_id}/subnets
 
 .. versionadded:: 2.51
 
@@ -227,7 +227,7 @@ Response example
 Delete share network subnet
 ===========================
 
-.. rest_method::  DELETE /v2/{project_id}/share-networks/{share_network_id}/subnets/{share_network_subnet_id}
+.. rest_method::  DELETE /v2/share-networks/{share_network_id}/subnets/{share_network_subnet_id}
 
 .. versionadded:: 2.51
 

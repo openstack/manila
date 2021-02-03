@@ -46,7 +46,7 @@ file to grant permissions for these actions to other roles.
 List share snapshots
 ====================
 
-.. rest_method::  GET /v2/{project_id}/snapshots
+.. rest_method::  GET /v2/snapshots
 
 Lists all share snapshots.
 
@@ -90,7 +90,7 @@ Response example
 List share snapshots with details
 =================================
 
-.. rest_method::  GET /v2/{project_id}/snapshots/detail
+.. rest_method::  GET /v2/snapshots/detail
 
 Lists all share snapshots with details.
 
@@ -143,7 +143,7 @@ Response example
 Show share snapshot details
 ===========================
 
-.. rest_method::  GET /v2/{project_id}/snapshots/{snapshot_id}
+.. rest_method::  GET /v2/snapshots/{snapshot_id}
 
 Shows details for a share snapshot.
 
@@ -195,7 +195,7 @@ Response example
 Create share snapshot
 =====================
 
-.. rest_method::  POST /v2/{project_id}/snapshots
+.. rest_method::  POST /v2/snapshots
 
 Creates a snapshot from a share.
 
@@ -262,7 +262,7 @@ Response example
 Manage share snapshot (since API v2.12)
 =======================================
 
-.. rest_method::  POST /v2/{project_id}/snapshots/manage
+.. rest_method::  POST /v2/snapshots/manage
 
 .. versionadded:: 2.12
 
@@ -337,7 +337,7 @@ Response example
 Unmanage share snapshot (since API v2.12)
 =========================================
 
-.. rest_method::  POST /v2/{project_id}/snapshots/{snapshot_id}/action
+.. rest_method::  POST /v2/snapshots/{snapshot_id}/action
 
 .. versionadded:: 2.12
 
@@ -387,7 +387,7 @@ There is no body content for the response.
 Reset share snapshot state
 ==========================
 
-.. rest_method::  POST /v2/{project_id}/snapshots/{snapshot_id}/action
+.. rest_method::  POST /v2/snapshots/{snapshot_id}/action
 
 Administrator only. Explicitly updates the state of a share snapshot.
 
@@ -427,7 +427,7 @@ Request example
 Force-delete share snapshot
 ===========================
 
-.. rest_method::  POST /v2/{project_id}/snapshots/{snapshot_id}/action
+.. rest_method::  POST /v2/snapshots/{snapshot_id}/action
 
 Administrator only. Force-deletes a share snapshot in any state.
 
@@ -467,7 +467,7 @@ Request example
 Update share snapshot
 =====================
 
-.. rest_method::  PUT /v2/{project_id}/snapshots/{snapshot_id}
+.. rest_method::  PUT /v2/snapshots/{snapshot_id}
 
 Updates a share snapshot.
 
@@ -540,7 +540,7 @@ Response example
 Delete share snapshot
 =====================
 
-.. rest_method::  DELETE /v2/{project_id}/snapshots/{snapshot_id}
+.. rest_method::  DELETE /v2/snapshots/{snapshot_id}
 
 Deletes a share snapshot.
 
