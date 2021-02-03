@@ -18,7 +18,6 @@ from unittest import mock
 import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-import six
 from webob import exc
 
 from manila.api.openstack import api_version_request as api_version
@@ -574,7 +573,7 @@ class ShareReplicasApiTest(test.TestCase):
         if method_name in ('index', 'detail'):
             arguments.clear()
 
-        noauthexc = exception.PolicyNotAuthorized(action=six.text_type(method))
+        noauthexc = exception.PolicyNotAuthorized(action=method_name)
 
         with mock.patch.object(
                 policy, 'check_policy', mock.Mock(side_effect=noauthexc)):
@@ -615,7 +614,7 @@ class ShareReplicasApiTest(test.TestCase):
                 action_name: {'replica_state': constants.STATUS_ERROR},
             }
 
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.environ['manila.context'] = context
 
         with mock.patch.object(
@@ -683,7 +682,7 @@ class ShareReplicasApiTest(test.TestCase):
     def _force_delete(self, context, req, valid_code=202):
         body = {'force_delete': {}}
         req.environ['manila.context'] = context
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
 
         with mock.patch.object(
                 policy, 'check_policy', fakes.mock_fake_admin_check):
@@ -725,7 +724,7 @@ class ShareReplicasApiTest(test.TestCase):
         share_api_call = self.mock_object(self.controller.share_api,
                                           'update_share_replica')
         body = {'resync': {}}
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.environ['manila.context'] = self.admin_context
 
         with mock.patch.object(
@@ -746,7 +745,7 @@ class ShareReplicasApiTest(test.TestCase):
                 side_effect=exception.InvalidHost(reason='')))
 
         body = {'resync': None}
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.environ['manila.context'] = self.admin_context
 
         with mock.patch.object(
@@ -769,7 +768,7 @@ class ShareReplicasApiTest(test.TestCase):
         share_api_call = self.mock_object(
             share.API, 'update_share_replica', mock.Mock(return_value=None))
         body = {'resync': {}}
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.environ['manila.context'] = self.admin_context
 
         with mock.patch.object(

@@ -19,7 +19,6 @@ from unittest import mock
 
 from eventlet import greenthread
 from oslo_log import log
-import six
 
 from manila import exception
 from manila import utils
@@ -80,7 +79,7 @@ def fake_execute(*cmd_parts, **kwargs):
             LOG.debug('Faked command matched %s', fake_replier[0])
             break
 
-    if isinstance(reply_handler, six.string_types):
+    if isinstance(reply_handler, str):
         # If the reply handler is a string, return it as stdout
         reply = reply_handler, ''
     else:

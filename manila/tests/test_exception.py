@@ -16,7 +16,6 @@
 #    under the License.
 
 import ddt
-import six
 
 from manila import exception
 from manila import test
@@ -46,18 +45,18 @@ class ManilaExceptionTestCase(test.TestCase):
             message = "default message"
 
         exc = FakeManilaException()
-        self.assertEqual('default message', six.text_type(exc))
+        self.assertEqual('default message', str(exc))
 
     def test_error_msg(self):
         self.assertEqual('test',
-                         six.text_type(exception.ManilaException('test')))
+                         str(exception.ManilaException('test')))
 
     def test_default_error_msg_with_kwargs(self):
         class FakeManilaException(exception.ManilaException):
             message = "default message: %(code)s"
 
         exc = FakeManilaException(code=500)
-        self.assertEqual('default message: 500', six.text_type(exc))
+        self.assertEqual('default message: 500', str(exc))
 
     def test_error_msg_exception_with_kwargs(self):
         # NOTE(dprince): disable format errors for this test
@@ -68,7 +67,7 @@ class ManilaExceptionTestCase(test.TestCase):
 
         exc = FakeManilaException(code=500)
         self.assertEqual('default message: %(misspelled_code)s',
-                         six.text_type(exc))
+                         str(exc))
 
     def test_default_error_code(self):
         class FakeManilaException(exception.ManilaException):

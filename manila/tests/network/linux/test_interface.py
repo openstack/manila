@@ -15,8 +15,6 @@
 
 from unittest import mock
 
-import six
-
 from manila.network.linux import interface
 from manila.network.linux import ip_lib
 from manila import test
@@ -81,7 +79,7 @@ class TestABCDriver(TestBase):
         except TypeError:
             pass
         except Exception as e:
-            self.fail("Unexpected exception thrown: '%s'" % six.text_type(e))
+            self.fail("Unexpected exception thrown: '%s'" % e)
         else:
             self.fail("ExpectedException 'TypeError' not thrown.")
 

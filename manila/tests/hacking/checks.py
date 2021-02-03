@@ -15,7 +15,6 @@
 
 import ast
 import re
-import six
 
 from hacking import core
 import pycodestyle
@@ -140,7 +139,7 @@ class CheckLoggingFormatArgs(BaseASTChecker):
             if obj_name is None:
                 return None
             return obj_name + '.' + method_name
-        elif isinstance(node, six.string_types):
+        elif isinstance(node, str):
             return node
         else:  # could be Subscript, Call or many more
             return None

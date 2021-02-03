@@ -24,7 +24,6 @@ from oslo_concurrency import lockutils
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
-import six
 
 from manila.common import constants
 from manila import context
@@ -319,7 +318,7 @@ class ShareManagerTestCase(test.TestCase):
             raise exception.ShareAccessExists(
                 access_type='fake_access_type', access='fake_access')
 
-        new_backend_info_hash = (hashlib.sha1(six.text_type(
+        new_backend_info_hash = (hashlib.sha1(str(
             sorted(new_backend_info.items())).encode('utf-8')).hexdigest() if
             new_backend_info else None)
         old_backend_info = {'info_hash': old_backend_info_hash}
@@ -431,7 +430,7 @@ class ShareManagerTestCase(test.TestCase):
             self, old_backend_info_hash, new_backend_info):
 
         old_backend_info = {'info_hash': old_backend_info_hash}
-        new_backend_info_hash = (hashlib.sha1(six.text_type(
+        new_backend_info_hash = (hashlib.sha1(str(
             sorted(new_backend_info.items())).encode('utf-8')).hexdigest() if
             new_backend_info else None)
         mock_backend_info_update = self.mock_object(
@@ -2127,7 +2126,7 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.message_api.create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             message_field.Action.CREATE,
-            six.text_type(share.project_id),
+            str(share.project_id),
             resource_type=message_field.Resource.SHARE,
             resource_id=share['id'],
             detail=mock.ANY)
@@ -2227,7 +2226,7 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.message_api.create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             message_field.Action.CREATE,
-            six.text_type(fake_share.project_id),
+            str(fake_share.project_id),
             resource_type=message_field.Resource.SHARE,
             resource_id=fake_share['id'],
             detail=message_field.Detail.NO_SHARE_SERVER)
@@ -2251,7 +2250,7 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.message_api.create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             message_field.Action.CREATE,
-            six.text_type(shr.project_id),
+            str(shr.project_id),
             resource_type=message_field.Resource.SHARE,
             resource_id=shr['id'],
             detail=message_field.Detail.NO_SHARE_SERVER)
@@ -2311,7 +2310,7 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.message_api.create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             message_field.Action.CREATE,
-            six.text_type(share.project_id),
+            str(share.project_id),
             resource_type=message_field.Resource.SHARE,
             resource_id=share['id'],
             exception=mock.ANY)
@@ -2821,7 +2820,7 @@ class ShareManagerTestCase(test.TestCase):
                 self.share_manager.db.share_export_locations_update)))
         self.mock_object(share_types,
                          'get_share_type_extra_specs',
-                         mock.Mock(return_value=six.text_type(dhss)))
+                         mock.Mock(return_value=str(dhss)))
         self.mock_object(
             self.share_manager, '_get_extra_specs_from_share_type',
             mock.Mock(return_value=extra_specs))
@@ -3734,8 +3733,8 @@ class ShareManagerTestCase(test.TestCase):
         quota.QUOTAS.rollback.assert_called_once_with(
             mock.ANY,
             reservations,
-            project_id=six.text_type(share['project_id']),
-            user_id=six.text_type(share['user_id']),
+            project_id=str(share['project_id']),
+            user_id=str(share['user_id']),
             share_type_id=None,
         )
 
@@ -3855,8 +3854,8 @@ class ShareManagerTestCase(test.TestCase):
 
         quota.QUOTAS.reserve.assert_called_with(
             mock.ANY,
-            project_id=six.text_type(share['project_id']),
-            user_id=six.text_type(share['user_id']),
+            project_id=str(share['project_id']),
+            user_id=str(share['user_id']),
             share_type_id=None,
             gigabytes=new_size - size,
             **deltas

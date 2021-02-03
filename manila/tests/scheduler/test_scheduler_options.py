@@ -19,7 +19,6 @@ Tests For scheduler options.
 import datetime
 
 from oslo_serialization import jsonutils
-import six
 
 from manila.scheduler import scheduler_options
 from manila import test
@@ -36,7 +35,7 @@ class FakeSchedulerOptions(scheduler_options.SchedulerOptions):
         # For overrides ...
         self._time_now = now
         self._file_now = file_now
-        self._file_data = six.b(filedata)
+        self._file_data = filedata.encode("utf-8")
 
         self.file_was_loaded = False
 
@@ -45,13 +44,8 @@ class FakeSchedulerOptions(scheduler_options.SchedulerOptions):
 
     def _get_file_handle(self, filename):
         self.file_was_loaded = True
-        if six.PY2:
-            # pylint: disable=import-error
-            import StringIO
-            return StringIO.StringIO(self._file_data)
-        else:
-            import io
-            return io.BytesIO(self._file_data)
+        import io
+        return io.BytesIO(self._file_data)
 
     def _get_time_now(self):
         return self._time_now

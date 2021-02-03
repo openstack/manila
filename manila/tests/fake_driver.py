@@ -14,7 +14,6 @@
 #    under the License.
 
 from oslo_log import log
-import six
 
 from manila.common import constants
 from manila.share import driver
@@ -51,7 +50,7 @@ class FakeShareDriver(driver.ShareDriver):
     def manage_existing(self, share, driver_options, share_server=None):
         LOG.debug("Fake share driver: manage")
         LOG.debug("Fake share driver: driver options: %s",
-                  six.text_type(driver_options))
+                  str(driver_options))
         return {'size': 1}
 
     def unmanage(self, share, share_server=None):

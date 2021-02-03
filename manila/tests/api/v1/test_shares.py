@@ -20,7 +20,6 @@ from unittest import mock
 import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-import six
 import webob
 
 from manila.api import common
@@ -1114,7 +1113,7 @@ class ShareAdminActionsAPITest(test.TestCase):
             body = {'os-reset_status': {'status': constants.STATUS_ERROR}}
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.environ['manila.context'] = ctxt
 
         resp = req.get_response(fakes.app())
@@ -1172,7 +1171,7 @@ class ShareAdminActionsAPITest(test.TestCase):
                       check_model_in_db=False):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
+        req.body = jsonutils.dumps({'os-force_delete': {}}).encode("utf-8")
         req.environ['manila.context'] = ctxt
 
         resp = req.get_response(fakes.app())

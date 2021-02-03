@@ -15,7 +15,6 @@ from unittest import mock
 import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-import six
 from webob import exc as webob_exc
 
 from manila.api.openstack import api_version_request
@@ -246,7 +245,7 @@ class ShareInstancesAPITest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.headers['X-Openstack-Manila-Api-Version'] = version
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.environ['manila.context'] = ctxt
 
         with mock.patch.object(
@@ -310,7 +309,7 @@ class ShareInstancesAPITest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.headers['X-Openstack-Manila-Api-Version'] = version
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.environ['manila.context'] = ctxt
 
         with mock.patch.object(

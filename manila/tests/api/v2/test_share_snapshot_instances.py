@@ -17,7 +17,6 @@ from unittest import mock
 import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-import six
 from webob import exc
 
 from manila.api.v2 import share_snapshot_instances
@@ -193,7 +192,7 @@ class ShareSnapshotInstancesApiTest(test.TestCase):
                 'body': {'FAKE_KEY': 'FAKE_VAL'},
             }
 
-        noauthexc = exception.PolicyNotAuthorized(action=six.text_type(method))
+        noauthexc = exception.PolicyNotAuthorized(action=method_name)
 
         with mock.patch.object(
                 policy, 'check_policy', mock.Mock(side_effect=noauthexc)):
@@ -223,7 +222,7 @@ class ShareSnapshotInstancesApiTest(test.TestCase):
         if body is None:
             body = {'reset_status': {'status': constants.STATUS_ERROR}}
 
-        req.body = six.b(jsonutils.dumps(body))
+        req.body = jsonutils.dumps(body).encode("utf-8")
         req.environ['manila.context'] = context
 
         with mock.patch.object(

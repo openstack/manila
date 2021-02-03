@@ -15,10 +15,10 @@
 #    under the License.
 
 import fixtures
+import functools
 import os
 
 from oslo_config import cfg
-import six
 
 from manila import context
 from manila import utils
@@ -26,12 +26,12 @@ from manila import utils
 CONF = cfg.CONF
 
 
-class NamedBinaryStr(six.binary_type):
+class NamedBinaryStr(bytes):
 
-    """Wrapper for six.binary_type to facilitate overriding __name__."""
+    """Wrapper for bytes to facilitate overriding __name__."""
 
 
-class NamedUnicodeStr(six.text_type):
+class NamedUnicodeStr(str):
 
     """Unicode string look-alike to facilitate overriding __name__."""
 
@@ -66,7 +66,7 @@ class NamedTuple(tuple):
 def annotated(test_name, test_input):
     if isinstance(test_input, dict):
         annotated_input = NamedDict(test_input)
-    elif isinstance(test_input, six.text_type):
+    elif isinstance(test_input, str):
         annotated_input = NamedUnicodeStr(test_input)
     elif isinstance(test_input, tuple):
         annotated_input = NamedTuple(test_input)
@@ -98,7 +98,7 @@ def set_timeout(timeout):
 
     def _decorator(f):
 
-        @six.wraps(f)
+        @functools.wraps(f)
         def _wrapper(self, *args, **kwargs):
             self.useFixture(fixtures.Timeout(timeout, gentle=True))
             return f(self, *args, **kwargs)
