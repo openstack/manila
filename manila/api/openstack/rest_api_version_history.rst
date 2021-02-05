@@ -323,3 +323,11 @@ user documentation.
 ----
   Added 'details' field to migration get progress api, which optionally may hold
   additional driver data related to the progress of share migration.
+
+2.60
+----
+  API URLs no longer need a "project_id" argument in them. For example, the
+  API route: https://$(controller)s/share/v2/$(project_id)s/shares is
+  equivalent to https://$(controller)s/share/v2/shares. When interacting
+  with the manila service as system or domain scoped users, project_id should
+  not be specified in the API path.

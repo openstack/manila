@@ -116,11 +116,11 @@ class ShareAPITest(test.TestCase):
             'is_public': False,
             'links': [
                 {
-                    'href': 'http://localhost/v1/fake/shares/1',
+                    'href': 'http://localhost/share/v1/fake/shares/1',
                     'rel': 'self'
                 },
                 {
-                    'href': 'http://localhost/fake/shares/1',
+                    'href': 'http://localhost/share/fake/shares/1',
                     'rel': 'bookmark'
                 }
             ],
@@ -142,7 +142,7 @@ class ShareAPITest(test.TestCase):
     def test_share_create_original(self, microversion):
         self.mock_object(share_api.API, 'create', self.create_mock)
         body = {"share": copy.deepcopy(self.share)}
-        req = fakes.HTTPRequest.blank('/shares', version=microversion)
+        req = fakes.HTTPRequest.blank('/fake/shares', version=microversion)
 
         res_dict = self.controller.create(req, body)
 
@@ -156,7 +156,7 @@ class ShareAPITest(test.TestCase):
     def test_share_create_with_snapshot_support_without_cg(self, microversion):
         self.mock_object(share_api.API, 'create', self.create_mock)
         body = {"share": copy.deepcopy(self.share)}
-        req = fakes.HTTPRequest.blank('/shares', version=microversion)
+        req = fakes.HTTPRequest.blank('/v1/fake/shares', version=microversion)
 
         res_dict = self.controller.create(req, body)
 
@@ -172,7 +172,7 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'create', self.create_mock)
 
         body = {"share": copy.deepcopy(self.share)}
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/v1/fake/shares')
         res_dict = self.controller.create(req, body)
 
         self.mock_policy_check.assert_called_once_with(
@@ -190,7 +190,7 @@ class ShareAPITest(test.TestCase):
                 self.vt['name'])),
         )
         CONF.set_default("default_share_type", self.vt['name'])
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/v1/fake/shares')
 
         self.assertRaises(exception.ShareTypeNotFoundByName,
                           self.controller.create, req, {'share': self.share})
@@ -211,7 +211,7 @@ class ShareAPITest(test.TestCase):
             mock.Mock(return_value=fake_share_type),
         )
         CONF.set_default("default_share_type", fake_share_type['name'])
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/v1/fake/shares')
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, {'share': self.share})
@@ -243,7 +243,7 @@ class ShareAPITest(test.TestCase):
             mock.Mock(return_value={'id': 'fakesubnetid'}))
 
         body = {"share": copy.deepcopy(shr)}
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/v1/fake/shares')
         res_dict = self.controller.create(req, body)
 
         self.mock_policy_check.assert_called_once_with(
@@ -275,7 +275,7 @@ class ShareAPITest(test.TestCase):
                                 share_network_id=shr['share_network_id']))
         self.mock_object(share_api.API, 'create', create_mock)
         body = {"share": copy.deepcopy(shr)}
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/v1/fake/shares')
 
         res_dict = self.controller.create(req, body)
 
@@ -319,7 +319,7 @@ class ShareAPITest(test.TestCase):
             db, 'share_network_subnet_get_by_availability_zone_id')
 
         body = {"share": copy.deepcopy(shr)}
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/v1/fake/shares')
 
         res_dict = self.controller.create(req, body)
 
@@ -366,7 +366,7 @@ class ShareAPITest(test.TestCase):
             db, 'share_network_subnet_get_by_availability_zone_id')
 
         body = {"share": copy.deepcopy(shr)}
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/v1/fake/shares')
 
         res_dict = self.controller.create(req, body)
 
@@ -391,7 +391,7 @@ class ShareAPITest(test.TestCase):
             "share_network_id": 1234
         }
         body = {"share": shr}
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/v1/fake/shares')
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
@@ -438,7 +438,7 @@ class ShareAPITest(test.TestCase):
             db, 'share_network_subnet_get_by_availability_zone_id')
 
         body = {"share": copy.deepcopy(shr)}
-        req = fakes.HTTPRequest.blank('/shares', version=microversion)
+        req = fakes.HTTPRequest.blank('/v1/fake/shares', version=microversion)
 
         res_dict = self.controller.create(req, body)
 
@@ -458,7 +458,7 @@ class ShareAPITest(test.TestCase):
                "share_proto": "fakeproto",
                "availability_zone": "zone1:host1"}
         body = {"share": shr}
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/fake/shares')
         self.assertRaises(exception.InvalidInput,
                           self.controller.create,
                           req,
@@ -468,7 +468,7 @@ class ShareAPITest(test.TestCase):
 
     def test_share_create_no_body(self):
         body = {}
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/fake/shares')
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
                           self.controller.create,
                           req,
@@ -484,7 +484,7 @@ class ShareAPITest(test.TestCase):
         )
         body = {"share": copy.deepcopy(self.share)}
 
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/fake/shares')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.create,
                           req,
@@ -506,14 +506,14 @@ class ShareAPITest(test.TestCase):
 
         body = {"share": fake_share_with_sn}
 
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/fake/shares')
         self.assertRaises(exception_to_raise,
                           self.controller.create,
                           req,
                           body)
 
     def test_share_show(self):
-        req = fakes.HTTPRequest.blank('/shares/1')
+        req = fakes.HTTPRequest.blank('/fake/shares/1')
         expected = self._get_expected_share_detailed_response()
         expected['share'].pop('snapshot_support')
 
@@ -522,7 +522,7 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_share_show_with_share_type_name(self):
-        req = fakes.HTTPRequest.blank('/shares/1', version='2.6')
+        req = fakes.HTTPRequest.blank('/fake/shares/1', version='2.6')
         res_dict = self.controller.show(req, '1')
         expected = self._get_expected_share_detailed_response()
         expected['share']['share_type_name'] = None
@@ -530,7 +530,7 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_share_show_admin(self):
-        req = fakes.HTTPRequest.blank('/shares/1', use_admin_context=True)
+        req = fakes.HTTPRequest.blank('/fake/shares/1', use_admin_context=True)
         expected = self._get_expected_share_detailed_response(admin=True)
         expected['share'].pop('snapshot_support')
 
@@ -541,13 +541,13 @@ class ShareAPITest(test.TestCase):
     def test_share_show_no_share(self):
         self.mock_object(share_api.API, 'get',
                          stubs.stub_share_get_notfound)
-        req = fakes.HTTPRequest.blank('/shares/1')
+        req = fakes.HTTPRequest.blank('/fake/shares/1')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.show,
                           req, '1')
 
     def test_share_delete(self):
-        req = fakes.HTTPRequest.blank('/shares/1')
+        req = fakes.HTTPRequest.blank('/fake/shares/1')
         resp = self.controller.delete(req, 1)
         self.assertEqual(202, resp.status_int)
 
@@ -579,7 +579,7 @@ class ShareAPITest(test.TestCase):
     def test_share_delete_no_share(self):
         self.mock_object(share_api.API, 'get',
                          stubs.stub_share_get_notfound)
-        req = fakes.HTTPRequest.blank('/shares/1')
+        req = fakes.HTTPRequest.blank('/fake/shares/1')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.delete,
                           req,
@@ -604,7 +604,7 @@ class ShareAPITest(test.TestCase):
         if use_admin_context:
             search_opts['host'] = 'fake_host'
         # fake_key should be filtered for non-admin
-        url = '/shares?fake_key=fake_value'
+        url = '/fake/shares?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
         req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
@@ -656,7 +656,7 @@ class ShareAPITest(test.TestCase):
     def test_share_list_summary(self):
         self.mock_object(share_api.API, 'get_all',
                          stubs.stub_share_get_all_by_project)
-        req = fakes.HTTPRequest.blank('/shares')
+        req = fakes.HTTPRequest.blank('/fake/shares')
         res_dict = self.controller.index(req)
         expected = {
             'shares': [
@@ -665,11 +665,11 @@ class ShareAPITest(test.TestCase):
                     'id': '1',
                     'links': [
                         {
-                            'href': 'http://localhost/v1/fake/shares/1',
+                            'href': 'http://localhost/share/v1/fake/shares/1',
                             'rel': 'self'
                         },
                         {
-                            'href': 'http://localhost/fake/shares/1',
+                            'href': 'http://localhost/share/fake/shares/1',
                             'rel': 'bookmark'
                         }
                     ],
@@ -697,7 +697,7 @@ class ShareAPITest(test.TestCase):
         if use_admin_context:
             search_opts['host'] = 'fake_host'
         # fake_key should be filtered for non-admin
-        url = '/shares/detail?fake_key=fake_value'
+        url = '/fake/shares/detail?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
         req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
@@ -791,11 +791,11 @@ class ShareAPITest(test.TestCase):
             'is_public': False,
             'links': [
                 {
-                    'href': 'http://localhost/v1/fake/shares/1',
+                    'href': 'http://localhost/share/v1/fake/shares/1',
                     'rel': 'self'
                 },
                 {
-                    'href': 'http://localhost/fake/shares/1',
+                    'href': 'http://localhost/share/fake/shares/1',
                     'rel': 'bookmark'
                 }
             ],
@@ -814,14 +814,14 @@ class ShareAPITest(test.TestCase):
 
     def test_share_list_detail(self):
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
-        req = fakes.HTTPRequest.blank('/shares/detail', environ=env)
+        req = fakes.HTTPRequest.blank('/fake/shares/detail', environ=env)
         expected = self._list_detail_common_expected()
         expected['shares'][0].pop('snapshot_support')
         self._list_detail_test_common(req, expected)
 
     def test_share_list_detail_with_task_state(self):
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
-        req = fakes.HTTPRequest.blank('/shares/detail', environ=env,
+        req = fakes.HTTPRequest.blank('/fake/shares/detail', environ=env,
                                       version="2.5")
         expected = self._list_detail_common_expected()
         expected['shares'][0]['task_state'] = None
@@ -895,7 +895,7 @@ class ShareActionsTest(test.TestCase):
         id = 'fake_share_id'
         body = {'os-allow_access': access}
         expected = {'access': {'fake': 'fake'}}
-        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id)
 
         res = self.controller._allow_access(req, id, body)
 
@@ -923,7 +923,7 @@ class ShareActionsTest(test.TestCase):
     def test_allow_access_error(self, access):
         id = 'fake_share_id'
         body = {'os-allow_access': access}
-        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._allow_access, req, id, body)
@@ -939,7 +939,7 @@ class ShareActionsTest(test.TestCase):
 
         id = 'fake_share_id'
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
-        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id)
 
         res = self.controller._deny_access(req, id, body)
 
@@ -956,7 +956,7 @@ class ShareActionsTest(test.TestCase):
 
         id = 'super_fake_share_id'
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
-        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id)
 
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller._deny_access,
@@ -968,7 +968,7 @@ class ShareActionsTest(test.TestCase):
 
     @ddt.data('_allow_access', '_deny_access')
     def test_allow_access_deny_access_policy_not_authorized(self, method):
-        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/someuuid/action')
+        req = fakes.HTTPRequest.blank('/tenant1/shares/someuuid/action')
         action = method[1:]
         body = {action: None}
         noauthexc = exception.PolicyNotAuthorized(action=action)
@@ -995,7 +995,7 @@ class ShareActionsTest(test.TestCase):
                                                  fake_access_list}))
         id = 'fake_share_id'
         body = {"os-access_list": None}
-        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id)
 
         res_dict = self.controller._access_list(req, id, body)
         self.assertEqual({'access_list': fake_access_list}, res_dict)
@@ -1008,7 +1008,7 @@ class ShareActionsTest(test.TestCase):
 
         size = '123'
         body = {"os-extend": {'new_size': size}}
-        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/fake/shares/%s/action' % id)
 
         actual_response = self.controller._extend(req, id, body)
 
@@ -1022,7 +1022,7 @@ class ShareActionsTest(test.TestCase):
               {"os-extend": {"new_size": {'foo': 'bar'}}})
     def test_extend_invalid_body(self, body):
         id = 'fake_share_id'
-        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/fake/shares/%s/action' % id)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._extend, req, id, body)
@@ -1036,7 +1036,7 @@ class ShareActionsTest(test.TestCase):
     @ddt.unpack
     def test_extend_exception(self, source, target):
         id = 'fake_share_id'
-        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/fake/shares/%s/action' % id)
         body = {"os-extend": {'new_size': '123'}}
         self.mock_object(share_api.API, "extend",
                          mock.Mock(side_effect=source('fake')))
@@ -1051,7 +1051,7 @@ class ShareActionsTest(test.TestCase):
 
         size = '123'
         body = {"os-shrink": {'new_size': size}}
-        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/fake/shares/%s/action' % id)
 
         actual_response = self.controller._shrink(req, id, body)
 
@@ -1065,7 +1065,7 @@ class ShareActionsTest(test.TestCase):
               {"os-shrink": {"new_size": {'foo': 'bar'}}})
     def test_shrink_invalid_body(self, body):
         id = 'fake_share_id'
-        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/fake/shares/%s/action' % id)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._shrink, req, id, body)
@@ -1077,7 +1077,7 @@ class ShareActionsTest(test.TestCase):
     @ddt.unpack
     def test_shrink_exception(self, source, target):
         id = 'fake_share_id'
-        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/fake/shares/%s/action' % id)
         body = {"os-shrink": {'new_size': '123'}}
         self.mock_object(share_api.API, "shrink",
                          mock.Mock(side_effect=source('fake')))
@@ -1161,7 +1161,7 @@ class ShareAdminActionsAPITest(test.TestCase):
 
     def test_share_reset_status_for_missing(self):
         fake_share = {'id': 'missing-share-id'}
-        req = webob.Request.blank('/v1/fake/shares/%s/action' %
+        req = webob.Request.blank('/fake/shares/%s/action' %
                                   fake_share['id'])
 
         self._reset_status(self.admin_context, fake_share, req,

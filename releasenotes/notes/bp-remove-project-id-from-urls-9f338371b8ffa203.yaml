@@ -1,0 +1,26 @@
+---
+prelude: >
+    Manila v2 API URLs no longer require a project_id to be specified.
+features:
+  - |
+    It is now possible to omit the %{project_id}s from the API endpoints for
+    the v2 API. While the behavior of the APIs have not been altered, the
+    service recognizes URLs with and without project ids in the path. It is
+    recommended that you adjust the service catalog in your cloud to remove
+    the project_id substitution, especially if you would like to enable
+    users operating at system scope.
+  - |
+    A new "noauth" auth strategy is available, and is named "noauthv2".
+    It can be enabled by setting the configuration option
+    ``[DEFAULT]/auth_strategy`` to ``noauthv2``. This auth strategy can be
+    used when project_id substitution is removed from the manila endpoint URL.
+upgrade:
+  - |
+    In order to make project_id optional in urls, the possible values of
+    project_id had to be constrained. A new configuration option called
+    ``project_id_regex`` has been added in the ``[DEFAULT]`` section. The
+    default value for this option is ``[0-9a-f\-]+`` and it matches hex
+    UUIDs with and without dashes, therefore covering the formats supported
+    by the OpenStack Identity service. If your cloud uses other formats, set
+    this configuration option accordingly, or remove project_id from the
+    manila endpoint URL in your service catalog.

@@ -43,9 +43,9 @@ class MessageApiTest(test.TestCase):
     def _expected_message_from_controller(self, id, **kwargs):
         message = stubs.stub_message(id, **kwargs)
         links = [
-            {'href': 'http://localhost/v2/fake/messages/%s' % id,
+            {'href': 'http://localhost/share/v2/fake/messages/%s' % id,
              'rel': 'self'},
-            {'href': 'http://localhost/fake/messages/%s' % id,
+            {'href': 'http://localhost/share/fake/messages/%s' % id,
              'rel': 'bookmark'},
         ]
         return {
@@ -71,9 +71,8 @@ class MessageApiTest(test.TestCase):
         self.mock_object(message_api.API, 'get', stubs.stub_message_get)
 
         req = fakes.HTTPRequest.blank(
-            '/messages/%s' % fakes.FAKE_UUID,
-            version=messages.MESSAGES_BASE_MICRO_VERSION,
-            base_url='http://localhost/v2')
+            '/v2/fake/messages/%s' % fakes.FAKE_UUID,
+            version=messages.MESSAGES_BASE_MICRO_VERSION)
         req.environ['manila.context'] = self.ctxt
 
         res_dict = self.controller.show(req, fakes.FAKE_UUID)
@@ -91,9 +90,9 @@ class MessageApiTest(test.TestCase):
         self.mock_object(message_api.API, 'get', mock_get)
 
         req = fakes.HTTPRequest.blank(
-            '/messages/%s' % fakes.FAKE_UUID,
+            '/v2/fake/messages/%s' % fakes.FAKE_UUID,
             version=messages.MESSAGES_BASE_MICRO_VERSION,
-            base_url='http://localhost/v2')
+            base_url='http://localhost/share/v2')
         req.environ['manila.context'] = self.ctxt
 
         res_dict = self.controller.show(req, fakes.FAKE_UUID)
@@ -109,9 +108,9 @@ class MessageApiTest(test.TestCase):
                          mock.Mock(side_effect=fake_not_found))
 
         req = fakes.HTTPRequest.blank(
-            '/messages/%s' % fakes.FAKE_UUID,
+            '/v2/fake/messages/%s' % fakes.FAKE_UUID,
             version=messages.MESSAGES_BASE_MICRO_VERSION,
-            base_url='http://localhost/v2')
+            base_url='http://localhost/share/v2')
         req.environ['manila.context'] = self.ctxt
 
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
@@ -120,9 +119,9 @@ class MessageApiTest(test.TestCase):
     def test_show_pre_microversion(self):
         self.mock_object(message_api.API, 'get', stubs.stub_message_get)
 
-        req = fakes.HTTPRequest.blank('/messages/%s' % fakes.FAKE_UUID,
+        req = fakes.HTTPRequest.blank('/v2/fake/messages/%s' % fakes.FAKE_UUID,
                                       version='2.35',
-                                      base_url='http://localhost/v2')
+                                      base_url='http://localhost/share/v2')
         req.environ['manila.context'] = self.ctxt
 
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
@@ -133,7 +132,7 @@ class MessageApiTest(test.TestCase):
         self.mock_object(message_api.API, 'delete')
 
         req = fakes.HTTPRequest.blank(
-            '/messages/%s' % fakes.FAKE_UUID,
+            '/v2/fake/messages/%s' % fakes.FAKE_UUID,
             version=messages.MESSAGES_BASE_MICRO_VERSION)
         req.environ['manila.context'] = self.ctxt
 
@@ -148,7 +147,7 @@ class MessageApiTest(test.TestCase):
                          mock.Mock(side_effect=fake_not_found))
 
         req = fakes.HTTPRequest.blank(
-            '/messages/%s' % fakes.FAKE_UUID,
+            '/v2/fake/messages/%s' % fakes.FAKE_UUID,
             version=messages.MESSAGES_BASE_MICRO_VERSION)
 
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
@@ -160,9 +159,9 @@ class MessageApiTest(test.TestCase):
         self.mock_object(message_api.API, 'get_all', mock.Mock(
                          return_value=[msg1, msg2]))
         req = fakes.HTTPRequest.blank(
-            '/messages',
+            '/v2/fake/messages',
             version=messages.MESSAGES_BASE_MICRO_VERSION,
-            base_url='http://localhost/v2')
+            base_url='http://localhost/share/v2')
         req.environ['manila.context'] = self.ctxt
 
         res_dict = self.controller.index(req)
@@ -177,9 +176,8 @@ class MessageApiTest(test.TestCase):
         self.mock_object(message_api.API, 'get_all', mock.Mock(
                          return_value=[msg2]))
         req = fakes.HTTPRequest.blank(
-            '/messages?limit=1&offset=1',
-            version=messages.MESSAGES_BASE_MICRO_VERSION,
-            base_url='http://localhost/v2')
+            '/v2/fake/messages?limit=1&offset=1',
+            version=messages.MESSAGES_BASE_MICRO_VERSION)
         req.environ['manila.context'] = self.ctxt
 
         res_dict = self.controller.index(req)
@@ -195,10 +193,10 @@ class MessageApiTest(test.TestCase):
         self.mock_object(message_api.API, 'get_all', mock.Mock(
                          return_value=[msg]))
         req = fakes.HTTPRequest.blank(
-            '/messages?created_since=1900-01-01T01:01:01&'
+            '/fake/messages?created_since=1900-01-01T01:01:01&'
             'created_before=1900-03-01T01:01:01',
             version=messages.MESSAGES_QUERY_BY_TIMESTAMP,
-            base_url='http://localhost/v2')
+            base_url='http://localhost/share/v2')
         req.environ['manila.context'] = self.ctxt
 
         res_dict = self.controller.index(req)
@@ -213,7 +211,7 @@ class MessageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             '/messages?created_since=invalid_time_str',
             version=messages.MESSAGES_QUERY_BY_TIMESTAMP,
-            base_url='http://localhost/v2')
+            base_url='http://localhost/share/v2')
         req.environ['manila.context'] = self.ctxt
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index, req)

@@ -128,7 +128,7 @@ global_opts = [
     cfg.StrOpt('auth_strategy',
                default='keystone',
                help='The strategy to use for auth. Supports noauth, keystone, '
-                    'and deprecated.'),
+                    'and noauthv2.'),
     cfg.ListOpt('enabled_share_backends',
                 help='A list of share backend names to use. These backend '
                      'names should be backed by a unique [CONFIG] group '

@@ -64,7 +64,7 @@ class ShareSnapshotAPITest(test.TestCase):
         }
         self.mock_object(share_api.API, 'get_snapshot',
                          mock.Mock(return_value=return_snapshot))
-        req = fakes.HTTPRequest.blank('/snapshots/200')
+        req = fakes.HTTPRequest.blank('/fake/snapshots/200')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.show,
                           req, '200')
@@ -81,7 +81,7 @@ class ShareSnapshotAPITest(test.TestCase):
                 'description': 'displaysnapdesc',
             }
         }
-        req = fakes.HTTPRequest.blank('/snapshots')
+        req = fakes.HTTPRequest.blank('/fake/snapshots')
 
         res_dict = self.controller.create(req, body)
 
@@ -104,7 +104,7 @@ class ShareSnapshotAPITest(test.TestCase):
                 'description': 'fake_share_description',
             }
         }
-        req = fakes.HTTPRequest.blank('/snapshots')
+        req = fakes.HTTPRequest.blank('/fake/snapshots')
 
         self.assertRaises(
             webob.exc.HTTPUnprocessableEntity,
@@ -114,7 +114,7 @@ class ShareSnapshotAPITest(test.TestCase):
 
     def test_snapshot_create_no_body(self):
         body = {}
-        req = fakes.HTTPRequest.blank('/snapshots')
+        req = fakes.HTTPRequest.blank('/fake/snapshots')
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
                           self.controller.create,
                           req,
@@ -123,21 +123,21 @@ class ShareSnapshotAPITest(test.TestCase):
     def test_snapshot_delete(self):
         self.mock_object(share_api.API, 'delete_snapshot',
                          stubs.stub_snapshot_delete)
-        req = fakes.HTTPRequest.blank('/snapshots/200')
+        req = fakes.HTTPRequest.blank('/fake/snapshots/200')
         resp = self.controller.delete(req, 200)
         self.assertEqual(202, resp.status_int)
 
     def test_snapshot_delete_nofound(self):
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get_notfound)
-        req = fakes.HTTPRequest.blank('/snapshots/200')
+        req = fakes.HTTPRequest.blank('/fake/snapshots/200')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.delete,
                           req,
                           200)
 
     def test_snapshot_show(self):
-        req = fakes.HTTPRequest.blank('/snapshots/200')
+        req = fakes.HTTPRequest.blank('/fake/snapshots/200')
         res_dict = self.controller.show(req, 200)
         expected = fake_share.expected_snapshot(id=200)
         self.assertEqual(expected, res_dict)
@@ -145,7 +145,7 @@ class ShareSnapshotAPITest(test.TestCase):
     def test_snapshot_show_nofound(self):
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get_notfound)
-        req = fakes.HTTPRequest.blank('/snapshots/200')
+        req = fakes.HTTPRequest.blank('/fake/snapshots/200')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.show,
                           req, '200')
@@ -153,7 +153,7 @@ class ShareSnapshotAPITest(test.TestCase):
     def test_snapshot_list_summary(self):
         self.mock_object(share_api.API, 'get_all_snapshots',
                          stubs.stub_snapshot_get_all_by_project)
-        req = fakes.HTTPRequest.blank('/snapshots')
+        req = fakes.HTTPRequest.blank('/fake/snapshots')
         res_dict = self.controller.index(req)
         expected = {
             'snapshots': [
@@ -162,12 +162,12 @@ class ShareSnapshotAPITest(test.TestCase):
                     'id': 2,
                     'links': [
                         {
-                            'href': 'http://localhost/v1/fake/'
+                            'href': 'http://localhost/share/v1/fake/'
                                     'snapshots/2',
                             'rel': 'self'
                         },
                         {
-                            'href': 'http://localhost/fake/snapshots/2',
+                            'href': 'http://localhost/share/fake/snapshots/2',
                             'rel': 'bookmark'
                         }
                     ],
@@ -179,7 +179,7 @@ class ShareSnapshotAPITest(test.TestCase):
     def _snapshot_list_summary_with_search_opts(self, use_admin_context):
         search_opts = fake_share.search_opts()
         # fake_key should be filtered for non-admin
-        url = '/snapshots?fake_key=fake_value'
+        url = '/fake/snapshots?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
         req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
@@ -224,7 +224,7 @@ class ShareSnapshotAPITest(test.TestCase):
     def _snapshot_list_detail_with_search_opts(self, use_admin_context):
         search_opts = fake_share.search_opts()
         # fake_key should be filtered for non-admin
-        url = '/shares/detail?fake_key=fake_value'
+        url = '/fake/shares/detail?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
         req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
@@ -288,7 +288,7 @@ class ShareSnapshotAPITest(test.TestCase):
 
     def test_snapshot_list_detail(self):
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
-        req = fakes.HTTPRequest.blank('/shares/detail', environ=env)
+        req = fakes.HTTPRequest.blank('/fake/shares/detail', environ=env)
         res_dict = self.controller.detail(req)
         expected_s = fake_share.expected_snapshot(id=2)
         expected = {'snapshots': [expected_s['snapshot']]}
@@ -315,7 +315,7 @@ class ShareSnapshotAPITest(test.TestCase):
         ]
         self.mock_object(share_api.API, 'get_all_snapshots',
                          mock.Mock(return_value=snapshots))
-        req = fakes.HTTPRequest.blank('/snapshots')
+        req = fakes.HTTPRequest.blank('/fake/snapshots')
         result = self.controller.index(req)
         self.assertEqual(1, len(result['snapshots']))
         self.assertEqual(snapshots[0]['id'], result['snapshots'][0]['id'])
@@ -324,7 +324,7 @@ class ShareSnapshotAPITest(test.TestCase):
         snp = self.snp_example
         body = {"snapshot": snp}
 
-        req = fakes.HTTPRequest.blank('/snapshot/1')
+        req = fakes.HTTPRequest.blank('/fake/snapshot/1')
         res_dict = self.controller.update(req, 1, body)
         self.assertEqual(snp["display_name"], res_dict['snapshot']["name"])
 
@@ -332,7 +332,7 @@ class ShareSnapshotAPITest(test.TestCase):
         snp = self.snp_example
         body = {"snapshot": snp}
 
-        req = fakes.HTTPRequest.blank('/snapshot/1')
+        req = fakes.HTTPRequest.blank('/fake/snapshot/1')
         res_dict = self.controller.update(req, 1, body)
 
         self.assertEqual(snp["display_description"],
@@ -342,7 +342,7 @@ class ShareSnapshotAPITest(test.TestCase):
         snp = self.snp_example
         body = {"snapshot": snp}
 
-        req = fakes.HTTPRequest.blank('/snapshot/1')
+        req = fakes.HTTPRequest.blank('/fake/snapshot/1')
         res_dict = self.controller.update(req, 1, body)
 
         self.assertNotEqual(snp["size"], res_dict['snapshot']["size"])

@@ -260,6 +260,17 @@ class ViewBuilder(object):
     _collection_name = None
     _detail_version_modifiers = []
 
+    def _get_project_id(self, request):
+        project_id = request.environ["manila.context"].project_id
+        if '/v1/' in request.url:
+            # project_ids are mandatory in v1 URLs
+            return project_id
+        elif project_id and ("/v2/%s" % project_id in request.url):
+            # project_ids are not mandatory within v2 URLs, but links need
+            # to include them if the request does.
+            return project_id
+        return ''
+
     def _get_links(self, request, identifier):
         return [{"rel": "self",
                  "href": self._get_href_link(request, identifier), },
@@ -273,7 +284,7 @@ class ViewBuilder(object):
         prefix = self._update_link_prefix(request.application_url,
                                           CONF.osapi_share_base_URL)
         url = os.path.join(prefix,
-                           request.environ["manila.context"].project_id,
+                           self._get_project_id(request),
                            self._collection_name)
         return "%s?%s" % (url, dict_to_query_str(params))
 
@@ -282,7 +293,7 @@ class ViewBuilder(object):
         prefix = self._update_link_prefix(request.application_url,
                                           CONF.osapi_share_base_URL)
         return os.path.join(prefix,
-                            request.environ["manila.context"].project_id,
+                            self._get_project_id(request),
                             self._collection_name,
                             str(identifier))
 
@@ -292,7 +303,7 @@ class ViewBuilder(object):
         base_url = self._update_link_prefix(base_url,
                                             CONF.osapi_share_base_URL)
         return os.path.join(base_url,
-                            request.environ["manila.context"].project_id,
+                            self._get_project_id(request),
                             self._collection_name,
                             str(identifier))
 

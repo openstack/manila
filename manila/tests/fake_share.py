@@ -175,8 +175,10 @@ def fake_snapshot_instance(base_snapshot=None, as_primitive=False, **kwargs):
 
 
 def expected_snapshot(version=None, id='fake_snapshot_id', **kwargs):
-    self_link = 'http://localhost/v1/fake/snapshots/%s' % id
-    bookmark_link = 'http://localhost/fake/snapshots/%s' % id
+    api_major_version = 'v2' if version and version.startswith('2.') else 'v1'
+    self_link = 'http://localhost/share/%s/fake/snapshots/%s' % (
+        api_major_version, id)
+    bookmark_link = 'http://localhost/share/fake/snapshots/%s' % id
     snapshot = {
         'id': id,
         'share_id': 'fakeshareid',
