@@ -500,6 +500,15 @@ function create_manila_accounts {
     Filesystem Service V2 (Legacy 2.0)"
     get_or_create_endpoint "sharev2_legacy" "$REGION_NAME" \
         "$MANILA_ENDPOINT_BASE/v2/\$(project_id)s"
+
+    # Set up an endpoint for "shared-file-system" - this is necessary to
+    # standardize a naming for the v2 API and for the openstacksdk.
+    # See: https://specs.openstack.org/openstack/service-types-authority/
+    get_or_create_service "shared-file-system" "shared-file-system" "Manila
+    Shared Filesystem Service v2 API (alias of the sharev2 service)"
+    get_or_create_endpoint "shared-file-system" "$REGION_NAME" \
+        "$MANILA_ENDPOINT_BASE/v2"
+
 }
 
 # create_default_share_group_type - create share group type that will be set as default.
