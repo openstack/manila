@@ -440,13 +440,15 @@ class PoolState(HostState):
             # on host, as per information available in manila database.
             # NOTE(jose-castro-leon): Only calculate provisioned_capacity_gb
             # on thin provisioned pools
-            self.provisioned_capacity_gb = capability.get(
+            provisioned_capacity_gb = capability.get(
                 'provisioned_capacity_gb')
 
-            if self.thin_provisioning and self.provisioned_capacity_gb is None:
+            if self.thin_provisioning and provisioned_capacity_gb is None:
                 self.provisioned_capacity_gb = (
                     self._estimate_provisioned_capacity(self.host,
                                                         context=context))
+            else:
+                self.provisioned_capacity_gb = provisioned_capacity_gb
 
             self.max_over_subscription_ratio = capability.get(
                 'max_over_subscription_ratio',
