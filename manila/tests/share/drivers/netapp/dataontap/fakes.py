@@ -92,6 +92,16 @@ QOS_EXTRA_SPEC = 'netapp:maxiops'
 QOS_SIZE_DEPENDENT_EXTRA_SPEC = 'netapp:maxbpspergib'
 QOS_NORMALIZED_SPEC = 'maxiops'
 QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
+FPOLICY_POLICY_NAME = 'fake_fpolicy_name'
+FPOLICY_EVENT_NAME = 'fake_fpolicy_event_name'
+FPOLICY_PROTOCOL = 'cifs'
+FPOLICY_FILE_OPERATIONS = 'create,write,rename'
+FPOLICY_FILE_OPERATIONS_LIST = ['create', 'write', 'rename']
+FPOLICY_ENGINE = 'native'
+FPOLICY_EXT_TO_INCLUDE = 'avi'
+FPOLICY_EXT_TO_INCLUDE_LIST = ['avi']
+FPOLICY_EXT_TO_EXCLUDE = 'jpg,mp3'
+FPOLICY_EXT_TO_EXCLUDE_LIST = ['jpg', 'mp3']
 
 CLIENT_KWARGS = {
     'username': 'admin',
@@ -200,6 +210,12 @@ EXTRA_SPEC_WITH_REPLICATION.update({
     'replication_type': 'dr'
 })
 
+EXTRA_SPEC_WITH_FPOLICY = copy.copy(EXTRA_SPEC)
+EXTRA_SPEC_WITH_FPOLICY.update(
+    {'fpolicy_extensions_to_include': FPOLICY_EXT_TO_INCLUDE,
+     'fpolicy_extensions_to_exclude': FPOLICY_EXT_TO_EXCLUDE,
+     'fpolicy_file_operations': FPOLICY_FILE_OPERATIONS})
+
 NFS_CONFIG_DEFAULT = {
     'tcp-max-xfer-size': 65536,
     'udp-max-xfer-size': 32768,
@@ -262,6 +278,12 @@ EXTRA_SPEC_WITH_QOS.update({
     QOS_EXTRA_SPEC: '3000',
 })
 
+EXTRA_SPEC_WITH_FPOLICY = copy.deepcopy(EXTRA_SPEC)
+EXTRA_SPEC_WITH_FPOLICY.update(
+    {'netapp:fpolicy_extensions_to_include': FPOLICY_EXT_TO_INCLUDE,
+     'netapp:fpolicy_extensions_to_exclude': FPOLICY_EXT_TO_EXCLUDE,
+     'netapp:fpolicy_file_operations': FPOLICY_FILE_OPERATIONS})
+
 EXTRA_SPEC_WITH_SIZE_DEPENDENT_QOS = copy.deepcopy(EXTRA_SPEC)
 EXTRA_SPEC_WITH_SIZE_DEPENDENT_QOS.update({
     'qos': True,
@@ -289,6 +311,16 @@ PROVISIONING_OPTS_WITH_ADAPT_QOS = copy.deepcopy(PROVISIONING_OPTIONS)
 PROVISIONING_OPTS_WITH_ADAPT_QOS.update(
     {'adaptive_qos_policy_group': QOS_POLICY_GROUP_NAME})
 
+PROVISIONING_OPTIONS_WITH_FPOLICY = copy.deepcopy(PROVISIONING_OPTIONS)
+PROVISIONING_OPTIONS_WITH_FPOLICY.update(
+    {'fpolicy_extensions_to_include': FPOLICY_EXT_TO_INCLUDE,
+     'fpolicy_extensions_to_exclude': FPOLICY_EXT_TO_EXCLUDE,
+     'fpolicy_file_operations': FPOLICY_FILE_OPERATIONS})
+
+PROVISIONING_OPTIONS_INVALID_FPOLICY = copy.deepcopy(PROVISIONING_OPTIONS)
+PROVISIONING_OPTIONS_INVALID_FPOLICY.update(
+    {'fpolicy_file_operations': FPOLICY_FILE_OPERATIONS})
+
 PROVISIONING_OPTIONS_BOOLEAN = {
     'thin_provisioned': True,
     'dedup_enabled': False,
@@ -313,6 +345,9 @@ PROVISIONING_OPTIONS_STRING = {
     'language': 'en-US',
     'max_files': 5000,
     'adaptive_qos_policy_group': None,
+    'fpolicy_extensions_to_exclude': None,
+    'fpolicy_extensions_to_include': None,
+    'fpolicy_file_operations': None,
 }
 
 PROVISIONING_OPTIONS_STRING_MISSING_SPECS = {
@@ -320,6 +355,9 @@ PROVISIONING_OPTIONS_STRING_MISSING_SPECS = {
     'language': 'en-US',
     'max_files': None,
     'adaptive_qos_policy_group': None,
+    'fpolicy_extensions_to_exclude': None,
+    'fpolicy_extensions_to_include': None,
+    'fpolicy_file_operations': None,
 }
 
 PROVISIONING_OPTIONS_STRING_DEFAULT = {
@@ -327,6 +365,9 @@ PROVISIONING_OPTIONS_STRING_DEFAULT = {
     'language': None,
     'max_files': None,
     'adaptive_qos_policy_group': None,
+    'fpolicy_extensions_to_exclude': None,
+    'fpolicy_extensions_to_include': None,
+    'fpolicy_file_operations': None,
 }
 
 SHORT_BOOLEAN_EXTRA_SPEC = {

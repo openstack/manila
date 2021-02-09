@@ -7621,3 +7621,361 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertEqual(expected_result, result)
         self.client.send_request.assert_called_once_with(
             'volume-autosize-get', {'volume': fake.SHARE_NAME})
+
+    def test_create_fpolicy_event(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_fpolicy_event(fake.FPOLICY_EVENT_NAME,
+                                         fake.FPOLICY_PROTOCOL,
+                                         fake.FPOLICY_FILE_OPERATIONS_LIST)
+
+        expected_args = {
+            'event-name': fake.FPOLICY_EVENT_NAME,
+            'protocol': fake.FPOLICY_PROTOCOL,
+            'file-operations': [],
+        }
+        for file_op in fake.FPOLICY_FILE_OPERATIONS_LIST:
+            expected_args['file-operations'].append(
+                {'fpolicy-operation': file_op})
+
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-policy-event-create', expected_args)
+
+    @ddt.data(None, netapp_api.EEVENTNOTFOUND)
+    def test_delete_fpolicy_event(self, send_request_error):
+        if send_request_error:
+            send_request_mock = mock.Mock(
+                side_effect=self._mock_api_error(code=send_request_error))
+        else:
+            send_request_mock = mock.Mock()
+        self.mock_object(self.client, 'send_request', send_request_mock)
+
+        self.client.delete_fpolicy_event(fake.FPOLICY_EVENT_NAME)
+
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-policy-event-delete',
+            {'event-name': fake.FPOLICY_EVENT_NAME})
+
+    def test_delete_fpolicy_event_error(self):
+        eapi_error = self._mock_api_error(code=netapp_api.EAPIERROR)
+        self.mock_object(
+            self.client, 'send_request', mock.Mock(side_effect=eapi_error))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.delete_fpolicy_event,
+                          fake.FPOLICY_EVENT_NAME)
+
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-policy-event-delete',
+            {'event-name': fake.FPOLICY_EVENT_NAME})
+
+    def test_get_fpolicy_events(self):
+        api_response = netapp_api.NaElement(
+            fake.FPOLICY_EVENT_GET_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_fpolicy_events(
+            event_name=fake.FPOLICY_EVENT_NAME,
+            protocol=fake.FPOLICY_PROTOCOL,
+            file_operations=fake.FPOLICY_FILE_OPERATIONS_LIST)
+
+        expected_options = {
+            'event-name': fake.FPOLICY_EVENT_NAME,
+            'protocol': fake.FPOLICY_PROTOCOL,
+            'file-operations': []
+        }
+        for file_op in fake.FPOLICY_FILE_OPERATIONS_LIST:
+            expected_options['file-operations'].append(
+                {'fpolicy-operation': file_op})
+
+        expected_args = {
+            'query': {
+                'fpolicy-event-options-config': expected_options,
+            },
+        }
+        expected = [{
+            'event-name': fake.FPOLICY_EVENT_NAME,
+            'protocol': fake.FPOLICY_PROTOCOL,
+            'file-operations': fake.FPOLICY_FILE_OPERATIONS_LIST
+        }]
+
+        self.assertEqual(expected, result)
+        self.client.send_iter_request.assert_called_once_with(
+            'fpolicy-policy-event-get-iter', expected_args)
+
+    def test_create_fpolicy_policy(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_fpolicy_policy(fake.FPOLICY_POLICY_NAME,
+                                          [fake.FPOLICY_EVENT_NAME],
+                                          engine=fake.FPOLICY_ENGINE)
+
+        expected_args = {
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'events': [],
+            'engine-name': fake.FPOLICY_ENGINE
+        }
+        for event in [fake.FPOLICY_EVENT_NAME]:
+            expected_args['events'].append(
+                {'event-name': event})
+
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-policy-create', expected_args)
+
+    @ddt.data(None, netapp_api.EPOLICYNOTFOUND)
+    def test_delete_fpolicy_policy(self, send_request_error):
+        if send_request_error:
+            send_request_mock = mock.Mock(
+                side_effect=self._mock_api_error(code=send_request_error))
+        else:
+            send_request_mock = mock.Mock()
+        self.mock_object(self.client, 'send_request', send_request_mock)
+
+        self.client.delete_fpolicy_policy(fake.FPOLICY_POLICY_NAME)
+
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-policy-delete',
+            {'policy-name': fake.FPOLICY_POLICY_NAME})
+
+    def test_delete_fpolicy_policy_error(self):
+        eapi_error = self._mock_api_error(code=netapp_api.EAPIERROR)
+        self.mock_object(
+            self.client, 'send_request', mock.Mock(side_effect=eapi_error))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.delete_fpolicy_policy,
+                          fake.FPOLICY_POLICY_NAME)
+
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-policy-delete',
+            {'policy-name': fake.FPOLICY_POLICY_NAME})
+
+    def test_get_fpolicy_policies(self):
+        api_response = netapp_api.NaElement(
+            fake.FPOLICY_POLICY_GET_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_fpolicy_policies(
+            policy_name=fake.FPOLICY_POLICY_NAME,
+            engine_name=fake.FPOLICY_ENGINE,
+            event_names=[fake.FPOLICY_EVENT_NAME])
+
+        expected_options = {
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'engine-name': fake.FPOLICY_ENGINE,
+            'events': []
+        }
+        for policy in [fake.FPOLICY_EVENT_NAME]:
+            expected_options['events'].append(
+                {'event-name': policy})
+
+        expected_args = {
+            'query': {
+                'fpolicy-policy-info': expected_options,
+            },
+        }
+        expected = [{
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'engine-name': fake.FPOLICY_ENGINE,
+            'events': [fake.FPOLICY_EVENT_NAME]
+        }]
+
+        self.assertEqual(expected, result)
+        self.client.send_iter_request.assert_called_once_with(
+            'fpolicy-policy-get-iter', expected_args)
+
+    def test_create_fpolicy_scope(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_fpolicy_scope(
+            fake.FPOLICY_POLICY_NAME,
+            fake.SHARE_NAME,
+            extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE)
+
+        expected_args = {
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'shares-to-include': {
+                'string': fake.SHARE_NAME,
+            },
+            'file-extensions-to-include': [],
+            'file-extensions-to-exclude': [],
+        }
+        for file_ext in fake.FPOLICY_EXT_TO_INCLUDE_LIST:
+            expected_args['file-extensions-to-include'].append(
+                {'string': file_ext})
+        for file_ext in fake.FPOLICY_EXT_TO_EXCLUDE_LIST:
+            expected_args['file-extensions-to-exclude'].append(
+                {'string': file_ext})
+
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-policy-scope-create', expected_args)
+
+    def test_modify_fpolicy_scope(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.modify_fpolicy_scope(
+            fake.FPOLICY_POLICY_NAME,
+            shares_to_include=[fake.SHARE_NAME],
+            extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE)
+
+        expected_args = {
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'file-extensions-to-include': [],
+            'file-extensions-to-exclude': [],
+            'shares-to-include': [{
+                'string': fake.SHARE_NAME,
+            }],
+        }
+        for file_ext in fake.FPOLICY_EXT_TO_INCLUDE_LIST:
+            expected_args['file-extensions-to-include'].append(
+                {'string': file_ext})
+        for file_ext in fake.FPOLICY_EXT_TO_EXCLUDE_LIST:
+            expected_args['file-extensions-to-exclude'].append(
+                {'string': file_ext})
+
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-policy-scope-modify', expected_args)
+
+    @ddt.data(None, netapp_api.ESCOPENOTFOUND)
+    def test_delete_fpolicy_scope(self, send_request_error):
+        if send_request_error:
+            send_request_mock = mock.Mock(
+                side_effect=self._mock_api_error(code=send_request_error))
+        else:
+            send_request_mock = mock.Mock()
+        self.mock_object(self.client, 'send_request', send_request_mock)
+
+        self.client.delete_fpolicy_scope(fake.FPOLICY_POLICY_NAME)
+
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-policy-scope-delete',
+            {'policy-name': fake.FPOLICY_POLICY_NAME})
+
+    def test_delete_fpolicy_scope_error(self):
+        eapi_error = self._mock_api_error(code=netapp_api.EAPIERROR)
+        self.mock_object(
+            self.client, 'send_request', mock.Mock(side_effect=eapi_error))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.delete_fpolicy_scope,
+                          fake.FPOLICY_POLICY_NAME)
+
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-policy-scope-delete',
+            {'policy-name': fake.FPOLICY_POLICY_NAME})
+
+    def test_get_fpolicy_scopes(self):
+        api_response = netapp_api.NaElement(
+            fake.FPOLICY_SCOPE_GET_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_fpolicy_scopes(
+            policy_name=fake.FPOLICY_POLICY_NAME,
+            extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+            shares_to_include=[fake.SHARE_NAME])
+
+        expected_options = {
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'shares-to-include': [{
+                'string': fake.SHARE_NAME,
+            }],
+            'file-extensions-to-include': [],
+            'file-extensions-to-exclude': [],
+        }
+        for file_ext in fake.FPOLICY_EXT_TO_INCLUDE_LIST:
+            expected_options['file-extensions-to-include'].append(
+                {'string': file_ext})
+        for file_ext in fake.FPOLICY_EXT_TO_EXCLUDE_LIST:
+            expected_options['file-extensions-to-exclude'].append(
+                {'string': file_ext})
+
+        expected_args = {
+            'query': {
+                'fpolicy-scope-config': expected_options,
+            },
+        }
+        expected = [{
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'file-extensions-to-include': fake.FPOLICY_EXT_TO_INCLUDE_LIST,
+            'file-extensions-to-exclude': fake.FPOLICY_EXT_TO_EXCLUDE_LIST,
+            'shares-to-include': [fake.SHARE_NAME],
+        }]
+
+        self.assertEqual(expected, result)
+        self.client.send_iter_request.assert_called_once_with(
+            'fpolicy-policy-scope-get-iter', expected_args)
+
+    def test_enable_fpolicy_policy(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.enable_fpolicy_policy(fake.FPOLICY_POLICY_NAME, 10)
+
+        expected_args = {
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'sequence-number': 10,
+        }
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-enable-policy', expected_args)
+
+    @ddt.data(None, netapp_api.EPOLICYNOTFOUND)
+    def test_disable_fpolicy_policy(self, send_request_error):
+        if send_request_error:
+            send_request_mock = mock.Mock(
+                side_effect=self._mock_api_error(code=send_request_error))
+        else:
+            send_request_mock = mock.Mock()
+        self.mock_object(self.client, 'send_request', send_request_mock)
+
+        self.client.disable_fpolicy_policy(fake.FPOLICY_POLICY_NAME)
+
+        expected_args = {
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+        }
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-disable-policy', expected_args)
+
+    def test_disable_fpolicy_policy_error(self):
+        eapi_error = self._mock_api_error(code=netapp_api.EAPIERROR)
+        self.mock_object(
+            self.client, 'send_request', mock.Mock(side_effect=eapi_error))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.disable_fpolicy_policy,
+                          fake.FPOLICY_POLICY_NAME)
+
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-disable-policy',
+            {'policy-name': fake.FPOLICY_POLICY_NAME})
+
+    def test_get_fpolicy_status(self):
+        api_response = netapp_api.NaElement(
+            fake.FPOLICY_POLICY_STATUS_GET_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_fpolicy_policies_status(
+            policy_name=fake.FPOLICY_POLICY_NAME)
+
+        expected_args = {
+            'query': {
+                'fpolicy-policy-status-info': {
+                    'policy-name': fake.FPOLICY_POLICY_NAME,
+                    'status': 'true'
+                },
+            },
+        }
+        expected = [{
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'status': True,
+            'sequence-number': '1'
+        }]
+
+        self.assertEqual(expected, result)
+        self.client.send_iter_request.assert_called_once_with(
+            'fpolicy-policy-status-get-iter', expected_args)

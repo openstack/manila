@@ -2240,7 +2240,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SHARE_INSTANCE, self.mock_src_client,
             fake_volume['aggregate'], self.mock_dest_client)
         self.library._delete_share.assert_called_once_with(
-            fake.SHARE_INSTANCE, self.mock_src_client, remove_export=True)
+            fake.SHARE_INSTANCE, self.fake_src_vserver,
+            self.mock_src_client, remove_export=True)
 
     def test_share_server_migration_complete_failure_breaking(self):
         dm_session_mock = mock.Mock()
@@ -2281,7 +2282,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.fake_src_share_server, self.fake_dest_share_server
         )
         self.library._delete_share.assert_called_once_with(
-            fake.SHARE_INSTANCE, self.mock_dest_client, remove_export=False)
+            fake.SHARE_INSTANCE, self.fake_dest_vserver, self.mock_dest_client,
+            remove_export=False)
 
     def test_share_server_migration_complete_failure_get_new_volume(self):
         dm_session_mock = mock.Mock()
@@ -2375,7 +2377,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 self.fake_src_share_server, self.fake_dest_share_server
             )
         self.library._delete_share.assert_called_once_with(
-            fake.SHARE_INSTANCE, self.mock_dest_client, remove_export=False)
+            fake.SHARE_INSTANCE, self.fake_dest_vserver, self.mock_dest_client,
+            remove_export=False)
 
     def test_share_server_migration_cancel_snapmirror_failure(self):
         dm_session_mock = mock.Mock()
@@ -2442,6 +2445,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         }
         self.mock_object(mock_client, 'get_vserver_info',
                          mock.Mock(return_value=fake_vserver_info))
+        mock_get_extra_spec = self.mock_object(
+            share_types, 'get_extra_specs_from_share',
+            mock.Mock(return_value='fake_extra_specs'))
+        mock_get_provisioning_opts = self.mock_object(
+            self.library, '_get_provisioning_options',
+            mock.Mock(return_value={}))
 
         result = self.library.choose_share_server_compatible_with_share(
             None, [fake.SHARE_SERVER], fake.SHARE_INSTANCE,
@@ -2449,6 +2458,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         )
         expected_result = fake.SHARE_SERVER if compatible else None
         self.assertEqual(expected_result, result)
+        mock_get_extra_spec.assert_called_once_with(fake.SHARE_INSTANCE)
+        mock_get_provisioning_opts.assert_called_once_with('fake_extra_specs')
         if (share_group and
                 share_group['share_server_id'] != fake.SHARE_SERVER['id']):
             mock_client.get_vserver_info.assert_not_called()
@@ -2460,6 +2471,55 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library._get_vserver.assert_called_once_with(
                 fake.SHARE_SERVER, backend_name=fake.BACKEND_NAME
             )
+
+    @ddt.data(
+        {'policies': [], 'reusable_scope': None, 'compatible': True},
+        {'policies': "0123456789", 'reusable_scope': {'scope'},
+         'compatible': True},
+        {'policies': "0123456789", 'reusable_scope': None,
+         'compatible': False})
+    @ddt.unpack
+    def test_choose_share_server_compatible_with_share_fpolicy(
+            self, policies, reusable_scope, compatible):
+        self.library.is_nfs_config_supported = False
+        mock_client = mock.Mock()
+        fake_extra_spec = copy.deepcopy(fake.EXTRA_SPEC_WITH_FPOLICY)
+        mock_get_extra_spec = self.mock_object(
+            share_types, 'get_extra_specs_from_share',
+            mock.Mock(return_value=fake_extra_spec))
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 mock_client)))
+        self.mock_object(mock_client, 'get_vserver_info',
+                         mock.Mock(return_value=fake.VSERVER_INFO))
+        mock_get_policies = self.mock_object(
+            mock_client, 'get_fpolicy_policies_status',
+            mock.Mock(return_value=policies))
+        mock_reusable_scope = self.mock_object(
+            self.library, '_find_reusable_fpolicy_scope',
+            mock.Mock(return_value=reusable_scope))
+
+        result = self.library.choose_share_server_compatible_with_share(
+            None, [fake.SHARE_SERVER], fake.SHARE_INSTANCE,
+            None, None
+        )
+
+        expected_result = fake.SHARE_SERVER if compatible else None
+        self.assertEqual(expected_result, result)
+        mock_get_extra_spec.assert_called_once_with(fake.SHARE_INSTANCE)
+        mock_client.get_vserver_info.assert_called_once_with(
+            fake.VSERVER1,
+        )
+        self.library._get_vserver.assert_called_once_with(
+            fake.SHARE_SERVER, backend_name=fake.BACKEND_NAME
+        )
+        mock_get_policies.assert_called_once()
+        if len(policies) >= self.library.FPOLICY_MAX_VSERVER_POLICIES:
+            mock_reusable_scope.assert_called_once_with(
+                fake.SHARE_INSTANCE, mock_client,
+                fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+                fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+                fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS)
 
     @ddt.data({'subtype': 'default', 'compatible': True},
               {'subtype': 'dp_destination', 'compatible': False})

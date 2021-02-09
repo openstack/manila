@@ -826,7 +826,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         if dest_cluster != fake.CLUSTER_NAME:
             self.mock_allocate_container_from_snapshot.assert_called_once_with(
                 self.fake_share, fake.SNAPSHOT, fake.VSERVER1,
-                self.src_vserver_client, split=False)
+                self.src_vserver_client, split=False, create_fpolicy=False)
             self.mock_allocate_container.assert_called_once_with(
                 self.fake_share, fake.VSERVER2,
                 self.dest_vserver_client, replica=True)
@@ -863,6 +863,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=True))
         mock_deallocate_container = self.mock_object(
             self.library, '_deallocate_container')
+        mock_delete_policy = self.mock_object(self.library,
+                                              '_delete_fpolicy_for_share')
 
         self.assertRaises(exception.NetAppException,
                           self.library.create_share_from_snapshot,
@@ -892,6 +894,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                  self.src_vserver_client)
         mock_deallocate_container.assert_called_once_with(
             fake.SHARE_NAME, self.src_vserver_client)
+        mock_delete_policy.assert_called_once_with(self.temp_src_share,
+                                                   fake.VSERVER1,
+                                                   self.src_vserver_client)
 
     def test__update_create_from_snapshot_status(self):
         fake_result = mock.Mock()
@@ -959,6 +964,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library, '_deallocate_container')
         mock_pvt_storage_delete = self.mock_object(
             self.library.private_storage, 'delete')
+        mock_delete_policy = self.mock_object(self.library,
+                                              '_delete_fpolicy_for_share')
 
         result = self.library._update_create_from_snapshot_status(
             fake.SHARE, fake.SHARE_SERVER)
@@ -980,6 +987,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_deallocate_container.assert_called_once_with(fake.SHARE_NAME,
                                                           src_vserver_client)
         mock_pvt_storage_delete.assert_called_once_with(fake.SHARE['id'])
+        mock_delete_policy.assert_called_once_with(fake_src_share,
+                                                   fake.VSERVER1,
+                                                   src_vserver_client)
         self.assertEqual(expected_result, result)
 
     def _setup_mocks_for_create_from_snapshot_continue(
@@ -1213,7 +1223,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 [mock.call(self.fake_src_share['id']),
                  mock.call(fake.SHARE_ID)])
             self.mock__delete_share.assert_called_once_with(
-                self.fake_src_share, self.src_vserver_client,
+                self.fake_src_share, fake.VSERVER1, self.src_vserver_client,
                 remove_export=False)
             self.mock_set_vol_size_fixes.assert_called_once_with(
                 fake.SHARE_NAME, filesys_size_fixed=False)
@@ -1252,10 +1262,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.mock_pvt_storage_delete.assert_called_once_with(fake.SHARE_ID)
 
-    @ddt.data(False, True)
-    def test_allocate_container(self, hide_snapdir):
+    @ddt.data({'hide_snapdir': False, 'create_fpolicy': True},
+              {'hide_snapdir': True, 'create_fpolicy': False})
+    @ddt.unpack
+    def test_allocate_container(self, hide_snapdir, create_fpolicy):
 
-        provisioning_options = copy.deepcopy(fake.PROVISIONING_OPTIONS)
+        provisioning_options = copy.deepcopy(
+            fake.PROVISIONING_OPTIONS_WITH_FPOLICY)
         provisioning_options['hide_snapdir'] = hide_snapdir
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
             return_value=fake.SHARE_NAME))
@@ -1264,11 +1277,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_provisioning_opts = self.mock_object(
             self.library, '_get_provisioning_options_for_share',
             mock.Mock(return_value=provisioning_options))
+        mock_create_fpolicy = self.mock_object(
+            self.library, '_create_fpolicy_for_share')
         vserver_client = mock.Mock()
 
         self.library._allocate_container(fake.SHARE_INSTANCE,
                                          fake.VSERVER1,
-                                         vserver_client)
+                                         vserver_client,
+                                         create_fpolicy=create_fpolicy)
 
         mock_get_provisioning_opts.assert_called_once_with(
             fake.SHARE_INSTANCE, fake.VSERVER1, vserver_client=vserver_client,
@@ -1276,16 +1292,20 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         vserver_client.create_volume.assert_called_once_with(
             fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
-            thin_provisioned=True, snapshot_policy='default',
-            language='en-US', dedup_enabled=True, split=True, encrypt=False,
-            compression_enabled=False, max_files=5000, snapshot_reserve=8,
-            adaptive_qos_policy_group=None)
+            snapshot_reserve=8, **provisioning_options)
 
         if hide_snapdir:
             vserver_client.set_volume_snapdir_access.assert_called_once_with(
                 fake.SHARE_NAME, hide_snapdir)
         else:
             vserver_client.set_volume_snapdir_access.assert_not_called()
+
+        if create_fpolicy:
+            mock_create_fpolicy.assert_called_once_with(
+                fake.SHARE_INSTANCE, fake.VSERVER1, vserver_client,
+                **provisioning_options)
+        else:
+            mock_create_fpolicy.assert_not_called()
 
     def test_remap_standard_boolean_extra_specs(self):
 
@@ -1370,7 +1390,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_check_string_extra_specs_validity(self):
         result = self.library._check_string_extra_specs_validity(
-            fake.SHARE_INSTANCE, fake.EXTRA_SPEC)
+            fake.SHARE_INSTANCE, fake.EXTRA_SPEC_WITH_FPOLICY)
 
         self.assertIsNone(result)
 
@@ -1499,6 +1519,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'split': False,
             'encrypt': False,
             'hide_snapdir': False,
+            'fpolicy_extensions_to_exclude': None,
+            'fpolicy_extensions_to_include': None,
+            'fpolicy_file_operations': None,
         }
 
         self.assertEqual(expected, result)
@@ -1624,6 +1647,21 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           self.library._check_if_max_files_is_valid,
                           fake.SHARE, 'abc')
 
+    def test__check_fpolicy_file_operations(self):
+        result = self.library._check_fpolicy_file_operations(
+            fake.SHARE, fake.FPOLICY_FILE_OPERATIONS)
+
+        self.assertIsNone(result)
+
+    def test__check_fpolicy_file_operations_invalid_operation(self):
+        invalid_ops = copy.deepcopy(fake.FPOLICY_FILE_OPERATIONS)
+        invalid_ops += ',fake_op'
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._check_fpolicy_file_operations,
+                          fake.SHARE,
+                          invalid_ops)
+
     def test_allocate_container_no_pool(self):
 
         vserver_client = mock.Mock()
@@ -1657,24 +1695,26 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.EXTRA_SPEC)
 
     @ddt.data({'provider_location': None, 'size': 50, 'hide_snapdir': True,
-               'split': None},
+               'split': None, 'create_fpolicy': False},
               {'provider_location': 'fake_location', 'size': 30,
-               'hide_snapdir': False, 'split': True},
+               'hide_snapdir': False, 'split': True, 'create_fpolicy': True},
               {'provider_location': 'fake_location', 'size': 20,
-               'hide_snapdir': True, 'split': False})
+               'hide_snapdir': True, 'split': False, 'create_fpolicy': True})
     @ddt.unpack
     def test_allocate_container_from_snapshot(
-            self, provider_location, size, hide_snapdir, split):
-
-        provisioning_options = copy.deepcopy(fake.PROVISIONING_OPTIONS)
+            self, provider_location, size, hide_snapdir, split,
+            create_fpolicy):
+        provisioning_options = copy.deepcopy(
+            fake.PROVISIONING_OPTIONS_WITH_FPOLICY)
         provisioning_options['hide_snapdir'] = hide_snapdir
         mock_get_provisioning_opts = self.mock_object(
             self.library, '_get_provisioning_options_for_share',
             mock.Mock(return_value=provisioning_options))
+        mock_create_fpolicy = self.mock_object(
+            self.library, '_create_fpolicy_for_share')
         vserver = fake.VSERVER1
         vserver_client = mock.Mock()
         original_snapshot_size = 20
-        expected_split_op = split or fake.PROVISIONING_OPTIONS['split']
 
         fake_share_inst = copy.deepcopy(fake.SHARE_INSTANCE)
         fake_share_inst['size'] = size
@@ -1682,10 +1722,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_snapshot['provider_location'] = provider_location
         fake_snapshot['size'] = original_snapshot_size
 
-        self.library._allocate_container_from_snapshot(fake_share_inst,
-                                                       fake_snapshot,
-                                                       vserver,
-                                                       vserver_client)
+        self.library._allocate_container_from_snapshot(
+            fake_share_inst,
+            fake_snapshot,
+            vserver,
+            vserver_client,
+            create_fpolicy=create_fpolicy)
 
         share_name = self.library._get_backend_share_name(
             fake_share_inst['id'])
@@ -1697,10 +1739,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake_share_inst, fake.VSERVER1, vserver_client=vserver_client)
         vserver_client.create_volume_clone.assert_called_once_with(
             share_name, parent_share_name, parent_snapshot_name,
-            thin_provisioned=True, snapshot_policy='default',
-            language='en-US', dedup_enabled=True, split=expected_split_op,
-            encrypt=False, compression_enabled=False, max_files=5000,
-            adaptive_qos_policy_group=None)
+            **provisioning_options)
         if size > original_snapshot_size:
             vserver_client.set_volume_size.assert_called_once_with(
                 share_name, size)
@@ -1712,6 +1751,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 fake.SHARE_INSTANCE_NAME, hide_snapdir)
         else:
             vserver_client.set_volume_snapdir_access.assert_not_called()
+
+        if create_fpolicy:
+            mock_create_fpolicy.assert_called_once_with(
+                fake_share_inst, vserver, vserver_client,
+                **provisioning_options)
+        else:
+            mock_create_fpolicy.assert_not_called()
 
     def test_share_exists(self):
 
@@ -1744,6 +1790,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_remove_export = self.mock_object(self.library, '_remove_export')
         mock_deallocate_container = self.mock_object(self.library,
                                                      '_deallocate_container')
+        mock_delete_policy = self.mock_object(self.library,
+                                              '_delete_fpolicy_for_share')
 
         self.library.delete_share(self.context,
                                   fake.SHARE,
@@ -1756,6 +1804,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_remove_export.assert_called_once_with(fake.SHARE, vserver_client)
         mock_deallocate_container.assert_called_once_with(share_name,
                                                           vserver_client)
+        mock_delete_policy.assert_called_once_with(fake.SHARE, fake.VSERVER1,
+                                                   vserver_client)
         (vserver_client.mark_qos_policy_group_for_deletion
          .assert_called_once_with(qos_policy_name))
         self.assertEqual(0, lib_base.LOG.info.call_count)
@@ -1799,6 +1849,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_remove_export = self.mock_object(self.library, '_remove_export')
         mock_deallocate_container = self.mock_object(self.library,
                                                      '_deallocate_container')
+        mock_delete_fpolicy = self.mock_object(self.library,
+                                               '_delete_fpolicy_for_share')
 
         self.library.delete_share(self.context,
                                   fake.SHARE,
@@ -1806,6 +1858,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         share_name = self.library._get_backend_share_name(fake.SHARE['id'])
         mock_share_exists.assert_called_once_with(share_name, vserver_client)
+        mock_delete_fpolicy.assert_called_once_with(fake.SHARE, fake.VSERVER1,
+                                                    vserver_client)
         self.assertFalse(mock_remove_export.called)
         self.assertFalse(mock_deallocate_container.called)
         self.assertFalse(
@@ -2205,13 +2259,19 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertIsNone(result)
 
-    @ddt.data(True, False)
-    def test_manage_container_with_qos(self, qos):
+    @ddt.data({'qos': True, 'fpolicy': False}, {'qos': False, 'fpolicy': True})
+    @ddt.unpack
+    def test_manage_container(self, qos, fpolicy):
 
         vserver_client = mock.Mock()
         self.library._have_cluster_creds = True
         qos_policy_group_name = fake.QOS_POLICY_GROUP_NAME if qos else None
-        extra_specs = fake.EXTRA_SPEC_WITH_QOS if qos else fake.EXTRA_SPEC
+        if qos:
+            extra_specs = copy.deepcopy(fake.EXTRA_SPEC_WITH_QOS)
+        elif fpolicy:
+            extra_specs = copy.deepcopy(fake.EXTRA_SPEC_WITH_FPOLICY)
+        else:
+            extra_specs = copy.deepcopy(fake.EXTRA_SPEC)
         provisioning_opts = self.library._get_provisioning_options(extra_specs)
         if qos:
             provisioning_opts['qos_policy_group'] = fake.QOS_POLICY_GROUP_NAME
@@ -2244,6 +2304,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_modify_or_create_qos_policy = self.mock_object(
             self.library, '_modify_or_create_qos_for_existing_share',
             mock.Mock(return_value=qos_policy_group_name))
+        fake_fpolicy_scope = {
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'shares-to-include': [fake.FLEXVOL_NAME]
+        }
+        mock_find_scope = self.mock_object(
+            self.library, '_find_reusable_fpolicy_scope',
+            mock.Mock(return_value=fake_fpolicy_scope))
+        mock_modify_fpolicy = self.mock_object(
+            vserver_client, 'modify_fpolicy_scope')
 
         result = self.library._manage_container(share_to_manage,
                                                 fake.VSERVER1,
@@ -2266,6 +2335,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_modify_or_create_qos_policy.assert_called_once_with(
             share_to_manage, extra_specs, fake.VSERVER1, vserver_client)
         mock_validate_volume_for_manage.assert_called()
+        if fpolicy:
+            mock_find_scope.assert_called_once_with(
+                share_to_manage, vserver_client,
+                fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+                fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+                fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS,
+                shares_to_include=[fake.FLEXVOL_NAME])
+            mock_modify_fpolicy.assert_called_once_with(
+                fake.FPOLICY_POLICY_NAME, shares_to_include=[fake.SHARE_NAME])
+        else:
+            mock_find_scope.assert_not_called()
+            mock_modify_fpolicy.assert_not_called()
 
         original_data = {
             'original_name': fake.FLEXVOL_TO_MANAGE['name'],
@@ -2343,6 +2424,35 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_check_extra_specs_validity',
                          mock.Mock(side_effect=exception.NetAppException))
+
+        self.assertRaises(exception.ManageExistingShareTypeMismatch,
+                          self.library._manage_container,
+                          share_to_manage,
+                          fake.VSERVER1,
+                          vserver_client)
+
+    def test_manage_container_invalid_fpolicy(self):
+        vserver_client = mock.Mock()
+        extra_spec = copy.deepcopy(fake.EXTRA_SPEC_WITH_FPOLICY)
+        share_to_manage = copy.deepcopy(fake.SHARE)
+        share_to_manage['export_location'] = fake.EXPORT_LOCATION
+
+        mock_helper = mock.Mock()
+        mock_helper.get_share_name_for_share.return_value = fake.FLEXVOL_NAME
+        self.mock_object(self.library,
+                         '_get_helper',
+                         mock.Mock(return_value=mock_helper))
+
+        self.mock_object(vserver_client,
+                         'get_volume_to_manage',
+                         mock.Mock(return_value=fake.FLEXVOL_TO_MANAGE))
+        self.mock_object(self.library, '_validate_volume_for_manage')
+        self.mock_object(share_types,
+                         'get_extra_specs_from_share',
+                         mock.Mock(return_value=extra_spec))
+        self.mock_object(self.library, '_check_extra_specs_validity')
+        self.mock_object(self.library, '_find_reusable_fpolicy_scope',
+                         mock.Mock(return_value=None))
 
         self.assertRaises(exception.ManageExistingShareTypeMismatch,
                           self.library._manage_container,
@@ -5004,7 +5114,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(share_types, 'get_extra_specs_from_share')
         self.mock_object(self.library, '_check_extra_specs_validity')
         self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
-        self.mock_object(self.library, '_get_provisioning_options')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
         self.mock_object(self.library, '_get_normalized_qos_specs')
         self.mock_object(self.library,
                          'validate_provisioning_options_for_share')
@@ -5046,7 +5157,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
-        self.mock_object(self.library, '_get_provisioning_options')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
         self.mock_object(self.library, '_get_normalized_qos_specs')
         self.mock_object(self.library,
                          'validate_provisioning_options_for_share')
@@ -5085,7 +5197,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
         self.mock_object(data_motion, 'get_backend_configuration')
-        self.mock_object(self.library, '_get_provisioning_options')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
         self.mock_object(self.library, '_get_normalized_qos_specs')
         self.mock_object(self.library,
                          'validate_provisioning_options_for_share')
@@ -5126,7 +5239,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(share_types, 'get_extra_specs_from_share')
         self.mock_object(self.library, '_check_extra_specs_validity')
         self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
-        self.mock_object(self.library, '_get_provisioning_options')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
         self.mock_object(self.library, '_get_normalized_qos_specs')
         self.mock_object(self.library,
                          'validate_provisioning_options_for_share')
@@ -5167,8 +5281,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             [mock.call(share_server=fake.SHARE_SERVER),
              mock.call(share_server='dst_srv')])
 
-    def test_migration_check_compatibility(self):
+    @ddt.data(False, True)
+    def test_migration_check_compatibility(self, fpolicy):
         self.library._have_cluster_creds = True
+        mock_dest_client = mock.Mock()
+        if fpolicy:
+            provisioning_options = copy.deepcopy(
+                fake.PROVISIONING_OPTIONS_WITH_FPOLICY)
+            get_vserver_side_effect = [(mock.Mock(), mock_dest_client),
+                                       (fake.VSERVER1, mock.Mock())]
+        else:
+            get_vserver_side_effect = [(fake.VSERVER1, mock.Mock())]
+            provisioning_options = {}
         self.mock_object(share_types, 'get_extra_specs_from_share')
         self.mock_object(self.library, '_check_extra_specs_validity')
         self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
@@ -5176,21 +5300,33 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=fake.SHARE_NAME))
         self.mock_object(data_motion, 'get_backend_configuration')
         self.mock_object(self.library, '_get_vserver',
-                         mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
+                         mock.Mock(side_effect=get_vserver_side_effect))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             side_effect=['destination_backend', 'destination_pool']))
         mock_move_check = self.mock_object(self.client, 'check_volume_move')
         self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
                          mock.Mock(return_value=False))
-        self.mock_object(self.library, '_get_provisioning_options')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value=provisioning_options))
         self.mock_object(self.library, '_get_normalized_qos_specs')
         self.mock_object(self.library,
                          'validate_provisioning_options_for_share')
+        self.mock_object(self.library,
+                         '_check_destination_vserver_for_vol_move')
+        fpolicies = [
+            x for x in range(1, self.library.FPOLICY_MAX_VSERVER_POLICIES + 1)]
+        mock_fpolicy_status = self.mock_object(
+            mock_dest_client, 'get_fpolicy_policies_status',
+            mock.Mock(return_value=fpolicies))
+        mock_reusable_fpolicy = self.mock_object(
+            self.library, '_find_reusable_fpolicy_scope',
+            mock.Mock(return_value={'fake'}))
 
+        src_instance = fake_share.fake_share_instance()
+        dst_instance = fake_share.fake_share_instance()
         migration_compatibility = self.library.migration_check_compatibility(
-            self.context, fake_share.fake_share_instance(),
-            fake_share.fake_share_instance(), share_server=fake.SHARE_SERVER,
-            destination_share_server='dst_srv')
+            self.context, src_instance, dst_instance,
+            share_server=fake.SHARE_SERVER, destination_share_server='dst_srv')
 
         expected_compatibility = {
             'compatible': True,
@@ -5205,9 +5341,20 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_move_check.assert_called_once_with(
             fake.SHARE_NAME, fake.VSERVER1, 'destination_pool',
             encrypt_destination=False)
-        self.library._get_vserver.assert_has_calls(
-            [mock.call(share_server=fake.SHARE_SERVER),
-             mock.call(share_server='dst_srv')])
+        if fpolicy:
+            self.library._get_vserver.assert_has_calls(
+                [mock.call(share_server='dst_srv'),
+                 mock.call(share_server=fake.SHARE_SERVER)])
+            mock_fpolicy_status.assert_called_once()
+            mock_reusable_fpolicy.assert_called_once_with(
+                dst_instance, mock_dest_client,
+                fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+                fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+                fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS
+            )
+        else:
+            self.library._get_vserver.assert_called_once_with(
+                share_server=fake.SHARE_SERVER)
 
     def test_migration_check_compatibility_destination_type_is_encrypted(self):
         self.library._have_cluster_creds = True
@@ -5227,7 +5374,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_check_extra_specs_validity')
         self.mock_object(self.library,
                          '_check_aggregate_extra_specs_validity')
-        self.mock_object(self.library, '_get_provisioning_options')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
         self.mock_object(self.library, '_get_normalized_qos_specs')
         self.mock_object(self.library,
                          'validate_provisioning_options_for_share')
@@ -5251,7 +5399,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_move_check.assert_called_once_with(
             fake.SHARE_NAME, fake.VSERVER1, 'destination_pool',
             encrypt_destination=True)
-
         self.library._get_vserver.assert_has_calls(
             [mock.call(share_server=fake.SHARE_SERVER),
              mock.call(share_server='dst_srv')])
@@ -5529,6 +5676,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                'policy_group_name': fake.QOS_POLICY_GROUP_NAME},
               {'phase': 'completed',
                'provisioning_options': fake.PROVISIONING_OPTIONS,
+               'policy_group_name': False},
+              {'phase': 'completed',
+               'provisioning_options': fake.PROVISIONING_OPTIONS_WITH_FPOLICY,
                'policy_group_name': False})
     @ddt.unpack
     def test_migration_complete(self, phase, provisioning_options,
@@ -5564,6 +5714,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(side_effect=vol_move_side_effects))
         self.mock_object(share_types, 'get_extra_specs_from_share',
                          mock.Mock(return_value=fake.EXTRA_SPEC))
+        self.mock_object(self.library, '_check_fpolicy_file_operations')
         self.mock_object(
             self.library, '_get_provisioning_options',
             mock.Mock(return_value=provisioning_options))
@@ -5571,6 +5722,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library, '_modify_or_create_qos_for_existing_share',
             mock.Mock(return_value=policy_group_name))
         self.mock_object(vserver_client, 'modify_volume')
+        mock_create_new_fpolicy = self.mock_object(
+            self.library, '_create_fpolicy_for_share')
+
+        mock_delete_policy = self.mock_object(self.library,
+                                              '_delete_fpolicy_for_share')
 
         src_share = fake_share.fake_share_instance(id='source-share-instance')
         dest_share = fake_share.fake_share_instance(id='dest-share-instance')
@@ -5596,6 +5752,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.modify_volume.assert_called_once_with(
             dest_aggr, 'new_share_name', **provisioning_options)
         mock_info_log.assert_called_once()
+        mock_delete_policy.assert_called_once_with(src_share, fake.VSERVER1,
+                                                   vserver_client)
         if phase != 'completed':
             self.assertEqual(2, mock_warning_log.call_count)
             self.assertFalse(mock_debug_log.called)
@@ -5604,6 +5762,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.assertFalse(mock_warning_log.called)
             mock_debug_log.assert_called_once()
             mock_move_status_check.assert_called_once()
+        if provisioning_options.get(
+                'fpolicy_extensions_to_include') is not None:
+            mock_create_new_fpolicy.assert_called_once_with(
+                dest_share, fake.VSERVER1, vserver_client,
+                **provisioning_options)
+        else:
+            mock_create_new_fpolicy.assert_not_called()
 
     def test_modify_or_create_qos_for_existing_share_no_qos_extra_specs(self):
         vserver_client = mock.Mock()
@@ -6011,7 +6176,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
               {'provisioning_opts': fake.PROVISIONING_OPTS_WITH_ADAPT_QOS,
                'qos_specs': None,
                'extra_specs': None,
-               'cluster_credentials': False},)
+               'cluster_credentials': False},
+              {'provisioning_opts': fake.PROVISIONING_OPTIONS_INVALID_FPOLICY,
+               'qos_specs': None,
+               'extra_specs': None,
+               'cluster_credentials': False},
+              {'provisioning_opts': fake.PROVISIONING_OPTIONS_WITH_FPOLICY,
+               'qos_specs': None,
+               'extra_specs': {'replication_type': 'dr'},
+               'cluster_credentials': False}
+              )
     @ddt.unpack
     def test_validate_provisioning_options_for_share_invalid_params(
             self, provisioning_opts, qos_specs, extra_specs,
@@ -6022,3 +6196,275 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           self.library.validate_provisioning_options_for_share,
                           provisioning_opts, extra_specs=extra_specs,
                           qos_specs=qos_specs)
+
+    def test__get_backend_fpolicy_policy_name(self):
+        result = self.library._get_backend_fpolicy_policy_name(
+            fake.SHARE_ID)
+        expected = 'fpolicy_policy_' + fake.SHARE_ID.replace('-', '_')
+
+        self.assertEqual(expected, result)
+
+    def test__get_backend_fpolicy_event_name(self):
+        result = self.library._get_backend_fpolicy_event_name(
+            fake.SHARE_ID, 'NFS')
+        expected = 'fpolicy_event_nfs_' + fake.SHARE_ID.replace('-', '_')
+
+        self.assertEqual(expected, result)
+
+    @ddt.data({},
+              {'policy-name': fake.FPOLICY_POLICY_NAME,
+               'shares-to-include': [fake.SHARE_NAME]})
+    def test__create_fpolicy_for_share(self, reusable_scope):
+        vserver_client = mock.Mock()
+        vserver_name = fake.VSERVER1
+        new_fake_share = copy.deepcopy(fake.SHARE)
+        new_fake_share['id'] = 'new_fake_id'
+        new_fake_share['share_proto'] = 'CIFS'
+        event_name = 'fpolicy_event_cifs_new_fake_id'
+        events = [event_name]
+        policy_name = 'fpolicy_policy_new_fake_id'
+        shares_to_include = []
+        if reusable_scope:
+            shares_to_include = copy.deepcopy(
+                reusable_scope.get('shares-to-include'))
+            shares_to_include.append('share_new_fake_id')
+
+        mock_reusable_scope = self.mock_object(
+            self.library, '_find_reusable_fpolicy_scope',
+            mock.Mock(return_value=reusable_scope))
+        mock_modify_policy = self.mock_object(
+            vserver_client, 'modify_fpolicy_scope')
+        mock_get_policies = self.mock_object(
+            vserver_client, 'get_fpolicy_policies_status',
+            mock.Mock(return_value=[]))
+        mock_create_event = self.mock_object(
+            vserver_client, 'create_fpolicy_event')
+        mock_create_fpolicy = self.mock_object(
+            vserver_client, 'create_fpolicy_policy')
+        mock_create_scope = self.mock_object(
+            vserver_client, 'create_fpolicy_scope')
+        mock_enable_fpolicy = self.mock_object(
+            vserver_client, 'enable_fpolicy_policy')
+
+        self.library._create_fpolicy_for_share(
+            new_fake_share, vserver_name, vserver_client,
+            fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+            fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS)
+
+        mock_reusable_scope.assert_called_once_with(
+            new_fake_share, vserver_client,
+            fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+            fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS)
+
+        if reusable_scope:
+            mock_modify_policy.assert_called_once_with(
+                fake.FPOLICY_POLICY_NAME, shares_to_include=shares_to_include)
+            mock_get_policies.assert_not_called()
+            mock_create_event.assert_not_called()
+            mock_create_fpolicy.assert_not_called()
+            mock_create_scope.assert_not_called()
+            mock_enable_fpolicy.assert_not_called()
+        else:
+            mock_modify_policy.assert_not_called()
+
+            mock_get_policies.assert_called_once()
+            mock_create_event.assert_called_once_with(
+                event_name, new_fake_share['share_proto'].lower(),
+                fake.FPOLICY_FILE_OPERATIONS_LIST)
+            mock_create_fpolicy.assert_called_once_with(policy_name, events)
+            mock_create_scope.assert_called_once_with(
+                policy_name, 'share_new_fake_id',
+                extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+                extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE)
+            mock_enable_fpolicy.assert_called_once_with(policy_name, 1)
+
+    def test__create_fpolicy_for_share_max_policies_error(self):
+        fake_client = mock.Mock()
+        vserver_name = fake.VSERVER1
+        mock_reusable_scope = self.mock_object(
+            self.library, '_find_reusable_fpolicy_scope',
+            mock.Mock(return_value=None))
+        policies = [
+            x for x in range(1, self.library.FPOLICY_MAX_VSERVER_POLICIES + 1)]
+        mock_get_policies = self.mock_object(
+            fake_client, 'get_fpolicy_policies_status',
+            mock.Mock(return_value=policies))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._create_fpolicy_for_share,
+            fake.SHARE, vserver_name, fake_client,
+            fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+            fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS)
+
+        mock_reusable_scope.assert_called_once_with(
+            fake.SHARE, fake_client,
+            fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+            fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS)
+        mock_get_policies.assert_called_once()
+
+    def test__create_fpolicy_for_share_client_error(self):
+        fake_client = mock.Mock()
+        vserver_name = fake.VSERVER1
+        new_fake_share = copy.deepcopy(fake.SHARE)
+        new_fake_share['id'] = 'new_fake_id'
+        new_fake_share['share_proto'] = 'CIFS'
+        event_name = 'fpolicy_event_cifs_new_fake_id'
+        events = [event_name]
+        policy_name = 'fpolicy_policy_new_fake_id'
+
+        mock_reusable_scope = self.mock_object(
+            self.library, '_find_reusable_fpolicy_scope',
+            mock.Mock(return_value=None))
+        mock_get_policies = self.mock_object(
+            fake_client, 'get_fpolicy_policies_status',
+            mock.Mock(return_value=[]))
+        mock_create_event = self.mock_object(
+            fake_client, 'create_fpolicy_event')
+        mock_create_fpolicy = self.mock_object(
+            fake_client, 'create_fpolicy_policy')
+        mock_create_scope = self.mock_object(
+            fake_client, 'create_fpolicy_scope',
+            mock.Mock(side_effect=self._mock_api_error()))
+        mock_delete_fpolicy = self.mock_object(
+            fake_client, 'delete_fpolicy_policy')
+        mock_delete_event = self.mock_object(
+            fake_client, 'delete_fpolicy_event')
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._create_fpolicy_for_share,
+            new_fake_share, vserver_name, fake_client,
+            fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+            fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS)
+
+        mock_reusable_scope.assert_called_once_with(
+            new_fake_share, fake_client,
+            fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+            fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS)
+        mock_get_policies.assert_called_once()
+        mock_create_event.assert_called_once_with(
+            event_name, new_fake_share['share_proto'].lower(),
+            fake.FPOLICY_FILE_OPERATIONS_LIST)
+        mock_create_fpolicy.assert_called_once_with(policy_name, events)
+        mock_create_scope.assert_called_once_with(
+            policy_name, 'share_new_fake_id',
+            extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE)
+        mock_delete_fpolicy.assert_called_once_with(policy_name)
+        mock_delete_event.assert_called_once_with(event_name)
+
+    def test__find_reusable_fpolicy_scope(self):
+        vserver_client = mock.Mock()
+        new_fake_share = copy.deepcopy(fake.SHARE)
+        new_fake_share['share_proto'] = 'CIFS'
+        reusable_scopes = [{
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'file-extensions-to-include': fake.FPOLICY_EXT_TO_INCLUDE_LIST,
+            'file-extensions-to-exclude': fake.FPOLICY_EXT_TO_EXCLUDE_LIST,
+            'shares-to-include': ['any_other_fake_share'],
+        }]
+        reusable_policies = [{
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'engine-name': fake.FPOLICY_ENGINE,
+            'events': [fake.FPOLICY_EVENT_NAME]
+        }]
+        reusable_events = [{
+            'event-name': fake.FPOLICY_EVENT_NAME,
+            'protocol': new_fake_share['share_proto'].lower(),
+            'file-operations': fake.FPOLICY_FILE_OPERATIONS_LIST
+        }]
+        mock_get_scopes = self.mock_object(
+            vserver_client, 'get_fpolicy_scopes',
+            mock.Mock(return_value=reusable_scopes))
+        mock_get_policies = self.mock_object(
+            vserver_client, 'get_fpolicy_policies',
+            mock.Mock(return_value=reusable_policies))
+        mocke_get_events = self.mock_object(
+            vserver_client, 'get_fpolicy_events',
+            mock.Mock(return_value=reusable_events)
+        )
+
+        result = self.library._find_reusable_fpolicy_scope(
+            new_fake_share, vserver_client,
+            fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+            fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS)
+
+        self.assertEqual(reusable_scopes[0], result)
+
+        mock_get_scopes.assert_called_once_with(
+            extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+            shares_to_include=None)
+        mock_get_policies.assert_called_once_with(
+            policy_name=fake.FPOLICY_POLICY_NAME)
+        mocke_get_events.assert_called_once_with(
+            event_name=fake.FPOLICY_EVENT_NAME)
+
+    @ddt.data(False, True)
+    def test__delete_fpolicy_for_share(self, last_share):
+        fake_vserver_client = mock.Mock()
+        fake_vserver_name = fake.VSERVER1
+        fake_share = copy.deepcopy(fake.SHARE)
+        share_name = self.library._get_backend_share_name(fake.SHARE_ID)
+        existing_shares = [share_name]
+        if not last_share:
+            existing_shares.append('any_other_share')
+        scopes = [{
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'file-extensions-to-include': fake.FPOLICY_EXT_TO_INCLUDE_LIST,
+            'file-extensions-to-exclude': fake.FPOLICY_EXT_TO_EXCLUDE_LIST,
+            'shares-to-include': existing_shares,
+        }]
+        shares_to_include = copy.copy(scopes[0].get('shares-to-include'))
+        shares_to_include.remove(share_name)
+        policies = [{
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'engine-name': fake.FPOLICY_ENGINE,
+            'events': [fake.FPOLICY_EVENT_NAME]
+        }]
+
+        mock_get_scopes = self.mock_object(
+            fake_vserver_client, 'get_fpolicy_scopes',
+            mock.Mock(return_value=scopes))
+        mock_modify_scope = self.mock_object(
+            fake_vserver_client, 'modify_fpolicy_scope')
+
+        mock_disable_policy = self.mock_object(
+            fake_vserver_client, 'disable_fpolicy_policy')
+        mock_get_policies = self.mock_object(
+            fake_vserver_client, 'get_fpolicy_policies',
+            mock.Mock(return_value=policies))
+        mock_delete_scope = self.mock_object(
+            fake_vserver_client, 'delete_fpolicy_scope')
+        mock_delete_policy = self.mock_object(
+            fake_vserver_client, 'delete_fpolicy_policy')
+        mock_delete_event = self.mock_object(
+            fake_vserver_client, 'delete_fpolicy_event')
+
+        self.library._delete_fpolicy_for_share(fake_share, fake_vserver_name,
+                                               fake_vserver_client)
+
+        mock_get_scopes.assert_called_once_with(
+            shares_to_include=[share_name])
+        if shares_to_include:
+            mock_modify_scope.assert_called_once_with(
+                fake.FPOLICY_POLICY_NAME, shares_to_include=shares_to_include)
+        else:
+            mock_disable_policy.assert_called_once_with(
+                fake.FPOLICY_POLICY_NAME)
+            mock_get_policies.assert_called_once_with(
+                policy_name=fake.FPOLICY_POLICY_NAME)
+            mock_delete_scope.assert_called_once_with(
+                fake.FPOLICY_POLICY_NAME)
+            mock_delete_policy.assert_called_once_with(
+                fake.FPOLICY_POLICY_NAME)
+            mock_delete_event.assert_called_once_with(
+                fake.FPOLICY_EVENT_NAME)

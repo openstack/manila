@@ -4870,3 +4870,403 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     def is_svm_dr_supported(self):
         return self.features.SVM_DR
+
+    def create_fpolicy_event(self, event_name, protocol, file_operations):
+        """Creates a new fpolicy policy event.
+
+        :param event_name: name of the new fpolicy event
+        :param protocol: name of protocol for which event is created. Possible
+            values are: 'nfsv3', 'nfsv4' or 'cifs'.
+        :param file_operations: name of file operations to be monitored. Values
+            should be provided as list of strings.
+        """
+        api_args = {
+            'event-name': event_name,
+            'protocol': protocol,
+            'file-operations': [],
+        }
+        for file_op in file_operations:
+            api_args['file-operations'].append({'fpolicy-operation': file_op})
+
+        self.send_request('fpolicy-policy-event-create', api_args)
+
+    def delete_fpolicy_event(self, event_name):
+        """Deletes a fpolicy policy event.
+
+        :param event_name: name of the event to be deleted
+        """
+        try:
+            self.send_request('fpolicy-policy-event-delete',
+                              {'event-name': event_name})
+        except netapp_api.NaApiError as e:
+            if e.code in [netapp_api.EEVENTNOTFOUND,
+                          netapp_api.EOBJECTNOTFOUND]:
+                msg = _("FPolicy event %s not found.")
+                LOG.debug(msg, event_name)
+            else:
+                raise exception.NetAppException(message=e.message)
+
+    def get_fpolicy_events(self, event_name=None, protocol=None,
+                           file_operations=None):
+        """Retrives a list of fpolicy events.
+
+        :param event_name: name of the fpolicy event
+        :param protocol: name of protocol. Possible values are: 'nfsv3',
+            'nfsv4' or 'cifs'.
+        :param file_operations: name of file operations to be monitored. Values
+            should be provided as list of strings.
+        :returns List of policy events or empty list
+        """
+        event_options_config = {}
+        if event_name:
+            event_options_config['event-name'] = event_name
+        if protocol:
+            event_options_config['protocol'] = protocol
+        if file_operations:
+            event_options_config['file-operations'] = []
+            for file_op in file_operations:
+                event_options_config['file-operations'].append(
+                    {'fpolicy-operation': file_op})
+
+        api_args = {
+            'query': {
+                'fpolicy-event-options-config': event_options_config,
+            },
+        }
+        result = self.send_iter_request('fpolicy-policy-event-get-iter',
+                                        api_args)
+
+        fpolicy_events = []
+        if self._has_records(result):
+            try:
+                fpolicy_events = []
+                attributes_list = result.get_child_by_name(
+                    'attributes-list') or netapp_api.NaElement('none')
+                for event_info in attributes_list.get_children():
+                    name = event_info.get_child_content('event-name')
+                    proto = event_info.get_child_content('protocol')
+                    file_operations_child = event_info.get_child_by_name(
+                        'file-operations') or netapp_api.NaElement('none')
+                    operations = [operation.get_content()
+                                  for operation in
+                                  file_operations_child.get_children()]
+
+                    fpolicy_events.append({
+                        'event-name': name,
+                        'protocol': proto,
+                        'file-operations': operations
+                    })
+            except AttributeError:
+                msg = _('Could not retrieve fpolicy policy event information.')
+                raise exception.NetAppException(msg)
+
+        return fpolicy_events
+
+    def create_fpolicy_policy(self, fpolicy_name, events, engine='native'):
+        """Creates a fpolicy policy resource.
+
+        :param fpolicy_name: name of the fpolicy policy to be created.
+        :param events: list of event names for file access monitoring.
+        :param engine: name of the engine to be used.
+        """
+        api_args = {
+            'policy-name': fpolicy_name,
+            'events': [],
+            'engine-name': engine
+        }
+        for event in events:
+            api_args['events'].append({'event-name': event})
+
+        self.send_request('fpolicy-policy-create', api_args)
+
+    def delete_fpolicy_policy(self, policy_name):
+        """Deletes a fpolicy policy event.
+
+        :param policy_name: name of the policy to be deleted.
+        """
+        try:
+            self.send_request('fpolicy-policy-delete',
+                              {'policy-name': policy_name})
+        except netapp_api.NaApiError as e:
+            if e.code in [netapp_api.EPOLICYNOTFOUND,
+                          netapp_api.EOBJECTNOTFOUND]:
+                msg = _("FPolicy policy %s not found.")
+                LOG.debug(msg, policy_name)
+            else:
+                raise exception.NetAppException(message=e.message)
+
+    def get_fpolicy_policies(self, policy_name=None, engine_name='native',
+                             event_names=[]):
+        """Retrieve one or more fpolicy policies.
+
+        :param policy_name: name of the policy to be retrieved
+        :param engine_name: name of the engine
+        :param event_names: list of event names that must be associated to the
+            fpolicy policy
+        :return: list of fpolicy policies or empty list
+        """
+        policy_info = {}
+        if policy_name:
+            policy_info['policy-name'] = policy_name
+        if engine_name:
+            policy_info['engine-name'] = engine_name
+        if event_names:
+            policy_info['events'] = []
+            for event_name in event_names:
+                policy_info['events'].append({'event-name': event_name})
+
+        api_args = {
+            'query': {
+                'fpolicy-policy-info': policy_info,
+            },
+        }
+        result = self.send_iter_request('fpolicy-policy-get-iter', api_args)
+
+        fpolicy_policies = []
+        if self._has_records(result):
+            try:
+                attributes_list = result.get_child_by_name(
+                    'attributes-list') or netapp_api.NaElement('none')
+                for policy_info in attributes_list.get_children():
+                    name = policy_info.get_child_content('policy-name')
+                    engine = policy_info.get_child_content('engine-name')
+                    events_child = policy_info.get_child_by_name(
+                        'events') or netapp_api.NaElement('none')
+                    events = [event.get_content()
+                              for event in events_child.get_children()]
+
+                    fpolicy_policies.append({
+                        'policy-name': name,
+                        'engine-name': engine,
+                        'events': events
+                    })
+            except AttributeError:
+                msg = _('Could not retrieve fpolicy policy information.')
+                raise exception.NetAppException(message=msg)
+
+        return fpolicy_policies
+
+    def create_fpolicy_scope(self, policy_name, share_name,
+                             extensions_to_include=None,
+                             extensions_to_exclude=None):
+        """Assings a file scope to an existing fpolicy policy.
+
+        :param policy_name: name of the policy to associate with the new scope.
+        :param share_name: name of the share to be associated with the new
+            scope.
+        :param extensions_to_include: file extensions included for screening.
+            Values should be provided as comma separated list
+        :param extensions_to_exclude: file extensions excluded for screening.
+            Values should be provided as comma separated list
+        """
+        api_args = {
+            'policy-name': policy_name,
+            'shares-to-include': {
+                'string': share_name,
+            },
+            'file-extensions-to-include': [],
+            'file-extensions-to-exclude': [],
+        }
+        if extensions_to_include:
+            for file_ext in extensions_to_include.split(','):
+                api_args['file-extensions-to-include'].append(
+                    {'string': file_ext.strip()})
+
+        if extensions_to_exclude:
+            for file_ext in extensions_to_exclude.split(','):
+                api_args['file-extensions-to-exclude'].append(
+                    {'string': file_ext.strip()})
+
+        self.send_request('fpolicy-policy-scope-create', api_args)
+
+    def modify_fpolicy_scope(self, policy_name, shares_to_include=[],
+                             extensions_to_include=None,
+                             extensions_to_exclude=None):
+        """Modify an existing fpolicy scope.
+
+        :param policy_name: name of the policy associated to the scope.
+        :param shares_to_include: list of shares to include for file access
+            monitoring.
+        :param extensions_to_include: file extensions included for screening.
+            Values should be provided as comma separated list
+        :param extensions_to_exclude: file extensions excluded for screening.
+            Values should be provided as comma separated list
+        """
+        api_args = {
+            'policy-name': policy_name,
+        }
+        if extensions_to_include:
+            api_args['file-extensions-to-include'] = []
+            for file_ext in extensions_to_include.split(','):
+                api_args['file-extensions-to-include'].append(
+                    {'string': file_ext.strip()})
+
+        if extensions_to_exclude:
+            api_args['file-extensions-to-exclude'] = []
+            for file_ext in extensions_to_exclude.split(','):
+                api_args['file-extensions-to-exclude'].append(
+                    {'string': file_ext.strip()})
+
+        if shares_to_include:
+            api_args['shares-to-include'] = [
+                {'string': share} for share in shares_to_include
+            ]
+
+        self.send_request('fpolicy-policy-scope-modify', api_args)
+
+    def delete_fpolicy_scope(self, policy_name):
+        """Deletes a fpolicy policy scope.
+
+        :param policy_name: name of the policy associated to the scope to be
+            deleted.
+        """
+        try:
+            self.send_request('fpolicy-policy-scope-delete',
+                              {'policy-name': policy_name})
+        except netapp_api.NaApiError as e:
+            if e.code in [netapp_api.ESCOPENOTFOUND,
+                          netapp_api.EOBJECTNOTFOUND]:
+                msg = _("FPolicy scope %s not found.")
+                LOG.debug(msg, policy_name)
+            else:
+                raise exception.NetAppException(message=e.message)
+
+    def get_fpolicy_scopes(self, policy_name=None, extensions_to_include=None,
+                           extensions_to_exclude=None, shares_to_include=None):
+        """Retrieve fpolicy scopes.
+
+        :param policy_name: name of the policy associated with a scope.
+        :param extensions_to_include: file extensions included for screening.
+            Values should be provided as comma separated list
+        :param extensions_to_exclude: file extensions excluded for screening.
+            Values should be provided as comma separated list
+        :param shares_to_include: list of shares to include for file access
+            monitoring.
+        :return: list of fpolicy scopes or empty list
+        """
+        policy_scope_info = {}
+        if policy_name:
+            policy_scope_info['policy-name'] = policy_name
+
+        if shares_to_include:
+            policy_scope_info['shares-to-include'] = [
+                {'string': share} for share in shares_to_include
+            ]
+        if extensions_to_include:
+            policy_scope_info['file-extensions-to-include'] = []
+            for file_op in extensions_to_include.split(','):
+                policy_scope_info['file-extensions-to-include'].append(
+                    {'string': file_op.strip()})
+        if extensions_to_exclude:
+            policy_scope_info['file-extensions-to-exclude'] = []
+            for file_op in extensions_to_exclude.split(','):
+                policy_scope_info['file-extensions-to-exclude'].append(
+                    {'string': file_op.strip()})
+
+        api_args = {
+            'query': {
+                'fpolicy-scope-config': policy_scope_info,
+            },
+        }
+        result = self.send_iter_request('fpolicy-policy-scope-get-iter',
+                                        api_args)
+
+        fpolicy_scopes = []
+        if self._has_records(result):
+            try:
+                fpolicy_scopes = []
+                attributes_list = result.get_child_by_name(
+                    'attributes-list') or netapp_api.NaElement('none')
+                for policy_scope in attributes_list.get_children():
+                    name = policy_scope.get_child_content('policy-name')
+                    ext_include_child = policy_scope.get_child_by_name(
+                        'file-extensions-to-include') or netapp_api.NaElement(
+                        'none')
+                    ext_include = [ext.get_content()
+                                   for ext in ext_include_child.get_children()]
+                    ext_exclude_child = policy_scope.get_child_by_name(
+                        'file-extensions-to-exclude') or netapp_api.NaElement(
+                        'none')
+                    ext_exclude = [ext.get_content()
+                                   for ext in ext_exclude_child.get_children()]
+                    shares_child = policy_scope.get_child_by_name(
+                        'shares-to-include') or netapp_api.NaElement('none')
+                    shares_include = [ext.get_content()
+                                      for ext in shares_child.get_children()]
+                    fpolicy_scopes.append({
+                        'policy-name': name,
+                        'file-extensions-to-include': ext_include,
+                        'file-extensions-to-exclude': ext_exclude,
+                        'shares-to-include': shares_include,
+                    })
+            except AttributeError:
+                msg = _('Could not retrieve fpolicy policy information.')
+                raise exception.NetAppException(msg)
+
+        return fpolicy_scopes
+
+    def enable_fpolicy_policy(self, policy_name, sequence_number):
+        """Enables a specific named policy.
+
+        :param policy_name: name of the policy to be enabled
+        :param sequence_number: policy sequence number
+        """
+        api_args = {
+            'policy-name': policy_name,
+            'sequence-number': sequence_number,
+        }
+
+        self.send_request('fpolicy-enable-policy', api_args)
+
+    def disable_fpolicy_policy(self, policy_name):
+        """Disables a specific policy.
+
+        :param policy_name: name of the policy to be disabled
+        """
+        try:
+            self.send_request('fpolicy-disable-policy',
+                              {'policy-name': policy_name})
+        except netapp_api.NaApiError as e:
+            disabled = "policy is already disabled"
+            if (e.code in [netapp_api.EPOLICYNOTFOUND,
+                           netapp_api.EOBJECTNOTFOUND] or
+                    (e.code == netapp_api.EINVALIDINPUTERROR and
+                     disabled in e.message)):
+                msg = _("FPolicy policy %s not found or already disabled.")
+                LOG.debug(msg, policy_name)
+            else:
+                raise exception.NetAppException(message=e.message)
+
+    def get_fpolicy_policies_status(self, policy_name=None, status='true'):
+        policy_status_info = {}
+        if policy_name:
+            policy_status_info['policy-name'] = policy_name
+            policy_status_info['status'] = status
+        api_args = {
+            'query': {
+                'fpolicy-policy-status-info': policy_status_info,
+            },
+        }
+        result = self.send_iter_request('fpolicy-policy-status-get-iter',
+                                        api_args)
+
+        fpolicy_status = []
+        if self._has_records(result):
+            try:
+                fpolicy_status = []
+                attributes_list = result.get_child_by_name(
+                    'attributes-list') or netapp_api.NaElement('none')
+                for policy_status in attributes_list.get_children():
+                    name = policy_status.get_child_content('policy-name')
+                    status = policy_status.get_child_content('status')
+                    seq = policy_status.get_child_content('sequence-number')
+                    fpolicy_status.append({
+                        'policy-name': name,
+                        'status': strutils.bool_from_string(status),
+                        'sequence-number': seq
+                    })
+            except AttributeError:
+                msg = _('Could not retrieve fpolicy status information.')
+                raise exception.NetAppException(msg)
+
+        return fpolicy_status
