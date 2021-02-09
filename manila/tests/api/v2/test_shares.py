@@ -550,7 +550,8 @@ class ShareAPITest(test.TestCase):
             is_public=False,
             metadata=None,
             snapshot_id=None,
-            availability_zone=az_id)
+            availability_zone=az_id,
+            scheduler_hints=None)
 
     def test_share_create_with_sg_and_different_availability_zone(self):
         sg_id = 'fake_sg_id'

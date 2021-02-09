@@ -406,6 +406,9 @@ class ShareMixin(object):
 
         if share_type:
             kwargs['share_type'] = share_type
+
+        kwargs['scheduler_hints'] = share.get('scheduler_hints')
+
         new_share = self.share_api.create(context,
                                           share_proto,
                                           size,

@@ -770,7 +770,8 @@ class ShareAPITestCase(test.TestCase):
             self.context, share, share_network_id=fake_share_network_id,
             host=None, availability_zone=None, share_group=None,
             share_group_snapshot_member=None, share_type_id=None,
-            availability_zones=expected_azs, snapshot_host=None
+            availability_zones=expected_azs, snapshot_host=None,
+            scheduler_hints=None
         )
         db_api.share_get.assert_called_once()
 
@@ -900,7 +901,7 @@ class ShareAPITestCase(test.TestCase):
             share_instance,
             host,
             request_spec=mock.ANY,
-            filter_properties={},
+            filter_properties={'scheduler_hints': None},
             snapshot_id=share['snapshot_id'],
         )
         self.assertFalse(
@@ -913,7 +914,8 @@ class ShareAPITestCase(test.TestCase):
 
         (self.api.scheduler_rpcapi.create_share_instance.
             assert_called_once_with(
-                self.context, request_spec=mock.ANY, filter_properties={}))
+                self.context, request_spec=mock.ANY,
+                filter_properties={'scheduler_hints': None}))
         self.assertFalse(self.api.share_rpcapi.create_share_instance.called)
 
     def test_create_share_instance_from_snapshot(self):
@@ -2184,7 +2186,8 @@ class ShareAPITestCase(test.TestCase):
             availability_zone=az,
             share_group=None, share_group_snapshot_member=None,
             availability_zones=None,
-            snapshot_host=snapshot['share']['instance']['host'])
+            snapshot_host=snapshot['share']['instance']['host'],
+            scheduler_hints=None)
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share_snapshot', 'get_snapshot')
         quota.QUOTAS.reserve.assert_called_once_with(

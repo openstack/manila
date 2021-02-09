@@ -156,7 +156,7 @@ class API(base.Base):
                snapshot_id=None, availability_zone=None, metadata=None,
                share_network_id=None, share_type=None, is_public=False,
                share_group_id=None, share_group_snapshot_member=None,
-               availability_zones=None):
+               availability_zones=None, scheduler_hints=None):
         """Create new share."""
 
         self._check_metadata_properties(metadata)
@@ -358,7 +358,7 @@ class API(base.Base):
             availability_zone=availability_zone, share_group=share_group,
             share_group_snapshot_member=share_group_snapshot_member,
             share_type_id=share_type_id, availability_zones=availability_zones,
-            snapshot_host=snapshot_host)
+            snapshot_host=snapshot_host, scheduler_hints=scheduler_hints)
 
         # Retrieve the share with instance details
         share = self.db.share_get(context, share['id'])
@@ -435,7 +435,7 @@ class API(base.Base):
                         host=None, availability_zone=None,
                         share_group=None, share_group_snapshot_member=None,
                         share_type_id=None, availability_zones=None,
-                        snapshot_host=None):
+                        snapshot_host=None, scheduler_hints=None):
         request_spec, share_instance = (
             self.create_share_instance_and_get_request_spec(
                 context, share, availability_zone=availability_zone,
@@ -467,14 +467,17 @@ class API(base.Base):
                 share_instance,
                 host,
                 request_spec=request_spec,
-                filter_properties={},
+                filter_properties={'scheduler_hints': scheduler_hints},
                 snapshot_id=share['snapshot_id'],
             )
         else:
             # Create share instance from scratch or from snapshot could happen
             # on hosts other than the source host.
             self.scheduler_rpcapi.create_share_instance(
-                context, request_spec=request_spec, filter_properties={})
+                context,
+                request_spec=request_spec,
+                filter_properties={'scheduler_hints': scheduler_hints},
+            )
 
         return share_instance
 
