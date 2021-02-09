@@ -1,0 +1,14 @@
+---
+features:
+  - Add AffinityFilter and AntiAffinityFilter to manila's scheduler.
+    These hard affinity and anti-affinity filter needs user to specify
+    affinity/anti-affinity share ids to the field
+    "share.scheduler_hints.same_host" or
+    "share.scheduler_hints.different_host" in the request payload when
+    creating a manila share. The hints are stored as share metadata. The
+    filter properties are populated from this metadata during share
+    migration and so filters will be applied when migrating a manila share.
+upgrade:
+  - To add AffinityFilter and AntiAffinityFilter to an active deployment,
+    their references must be added to the manila.scheduler.filters section in
+    setup.cfg and must be enabled in manila.conf.

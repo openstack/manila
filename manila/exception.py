@@ -175,7 +175,7 @@ class InvalidParameterValue(Invalid):
 
 
 class InvalidUUID(Invalid):
-    message = _("Expected a uuid but received %(uuid)s.")
+    message = _("%(uuid)s is not a valid uuid.")
 
 
 class InvalidDriverMode(Invalid):
@@ -544,6 +544,10 @@ class ExportLocationNotFound(NotFound):
 
 class ShareNotFound(NotFound):
     message = _("Share %(share_id)s could not be found.")
+
+
+class ShareInstanceNotFound(NotFound):
+    message = _("Share instance %(share_instance_id)s could not be found.")
 
 
 class ShareSnapshotNotFound(NotFound):

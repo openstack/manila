@@ -178,8 +178,20 @@ class ShareController(shares.ShareMixin,
 
         return data
 
-    @wsgi.Controller.api_version("2.48")
+    @wsgi.Controller.api_version("2.65")
     def create(self, req, body):
+        if not self.is_valid_body(body, 'share'):
+            raise exc.HTTPUnprocessableEntity()
+
+        share = body['share']
+        scheduler_hints = share.pop('scheduler_hints', None)
+        return self._create(req, body,
+                            check_create_share_from_snapshot_support=True,
+                            check_availability_zones_extra_spec=True,
+                            scheduler_hints=scheduler_hints)
+
+    @wsgi.Controller.api_version("2.48", "2.64") # noqa
+    def create(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         return self._create(req, body,
                             check_create_share_from_snapshot_support=True,
                             check_availability_zones_extra_spec=True)

@@ -3418,6 +3418,22 @@ def share_metadata_get(context, share_id):
 
 @require_context
 @require_share_exists
+def share_metadata_get_item(context, share_id, key, session=None):
+    session = session or get_session()
+    try:
+        row = _share_metadata_get_item(context, share_id, key,
+                                       session=session)
+    except exception.ShareMetadataNotFound:
+        raise exception.ShareMetadataNotFound()
+
+    result = {}
+    result[row['key']] = row['value']
+
+    return result
+
+
+@require_context
+@require_share_exists
 def share_metadata_delete(context, share_id, key):
     (_share_metadata_get_query(context, share_id).
         filter_by(key=key).soft_delete())
@@ -3427,6 +3443,12 @@ def share_metadata_delete(context, share_id, key):
 @require_share_exists
 def share_metadata_update(context, share_id, metadata, delete):
     return _share_metadata_update(context, share_id, metadata, delete)
+
+
+@require_context
+@require_share_exists
+def share_metadata_update_item(context, share_id, item, session=None):
+    return _share_metadata_update(context, share_id, item, delete=False)
 
 
 def _share_metadata_get_query(context, share_id, session=None):

@@ -48,6 +48,8 @@ host_manager_opts = [
                     'DriverFilter',
                     'ShareReplicationFilter',
                     'CreateFromSnapshotFilter',
+                    'AffinityFilter',
+                    'AntiAffinityFilter',
                 ],
                 help='Which filter class names to use for filtering hosts '
                      'when not specified in the request.'),

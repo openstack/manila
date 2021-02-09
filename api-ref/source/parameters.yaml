@@ -2200,6 +2200,15 @@ revert_to_snapshot_support_share_capability:
   required: true
   type: boolean
   min_version: 2.27
+scheduler_hints:
+  description: |
+    One or more scheduler_hints key and value pairs as a dictionary
+    of strings. e.g. keys are same_host, different_host and values must be
+    a comma separated list of Share IDs.
+  in: body
+  required: false
+  type: object
+  min_version: 2.65
 security_service_dns_ip:
   description: |
     The DNS IP address that is used inside the project network.

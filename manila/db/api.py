@@ -766,11 +766,14 @@ def security_service_get_all_by_project(context, project_id):
 
 
 ####################
-
-
 def share_metadata_get(context, share_id):
     """Get all metadata for a share."""
     return IMPL.share_metadata_get(context, share_id)
+
+
+def share_metadata_get_item(context, share_id, key):
+    """Get metadata item for given key and for a given share.."""
+    return IMPL.share_metadata_get_item(context, share_id, key)
 
 
 def share_metadata_delete(context, share_id, key):
@@ -781,6 +784,11 @@ def share_metadata_delete(context, share_id, key):
 def share_metadata_update(context, share, metadata, delete):
     """Update metadata if it exists, otherwise create it."""
     IMPL.share_metadata_update(context, share, metadata, delete)
+
+
+def share_metadata_update_item(context, share_id, item):
+    """update meta item containing key and value for given share."""
+    IMPL.share_metadata_update_item(context, share_id, item)
 
 
 ###################

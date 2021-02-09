@@ -152,7 +152,7 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
             'share_properties': {'project_id': 1, 'size': 1},
             'share_instance_properties': {},
             'share_type': {'name': 'NFS'},
-            'share_id': ['fake-id1'],
+            'share_id': 'fake-id1',
         }
         self.assertRaises(exception.NoValidHost, sched.schedule_create_share,
                           fake_context, request_spec, {})
@@ -177,7 +177,7 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
             'share_properties': {'project_id': 1, 'size': 1},
             'share_instance_properties': {},
             'share_type': {'name': 'NFS'},
-            'share_id': ['fake-id1'],
+            'share_id': 'fake-id1',
         }
         self.assertRaises(exception.NoValidHost, sched.schedule_create_share,
                           fake_context, request_spec, {})
