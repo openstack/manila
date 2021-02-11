@@ -27,6 +27,7 @@ from manila.share import configuration
 from manila.share.drivers.container import driver
 from manila.share.drivers.container import protocol_helper
 from manila import test
+from manila.tests import db_utils
 from manila.tests import fake_utils
 from manila.tests.share.drivers.container import fakes as cont_fakes
 
@@ -608,3 +609,109 @@ class ContainerShareDriverTestCase(test.TestCase):
 
         mock_get_container_name.assert_any_call(source_server['id'])
         mock_get_container_name.assert_any_call(dest_server['id'])
+
+    def test__get_different_security_service_keys(self):
+        sec_service_keys = ['dns_ip', 'server', 'domain', 'user', 'password',
+                            'ou']
+        current_security_service = {}
+        [current_security_service.update({key: key + '_1'})
+         for key in sec_service_keys]
+        new_security_service = {}
+        [new_security_service.update({key: key + '_2'})
+         for key in sec_service_keys]
+
+        db_utils.create_security_service(**current_security_service)
+        db_utils.create_security_service(**new_security_service)
+
+        different_keys = self._driver._get_different_security_service_keys(
+            current_security_service, new_security_service)
+
+        [self.assertIn(key, different_keys) for key in sec_service_keys]
+
+    @ddt.data(
+        (['dns_ip', 'server', 'domain', 'user', 'password', 'ou'], False),
+        (['user', 'password'], True)
+    )
+    @ddt.unpack
+    def test__check_if_all_fields_are_updatable(self, keys, expected_result):
+
+        current_security_service = db_utils.create_security_service()
+        new_security_service = db_utils.create_security_service()
+
+        mock_get_keys = self.mock_object(
+            self._driver, '_get_different_security_service_keys',
+            mock.Mock(return_value=keys))
+
+        result = self._driver._check_if_all_fields_are_updatable(
+            current_security_service, new_security_service)
+
+        self.assertEqual(expected_result, result)
+        mock_get_keys.assert_called_once_with(
+            current_security_service, new_security_service
+        )
+
+    @ddt.data(True, False)
+    def test_update_share_server_security_service(
+            self, with_current_service):
+        new_security_service = db_utils.create_security_service()
+        current_security_service = (
+            db_utils.create_security_service()
+            if with_current_service else None)
+        share_server = db_utils.create_share_server()
+        fake_container_name = 'fake_name'
+        network_info = {}
+        share_instances = []
+        share_instance_access_rules = []
+
+        mock_check_update = self.mock_object(
+            self._driver, 'check_update_share_server_security_service',
+            mock.Mock(return_value=True))
+        mock_get_container_name = self.mock_object(
+            self._driver, '_get_container_name',
+            mock.Mock(return_value=fake_container_name))
+        mock_setup = self.mock_object(self._driver, 'setup_security_services')
+        mock_update_sec_service = self.mock_object(
+            self._driver.security_service_helper, 'update_security_service')
+
+        self._driver.update_share_server_security_service(
+            self._context, share_server, network_info, share_instances,
+            share_instance_access_rules, new_security_service,
+            current_security_service=current_security_service)
+
+        mock_check_update.assert_called_once_with(
+            self._context, share_server, network_info, share_instances,
+            share_instance_access_rules, new_security_service,
+            current_security_service=current_security_service
+        )
+        mock_get_container_name.assert_called_once_with(share_server['id'])
+        if with_current_service:
+            mock_update_sec_service.assert_called_once_with(
+                fake_container_name, current_security_service,
+                new_security_service)
+        else:
+            mock_setup.assert_called_once_with(
+                fake_container_name, [new_security_service])
+
+    def test_update_share_server_security_service_not_supported(self):
+        new_security_service = db_utils.create_security_service()
+        current_security_service = db_utils.create_security_service()
+        share_server = db_utils.create_share_server()
+        share_instances = []
+        share_instance_access_rules = []
+        network_info = {}
+
+        mock_check_update = self.mock_object(
+            self._driver, 'check_update_share_server_security_service',
+            mock.Mock(return_value=False))
+
+        self.assertRaises(
+            exception.ManilaException,
+            self._driver.update_share_server_security_service,
+            self._context, share_server, network_info, share_instances,
+            share_instance_access_rules, new_security_service,
+            current_security_service=current_security_service)
+
+        mock_check_update.assert_called_once_with(
+            self._context, share_server, network_info, share_instances,
+            share_instance_access_rules, new_security_service,
+            current_security_service=current_security_service)

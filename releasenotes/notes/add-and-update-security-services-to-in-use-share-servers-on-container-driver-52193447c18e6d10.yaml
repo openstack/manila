@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    The Container Driver is now able to handle LDAP security services
+    configuration while setting up share servers. Also, the Container Driver
+    allows adding or updating ``LDAP`` security services to in use share
+    networks.
