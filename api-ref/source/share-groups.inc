@@ -135,7 +135,7 @@ Response parameters
    - share_network_id: share_network_id
    - share_types: share_types_1
    - links: share_group_links
-   - availability_zone: availability_zone_id_2
+   - availability_zone: availability_zone_id_share_group
    - consistent_snapshot_support: consistent_snapshot_support
 
 Response example
@@ -180,9 +180,9 @@ Request
    - description: description_request
    - share_types: share_types
    - share_group_type: share_group_type_id
-   - share_network: share_network_id_1
+   - share_network: share_network_id_request
    - source_share_group_snapshot: source_share_group_snapshot_id
-   - availability_zone: availability_zone_id_2
+   - availability_zone: availability_zone_id_share_group
 
 Request example
 ---------------
@@ -207,7 +207,7 @@ Response parameters
    - share_network_id: share_network_id
    - share_types: share_types_1
    - links: share_group_links
-   - availability_zone: availability_zone_id_2
+   - availability_zone: availability_zone_id_share_group
    - consistent_snapshot_support: consistent_snapshot_support
 
 Response example
@@ -319,7 +319,7 @@ Response parameters
    - share_network_id: share_network_id
    - share_types: share_types_1
    - links: share_group_links
-   - availability_zone: availability_zone_id_2
+   - availability_zone: availability_zone_id_share_group
    - consistent_snapshot_support: consistent_snapshot_support
 
 Response example

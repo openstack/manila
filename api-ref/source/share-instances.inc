@@ -45,19 +45,19 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_5
+   - status: share_status_response
    - access_rules_status: access_rules_status
-   - share_id: share_id_2
+   - share_id: share_id_share_instances_response
    - progress: progress_share_instance
-   - availability_zone: availability_zone_1
+   - availability_zone: availability_zone
    - created_at: created_at
    - replica_state: replica_state
    - export_location: export_location
    - export_locations: export_locations
    - cast_rules_to_readonly: share_instance_cast_rules_to_readonly
-   - share_network_id: share_network_id_4
+   - share_network_id: share_network_id
    - share_server_id: share_server_id
-   - host: host_6
+   - host: host_resource_response
    - id: id_13
 
 Response example
@@ -103,19 +103,19 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_5
+   - status: share_status_response
    - access_rules_status: access_rules_status
-   - share_id: share_id_2
+   - share_id: share_id_share_instances_response
    - progress: progress_share_instance
-   - availability_zone: availability_zone_1
+   - availability_zone: availability_zone
    - created_at: created_at
    - replica_state: replica_state
    - export_location: export_location
    - export_locations: export_locations
    - cast_rules_to_readonly: share_instance_cast_rules_to_readonly
-   - share_network_id: share_network_id_4
+   - share_network_id: share_network_id
    - share_server_id: share_server_id
-   - host: host_6
+   - host: host_resource_response
    - id: id_13
 
 Response example
@@ -158,7 +158,7 @@ Request
 
    - project_id: project_id_path
    - share_instance_id: share_instance_id
-   - status: status_5
+   - status: share_status_request
 
 Request example
 ---------------
