@@ -73,24 +73,6 @@ class ManilaKeystoneContext(base_wsgi.Middleware):
 
     @webob.dec.wsgify(RequestClass=base_wsgi.Request)
     def __call__(self, req):
-        user_id = req.headers.get('X_USER')
-        user_id = req.headers.get('X_USER_ID', user_id)
-        if user_id is None:
-            LOG.debug("Neither X_USER_ID nor X_USER found in request")
-            return webob.exc.HTTPUnauthorized()
-        # get the roles
-        roles = [r.strip() for r in req.headers.get('X_ROLE', '').split(',')]
-        if 'X_TENANT_ID' in req.headers:
-            # This is the new header since Keystone went to ID/Name
-            project_id = req.headers['X_TENANT_ID']
-        else:
-            # This is for legacy compatibility
-            project_id = req.headers['X_TENANT']
-
-        # Get the auth token
-        auth_token = req.headers.get('X_AUTH_TOKEN',
-                                     req.headers.get('X_STORAGE_TOKEN'))
-
         # Build a context, including the auth_token...
         remote_address = req.remote_addr
         if CONF.use_forwarded_for:
@@ -105,12 +87,26 @@ class ManilaKeystoneContext(base_wsgi.Middleware):
                 raise webob.exc.HTTPInternalServerError(
                     _('Invalid service catalog json.'))
 
-        ctx = context.RequestContext(user_id,
-                                     project_id,
-                                     roles=roles,
-                                     auth_token=auth_token,
-                                     remote_address=remote_address,
-                                     service_catalog=service_catalog)
+        ctx = context.RequestContext.from_environ(
+            req.environ,
+            remote_address=remote_address,
+            service_catalog=service_catalog)
+
+        if ctx.user_id is None:
+            LOG.debug("Neither X_USER_ID nor X_USER found in request")
+            return webob.exc.HTTPUnauthorized()
+
+        if req.environ.get('X_PROJECT_DOMAIN_ID'):
+            ctx.project_domain_id = req.environ['X_PROJECT_DOMAIN_ID']
+
+        if req.environ.get('X_PROJECT_DOMAIN_NAME'):
+            ctx.project_domain_name = req.environ['X_PROJECT_DOMAIN_NAME']
+
+        if req.environ.get('X_USER_DOMAIN_ID'):
+            ctx.user_domain_id = req.environ['X_USER_DOMAIN_ID']
+
+        if req.environ.get('X_USER_DOMAIN_NAME'):
+            ctx.user_domain_name = req.environ['X_USER_DOMAIN_NAME']
 
         req.environ['manila.context'] = ctx
         return self.application

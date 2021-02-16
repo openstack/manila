@@ -87,15 +87,13 @@ def enforce(context, action, target, do_raise=True):
 
     """
     init()
-    if not isinstance(context, dict):
-        context = context.to_dict()
 
-    # Add the exception arguments if asked to do a raise
-    extra = {}
-    if do_raise:
-        extra.update(exc=exception.PolicyNotAuthorized, action=action,
-                     do_raise=do_raise)
-    return _ENFORCER.enforce(action, target, context, **extra)
+    return _ENFORCER.enforce(action,
+                             target,
+                             context.to_policy_values(),
+                             do_raise=do_raise,
+                             exc=exception.PolicyNotAuthorized,
+                             action=action)
 
 
 def set_rules(rules, overwrite=True, use_conf=False):

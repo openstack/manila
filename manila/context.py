@@ -21,7 +21,6 @@ import copy
 
 from oslo_context import context
 from oslo_utils import timeutils
-import six
 
 from manila.i18n import _
 from manila import policy
@@ -34,43 +33,26 @@ class RequestContext(context.RequestContext):
 
     """
 
-    def __init__(self, user_id, project_id, is_admin=None, read_deleted="no",
-                 roles=None, remote_address=None, timestamp=None,
-                 request_id=None, auth_token=None, overwrite=True,
-                 quota_class=None, service_catalog=None, **kwargs):
+    def __init__(self, user_id=None, project_id=None, is_admin=None,
+                 read_deleted="no", project_name=None, remote_address=None,
+                 timestamp=None, quota_class=None, service_catalog=None,
+                 system_scope=None,
+                 **kwargs):
         """Initialize RequestContext.
 
         :param read_deleted: 'no' indicates deleted records are hidden, 'yes'
             indicates deleted records are visible, 'only' indicates that
             *only* deleted records are visible.
 
-        :param overwrite: Set to False to ensure that the greenthread local
-            copy of the index is not overwritten.
-
-        :param kwargs: Extra arguments that might be present, but we ignore
-            because they possibly came in from older rpc messages.
+        :param kwargs: Extra arguments passed transparently to
+            oslo_context.RequestContext.
         """
+        kwargs.setdefault('user_id', user_id)
+        kwargs.setdefault('project_id', project_id)
 
-        user = kwargs.pop('user', None)
-        tenant = kwargs.pop('tenant', None)
-        super(RequestContext, self).__init__(
-            auth_token=auth_token,
-            user=user_id or user,
-            tenant=project_id or tenant,
-            domain=kwargs.pop('domain', None),
-            user_domain=kwargs.pop('user_domain', None),
-            project_domain=kwargs.pop('project_domain', None),
-            is_admin=is_admin,
-            read_only=kwargs.pop('read_only', False),
-            show_deleted=kwargs.pop('show_deleted', False),
-            request_id=request_id,
-            resource_uuid=kwargs.pop('resource_uuid', None),
-            overwrite=overwrite,
-            roles=roles)
+        super(RequestContext, self).__init__(is_admin=is_admin, **kwargs)
 
-        self.user_id = self.user
-        self.project_id = self.tenant
-
+        self.project_name = project_name
         if self.is_admin is None:
             self.is_admin = policy.check_is_admin(self)
         elif self.is_admin and 'admin' not in self.roles:
@@ -79,16 +61,15 @@ class RequestContext(context.RequestContext):
         self.remote_address = remote_address
         if not timestamp:
             timestamp = timeutils.utcnow()
-        if isinstance(timestamp, six.string_types):
-            timestamp = timeutils.parse_strtime(timestamp)
+        elif isinstance(timestamp, str):
+            timestamp = timeutils.parse_isotime(timestamp)
         self.timestamp = timestamp
+        self.quota_class = quota_class
         if service_catalog:
             self.service_catalog = [s for s in service_catalog
                                     if s.get('type') in ('compute', 'volume')]
         else:
             self.service_catalog = []
-
-        self.quota_class = quota_class
 
     def _get_read_deleted(self):
         return self._read_deleted
@@ -107,20 +88,37 @@ class RequestContext(context.RequestContext):
 
     def to_dict(self):
         values = super(RequestContext, self).to_dict()
-        values.update({
-            'user_id': getattr(self, 'user_id', None),
-            'project_id': getattr(self, 'project_id', None),
-            'read_deleted': getattr(self, 'read_deleted', None),
-            'remote_address': getattr(self, 'remote_address', None),
-            'timestamp': self.timestamp.isoformat() if hasattr(
-                self, 'timestamp') else None,
-            'quota_class': getattr(self, 'quota_class', None),
-            'service_catalog': getattr(self, 'service_catalog', None)})
+        values['user_id'] = self.user_id
+        values['project_id'] = self.project_id
+        values['project_name'] = self.project_name
+        values['domain_id'] = self.domain_id
+        values['read_deleted'] = self.read_deleted
+        values['remote_address'] = self.remote_address
+        values['timestamp'] = self.timestamp.isoformat()
+        values['quota_class'] = self.quota_class
+        values['service_catalog'] = self.service_catalog
+        values['request_id'] = self.request_id
         return values
 
     @classmethod
     def from_dict(cls, values):
-        return cls(**values)
+        return cls(
+            user_id=values.get('user_id'),
+            project_id=values.get('project_id'),
+            project_name=values.get('project_name'),
+            domain_id=values.get('domain_id'),
+            read_deleted=values.get('read_deleted'),
+            remote_address=values.get('remote_address'),
+            timestamp=values.get('timestamp'),
+            quota_class=values.get('quota_class'),
+            service_catalog=values.get('service_catalog'),
+            request_id=values.get('request_id'),
+            is_admin=values.get('is_admin'),
+            roles=values.get('roles'),
+            auth_token=values.get('auth_token'),
+            user_domain_id=values.get('user_domain_id'),
+            project_domain_id=values.get('project_domain_id')
+        )
 
     def elevated(self, read_deleted=None, overwrite=False):
         """Return a version of this context with admin flag set."""
