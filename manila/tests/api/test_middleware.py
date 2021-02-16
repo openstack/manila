@@ -68,9 +68,9 @@ class TestCORSMiddleware(integrated_helpers._IntegratedTestBase):
                 'Access-Control-Request-Method': 'GET',
             }
         )
-        self.assertEqual(200, response.status)
+        self.assertEqual(200, response.status_code)
         self.assertEqual(acao_header_expected,
-                         response.getheader('Access-Control-Allow-Origin'))
+                         response.headers.get('Access-Control-Allow-Origin'))
 
     @ddt.data(
         ('http://valid.example.com', 'http://valid.example.com'),
@@ -85,9 +85,9 @@ class TestCORSMiddleware(integrated_helpers._IntegratedTestBase):
                 'Origin': origin_url
             }
         )
-        self.assertEqual(404, response.status)
+        self.assertEqual(404, response.status_code)
         self.assertEqual(acao_header_expected,
-                         response.getheader('Access-Control-Allow-Origin'))
+                         response.headers.get('Access-Control-Allow-Origin'))
 
 
 class TestHealthCheckMiddleware(integrated_helpers._IntegratedTestBase):

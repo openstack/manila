@@ -12,8 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import http.client as http_client
+import netaddr
 from urllib import parse
+
+import requests
 
 from oslo_log import log
 from oslo_serialization import jsonutils
@@ -28,8 +30,8 @@ class OpenStackApiException(Exception):
             message = 'Unspecified error'
 
         if response:
-            _status = response.status
-            _body = response.read()
+            _status = response.status_code
+            _body = response.text
 
             message = ('%(message)s\nStatus Code: %(_status)s\n'
                        'Body: %(_body)s') % {
@@ -81,34 +83,28 @@ class TestOpenStackClient(object):
         # default project_id
         self.project_id = 'openstack'
 
-    def request(self, url, method='GET', body=None, headers=None):
+    def request(self, url, method='GET', body=None, headers=None,
+                ssl_verify=True, stream=False):
         _headers = {'Content-Type': 'application/json'}
         _headers.update(headers or {})
 
         parsed_url = parse.urlparse(url)
-        port = parsed_url.port
+        port = parsed_url.port or ''
         hostname = parsed_url.hostname
+        if netaddr.valid_ipv6(hostname):
+            hostname = "[%s]" % hostname
         scheme = parsed_url.scheme
-
-        if scheme == 'http':
-            conn = http_client.HTTPConnection(hostname,
-                                              port=port)
-        elif scheme == 'https':
-            conn = http_client.HTTPSConnection(hostname,
-                                               port=port)
-        else:
-            raise OpenStackApiException("Unknown scheme: %s" % url)
-
         relative_url = parsed_url.path
         if parsed_url.query:
             relative_url = relative_url + "?" + parsed_url.query
-        LOG.info("Doing %(method)s on %(relative_url)s",
-                 {"method": method, "relative_url": relative_url})
-        if body:
-            LOG.info("Body: %s", body)
+        LOG.debug("Doing %(method)s on %(relative_url)s, body: %(body)s",
+                  {"method": method, "relative_url": relative_url,
+                   "body": body or {}})
 
-        conn.request(method, relative_url, body, _headers)
-        response = conn.getresponse()
+        _url = "%s://%s:%s%s" % (scheme, hostname, port, relative_url)
+
+        response = requests.request(method, _url, data=body, headers=_headers,
+                                    verify=ssl_verify, stream=stream)
         return response
 
     def _authenticate(self):
@@ -121,7 +117,7 @@ class TestOpenStackClient(object):
         response = self.request(self.endpoint,
                                 headers=headers)
 
-        http_status = response.status
+        http_status = response.status_code
         LOG.debug("%(endpoint)s => code %(http_status)s.",
                   {"endpoint": self.endpoint,
                    "http_status": http_status})
@@ -129,11 +125,7 @@ class TestOpenStackClient(object):
         if http_status == 401:
             raise OpenStackApiAuthenticationException(response=response)
 
-        auth_headers = {}
-        for k, v in response.getheaders():
-            auth_headers[k.lower()] = v
-
-        self.auth_result = auth_headers
+        self.auth_result = response.headers
         return self.auth_result
 
     def api_request(self, relative_uri, check_response_status=None, **kwargs):
@@ -148,7 +140,7 @@ class TestOpenStackClient(object):
 
         response = self.request(full_uri, **kwargs)
 
-        http_status = response.status
+        http_status = response.status_code
         LOG.debug("%(relative_uri)s => code %(http_status)s.",
                   {"relative_uri": relative_uri, "http_status": http_status})
 
@@ -166,7 +158,7 @@ class TestOpenStackClient(object):
         return response
 
     def _decode_json(self, response):
-        body = response.read()
+        body = response.text
         LOG.debug("Decoding JSON: %s.", (body))
         if body:
             return jsonutils.loads(body)
