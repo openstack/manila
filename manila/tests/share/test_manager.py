@@ -2255,6 +2255,72 @@ class ShareManagerTestCase(test.TestCase):
             resource_id=shr['id'],
             detail=message_field.Detail.NO_SHARE_SERVER)
 
+    def test_create_share_instance_with_security_service_missing(self):
+        """Test creation fails if security service association is missing."""
+
+        self.mock_object(self.share_manager, 'driver')
+        self.share_manager.driver.driver_handles_share_servers = True
+        self.share_manager.driver.\
+            dhss_mandatory_security_service_association = {
+                'fake_proto': ['fake_ss', 'fake_ss2', ]
+            }
+        ss_data = {
+            'name': 'fake_name',
+            'ou': 'fake_ou',
+            'domain': 'fake_domain',
+            'server': 'fake_server',
+            'dns_ip': 'fake_dns_ip',
+            'user': 'fake_user',
+            'type': 'fake_ss',
+            'password': 'fake_pass',
+        }
+        security_service = db_utils.create_security_service(**ss_data)
+        share_net = db_utils.create_share_network()
+        share_net_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_net['id'],
+            availability_zone_id=None,
+        )
+        db.share_network_add_security_service(context.get_admin_context(),
+                                              share_net['id'],
+                                              security_service['id'])
+        share = db_utils.create_share(
+            share_network_id=share_net['id'],
+            share_proto='fake_proto',
+        )
+        db_utils.create_share_server(
+            share_network_subnet_id=share_net_subnet['id'],
+            host=self.share_manager.host,
+            status=constants.STATUS_ERROR)
+        fake_server = {
+            'id': 'fake_srv_id',
+            'status': constants.STATUS_CREATING,
+        }
+        fake_metadata = {
+            'request_host': 'fake_host',
+            'share_type_id': 'fake_share_type_id',
+        }
+        self.mock_object(self.share_manager, '_build_server_metadata',
+                         mock.Mock(return_value=fake_metadata))
+        self.mock_object(db, 'share_server_create',
+                         mock.Mock(return_value=fake_server))
+        self.mock_object(self.share_manager, '_setup_server',
+                         mock.Mock(return_value=fake_server))
+        self.assertRaises(
+            exception.InvalidRequest,
+            self.share_manager.create_share_instance,
+            self.context,
+            share.instance['id']
+        )
+        share = db.share_get(self.context, share['id'])
+        self.assertEqual(constants.STATUS_ERROR, share['status'])
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.CREATE,
+            str(share.project_id),
+            resource_type=message_field.Resource.SHARE,
+            resource_id=share['id'],
+            detail=message_field.Detail.MISSING_SECURITY_SERVICE)
+
     @ddt.data(
         (True, 1, 3, 10, 0),
         (False, 1, 100, 5, 0),
@@ -2419,6 +2485,8 @@ class ShareManagerTestCase(test.TestCase):
             share_srv
         )
         self.share_manager.driver = driver_mock
+        self.share_manager.driver.\
+            dhss_mandatory_security_service_association = {}
         self.share_manager.create_share_instance(self.context,
                                                  share.instance['id'])
         self.assertFalse(self.share_manager.driver.setup_network.called)

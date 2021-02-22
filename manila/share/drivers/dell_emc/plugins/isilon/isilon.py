@@ -55,6 +55,7 @@ class IsilonStorageConnection(base.StorageConnection):
         self._isilon_api = None
         self._isilon_api_class = isilon_api.IsilonApi
         self.driver_handles_share_servers = False
+        self.dhss_mandatory_security_service_association = {}
 
     def _get_container_path(self, share):
         """Return path to a container."""

@@ -2006,6 +2006,36 @@ class ShareManager(manager.SchedulerDependentManager):
         else:
             share_server = None
 
+        if share_network_id and self.driver.driver_handles_share_servers:
+            proto = share_instance.get('share_proto').lower()
+            ret_types = (
+                self.driver.dhss_mandatory_security_service_association.get(
+                    proto))
+            if ret_types:
+                share_network = self.db.share_network_get(context,
+                                                          share_network_id)
+                share_network_ss = []
+                for security_service in share_network['security_services']:
+                    share_network_ss.append(security_service['type'].lower())
+                for types in ret_types:
+                    if types not in share_network_ss:
+                        self.db.share_instance_update(
+                            context, share_instance_id,
+                            {'status': constants.STATUS_ERROR}
+                        )
+                        self.message_api.create(
+                            context,
+                            message_field.Action.CREATE,
+                            share['project_id'],
+                            resource_type=message_field.Resource.SHARE,
+                            resource_id=share_id,
+                            detail=(message_field.Detail
+                                    .MISSING_SECURITY_SERVICE))
+                        raise exception.InvalidRequest(_(
+                            "Share network security service association is "
+                            "mandatory for protocol %s.") %
+                            share_instance.get('share_proto'))
+
         status = constants.STATUS_AVAILABLE
         try:
             if snapshot_ref:

@@ -35,6 +35,7 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
             False, *args, **kwargs)
         self.library = lib_single_svm.NetAppCmodeSingleSVMFileStorageLibrary(
             self.DRIVER_NAME, **kwargs)
+        self.dhss_mandatory_security_service_association = {}
 
     def do_setup(self, context):
         self.library.do_setup(context)

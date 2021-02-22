@@ -81,6 +81,10 @@ class VNXStorageConnection(driver.StorageConnection):
         self.driver_handles_share_servers = True
         self.port_conf = None
         self.ipv6_implemented = True
+        self.dhss_mandatory_security_service_association = {
+            'nfs': None,
+            'cifs': 'active_directory',
+        }
 
     def create_share(self, context, share, share_server=None):
         """Create a share and export it based on protocol used."""

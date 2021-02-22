@@ -27,6 +27,7 @@ class StorageConnection(object):
         # NOTE(vponomaryov): redefine 'driver_handles_share_servers' within
         #                    plugin.
         self.driver_handles_share_servers = None
+        self.dhss_mandatory_security_service_association = {}
 
     @abc.abstractmethod
     def create_share(self, context, share, share_server):

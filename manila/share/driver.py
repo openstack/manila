@@ -268,6 +268,7 @@ class ShareDriver(object):
         # in-use share networks. This property will be saved in every new share
         # server.
         self.security_service_update_support = False
+        self.dhss_mandatory_security_service_association = {}
 
         self.pools = []
         if self.configuration:

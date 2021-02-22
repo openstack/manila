@@ -87,6 +87,9 @@ class EMCShareDriver(driver.ShareDriver):
         super(EMCShareDriver, self).__init__(
             self.plugin.driver_handles_share_servers, *args, **kwargs)
 
+        self.dhss_mandatory_security_service_association = (
+            self.plugin.dhss_mandatory_security_service_association)
+
         if hasattr(self.plugin, 'ipv6_implemented'):
             self.ipv6_implemented = self.plugin.ipv6_implemented
 

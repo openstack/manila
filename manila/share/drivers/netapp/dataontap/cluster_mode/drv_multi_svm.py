@@ -38,6 +38,10 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
         # NetApp driver supports updating security service for in use share
         # networks.
         self.security_service_update_support = True
+        self.dhss_mandatory_security_service_association = {
+            'nfs': None,
+            'cifs': ['active_directory', 'ldap', 'kerberos', ]
+        }
 
     def do_setup(self, context):
         self.library.do_setup(context)

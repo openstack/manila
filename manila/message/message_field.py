@@ -131,6 +131,12 @@ class Detail(object):
         '024',
         _("No default share type has been made available. "
           "You must specify a share type for creating shares."))
+    MISSING_SECURITY_SERVICE = (
+        '025',
+        _("Share Driver failed to create share because a security service "
+          "has not been added to the share network used. Please add a "
+          "security service to the share network."))
+
     ALL = (
         UNKNOWN_ERROR,
         NO_VALID_HOST,
@@ -156,6 +162,7 @@ class Detail(object):
         UNSUPPORTED_ADD_UDPATE_SECURITY_SERVICE,
         SECURITY_SERVICE_FAILED_AUTH,
         NO_DEFAULT_SHARE_TYPE,
+        MISSING_SECURITY_SERVICE,
     )
 
     # Exception and detail mappings

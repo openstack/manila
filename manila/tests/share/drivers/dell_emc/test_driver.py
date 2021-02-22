@@ -26,6 +26,7 @@ from manila import test
 class FakeConnection(base.StorageConnection):
     def __init__(self, *args, **kwargs):
         self.ipv6_implemented = True
+        self.dhss_mandatory_security_service_association = {}
         pass
 
     @property

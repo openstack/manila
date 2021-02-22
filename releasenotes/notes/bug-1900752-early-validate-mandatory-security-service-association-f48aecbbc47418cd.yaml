@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    For some drivers, to create a share with specific protocol it is mandatory
+    to add a security service to the share network beforehand. If this is
+    forgotten the share ends up in error. From now on, Manila won't allow
+    shares to be created when the specified protocol requires a specific
+    security service type that is not associated to the share network.
