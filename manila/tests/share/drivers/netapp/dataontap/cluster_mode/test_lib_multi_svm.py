@@ -1311,7 +1311,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=mock_dm_session))
         mock_get_vserver = self.mock_object(
             mock_dm_session, 'get_vserver_from_share',
-            mock.Mock(side_effect=[src_vserver, dest_vserver]))
+            mock.Mock(return_value=src_vserver))
+        mock_get_vserver_from_share_server = self.mock_object(
+            mock_dm_session, 'get_vserver_from_share_server',
+            mock.Mock(return_value=dest_vserver))
         src_vserver_client = mock.Mock()
         dest_vserver_client = mock.Mock()
         mock_extract_host = self.mock_object(
@@ -1345,8 +1348,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         internal_share['share_server'] = copy.deepcopy(fake.SHARE_SERVER)
 
         mock_dm_constr.assert_called_once()
-        mock_get_vserver.assert_has_calls([mock.call(fake_parent_share),
-                                           mock.call(internal_share)])
+        mock_get_vserver.assert_called_once_with(fake_parent_share)
+        mock_get_vserver_from_share_server.assert_called_once_with(
+            fake_share_server)
         mock_extract_host.assert_has_calls([
             mock.call(fake_parent_share['host'], level='backend_name'),
             mock.call(internal_share['host'], level='backend_name')])
