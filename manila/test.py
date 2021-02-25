@@ -153,11 +153,26 @@ class TestCase(base_test.BaseTestCase):
 
         fake_notifier.stub_notifier(self)
 
+        self._disable_osprofiler()
+
         # Locks must be cleaned up after tests
         CONF.set_override('backend_url', 'file://' + lock_path,
                           group='coordination')
         coordination.LOCK_COORDINATOR.start()
         self.addCleanup(coordination.LOCK_COORDINATOR.stop)
+
+    def _disable_osprofiler(self):
+        """Disable osprofiler.
+
+        osprofiler should not run for unit tests.
+        """
+
+        def side_effect(value):
+            return value
+        mock_decorator = mock.MagicMock(side_effect=side_effect)
+        p = mock.patch("osprofiler.profiler.trace_cls",
+                       return_value=mock_decorator)
+        p.start()
 
     def tearDown(self):
         """Runs after each test method to tear down test environment."""

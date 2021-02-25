@@ -55,6 +55,8 @@ from manila.share import snapshot_access
 from manila.share import utils as share_utils
 from manila import utils
 
+profiler = importutils.try_import('osprofiler.profiler')
+
 LOG = log.getLogger(__name__)
 
 share_manager_opts = [
@@ -259,6 +261,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.message_api = message_api.API()
         self.share_api = api.API()
+        if CONF.profiler.enabled and profiler is not None:
+            self.driver = profiler.trace_cls("driver")(self.driver)
         self.hooks = []
         self._init_hook_drivers()
 

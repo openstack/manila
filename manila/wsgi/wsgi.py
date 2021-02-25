@@ -22,6 +22,7 @@ from oslo_service import wsgi
 # Need to register global_opts
 from manila.common import config
 from manila import rpc
+from manila import service
 from manila import version
 
 CONF = cfg.CONF
@@ -33,4 +34,5 @@ def initialize_application():
     config.verify_share_protocols()
     log.setup(CONF, "manila")
     rpc.init(CONF)
+    service.setup_profiler("manila-api", CONF.host)
     return wsgi.Loader(CONF).load_app(name='osapi_share')

@@ -36,6 +36,10 @@ from manila import exception
 from manila import rpc
 from manila import version
 
+osprofiler_initializer = importutils.try_import('osprofiler.initializer')
+profiler = importutils.try_import('osprofiler.profiler')
+profiler_opts = importutils.try_import('osprofiler.opts')
+
 LOG = log.getLogger(__name__)
 
 service_opts = [
@@ -68,6 +72,26 @@ service_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(service_opts)
+if profiler_opts:
+    profiler_opts.set_defaults(CONF)
+
+
+def setup_profiler(binary, host):
+    if (osprofiler_initializer is None or
+            profiler is None or
+            profiler_opts is None):
+        LOG.debug('osprofiler is not present')
+        return
+
+    if CONF.profiler.enabled:
+        osprofiler_initializer.init_from_conf(
+            conf=CONF,
+            context=context.get_admin_context().to_dict(),
+            project="manila",
+            service=binary,
+            host=host
+        )
+        LOG.warning("OSProfiler is enabled.")
 
 
 class Service(service.Service):
@@ -89,6 +113,10 @@ class Service(service.Service):
         self.topic = topic
         self.manager_class_name = manager
         manager_class = importutils.import_class(self.manager_class_name)
+        if CONF.profiler.enabled and profiler is not None:
+            manager_class = profiler.trace_cls("rpc")(manager_class)
+
+        self.service = None
         self.manager = manager_class(host=self.host,
                                      service_name=service_name,
                                      *args, **kwargs)
@@ -99,6 +127,8 @@ class Service(service.Service):
         self.saved_args, self.saved_kwargs = args, kwargs
         self.timers = []
         self.coordinator = coordination
+
+        setup_profiler(binary, host)
 
     def start(self):
         version_string = version.version_string()
@@ -311,6 +341,8 @@ class WSGIService(service.ServiceBase):
                 "greater than 1.  Input value ignored.", {'name': name})
             # Reset workers to default
             self.workers = None
+        setup_profiler(name, self.host)
+
         self.server = wsgi.Server(
             CONF,
             name,
