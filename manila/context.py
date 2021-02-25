@@ -36,7 +36,6 @@ class RequestContext(context.RequestContext):
     def __init__(self, user_id=None, project_id=None, is_admin=None,
                  read_deleted="no", project_name=None, remote_address=None,
                  timestamp=None, quota_class=None, service_catalog=None,
-                 system_scope=None,
                  **kwargs):
         """Initialize RequestContext.
 
