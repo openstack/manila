@@ -569,9 +569,8 @@ class NetAppCmodeFileStorageLibrary(object):
         }
         # NOTE(dviroel): Data Motion functions access share's 'share_server'
         # attribute to get vserser information.
-        dest_share = copy.deepcopy(share.to_dict())
-        dest_share['share_server'] = (share_server.to_dict()
-                                      if share_server else None)
+        dest_share = copy.copy(share.to_dict())
+        dest_share['share_server'] = share_server
 
         dm_session = data_motion.DataMotionSession()
         # Source host info

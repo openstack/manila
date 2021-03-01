@@ -20,7 +20,6 @@ variant creates Data ONTAP storage virtual machines (i.e. 'vservers')
 as needed to provision shares.
 """
 
-import copy
 import re
 
 from oslo_log import log
@@ -680,12 +679,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         if parent_share['host'] != share['host']:
             # 1. Retrieve source and destination vservers from source and
             # destination shares
-            new_share = copy.deepcopy(share.to_dict())
-            new_share['share_server'] = share_server.to_dict()
-
             dm_session = data_motion.DataMotionSession()
             src_vserver = dm_session.get_vserver_from_share(parent_share)
-            dest_vserver = dm_session.get_vserver_from_share(new_share)
+            dest_vserver = dm_session.get_vserver_from_share_server(
+                share_server)
 
             # 2. Retrieve the source share host's client and cluster name
             src_share_host = share_utils.extract_host(
@@ -697,7 +694,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
             # 3. Retrieve new share host's client
             dest_share_host = share_utils.extract_host(
-                new_share['host'], level='backend_name')
+                share['host'], level='backend_name')
             dest_share_client = data_motion.get_client_for_backend(
                 dest_share_host, vserver_name=dest_vserver)
             dest_share_cluster_name = dest_share_client.get_cluster_name()
