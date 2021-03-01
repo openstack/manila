@@ -525,10 +525,12 @@ class ShareAPITest(test.TestCase):
     def test_share_create_with_sg_and_availability_zone(self):
         sg_id = 'fake_sg_id'
         az_id = 'bar_az_id'
+        az_name = 'fake_name'
         self.mock_object(share_api.API, 'create', self.create_mock)
         self.mock_object(
             db, 'availability_zone_get',
-            mock.Mock(return_value=type('ReqAZ', (object, ), {"id": az_id})))
+            mock.Mock(return_value=type(
+                'ReqAZ', (object, ), {"id": az_id, "name": az_name})))
         self.mock_object(
             db, 'share_group_get',
             mock.Mock(return_value={"availability_zone_id": az_id}))
@@ -543,7 +545,8 @@ class ShareAPITest(test.TestCase):
 
         self.controller.create(req, body)
 
-        db.availability_zone_get.assert_called_once_with(
+        self.assertEqual(db.availability_zone_get.call_count, 2)
+        db.availability_zone_get.assert_called_with(
             req.environ['manila.context'], az_id)
         db.share_group_get.assert_called_once_with(
             req.environ['manila.context'], sg_id)
@@ -557,16 +560,18 @@ class ShareAPITest(test.TestCase):
             is_public=False,
             metadata=None,
             snapshot_id=None,
-            availability_zone=az_id)
+            availability_zone=az_name)
 
     def test_share_create_with_sg_and_different_availability_zone(self):
         sg_id = 'fake_sg_id'
         sg_az = 'foo_az_id'
         req_az = 'bar_az_id'
+        req_az_name = 'fake_az_name'
         self.mock_object(share_api.API, 'create', self.create_mock)
         self.mock_object(
             db, 'availability_zone_get',
-            mock.Mock(return_value=type('ReqAZ', (object, ), {"id": req_az})))
+            mock.Mock(return_value=type('ReqAZ', (object, ), {
+                "id": req_az, "name": req_az_name})))
         self.mock_object(
             db, 'share_group_get',
             mock.Mock(return_value={"availability_zone_id": sg_az}))
