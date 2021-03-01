@@ -30,9 +30,11 @@ from manila import context
 from manila import db
 from manila import exception
 from manila.i18n import _
+from manila import quota
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
+QUOTAS = quota.QUOTAS
 
 MIN_SIZE_KEY = "provisioning:min_share_size"
 MAX_SIZE_KEY = "provisioning:max_share_size"
@@ -460,3 +462,48 @@ def provision_filter_on_size(context, share_type, size):
                     ) % {'req_size': size_int, 'max_size': max_size,
                          'sha_type': share_type['name']}
             raise exception.InvalidInput(reason=msg)
+
+
+def revert_allocated_share_type_quotas_during_migration(
+        context, share, share_type_id,
+        allow_deallocate_from_current_type=False):
+
+    # If both new share type and share's share type ID, there is no need
+    # to revert quotas because new quotas weren't allocated, as share
+    # type changes weren't identified, unless it is a migration that was
+    # successfully completed
+    if ((share_type_id == share['share_type_id'])
+            and not allow_deallocate_from_current_type):
+        return
+
+    new_share_type = get_share_type(context, share_type_id)
+    new_type_extra_specs = new_share_type.get('extra_specs', None)
+
+    new_type_replication_type = None
+    if new_type_extra_specs:
+        new_type_replication_type = new_type_extra_specs.get(
+            'replication_type', None)
+
+    deltas = {}
+
+    if new_type_replication_type:
+        deltas['share_replicas'] = -1
+        deltas['replica_gigabytes'] = -share['size']
+
+    deltas.update({
+        'share_type_id': new_share_type['id'],
+        'shares': -1,
+        'gigabytes': -share['size']
+    })
+
+    try:
+        reservations = QUOTAS.reserve(
+            context, project_id=share['project_id'],
+            user_id=share['user_id'], **deltas)
+    except Exception:
+        LOG.exception("Failed to update usages for share_replicas and "
+                      "replica_gigabytes.")
+    else:
+        QUOTAS.commit(
+            context, reservations, project_id=share['project_id'],
+            user_id=share['user_id'], share_type_id=share_type_id)

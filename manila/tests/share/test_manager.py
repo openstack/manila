@@ -5886,6 +5886,9 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(migration_api.ShareMigrationHelper,
                          'apply_new_access_rules')
         self.mock_object(
+            share_types,
+            'revert_allocated_share_type_quotas_during_migration')
+        self.mock_object(
             self.share_manager.db,
             'share_snapshot_instance_get_all_with_filters',
             mock.Mock(side_effect=[[dest_snap_instance],
@@ -5943,6 +5946,11 @@ class ShareManagerTestCase(test.TestCase):
             el_create.assert_called_once_with(self.context, el)
         else:
             el_create.assert_not_called()
+        (share_types.
+            revert_allocated_share_type_quotas_during_migration.
+            assert_called_once_with(
+                self.context, dest_instance, src_instance['share_type_id'],
+                allow_deallocate_from_current_type=True))
 
     def test__migration_complete_host_assisted(self):
 
@@ -6017,6 +6025,9 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.driver, 'migration_cancel')
         self.mock_object(helper, 'cleanup_new_instance')
         self.mock_object(self.share_manager, '_reset_read_only_access_rules')
+        self.mock_object(
+            share_types,
+            'revert_allocated_share_type_quotas_during_migration')
 
         self.share_manager.migration_cancel(
             self.context, instance_1['id'], instance_2['id'])
@@ -6062,6 +6073,9 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.db.share_instance_update.assert_has_calls(
             share_instance_update_calls)
+        (share_types.revert_allocated_share_type_quotas_during_migration.
+            assert_called_once_with(
+                self.context, instance_1, instance_2['share_type_id']))
 
     @ddt.data(True, False)
     def test__reset_read_only_access_rules(self, supress_errors):

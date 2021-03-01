@@ -1395,6 +1395,106 @@ class API(base.Base):
 
         return snapshot
 
+    def _modify_quotas_for_share_migration(self, context, share,
+                                           new_share_type):
+        """Consume quotas for share migration.
+
+        If a share migration was requested and a new share type was provided,
+        quotas must be consumed from this share type. If no quotas are
+        available for shares, gigabytes, share replicas or replica gigabytes,
+        an error will be thrown.
+        """
+
+        new_share_type_id = new_share_type['id']
+
+        if new_share_type_id == share['share_type_id']:
+            return
+
+        new_type_extra_specs = self.get_share_attributes_from_share_type(
+            new_share_type)
+        new_type_replication_type = new_type_extra_specs.get(
+            'replication_type', None)
+
+        deltas = {}
+
+        # NOTE(carloss): If a new share type with a replication type was
+        # specified, there is need to allocate quotas in the new share type.
+        # We won't remove the current consumed quotas, since both share
+        # instances will co-exist until the migration gets completed,
+        # cancelled or it fails.
+        if new_type_replication_type:
+            deltas['share_replicas'] = 1
+            deltas['replica_gigabytes'] = share['size']
+
+        deltas.update({
+            'share_type_id': new_share_type_id,
+            'shares': 1,
+            'gigabytes': share['size']
+        })
+
+        try:
+            reservations = QUOTAS.reserve(
+                context, project_id=share['project_id'],
+                user_id=share['user_id'], **deltas)
+            QUOTAS.commit(
+                context, reservations, project_id=share['project_id'],
+                user_id=share['user_id'], share_type_id=new_share_type_id)
+        except exception.OverQuota as e:
+            overs = e.kwargs['overs']
+            usages = e.kwargs['usages']
+            quotas = e.kwargs['quotas']
+
+            def _consumed(name):
+                return (usages[name]['reserved'] + usages[name]['in_use'])
+
+            if 'replica_gigabytes' in overs:
+                LOG.warning("Replica gigabytes quota exceeded "
+                            "for %(s_pid)s, tried to migrate "
+                            "%(s_size)sG share (%(d_consumed)dG of "
+                            "%(d_quota)dG already consumed).", {
+                                's_pid': context.project_id,
+                                's_size': share['size'],
+                                'd_consumed': _consumed(
+                                    'replica_gigabytes'),
+                                'd_quota': quotas['replica_gigabytes']})
+                msg = _("Failed while migrating a share with replication "
+                        "support. Maximum number of allowed "
+                        "replica gigabytes is exceeded.")
+                raise exception.ShareReplicaSizeExceedsAvailableQuota(
+                    message=msg)
+
+            if 'share_replicas' in overs:
+                LOG.warning("Quota exceeded for %(s_pid)s, "
+                            "unable to migrate share-replica (%(d_consumed)d "
+                            "of %(d_quota)d already consumed).", {
+                                's_pid': context.project_id,
+                                'd_consumed': _consumed('share_replicas'),
+                                'd_quota': quotas['share_replicas']})
+                msg = _(
+                    "Failed while migrating a share with replication "
+                    "support. Maximum number of allowed share-replicas "
+                    "is exceeded.")
+                raise exception.ShareReplicasLimitExceeded(msg)
+
+            if 'gigabytes' in overs:
+                LOG.warning("Quota exceeded for %(s_pid)s, "
+                            "tried to migrate "
+                            "%(s_size)sG share (%(d_consumed)dG of "
+                            "%(d_quota)dG already consumed).", {
+                                's_pid': context.project_id,
+                                's_size': share['size'],
+                                'd_consumed': _consumed('gigabytes'),
+                                'd_quota': quotas['gigabytes']})
+                raise exception.ShareSizeExceedsAvailableQuota()
+            if 'shares' in overs:
+                LOG.warning("Quota exceeded for %(s_pid)s, "
+                            "tried to migrate "
+                            "share (%(d_consumed)d shares "
+                            "already consumed).", {
+                                's_pid': context.project_id,
+                                'd_consumed': _consumed('shares')})
+                raise exception.ShareLimitExceeded(allowed=quotas['shares'])
+
     def migration_start(
             self, context, share, dest_host, force_host_assisted_migration,
             preserve_metadata, writable, nondisruptive, preserve_snapshots,
@@ -1479,6 +1579,8 @@ class API(base.Base):
                     " given share %s has extra_spec "
                     "'driver_handles_share_servers' as True.") % share['id']
                 raise exception.InvalidInput(reason=msg)
+            self._modify_quotas_for_share_migration(context, share,
+                                                    new_share_type)
         else:
             share_type = {}
             share_type_id = share_instance['share_type_id']

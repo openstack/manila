@@ -29,8 +29,10 @@ from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
+from manila import quota
 from manila.share import share_types
 from manila import test
+from manila.tests import db_utils
 
 
 def create_share_type_dict(extra_specs=None):
@@ -581,3 +583,56 @@ class ShareTypesTestCase(test.TestCase):
         share_types.provision_filter_on_size(self.context, type4, "24")
         share_types.provision_filter_on_size(self.context, type4, "99")
         share_types.provision_filter_on_size(self.context, type4, "30")
+
+    @ddt.data(True, False)
+    def test__revert_allocated_share_type_quotas_during_migration(
+            self, failed_on_reservation):
+        fake_type_id = 'fake_1'
+        extra_specs = {'replication_type': 'readable'}
+        source_instance = db_utils.create_share()
+        dest_instance = db_utils.create_share(
+            share_type_id=fake_type_id)
+        share_type = {
+            'name': 'fake_share_type',
+            'extra_specs': extra_specs,
+            'is_public': True,
+            'id': 'fake_type_id'
+        }
+
+        expected_deltas = {
+            'project_id': dest_instance['project_id'],
+            'user_id': dest_instance['user_id'],
+            'share_replicas': -1,
+            'replica_gigabytes': -dest_instance['size'],
+            'share_type_id': share_type['id'],
+            'shares': -1,
+            'gigabytes': -dest_instance['size'],
+        }
+        reservations = 'reservations'
+        reservation_action = (
+            mock.Mock(side_effect=exception.ManilaException(message='fake'))
+            if failed_on_reservation else mock.Mock(return_value=reservations))
+
+        mock_type_get = self.mock_object(
+            share_types, 'get_share_type', mock.Mock(return_value=share_type))
+        mock_reserve = self.mock_object(
+            quota.QUOTAS, 'reserve', reservation_action)
+        mock_commit = self.mock_object(quota.QUOTAS, 'commit')
+        mock_log = self.mock_object(share_types.LOG, 'exception')
+
+        share_types.revert_allocated_share_type_quotas_during_migration(
+            self.context, source_instance, share_type['id'], dest_instance)
+
+        if not failed_on_reservation:
+            mock_commit.assert_called_once_with(
+                self.context, reservations,
+                project_id=dest_instance['project_id'],
+                user_id=dest_instance['user_id'],
+                share_type_id=share_type['id'])
+        else:
+            mock_log.assert_called_once()
+
+        mock_type_get.assert_called_once_with(
+            self.context, share_type['id'])
+        mock_reserve.assert_called_once_with(
+            self.context, **expected_deltas)
