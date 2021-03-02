@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,21 +18,44 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'message:%s'
 
+DEPRECATED_REASON = """
+The messages API now supports system scope and default roles.
+"""
+
+deprecated_message_get = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_message_get_all = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_all',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_message_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete',
+    check_str=base.RULE_DEFAULT
+)
+
 
 message_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get details of a given message.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/messages/{message_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_message_get,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get all messages.",
         operations=[
             {
@@ -42,17 +66,26 @@ message_policies = [
                 'method': 'GET',
                 'path': '/messages?{query}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_message_get_all,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Delete a message.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/messages/{message_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_message_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
