@@ -1866,6 +1866,10 @@ class API(base.Base):
         """Returns access rule with the id."""
         policy.check_policy(context, 'share', 'access_get')
         rule = self.db.share_access_get(context, access_id)
+        # NOTE(gouthamr): Check if the caller has access to the share that
+        # the rule belongs to:
+        self.get(context, rule['share_id'])
+
         return rule
 
     @policy.wrap_check_policy('share')
