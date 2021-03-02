@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The scheduler stats resource APIs (/scheduler-stats/pools and
+    /scheduler-stats/pools/detail) have been fixed to not return an
+    arbitrary traceback in the error message body to the caller when access to
+    the resource has been denied.
