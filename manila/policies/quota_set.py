@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,11 +18,29 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'quota_set:%s'
 
+DEPRECATED_REASON = """
+The quota API now supports system scope and default roles.
+"""
+
+deprecated_quota_update = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_quota_show = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'show',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_quota_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete',
+    check_str=base.RULE_ADMIN_API
+)
+
 
 quota_set_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description=("Update the quotas for a project/user and/or share "
                      "type."),
         operations=[
@@ -45,10 +64,15 @@ quota_set_policies = [
                 'method': 'PUT',
                 'path': '/os-quota-sets/{tenant_id}?user_id={user_id}'
             },
-        ]),
+        ],
+        deprecated_rule=deprecated_quota_update,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="List the quotas for a tenant/user.",
         operations=[
             {
@@ -59,10 +83,15 @@ quota_set_policies = [
                 'method': 'GET',
                 'path': '/os-quota-sets/{tenant_id}/defaults'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_quota_show,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description=("Delete quota for a tenant/user or "
                      "tenant/share-type. The quota will revert back to "
                      "default (Admin only)."),
@@ -87,7 +116,11 @@ quota_set_policies = [
                 'method': 'DELETE',
                 'path': '/os-quota-sets/{tenant_id}?user_id={user_id}'
             },
-        ]),
+        ],
+        deprecated_rule=deprecated_quota_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
