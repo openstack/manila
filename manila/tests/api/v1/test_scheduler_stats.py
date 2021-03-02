@@ -20,6 +20,7 @@ from webob import exc
 from manila.api.openstack import api_version_request as api_version
 from manila.api.v1 import scheduler_stats
 from manila import context
+from manila import exception
 from manila import policy
 from manila.scheduler import rpcapi
 from manila.share import share_types
@@ -331,6 +332,24 @@ class SchedulerStatsControllerTestCase(test.TestCase):
                                                cached=True)
         self.mock_policy_check.assert_called_once_with(
             self.ctxt, self.resource_name, 'detail')
+
+    @ddt.data('index', 'detail')
+    def test_pools_forbidden(self, subresource):
+        mock_get_pools = self.mock_object(
+            rpcapi.SchedulerAPI, 'get_pools',
+            mock.Mock(side_effect=exception.AdminRequired(
+                "some traceback here")))
+        path = '/v1/fake_project/scheduler_stats/pools'
+        path = path + ('/%s' % subresource if subresource == 'detail' else '')
+        req = fakes.HTTPRequest.blank(path)
+        req.environ['manila.context'] = self.ctxt
+
+        self.assertRaises(exc.HTTPForbidden,
+                          getattr(self.controller, 'pools_%s' % subresource),
+                          req)
+        mock_get_pools.assert_called_once_with(self.ctxt,
+                                               filters={},
+                                               cached=True)
 
 
 class SchedulerStatsTestCase(test.TestCase):
