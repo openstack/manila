@@ -113,6 +113,37 @@ class ShareAccessesAPITest(test.TestCase):
                                       version="2.45")
         self.assertRaises(exc.HTTPBadRequest, self.controller.index, req)
 
+    def test_show_access_not_authorized(self):
+        share = db_utils.create_share(
+            project_id='c3c5ec1ccc4640d0af1914cbf11f05ad',
+            is_public=False)
+        access = db_utils.create_access(
+            id='76699c6b-f3da-47d7-b468-364f1347ba04',
+            share_id=share['id'])
+        req = fakes.HTTPRequest.blank(
+            '/v2/share-access-rules/%s' % access['id'],
+            version="2.45")
+        self.mock_object(
+            policy, 'check_policy',
+            mock.Mock(side_effect=[None, None, exception.NotAuthorized]))
+
+        self.assertRaises(exception.NotAuthorized,
+                          self.controller.show,
+                          req,
+                          access['id'])
+        policy.check_policy.assert_has_calls([
+            mock.call(req.environ['manila.context'],
+                      'share_access_rule', 'get'),
+            mock.call(req.environ['manila.context'],
+                      'share', 'access_get'),
+            mock.call(req.environ['manila.context'],
+                      'share', 'get', mock.ANY)])
+        policy_check_call_args_list = policy.check_policy.call_args_list[2][0]
+        share_being_checked = policy_check_call_args_list[3]
+        self.assertEqual('c3c5ec1ccc4640d0af1914cbf11f05ad',
+                         share_being_checked['project_id'])
+        self.assertIs(False, share_being_checked['is_public'])
+
     def test_show_access_not_found(self):
         self.assertRaises(
             exc.HTTPNotFound,
