@@ -2224,18 +2224,18 @@ class ShareAPITestCase(test.TestCase):
             self.context, 'reservation', share_type_id=share_type['id']
         )
 
-    def test_create_from_snapshot_az_different_from_source(self):
-        snapshot, share, share_data, request_spec = (
-            self._setup_create_from_snapshot_mocks(use_scheduler=False)
-        )
-
-        self.assertRaises(exception.InvalidInput, self.api.create,
-                          self.context, share_data['share_proto'],
-                          share_data['size'],
-                          share_data['display_name'],
-                          share_data['display_description'],
-                          snapshot_id=snapshot['id'],
-                          availability_zone='fake_different_az')
+    # def test_create_from_snapshot_az_different_from_source(self):
+    #     snapshot, share, share_data, request_spec = (
+    #         self._setup_create_from_snapshot_mocks(use_scheduler=False)
+    #     )
+    #
+    #     self.assertRaises(exception.InvalidInput, self.api.create,
+    #                       self.context, share_data['share_proto'],
+    #                       share_data['size'],
+    #                       share_data['display_name'],
+    #                       share_data['display_description'],
+    #                       snapshot_id=snapshot['id'],
+    #                       availability_zone='fake_different_az')
 
     def test_create_from_snapshot_with_different_share_type(self):
         snapshot, share, share_data, request_spec = (
