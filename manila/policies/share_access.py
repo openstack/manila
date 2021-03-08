@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -20,21 +21,40 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'share_access_rule:%s'
 
+DEPRECATED_REASON = """
+The share access rule API now supports system scope and default roles.
+"""
+
+deprecated_access_rule_get = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_access_rule_index = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'index',
+    check_str=base.RULE_DEFAULT
+)
+
 
 share_access_rule_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get details of a share access rule.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/share-access-rules/{share_access_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_access_rule_get,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="List access rules of a given share.",
         operations=[
             {
@@ -42,7 +62,11 @@ share_access_rule_policies = [
                 'path': ('/share-access-rules?share_id={share_id}'
                          '&key1=value1&key2=value2')
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_access_rule_index,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
