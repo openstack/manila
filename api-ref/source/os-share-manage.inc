@@ -17,7 +17,7 @@ Manage share (DEPRECATED)
    `Share Manage API <#manage-share-since-api-v2-7>`_ instead of this API
    from version 2.7.
 
-.. rest_method::  POST /v2/{project_id}/os-share-manage
+.. rest_method::  POST /v2/os-share-manage
 
 Use this API to bring a share under the management of the Shared File
 Systems service. In the service, the share will be represented as a resource
@@ -113,7 +113,7 @@ Unmanage share (DEPRECATED)
    `Share Unmanage API <#unmanage-share-since-api-v2-7>`_ instead of this
    API from version 2.7.
 
-.. rest_method::  POST /v2/{project_id}/os-share-unmanage/{share_id}/unmanage
+.. rest_method::  POST /v2/os-share-unmanage/{share_id}/unmanage
 
 Use this API to remove a share from the management of the Shared File
 Systems service without deleting the share.

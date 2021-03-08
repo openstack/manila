@@ -10,7 +10,7 @@ Lists available Shared File Systems API extensions.
 List extensions
 ===============
 
-.. rest_method::  GET /v2/{project_id}/extensions
+.. rest_method::  GET /v2/extensions
 
 Lists all extensions.
 

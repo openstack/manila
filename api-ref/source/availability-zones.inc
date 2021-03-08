@@ -16,7 +16,7 @@ configured with.
 List availability zones
 =======================
 
-.. rest_method::  GET /v2/{project_id}/availability-zones
+.. rest_method::  GET /v2/availability-zones
 
 Lists all availability zones.
 

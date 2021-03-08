@@ -39,7 +39,7 @@ description.
 List security services
 ======================
 
-.. rest_method::  GET /v2/{project_id}/security-services
+.. rest_method::  GET /v2/security-services
 
 Lists all security services.
 
@@ -84,7 +84,7 @@ Response example
 List security services with details
 ===================================
 
-.. rest_method::  GET /v2/{project_id}/security-services/detail
+.. rest_method::  GET /v2/security-services/detail
 
 Lists all security services with details.
 
@@ -139,7 +139,7 @@ Response example
 Show security service details
 =============================
 
-.. rest_method::  GET /v2/{project_id}/security-services/{security_service_id}
+.. rest_method::  GET /v2/security-services/{security_service_id}
 
 Shows details for a security service.
 
@@ -195,7 +195,7 @@ Response example
 Create security service
 =======================
 
-.. rest_method::  POST /v2/{project_id}/security-services
+.. rest_method::  POST /v2/security-services
 
 Creates a security service.
 
@@ -265,7 +265,7 @@ Response example
 Update security service
 =======================
 
-.. rest_method::  PUT /v2/{project_id}/security-services/{security_service_id}
+.. rest_method::  PUT /v2/security-services/{security_service_id}
 
 Updates a security service.
 
@@ -342,7 +342,7 @@ Response example
 Delete security service
 =======================
 
-.. rest_method::  DELETE /v2/{project_id}/security-services/{security_service_id}
+.. rest_method::  DELETE /v2/security-services/{security_service_id}
 
 Deletes a security service.
 

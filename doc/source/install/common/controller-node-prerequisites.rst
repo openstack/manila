@@ -108,56 +108,56 @@ must create a database, service credentials, and `API endpoints`.
 
       $ openstack endpoint create --region RegionOne \
         share public http://controller:8786/v1/%\(tenant_id\)s
-        +--------------+-----------------------------------------+
-        | Field        | Value                                   |
-        +--------------+-----------------------------------------+
-        | enabled      | True                                    |
-        | id           | 0bd2bbf8d28b433aaea56a254c69f69d        |
-        | interface    | public                                  |
-        | region       | RegionOne                               |
-        | region_id    | RegionOne                               |
-        | service_id   | 82378b5a16b340aa9cc790cdd46a03ba        |
-        | service_name | manila                                  |
-        | service_type | share                                   |
-        | url          | http://controller:8786/v1/%(tenant_id)s |
-        +--------------+-----------------------------------------+
+        +--------------+------------------------------------------+
+        | Field        | Value                                    |
+        +--------------+------------------------------------------+
+        | enabled      | True                                     |
+        | id           | 0bd2bbf8d28b433aaea56a254c69f69d         |
+        | interface    | public                                   |
+        | region       | RegionOne                                |
+        | region_id    | RegionOne                                |
+        | service_id   | 82378b5a16b340aa9cc790cdd46a03ba         |
+        | service_name | manila                                   |
+        | service_type | share                                    |
+        | url          | http://controller:8786/v1/%(project_id)s |
+        +--------------+------------------------------------------+
 
       $ openstack endpoint create --region RegionOne \
         share internal http://controller:8786/v1/%\(tenant_id\)s
-        +--------------+-----------------------------------------+
-        | Field        | Value                                   |
-        +--------------+-----------------------------------------+
-        | enabled      | True                                    |
-        | id           | a2859b5732cc48b5b083dd36dafb6fd9        |
-        | interface    | internal                                |
-        | region       | RegionOne                               |
-        | region_id    | RegionOne                               |
-        | service_id   | 82378b5a16b340aa9cc790cdd46a03ba        |
-        | service_name | manila                                  |
-        | service_type | share                                   |
-        | url          | http://controller:8786/v1/%(tenant_id)s |
-        +--------------+-----------------------------------------+
+        +--------------+------------------------------------------+
+        | Field        | Value                                    |
+        +--------------+------------------------------------------+
+        | enabled      | True                                     |
+        | id           | a2859b5732cc48b5b083dd36dafb6fd9         |
+        | interface    | internal                                 |
+        | region       | RegionOne                                |
+        | region_id    | RegionOne                                |
+        | service_id   | 82378b5a16b340aa9cc790cdd46a03ba         |
+        | service_name | manila                                   |
+        | service_type | share                                    |
+        | url          | http://controller:8786/v1/%(project_id)s |
+        +--------------+------------------------------------------+
 
       $ openstack endpoint create --region RegionOne \
         share admin http://controller:8786/v1/%\(tenant_id\)s
-        +--------------+-----------------------------------------+
-        | Field        | Value                                   |
-        +--------------+-----------------------------------------+
-        | enabled      | True                                    |
-        | id           | f7f46df93a374cc49c0121bef41da03c        |
-        | interface    | admin                                   |
-        | region       | RegionOne                               |
-        | region_id    | RegionOne                               |
-        | service_id   | 82378b5a16b340aa9cc790cdd46a03ba        |
-        | service_name | manila                                  |
-        | service_type | share                                   |
-        | url          | http://controller:8786/v1/%(tenant_id)s |
-        +--------------+-----------------------------------------+
+        +--------------+------------------------------------------+
+        | Field        | Value                                    |
+        +--------------+------------------------------------------+
+        | enabled      | True                                     |
+        | id           | f7f46df93a374cc49c0121bef41da03c         |
+        | interface    | admin                                    |
+        | region       | RegionOne                                |
+        | region_id    | RegionOne                                |
+        | service_id   | 82378b5a16b340aa9cc790cdd46a03ba         |
+        | service_name | manila                                   |
+        | service_type | share                                    |
+        | url          | http://controller:8786/v1/%(project_id)s |
+        +--------------+------------------------------------------+
 
    .. code-block:: console
 
       $ openstack endpoint create --region RegionOne \
-        sharev2 public http://controller:8786/v2/%\(tenant_id\)s
+        sharev2 public http://controller:8786/v2
         +--------------+-----------------------------------------+
         | Field        | Value                                   |
         +--------------+-----------------------------------------+
@@ -169,11 +169,11 @@ must create a database, service credentials, and `API endpoints`.
         | service_id   | 30d92a97a81a4e5d8fd97a32bafd7b88        |
         | service_name | manilav2                                |
         | service_type | sharev2                                 |
-        | url          | http://controller:8786/v2/%(tenant_id)s |
+        | url          | http://controller:8786/v2               |
         +--------------+-----------------------------------------+
 
       $ openstack endpoint create --region RegionOne \
-        sharev2 internal http://controller:8786/v2/%\(tenant_id\)s
+        sharev2 internal http://controller:8786/v2
         +--------------+-----------------------------------------+
         | Field        | Value                                   |
         +--------------+-----------------------------------------+
@@ -185,11 +185,11 @@ must create a database, service credentials, and `API endpoints`.
         | service_id   | 30d92a97a81a4e5d8fd97a32bafd7b88        |
         | service_name | manilav2                                |
         | service_type | sharev2                                 |
-        | url          | http://controller:8786/v2/%(tenant_id)s |
+        | url          | http://controller:8786/v2               |
         +--------------+-----------------------------------------+
 
       $ openstack endpoint create --region RegionOne \
-        sharev2 admin http://controller:8786/v2/%\(tenant_id\)s
+        sharev2 admin http://controller:8786/v2
         +--------------+-----------------------------------------+
         | Field        | Value                                   |
         +--------------+-----------------------------------------+
@@ -201,7 +201,7 @@ must create a database, service credentials, and `API endpoints`.
         | service_id   | 30d92a97a81a4e5d8fd97a32bafd7b88        |
         | service_name | manilav2                                |
         | service_type | sharev2                                 |
-        | url          | http://controller:8786/v2/%(tenant_id)s |
+        | url          | http://controller:8786/v2               |
         +--------------+-----------------------------------------+
 
    .. note::

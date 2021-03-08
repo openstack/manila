@@ -25,7 +25,7 @@ roles.
 List share group snapshots
 ==========================
 
-.. rest_method::  GET /v2/{project_id}/share-group-snapshots
+.. rest_method::  GET /v2/share-group-snapshots
 
 .. versionadded:: 2.31
 
@@ -78,7 +78,7 @@ Response example
 List share group snapshots with details
 =======================================
 
-.. rest_method::  GET /v2/{project_id}/share-group-snapshots/detail
+.. rest_method::  GET /v2/share-group-snapshots/detail
 
 .. versionadded:: 2.31
 
@@ -137,7 +137,7 @@ Response example
 List share group snapshots members
 ==================================
 
-.. rest_method::  GET /v2/{project_id}/share-group-snapshots/{group_snapshot_id}/members
+.. rest_method::  GET /v2/share-group-snapshots/{group_snapshot_id}/members
 
 .. versionadded:: 2.31
 
@@ -188,7 +188,7 @@ Response example
 Show share group snapshot details
 =================================
 
-.. rest_method::  GET /v2/{project_id}/share-group-snapshots/{group_snapshot_id}
+.. rest_method::  GET /v2/share-group-snapshots/{group_snapshot_id}
 
 .. versionadded:: 2.31
 
@@ -240,7 +240,7 @@ Response example
 Create share group snapshot
 ===========================
 
-.. rest_method::  POST /v2/{project_id}/share-group-snapshots
+.. rest_method::  POST /v2/share-group-snapshots
 
 .. versionadded:: 2.31
 
@@ -302,7 +302,7 @@ Response example
 Reset share group snapshot state
 ================================
 
-.. rest_method::  POST /v2/{project_id}/share-group-snapshots/{group_snapshot_id}/action
+.. rest_method::  POST /v2/share-group-snapshots/{group_snapshot_id}/action
 
 .. versionadded:: 2.31
 
@@ -344,7 +344,7 @@ Request example
 Update share group snapshot
 ===========================
 
-.. rest_method::  PUT /v2/{project_id}/share-group-snapshots/{group_snapshot_id}
+.. rest_method::  PUT /v2/share-group-snapshots/{group_snapshot_id}
 
 .. versionadded:: 2.31
 
@@ -406,7 +406,7 @@ Response example
 Delete share group snapshot
 ===========================
 
-.. rest_method::  DELETE /v2/{project_id}/share-group-snapshots/{group_snapshot_id}
+.. rest_method::  DELETE /v2/share-group-snapshots/{group_snapshot_id}
 
 .. versionadded:: 2.31
 

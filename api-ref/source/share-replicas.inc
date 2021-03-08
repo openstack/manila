@@ -55,7 +55,7 @@ one of these supported replication types:
 Create share replica
 ====================
 
-.. rest_method::  POST /v2/{project_id}/share-replicas
+.. rest_method::  POST /v2/share-replicas
 
 .. versionadded:: 2.11
 
@@ -126,7 +126,7 @@ Response example
 Promote share replica
 =====================
 
-.. rest_method::  POST /v2/{project_id}/share-replicas/{share_replica_id}/action
+.. rest_method::  POST /v2/share-replicas/{share_replica_id}/action
 
 .. versionadded:: 2.11
 
@@ -158,7 +158,7 @@ Request
 Resync share replica
 ====================
 
-.. rest_method::  POST /v2/{project_id}/share-replicas/{share_replica_id}/action
+.. rest_method::  POST /v2/share-replicas/{share_replica_id}/action
 
 .. versionadded:: 2.11
 
@@ -190,7 +190,7 @@ Request
 List share replicas
 ===================
 
-.. rest_method::  GET /v2/{project_id}/share-replicas?share_id={share_id}
+.. rest_method::  GET /v2/share-replicas?share_id={share_id}
 
 .. versionadded:: 2.11
 
@@ -238,7 +238,7 @@ Response example
 List share replicas with details
 ================================
 
-.. rest_method::  GET /v2/{project_id}/share-replicas/detail?share_id={share_id}
+.. rest_method::  GET /v2/share-replicas/detail?share_id={share_id}
 
 .. versionadded:: 2.11
 
@@ -292,7 +292,7 @@ Response example
 Show share replica
 ==================
 
-.. rest_method::  GET /v2/{project_id}/share-replicas/{share_replica_id}
+.. rest_method::  GET /v2/share-replicas/{share_replica_id}
 
 .. versionadded:: 2.11
 
@@ -347,7 +347,7 @@ Response example
 Reset status of the share replica
 =================================
 
-.. rest_method::  POST /v2/{project_id}/share-replicas/{share_replica_id}/action
+.. rest_method::  POST /v2/share-replicas/{share_replica_id}/action
 
 .. versionadded:: 2.11
 
@@ -390,7 +390,7 @@ Request example
 Reset replica_state of the share replica
 ========================================
 
-.. rest_method::  POST /v2/{project_id}/share-replicas/{share_replica_id}/action
+.. rest_method::  POST /v2/share-replicas/{share_replica_id}/action
 
 .. versionadded:: 2.11
 
@@ -433,7 +433,7 @@ Request example
 Delete share replica
 ====================
 
-.. rest_method::  DELETE /v2/{project_id}/share-replicas/{share_replica_id}
+.. rest_method::  DELETE /v2/share-replicas/{share_replica_id}
 
 .. versionadded:: 2.11
 
@@ -470,7 +470,7 @@ Request
 Force-delete share replica
 ==========================
 
-.. rest_method::  POST /v2/{project_id}/share-replicas/{share_replica_id}/action
+.. rest_method::  POST /v2/share-replicas/{share_replica_id}/action
 
 .. versionadded:: 2.11
 

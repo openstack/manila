@@ -15,7 +15,7 @@ locations of non-active share replicas can only be retrieved using the
 List export locations
 =====================
 
-.. rest_method::  GET /v2/{project_id}/shares/{share_id}/export_locations
+.. rest_method::  GET /v2/shares/{share_id}/export_locations
 
 .. versionadded:: 2.9
 
@@ -64,7 +64,7 @@ Response example
 Show single export location
 ===========================
 
-.. rest_method::  GET /v2/{project_id}/shares/{share_id}/export_locations/​{export_location_id}​
+.. rest_method::  GET /v2/shares/{share_id}/export_locations/​{export_location_id}​
 
 .. versionadded:: 2.9
 

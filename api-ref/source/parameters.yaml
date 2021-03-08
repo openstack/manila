@@ -48,20 +48,34 @@ metadata_key_path:
   type: string
 project_id_path:
   description: |
-    The project ID of the user or service making the API request.
+    The project ID of the user or service making the API request. This
+    parameter is optional if the service supports API version 2.60. If the
+    service doesn't yet support API version 2.60, ensure that the service
+    catalog endpoint obtained for the service has the user's project_id
+    after the "/v2/" component, for example, the API to retrieve shares is
+    *GET /v2/{project_id}/shares*. If the service doesn't yet support API
+    version 2.60, and the project_id is ommitted from the API URL, a
+    Malformed Request error is returned (HTTP 400).
   in: path
-  required: true
+  required: false
   type: string
 project_id_quota_request_path:
   description: |
-    The ID of the project whose quotas must be acted upon by the API.
-    This ID can be different from the first project ID in the URI.
-    For example, in a multi-tenant cloud, the first ID in the URI is
-    typically the project ID of a privileged user (such as a cloud
-    administrator) that can create, query or delete quotas of other projects
-    in the cloud.
+    The ID of the project whose quotas must be acted upon by the API. This
+    is optional, and if it is not specified, the project ID is derived from
+    the caller's API token. System/Domain scoped users interacting with this
+    API *must* specify the project ID for the project whose quotas they need
+    to query or manipulate.
+
+    Note that this ID can be different from the project ID that precedes the
+    resource name "quota-sets". For example, in a multi-tenant cloud, the
+    first ID in the URL is typically the project ID of a privileged user
+    (such as a cloud administrator) that can create, query or delete quotas
+    of other projects in the cloud. If a server supports API version 2.60,
+    URLs no longer need the privileged user's project ID prior to the resource
+    name.
   in: path
-  required: true
+  required: false
   type: string
 quota_class_name:
   description:
@@ -121,7 +135,8 @@ share_type_for_quota:
   description: |
     The name or UUID of the share type. If you specify this
     parameter in the URI, you show, update, or delete quotas
-    for this share type.
+    for this share type. This parameter is mutually exclusive with the
+    "user_id" query parameter.
   in: path
   required: false
   type: string
@@ -487,9 +502,10 @@ status_query:
   type: string
 user_id_query:
   description: |
-    The ID of the user. If you specify this query parameter, you update the
-    quotas for this user in the project. If you omit this parameter, you
-    update the quotas for the whole project.
+    The ID of the user. If you specify this query parameter, you retrieve or
+    update the quotas for this user in the project. If you omit this
+    parameter, you query or update the quotas for the whole project. This
+    parameter is mutually exclusive with the "share_type" parameter.
   in: query
   required: false
   type: string

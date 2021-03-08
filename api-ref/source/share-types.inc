@@ -93,7 +93,7 @@ other roles.
 List share types
 ================
 
-.. rest_method::  GET /v2/{project_id}/types?is_public={is_public}&extra-specs={extra-specs-as-dict}
+.. rest_method::  GET /v2/types?is_public={is_public}&extra-specs={extra-specs-as-dict}
 
 Lists all share types.
 
@@ -142,7 +142,7 @@ Response example
 List default share types
 ========================
 
-.. rest_method::  GET /v2/{project_id}/types/default
+.. rest_method::  GET /v2/types/default
 
 Lists default share types.
 
@@ -192,7 +192,7 @@ Response example
 Show share type detail
 ======================
 
-.. rest_method::  GET /v2/{project_id}/types/{share_type_id}
+.. rest_method::  GET /v2/types/{share_type_id}
 
 Shows details for a specified share type.
 
@@ -247,7 +247,7 @@ Response Example
 List extra specs
 ================
 
-.. rest_method::  GET /v2/{project_id}/types/{share_type_id}/extra_specs
+.. rest_method::  GET /v2/types/{share_type_id}/extra_specs
 
 Lists the extra specifications for a share type.
 
@@ -296,7 +296,7 @@ Response example
 Create share type
 =================
 
-.. rest_method::  POST /v2/{project_id}/types
+.. rest_method::  POST /v2/types
 
 Creates a share type.
 
@@ -369,7 +369,7 @@ Response example
 Show share type access details
 ==============================
 
-.. rest_method::  GET /v2/{project_id}/types/{share_type_id}/share_type_access
+.. rest_method::  GET /v2/types/{share_type_id}/share_type_access
 
 Shows access details for a share type.
 
@@ -415,7 +415,7 @@ Response example
 Set extra spec for share type
 =============================
 
-.. rest_method::  POST /v2/{project_id}/types/{share_type_id}/extra_specs
+.. rest_method::  POST /v2/types/{share_type_id}/extra_specs
 
 Sets an extra specification for the share type.
 
@@ -471,7 +471,7 @@ Response example
 Unset an extra spec
 ===================
 
-.. rest_method::  DELETE /v2/{project_id}/types/{share_type_id}/extra_specs/{extra-spec-key}
+.. rest_method::  DELETE /v2/types/{share_type_id}/extra_specs/{extra-spec-key}
 
 Unsets an extra specification for the share type.
 
@@ -502,7 +502,7 @@ Request
 Add share type access
 =====================
 
-.. rest_method::  POST /v2/{project_id}/types/{share_type_id}/action
+.. rest_method::  POST /v2/types/{share_type_id}/action
 
 Adds share type access for a project.
 
@@ -543,7 +543,7 @@ Request example
 Remove share type access
 ========================
 
-.. rest_method::  POST /v2/{project_id}/types/{share_type_id}/action
+.. rest_method::  POST /v2/types/{share_type_id}/action
 
 Removes share type access from a project.
 
@@ -583,7 +583,7 @@ Request example
 Delete share type
 =================
 
-.. rest_method::  DELETE /v2/{project_id}/types/{share_type_id}
+.. rest_method::  DELETE /v2/types/{share_type_id}
 
 Deletes a share type.
 
@@ -613,7 +613,7 @@ Request
 Update share type (since API v2.50)
 ===================================
 
-.. rest_method::  PUT /v2/{project_id}/types/{share_type_id}
+.. rest_method::  PUT /v2/types/{share_type_id}
 
 .. versionadded:: 2.50
 
