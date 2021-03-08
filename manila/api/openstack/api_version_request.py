@@ -161,8 +161,8 @@ REST_API_VERSION_HISTORY = """
     * 2.59 - Add driver ``details`` field to migration get progress.
     * 2.60 - API URLs no longer need to include a project_id parameter.
     * 2.61 - Added optional provisioning:max_share_size and
-             provisioning:min_share_size extra spec,
-             which was add minimum and maximum share size restrictions
+             provisioning:min_share_size extra specs,
+             which can add minimum and maximum share size restrictions
              on a per share-type granularity.
 """
 
