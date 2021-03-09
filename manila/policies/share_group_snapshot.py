@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,31 +18,75 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'share_group_snapshot:%s'
 
+DEPRECATED_REASON = """
+The share group snapshots API now supports system scope and default roles.
+"""
+
+deprecated_group_snapshot_create = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'create',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_group_snapshot_get = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_group_snapshot_get_all = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_all',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_group_snapshot_update = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_group_snapshot_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_group_snapshot_force_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'force_delete',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_group_snapshot_reset_status = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'reset_status',
+    check_str=base.RULE_ADMIN_API
+)
+
 
 share_group_snapshot_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Create a new share group snapshot.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-group-snapshots'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_group_snapshot_create,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get details of a share group snapshot.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/share-group-snapshots/{share_group_snapshot_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_group_snapshot_get,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get all share group snapshots.",
         operations=[
             {
@@ -60,30 +105,48 @@ share_group_snapshot_policies = [
                 'method': 'GET',
                 'path': '/share-group-snapshots/detail?{query}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_group_snapshot_get_all,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Update a share group snapshot.",
         operations=[
             {
                 'method': 'PUT',
                 'path': '/share-group-snapshots/{share_group_snapshot_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_group_snapshot_update,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Delete a share group snapshot.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/share-group-snapshots/{share_group_snapshot_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_group_snapshot_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        check_str=base.RULE_ADMIN_API,
+        # NOTE(lbragstad): This might make a good candidate for as a project
+        # administrator operation if it doesn't require any information that
+        # would violate tenancy
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Force delete a share group snapshot.",
         operations=[
             {
@@ -91,10 +154,18 @@ share_group_snapshot_policies = [
                 'path': '/share-group-snapshots/{share_group_snapshot_id}/'
                         'action'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_group_snapshot_force_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.RULE_ADMIN_API,
+        # NOTE(lbragstad): This might make a good candidate for as a project
+        # administrator operation if it doesn't require any information that
+        # would violate tenancy
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Reset a share group snapshot's status.",
         operations=[
             {
@@ -102,7 +173,11 @@ share_group_snapshot_policies = [
                 'path': '/share-group-snapshots/{share_group_snapshot_id}/'
                         'action'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_group_snapshot_reset_status,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
