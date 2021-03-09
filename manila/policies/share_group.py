@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,31 +18,75 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'share_group:%s'
 
+DEPRECATED_REASON = """
+The share group API now supports system scope and default roles.
+"""
+
+deprecated_share_group_create = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'create',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_group_get = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_group_get_all = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_all',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_group_update = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_group_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_group_force_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'force_delete',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_group_reset_status = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'reset_status',
+    check_str=base.RULE_ADMIN_API
+)
+
 
 share_group_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Create share group.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-groups'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_create,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get details of a share group.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/share-groups/{share_group_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_get,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get all share groups.",
         operations=[
             {
@@ -60,47 +105,71 @@ share_group_policies = [
                 'method': 'GET',
                 'path': '/share-groups/detail?{query}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_get_all,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Update share group.",
         operations=[
             {
                 'method': 'PUT',
                 'path': '/share-groups/{share_group_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_update,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Delete share group.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/share-groups/{share_group_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description="Force delete a share group.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-groups/{share_group_id}/action'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_force_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description="Reset share group's status.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-groups/{share_group_id}/action'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_reset_status,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
