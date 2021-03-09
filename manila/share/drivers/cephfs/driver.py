@@ -15,14 +15,15 @@
 
 
 import ipaddress
+import json
 import socket
 import sys
 
 from oslo_config import cfg
 from oslo_config import types
 from oslo_log import log
+from oslo_utils import importutils
 from oslo_utils import units
-import six
 
 from manila.common import constants
 from manila import exception
@@ -33,14 +34,30 @@ from manila.share import driver
 from manila.share.drivers import ganesha
 from manila.share.drivers.ganesha import utils as ganesha_utils
 from manila.share.drivers import helpers as driver_helpers
-from manila.share import share_types
 
-try:
-    import ceph_volume_client
-    ceph_module_found = True
-except ImportError:
-    ceph_volume_client = None
-    ceph_module_found = False
+rados = None
+json_command = None
+
+
+def setup_rados():
+    global rados
+    if not rados:
+        try:
+            rados = importutils.import_module('rados')
+        except ImportError:
+            raise exception.ShareBackendException(
+                _("rados python module is not installed"))
+
+
+def setup_json_command():
+    global json_command
+    if not json_command:
+        try:
+            json_command = importutils.import_class(
+                'ceph_argparse.json_command')
+        except ImportError:
+            raise exception.ShareBackendException(
+                _("ceph_argparse python module is not installed"))
 
 
 CEPHX_ACCESS_TYPE = "cephx"
@@ -50,6 +67,7 @@ CEPH_DEFAULT_AUTH_ID = "admin"
 
 DEFAULT_VOLUME_MODE = '755'
 
+RADOS_TIMEOUT = 10
 
 LOG = log.getLogger(__name__)
 
@@ -66,6 +84,10 @@ cephfs_opts = [
                help="The name of the ceph auth identity to use."
                ),
     cfg.StrOpt('cephfs_volume_path_prefix',
+               deprecated_for_removal=True,
+               deprecated_since='Wallaby',
+               deprecated_reason='This option is not used starting with '
+                                 'the Nautilus release of Ceph.',
                default="/volumes",
                help="The prefix of the cephfs volume path."
                ),
@@ -111,6 +133,9 @@ cephfs_opts = [
                help="The read/write/execute permissions mode for CephFS "
                     "volumes, snapshots, and snapshot groups expressed in "
                     "Octal as with linux 'chmod' or 'umask' commands."),
+    cfg.StrOpt('cephfs_filesystem_name',
+               help="The name of the filesystem to use, if there are "
+                    "multiple filesystems in the cluster."),
 ]
 
 
@@ -118,10 +143,60 @@ CONF = cfg.CONF
 CONF.register_opts(cephfs_opts)
 
 
-def cephfs_share_path(share):
-    """Get VolumePath from Share."""
-    return ceph_volume_client.VolumePath(
-        share['share_group_id'], share['id'])
+class RadosError(Exception):
+    """Something went wrong talking to Ceph with librados"""
+
+    pass
+
+
+def rados_command(rados_client, prefix=None, args=None, json_obj=False):
+    """Safer wrapper for ceph_argparse.json_command
+
+    Raises error exception instead of relying on caller to check return
+    codes.
+
+    Error exception can result from:
+    * Timeout
+    * Actual legitimate errors
+    * Malformed JSON output
+
+    return: If json_obj is True, return the decoded JSON object from ceph,
+            or None if empty string returned.
+            If json is False, return a decoded string (the data returned by
+            ceph command)
+    """
+    if args is None:
+        args = {}
+
+    argdict = args.copy()
+    argdict['format'] = 'json'
+
+    LOG.debug("Invoking ceph_argparse.json_command - rados_client=%(cl)s, "
+              "prefix='%(pf)s', argdict=%(ad)s, timeout=%(to)s.",
+              {"cl": rados_client, "pf": prefix, "ad": argdict,
+               "to": RADOS_TIMEOUT})
+
+    try:
+        ret, outbuf, outs = json_command(rados_client,
+                                         prefix=prefix,
+                                         argdict=argdict,
+                                         timeout=RADOS_TIMEOUT)
+        if ret != 0:
+            raise rados.Error(outs, ret)
+        if not json_obj:
+            result = outbuf.decode().strip()
+        else:
+            if outbuf:
+                result = json.loads(outbuf.decode().strip())
+            else:
+                result = None
+    except Exception as e:
+        msg = _("json_command failed - prefix=%(pfx)s, argdict=%(ad)s - "
+                "exception message: %(ex)s." %
+                {"pfx": prefix, "ad": argdict, "ex": e})
+        raise exception.ShareBackendException(msg)
+
+    return result
 
 
 class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
@@ -133,18 +208,22 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or 'CephFS'
 
-        self._volume_client = None
+        setup_rados()
+        setup_json_command()
+        self._rados_client = None
+        # name of the filesystem/volume used by the driver
+        self._volname = None
 
         self.configuration.append_config_values(cephfs_opts)
 
         try:
-            self._cephfs_volume_mode = int(
-                self.configuration.cephfs_volume_mode, 8)
+            int(self.configuration.cephfs_volume_mode, 8)
         except ValueError:
             msg = _("Invalid CephFS volume mode %s")
             raise exception.BadConfigurationException(
                 msg % self.configuration.cephfs_volume_mode)
 
+        self._cephfs_volume_mode = self.configuration.cephfs_volume_mode
         self.ipv6_implemented = True
 
     def do_setup(self, context):
@@ -158,7 +237,8 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         self.protocol_helper = protocol_helper_class(
             self._execute,
             self.configuration,
-            ceph_vol_client=self.volume_client)
+            rados_client=self.rados_client,
+            volname=self.volname)
 
         self.protocol_helper.init_helper()
 
@@ -167,7 +247,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         self.protocol_helper.check_for_setup_error()
 
     def _update_share_stats(self):
-        stats = self.volume_client.rados.get_cluster_stats()
+        stats = self.rados_client.get_cluster_stats()
 
         total_capacity_gb = round(stats['kb'] / units.Mi, 2)
         free_capacity_gb = round(stats['kb_avail'] / units.Mi, 2)
@@ -210,41 +290,58 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         return gigs * units.Gi
 
     @property
-    def volume_client(self):
-        if self._volume_client:
-            return self._volume_client
-
-        if not ceph_module_found:
-            raise exception.ManilaException(
-                _("Ceph client libraries not found.")
-            )
+    def rados_client(self):
+        if self._rados_client:
+            return self._rados_client
 
         conf_path = self.configuration.safe_get('cephfs_conf_path')
         cluster_name = self.configuration.safe_get('cephfs_cluster_name')
         auth_id = self.configuration.safe_get('cephfs_auth_id')
-        volume_prefix = self.configuration.safe_get(
-            'cephfs_volume_path_prefix')
-        self._volume_client = ceph_volume_client.CephFSVolumeClient(
-            auth_id, conf_path, cluster_name, volume_prefix=volume_prefix)
-        LOG.info("[%(be)s}] Ceph client found, connecting...",
+        self._rados_client = rados.Rados(
+            name="client.{0}".format(auth_id),
+            clustername=cluster_name,
+            conffile=conf_path,
+            conf={}
+        )
+
+        LOG.info("[%(be)s] Ceph client found, connecting...",
                  {"be": self.backend_name})
-        if auth_id != CEPH_DEFAULT_AUTH_ID:
-            # Evict any other manila sessions.  Only do this if we're
-            # using a client ID that isn't the default admin ID, to avoid
-            # rudely disrupting anyone else.
-            premount_evict = auth_id
-        else:
-            premount_evict = None
         try:
-            self._volume_client.connect(premount_evict=premount_evict)
+            if self._rados_client.state != "connected":
+                self._rados_client.connect()
         except Exception:
-            self._volume_client = None
-            raise
+            self._rados_client = None
+            raise exception.ShareBackendException(
+                "[%(be)s] Ceph client failed to connect.",
+                {"be": self.backend_name})
         else:
             LOG.info("[%(be)s] Ceph client connection complete.",
                      {"be": self.backend_name})
 
-        return self._volume_client
+        return self._rados_client
+
+    @property
+    def volname(self):
+        # Name of the CephFS volume/filesystem where the driver creates
+        # manila entities such as shares, sharegroups, snapshots, etc.
+        if self._volname:
+            return self._volname
+
+        self._volname = self.configuration.safe_get('cephfs_filesystem_name')
+        if not self._volname:
+            out = rados_command(
+                self.rados_client, "fs volume ls", json_obj=True)
+            if len(out) == 1:
+                self._volname = out[0]['name']
+            else:
+                if len(out) > 1:
+                    msg = _("Specify Ceph filesystem name using "
+                            "'cephfs_filesystem_name' driver option.")
+                else:
+                    msg = _("No Ceph filesystem found.")
+                raise exception.ShareBackendException(msg=msg)
+
+        return self._volname
 
     def create_share(self, context, share, share_server=None):
         """Create a CephFS volume.
@@ -260,34 +357,55 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         if (requested_proto != supported_proto):
             msg = _("Share protocol %s is not supported.") % requested_proto
             raise exception.ShareBackendException(msg=msg)
-
-        # `share` is a Share
-        msg = _("create_share {be} name={id} size={size}"
-                " share_group_id={group}")
-        LOG.debug(msg.format(
-            be=self.backend_name, id=share['id'], size=share['size'],
-            group=share['share_group_id']))
-
-        extra_specs = share_types.get_extra_specs_from_share(share)
-        data_isolated = extra_specs.get("cephfs:data_isolated", False)
-
         size = self._to_bytes(share['size'])
 
-        # Create the CephFS volume
-        cephfs_volume = self.volume_client.create_volume(
-            cephfs_share_path(share), size=size, data_isolated=data_isolated,
-            mode=self._cephfs_volume_mode)
+        LOG.debug("[%(be)s]: create_share: id=%(id)s, size=%(sz)s, "
+                  "group=%(gr)s.",
+                  {"be": self.backend_name, "id": share['id'],
+                   "sz": share['size'], "gr": share['share_group_id']})
 
-        return self.protocol_helper.get_export_locations(share, cephfs_volume)
+        # create FS subvolume/share
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": share["id"],
+            "size": size,
+            "namespace_isolated": True,
+            "mode": self._cephfs_volume_mode,
+        }
+
+        if share['share_group_id'] is not None:
+            argdict.update({"group_name": share["share_group_id"]})
+
+        rados_command(self.rados_client, "fs subvolume create", argdict)
+
+        # get path of FS subvolume/share
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": share["id"],
+        }
+        if share['share_group_id'] is not None:
+            argdict.update({"group_name": share["share_group_id"]})
+        subvolume_path = rados_command(
+            self.rados_client, "fs subvolume getpath", argdict)
+
+        return self.protocol_helper.get_export_locations(share, subvolume_path)
 
     def delete_share(self, context, share, share_server=None):
-        extra_specs = share_types.get_extra_specs_from_share(share)
-        data_isolated = extra_specs.get("cephfs:data_isolated", False)
+        # remove FS subvolume/share
 
-        self.volume_client.delete_volume(cephfs_share_path(share),
-                                         data_isolated=data_isolated)
-        self.volume_client.purge_volume(cephfs_share_path(share),
-                                        data_isolated=data_isolated)
+        LOG.debug("[%(be)s]: delete_share: id=%(id)s, group=%(gr)s.",
+                  {"be": self.backend_name, "id": share['id'],
+                   "gr": share['share_group_id']})
+
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": share["id"],
+            "force": True,
+        }
+        if share['share_group_id'] is not None:
+            argdict.update({"group_name": share["share_group_id"]})
+
+        rados_command(self.rados_client, "fs subvolume rm", argdict)
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
@@ -300,65 +418,151 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         return self.create_share(context, share, share_server)
 
     def extend_share(self, share, new_size, share_server=None):
+        # resize FS subvolume/share
+        LOG.debug("[%(be)s]: extend_share: share=%(id)s, size=%(sz)s.",
+                  {"be": self.backend_name, "id": share['id'],
+                   "sz": new_size})
+
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": share["id"],
+            "new_size": self._to_bytes(new_size),
+        }
+
+        if share['share_group_id'] is not None:
+            argdict.update({"group_name": share["share_group_id"]})
+
         LOG.debug("extend_share {id} {size}".format(
             id=share['id'], size=new_size))
-        self.volume_client.set_max_bytes(cephfs_share_path(share),
-                                         self._to_bytes(new_size))
+
+        rados_command(self.rados_client, "fs subvolume resize", argdict)
 
     def shrink_share(self, share, new_size, share_server=None):
-        LOG.debug("shrink_share {id} {size}".format(
-            id=share['id'], size=new_size))
-        new_bytes = self._to_bytes(new_size)
-        used = self.volume_client.get_used_bytes(cephfs_share_path(share))
-        if used > new_bytes:
-            # While in fact we can "shrink" our volumes to less than their
-            # used bytes (it's just a quota), raise error anyway to avoid
-            # confusing API consumers that might depend on typical shrink
-            # behaviour.
-            raise exception.ShareShrinkingPossibleDataLoss(
-                share_id=share['id'])
+        # resize FS subvolume/share
+        LOG.debug("[%(be)s]: shrink_share: share=%(id)s, size=%(sz)s.",
+                  {"be": self.backend_name, "id": share['id'],
+                   "sz": new_size})
 
-        self.volume_client.set_max_bytes(cephfs_share_path(share), new_bytes)
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": share["id"],
+            "new_size": self._to_bytes(new_size),
+            "no_shrink": True,
+        }
+
+        if share["share_group_id"] is not None:
+            argdict.update({"group_name": share["share_group_id"]})
+
+        try:
+            rados_command(self.rados_client, "fs subvolume resize", argdict)
+        except exception.ShareBackendException as e:
+            if 'would be lesser than' in str(e).lower():
+                raise exception.ShareShrinkingPossibleDataLoss(
+                    share_id=share['id'])
+            raise
 
     def create_snapshot(self, context, snapshot, share_server=None):
-        self.volume_client.create_snapshot_volume(
-            cephfs_share_path(snapshot['share']),
-            '_'.join([snapshot['snapshot_id'], snapshot['id']]),
-            mode=self._cephfs_volume_mode)
+        # create a FS snapshot
+        LOG.debug("[%(be)s]: create_snapshot: original share=%(id)s, "
+                  "snapshot=%(sn)s.",
+                  {"be": self.backend_name, "id": snapshot['share_id'],
+                   "sn": snapshot['id']})
+
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": snapshot["share_id"],
+            "snap_name": "_".join([snapshot["snapshot_id"], snapshot["id"]]),
+        }
+
+        rados_command(
+            self.rados_client, "fs subvolume snapshot create", argdict)
 
     def delete_snapshot(self, context, snapshot, share_server=None):
-        self.volume_client.destroy_snapshot_volume(
-            cephfs_share_path(snapshot['share']),
-            '_'.join([snapshot['snapshot_id'], snapshot['id']]))
+        # delete a FS snapshot
+        LOG.debug("[%(be)s]: delete_snapshot: snapshot=%(id)s.",
+                  {"be": self.backend_name, "id": snapshot['id']})
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": snapshot["share_id"],
+            "snap_name": '_'.join([snapshot['snapshot_id'], snapshot['id']]),
+            "force": True,
+        }
+
+        rados_command(self.rados_client, "fs subvolume snapshot rm", argdict)
 
     def create_share_group(self, context, sg_dict, share_server=None):
-        self.volume_client.create_group(sg_dict['id'],
-                                        mode=self._cephfs_volume_mode)
+        # delete a FS group
+        LOG.debug("[%(be)s]: create_share_group: share_group=%(id)s.",
+                  {"be": self.backend_name, "id": sg_dict['id']})
+
+        argdict = {
+            "vol_name": self.volname,
+            "group_name": sg_dict['id'],
+            "mode": self._cephfs_volume_mode,
+        }
+
+        rados_command(self.rados_client, "fs subvolumegroup create", argdict)
 
     def delete_share_group(self, context, sg_dict, share_server=None):
-        self.volume_client.destroy_group(sg_dict['id'])
+        # create a FS group
+        LOG.debug("[%(be)s]: delete_share_group: share_group=%(id)s.",
+                  {"be": self.backend_name, "id": sg_dict['id']})
+
+        argdict = {
+            "vol_name": self.volname,
+            "group_name": sg_dict['id'],
+            "force": True,
+        }
+
+        rados_command(self.rados_client, "fs subvolumegroup rm", argdict)
 
     def delete_share_group_snapshot(self, context, snap_dict,
                                     share_server=None):
-        self.volume_client.destroy_snapshot_group(
-            snap_dict['share_group_id'],
-            snap_dict['id'])
+        # delete a FS group snapshot
+        LOG.debug("[%(be)s]: delete_share_group_snapshot: "
+                  "share_group=%(sg_id)s, snapshot=%(sn)s.",
+                  {"be": self.backend_name, "sg_id": snap_dict['id'],
+                   "sn": snap_dict["share_group_id"]})
+
+        argdict = {
+            "vol_name": self.volname,
+            "group_name": snap_dict["share_group_id"],
+            "snap_name": snap_dict["id"],
+            "force": True,
+        }
+
+        rados_command(
+            self.rados_client, "fs subvolumegroup snapshot rm", argdict)
 
         return None, []
 
     def create_share_group_snapshot(self, context, snap_dict,
                                     share_server=None):
-        self.volume_client.create_snapshot_group(
-            snap_dict['share_group_id'],
-            snap_dict['id'],
-            mode=self._cephfs_volume_mode)
+        # create a FS group snapshot
+        LOG.debug("[%(be)s]: create_share_group_snapshot: share_group=%(id)s, "
+                  "snapshot=%(sn)s.",
+                  {"be": self.backend_name, "id": snap_dict['share_group_id'],
+                   "sn": snap_dict["id"]})
+
+        argdict = {
+            "vol_name": self.volname,
+            "group_name": snap_dict["share_group_id"],
+            "snap_name": snap_dict["id"]
+        }
+
+        rados_command(
+            self.rados_client, "fs subvolumegroup snapshot create", argdict)
 
         return None, []
 
     def __del__(self):
-        if self._volume_client:
-            self._volume_client.disconnect()
-            self._volume_client = None
+        if self._rados_client:
+            LOG.info("[%(be)s] Ceph client disconnecting...",
+                     {"be": self.backend_name})
+            self._rados_client.shutdown()
+            self._rados_client = None
+            LOG.info("[%(be)s] Ceph client disconnected",
+                     {"be": self.backend_name})
 
     def get_configured_ip_versions(self):
         return self.protocol_helper.get_configured_ip_versions()
@@ -372,7 +576,8 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
                                constants.ACCESS_LEVEL_RO)
 
     def __init__(self, execute, config, **kwargs):
-        self.volume_client = kwargs.pop('ceph_vol_client')
+        self.rados_client = kwargs.pop('rados_client')
+        self.volname = kwargs.pop('volname')
         self.message_api = message_api.API()
         super(NativeProtocolHelper, self).__init__(execute, config,
                                                    **kwargs)
@@ -384,13 +589,22 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
         """Returns an error if prerequisites aren't met."""
         return
 
-    def get_export_locations(self, share, cephfs_volume):
+    def get_mon_addrs(self):
+        result = []
+        mon_map = rados_command(self.rados_client, "mon dump", json_obj=True)
+        for mon in mon_map['mons']:
+            ip_port = mon['addr'].split("/")[0]
+            result.append(ip_port)
+
+        return result
+
+    def get_export_locations(self, share, subvolume_path):
         # To mount this you need to know the mon IPs and the path to the volume
-        mon_addrs = self.volume_client.get_mon_addrs()
+        mon_addrs = self.get_mon_addrs()
 
         export_location = "{addrs}:{path}".format(
             addrs=",".join(mon_addrs),
-            path=cephfs_volume['mount_path'])
+            path=subvolume_path)
 
         LOG.info("Calculated export location for share %(id)s: %(loc)s",
                  {"id": share['id'], "loc": export_location})
@@ -418,31 +632,36 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
                              ceph_auth_id)
             raise exception.InvalidShareAccess(reason=error_message)
 
-        if not getattr(self.volume_client, 'version', None):
-            if access['access_level'] == constants.ACCESS_LEVEL_RO:
-                LOG.error("Need python-cephfs package version 10.2.3 or "
-                          "greater to enable read-only access.")
-                raise exception.InvalidShareAccessLevel(
-                    level=constants.ACCESS_LEVEL_RO)
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": share["id"],
+            "auth_id": ceph_auth_id,
+            "tenant_id": share["project_id"],
+        }
 
-            auth_result = self.volume_client.authorize(
-                cephfs_share_path(share), ceph_auth_id)
+        if share["share_group_id"] is not None:
+            argdict.update({"group_name": share["share_group_id"]})
+
+        readonly = access['access_level'] == constants.ACCESS_LEVEL_RO
+
+        if readonly:
+            argdict.update({"access_level": "r"})
         else:
-            readonly = access['access_level'] == constants.ACCESS_LEVEL_RO
-            try:
-                auth_result = self.volume_client.authorize(
-                    cephfs_share_path(share), ceph_auth_id, readonly=readonly,
-                    tenant_id=share['project_id'])
-            except Exception as e:
-                if 'not allowed' in str(e).lower():
-                    msg = ("Access to client %(client)s is not allowed. "
-                           "Reason: %(reason)s")
-                    msg_payload = {'client': ceph_auth_id, 'reason': e}
-                    raise exception.InvalidShareAccess(
-                        reason=msg % msg_payload)
-                raise
+            argdict.update({"access_level": "rw"})
 
-        return auth_result['auth_key']
+        try:
+            auth_result = rados_command(
+                self.rados_client, "fs subvolume authorize", argdict)
+        except exception.ShareBackendException as e:
+            if 'not allowed' in str(e).lower():
+                msg = ("Access to client %(client)s is not allowed. "
+                       "Reason: %(reason)s")
+                msg_payload = {'client': ceph_auth_id, 'reason': e}
+                raise exception.InvalidShareAccess(
+                    reason=msg % msg_payload)
+            raise
+
+        return auth_result
 
     def _deny_access(self, context, share, access, share_server=None):
         if access['access_type'] != CEPHX_ACCESS_TYPE:
@@ -451,35 +670,50 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
                         {"type": access['access_type']})
             return
 
-        self.volume_client.deauthorize(cephfs_share_path(share),
-                                       access['access_to'])
-        self.volume_client.evict(
-            access['access_to'],
-            volume_path=cephfs_share_path(share))
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": share["id"],
+            "auth_id": access['access_to']
+        }
+
+        if share["share_group_id"] is not None:
+            argdict.update({"group_name": share["share_group_id"]})
+
+        rados_command(self.rados_client, "fs subvolume deauthorize", argdict)
+        rados_command(self.rados_client, "fs subvolume evict", argdict)
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
         access_updates = {}
+
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": share["id"],
+        }
+
+        if share["share_group_id"] is not None:
+            argdict.update({"group_name": share["share_group_id"]})
 
         if not (add_rules or delete_rules):  # recovery/maintenance mode
             add_rules = access_rules
 
             existing_auths = None
 
-            # The unversioned volume client cannot fetch from the Ceph backend,
-            # the list of auth IDs that have share access.
-            if getattr(self.volume_client, 'version', None):
-                existing_auths = self.volume_client.get_authorized_ids(
-                    cephfs_share_path(share))
+            existing_auths = rados_command(
+                self.rados_client, "fs subvolume authorized_list",
+                argdict, json_obj=True)
 
             if existing_auths:
-                existing_auth_ids = set(
-                    [auth[0] for auth in existing_auths])
+                existing_auth_ids = set()
+                for rule in range(len(existing_auths)):
+                    for cephx_id in existing_auths[rule]:
+                        existing_auth_ids.add(cephx_id)
                 want_auth_ids = set(
                     [rule['access_to'] for rule in add_rules])
                 delete_auth_ids = existing_auth_ids.difference(
                     want_auth_ids)
-                for delete_auth_id in delete_auth_ids:
+                delete_auth_ids_list = delete_auth_ids
+                for delete_auth_id in delete_auth_ids_list:
                     delete_rules.append(
                         {
                             'access_to': delete_auth_id,
@@ -562,8 +796,10 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
         super(NFSProtocolHelper, self).__init__(execute, config_object,
                                                 **kwargs)
 
-        if not hasattr(self, 'ceph_vol_client'):
-            self.ceph_vol_client = kwargs.pop('ceph_vol_client')
+        if not hasattr(self, 'rados_client'):
+            self.rados_client = kwargs.pop('rados_client')
+        if not hasattr(self, 'volname'):
+            self.volname = kwargs.pop('volname')
         self.export_ips = config_object.cephfs_ganesha_export_ips
         if not self.export_ips:
             self.export_ips = [self.ganesha_host]
@@ -582,12 +818,12 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
                          "hostname.") % export_ip)
                 raise exception.InvalidParameterValue(err=msg)
 
-    def get_export_locations(self, share, cephfs_volume):
+    def get_export_locations(self, share, subvolume_path):
         export_locations = []
         for export_ip in self.export_ips:
             export_path = "{server_address}:{mount_path}".format(
                 server_address=driver_helpers.escaped_address(export_ip),
-                mount_path=cephfs_volume['mount_path'])
+                mount_path=subvolume_path)
 
             LOG.info("Calculated export path for share %(id)s: %(epath)s",
                      {"id": share['id'], "epath": export_path})
@@ -609,9 +845,21 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
     def _fsal_hook(self, base, share, access):
         """Callback to create FSAL subblock."""
         ceph_auth_id = ''.join(['ganesha-', share['id']])
-        auth_result = self.ceph_vol_client.authorize(
-            cephfs_share_path(share), ceph_auth_id, readonly=False,
-            tenant_id=share['project_id'])
+
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": share["id"],
+            "auth_id": ceph_auth_id,
+            "access_level": "rw",
+            "tenant_id": share["project_id"],
+        }
+
+        if share["share_group_id"] is not None:
+            argdict.update({"group_name": share["share_group_id"]})
+
+        auth_result = rados_command(
+            self.rados_client, "fs subvolume authorize", argdict)
+
         # Restrict Ganesha server's access to only the CephFS subtree or path,
         # corresponding to the manila share, that is to be exported by making
         # Ganesha use Ceph auth IDs with path restricted capabilities to
@@ -619,31 +867,49 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
         return {
             'Name': 'Ceph',
             'User_Id': ceph_auth_id,
-            'Secret_Access_Key': auth_result['auth_key']
+            'Secret_Access_Key': auth_result
         }
 
     def _cleanup_fsal_hook(self, base, share, access):
         """Callback for FSAL specific cleanup after removing an export."""
         ceph_auth_id = ''.join(['ganesha-', share['id']])
-        self.ceph_vol_client.deauthorize(cephfs_share_path(share),
-                                         ceph_auth_id)
+
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": share["id"],
+            "auth_id": ceph_auth_id,
+        }
+
+        if share["share_group_id"] is not None:
+            argdict.update({"group_name": share["share_group_id"]})
+
+        rados_command(self.rados_client, "fs subvolume deauthorize", argdict)
 
     def _get_export_path(self, share):
         """Callback to provide export path."""
-        volume_path = cephfs_share_path(share)
-        return self.ceph_vol_client._get_path(volume_path)
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": share["id"]
+        }
+
+        if share["share_group_id"] is not None:
+            argdict.update({"group_name": share["share_group_id"]})
+
+        path = rados_command(
+            self.rados_client, "fs subvolume getpath", argdict)
+
+        return path
 
     def _get_export_pseudo_path(self, share):
         """Callback to provide pseudo path."""
-        volume_path = cephfs_share_path(share)
-        return self.ceph_vol_client._get_path(volume_path)
+        return self._get_export_path(share)
 
     def get_configured_ip_versions(self):
         if not self.configured_ip_versions:
             try:
                 for export_ip in self.export_ips:
                     self.configured_ip_versions.add(
-                        ipaddress.ip_address(six.text_type(export_ip)).version)
+                        ipaddress.ip_address(str(export_ip)).version)
             except Exception:
                 # export_ips contained a hostname, safest thing is to
                 # claim support for IPv4 and IPv6 address families

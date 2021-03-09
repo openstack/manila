@@ -14,12 +14,12 @@
 #    under the License.
 
 import copy
+import io
 import re
 from unittest import mock
 
 import ddt
 from oslo_serialization import jsonutils
-import six
 
 from manila import exception
 from manila.share.drivers.ganesha import manager
@@ -67,11 +67,25 @@ manager_fake_kwargs = {
 }
 
 
-class MockRadosClientModule(object):
-    """Mocked up version of Ceph's RADOS client interface."""
+class MockRadosModule(object):
+    """Mocked up version of Ceph's RADOS module."""
 
     class ObjectNotFound(Exception):
         pass
+
+    class OSError(Exception):
+        pass
+
+    class WriteOpCtx():
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, type, msg, traceback):
+            pass
+
+        def write_full(self, bytes_to_write):
+            pass
 
 
 @ddt.ddt
@@ -167,7 +181,7 @@ class GaneshaConfigTests(test.TestCase):
         self.assertEqual(test_dict_unicode, ret)
 
     def test_dump_to_conf(self):
-        ganesha_cnf = six.StringIO()
+        ganesha_cnf = io.StringIO()
         manager._dump_to_conf(test_dict_str, ganesha_cnf)
         self.assertEqual(*self.conf_mangle(self.ref_ganesha_cnf,
                                            ganesha_cnf.getvalue()))
@@ -200,12 +214,14 @@ class GaneshaManagerTestCase(test.TestCase):
     def setUp(self):
         super(GaneshaManagerTestCase, self).setUp()
         self._execute = mock.Mock(return_value=('', ''))
+        self._rados_client = mock.Mock()
         self._manager = self.instantiate_ganesha_manager(
-            self._execute, 'faketag', **manager_fake_kwargs)
-        self._ceph_vol_client = mock.Mock()
+            self._execute, 'faketag',
+            rados_client=self._rados_client,
+            **manager_fake_kwargs)
         self._setup_rados = mock.Mock()
         self._execute2 = mock.Mock(return_value=('', ''))
-        self.mock_object(manager, 'rados', MockRadosClientModule)
+        self.mock_object(manager, 'rados', MockRadosModule)
         self.mock_object(manager, 'setup_rados', self._setup_rados)
         fake_kwargs = copy.copy(manager_fake_kwargs)
         fake_kwargs.update(
@@ -213,7 +229,7 @@ class GaneshaManagerTestCase(test.TestCase):
             ganesha_rados_store_pool_name='fakepool',
             ganesha_rados_export_counter='fakecounter',
             ganesha_rados_export_index='fakeindex',
-            ceph_vol_client=self._ceph_vol_client
+            rados_client=self._rados_client
         )
         self._manager_with_rados_store = self.instantiate_ganesha_manager(
             self._execute2, 'faketag', **fake_kwargs)
@@ -285,7 +301,7 @@ class GaneshaManagerTestCase(test.TestCase):
             ganesha_rados_store_pool_name='fakepool',
             ganesha_rados_export_counter='fakecounter',
             ganesha_rados_export_index='fakeindex',
-            ceph_vol_client=self._ceph_vol_client
+            rados_client=self._rados_client
         )
         if counter_exists:
             self.mock_object(
@@ -293,7 +309,7 @@ class GaneshaManagerTestCase(test.TestCase):
         else:
             self.mock_object(
                 manager.GaneshaManager, '_get_rados_object',
-                mock.Mock(side_effect=MockRadosClientModule.ObjectNotFound))
+                mock.Mock(side_effect=MockRadosModule.ObjectNotFound))
         self.mock_object(manager.GaneshaManager, '_put_rados_object')
 
         test_mgr = manager.GaneshaManager(
@@ -309,14 +325,14 @@ class GaneshaManagerTestCase(test.TestCase):
         self.assertEqual('fakepool', test_mgr.ganesha_rados_store_pool_name)
         self.assertEqual('fakecounter', test_mgr.ganesha_rados_export_counter)
         self.assertEqual('fakeindex', test_mgr.ganesha_rados_export_index)
-        self.assertEqual(self._ceph_vol_client, test_mgr.ceph_vol_client)
+        self.assertEqual(self._rados_client, test_mgr.rados_client)
         self._setup_rados.assert_called_with()
         test_mgr._get_rados_object.assert_called_once_with('fakecounter')
         if counter_exists:
             self.assertFalse(test_mgr._put_rados_object.called)
         else:
             test_mgr._put_rados_object.assert_called_once_with(
-                'fakecounter', six.text_type(1000))
+                'fakecounter', str(1000))
 
     def test_ganesha_export_dir(self):
         self.assertEqual(
@@ -478,7 +494,7 @@ class GaneshaManagerTestCase(test.TestCase):
         else:
             self.mock_object(
                 self._manager_with_rados_store, '_get_rados_object',
-                mock.Mock(side_effect=MockRadosClientModule.ObjectNotFound))
+                mock.Mock(side_effect=MockRadosModule.ObjectNotFound))
 
         ret = self._manager_with_rados_store._check_export_rados_object_exists(
             test_name)
@@ -1021,36 +1037,58 @@ class GaneshaManagerTestCase(test.TestCase):
                 self._manager._remove_rados_object_url_from_index.called)
 
     def test_get_rados_object(self):
-        fakebin = six.unichr(246).encode('utf-8')
-        self.mock_object(self._ceph_vol_client, 'get_object',
-                         mock.Mock(return_value=fakebin))
+        fakebin = chr(246).encode('utf-8')
+
+        ioctx = mock.Mock()
+        ioctx.read.side_effect = [fakebin, fakebin]
+
+        self._rados_client.open_ioctx = mock.Mock(return_value=ioctx)
+        self._rados_client.conf_get = mock.Mock(return_value=256)
+
+        max_size = 256 * 1024 * 1024
 
         ret = self._manager_with_rados_store._get_rados_object('fakeobj')
 
-        self._ceph_vol_client.get_object.assert_called_once_with(
-            'fakepool', 'fakeobj')
+        self._rados_client.open_ioctx.assert_called_once_with('fakepool')
+        self._rados_client.conf_get.assert_called_once_with(
+            'osd_max_write_size')
+        ioctx.read.assert_called_once_with('fakeobj', max_size)
+        ioctx.close.assert_called_once()
+
         self.assertEqual(fakebin.decode('utf-8'), ret)
 
     def test_put_rados_object(self):
-        faketext = six.unichr(246)
-        self.mock_object(self._ceph_vol_client, 'put_object',
-                         mock.Mock(return_value=None))
+        faketext = chr(246)
+
+        ioctx = mock.Mock()
+        manager.rados.WriteOpCtx.write_full = mock.Mock()
+
+        self._rados_client.open_ioctx = mock.Mock(return_value=ioctx)
+        self._rados_client.conf_get = mock.Mock(return_value=256)
 
         ret = self._manager_with_rados_store._put_rados_object(
             'fakeobj', faketext)
 
-        self._ceph_vol_client.put_object.assert_called_once_with(
-            'fakepool', 'fakeobj', faketext.encode('utf-8'))
+        self._rados_client.open_ioctx.assert_called_once_with('fakepool')
+        self._rados_client.conf_get.assert_called_once_with(
+            'osd_max_write_size')
+        manager.rados.WriteOpCtx.write_full.assert_called_once_with(
+            faketext.encode('utf-8'))
+        ioctx.operate_write_op.assert_called_once_with(mock.ANY, 'fakeobj')
+
         self.assertIsNone(ret)
 
     def test_delete_rados_object(self):
-        self.mock_object(self._ceph_vol_client, 'delete_object',
-                         mock.Mock(return_value=None))
+        ioctx = mock.Mock()
+
+        self._rados_client.open_ioctx = mock.Mock(return_value=ioctx)
 
         ret = self._manager_with_rados_store._delete_rados_object('fakeobj')
 
-        self._ceph_vol_client.delete_object.assert_called_once_with(
-            'fakepool', 'fakeobj')
+        self._rados_client.open_ioctx.assert_called_once_with('fakepool')
+        ioctx.remove_object.assert_called_once_with('fakeobj')
+        ioctx.close.assert_called_once()
+
         self.assertIsNone(ret)
 
     def test_get_export_id(self):

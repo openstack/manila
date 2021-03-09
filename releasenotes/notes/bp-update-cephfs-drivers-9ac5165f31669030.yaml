@@ -1,0 +1,36 @@
+---
+deprecations:
+  - |
+    As of the Wallaby release the CephFS driver no longer recognizes
+    the scoped extra-spec ``cephfs:data_isolated`` because it is no
+    longer supported by the Ceph community.  This style of data isolation
+    required dedicating a Ceph pool for each share and scaled and performed
+    poorly.
+  - |
+    The ``ceph_volume_client`` is deprecated by the CephFS driver in favor of
+    a python rados client that connects to the Ceph manager daemon to interact
+    with the Ceph cluster.  This new connection method will enable functionality
+    not available with older client, which has been deprecated by the Ceph
+    community and will be removed in the Quincy release.
+upgrade:
+  - |
+    Manila's CephFS drivers now **require** the "python3-ceph-argparse" and
+    "python3-rados" packages.  Do not upgrade without adding these packages
+    to the environment where the ``manila-share`` service runs since
+    without them the driver will refuse to start up.  This breaking change
+    is necessary because the old ``ceph_volume_client`` has been deprecated
+    by the Ceph community.
+features:
+  - |
+    The Ceph backend can now work with multiple filesystem clusters.
+    The filesystem to be used by manila can be specified by the
+    driver option 'cephfs_filesystem_name'. If this option is not specified,
+    the driver will assume that a single filesystem is present in the Ceph
+    cluster and will attempt to use it.
+  - |
+    Deletion of shares offerd by the CephFS driver (CephFS and NFS) is
+    now faster. Now the Ceph manager moves deleted share's content to a
+    trash folder and purges the contents asynchronously rather than
+    handling this as part of the synchronous delete operation. The purge
+    can take considerable time if a share contains a significant amount of data.
+

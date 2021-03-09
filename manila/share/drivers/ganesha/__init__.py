@@ -20,7 +20,6 @@ import re
 
 from oslo_config import cfg
 from oslo_log import log
-import six
 
 from manila.common import constants
 from manila import exception
@@ -32,8 +31,7 @@ CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class NASHelperBase(object):
+class NASHelperBase(object, metaclass=abc.ABCMeta):
     """Interface to work with share."""
 
     # drivers that use a helper derived from this class
@@ -184,7 +182,7 @@ class GaneshaNASHelper2(GaneshaNASHelper):
     def __init__(self, execute, config, tag='<no name>', **kwargs):
         super(GaneshaNASHelper2, self).__init__(execute, config, **kwargs)
         if self.configuration.ganesha_rados_store_enable:
-            self.ceph_vol_client = kwargs.pop('ceph_vol_client')
+            self.rados_client = kwargs.pop('rados_client')
 
     def init_helper(self):
         """Initializes protocol-specific NAS drivers."""
@@ -206,8 +204,7 @@ class GaneshaNASHelper2(GaneshaNASHelper):
                 self.configuration.ganesha_rados_export_index)
             kwargs['ganesha_rados_export_counter'] = (
                 self.configuration.ganesha_rados_export_counter)
-            kwargs['ceph_vol_client'] = (
-                self.ceph_vol_client)
+            kwargs['rados_client'] = self.rados_client
         else:
             kwargs['ganesha_db_path'] = self.configuration.ganesha_db_path
         self.ganesha = ganesha_manager.GaneshaManager(

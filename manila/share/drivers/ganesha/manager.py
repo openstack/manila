@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import io
 import os
 import pipes
 import re
@@ -21,7 +22,6 @@ import sys
 from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -36,7 +36,7 @@ def _conf2json(conf):
     """Convert Ganesha config to JSON."""
 
     # tokenize config string
-    token_list = [six.StringIO()]
+    token_list = [io.StringIO()]
     state = {
         'in_quote': False,
         'in_comment': False,
@@ -49,7 +49,7 @@ def _conf2json(conf):
             if not state['escape']:
                 if char == '"':
                     state['in_quote'] = False
-                    cbk.append(lambda: token_list.append(six.StringIO()))
+                    cbk.append(lambda: token_list.append(io.StringIO()))
                 elif char == '\\':
                     cbk.append(lambda: state.update({'escape': True}))
         else:
@@ -60,7 +60,7 @@ def _conf2json(conf):
                     state['in_comment'] = False
             else:
                 if char == '"':
-                    token_list.append(six.StringIO())
+                    token_list.append(io.StringIO())
                     state['in_quote'] = True
         state['escape'] = False
         if not state['in_comment']:
@@ -200,7 +200,7 @@ def parseconf(conf):
 
 def mkconf(confdict):
     """Create Ganesha config string from confdict."""
-    s = six.StringIO()
+    s = io.StringIO()
     _dump_to_conf(confdict, s)
     return s.getvalue()
 
@@ -255,13 +255,12 @@ class GaneshaManager(object):
                 kwargs['ganesha_rados_export_counter'])
             self.ganesha_rados_export_index = (
                 kwargs['ganesha_rados_export_index'])
-            self.ceph_vol_client = (
-                kwargs['ceph_vol_client'])
+            self.rados_client = kwargs['rados_client']
             try:
                 self._get_rados_object(self.ganesha_rados_export_counter)
             except rados.ObjectNotFound:
                 self._put_rados_object(self.ganesha_rados_export_counter,
-                                       six.text_type(1000))
+                                       str(1000))
         else:
             self.ganesha_db_path = kwargs['ganesha_db_path']
             self.execute('mkdir', '-p', os.path.dirname(self.ganesha_db_path))
@@ -385,7 +384,7 @@ class GaneshaManager(object):
         for k, v in ganesha_utils.walk(confdict):
             # values in the export block template that need to be
             # filled in by Manila are pre-fixed by '@'
-            if isinstance(v, six.string_types) and v[0] == '@':
+            if isinstance(v, str) and v[0] == '@':
                 msg = _("Incomplete export block: value %(val)s of attribute "
                         "%(key)s is a stub.") % {'key': k, 'val': v}
                 raise exception.InvalidParameterValue(err=msg)
@@ -524,22 +523,78 @@ class GaneshaManager(object):
                 self._rm_export_file(name)
                 self._mkindex()
 
-    def _get_rados_object(self, obj_name):
-        """Get data stored in Ceph RADOS object as a text string."""
-        return self.ceph_vol_client.get_object(
-            self.ganesha_rados_store_pool_name, obj_name).decode('utf-8')
+    def _get_rados_object(self, object_name):
+        """Synchronously read data from Ceph RADOS object as a text string.
 
-    def _put_rados_object(self, obj_name, data):
-        """Put data as a byte string in a Ceph RADOS object."""
-        return self.ceph_vol_client.put_object(
-            self.ganesha_rados_store_pool_name,
-            obj_name,
-            data.encode('utf-8'))
+        :param pool_name: name of the pool
+        :type pool_name: str
+        :param object_name: name of the object
+        :type object_name: str
+        :returns: tuple of object data and version
+        """
 
-    def _delete_rados_object(self, obj_name):
-        return self.ceph_vol_client.delete_object(
-            self.ganesha_rados_store_pool_name,
-            obj_name)
+        pool_name = self.ganesha_rados_store_pool_name
+
+        ioctx = self.rados_client.open_ioctx(pool_name)
+
+        osd_max_write_size = self.rados_client.conf_get('osd_max_write_size')
+        max_size = int(osd_max_write_size) * 1024 * 1024
+        try:
+            bytes_read = ioctx.read(object_name, max_size)
+            if ((len(bytes_read) == max_size) and
+                    (ioctx.read(object_name, 1, offset=max_size))):
+                LOG.warning("Size of object {0} exceeds '{1}' bytes "
+                            "read".format(object_name, max_size))
+        finally:
+            ioctx.close()
+
+        bytes_read_decoded = bytes_read.decode('utf-8')
+
+        return bytes_read_decoded
+
+    def _put_rados_object(self, object_name, data):
+        """Synchronously write data as a byte string in a Ceph RADOS object.
+
+        :param pool_name: name of the pool
+        :type pool_name: str
+        :param object_name: name of the object
+        :type object_name: str
+        :param data: data to write
+        :type data: bytes
+        """
+
+        pool_name = self.ganesha_rados_store_pool_name
+        encoded_data = data.encode('utf-8')
+
+        ioctx = self.rados_client.open_ioctx(pool_name)
+
+        max_size = int(
+            self.rados_client.conf_get('osd_max_write_size')) * 1024 * 1024
+        if len(encoded_data) > max_size:
+            msg = ("Data to be written to object '{0}' exceeds "
+                   "{1} bytes".format(object_name, max_size))
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg)
+
+        try:
+            with rados.WriteOpCtx() as wop:
+                wop.write_full(encoded_data)
+                ioctx.operate_write_op(wop, object_name)
+        except rados.OSError as e:
+            LOG.error(e)
+            raise e
+        finally:
+            ioctx.close()
+
+    def _delete_rados_object(self, object_name):
+        pool_name = self.ganesha_rados_store_pool_name
+        ioctx = self.rados_client.open_ioctx(pool_name)
+        try:
+            ioctx.remove_object(object_name)
+        except rados.ObjectNotFound:
+            LOG.warning("Object '{0}' was already removed".format(object_name))
+        finally:
+            ioctx.close()
 
     def get_export_id(self, bump=True):
         """Get a new export id."""

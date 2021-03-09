@@ -351,12 +351,12 @@ class GaneshaNASHelper2TestCase(test.TestCase):
 
         self._context = context.get_admin_context()
         self._execute = mock.Mock(return_value=('', ''))
-        self.ceph_vol_client = mock.Mock()
+        self.rados_client = mock.Mock()
         self.fake_conf = config.Configuration(None)
         self.fake_conf_dir_path = '/fakedir0/exports.d'
         self._helper = ganesha.GaneshaNASHelper2(
             self._execute, self.fake_conf, tag='faketag',
-            ceph_vol_client=self.ceph_vol_client)
+            rados_client=self.rados_client)
         self._helper.ganesha = mock.Mock()
         self._helper.export_template = {}
         self.share = fake_share.fake_share()
@@ -387,7 +387,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
                 'ganesha_rados_store_pool_name': 'ceph_pool',
                 'ganesha_rados_export_index': 'fake_index',
                 'ganesha_rados_export_counter': 'fake_counter',
-                'ceph_vol_client': self.ceph_vol_client
+                'rados_client': self.rados_client
             }
         else:
             kwargs = {
@@ -431,7 +431,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
             ganesha_rados_store_pool_name='ceph_pool',
             ganesha_rados_export_index='fake_index',
             ganesha_rados_export_counter='fake_counter',
-            ceph_vol_client=self.ceph_vol_client)
+            rados_client=self.rados_client)
         self._helper._load_conf_dir.assert_called_once_with(
             '/fakedir2/faketempl.d', must_exist=False)
         self.assertEqual(mock_ganesha_manager, self._helper.ganesha)

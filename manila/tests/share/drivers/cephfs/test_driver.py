@@ -28,58 +28,38 @@ from manila import test
 from manila.tests import fake_share
 
 
-DEFAULT_VOLUME_MODE = 0o755
-ALT_VOLUME_MODE_CFG = '775'
-ALT_VOLUME_MODE = 0o775
+DEFAULT_VOLUME_MODE = '755'
+ALT_VOLUME_MODE = '644'
 
 
-class MockVolumeClientModule(object):
-    """Mocked up version of ceph's VolumeClient interface."""
+class MockRadosModule(object):
+    """Mocked up version of the rados module."""
 
-    class VolumePath(object):
-        """Copy of VolumePath from CephFSVolumeClient."""
-
-        def __init__(self, group_id, volume_id):
-            self.group_id = group_id
-            self.volume_id = volume_id
-
-        def __eq__(self, other):
-            return (self.group_id == other.group_id
-                    and self.volume_id == other.volume_id)
-
-        def __str__(self):
-            return "{0}/{1}".format(self.group_id, self.volume_id)
-
-    class CephFSVolumeClient(mock.Mock):
-        mock_used_bytes = 0
-        version = 1
-
+    class Rados(mock.Mock):
         def __init__(self, *args, **kwargs):
             mock.Mock.__init__(self, spec=[
-                "connect", "disconnect",
-                "create_snapshot_volume", "destroy_snapshot_volume",
-                "create_group", "destroy_group",
-                "delete_volume", "purge_volume",
-                "deauthorize", "evict", "set_max_bytes",
-                "destroy_snapshot_group", "create_snapshot_group",
-                "get_authorized_ids"
+                "connect", "shutdown", "state"
             ])
-            self.create_volume = mock.Mock(return_value={
-                "mount_path": "/foo/bar"
-            })
-            self._get_path = mock.Mock(return_value='/foo/bar')
             self.get_mon_addrs = mock.Mock(return_value=["1.2.3.4", "5.6.7.8"])
-            self.get_authorized_ids = mock.Mock(
-                return_value=[('eve', 'rw')])
-            self.authorize = mock.Mock(return_value={"auth_key": "abc123"})
-            self.get_used_bytes = mock.Mock(return_value=self.mock_used_bytes)
-            self.rados = mock.Mock()
-            self.rados.get_cluster_stats = mock.Mock(return_value={
+            self.get_cluster_stats = mock.Mock(return_value={
                 "kb": 172953600,
                 "kb_avail": 157123584,
                 "kb_used": 15830016,
                 "num_objects": 26,
             })
+
+    class Error(mock.Mock):
+        pass
+
+
+class MockCephArgparseModule(object):
+    """Mocked up version of the ceph_argparse module."""
+
+    class json_command(mock.Mock):
+        def __init__(self, *args, **kwargs):
+            mock.Mock.__init__(self, spec=[
+                "connect", "shutdown", "state"
+            ])
 
 
 @ddt.ddt
@@ -98,14 +78,14 @@ class CephFSDriverTestCase(test.TestCase):
         self.fake_conf = configuration.Configuration(None)
         self._context = context.get_admin_context()
         self._share = fake_share.fake_share(share_proto='CEPHFS')
+        self._snapshot = fake_share.fake_snapshot_instance()
 
         self.fake_conf.set_default('driver_handles_share_servers', False)
         self.fake_conf.set_default('cephfs_auth_id', 'manila')
 
-        self.mock_object(driver, "ceph_volume_client",
-                         MockVolumeClientModule)
-        self.mock_object(driver, "ceph_module_found", True)
-        self.mock_object(driver, "cephfs_share_path")
+        self.mock_object(driver, "rados_command")
+        self.mock_object(driver, "rados", MockRadosModule)
+        self.mock_object(driver, "json_command", MockCephArgparseModule)
         self.mock_object(driver, 'NativeProtocolHelper')
         self.mock_object(driver, 'NFSProtocolHelper')
 
@@ -113,6 +93,8 @@ class CephFSDriverTestCase(test.TestCase):
             driver.CephFSDriver(execute=self._execute,
                                 configuration=self.fake_conf))
         self._driver.protocol_helper = mock.Mock()
+
+        type(self._driver).volname = mock.PropertyMock(return_value='cephfs')
 
         self.mock_object(share_types, 'get_share_type_extra_specs',
                          mock.Mock(return_value={}))
@@ -127,11 +109,13 @@ class CephFSDriverTestCase(test.TestCase):
         if protocol_helper == 'cephfs':
             driver.NativeProtocolHelper.assert_called_once_with(
                 self._execute, self._driver.configuration,
-                ceph_vol_client=self._driver._volume_client)
+                rados_client=self._driver._rados_client,
+                volname=self._driver.volname)
         else:
             driver.NFSProtocolHelper.assert_called_once_with(
                 self._execute, self._driver.configuration,
-                ceph_vol_client=self._driver._volume_client)
+                rados_client=self._driver._rados_client,
+                volname=self._driver.volname)
 
         self._driver.protocol_helper.init_helper.assert_called_once_with()
 
@@ -148,16 +132,33 @@ class CephFSDriverTestCase(test.TestCase):
             assert_called_once_with())
 
     def test_create_share(self):
-        cephfs_volume = {"mount_path": "/foo/bar"}
+        create_share_prefix = "fs subvolume create"
+        get_path_prefix = "fs subvolume getpath"
+
+        create_share_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": self._share["id"],
+            "size": self._share["size"] * units.Gi,
+            "namespace_isolated": True,
+            "mode": DEFAULT_VOLUME_MODE,
+        }
+
+        get_path_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": self._share["id"],
+        }
 
         self._driver.create_share(self._context, self._share)
 
-        self._driver._volume_client.create_volume.assert_called_once_with(
-            driver.cephfs_share_path(self._share),
-            size=self._share['size'] * units.Gi,
-            data_isolated=False, mode=DEFAULT_VOLUME_MODE)
-        (self._driver.protocol_helper.get_export_locations.
-            assert_called_once_with(self._share, cephfs_volume))
+        driver.rados_command.assert_has_calls([
+            mock.call(self._driver.rados_client,
+                      create_share_prefix,
+                      create_share_dict),
+            mock.call(self._driver.rados_client,
+                      get_path_prefix,
+                      get_path_dict)])
+
+        self.assertEqual(2, driver.rados_command.call_count)
 
     def test_create_share_error(self):
         share = fake_share.fake_share(share_proto='NFS')
@@ -187,170 +188,228 @@ class CephFSDriverTestCase(test.TestCase):
             share_server=None)
 
     def test_ensure_share(self):
+        create_share_prefix = "fs subvolume create"
+        get_path_prefix = "fs subvolume getpath"
+
+        create_share_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": self._share["id"],
+            "size": self._share["size"] * units.Gi,
+            "namespace_isolated": True,
+            "mode": DEFAULT_VOLUME_MODE,
+        }
+
+        get_path_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": self._share["id"],
+        }
+
         self._driver.ensure_share(self._context,
                                   self._share)
 
-        self._driver._volume_client.create_volume.assert_called_once_with(
-            driver.cephfs_share_path(self._share),
-            size=self._share['size'] * units.Gi,
-            data_isolated=False,
-            mode=DEFAULT_VOLUME_MODE)
+        driver.rados_command.assert_has_calls([
+            mock.call(self._driver.rados_client,
+                      create_share_prefix,
+                      create_share_dict),
+            mock.call(self._driver.rados_client,
+                      get_path_prefix,
+                      get_path_dict)])
 
-    def test_create_data_isolated(self):
-        self.mock_object(share_types, 'get_share_type_extra_specs',
-                         mock.Mock(return_value={"cephfs:data_isolated": True})
-                         )
-
-        self._driver.create_share(self._context, self._share)
-
-        self._driver._volume_client.create_volume.assert_called_once_with(
-            driver.cephfs_share_path(self._share),
-            size=self._share['size'] * units.Gi,
-            data_isolated=True,
-            mode=DEFAULT_VOLUME_MODE)
+        self.assertEqual(2, driver.rados_command.call_count)
 
     def test_delete_share(self):
-        self._driver.delete_share(self._context, self._share)
+        delete_share_prefix = "fs subvolume rm"
 
-        self._driver._volume_client.delete_volume.assert_called_once_with(
-            driver.cephfs_share_path(self._share),
-            data_isolated=False)
-        self._driver._volume_client.purge_volume.assert_called_once_with(
-            driver.cephfs_share_path(self._share),
-            data_isolated=False)
-
-    def test_delete_data_isolated(self):
-        self.mock_object(share_types, 'get_share_type_extra_specs',
-                         mock.Mock(return_value={"cephfs:data_isolated": True})
-                         )
+        delete_share_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": self._share["id"],
+            "force": True,
+        }
 
         self._driver.delete_share(self._context, self._share)
 
-        self._driver._volume_client.delete_volume.assert_called_once_with(
-            driver.cephfs_share_path(self._share),
-            data_isolated=True)
-        self._driver._volume_client.purge_volume.assert_called_once_with(
-            driver.cephfs_share_path(self._share),
-            data_isolated=True)
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client, delete_share_prefix, delete_share_dict)
 
     def test_extend_share(self):
+        extend_share_prefix = "fs subvolume resize"
+
         new_size_gb = self._share['size'] * 2
         new_size = new_size_gb * units.Gi
 
+        extend_share_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": self._share["id"],
+            "new_size": new_size,
+        }
+
         self._driver.extend_share(self._share, new_size_gb, None)
 
-        self._driver._volume_client.set_max_bytes.assert_called_once_with(
-            driver.cephfs_share_path(self._share),
-            new_size)
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client, extend_share_prefix, extend_share_dict)
 
     def test_shrink_share(self):
+        shrink_share_prefix = "fs subvolume resize"
+
         new_size_gb = self._share['size'] * 0.5
         new_size = new_size_gb * units.Gi
 
+        shrink_share_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": self._share["id"],
+            "new_size": new_size,
+            "no_shrink": True,
+        }
+
         self._driver.shrink_share(self._share, new_size_gb, None)
 
-        self._driver._volume_client.get_used_bytes.assert_called_once_with(
-            driver.cephfs_share_path(self._share))
-        self._driver._volume_client.set_max_bytes.assert_called_once_with(
-            driver.cephfs_share_path(self._share),
-            new_size)
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client, shrink_share_prefix, shrink_share_dict)
 
     def test_shrink_share_full(self):
         """That shrink fails when share is too full."""
+        shrink_share_prefix = "fs subvolume resize"
+
         new_size_gb = self._share['size'] * 0.5
+        new_size = new_size_gb * units.Gi
+
+        msg = ("Can't resize the subvolume. "
+               "The new size '{0}' would be lesser "
+               "than the current used size '{1}'".format(
+                   new_size, self._share['size']))
+        driver.rados_command.side_effect = exception.ShareBackendException(msg)
+
+        shrink_share_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": self._share["id"],
+            "new_size": new_size,
+            "no_shrink": True,
+        }
 
         # Pretend to be full up
-        vc = MockVolumeClientModule.CephFSVolumeClient
-        vc.mock_used_bytes = (units.Gi * self._share['size'])
-
         self.assertRaises(exception.ShareShrinkingPossibleDataLoss,
                           self._driver.shrink_share,
                           self._share, new_size_gb, None)
-        self._driver._volume_client.set_max_bytes.assert_not_called()
+
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client, shrink_share_prefix, shrink_share_dict)
 
     def test_create_snapshot(self):
-        self._driver.create_snapshot(self._context,
-                                     {
-                                         "id": "instance1",
-                                         "share": self._share,
-                                         "snapshot_id": "snappy1"
-                                     },
-                                     None)
+        snapshot_create_prefix = "fs subvolume snapshot create"
 
-        (self._driver._volume_client.create_snapshot_volume
-            .assert_called_once_with(
-                driver.cephfs_share_path(self._share),
-                "snappy1_instance1",
-                mode=DEFAULT_VOLUME_MODE))
+        snapshot_create_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": self._snapshot["share_id"],
+            "snap_name": "_".join([
+                self._snapshot["snapshot_id"], self._snapshot["id"]]),
+        }
+
+        self._driver.create_snapshot(self._context, self._snapshot, None)
+
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client,
+            snapshot_create_prefix, snapshot_create_dict)
 
     def test_delete_snapshot(self):
+        snapshot_remove_prefix = "fs subvolume snapshot rm"
+
+        snapshot_remove_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": self._snapshot["share_id"],
+            "snap_name": "_".join([
+                self._snapshot["snapshot_id"], self._snapshot["id"]]),
+            "force": True,
+        }
+
         self._driver.delete_snapshot(self._context,
-                                     {
-                                         "id": "instance1",
-                                         "share": self._share,
-                                         "snapshot_id": "snappy1"
-                                     },
+                                     self._snapshot,
                                      None)
 
-        (self._driver._volume_client.destroy_snapshot_volume
-            .assert_called_once_with(
-                driver.cephfs_share_path(self._share),
-                "snappy1_instance1"))
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client,
+            snapshot_remove_prefix, snapshot_remove_dict)
 
     def test_create_share_group(self):
+        group_create_prefix = "fs subvolumegroup create"
+
+        group_create_dict = {
+            "vol_name": self._driver.volname,
+            "group_name": "grp1",
+            "mode": DEFAULT_VOLUME_MODE,
+        }
+
         self._driver.create_share_group(self._context, {"id": "grp1"}, None)
 
-        self._driver._volume_client.create_group.assert_called_once_with(
-            "grp1", mode=DEFAULT_VOLUME_MODE)
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client,
+            group_create_prefix, group_create_dict)
 
     def test_delete_share_group(self):
+        group_delete_prefix = "fs subvolumegroup rm"
+
+        group_delete_dict = {
+            "vol_name": self._driver.volname,
+            "group_name": "grp1",
+            "force": True,
+        }
+
         self._driver.delete_share_group(self._context, {"id": "grp1"}, None)
 
-        self._driver._volume_client.destroy_group.assert_called_once_with(
-            "grp1")
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client,
+            group_delete_prefix, group_delete_dict)
 
-    def test_create_share_snapshot(self):
+    def test_create_share_group_snapshot(self):
+        group_snapshot_create_prefix = "fs subvolumegroup snapshot create"
+
+        group_snapshot_create_dict = {
+            "vol_name": self._driver.volname,
+            "group_name": "sgid",
+            "snap_name": "snapid",
+        }
+
         self._driver.create_share_group_snapshot(self._context, {
             'share_group_id': 'sgid',
             'id': 'snapid',
         })
 
-        (self._driver._volume_client.create_snapshot_group.
-         assert_called_once_with("sgid", "snapid", mode=DEFAULT_VOLUME_MODE))
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client,
+            group_snapshot_create_prefix, group_snapshot_create_dict)
 
     def test_delete_share_group_snapshot(self):
+        group_snapshot_delete_prefix = "fs subvolumegroup snapshot rm"
+
+        group_snapshot_delete_dict = {
+            "vol_name": self._driver.volname,
+            "group_name": "sgid",
+            "snap_name": "snapid",
+            "force": True,
+        }
+
         self._driver.delete_share_group_snapshot(self._context, {
             'share_group_id': 'sgid',
             'id': 'snapid',
+            "force": True,
         })
 
-        (self._driver._volume_client.destroy_snapshot_group.
-         assert_called_once_with("sgid", "snapid"))
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client,
+            group_snapshot_delete_prefix, group_snapshot_delete_dict)
 
     def test_delete_driver(self):
         # Create share to prompt volume_client construction
         self._driver.create_share(self._context,
                                   self._share)
 
-        vc = self._driver._volume_client
+        rc = self._driver._rados_client
         del self._driver
 
-        vc.disconnect.assert_called_once_with()
+        rc.shutdown.assert_called_once_with()
 
     def test_delete_driver_no_client(self):
-        self.assertIsNone(self._driver._volume_client)
+        self.assertIsNone(self._driver._rados_client)
         del self._driver
-
-    def test_connect_noevict(self):
-        # When acting as "admin", driver should skip evicting
-        self._driver.configuration.local_conf.set_override('cephfs_auth_id',
-                                                           "admin")
-
-        self._driver.create_share(self._context,
-                                  self._share)
-
-        vc = self._driver._volume_client
-        vc.connect.assert_called_once_with(premount_evict=None)
 
     def test_update_share_stats(self):
         self._driver.get_configured_ip_versions = mock.Mock(return_value=[4])
@@ -366,15 +425,6 @@ class CephFSDriverTestCase(test.TestCase):
         self.assertTrue(result['ipv4_support'])
         self.assertFalse(result['ipv6_support'])
         self.assertEqual("CEPHFS", result['storage_protocol'])
-
-    def test_module_missing(self):
-        driver.ceph_module_found = False
-        driver.ceph_volume_client = None
-
-        self.assertRaises(exception.ManilaException,
-                          self._driver.create_share,
-                          self._context,
-                          self._share)
 
     @ddt.data('cephfs', 'nfs')
     def test_get_configured_ip_versions(self, protocol_helper):
@@ -398,13 +448,19 @@ class NativeProtocolHelperTestCase(test.TestCase):
 
         self.fake_conf.set_default('driver_handles_share_servers', False)
 
-        self.mock_object(driver, "cephfs_share_path")
+        self.mock_object(driver, "rados_command")
 
         self._native_protocol_helper = driver.NativeProtocolHelper(
             None,
             self.fake_conf,
-            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+            rados_client=MockRadosModule.Rados(),
+            volname="cephfs"
         )
+
+        self._rados_client = self._native_protocol_helper.rados_client
+
+        self._native_protocol_helper.get_mon_addrs = mock.Mock(
+            return_value=['1.2.3.4', '5.6.7.8'])
 
     def test_check_for_setup_error(self):
         expected = None
@@ -414,8 +470,7 @@ class NativeProtocolHelperTestCase(test.TestCase):
         self.assertEqual(expected, result)
 
     def test_get_export_locations(self):
-        vc = self._native_protocol_helper.volume_client
-        fake_cephfs_volume = {'mount_path': '/foo/bar'}
+        fake_cephfs_subvolume_path = '/foo/bar'
         expected_export_locations = {
             'path': '1.2.3.4,5.6.7.8:/foo/bar',
             'is_admin_only': False,
@@ -423,58 +478,40 @@ class NativeProtocolHelperTestCase(test.TestCase):
         }
 
         export_locations = self._native_protocol_helper.get_export_locations(
-            self._share, fake_cephfs_volume)
+            self._share, fake_cephfs_subvolume_path)
 
         self.assertEqual(expected_export_locations, export_locations)
-        vc.get_mon_addrs.assert_called_once_with()
+        self._native_protocol_helper.get_mon_addrs.assert_called_once_with()
 
-    @ddt.data(None, 1)
-    def test_allow_access_rw(self, volume_client_version):
-        vc = self._native_protocol_helper.volume_client
+    @ddt.data(constants.ACCESS_LEVEL_RW, constants.ACCESS_LEVEL_RO)
+    def test_allow_access_rw_ro(self, mode):
+        access_allow_prefix = "fs subvolume authorize"
+        access_allow_mode = "r" if mode == "ro" else "rw"
+
+        access_allow_dict = {
+            "vol_name": self._native_protocol_helper.volname,
+            "sub_name": self._share["id"],
+            "auth_id": "alice",
+            "tenant_id": self._share["project_id"],
+            "access_level": access_allow_mode,
+        }
+
         rule = {
-            'access_level': constants.ACCESS_LEVEL_RW,
+            'access_level': mode,
             'access_to': 'alice',
             'access_type': 'cephx',
         }
-        vc.version = volume_client_version
+
+        driver.rados_command.return_value = 'native-zorilla'
 
         auth_key = self._native_protocol_helper._allow_access(
             self._context, self._share, rule)
 
-        self.assertEqual("abc123", auth_key)
+        self.assertEqual("native-zorilla", auth_key)
 
-        if not volume_client_version:
-            vc.authorize.assert_called_once_with(
-                driver.cephfs_share_path(self._share), "alice")
-        else:
-            vc.authorize.assert_called_once_with(
-                driver.cephfs_share_path(self._share), "alice",
-                readonly=False, tenant_id=self._share['project_id'])
-
-    @ddt.data(None, 1)
-    def test_allow_access_ro(self, volume_client_version):
-        vc = self._native_protocol_helper.volume_client
-        rule = {
-            'access_level': constants.ACCESS_LEVEL_RO,
-            'access_to': 'alice',
-            'access_type': 'cephx',
-        }
-        vc.version = volume_client_version
-
-        if not volume_client_version:
-            self.assertRaises(exception.InvalidShareAccessLevel,
-                              self._native_protocol_helper._allow_access,
-                              self._context, self._share, rule)
-        else:
-            auth_key = (
-                self._native_protocol_helper._allow_access(
-                    self._context, self._share, rule)
-            )
-
-            self.assertEqual("abc123", auth_key)
-            vc.authorize.assert_called_once_with(
-                driver.cephfs_share_path(self._share), "alice", readonly=True,
-                tenant_id=self._share['project_id'])
+        driver.rados_command.assert_called_once_with(
+            self._rados_client,
+            access_allow_prefix, access_allow_dict)
 
     def test_allow_access_wrong_type(self):
         self.assertRaises(exception.InvalidShareAccessType,
@@ -495,12 +532,9 @@ class NativeProtocolHelperTestCase(test.TestCase):
                           })
 
     def test_allow_access_to_preexisting_ceph_user(self):
-
-        vc = self._native_protocol_helper.volume_client
         msg = ("auth ID: admin exists and not created by "
-               "ceph_volume_client. Not allowed to modify")
-        self.mock_object(vc, 'authorize',
-                         mock.Mock(side_effect=Exception(msg)))
+               "ceph manager plugin. Not allowed to modify")
+        driver.rados_command.side_effect = exception.ShareBackendException(msg)
 
         self.assertRaises(exception.InvalidShareAccess,
                           self._native_protocol_helper._allow_access,
@@ -512,17 +546,33 @@ class NativeProtocolHelperTestCase(test.TestCase):
                           })
 
     def test_deny_access(self):
-        vc = self._native_protocol_helper.volume_client
+        access_deny_prefix = "fs subvolume deauthorize"
+
+        access_deny_dict = {
+            "vol_name": self._native_protocol_helper.volname,
+            "sub_name": self._share["id"],
+            "auth_id": "alice",
+        }
+
+        evict_prefix = "fs subvolume evict"
+
+        evict_dict = access_deny_dict
+
         self._native_protocol_helper._deny_access(self._context, self._share, {
             'access_level': 'rw',
             'access_type': 'cephx',
             'access_to': 'alice'
         })
 
-        vc.deauthorize.assert_called_once_with(
-            driver.cephfs_share_path(self._share), "alice")
-        vc.evict.assert_called_once_with(
-            "alice", volume_path=driver.cephfs_share_path(self._share))
+        driver.rados_command.assert_has_calls([
+            mock.call(self._native_protocol_helper.rados_client,
+                      access_deny_prefix,
+                      access_deny_dict),
+            mock.call(self._native_protocol_helper.rados_client,
+                      evict_prefix,
+                      evict_dict)])
+
+        self.assertEqual(2, driver.rados_command.call_count)
 
     def test_update_access_add_rm(self):
         alice = {
@@ -596,17 +646,53 @@ class NativeProtocolHelperTestCase(test.TestCase):
         self.assertEqual(
             3, self._native_protocol_helper.message_api.create.call_count)
 
-    @ddt.data(None, 1)
-    def test_update_access_all(self, volume_client_version):
-        vc = self._native_protocol_helper.volume_client
+    def test_update_access_all(self):
+        get_authorized_ids_prefix = "fs subvolume authorized_list"
+
+        get_authorized_ids_dict = {
+            "vol_name": self._native_protocol_helper.volname,
+            "sub_name": self._share["id"]
+        }
+
+        access_allow_prefix = "fs subvolume authorize"
+
+        access_allow_dict = {
+            "vol_name": self._native_protocol_helper.volname,
+            "sub_name": self._share["id"],
+            "auth_id": "alice",
+            "tenant_id": self._share["project_id"],
+            "access_level": "rw",
+        }
+
+        access_deny_prefix = "fs subvolume deauthorize"
+
+        access_deny_john_dict = {
+            "vol_name": self._native_protocol_helper.volname,
+            "sub_name": self._share["id"],
+            "auth_id": "john",
+        }
+
+        access_deny_paul_dict = {
+            "vol_name": self._native_protocol_helper.volname,
+            "sub_name": self._share["id"],
+            "auth_id": "paul",
+        }
+
+        evict_prefix = "fs subvolume evict"
+
         alice = {
             'id': 'instance_mapping_id1',
             'access_id': 'accessid1',
             'access_level': 'rw',
             'access_type': 'cephx',
-            'access_to': 'alice'
+            'access_to': 'alice',
         }
-        vc.version = volume_client_version
+
+        driver.rados_command.side_effect = [
+            [{"john": "rw"}, {"paul": "r"}],
+            'abc123',
+            mock.Mock(), mock.Mock(),
+            mock.Mock(), mock.Mock()]
 
         access_updates = self._native_protocol_helper.update_access(
             self._context, self._share, access_rules=[alice], add_rules=[],
@@ -615,18 +701,28 @@ class NativeProtocolHelperTestCase(test.TestCase):
         self.assertEqual(
             {'accessid1': {'access_key': 'abc123'}}, access_updates)
 
-        if volume_client_version:
-            vc.get_authorized_ids.assert_called_once_with(
-                driver.cephfs_share_path(self._share))
-            vc.authorize.assert_called_once_with(
-                driver.cephfs_share_path(self._share), "alice", readonly=False,
-                tenant_id=self._share['project_id'])
-            vc.deauthorize.assert_called_once_with(
-                driver.cephfs_share_path(self._share), "eve")
-        else:
-            self.assertFalse(vc.get_authorized_ids.called)
-            vc.authorize.assert_called_once_with(
-                driver.cephfs_share_path(self._share), "alice")
+        driver.rados_command.assert_has_calls([
+            mock.call(self._native_protocol_helper.rados_client,
+                      get_authorized_ids_prefix,
+                      get_authorized_ids_dict,
+                      json_obj=True),
+            mock.call(self._native_protocol_helper.rados_client,
+                      access_allow_prefix,
+                      access_allow_dict),
+            mock.call(self._native_protocol_helper.rados_client,
+                      access_deny_prefix,
+                      access_deny_john_dict),
+            mock.call(self._native_protocol_helper.rados_client,
+                      evict_prefix,
+                      access_deny_john_dict),
+            mock.call(self._native_protocol_helper.rados_client,
+                      access_deny_prefix,
+                      access_deny_paul_dict),
+            mock.call(self._native_protocol_helper.rados_client,
+                      evict_prefix,
+                      access_deny_paul_dict)], any_order=True)
+
+        self.assertEqual(6, driver.rados_command.call_count)
 
     def test_get_configured_ip_versions(self):
         expected = [4]
@@ -643,21 +739,22 @@ class NFSProtocolHelperTestCase(test.TestCase):
         super(NFSProtocolHelperTestCase, self).setUp()
         self._execute = mock.Mock()
         self._share = fake_share.fake_share(share_proto='NFS')
-        self._volume_client = MockVolumeClientModule.CephFSVolumeClient()
+        self._rados_client = MockRadosModule.Rados()
+        self._volname = "cephfs"
         self.fake_conf = configuration.Configuration(None)
 
         self.fake_conf.set_default('cephfs_ganesha_server_ip',
                                    'fakeip')
-        self.mock_object(driver, "cephfs_share_path",
-                         mock.Mock(return_value='fakevolumepath'))
         self.mock_object(driver.ganesha_utils, 'SSHExecutor')
         self.mock_object(driver.ganesha_utils, 'RootExecutor')
         self.mock_object(driver.socket, 'gethostname')
+        self.mock_object(driver, "rados_command")
 
         self._nfs_helper = driver.NFSProtocolHelper(
             self._execute,
             self.fake_conf,
-            ceph_vol_client=self._volume_client)
+            rados_client=self._rados_client,
+            volname=self._volname)
 
     @ddt.data(
         (['fakehost', 'some.host.name', 'some.host.name.', '1.1.1.0'], False),
@@ -682,7 +779,8 @@ class NFSProtocolHelperTestCase(test.TestCase):
         helper = driver.NFSProtocolHelper(
             self._execute,
             fake_conf,
-            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+            rados_client=MockRadosModule.Rados(),
+            volname="cephfs"
         )
 
         if raises:
@@ -706,7 +804,8 @@ class NFSProtocolHelperTestCase(test.TestCase):
         driver.NFSProtocolHelper(
             self._execute,
             fake_conf,
-            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+            rados_client=MockRadosModule.Rados(),
+            volname="cephfs"
         )
 
         if ganesha_server_is_remote:
@@ -733,7 +832,8 @@ class NFSProtocolHelperTestCase(test.TestCase):
         driver.NFSProtocolHelper(
             self._execute,
             fake_conf,
-            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+            rados_client=MockRadosModule.Rados(),
+            volname="cephfs"
         )
 
         driver.ganesha_utils.RootExecutor.assert_has_calls(
@@ -746,18 +846,19 @@ class NFSProtocolHelperTestCase(test.TestCase):
             driver.LOG.info.assert_called_once()
 
     def test_get_export_locations_no_export_ips_configured(self):
-        cephfs_volume = {"mount_path": "/foo/bar"}
+        cephfs_subvolume_path = "/foo/bar"
         fake_conf = configuration.Configuration(None)
         fake_conf.set_default('cephfs_ganesha_server_ip', '1.2.3.4')
 
         helper = driver.NFSProtocolHelper(
             self._execute,
             fake_conf,
-            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+            rados_client=MockRadosModule.Rados(),
+            volname="cephfs"
         )
 
         ret = helper.get_export_locations(self._share,
-                                          cephfs_volume)
+                                          cephfs_subvolume_path)
         self.assertEqual(
             [{
                 'path': '1.2.3.4:/foo/bar',
@@ -776,12 +877,13 @@ class NFSProtocolHelperTestCase(test.TestCase):
         helper = driver.NFSProtocolHelper(
             self._execute,
             fake_conf,
-            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+            rados_client=MockRadosModule.Rados(),
+            volname="cephfs"
         )
 
-        cephfs_volume = {"mount_path": "/foo/bar"}
+        cephfs_subvolume_path = "/foo/bar"
 
-        ret = helper.get_export_locations(self._share, cephfs_volume)
+        ret = helper.get_export_locations(self._share, cephfs_subvolume_path)
 
         self.assertEqual(
             [
@@ -822,7 +924,8 @@ class NFSProtocolHelperTestCase(test.TestCase):
         helper = driver.NFSProtocolHelper(
             self._execute,
             fake_conf,
-            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+            rados_client=MockRadosModule.Rados(),
+            volname="cephfs"
         )
 
         self.assertEqual(set(configured_ip_version),
@@ -833,7 +936,8 @@ class NFSProtocolHelperTestCase(test.TestCase):
         helper = driver.NFSProtocolHelper(
             self._execute,
             fake_conf,
-            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+            rados_client=MockRadosModule.Rados(),
+            volname="cephfs"
         )
 
         ip_versions = ['foo', 'bar']
@@ -865,46 +969,83 @@ class NFSProtocolHelperTestCase(test.TestCase):
         self.assertEqual(fake_conf_dict, ret)
 
     def test_fsal_hook(self):
-        expected_ret = {
-            'Name': 'Ceph',
-            'User_Id': 'ganesha-fakeid',
-            'Secret_Access_Key': 'fakekey'
+        access_allow_prefix = "fs subvolume authorize"
+
+        access_allow_dict = {
+            "vol_name": self._nfs_helper.volname,
+            "sub_name": self._share["id"],
+            "auth_id": "ganesha-fakeid",
+            "tenant_id": self._share["project_id"],
+            "access_level": "rw",
         }
-        self.mock_object(self._volume_client, 'authorize',
-                         mock.Mock(return_value={'auth_key': 'fakekey'}))
+
+        expected_ret = {
+            "Name": "Ceph",
+            "User_Id": "ganesha-fakeid",
+            "Secret_Access_Key": "ganesha-zorilla"
+        }
+
+        driver.rados_command.return_value = 'ganesha-zorilla'
 
         ret = self._nfs_helper._fsal_hook(None, self._share, None)
 
-        driver.cephfs_share_path.assert_called_once_with(self._share)
-        self._volume_client.authorize.assert_called_once_with(
-            'fakevolumepath', 'ganesha-fakeid', readonly=False,
-            tenant_id='fake_project_uuid')
+        driver.rados_command.assert_called_once_with(
+            self._nfs_helper.rados_client,
+            access_allow_prefix, access_allow_dict)
+
         self.assertEqual(expected_ret, ret)
 
     def test_cleanup_fsal_hook(self):
-        self.mock_object(self._volume_client, 'deauthorize')
+        access_deny_prefix = "fs subvolume deauthorize"
+
+        access_deny_dict = {
+            "vol_name": self._nfs_helper.volname,
+            "sub_name": self._share["id"],
+            "auth_id": "ganesha-fakeid",
+        }
 
         ret = self._nfs_helper._cleanup_fsal_hook(None, self._share, None)
 
-        driver.cephfs_share_path.assert_called_once_with(self._share)
-        self._volume_client.deauthorize.assert_called_once_with(
-            'fakevolumepath', 'ganesha-fakeid')
+        driver.rados_command.assert_called_once_with(
+            self._nfs_helper.rados_client,
+            access_deny_prefix, access_deny_dict)
+
         self.assertIsNone(ret)
 
     def test_get_export_path(self):
+        get_path_prefix = "fs subvolume getpath"
+
+        get_path_dict = {
+            "vol_name": self._nfs_helper.volname,
+            "sub_name": self._share["id"],
+        }
+
+        driver.rados_command.return_value = '/foo/bar'
+
         ret = self._nfs_helper._get_export_path(self._share)
 
-        driver.cephfs_share_path.assert_called_once_with(self._share)
-        self._volume_client._get_path.assert_called_once_with(
-            'fakevolumepath')
+        driver.rados_command.assert_called_once_with(
+            self._nfs_helper.rados_client,
+            get_path_prefix, get_path_dict)
+
         self.assertEqual('/foo/bar', ret)
 
     def test_get_export_pseudo_path(self):
+        get_path_prefix = "fs subvolume getpath"
+
+        get_path_dict = {
+            "vol_name": self._nfs_helper.volname,
+            "sub_name": self._share["id"],
+        }
+
+        driver.rados_command.return_value = '/foo/bar'
+
         ret = self._nfs_helper._get_export_pseudo_path(self._share)
 
-        driver.cephfs_share_path.assert_called_once_with(self._share)
-        self._volume_client._get_path.assert_called_once_with(
-            'fakevolumepath')
+        driver.rados_command.assert_called_once_with(
+            self._nfs_helper.rados_client,
+            get_path_prefix, get_path_dict)
+
         self.assertEqual('/foo/bar', ret)
 
 
@@ -916,25 +1057,28 @@ class CephFSDriverAltConfigTestCase(test.TestCase):
         super(CephFSDriverAltConfigTestCase, self).setUp()
         self._execute = mock.Mock()
         self.fake_conf = configuration.Configuration(None)
+        self._rados_client = MockRadosModule.Rados()
         self._context = context.get_admin_context()
         self._share = fake_share.fake_share(share_proto='CEPHFS')
 
         self.fake_conf.set_default('driver_handles_share_servers', False)
         self.fake_conf.set_default('cephfs_auth_id', 'manila')
 
-        self.mock_object(driver, "ceph_volume_client",
-                         MockVolumeClientModule)
-        self.mock_object(driver, "ceph_module_found", True)
-        self.mock_object(driver, "cephfs_share_path")
+        self.mock_object(driver, "rados", MockRadosModule)
+        self.mock_object(driver, "json_command",
+                         MockCephArgparseModule.json_command)
+        self.mock_object(driver, "rados_command")
         self.mock_object(driver, 'NativeProtocolHelper')
         self.mock_object(driver, 'NFSProtocolHelper')
 
     @ddt.data('cephfs', 'nfs')
     def test_do_setup_alt_volume_mode(self, protocol_helper):
-
-        self.fake_conf.set_default('cephfs_volume_mode', ALT_VOLUME_MODE_CFG)
+        self.fake_conf.set_default('cephfs_volume_mode', ALT_VOLUME_MODE)
         self._driver = driver.CephFSDriver(execute=self._execute,
-                                           configuration=self.fake_conf)
+                                           configuration=self.fake_conf,
+                                           rados_client=self._rados_client)
+
+        type(self._driver).volname = mock.PropertyMock(return_value='cephfs')
 
         self._driver.configuration.cephfs_protocol_helper_type = (
             protocol_helper)
@@ -944,11 +1088,13 @@ class CephFSDriverAltConfigTestCase(test.TestCase):
         if protocol_helper == 'cephfs':
             driver.NativeProtocolHelper.assert_called_once_with(
                 self._execute, self._driver.configuration,
-                ceph_vol_client=self._driver._volume_client)
+                rados_client=self._driver.rados_client,
+                volname=self._driver.volname)
         else:
             driver.NFSProtocolHelper.assert_called_once_with(
                 self._execute, self._driver.configuration,
-                ceph_vol_client=self._driver._volume_client)
+                rados_client=self._driver._rados_client,
+                volname=self._driver.volname)
 
         self._driver.protocol_helper.init_helper.assert_called_once_with()
 
@@ -962,3 +1108,45 @@ class CephFSDriverAltConfigTestCase(test.TestCase):
         self.assertRaises(exception.BadConfigurationException,
                           driver.CephFSDriver, execute=self._execute,
                           configuration=self.fake_conf)
+
+
+@ddt.ddt
+class MiscTests(test.TestCase):
+
+    @ddt.data({'import_exc': None},
+              {'import_exc': ImportError})
+    @ddt.unpack
+    def test_rados_module_missing(self, import_exc):
+        driver.rados = None
+        with mock.patch.object(
+                driver.importutils,
+                'import_module',
+                side_effect=import_exc) as mock_import_module:
+            if import_exc:
+                self.assertRaises(
+                    exception.ShareBackendException, driver.setup_rados)
+            else:
+                driver.setup_rados()
+                self.assertEqual(mock_import_module.return_value,
+                                 driver.rados)
+
+            mock_import_module.assert_called_once_with('rados')
+
+    @ddt.data({'import_exc': None},
+              {'import_exc': ImportError})
+    @ddt.unpack
+    def test_setup_json_class_missing(self, import_exc):
+        driver.json_command = None
+        with mock.patch.object(
+                driver.importutils,
+                'import_class',
+                side_effect=import_exc) as mock_import_class:
+            if import_exc:
+                self.assertRaises(
+                    exception.ShareBackendException, driver.setup_json_command)
+            else:
+                driver.setup_json_command()
+                self.assertEqual(mock_import_class.return_value,
+                                 driver.json_command)
+            mock_import_class.assert_called_once_with(
+                'ceph_argparse.json_command')
