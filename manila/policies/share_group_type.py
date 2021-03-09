@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,21 +18,64 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'share_group_type:%s'
 
+DEPRECATED_REASON = """
+The share group type API now supports system scope and default roles.
+"""
+
+deprecated_share_group_type_create = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'create',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_group_type_index = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'index',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_group_type_show = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'show',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_group_type_get_default = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'default',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_group_type_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_group_type_project_access = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'list_project_access',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_group_type_add_project = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'add_project_access',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_group_type_remove_project = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'remove_project_access',
+    check_str=base.RULE_ADMIN_API
+)
+
 
 share_group_type_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Create a new share group type.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-group-types',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_type_create,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get the list of share group types.",
         operations=[
             {
@@ -42,67 +86,101 @@ share_group_type_policies = [
                 'method': 'GET',
                 'path': '/share-group-types?is_public=all',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_type_index,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get details regarding the specified share group type.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/share-group-types/{share_group_type_id}',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_type_show,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'default',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get the default share group type.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/share-group-types/default',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_type_get_default,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Delete an existing group type.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/share-group-types/{share_group_type_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_type_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'list_project_access',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER,
+        scope_types=['system'],
         description="Get project access by share group type.",
         operations=[
             {
-                'method': 'POST',
+                'method': 'GET',
                 'path': '/share-group-types/{share_group_type_id}/access',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_type_project_access,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'add_project_access',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Allow project to use the share group type.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-group-types/{share_group_type_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_type_add_project,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'remove_project_access',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Deny project access to use the share group type.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-group-types/{share_group_type_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_group_type_remove_project,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
