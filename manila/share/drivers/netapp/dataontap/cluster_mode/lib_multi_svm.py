@@ -467,7 +467,26 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                         "updated: %s.", vserver)
             return
 
+        # TODO(carthaca): think of comparing existing nfs_config with config of
+        # default share type (or better: mainly used share type)
+        # and set this (instead of just setting the backend details)
+        missing_nfs_config = server_details.get('nfs_config') is None
+        if missing_nfs_config:
+            nfs_config = self._default_nfs_config
+            if self.is_nfs_config_supported:
+                share_type = share_types.get_default_share_type()
+                extra_specs = share_type.get('extra_specs')
+                self._check_nfs_config_extra_specs_validity(extra_specs)
+                nfs_config = self._get_nfs_config_provisioning_options(
+                    extra_specs)
+            server_details['nfs_config'] = jsonutils.dumps(nfs_config)
+
         self._update_vserver(vserver, network_info)
+
+        if missing_nfs_config:
+            return server_details
+        else:
+            return None
 
     @na_utils.trace
     def _update_vserver(self, vserver, network_info):

@@ -3053,7 +3053,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     def ensure_share_server(self, context, share_server, network_info):
         server_details = share_server['backend_details']
-        self.update_server(server_details, network_info)
+        return self.update_server(server_details, network_info)
 
     def get_share_status(self, share, share_server=None):
         if share['status'] == constants.STATUS_CREATING_FROM_SNAPSHOT:

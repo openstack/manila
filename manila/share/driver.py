@@ -759,7 +759,7 @@ class ShareDriver(object):
     def ensure_share_server(self, context, share_server, network_info):
         """Invoked to ensure that share server is exported.
 
-        :return: None
+        :return: None or backend details
         """
         raise NotImplementedError()
 

@@ -438,8 +438,16 @@ class ShareManager(manager.SchedulerDependentManager):
                         {'gateway': share_network_subnet['gateway']})
             network_info = self._form_server_setup_info(
                 ctxt, share_server, share_network, share_network_subnet)
-            self.driver.ensure_share_server(
+            server_info = self.driver.ensure_share_server(
                 ctxt, share_server, network_info)
+            if server_info:
+                LOG.debug(
+                    ("Adding server_info %(server_info)s to share server "
+                     "%(share_server)s"),
+                    {'server_info': server_info,
+                     'share_server': share_server['id']})
+                self.db.share_server_backend_details_set(
+                    ctxt, share_server['id'], server_info)
 
         share_instances = self.db.share_instances_get_all_by_host(
             ctxt, self.host)
