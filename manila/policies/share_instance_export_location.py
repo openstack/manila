@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -20,11 +21,26 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'share_instance_export_location:%s'
 
+DEPRECATED_REASON = """
+The share instance export location API now supports system scope and default
+roles.
+"""
+
+deprecated_instance_export_location_index = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'index',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_instance_export_location_show = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'show',
+    check_str=base.RULE_ADMIN_API
+)
+
 
 share_export_location_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER,
+        scope_types=['system'],
         description='Return data about the requested export location.',
         operations=[
             {
@@ -32,10 +48,15 @@ share_export_location_policies = [
                 'path': ('/share_instances/{share_instance_id}/'
                          'export_locations'),
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_instance_export_location_index,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER,
+        scope_types=['system'],
         description='Return data about the requested export location.',
         operations=[
             {
@@ -43,7 +64,11 @@ share_export_location_policies = [
                 'path': ('/share_instances/{share_instance_id}/'
                          'export_locations/{export_location_id}'),
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_instance_export_location_show,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
