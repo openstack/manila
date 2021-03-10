@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,31 +18,67 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'share_group_types_spec:%s'
 
+DEPRECATED_REASON = """
+The share group type specs API now support system scope and default roles.
+"""
+
+deprecated_group_type_spec_create = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'create',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_group_type_spec_index = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'index',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_group_type_spec_show = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'show',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_group_type_spec_update = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_group_type_spec_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete',
+    check_str=base.RULE_ADMIN_API
+)
+
 
 share_group_types_spec_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Create share group type specs.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share-group-types/{share_group_type_id}/group-specs'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_group_type_spec_create,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER,
+        scope_types=['system'],
         description="Get share group type specs.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/share-group-types/{share_group_type_id}/group-specs',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_group_type_spec_index,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER,
+        scope_types=['system'],
         description="Get details of a share group type spec.",
         operations=[
             {
@@ -49,10 +86,15 @@ share_group_types_spec_policies = [
                 'path': ('/share-group-types/{share_group_type_id}/'
                          'group-specs/{key}'),
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_group_type_spec_show,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Update a share group type spec.",
         operations=[
             {
@@ -60,10 +102,15 @@ share_group_types_spec_policies = [
                 'path': ('/share-group-types/{share_group_type_id}'
                          '/group-specs/{key}'),
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_group_type_spec_update,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Delete a share group type spec.",
         operations=[
             {
@@ -71,7 +118,11 @@ share_group_types_spec_policies = [
                 'path': ('/share-group-types/{share_group_type_id}/'
                          'group-specs/{key}'),
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_group_type_spec_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
