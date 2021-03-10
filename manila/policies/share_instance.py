@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,11 +18,33 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'share_instance:%s'
 
+DEPRECATED_REASON = """
+The share instances API now supports system scope and default roles.
+"""
+
+deprecated_share_instances_index = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'index',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_instance_show = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'show',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_instance_force_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'force_delete',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_instance_reset_status = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'reset_status',
+    check_str=base.RULE_ADMIN_API
+)
+
 
 shares_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER,
+        scope_types=['system'],
         description="Get all share instances.",
         operations=[
             {
@@ -32,37 +55,56 @@ shares_policies = [
                 'method': 'GET',
                 'path': '/share_instances?{query}',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_instances_index,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER,
+        scope_types=['system'],
         description="Get details of a share instance.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/share_instances/{share_instance_id}'
             },
-        ]),
+        ],
+        deprecated_rule=deprecated_share_instance_show,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Force delete a share instance.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share_instances/{share_instance_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_instance_force_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Reset share instance's status.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/share_instances/{share_instance_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_instance_reset_status,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
