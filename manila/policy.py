@@ -69,6 +69,10 @@ def init(rules=None, use_conf=True):
 def enforce(context, action, target, do_raise=True):
     """Verifies that the action is valid on the target in this context.
 
+       **IMPORTANT** ONLY for use in API extensions. This method ignores
+       unregistered rules and applies a default rule on them; there should
+       be no unregistered rules in first party manila APIs.
+
        :param context: manila context
        :param action: string representing the action to be checked,
            this should be colon separated for clarity.
@@ -88,12 +92,15 @@ def enforce(context, action, target, do_raise=True):
     """
     init()
 
-    return _ENFORCER.enforce(action,
-                             target,
-                             context.to_policy_values(),
-                             do_raise=do_raise,
-                             exc=exception.PolicyNotAuthorized,
-                             action=action)
+    try:
+        return _ENFORCER.enforce(action,
+                                 target,
+                                 context,
+                                 do_raise=do_raise,
+                                 exc=exception.PolicyNotAuthorized,
+                                 action=action)
+    except policy.InvalidScope:
+        raise exception.PolicyNotAuthorized(action=action)
 
 
 def set_rules(rules, overwrite=True, use_conf=False):
@@ -165,21 +172,31 @@ def authorize(context, action, target, do_raise=True, exc=None):
            do_raise is False.
     """
     init()
-    credentials = context.to_policy_values()
     if not exc:
         exc = exception.PolicyNotAuthorized
+    target = target or default_target(context)
+
     try:
-        result = _ENFORCER.authorize(action, target, credentials,
+        result = _ENFORCER.authorize(action, target, context,
                                      do_raise=do_raise, exc=exc, action=action)
     except policy.PolicyNotRegistered:
         with excutils.save_and_reraise_exception():
             LOG.exception('Policy not registered')
+    except policy.InvalidScope:
+        raise exception.PolicyNotAuthorized(action=action)
     except Exception:
         with excutils.save_and_reraise_exception():
+            msg_args = {
+                'action': action,
+                'credentials': context.to_policy_values(),
+            }
             LOG.debug('Policy check for %(action)s failed with credentials '
-                      '%(credentials)s',
-                      {'action': action, 'credentials': credentials})
+                      '%(credentials)s', msg_args)
     return result
+
+
+def default_target(context):
+    return {'project_id': context.project_id, 'user_id': context.user_id}
 
 
 def check_is_admin(context):
@@ -187,10 +204,9 @@ def check_is_admin(context):
 
     """
     init()
-
-    credentials = context.to_policy_values()
-    target = credentials
-    return _ENFORCER.authorize('context_is_admin', target, credentials)
+    # the target is user-self
+    target = default_target(context)
+    return _ENFORCER.authorize('context_is_admin', target, context)
 
 
 def wrap_check_policy(resource):
@@ -206,10 +222,6 @@ def wrap_check_policy(resource):
 
 
 def check_policy(context, resource, action, target_obj=None, do_raise=True):
-    target = {
-        'project_id': context.project_id,
-        'user_id': context.user_id,
-    }
-    target.update(target_obj or {})
+    target = target_obj or default_target(context)
     _action = '%s:%s' % (resource, action)
     return authorize(context, _action, target, do_raise=do_raise)

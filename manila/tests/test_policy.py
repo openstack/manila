@@ -15,6 +15,7 @@
 
 """Test of Policy Engine For Manila."""
 
+import ddt
 from oslo_config import cfg
 from oslo_policy import policy as common_policy
 
@@ -26,6 +27,7 @@ from manila import test
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class PolicyTestCase(test.TestCase):
     def setUp(self):
         super(PolicyTestCase, self).setUp()
@@ -97,8 +99,41 @@ class PolicyTestCase(test.TestCase):
         policy.authorize(admin_context, lowercase_action, self.target)
         policy.authorize(admin_context, uppercase_action, self.target)
 
+    @ddt.data('enforce', 'authorize')
+    def test_authorize_properly_handles_invalid_scope_exception(self, method):
+        self.fixture.config(enforce_scope=True, group='oslo_policy')
+        project_context = context.RequestContext(project_id='fake-project-id',
+                                                 roles=['bar'])
+        policy.reset()
+        policy.init()
+        rule = common_policy.RuleDefault('foo', 'role:bar',
+                                         scope_types=['system'])
+        policy._ENFORCER.register_defaults([rule])
+
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          getattr(policy, method),
+                          project_context, 'foo', {})
+
+    @ddt.data('enforce', 'authorize')
+    def test_authorize_does_not_raise_forbidden(self, method):
+        self.fixture.config(enforce_scope=False, group='oslo_policy')
+        project_context = context.RequestContext(project_id='fake-project-id',
+                                                 roles=['bar'])
+        policy.reset()
+        policy.init()
+        rule = common_policy.RuleDefault('foo', 'role:bar',
+                                         scope_types=['system'])
+        policy._ENFORCER.register_defaults([rule])
+
+        self.assertTrue(getattr(policy, method)(project_context, 'foo', {}))
+
 
 class DefaultPolicyTestCase(test.TestCase):
+    """This test case calls into the "enforce" method in policy
+
+    enforce() in contrast with authorize() allows "default" rules to apply
+    to policies that have not been registered.
+    """
 
     def setUp(self):
         super(DefaultPolicyTestCase, self).setUp()

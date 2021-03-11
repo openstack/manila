@@ -22,10 +22,9 @@ from oslo_utils import importutils
 import webob.dec
 import webob.exc
 
-import manila.api.openstack
 from manila.api.openstack import wsgi
 from manila import exception
-import manila.policy
+from manila import policy
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -332,12 +331,10 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
 
 def extension_authorizer(api_name, extension_name):
     def authorize(context, target=None, action=None):
-        if target is None:
-            target = {'project_id': context.project_id,
-                      'user_id': context.user_id}
+        target = target or policy.default_target(context)
         if action is None:
             act = '%s_extension:%s' % (api_name, extension_name)
         else:
             act = '%s_extension:%s:%s' % (api_name, extension_name, action)
-        manila.policy.enforce(context, act, target)
+        policy.enforce(context, act, target)
     return authorize
