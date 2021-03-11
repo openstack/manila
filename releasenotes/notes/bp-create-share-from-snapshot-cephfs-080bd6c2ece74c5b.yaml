@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Create share from snapshot is now available in CephFS Native and CephFS NFS
+    drivers. This feature is available in Ceph since the Ceph Nautilus release,
+    so a deployment with Ceph Nautilus (v14.2.18 or higher) or Ceph Octopus (v15.2.10
+    or higher) is required.
+deprecations:
+  - |
+    The CephFS driver ``cephfs_enable_snapshots`` configuration option has been
+    removed.  It was deprecated for removal in the Victoria release.  Snapshot
+    support is always enabled now.
