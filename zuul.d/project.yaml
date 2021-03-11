@@ -9,6 +9,9 @@
       - periodic-stable-jobs
     check:
       jobs:
+        # see https://launchpad.net/bugs/1918707
+        - openstack-tox-docs:
+            voting: false
         - manila-tox-genconfig
         - openstack-tox-pylint:
             voting: false
