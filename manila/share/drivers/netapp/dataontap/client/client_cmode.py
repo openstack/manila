@@ -31,6 +31,7 @@ from manila.i18n import _
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_base
 from manila.share.drivers.netapp import utils as na_utils
+from manila import utils as manila_utils
 
 
 LOG = log.getLogger(__name__)
@@ -70,6 +71,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontapi_1_2x = (1, 20) <= ontapi_version < (1, 30)
         ontapi_1_30 = ontapi_version >= (1, 30)
         ontapi_1_110 = ontapi_version >= (1, 110)
+        ontapi_1_120 = ontapi_version >= (1, 120)
         ontapi_1_140 = ontapi_version >= (1, 140)
         ontapi_1_150 = ontapi_version >= (1, 150)
 
@@ -91,6 +93,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                   supported=ontapi_1_140)
         self.features.add_feature('CIFS_DC_ADD_SKIP_CHECK',
                                   supported=ontapi_1_150)
+        self.features.add_feature('LDAP_LDAP_SERVERS',
+                                  supported=ontapi_1_120)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -1415,7 +1419,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def setup_security_services(self, security_services, vserver_client,
-                                vserver_name):
+                                vserver_name, timeout=30):
         api_args = {
             'name-mapping-switch': [
                 {'nmswitch': 'ldap'},
@@ -1431,7 +1435,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         for security_service in security_services:
             if security_service['type'].lower() == 'ldap':
-                vserver_client.configure_ldap(security_service)
+                vserver_client.configure_ldap(security_service,
+                                              timeout=timeout)
 
             elif security_service['type'].lower() == 'active_directory':
                 vserver_client.configure_active_directory(security_service,
@@ -1500,22 +1505,97 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('export-rule-create', export_rule_create_args)
 
     @na_utils.trace
-    def configure_ldap(self, security_service):
-        """Configures LDAP on Vserver."""
+    def _create_ldap_client(self, security_service):
+        ad_domain = security_service.get('domain')
+        ldap_servers = security_service.get('server')
+        bind_dn = security_service.get('user')
+        ldap_schema = 'RFC-2307'
+
+        if ad_domain:
+            if ldap_servers:
+                msg = _("LDAP client cannot be configured with both 'server' "
+                        "and 'domain' parameters. Use 'server' for Linux/Unix "
+                        "LDAP servers or 'domain' for Active Directory LDAP "
+                        "servers.")
+                LOG.exception(msg)
+                raise exception.NetAppException(msg)
+            # RFC2307bis, for MS Active Directory LDAP server
+            ldap_schema = 'MS-AD-BIS'
+            bind_dn = (security_service.get('user') + '@' + ad_domain)
+        else:
+            if not ldap_servers:
+                msg = _("LDAP client cannot be configured without 'server' "
+                        "or 'domain' parameters. Use 'server' for Linux/Unix "
+                        "LDAP servers or 'domain' for Active Directory LDAP "
+                        "server.")
+                LOG.exception(msg)
+                raise exception.NetAppException(msg)
+
+        if security_service.get('dns_ip'):
+            self.configure_dns(security_service)
+
         config_name = hashlib.md5(six.b(security_service['id'])).hexdigest()
+
         api_args = {
             'ldap-client-config': config_name,
-            'servers': {
-                'ip-address': security_service['server'],
-            },
             'tcp-port': '389',
-            'schema': 'RFC-2307',
-            'bind-password': security_service['password'],
+            'schema': ldap_schema,
+            'bind-dn': bind_dn,
+            'bind-password': security_service.get('password'),
         }
+
+        if security_service.get('ou'):
+            api_args['base-dn'] = security_service['ou']
+        if ad_domain:
+            # Active Directory LDAP server
+            api_args['ad-domain'] = ad_domain
+        else:
+            # Linux/Unix LDAP servers
+            if self.features.LDAP_LDAP_SERVERS:
+                servers_key, servers_key_type = 'ldap-servers', 'string'
+            else:
+                servers_key, servers_key_type = 'servers', 'ip-address'
+
+            api_args[servers_key] = []
+            for server in ldap_servers.split(','):
+                api_args[servers_key].append(
+                    {servers_key_type: server.strip()})
+
         self.send_request('ldap-client-create', api_args)
 
-        api_args = {'client-config': config_name, 'client-enabled': 'true'}
-        self.send_request('ldap-config-create', api_args)
+    @na_utils.trace
+    def _enable_ldap_client(self, client_config_name, timeout=30):
+        # ONTAP ldap query timeout is 3 seconds by default
+        interval = 3
+        retries = int(timeout / interval) or 1
+        api_args = {'client-config': client_config_name,
+                    'client-enabled': 'true'}
+
+        @manila_utils.retry(exception.ShareBackendException, interval=interval,
+                            retries=retries, backoff_rate=1)
+        def try_enable_ldap_client():
+            try:
+                self.send_request('ldap-config-create', api_args)
+            except netapp_api.NaApiError as e:
+                msg = _('Unable to enable ldap client configuration. Will '
+                        'retry the operation. Error details: %s') % e.message
+                LOG.warning(msg)
+                raise exception.ShareBackendException(msg=msg)
+
+        try:
+            try_enable_ldap_client()
+        except exception.ShareBackendException:
+            msg = _("Unable to enable ldap client configuration %s. "
+                    "Retries exhausted. Aborting.") % client_config_name
+            LOG.exception(msg)
+            raise exception.NetAppException(message=msg)
+
+    @na_utils.trace
+    def configure_ldap(self, security_service, timeout=30):
+        """Configures LDAP on Vserver."""
+        config_name = hashlib.md5(six.b(security_service['id'])).hexdigest()
+        self._create_ldap_client(security_service)
+        self._enable_ldap_client(config_name, timeout=timeout)
 
     @na_utils.trace
     def configure_active_directory(self, security_service, vserver_name):
@@ -1679,24 +1759,65 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def configure_dns(self, security_service):
+        """Configure DNS address and servers for a vserver."""
         api_args = {
-            'domains': {
-                'string': security_service['domain'],
-            },
+            'domains': [],
             'name-servers': [],
             'dns-state': 'enabled',
         }
+        # NOTE(dviroel): Read the current dns configuration and merge with the
+        # new one. This scenario is expected when 2 security services provide
+        # a DNS configuration, like 'active_directory' and 'ldap'.
+        current_dns_config = self.get_dns_config()
+        domains = set(current_dns_config.get('domains', []))
+        dns_ips = set(current_dns_config.get('dns-ips', []))
+
+        domains.add(security_service['domain'])
+        for domain in domains:
+            api_args['domains'].append({'string': domain})
+
         for dns_ip in security_service['dns_ip'].split(','):
-            api_args['name-servers'].append({'ip-address': dns_ip.strip()})
+            dns_ips.add(dns_ip.strip())
+        for dns_ip in dns_ips:
+            api_args['name-servers'].append({'ip-address': dns_ip})
 
         try:
-            self.send_request('net-dns-create', api_args)
-        except netapp_api.NaApiError as e:
-            if e.code == netapp_api.EDUPLICATEENTRY:
-                LOG.error("DNS exists for Vserver.")
+            if current_dns_config:
+                self.send_request('net-dns-modify', api_args)
             else:
-                msg = _("Failed to configure DNS. %s")
-                raise exception.NetAppException(msg % e.message)
+                self.send_request('net-dns-create', api_args)
+        except netapp_api.NaApiError as e:
+            msg = _("Failed to configure DNS. %s")
+            raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def get_dns_config(self):
+        """Read DNS servers and domains currently configured in the vserver·"""
+        api_args = {}
+        try:
+            result = self.send_request('net-dns-get', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EOBJECTNOTFOUND:
+                return {}
+            msg = _("Failed to retrieve DNS configuration. %s")
+            raise exception.NetAppException(msg % e.message)
+
+        dns_config = {}
+        attributes = result.get_child_by_name('attributes')
+        dns_info = attributes.get_child_by_name('net-dns-info')
+
+        dns_config['dns-state'] = dns_info.get_child_content(
+            'dns-state')
+        domains = dns_info.get_child_by_name(
+            'domains') or netapp_api.NaElement('None')
+        dns_config['domains'] = [domain.get_content()
+                                 for domain in domains.get_children()]
+
+        servers = dns_info.get_child_by_name(
+            'name-servers') or netapp_api.NaElement('None')
+        dns_config['dns-ips'] = [server.get_content()
+                                 for server in servers.get_children()]
+        return dns_config
 
     @na_utils.trace
     def set_preferred_dc(self, security_service):

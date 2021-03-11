@@ -462,11 +462,26 @@ CIFS_SECURITY_SERVICE = {
     'server': '',
 }
 
-LDAP_SECURITY_SERVICE = {
+LDAP_LINUX_SECURITY_SERVICE = {
+    'id': 'fake_id',
     'type': 'ldap',
+    'user': 'fake_user',
     'password': 'fake_password',
     'server': 'fake_server',
+    'ou': 'fake_ou',
+    'dns_ip': None,
+    'domain': None
+}
+
+LDAP_AD_SECURITY_SERVICE = {
     'id': 'fake_id',
+    'type': 'ldap',
+    'user': 'fake_user',
+    'password': 'fake_password',
+    'domain': 'fake_domain',
+    'ou': 'fake_ou',
+    'dns_ip': 'fake_dns_ip',
+    'server': None,
 }
 
 KERBEROS_SECURITY_SERVICE = {
@@ -2724,6 +2739,30 @@ KERBEROS_CONFIG_GET_RESPONSE = etree.XML("""
     </attributes>
   </results>""" % {
     'lif_name': LIF_NAME,
+    'vserver_name': VSERVER_NAME,
+})
+
+DNS_CONFIG_GET_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes>
+      <net-dns-info>
+        <attempts>1</attempts>
+        <dns-state>enabled</dns-state>
+        <domains>
+          <string>fake_domain.com</string>
+        </domains>
+        <is-tld-query-enabled>true</is-tld-query-enabled>
+        <name-servers>
+          <ip-address>fake_dns_1</ip-address>
+          <ip-address>fake_dns_2</ip-address>
+        </name-servers>
+        <require-packet-query-match>true</require-packet-query-match>
+        <require-source-address-match>true</require-source-address-match>
+        <timeout>2</timeout>
+        <vserver-name>%(vserver_name)s</vserver-name>
+      </net-dns-info>
+    </attributes>
+  </results>""" % {
     'vserver_name': VSERVER_NAME,
 })
 

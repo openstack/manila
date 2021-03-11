@@ -1,0 +1,17 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver is now fixed to properly configure SVM LDAP client when
+    configuration is provided through `ldap` security service. Now, the driver
+    chooses the correct LDAP schema based on the given security service
+    parameters. The `RFC-2307` schema will be set for Linux/Unix LDAP servers
+    and `RFC-2307bis` for Active Directory servers. When using a Linux/Unix
+    LDAP server, the security service should be configured setting the
+    `server` parameter with servers IPs or host names. For Active
+    Directory LDAP server, the domain information must be configured using the
+    the `domain` parameter. Users should provide at least one DNS server when
+    configuring servers by its host or domain names. The base search
+    `distinguished name` used for LDAP queries can now be configured using
+    security service `ou` parameter. Please refer to
+    `Launchpad Bug #1916534 <https://bugs.launchpad.net/manila/+bug/1916534>`_
+    for more details.
