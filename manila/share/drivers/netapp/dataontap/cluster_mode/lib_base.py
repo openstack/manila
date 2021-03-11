@@ -34,6 +34,7 @@ from oslo_utils import uuidutils
 import six
 
 from manila.common import constants
+from manila import coordination
 from manila import exception
 from manila.i18n import _
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
@@ -68,6 +69,9 @@ class NetAppCmodeFileStorageLibrary(object):
     STATE_MOVING_VOLUME = 'moving_volume'
     STATE_SNAPMIRROR_DATA_COPYING = 'snapmirror_data_copying'
 
+    # Maximum number of FPolicis per vServer
+    FPOLICY_MAX_VSERVER_POLICIES = 10
+
     # Maps NetApp qualified extra specs keys to corresponding backend API
     # client library argument keywords.  When we expose more backend
     # capabilities here, we will add them to this map.
@@ -80,11 +84,15 @@ class NetAppCmodeFileStorageLibrary(object):
     }
 
     STRING_QUALIFIED_EXTRA_SPECS_MAP = {
-
         'netapp:snapshot_policy': 'snapshot_policy',
         'netapp:language': 'language',
         'netapp:max_files': 'max_files',
         'netapp:adaptive_qos_policy_group': 'adaptive_qos_policy_group',
+        'netapp:fpolicy_extensions_to_include':
+            'fpolicy_extensions_to_include',
+        'netapp:fpolicy_extensions_to_exclude':
+            'fpolicy_extensions_to_exclude',
+        'netapp:fpolicy_file_operations': 'fpolicy_file_operations',
     }
 
     # Maps standard extra spec keys to legacy NetApp keys
@@ -111,10 +119,14 @@ class NetAppCmodeFileStorageLibrary(object):
 
     # Maps the NFS config used by share-servers
     NFS_CONFIG_EXTRA_SPECS_MAP = {
-
         'netapp:tcp_max_xfer_size': 'tcp-max-xfer-size',
         'netapp:udp_max_xfer_size': 'udp-max-xfer-size',
     }
+
+    FPOLICY_FILE_OPERATIONS_LIST = [
+        'close', 'create', 'create_dir', 'delete', 'delete_dir', 'getattr',
+        'link', 'lookup', 'open', 'read', 'write', 'rename', 'rename_dir',
+        'setattr', 'symlink']
 
     def __init__(self, driver_name, **kwargs):
         na_utils.validate_driver_instantiation(**kwargs)
@@ -278,6 +290,17 @@ class NetAppCmodeFileStorageLibrary(object):
     def _get_backend_snapmirror_policy_name_svm(self, share_server_id):
         return (self.configuration.netapp_snapmirror_policy_name_svm_template
                 % {'share_server_id': share_server_id.replace('-', '_')})
+
+    def _get_backend_fpolicy_policy_name(self, share_id):
+        """Get FPolicy policy name according with the configured template."""
+        return (self.configuration.netapp_fpolicy_policy_name_template
+                % {'share_id': share_id.replace('-', '_')})
+
+    def _get_backend_fpolicy_event_name(self, share_id, protocol):
+        """Get FPolicy event name according with the configured template."""
+        return (self.configuration.netapp_fpolicy_event_name_template
+                % {'protocol': protocol.lower(),
+                   'share_id': share_id.replace('-', '_')})
 
     @na_utils.trace
     def _get_aggregate_space(self):
@@ -588,10 +611,11 @@ class NetAppCmodeFileStorageLibrary(object):
             if (src_cluster_name != dest_cluster_name or
                     not self._have_cluster_creds):
                 # 1. Create a clone on source. We don't need to split from
-                # clone in order to replicate data
+                # clone in order to replicate data. We don't need to create
+                # fpolicies since this copy will be deleted.
                 self._allocate_container_from_snapshot(
                     dest_share, snapshot, src_vserver, src_vserver_client,
-                    split=False)
+                    split=False, create_fpolicy=False)
                 # 2. Create a replica in destination host
                 self._allocate_container(
                     dest_share, dest_vserver, dest_vserver_client,
@@ -617,8 +641,8 @@ class NetAppCmodeFileStorageLibrary(object):
             # If the share exists on the source vserser, we need to
             # delete it since it's a temporary share, not managed by the system
             dm_session.delete_snapmirror(src_share_instance, dest_share)
-            self._delete_share(src_share_instance, src_vserver_client,
-                               remove_export=False)
+            self._delete_share(src_share_instance, src_vserver,
+                               src_vserver_client, remove_export=False)
             msg = _('Could not create share %(share_id)s from snapshot '
                     '%(snapshot_id)s in the destination host %(dest_host)s.')
             msg_args = {'share_id': dest_share['id'],
@@ -665,7 +689,7 @@ class NetAppCmodeFileStorageLibrary(object):
             src_vserver_client = data_motion.get_client_for_backend(
                 src_backend, vserver_name=src_vserver)
 
-            self._delete_share(source_share, src_vserver_client,
+            self._delete_share(source_share, src_vserver, src_vserver_client,
                                remove_export=False)
             # Delete private storage info
             self.private_storage.delete(share['id'])
@@ -766,7 +790,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 dm_session.break_snapmirror(src_share, share)
                 dm_session.delete_snapmirror(src_share, share)
                 # 3. Delete the source volume
-                self._delete_share(src_share, src_vserver_client,
+                self._delete_share(src_share, src_vserver, src_vserver_client,
                                    remove_export=False)
                 share_name = self._get_backend_share_name(src_share['id'])
                 # 4. Set File system size fixed to false
@@ -817,7 +841,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def _allocate_container(self, share, vserver, vserver_client,
-                            replica=False):
+                            replica=False, create_fpolicy=True):
         """Create new share on aggregate."""
         share_name = self._get_backend_share_name(share['id'])
 
@@ -849,6 +873,15 @@ class NetAppCmodeFileStorageLibrary(object):
         if hide_snapdir:
             self._apply_snapdir_visibility(
                 hide_snapdir, share_name, vserver_client)
+
+        if create_fpolicy:
+            fpolicy_ext_to_include = provisioning_options.get(
+                'fpolicy_extensions_to_include')
+            fpolicy_ext_to_exclude = provisioning_options.get(
+                'fpolicy_extensions_to_exclude')
+            if fpolicy_ext_to_include or fpolicy_ext_to_exclude:
+                self._create_fpolicy_for_share(share, vserver, vserver_client,
+                                               **provisioning_options)
 
     def _apply_snapdir_visibility(
             self, hide_snapdir, share_name, vserver_client):
@@ -884,6 +917,9 @@ class NetAppCmodeFileStorageLibrary(object):
         if 'netapp:max_files' in extra_specs:
             self._check_if_max_files_is_valid(share,
                                               extra_specs['netapp:max_files'])
+        if 'netapp:fpolicy_file_operations' in extra_specs:
+            self._check_fpolicy_file_operations(
+                share, extra_specs['netapp:fpolicy_file_operations'])
 
     @na_utils.trace
     def _check_if_max_files_is_valid(self, share, value):
@@ -894,6 +930,20 @@ class NetAppCmodeFileStorageLibrary(object):
             msg = _('Invalid value "%(value)s" for extra_spec "%(key)s" '
                     'in share_type %(type_id)s for share %(share_id)s.')
             raise exception.NetAppException(msg % args)
+
+    @na_utils.trace
+    def _check_fpolicy_file_operations(self, share, value):
+        """Check if the provided fpolicy file operations are valid."""
+        for file_op in value.split(','):
+            if file_op.strip() not in self.FPOLICY_FILE_OPERATIONS_LIST:
+                args = {'file_op': file_op,
+                        'extra_spec': 'netapp:fpolicy_file_operations',
+                        'type_id': share['share_type_id'],
+                        'share_id': share['id']}
+                msg = _('Invalid value "%(file_op)s" for extra_spec '
+                        '"%(extra_spec)s" in share_type %(type_id)s for share '
+                        '%(share_id)s.')
+                raise exception.NetAppException(msg % args)
 
     @na_utils.trace
     def _check_boolean_extra_specs_validity(self, share, specs,
@@ -1100,6 +1150,25 @@ class NetAppCmodeFileStorageLibrary(object):
                     'cluster credentials.')
             raise exception.NetAppException(msg)
 
+        fpolicy_ext_to_include = provisioning_options.get(
+            'fpolicy_extensions_to_include')
+        fpolicy_ext_to_exclude = provisioning_options.get(
+            'fpolicy_extensions_to_exclude')
+        if provisioning_options.get('fpolicy_file_operations') and not (
+                fpolicy_ext_to_include or fpolicy_ext_to_exclude):
+            msg = _('The extra spec "fpolicy_file_operations" can only '
+                    'be configured together with '
+                    '"fpolicy_extensions_to_include" or '
+                    '"fpolicy_extensions_to_exclude".')
+            raise exception.NetAppException(msg)
+
+        if replication_type and (
+                fpolicy_ext_to_include or fpolicy_ext_to_exclude):
+            msg = _("The extra specs 'fpolicy_extensions_to_include' and "
+                    "'fpolicy_extensions_to_exclude' are not "
+                    "supported by share replication feature.")
+            raise exception.NetAppException(msg)
+
     def _get_nve_option(self, specs):
         if 'netapp_flexvol_encryption' in specs:
             nve = specs['netapp_flexvol_encryption'].lower() == 'true'
@@ -1128,7 +1197,8 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _allocate_container_from_snapshot(
             self, share, snapshot, vserver, vserver_client,
-            snapshot_name_func=_get_backend_snapshot_name, split=None):
+            snapshot_name_func=_get_backend_snapshot_name, split=None,
+            create_fpolicy=True):
         """Clones existing share."""
         share_name = self._get_backend_share_name(share['id'])
         parent_share_name = self._get_backend_share_name(snapshot['share_id'])
@@ -1156,13 +1226,26 @@ class NetAppCmodeFileStorageLibrary(object):
             self._apply_snapdir_visibility(
                 hide_snapdir, share_name, vserver_client)
 
+        if create_fpolicy:
+            fpolicy_ext_to_include = provisioning_options.get(
+                'fpolicy_extensions_to_include')
+            fpolicy_ext_to_exclude = provisioning_options.get(
+                'fpolicy_extensions_to_exclude')
+            if fpolicy_ext_to_include or fpolicy_ext_to_exclude:
+                self._create_fpolicy_for_share(share, vserver, vserver_client,
+                                               **provisioning_options)
+
     @na_utils.trace
     def _share_exists(self, share_name, vserver_client):
         return vserver_client.volume_exists(share_name)
 
     @na_utils.trace
-    def _delete_share(self, share, vserver_client, remove_export=True):
+    def _delete_share(self, share, vserver, vserver_client,
+                      remove_export=True):
         share_name = self._get_backend_share_name(share['id'])
+        # Share doesn't need to exist to be assigned to a fpolicy scope
+        self._delete_fpolicy_for_share(share, vserver, vserver_client)
+
         if self._share_exists(share_name, vserver_client):
             if remove_export:
                 self._remove_export(share, vserver_client)
@@ -1188,7 +1271,7 @@ class NetAppCmodeFileStorageLibrary(object):
                         "will proceed anyway. Error: %(error)s",
                         {'share': share['id'], 'error': error})
             return
-        self._delete_share(share, vserver_client)
+        self._delete_share(share, vserver, vserver_client)
 
     @na_utils.trace
     def _deallocate_container(self, share_name, vserver_client):
@@ -1436,6 +1519,29 @@ class NetAppCmodeFileStorageLibrary(object):
         self.validate_provisioning_options_for_share(provisioning_options,
                                                      extra_specs=extra_specs,
                                                      qos_specs=qos_specs)
+        # Check fpolicy extra-specs
+        fpolicy_ext_include = provisioning_options.get(
+            'fpolicy_extensions_to_include')
+        fpolicy_ext_exclude = provisioning_options.get(
+            'fpolicy_extensions_to_exclude')
+        fpolicy_file_operations = provisioning_options.get(
+            'fpolicy_file_operations')
+
+        fpolicy_scope = None
+        if fpolicy_ext_include or fpolicy_ext_include:
+            fpolicy_scope = self._find_reusable_fpolicy_scope(
+                share, vserver_client,
+                fpolicy_extensions_to_include=fpolicy_ext_include,
+                fpolicy_extensions_to_exclude=fpolicy_ext_exclude,
+                fpolicy_file_operations=fpolicy_file_operations,
+                shares_to_include=[volume_name]
+            )
+            if fpolicy_scope is None:
+                msg = _('Volume %(volume)s does not contains the expected '
+                        'fpolicy configuration.')
+                msg_args = {'volume': volume_name}
+                raise exception.ManageExistingShareTypeMismatch(
+                    reason=msg % msg_args)
 
         debug_args = {
             'share': share_name,
@@ -1458,6 +1564,17 @@ class NetAppCmodeFileStorageLibrary(object):
         # Modify volume to match extra specs
         vserver_client.modify_volume(aggregate_name, share_name,
                                      **provisioning_options)
+
+        # Update fpolicy to include the new share name and remove the old one
+        if fpolicy_scope is not None:
+            shares_to_include = copy.deepcopy(
+                fpolicy_scope.get('shares-to-include', []))
+            shares_to_include.remove(volume_name)
+            shares_to_include.append(share_name)
+            policy_name = fpolicy_scope.get('policy-name')
+            # Update
+            vserver_client.modify_fpolicy_scope(
+                policy_name, shares_to_include=shares_to_include)
 
         # Save original volume info to private storage
         original_data = {
@@ -1883,7 +2000,7 @@ class NetAppCmodeFileStorageLibrary(object):
             dest_backend, vserver_name=vserver)
 
         self._allocate_container(new_replica, vserver, vserver_client,
-                                 replica=True)
+                                 replica=True, create_fpolicy=False)
 
         # 2. Setup SnapMirror
         dm_session.create_snapmirror(active_replica, new_replica)
@@ -2431,7 +2548,30 @@ class NetAppCmodeFileStorageLibrary(object):
                 self.validate_provisioning_options_for_share(
                     provisioning_options, extra_specs=extra_specs,
                     qos_specs=qos_specs)
-
+                # Validate destination against fpolicy extra specs
+                fpolicy_ext_include = provisioning_options.get(
+                    'fpolicy_extensions_to_include')
+                fpolicy_ext_exclude = provisioning_options.get(
+                    'fpolicy_extensions_to_exclude')
+                fpolicy_file_operations = provisioning_options.get(
+                    'fpolicy_file_operations')
+                if fpolicy_ext_include or fpolicy_ext_include:
+                    __, dest_client = self._get_vserver(
+                        share_server=destination_share_server)
+                    fpolicies = dest_client.get_fpolicy_policies_status()
+                    if len(fpolicies) >= self.FPOLICY_MAX_VSERVER_POLICIES:
+                        # If we can't create a new policy for the new share,
+                        # we need to reuse an existing one.
+                        reusable_scopes = self._find_reusable_fpolicy_scope(
+                            destination_share, dest_client,
+                            fpolicy_extensions_to_include=fpolicy_ext_include,
+                            fpolicy_extensions_to_exclude=fpolicy_ext_exclude,
+                            fpolicy_file_operations=fpolicy_file_operations)
+                        if not reusable_scopes:
+                            msg = _(
+                                "Cannot migrate share because the destination "
+                                "reached its maximum number of policies.")
+                            raise exception.NetAppException(msg)
                 # NOTE (felipe_rodrigues): NetApp only can migrate within the
                 # same server, so it does not need to check that the
                 # destination share has the same NFS config as the destination
@@ -2448,7 +2588,6 @@ class NetAppCmodeFileStorageLibrary(object):
                     share_server=share_server)
                 share_volume = self._get_backend_share_name(
                     source_share['id'])
-
                 # NOTE(dviroel): If source and destination vservers are
                 # compatible for volume move, the provisioning option
                 # 'adaptive_qos_policy_group' will also be supported since the
@@ -2758,6 +2897,18 @@ class NetAppCmodeFileStorageLibrary(object):
                                      new_share_volume_name,
                                      **provisioning_options)
 
+        # Create or reuse fpolicy
+        fpolicy_ext_to_include = provisioning_options.get(
+            'fpolicy_extensions_to_include')
+        fpolicy_ext_to_exclude = provisioning_options.get(
+            'fpolicy_extensions_to_exclude')
+        if fpolicy_ext_to_include or fpolicy_ext_to_exclude:
+            self._create_fpolicy_for_share(destination_share, vserver,
+                                           vserver_client,
+                                           **provisioning_options)
+        # Delete old fpolicies if needed
+        self._delete_fpolicy_for_share(source_share, vserver, vserver_client)
+
         msg = ("Volume move operation for share %(shr)s has completed "
                "successfully. Share has been moved from %(src)s to "
                "%(dest)s.")
@@ -2956,3 +3107,233 @@ class NetAppCmodeFileStorageLibrary(object):
             backend_free_capacity += total_pool_free
 
         return size <= backend_free_capacity
+
+    def _find_reusable_fpolicy_scope(
+            self, share, vserver_client, fpolicy_extensions_to_include=None,
+            fpolicy_extensions_to_exclude=None, fpolicy_file_operations=None,
+            shares_to_include=None):
+        """Searches a fpolicy scope that can be reused for a share."""
+        protocols = (
+            ['nfsv3', 'nfsv4'] if share['share_proto'].lower() == 'nfs'
+            else ['cifs'])
+        protocols.sort()
+
+        requested_ext_to_include = []
+        if fpolicy_extensions_to_include:
+            requested_ext_to_include = na_utils.convert_string_to_list(
+                fpolicy_extensions_to_include)
+            requested_ext_to_include.sort()
+
+        requested_ext_to_exclude = []
+        if fpolicy_extensions_to_exclude:
+            requested_ext_to_exclude = na_utils.convert_string_to_list(
+                fpolicy_extensions_to_exclude)
+            requested_ext_to_exclude.sort()
+
+        if fpolicy_file_operations:
+            requested_file_operations = na_utils.convert_string_to_list(
+                fpolicy_file_operations)
+        else:
+            requested_file_operations = (
+                self.configuration.netapp_fpolicy_default_file_operations)
+        requested_file_operations.sort()
+
+        reusable_scopes = vserver_client.get_fpolicy_scopes(
+            extensions_to_exclude=fpolicy_extensions_to_exclude,
+            extensions_to_include=fpolicy_extensions_to_include,
+            shares_to_include=shares_to_include)
+        # NOTE(dviroel): get_fpolicy_scopes can return scopes that don't match
+        #  the exact requirements.
+        for scope in reusable_scopes[:]:
+            scope_ext_include = copy.deepcopy(
+                scope.get('file-extensions-to-include', []))
+            scope_ext_include.sort()
+            scope_ext_exclude = copy.deepcopy(
+                scope.get('file-extensions-to-exclude', []))
+            scope_ext_exclude.sort()
+
+            if scope_ext_include != requested_ext_to_include:
+                LOG.debug(
+                    "Excluding scope for policy %(policy_name)s because "
+                    "it doesn't match 'file-extensions-to-include' "
+                    "configuration.", {'policy_name': scope['policy-name']})
+                reusable_scopes.remove(scope)
+            elif scope_ext_exclude != requested_ext_to_exclude:
+                LOG.debug(
+                    "Excluding scope for policy %(policy_name)s because "
+                    "it doesn't match 'file-extensions-to-exclude' "
+                    "configuration.", {'policy_name': scope['policy-name']})
+                reusable_scopes.remove(scope)
+
+        for scope in reusable_scopes[:]:
+            fpolicy_policy = vserver_client.get_fpolicy_policies(
+                policy_name=scope['policy-name'])
+            for policy in fpolicy_policy:
+                event_names = copy.deepcopy(policy.get('events', []))
+                match_event_protocols = []
+                for event_name in event_names:
+                    events = vserver_client.get_fpolicy_events(
+                        event_name=event_name)
+                    for event in events:
+                        event_file_ops = copy.deepcopy(
+                            event.get('file-operations', []))
+                        event_file_ops.sort()
+                        if event_file_ops == requested_file_operations:
+                            # Event has same file operations
+                            match_event_protocols.append(event.get('protocol'))
+                match_event_protocols.sort()
+
+                if match_event_protocols != protocols:
+                    LOG.debug(
+                        "Excluding scope for policy %(policy_name)s because "
+                        "it doesn't match 'events' configuration of file "
+                        "operations per protocol.",
+                        {'policy_name': scope['policy-name']})
+                    reusable_scopes.remove(scope)
+
+        return reusable_scopes[0] if reusable_scopes else None
+
+    def _create_fpolicy_for_share(
+            self, share, vserver, vserver_client,
+            fpolicy_extensions_to_include=None,
+            fpolicy_extensions_to_exclude=None, fpolicy_file_operations=None,
+            **options):
+        """Creates or reuses a fpolicy for a new share."""
+        share_name = self._get_backend_share_name(share['id'])
+
+        @manila_utils.synchronized('netapp-fpolicy-%s' % vserver,
+                                   external=True)
+        def _create_fpolicy_with_lock():
+
+            # 1. Try to reuse an existing FPolicy if matches the same
+            #  requirements
+            reusable_scope = self._find_reusable_fpolicy_scope(
+                share, vserver_client,
+                fpolicy_extensions_to_include=fpolicy_extensions_to_include,
+                fpolicy_extensions_to_exclude=fpolicy_extensions_to_exclude,
+                fpolicy_file_operations=fpolicy_file_operations)
+
+            if reusable_scope:
+                shares_to_include = copy.deepcopy(
+                    reusable_scope.get('shares-to-include'))
+                shares_to_include.append(share_name)
+                # Add the new share to the existing policy scope
+                vserver_client.modify_fpolicy_scope(
+                    reusable_scope.get('policy-name'),
+                    shares_to_include=shares_to_include)
+
+                LOG.debug("Share %(share_id)s was added to an existing "
+                          "fpolicy scope.", {'share_id': share['id']})
+                return
+
+            # 2. Since we can't reuse any scope, start creating a new fpolicy
+            protocols = (
+                ['nfsv3', 'nfsv4'] if share['share_proto'].lower() == 'nfs'
+                else ['cifs'])
+
+            if fpolicy_file_operations:
+                file_operations = na_utils.convert_string_to_list(
+                    fpolicy_file_operations)
+            else:
+                file_operations = (
+                    self.configuration.netapp_fpolicy_default_file_operations)
+
+            # NOTE(dviroel): ONTAP limit of fpolicies for a vserser is 10.
+            #  DHSS==True backends can create new share servers or fail earlier
+            #  in choose_share_server_for_share.
+            vserver_policies = vserver_client.get_fpolicy_policies_status()
+            if len(vserver_policies) >= self.FPOLICY_MAX_VSERVER_POLICIES:
+                msg_args = {'share_id': share['id']}
+                msg = _("Cannot configure a new FPolicy for share "
+                        "%(share_id)s. The maximum number of fpolicies was "
+                        "already reached.") % msg_args
+                LOG.exception(msg)
+                raise exception.NetAppException(message=msg)
+
+            seq_number_list = [int(policy['sequence-number'])
+                               for policy in vserver_policies]
+            available_seq_number = None
+            for number in range(1, self.FPOLICY_MAX_VSERVER_POLICIES + 1):
+                if number not in seq_number_list:
+                    available_seq_number = number
+                    break
+
+            events = []
+            policy_name = self._get_backend_fpolicy_policy_name(share['id'])
+            try:
+                for protocol in protocols:
+                    event_name = self._get_backend_fpolicy_event_name(
+                        share['id'], protocol)
+                    vserver_client.create_fpolicy_event(event_name,
+                                                        protocol,
+                                                        file_operations)
+                    events.append(event_name)
+
+                # 2. Create a fpolicy policy
+                vserver_client.create_fpolicy_policy(policy_name, events)
+
+                # 3. Assign a scope to the fpolicy policy
+                vserver_client.create_fpolicy_scope(
+                    policy_name, share_name,
+                    extensions_to_include=fpolicy_extensions_to_include,
+                    extensions_to_exclude=fpolicy_extensions_to_exclude)
+            except Exception:
+                # NOTE(dviroel): Rollback fpolicy policy and events creation
+                #  since they won't be linked to the share, which is made by
+                #  the scope creation.
+
+                # Delete fpolicy policy
+                vserver_client.delete_fpolicy_policy(policy_name)
+                # Delete fpolicy events
+                for event in events:
+                    vserver_client.delete_fpolicy_event(event)
+
+                msg = _("Failed to configure a FPolicy resources for share "
+                        "%(share_id)s. ") % {'share_id': share['id']}
+                LOG.exception(msg)
+                raise exception.NetAppException(message=msg)
+
+            # 4. Enable fpolicy policy
+            vserver_client.enable_fpolicy_policy(policy_name,
+                                                 available_seq_number)
+
+        _create_fpolicy_with_lock()
+        LOG.debug('A new fpolicy was successfully created and associated to '
+                  'share %(share_id)s', {'share_id': share['id']})
+
+    def _delete_fpolicy_for_share(self, share, vserver, vserver_client):
+        """Delete all associated fpolicy resources from a share."""
+        share_name = self._get_backend_share_name(share['id'])
+
+        @coordination.synchronized('netapp-fpolicy-%s' % vserver)
+        def _delete_fpolicy_with_lock():
+            fpolicy_scopes = vserver_client.get_fpolicy_scopes(
+                shares_to_include=[share_name])
+
+            if fpolicy_scopes:
+                shares_to_include = copy.copy(
+                    fpolicy_scopes[0].get('shares-to-include'))
+                shares_to_include.remove(share_name)
+
+                policy_name = fpolicy_scopes[0].get('policy-name')
+                if shares_to_include:
+                    vserver_client.modify_fpolicy_scope(
+                        policy_name, shares_to_include=shares_to_include)
+                else:
+                    # Delete an empty fpolicy
+                    # 1. Disable fpolicy policy
+                    vserver_client.disable_fpolicy_policy(policy_name)
+                    # 2. Retrieve fpoliocy info
+                    fpolicy_policies = vserver_client.get_fpolicy_policies(
+                        policy_name=policy_name)
+                    # 3. Delete fpolicy scope
+                    vserver_client.delete_fpolicy_scope(policy_name)
+                    # 4. Delete fpolicy policy
+                    vserver_client.delete_fpolicy_policy(policy_name)
+                    # 5. Delete fpolicy events
+                    for policy in fpolicy_policies:
+                        events = policy.get('events', [])
+                        for event in events:
+                            vserver_client.delete_fpolicy_event(event)
+
+        _delete_fpolicy_with_lock()

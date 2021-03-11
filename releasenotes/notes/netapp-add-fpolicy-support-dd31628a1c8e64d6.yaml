@@ -1,0 +1,25 @@
+---
+features:
+  - |
+    Added support for FPolicy on NetApp ONTAP driver. FPolicy allows creation
+    of file policies that specify file operation permissions according to
+    file type. This feature can be enabled using the following extra-specs:
+
+    - ``netapp:fpolicy_extensions_to_include``:
+      specifies file extensions to be included for screening. Values should be
+      provided as comma separated list.
+    - ``netapp:fpolicy_extensions_to_exclude``:
+      specifies file extensions to be excluded for screening. Values should be
+      provided as comma separated list.
+    - ``netapp:fpolicy_file_operations``:
+      specifies all file operations to be monitored. Values should be provided
+      as comma separated list.
+
+    FPolicy works for backends with and without share server management. When
+    using NetApp backends with SVM administrator accounts, make sure that the
+    assigned access-control role has access set to "all" for "vserver fpolicy"
+    directory.
+
+    This feature does not work with share replicas to avoid failures on replica
+    promotion, due to lack of FPolicy resources in the destination SVM.
+

@@ -108,6 +108,18 @@ SM_SOURCE_VOLUME = 'fake_source_volume'
 SM_DEST_VSERVER = 'fake_destination_vserver'
 SM_DEST_VOLUME = 'fake_destination_volume'
 
+FPOLICY_POLICY_NAME = 'fake_fpolicy_name'
+FPOLICY_EVENT_NAME = 'fake_fpolicy_event_name'
+FPOLICY_PROTOCOL = 'cifs'
+FPOLICY_FILE_OPERATIONS = 'create,write,rename'
+FPOLICY_FILE_OPERATIONS_LIST = ['create', 'write', 'rename']
+FPOLICY_ENGINE = 'native'
+FPOLICY_EXT_TO_INCLUDE = 'avi'
+FPOLICY_EXT_TO_INCLUDE_LIST = ['avi']
+FPOLICY_EXT_TO_EXCLUDE = 'jpg,mp3'
+FPOLICY_EXT_TO_EXCLUDE_LIST = ['jpg', 'mp3']
+
+
 NETWORK_INTERFACES = [{
     'interface_name': 'fake_interface',
     'address': IP_ADDRESS,
@@ -2763,6 +2775,94 @@ DNS_CONFIG_GET_RESPONSE = etree.XML("""
       </net-dns-info>
     </attributes>
   </results>""" % {
+    'vserver_name': VSERVER_NAME,
+})
+
+FPOLICY_EVENT_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <fpolicy-event-options-config>
+        <event-name>%(event_name)s</event-name>
+        <file-operations>
+          <fpolicy-operation>create</fpolicy-operation>
+          <fpolicy-operation>write</fpolicy-operation>
+          <fpolicy-operation>rename</fpolicy-operation>
+        </file-operations>
+        <protocol>%(protocol)s</protocol>
+        <volume-operation>false</volume-operation>
+        <vserver>%(vserver_name)s</vserver>
+      </fpolicy-event-options-config>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>""" % {
+    'event_name': FPOLICY_EVENT_NAME,
+    'protocol': FPOLICY_PROTOCOL,
+    'vserver_name': VSERVER_NAME,
+})
+
+FPOLICY_POLICY_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <fpolicy-policy-info>
+        <allow-privileged-access>false</allow-privileged-access>
+        <engine-name>%(engine)s</engine-name>
+        <events>
+          <event-name>%(event_name)s</event-name>
+        </events>
+        <is-mandatory>true</is-mandatory>
+        <is-passthrough-read-enabled>false</is-passthrough-read-enabled>
+        <policy-name>%(policy_name)s</policy-name>
+        <vserver>%(vserver_name)s</vserver>
+      </fpolicy-policy-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>""" % {
+    'engine': FPOLICY_ENGINE,
+    'event_name': FPOLICY_EVENT_NAME,
+    'policy_name': FPOLICY_POLICY_NAME,
+    'vserver_name': VSERVER_NAME,
+})
+
+FPOLICY_SCOPE_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <fpolicy-scope-config>
+        <check-extensions-on-directories>true</check-extensions-on-directories>
+        <file-extensions-to-exclude>
+          <string>jpg</string>
+          <string>mp3</string>
+        </file-extensions-to-exclude>
+        <file-extensions-to-include>
+          <string>avi</string>
+        </file-extensions-to-include>
+        <is-monitoring-of-objects-with-no-extension-enabled>false</is-monitoring-of-objects-with-no-extension-enabled>
+        <policy-name>%(policy_name)s</policy-name>
+        <shares-to-include>
+          <string>%(share_name)s</string>
+        </shares-to-include>
+        <vserver>%(vserver_name)s</vserver>
+      </fpolicy-scope-config>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>""" % {
+    'policy_name': FPOLICY_POLICY_NAME,
+    'share_name': SHARE_NAME,
+    'vserver_name': VSERVER_NAME,
+})
+
+FPOLICY_POLICY_STATUS_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <fpolicy-policy-status-info>
+        <policy-name>%(policy_name)s</policy-name>
+        <sequence-number>1</sequence-number>
+        <status>true</status>
+        <vserver>%(vserver_name)s</vserver>
+      </fpolicy-policy-status-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>""" % {
+    'policy_name': FPOLICY_POLICY_NAME,
     'vserver_name': VSERVER_NAME,
 })
 

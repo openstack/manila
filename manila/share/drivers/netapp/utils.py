@@ -112,6 +112,10 @@ def convert_to_list(value):
         return [value]
 
 
+def convert_string_to_list(string, separator=','):
+    return [elem.strip() for elem in string.split(separator)]
+
+
 class OpenStackInfo(object):
     """OS/distribution, release, and version.
 

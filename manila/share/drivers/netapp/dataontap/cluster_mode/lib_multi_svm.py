@@ -758,22 +758,37 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             return None
 
         nfs_config = None
+        extra_specs = share_types.get_extra_specs_from_share(share)
         if self.is_nfs_config_supported:
-            extra_specs = share_types.get_extra_specs_from_share(share)
             nfs_config = self._get_nfs_config_provisioning_options(extra_specs)
+
+        provisioning_options = self._get_provisioning_options(extra_specs)
+        # Get FPolicy extra specs to avoid incompatible share servers
+        fpolicy_ext_to_include = provisioning_options.get(
+            'fpolicy_extensions_to_include')
+        fpolicy_ext_to_exclude = provisioning_options.get(
+            'fpolicy_extensions_to_exclude')
+        fpolicy_file_operations = provisioning_options.get(
+            'fpolicy_file_operations')
 
         # Avoid the reuse of 'dp_protection' vservers:
         for share_server in share_servers:
-            if self._check_reuse_share_server(share_server, nfs_config,
-                                              share_group=share_group):
+            if self._check_reuse_share_server(
+                    share_server, nfs_config, share=share,
+                    share_group=share_group,
+                    fpolicy_ext_include=fpolicy_ext_to_include,
+                    fpolicy_ext_exclude=fpolicy_ext_to_exclude,
+                    fpolicy_file_operations=fpolicy_file_operations):
                 return share_server
 
         #  There is no compatible share server to be reused
         return None
 
     @na_utils.trace
-    def _check_reuse_share_server(self, share_server, nfs_config,
-                                  share_group=None):
+    def _check_reuse_share_server(self, share_server, nfs_config, share=None,
+                                  share_group=None, fpolicy_ext_include=None,
+                                  fpolicy_ext_exclude=None,
+                                  fpolicy_file_operations=None):
         """Check whether the share_server can be reused or not."""
         if (share_group and share_group.get('share_server_id') !=
                 share_server['id']):
@@ -795,6 +810,20 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             # that the share type is an element of the group types.
             return self._is_share_server_compatible(share_server, nfs_config)
 
+        if fpolicy_ext_include or fpolicy_ext_exclude:
+            fpolicies = client.get_fpolicy_policies_status()
+            if len(fpolicies) >= self.FPOLICY_MAX_VSERVER_POLICIES:
+                # This share server already reached it maximum number of
+                # policies, we need to check if we can reuse one, otherwise,
+                # it is not suitable for this share.
+                reusable_scope = self._find_reusable_fpolicy_scope(
+                    share, client,
+                    fpolicy_extensions_to_include=fpolicy_ext_include,
+                    fpolicy_extensions_to_exclude=fpolicy_ext_exclude,
+                    fpolicy_file_operations=fpolicy_file_operations)
+                if not reusable_scope:
+                    return False
+
         return True
 
     @na_utils.trace
@@ -814,6 +843,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         if self.is_nfs_config_supported:
             nfs_config = self._get_nfs_config_share_group(share_group_ref)
 
+        # NOTE(dviroel): FPolicy extra-specs won't be conflicting, since
+        #  multiple policies can be created. The maximum number of policies or
+        #  the reusability of existing ones, can only be analyzed at share
+        #  instance creation.
         for share_server in share_servers:
             if self._check_reuse_share_server(share_server, nfs_config):
                 return share_server
@@ -1188,7 +1221,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                              dest_share_server)
             # Rollback resources transferred to the destination
             for instance in share_instances:
-                self._delete_share(instance, dest_client, remove_export=False)
+                self._delete_share(instance, dest_vserver, dest_client,
+                                   remove_export=False)
 
             msg_args = {
                 'src': source_share_server['id'],
@@ -1243,7 +1277,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         # 8. Release source share resources
         for instance in share_instances:
-            self._delete_share(instance, src_client, remove_export=True)
+            self._delete_share(instance, src_vserver, src_client,
+                               remove_export=True)
 
         # NOTE(dviroel): source share server deletion must be triggered by
         # the manager after finishing the migration
@@ -1270,7 +1305,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                                  dest_share_server)
             # Do a simple volume cleanup in the destination vserver
             for instance in shares:
-                self._delete_share(instance, dest_client, remove_export=False)
+                self._delete_share(instance, dest_vserver, dest_client,
+                                   remove_export=False)
 
         except Exception:
             msg_args = {

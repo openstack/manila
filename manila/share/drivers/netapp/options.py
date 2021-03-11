@@ -123,7 +123,18 @@ netapp_provisioning_opts = [
     cfg.StrOpt('netapp_snapmirror_policy_name_svm_template',
                help='NetApp SnapMirror policy name template for Storage '
                     'Virtual Machines (Vservers).',
-               default='snapmirror_policy_%(share_server_id)s'), ]
+               default='snapmirror_policy_%(share_server_id)s'),
+    cfg.ListOpt('netapp_fpolicy_default_file_operations',
+                help='NetApp FPolicy file operations to apply to a FPolicy '
+                     'event, when not provided by the user using '
+                     '"netapp:fpolicy_file_operations" extra-spec.',
+                default=['create', 'write', 'rename']),
+    cfg.StrOpt('netapp_fpolicy_policy_name_template',
+               help='NetApp FPolicy policy name template.',
+               default='fpolicy_policy_%(share_id)s'),
+    cfg.StrOpt('netapp_fpolicy_event_name_template',
+               help='NetApp FPolicy policy name template.',
+               default='fpolicy_event_%(protocol)s_%(share_id)s'), ]
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',
