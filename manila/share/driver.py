@@ -138,6 +138,14 @@ share_opts = [
     cfg.StrOpt('goodness_function',
                help='String representation for an equation that will be '
                     'used to determine the goodness of a host.'),
+    cfg.IntOpt('max_shares_per_share_server',
+               default=-1,
+               help="Maximum number of share instances created in a share "
+                    "server."),
+    cfg.IntOpt('max_share_server_size',
+               default=-1,
+               help="Maximum sum of gigabytes a share server can have "
+                    "considering all its share instances and snapshots.")
 ]
 
 ssh_opts = [
@@ -318,6 +326,19 @@ class ShareDriver(object):
         if self.configuration:
             return self.configuration.safe_get('replication_domain')
         return CONF.replication_domain
+
+    @property
+    def max_shares_per_share_server(self):
+        if self.configuration:
+            return self.configuration.safe_get(
+                'max_shares_per_share_server') or -1
+        return CONF.max_shares_per_share_server
+
+    @property
+    def max_share_server_size(self):
+        if self.configuration:
+            return self.configuration.safe_get('max_share_server_size') or -1
+        return CONF.max_share_server_size
 
     def _verify_share_server_handling(self, driver_handles_share_servers):
         """Verifies driver_handles_share_servers and given configuration."""
@@ -1297,6 +1318,13 @@ class ShareDriver(object):
         )
         if isinstance(data, dict):
             common.update(data)
+
+        if self.driver_handles_share_servers:
+            common.update({
+                'max_shares_per_share_server':
+                    self.max_shares_per_share_server,
+                'max_share_server_size': self.max_share_server_size
+            })
 
         sg_stats = data.get('share_group_stats', {}) if data else {}
         common['share_group_stats'] = {

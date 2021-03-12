@@ -342,6 +342,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
     @ddt.data(None, '', 'foo_replication_domain')
     def test__update_share_stats(self, replication_domain):
         self.configuration.replication_domain = replication_domain
+        self.configuration.max_shares_per_share_server = -1
+        self.configuration.max_share_server_size = -1
         self.mock_object(self.driver, '_get_pools_info')
         self.assertEqual({}, self.driver._stats)
         expected = {

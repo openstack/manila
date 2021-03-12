@@ -512,6 +512,68 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.db.share_export_locations_update(
                     ctxt, share_instance['id'], export_locations)
 
+    def _check_share_server_backend_limits(
+            self, context, available_share_servers, share_instance=None):
+        max_shares_limit = self.driver.max_shares_per_share_server
+        max_server_size = self.driver.max_share_server_size
+
+        if max_server_size == max_shares_limit == -1:
+            return available_share_servers
+
+        for ss in available_share_servers[:]:
+            share_instances = self.db.share_instances_get_all_by_share_server(
+                context, ss['id'], with_share_data=True)
+            if not share_instances:
+                continue
+            share_instance_ids = [si['id'] for si in share_instances]
+            share_snapshot_instances = (
+                self.db.share_snapshot_instance_get_all_with_filters(
+                    context, {"share_instance_ids": share_instance_ids},
+                    with_share_data=True))
+
+            server_instances_size_sum = 0
+            num_instances = 0
+
+            server_instances_size_sum += sum(
+                instance['size'] for instance in share_instances)
+            server_instances_size_sum += sum(
+                instance['size'] for instance in share_snapshot_instances)
+            num_instances += len(share_instances)
+
+            # NOTE(carloss): If a share instance was not provided, means that
+            # a share group is being requested and there aren't shares to
+            # be added to to the sum yet.
+            if share_instance:
+                server_instances_size_sum += share_instance['size']
+                num_instances += 1
+
+            achieved_gigabytes_limit = (
+                max_server_size != -1 and (
+                    server_instances_size_sum > max_server_size))
+
+            achieved_instances_limit = num_instances > max_shares_limit > -1
+
+            providing_server_for_share_migration = (
+                share_instance and share_instance['status'] ==
+                constants.STATUS_MIGRATING_TO)
+
+            src_server_id_equals_current_iteration = False
+
+            if providing_server_for_share_migration:
+                share = self.db.share_get(context, share_instance['share_id'])
+                src_instance_id, dest_instance_id = (
+                    self.share_api.get_migrating_instances(share))
+                src_instance = self.db.share_instance_get(
+                    context, src_instance_id)
+                src_server_id_equals_current_iteration = (
+                    src_instance['share_server_id'] == ss['id'])
+
+            if (not src_server_id_equals_current_iteration and (
+                    achieved_gigabytes_limit or achieved_instances_limit)):
+                available_share_servers.remove(ss)
+
+        return available_share_servers
+
     def _provide_share_server_for_share(self, context, share_network_id,
                                         share_instance, snapshot=None,
                                         share_group=None,
@@ -609,6 +671,11 @@ class ShareManager(manager.SchedulerDependentManager):
                 available_share_servers = None
 
             compatible_share_server = None
+            if available_share_servers:
+                available_share_servers = (
+                    self._check_share_server_backend_limits(
+                        context, available_share_servers,
+                        share_instance=share_instance))
 
             if available_share_servers:
                 try:
@@ -869,6 +936,12 @@ class ShareManager(manager.SchedulerDependentManager):
                 available_share_servers = None
 
             compatible_share_server = None
+
+            if available_share_servers:
+                available_share_servers = (
+                    self._check_share_server_backend_limits(
+                        context, available_share_servers))
+
             choose_share_server = (
                 self.driver.choose_share_server_compatible_with_share_group)
 

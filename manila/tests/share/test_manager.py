@@ -2255,6 +2255,147 @@ class ShareManagerTestCase(test.TestCase):
             resource_id=shr['id'],
             detail=message_field.Detail.NO_SHARE_SERVER)
 
+    @ddt.data(
+        (True, 1, 3, 10, 0),
+        (False, 1, 100, 5, 0),
+        (True, 1, 10, 3, 0),
+        (False, 1, 10, 10, 3),
+        (False, 1, -1, 100, 3),
+        (False, 1, 10, -1, 3),
+    )
+    @ddt.unpack
+    def test__check_share_server_backend_limits(
+            self, with_share_instance, resource_size, max_shares,
+            max_gigabytes, expected_share_servers_len):
+        """Tests if servers aren't being reused when its limits are reached."""
+
+        # Creates three share servers to have a list of available share servers
+        share_servers = [db_utils.create_share_server() for i in range(3)]
+        share = db_utils.create_share()
+
+        # Creates some share instances using the resource size
+        share_instances = [
+            db_utils.create_share_instance(
+                size=resource_size, share_id=share['id'])
+            for i in range(3)]
+
+        # Creates some snapshot instances to make sure they are being
+        # accounted
+        snapshot_instances = [
+            db_utils.create_snapshot(
+                size=resource_size, share_id=share['id'])['instance']
+            for i in range(3)]
+
+        kwargs = {}
+
+        driver_mock = mock.Mock()
+
+        # Sets the driver max shares per share server and max server size
+        # configured value to be the one received in the test parameters
+        driver_mock.max_shares_per_share_server = max_shares
+        driver_mock.max_share_server_size = max_gigabytes
+        self.share_manager.driver = driver_mock
+        self.mock_object(
+            db, 'share_instances_get_all_by_share_server',
+            mock.Mock(return_value=share_instances))
+        self.mock_object(
+            db, 'share_snapshot_instance_get_all_with_filters',
+            mock.Mock(return_value=snapshot_instances))
+
+        # NOTE(carloss): If with_share_instance, simulates the behavior where
+        # the provide_share_server method call was not related to a request to
+        # create a share group, where a share instance is not provided, neither
+        # accounted, since it's a brand new group. When a share instance is
+        # specified, it must be accounted to check if the creation of that
+        # share instance in the given share server is going to exceed the
+        # configured limit.
+        if with_share_instance:
+            share_instance = db_utils.create_share_instance(
+                size=resource_size, share_id=share['id'])
+            kwargs['share_instance'] = share_instance
+
+        available_share_servers = (
+            self.share_manager._check_share_server_backend_limits(
+                self.context, share_servers, **kwargs))
+
+        self.assertEqual(
+            expected_share_servers_len, len(available_share_servers))
+
+    def test__check_share_server_backend_limits_migrating_share(self):
+        """Tests if servers aren't being reused when its limits are reached."""
+
+        share_servers = [db_utils.create_share_server()]
+        share = db_utils.create_share(status=constants.STATUS_MIGRATING_TO)
+
+        resource_size = 1
+        driver_mock = mock.Mock()
+        driver_mock.max_shares_per_share_server = 2
+        driver_mock.max_share_server_size = 2
+
+        share_instances = [
+            db_utils.create_share_instance(
+                size=resource_size, share_id=share['id'], status=status,
+                share_server_id=share_servers[0]['id'])
+            for status in [
+                constants.STATUS_MIGRATING, constants.STATUS_MIGRATING_TO]]
+        share_instance_ids = [
+            share_instances[0]['id'], share_instances[1]['id']]
+
+        kwargs = {}
+
+        self.share_manager.driver = driver_mock
+        self.mock_object(
+            db, 'share_instances_get_all_by_share_server',
+            mock.Mock(return_value=share_instances))
+        self.mock_object(
+            db, 'share_snapshot_instance_get_all_with_filters',
+            mock.Mock(return_value=[]))
+        self.mock_object(db, 'share_get', mock.Mock(return_value=share))
+        self.mock_object(api.API, 'get_migrating_instances',
+                         mock.Mock(return_value=share_instance_ids))
+        self.mock_object(db, 'share_instance_get',
+                         mock.Mock(return_value=share_instances[0]))
+
+        # NOTE(carloss): If with_share_instance, simulates the behavior where
+        # the provide_share_server method call was not related to a request to
+        # create a share group, where a share instance is not provided, neither
+        # accounted, since it's a brand new group. When a share instance is
+        # specified, it must be accounted to check if the creation of that
+        # share instance in the given share server is going to exceed the
+        # configured limit.
+        kwargs['share_instance'] = share_instances[1]
+
+        available_share_servers = (
+            self.share_manager._check_share_server_backend_limits(
+                self.context, share_servers, **kwargs))
+
+        self.assertEqual(
+            1, len(available_share_servers))
+        db.share_instances_get_all_by_share_server.assert_called_once_with(
+            self.context, share_servers[0]['id'], with_share_data=True)
+        (db.share_snapshot_instance_get_all_with_filters.
+            assert_called_once_with(
+                self.context, {"share_instance_ids": share_instance_ids},
+                with_share_data=True))
+        db.share_get.assert_called_once_with(self.context, share['id'])
+        api.API.get_migrating_instances.assert_called_once_with(share)
+        db.share_instance_get.assert_called_once_with(
+            self.context, share_instances[0]['id'])
+
+    def test__check_share_server_backend_limits_unlimited(self):
+        driver_mock = mock.Mock()
+        driver_mock.max_shares_per_share_server = -1
+        driver_mock.max_share_server_size = -1
+        self.share_manager.driver = driver_mock
+
+        share_servers = [db_utils.create_share_server() for i in range(3)]
+
+        available_share_servers = (
+            self.share_manager._check_share_server_backend_limits(
+                self.context, share_servers))
+
+        self.assertEqual(share_servers, available_share_servers)
+
     def test_create_share_instance_with_share_network_server_exists(self):
         """Test share can be created with existing share server."""
         share_net = db_utils.create_share_network()
@@ -2271,6 +2412,8 @@ class ShareManagerTestCase(test.TestCase):
 
         self.mock_object(manager.LOG, 'info')
         driver_mock = mock.Mock()
+        driver_mock.max_shares_per_share_server = -1
+        driver_mock.max_share_server_size = -1
         driver_mock.create_share.return_value = "fake_location"
         driver_mock.choose_share_server_compatible_with_share.return_value = (
             share_srv
@@ -2497,6 +2640,9 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(db,
                          'share_server_get_all_by_host_and_share_subnet_valid',
                          mock.Mock(return_value=[fake_share_server]))
+        self.mock_object(
+            self.share_manager, '_check_share_server_backend_limits',
+            mock.Mock(return_value=[fake_share_server]))
         self.mock_object(
             self.share_manager.driver,
             "choose_share_server_compatible_with_share",
