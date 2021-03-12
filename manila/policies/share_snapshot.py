@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,21 +18,68 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'share_snapshot:%s'
 
+DEPRECATED_REASON = """
+The share snapshot API now supports system scope and default roles.
+"""
+
+deprecated_snapshot_get = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_snapshot',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_snapshot_get_all = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_all_snapshots',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_snapshot_force_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'force_delete',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_snapshot_manage = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'manage_snapshot',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_snapshot_unmanage = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'unmanage_snapshot',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_snapshot_reset_status = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'reset_status',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_snapshot_access_list = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'access_list',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_snapshot_allow_access = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'allow_access',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_snapshot_deny_access = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'deny_access',
+    check_str=base.RULE_DEFAULT
+)
+
 
 share_snapshot_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_snapshot',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get share snapshot.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/snapshots/{snapshot_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_snapshot_get,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all_snapshots',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get all share snapshots.",
         operations=[
             {
@@ -50,77 +98,116 @@ share_snapshot_policies = [
                 'method': 'GET',
                 'path': '/snapshots/detail?{query}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_snapshot_get_all,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description="Force Delete a share snapshot.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/snapshots/{snapshot_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_snapshot_force_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'manage_snapshot',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Manage share snapshot.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/snapshots/manage'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_snapshot_manage,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'unmanage_snapshot',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Unmanage share snapshot.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/snapshots/{snapshot_id}/action'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_snapshot_unmanage,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description="Reset status.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/snapshots/{snapshot_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_snapshot_reset_status,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'access_list',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="List access rules of a share snapshot.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/snapshots/{snapshot_id}/access-list'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_snapshot_access_list,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'allow_access',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Allow access to a share snapshot.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/snapshots/{snapshot_id}/action'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_snapshot_allow_access,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'deny_access',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Deny access to a share snapshot.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/snapshots/{snapshot_id}/action'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_snapshot_deny_access,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
