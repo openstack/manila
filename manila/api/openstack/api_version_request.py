@@ -164,13 +164,14 @@ REST_API_VERSION_HISTORY = """
              provisioning:min_share_size extra specs,
              which can add minimum and maximum share size restrictions
              on a per share-type granularity.
+    * 2.62 - Added quota control to per share size.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.61"
+_MAX_API_VERSION = "2.62"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

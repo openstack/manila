@@ -37,6 +37,7 @@ from manila import utils
 CONF = cfg.CONF
 sg_quota_keys = ['share_groups', 'share_group_snapshots']
 replica_quota_keys = ['share_replicas']
+per_share_size_quota_keys = ['per_share_gigabytes']
 
 
 def _get_request(is_admin, user_in_url):
@@ -172,7 +173,6 @@ class QuotaSetsControllerTest(test.TestCase):
                 'reserved': 0,
             },
         }}
-
         for k, v in quotas.items():
             CONF.set_default('quota_' + k, v)
 
@@ -277,6 +277,7 @@ class QuotaSetsControllerTest(test.TestCase):
         ({"quota_set": {"foo": "bar"}}, sg_quota_keys, '2.40'),
         ({"foo": "bar"}, replica_quota_keys, '2.53'),
         ({"quota_set": {"foo": "bar"}}, replica_quota_keys, '2.53'),
+        ({"quota_set": {"foo": "bar"}}, per_share_size_quota_keys, '2.62'),
     )
     @ddt.unpack
     def test__ensure_specific_microversion_args_are_absent_success(
@@ -293,6 +294,8 @@ class QuotaSetsControllerTest(test.TestCase):
         ({"quota_set": {"share_group_snapshots": 8}}, sg_quota_keys, '2.40'),
         ({"quota_set": {"share_replicas": 9}}, replica_quota_keys, '2.53'),
         ({"quota_set": {"share_replicas": 10}}, replica_quota_keys, '2.53'),
+        ({"quota_set": {"per_share_gigabytes": 10}},
+            per_share_size_quota_keys, '2.62'),
     )
     @ddt.unpack
     def test__ensure_specific_microversion_args_are_absent_error(
@@ -351,7 +354,6 @@ class QuotaSetsControllerTest(test.TestCase):
                 },
             }
         }
-
         for k, v in quotas.items():
             CONF.set_default('quota_' + k, v)
 

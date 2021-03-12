@@ -337,3 +337,7 @@ user documentation.
   Ability to add minimum and maximum share size restrictions which
   can be set on a per share-type granularity. Added new extra specs
   'provisioning:max_share_size' and 'provisioning:min_share_size'.
+
+2.62
+----
+  Added quota control to per share size.

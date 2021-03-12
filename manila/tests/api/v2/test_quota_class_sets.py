@@ -62,6 +62,7 @@ class QuotaSetsControllerTest(test.TestCase):
         ('os-', '2.6', quota_class_sets.QuotaClassSetsControllerLegacy),
         ('', '2.7', quota_class_sets.QuotaClassSetsController),
         ('', '2.53', quota_class_sets.QuotaClassSetsController),
+        ('', '2.62', quota_class_sets.QuotaClassSetsController),
     )
     @ddt.unpack
     def test_show_quota(self, url, version, controller):
@@ -94,6 +95,8 @@ class QuotaSetsControllerTest(test.TestCase):
         if req.api_version_request >= api_version.APIVersionRequest("2.53"):
             expected['quota_class_set']['share_replicas'] = 100
             expected['quota_class_set']['replica_gigabytes'] = 1000
+        if req.api_version_request >= api_version.APIVersionRequest("2.62"):
+            expected['quota_class_set']['per_share_gigabytes'] = -1
 
         result = controller().show(req, self.class_name)
 
@@ -119,6 +122,7 @@ class QuotaSetsControllerTest(test.TestCase):
         ('os-', '2.6', quota_class_sets.QuotaClassSetsControllerLegacy),
         ('', '2.7', quota_class_sets.QuotaClassSetsController),
         ('', '2.53', quota_class_sets.QuotaClassSetsController),
+        ('', '2.62', quota_class_sets.QuotaClassSetsController),
     )
     @ddt.unpack
     def test_update_quota(self, url, version, controller):
@@ -148,6 +152,8 @@ class QuotaSetsControllerTest(test.TestCase):
         if req.api_version_request >= api_version.APIVersionRequest("2.53"):
             expected['quota_class_set']['share_replicas'] = 100
             expected['quota_class_set']['replica_gigabytes'] = 1000
+        if req.api_version_request >= api_version.APIVersionRequest("2.62"):
+            expected['quota_class_set']['per_share_gigabytes'] = -1
 
         update_result = controller().update(
             req, self.class_name, body=body)

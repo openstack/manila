@@ -424,6 +424,12 @@ class SnapshotSizeExceedsAvailableQuota(QuotaError):
         "gigabytes quota.")
 
 
+class ShareSizeExceedsLimit(QuotaError):
+    message = _(
+        "Requested share size %(size)d is larger than "
+        "maximum allowed limit %(limit)d.")
+
+
 class ShareLimitExceeded(QuotaError):
     message = _(
         "Maximum number of shares allowed (%(allowed)d) either per "

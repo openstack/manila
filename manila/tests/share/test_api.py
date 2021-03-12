@@ -889,6 +889,31 @@ class ShareAPITestCase(test.TestCase):
             self.context, share_type_id=None,
             shares=1, gigabytes=share_data['size'])
 
+    @ddt.data({'overs': {'per_share_gigabytes': 'fake'},
+               'expected_exception': exception.ShareSizeExceedsLimit})
+    @ddt.unpack
+    def test_create_share_over_per_share_quota(self, overs,
+                                               expected_exception):
+        share, share_data = self._setup_create_mocks()
+
+        quota.CONF.set_default("quota_per_share_gigabytes", 5)
+        share_data['size'] = 20
+
+        usages = {'per_share_gigabytes': {'reserved': 0, 'in_use': 0}}
+        quotas = {'per_share_gigabytes': 10}
+        exc = exception.OverQuota(overs=overs, usages=usages, quotas=quotas)
+        self.mock_object(quota.QUOTAS, 'reserve', mock.Mock(side_effect=exc))
+
+        self.assertRaises(
+            expected_exception,
+            self.api.create,
+            self.context,
+            share_data['share_proto'],
+            share_data['size'],
+            share_data['display_name'],
+            share_data['display_description']
+        )
+
     @ddt.data(exception.QuotaError, exception.InvalidShare)
     def test_create_share_error_on_quota_commit(self, expected_exception):
         share, share_data = self._setup_create_mocks()
@@ -2821,6 +2846,14 @@ class ShareAPITestCase(test.TestCase):
         new_size = 123
 
         self.assertRaises(exception.InvalidInput,
+                          self.api.extend, self.context, share, new_size)
+
+    def test_extend_share_over_per_share_quota(self):
+        quota.CONF.set_default("quota_per_share_gigabytes", 5)
+        share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
+                                      size=4)
+        new_size = 6
+        self.assertRaises(exception.ShareSizeExceedsLimit,
                           self.api.extend, self.context, share, new_size)
 
     def test_extend_with_share_type_size_limit(self):

@@ -602,3 +602,10 @@ class ManilaExceptionResponseCode413(test.TestCase):
         # verify response code for exception.PortLimitExceeded
         e = exception.PortLimitExceeded()
         self.assertEqual(413, e.code)
+
+    def test_per_share_limit_exceeded(self):
+        # verify response code for exception.ShareSizeExceedsLimit
+        size = 779  # amount of share size
+        limit = 775  # amount of allowed share size limit
+        e = exception.ShareSizeExceedsLimit(size=size, limit=limit)
+        self.assertEqual(413, e.code)
