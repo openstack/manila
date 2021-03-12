@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import versionutils
 from oslo_policy import policy
 
 from manila.policies import base
@@ -17,41 +18,189 @@ from manila.policies import base
 
 BASE_POLICY_NAME = 'share:%s'
 
+DEPRECATED_REASON = """
+The share API now supports system scope and default roles.
+"""
+
+# Deprecated share policies
+deprecated_share_create = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'create',
+    check_str=""
+)
+deprecated_share_create_public = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'create_public_share',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_get = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_get_all = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_all',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_update = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_set_public = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'set_public_share',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_force_delete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'force_delete',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_manage = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'manage',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_unmanage = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'unmanage',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_list_by_host = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'list_by_host',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_list_by_server_id = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'list_by_share_server_id',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_access_get = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'access_get',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_access_get_all = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'access_get_all',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_extend = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'extend',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_shrink = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'shrink',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_migration_start = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'migration_start',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_migration_complete = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'migration_complete',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_migration_cancel = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'migration_cancel',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_migration_get_progress = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'migration_get_progress',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_reset_task_state = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'reset_task_state',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_reset_status = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'reset_status',
+    check_str=base.RULE_ADMIN_API
+)
+deprecated_share_revert_to_snapshot = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'revert_to_snapshot',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_allow_access = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'allow_access',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_deny_access = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'deny_access',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_update_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update_share_metadata',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_delete_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete_share_metadata',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_get_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_share_metadata',
+    check_str=base.RULE_DEFAULT
+)
+
+# deprecated legacy snapshot policies with "share" as base resource
+deprecated_share_create_snapshot = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'create_snapshot',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_delete_snapshot = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete_snapshot',
+    check_str=base.RULE_DEFAULT
+)
+deprecated_share_snapshot_update = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'snapshot_update',
+    check_str=base.RULE_DEFAULT
+)
+
 
 shares_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str="",
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Create share.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_create,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create_public_share',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Create shares visible across all projects in the cloud.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_create_public,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get share.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/shares/{share_id}',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_get,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="List shares.",
         operations=[
             {
@@ -62,20 +211,30 @@ shares_policies = [
                 'method': 'GET',
                 'path': '/shares/detail',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_get_all,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Update share.",
         operations=[
             {
                 'method': 'PUT',
                 'path': '/shares',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_update,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'set_public_share',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Update shares to be visible across all projects in the "
                     "cloud.",
         operations=[
@@ -83,60 +242,75 @@ shares_policies = [
                 'method': 'PUT',
                 'path': '/shares',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_set_public,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Delete share.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/shares/{share_id}',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description="Force Delete a share.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/shares/{share_id}',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_force_delete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'manage',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Manage share.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/manage',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_manage,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'unmanage',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Unmanage share.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/unmanage',
             }
-        ]),
-    policy.DocumentedRuleDefault(
-        name=BASE_POLICY_NAME % 'create_snapshot',
-        check_str=base.RULE_DEFAULT,
-        description="Create share snapshot.",
-        operations=[
-            {
-                'method': 'POST',
-                'path': '/snapshots',
-            }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_unmanage,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'list_by_host',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER,
+        scope_types=['system'],
         description="List share by host.",
         operations=[
             {
@@ -147,10 +321,15 @@ shares_policies = [
                 'method': 'GET',
                 'path': '/shares/detail',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_list_by_host,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'list_by_share_server_id',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER,
+        scope_types=['system'],
         description="List share by server id.",
         operations=[
             {
@@ -161,80 +340,120 @@ shares_policies = [
                 'method': 'GET',
                 'path': '/shares/detail',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_list_by_server_id,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'access_get',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="Get share access rule, it under deny access operation.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_access_get,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'access_get_all',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description="List share access rules.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_access_get_all,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'extend',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Extend share.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_extend,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'shrink',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description="Shrink share.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_shrink,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'migration_start',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Migrate a share to the specified host.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_migration_start,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'migration_complete',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Invokes 2nd phase of share migration.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_migration_complete,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'migration_cancel',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN,
+        scope_types=['system'],
         description="Attempts to cancel share migration.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_migration_cancel,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'migration_get_progress',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER,
+        scope_types=['system'],
         description=("Retrieve share migration progress for a given "
                      "share."),
         operations=[
@@ -242,109 +461,184 @@ shares_policies = [
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_migration_get_progress,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_task_state',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description=("Reset task state."),
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_reset_task_state,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description=("Reset status."),
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_reset_status,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'revert_to_snapshot',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description=("Revert a share to a snapshot."),
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_revert_to_snapshot,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'allow_access',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description=("Add share access rule."),
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_allow_access,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'deny_access',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description=("Remove share access rule."),
         operations=[
             {
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
-        ]),
-    policy.DocumentedRuleDefault(
-        name=BASE_POLICY_NAME % 'delete_snapshot',
-        check_str=base.RULE_DEFAULT,
-        description=("Delete share snapshot."),
-        operations=[
-            {
-                'method': 'DELETE',
-                'path': '/snapshots/{snapshot_id}',
-            }
-        ]),
-    policy.DocumentedRuleDefault(
-        name=BASE_POLICY_NAME % 'snapshot_update',
-        check_str=base.RULE_DEFAULT,
-        description=("Update share snapshot."),
-        operations=[
-            {
-                'method': 'PUT',
-                'path': '/snapshots/{snapshot_id}/action',
-            }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_deny_access,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update_share_metadata',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description=("Update share metadata."),
         operations=[
             {
                 'method': 'PUT',
                 'path': '/shares/{share_id}/metadata',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_update_metadata,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete_share_metadata',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
         description=("Delete share metadata."),
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/shares/{share_id}/metadata/{key}',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_delete_metadata,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_share_metadata',
-        check_str=base.RULE_DEFAULT,
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
         description=("Get share metadata."),
         operations=[
             {
                 'method': 'GET',
                 'path': '/shares/{share_id}/metadata',
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_share_get_metadata,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
+]
+
+# NOTE(gouthamr) For historic reasons, some snapshot policies used
+# "share" as the resource. We could deprecate these and move them to using
+# "share_snapshot" as the base resource in the future.
+base_snapshot_policies = [
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'create_snapshot',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Create share snapshot.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/snapshots',
+            }
+        ],
+        deprecated_rule=deprecated_share_create_snapshot,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'delete_snapshot',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description=("Delete share snapshot."),
+        operations=[
+            {
+                'method': 'DELETE',
+                'path': '/snapshots/{snapshot_id}',
+            }
+        ],
+        deprecated_rule=deprecated_share_delete_snapshot,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'snapshot_update',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description=("Update share snapshot."),
+        operations=[
+            {
+                'method': 'PUT',
+                'path': '/snapshots/{snapshot_id}/action',
+            }
+        ],
+        deprecated_rule=deprecated_share_snapshot_update,
+        deprecated_reason=DEPRECATED_REASON,
+        deprecated_since=versionutils.deprecated.WALLABY
+    ),
 ]
 
 
 def list_rules():
-    return shares_policies
+    return shares_policies + base_snapshot_policies
