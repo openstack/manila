@@ -142,11 +142,8 @@ share_group_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        # NOTE(lbragstad): This might make a good candidate for as a project
-        # administrator operation if it doesn't require any information that
-        # would violate tenancy
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description="Force delete a share group snapshot.",
         operations=[
             {
@@ -161,11 +158,8 @@ share_group_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        # NOTE(lbragstad): This might make a good candidate for as a project
-        # administrator operation if it doesn't require any information that
-        # would violate tenancy
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
         description="Reset a share group snapshot's status.",
         operations=[
             {
