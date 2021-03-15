@@ -64,6 +64,11 @@ container_opts = [
                default="manila.share.drivers.container.protocol_helper."
                "DockerCIFSHelper",
                help="Helper which facilitates interaction with share server."),
+    cfg.StrOpt("container_security_service_helper",
+               default="manila.share.drivers.container.security_service_helper"
+                       ".SecurityServiceHelper",
+               help="Helper which facilitates interaction with security "
+                    "services."),
     cfg.StrOpt("container_storage_helper",
                default="manila.share.drivers.container.storage_helper."
                "LVMHelper",
@@ -86,6 +91,9 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
             "share_backend_name") or "Docker"
         self.container = importutils.import_class(
             self.configuration.container_helper)(
+                configuration=self.configuration)
+        self.security_service_helper = importutils.import_class(
+            self.configuration.container_security_service_helper)(
                 configuration=self.configuration)
         self.storage = importutils.import_class(
             self.configuration.container_storage_helper)(
@@ -118,7 +126,8 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
             'snapshot_support': False,
             'create_share_from_snapshot_support': False,
             'driver_name': 'ContainerShareDriver',
-            'pools': self.storage.get_share_server_pools()
+            'pools': self.storage.get_share_server_pools(),
+            'security_service_update_support': True
         }
         super(ContainerShareDriver, self)._update_share_stats(data)
 
@@ -294,6 +303,11 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         except Exception as e:
             raise exception.ManilaException(_("Cannot create container: %s") %
                                             e)
+        security_services = network_info.get('security_services')
+
+        if security_services:
+            self.setup_security_services(server_id, security_services)
+
         veths_after = self._get_veth_state()
 
         veth = self._get_corresponding_veth(veths_before, veths_after)
@@ -549,3 +563,96 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         return {
             'share_updates': shares_updates,
         }
+
+    def setup_security_services(self, share_server_id, security_services):
+        """Is called to setup a security service in the share server."""
+
+        for security_service in security_services:
+            if security_service['type'].lower() != 'ldap':
+                raise exception.ShareBackendException(_(
+                    "The container driver does not support security services "
+                    "other than LDAP."))
+
+            self.security_service_helper.setup_security_service(
+                share_server_id, security_service)
+
+    def _get_different_security_service_keys(
+            self, current_security_service, new_security_service):
+        valid_keys = ['dns_ip', 'server', 'domain', 'user', 'password', 'ou']
+        different_keys = []
+        for key, value in current_security_service.items():
+            if (current_security_service[key] != new_security_service[key]
+                    and key in valid_keys):
+                different_keys.append(key)
+        return different_keys
+
+    def _check_if_all_fields_are_updatable(self, current_security_service,
+                                           new_security_service):
+        # NOTE(carloss): We only support updating user and password at
+        # the moment
+        updatable_fields = ['user', 'password']
+        different_keys = self._get_different_security_service_keys(
+            current_security_service, new_security_service)
+        for key in different_keys:
+            if key not in updatable_fields:
+                return False
+        return True
+
+    def update_share_server_security_service(self, context, share_server,
+                                             network_info,
+                                             share_instances,
+                                             share_instance_rules,
+                                             new_security_service,
+                                             current_security_service=None):
+        """Is called to update or add a sec service to a share server."""
+
+        if not self.check_update_share_server_security_service(
+                context, share_server, network_info, share_instances,
+                share_instance_rules, new_security_service,
+                current_security_service=current_security_service):
+            raise exception.ManilaException(_(
+                "The requested security service update is not supported by "
+                "the container driver."))
+
+        server_id = self._get_container_name(share_server['id'])
+
+        if not current_security_service:
+            self.setup_security_services(server_id, [new_security_service])
+        else:
+            self.security_service_helper.update_security_service(
+                server_id, current_security_service, new_security_service)
+
+        msg = (
+            "The security service was successfully added to the share "
+            "server %(server_id)s.")
+        msg_args = {
+            'server_id': share_server['id'],
+        }
+        LOG.info(msg, msg_args)
+
+    def check_update_share_server_security_service(
+            self, context, share_server, network_info, share_instances,
+            share_instance_rules, new_security_service,
+            current_security_service=None):
+        current_type = (
+            current_security_service['type'].lower()
+            if current_security_service else '')
+        new_type = new_security_service['type'].lower()
+
+        if new_type != 'ldap' or (current_type and current_type != 'ldap'):
+            LOG.error('Currently only LDAP security services are supported '
+                      'by the container driver.')
+            return False
+
+        if not current_type:
+            return True
+
+        all_fields_are_updatable = self._check_if_all_fields_are_updatable(
+            current_security_service, new_security_service)
+        if not all_fields_are_updatable:
+            LOG.info(
+                "The Container driver does not support updating "
+                "security service parameters other than 'user' and "
+                "'password'.")
+            return False
+        return True
