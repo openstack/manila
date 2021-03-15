@@ -42,7 +42,8 @@ fake_share_server_list = {
             'is_auto_deletable': False,
             'task_state': None,
             'source_share_server_id': None,
-            'identifier': 'fake_id'
+            'identifier': 'fake_id',
+            'security_service_update_support': False
         },
         {
             'status': constants.STATUS_ERROR,
@@ -56,7 +57,9 @@ fake_share_server_list = {
             'is_auto_deletable': True,
             'task_state': None,
             'source_share_server_id': None,
-            'identifier': 'fake_id_2'
+            'identifier': 'fake_id_2',
+            'security_service_update_support': False
+
         },
     ]
 }
@@ -94,7 +97,8 @@ fake_share_server_get_result = {
         'is_auto_deletable': False,
         'task_state': None,
         'source_share_server_id': None,
-        'identifier': 'fake_id'
+        'identifier': 'fake_id',
+        'security_service_update_support': False
     }
 }
 
@@ -131,6 +135,8 @@ class FakeShareServer(object):
         self.task_state = kwargs.get('task_state')
         self.source_share_server_id = kwargs.get('source_share_server_id')
         self.backend_details = share_server_backend_details
+        self.security_service_update_support = kwargs.get(
+            'security_service_update_support', False)
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -148,7 +154,8 @@ def fake_share_server_get_all():
                         identifier='fake_id_2',
                         task_state=None,
                         is_auto_deletable=True,
-                        status=constants.STATUS_ERROR)
+                        status=constants.STATUS_ERROR,
+                        security_service_update_support=False)
     ]
     return fake_share_servers
 

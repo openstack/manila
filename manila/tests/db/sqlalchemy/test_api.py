@@ -2544,6 +2544,45 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
 
         self.assertEqual(0, len(result['share_instances']))
 
+    def test_association_get(self):
+        network = db_api.share_network_create(
+            self.fake_context, self.share_nw_dict)
+        security_service = db_api.security_service_create(
+            self.fake_context, security_service_dict)
+        network_id = network['id']
+        security_service_id = security_service['id']
+
+        db_api.share_network_add_security_service(
+            self.fake_context, network_id, security_service_id)
+        result = db_api.share_network_security_service_association_get(
+            self.fake_context, network_id, security_service_id)
+
+        self.assertEqual(result['share_network_id'], network_id)
+        self.assertEqual(result['security_service_id'], security_service_id)
+
+    def test_share_network_update_security_service(self):
+        new_sec_service = copy.copy(security_service_dict)
+        new_sec_service['id'] = 'fakeid'
+        share_network_id = self.share_nw_dict['id']
+        db_api.share_network_create(
+            self.fake_context, self.share_nw_dict)
+        db_api.security_service_create(
+            self.fake_context, security_service_dict)
+        db_api.security_service_create(self.fake_context, new_sec_service)
+        db_api.share_network_add_security_service(
+            self.fake_context, share_network_id,
+            security_service_dict['id'])
+        db_api.share_network_update_security_service(
+            self.fake_context, share_network_id, security_service_dict['id'],
+            new_sec_service['id'])
+
+        association = db_api.share_network_security_service_association_get(
+            self.fake_context, share_network_id, new_sec_service['id'])
+
+        self.assertEqual(association['share_network_id'], share_network_id)
+        self.assertEqual(
+            association['security_service_id'], new_sec_service['id'])
+
 
 @ddt.ddt
 class ShareNetworkSubnetDatabaseAPITestCase(BaseDatabaseAPITestCase):

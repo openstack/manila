@@ -457,3 +457,22 @@ class ShareRpcAPITestCase(test.TestCase):
             dest_host=self.fake_host,
             share_instance_ids=[self.fake_share['instance']['id']],
             share_server_id=self.fake_share_server['id'])
+
+    def test_update_share_network_security_service(self):
+        self._test_share_api(
+            'update_share_network_security_service',
+            rpc_method='cast',
+            version='1.22',
+            dest_host=self.fake_host,
+            share_network_id='fake_net_id',
+            new_security_service_id='fake_sec_service_id',
+            current_security_service_id='fake_sec_service_id')
+
+    def test_check_update_share_network_security_service(self):
+        self._test_share_api('check_update_share_network_security_service',
+                             rpc_method='cast',
+                             version='1.22',
+                             dest_host=self.fake_host,
+                             share_network_id='fake_net_id',
+                             new_security_service_id='fake_sec_service_id',
+                             current_security_service_id='fake_sec_service_id')

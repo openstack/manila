@@ -27,6 +27,7 @@ from manila.api.openstack import wsgi
 from manila.api.v1 import share_snapshots
 from manila.api.views import share_snapshots as snapshot_views
 from manila.common import constants
+from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
 from manila import share
@@ -162,6 +163,13 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
                 msg = _("Required parameter %s is empty.") % parameter
                 raise exc_response(explanation=msg)
 
+    def _check_if_share_share_network_is_active(self, context, snapshot):
+        share_network_id = snapshot['share'].get('share_network_id')
+        if share_network_id:
+            share_network = db_api.share_network_get(
+                context, share_network_id)
+            common.check_share_network_is_active(share_network)
+
     def _allow(self, req, id, body, enable_ipv6=False):
         context = req.environ['manila.context']
 
@@ -183,6 +191,8 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
                                enable_ipv6=enable_ipv6)
 
         snapshot = self.share_api.get_snapshot(context, id)
+
+        self._check_if_share_share_network_is_active(context, snapshot)
 
         self._check_mount_snapshot_support(context, snapshot)
 
@@ -211,6 +221,8 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
         snapshot = self.share_api.get_snapshot(context, id)
 
         self._check_mount_snapshot_support(context, snapshot)
+
+        self._check_if_share_share_network_is_active(context, snapshot)
 
         access = self.share_api.snapshot_access_get(context, access_id)
 

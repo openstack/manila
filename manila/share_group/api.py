@@ -23,6 +23,7 @@ from oslo_utils import excutils
 from oslo_utils import strutils
 import six
 
+from manila.api import common as api_common
 from manila.common import constants
 from manila.db import base
 from manila import exception
@@ -109,12 +110,18 @@ class API(base.Base):
                             "False, a share_network_id must not be provided.")
                     raise exception.InvalidInput(reason=msg)
 
+        share_network = {}
         try:
             if share_network_id:
-                self.db.share_network_get(context, share_network_id)
+                share_network = self.db.share_network_get(
+                    context, share_network_id)
         except exception.ShareNetworkNotFound:
             msg = _("The specified share network does not exist.")
             raise exception.InvalidInput(reason=msg)
+
+        if share_network:
+            # Check if share network is active, otherwise raise a BadRequest
+            api_common.check_share_network_is_active(share_network)
 
         if (driver_handles_share_servers and
                 not (source_share_group_snapshot_id or share_network_id)):

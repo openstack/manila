@@ -854,15 +854,32 @@ def share_network_get_all_by_security_service(context, security_service_id):
 
 
 def share_network_add_security_service(context, id, security_service_id):
+    """Associate a security service with a share network."""
     return IMPL.share_network_add_security_service(context,
                                                    id,
                                                    security_service_id)
 
 
 def share_network_remove_security_service(context, id, security_service_id):
+    """Dissociate a security service from a share network."""
     return IMPL.share_network_remove_security_service(context,
                                                       id,
                                                       security_service_id)
+
+
+def share_network_security_service_association_get(
+        context, share_network_id, security_service_id):
+    """Get given share network and security service association."""
+    return IMPL.share_network_security_service_association_get(
+        context, share_network_id, security_service_id)
+
+
+def share_network_update_security_service(context, id,
+                                          current_security_service_id,
+                                          new_security_service_id):
+    """Update a security service association with a share network."""
+    return IMPL.share_network_update_security_service(
+        context, id, current_security_service_id, new_security_service_id)
 
 
 def count_share_networks(context, project_id, user_id=None,
@@ -1020,6 +1037,12 @@ def share_server_backend_details_set(context, share_server_id, server_details):
     """Create DB record with backend details."""
     return IMPL.share_server_backend_details_set(context, share_server_id,
                                                  server_details)
+
+
+def share_servers_update(context, share_server_ids, values):
+    """Updates values of a bunch of share servers at once."""
+    return IMPL.share_servers_update(
+        context, share_server_ids, values)
 
 
 ##################
@@ -1483,3 +1506,22 @@ def backend_info_update(context, host, value=None,
     """Update hash info for host."""
     return IMPL.backend_info_update(context, host=host, value=value,
                                     delete_existing=delete_existing)
+
+####################
+
+
+def async_operation_data_get(context, entity_id, key=None, default=None):
+    """Get one, list or all key-value pairs for given entity_id."""
+    return IMPL.async_operation_data_get(context, entity_id, key, default)
+
+
+def async_operation_data_update(context, entity_id, details,
+                                delete_existing=False):
+    """Update key-value pairs for given entity_id."""
+    return IMPL.async_operation_data_update(context, entity_id, details,
+                                            delete_existing)
+
+
+def async_operation_data_delete(context, entity_id, key=None):
+    """Remove one, list or all key-value pairs for given entity_id."""
+    return IMPL.async_operation_data_delete(context, entity_id, key)

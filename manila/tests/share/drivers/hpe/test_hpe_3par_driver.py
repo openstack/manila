@@ -748,6 +748,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'ipv6_support': False,
             'max_share_server_size': -1,
             'max_shares_per_share_server': -1,
+            'security_service_update_support': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -801,6 +802,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'provisioned_capacity_gb': 0,
             'reserved_percentage': 0,
             'max_over_subscription_ratio': None,
+            'max_share_server_size': -1,
+            'max_shares_per_share_server': -1,
             'qos': False,
             'thin_provisioning': True,
             'pools': [{
@@ -816,6 +819,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'snapshot_support': True,
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': False,
+            'security_service_update_support': False,
             'mount_snapshot_support': False,
             'share_group_stats': {
                 'consistent_snapshot_support': None,
@@ -825,8 +829,6 @@ class HPE3ParDriverTestCase(test.TestCase):
             'goodness_function': None,
             'ipv4_support': True,
             'ipv6_support': False,
-            'max_share_server_size': -1,
-            'max_shares_per_share_server': -1,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -851,6 +853,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'driver_version': expected_version,
             'free_capacity_gb': 0,
             'max_over_subscription_ratio': None,
+            'max_share_server_size': -1,
+            'max_shares_per_share_server': -1,
             'pools': None,
             'provisioned_capacity_gb': 0,
             'reserved_percentage': 0,
@@ -862,6 +866,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'snapshot_support': True,
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': False,
+            'security_service_update_support': False,
             'mount_snapshot_support': False,
             'share_group_stats': {
                 'consistent_snapshot_support': None,
@@ -871,8 +876,6 @@ class HPE3ParDriverTestCase(test.TestCase):
             'goodness_function': None,
             'ipv4_support': True,
             'ipv6_support': False,
-            'max_share_server_size': -1,
-            'max_shares_per_share_server': -1,
         }
 
         result = self.driver.get_share_stats(refresh=True)

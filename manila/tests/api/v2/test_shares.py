@@ -664,6 +664,7 @@ class ShareAPITest(test.TestCase):
             "availability_zone": "zone1:host1",
             "share_network_id": "fakenetid"
         }
+        fake_network = {'id': 'fakenetid'}
         create_mock = mock.Mock(return_value=stubs.stub_share('1',
                                 display_name=shr['name'],
                                 display_description=shr['description'],
@@ -673,7 +674,9 @@ class ShareAPITest(test.TestCase):
                                 share_network_id=shr['share_network_id']))
         self.mock_object(share_api.API, 'create', create_mock)
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
-            return_value={'id': 'fakenetid'}))
+            return_value=fake_network))
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
         self.mock_object(
             db, 'share_network_subnet_get_by_availability_zone_id')
 
@@ -687,6 +690,8 @@ class ShareAPITest(test.TestCase):
         # pylint: disable=unsubscriptable-object
         self.assertEqual("fakenetid",
                          create_mock.call_args[1]['share_network_id'])
+        common.check_share_network_is_active.assert_called_once_with(
+            fake_network)
 
     @ddt.data("2.15", "2.16")
     def test_share_create_original_with_user_id(self, microversion):
@@ -1268,6 +1273,7 @@ class ShareAPITest(test.TestCase):
             "share_network_id": None,
         }
         parent_share_net = 444
+        fake_network = {'id': parent_share_net}
         create_mock = mock.Mock(return_value=stubs.stub_share('1',
                                 display_name=shr['name'],
                                 display_description=shr['description'],
@@ -1280,13 +1286,15 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'create', create_mock)
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
         parent_share = stubs.stub_share(
             '1', instance={'share_network_id': parent_share_net},
             create_share_from_snapshot_support=True)
         self.mock_object(share_api.API, 'get', mock.Mock(
             return_value=parent_share))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
-            return_value={'id': parent_share_net}))
+            return_value=fake_network))
         self.mock_object(
             db, 'share_network_subnet_get_by_availability_zone_id')
 
@@ -1301,6 +1309,8 @@ class ShareAPITest(test.TestCase):
         # pylint: disable=unsubscriptable-object
         self.assertEqual(parent_share_net,
                          create_mock.call_args[1]['share_network_id'])
+        common.check_share_network_is_active.assert_called_once_with(
+            fake_network)
 
     def test_share_create_from_snapshot_with_share_net_equals_parent(self):
         parent_share_net = 444
@@ -1332,6 +1342,8 @@ class ShareAPITest(test.TestCase):
             return_value=parent_share))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
         self.mock_object(
             db, 'share_network_subnet_get_by_availability_zone_id')
 

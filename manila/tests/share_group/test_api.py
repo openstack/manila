@@ -21,6 +21,7 @@ from unittest import mock
 import ddt
 from oslo_config import cfg
 from oslo_utils import timeutils
+from webob import exc as webob_exc
 
 from manila.common import constants
 from manila import context
@@ -460,6 +461,10 @@ class ShareGroupsAPITestCase(test.TestCase):
             host='fake_original_host',
             share_network_id='fake_network_id',
             share_server_id='fake_server_id')
+        share_network = {
+            'id': 'fakeid',
+            'status': constants.STATUS_NETWORK_ACTIVE
+        }
         expected_values = share_group.copy()
         for name in ('id', 'created_at', 'share_network_id',
                      'share_server_id'):
@@ -484,7 +489,8 @@ class ShareGroupsAPITestCase(test.TestCase):
         self.mock_object(
             share_types, 'get_share_type',
             mock.Mock(return_value={"id": self.fake_share_type['id']}))
-        self.mock_object(db_driver, 'share_network_get')
+        self.mock_object(db_driver, 'share_network_get',
+                         mock.Mock(return_value=share_network))
         self.mock_object(
             db_driver, 'share_group_snapshot_members_get_all',
             mock.Mock(return_value=[]))
@@ -501,6 +507,44 @@ class ShareGroupsAPITestCase(test.TestCase):
         share_group_api.QUOTAS.commit.assert_called_once_with(
             self.context, share_group_api.QUOTAS.reserve.return_value)
         share_group_api.QUOTAS.rollback.assert_not_called()
+
+    def test_create_share_group_network_not_active(self):
+        fake_share_type_mapping = {'share_type_id': self.fake_share_type['id']}
+        share_group = fake_share_group(
+            'fakeid', user_id=self.context.user_id,
+            project_id=self.context.project_id,
+            share_types=[fake_share_type_mapping],
+            status=constants.STATUS_CREATING,
+            host='fake_original_host',
+            share_network_id='fake_network_id',
+            share_server_id='fake_server_id')
+        network_id = 'fake_sn'
+        share_network = {
+            'id': network_id,
+            'status': constants.STATUS_SERVER_NETWORK_CHANGE
+        }
+        expected_values = share_group.copy()
+        for name in ('id', 'created_at', 'share_network_id',
+                     'share_server_id'):
+            expected_values.pop(name, None)
+        expected_values['share_types'] = [self.fake_share_type['id']]
+        expected_values['share_network_id'] = 'fake_network_id'
+        expected_values['share_server_id'] = 'fake_server_id'
+
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value={"id": self.fake_share_type['id']}))
+        self.mock_object(db_driver, 'share_network_get',
+                         mock.Mock(return_value=share_network))
+
+        self.assertRaises(
+            webob_exc.HTTPBadRequest,
+            self.api.create,
+            self.context, share_type_ids=[fake_share_type_mapping],
+            share_network_id="fake_sn")
+
+        db_driver.share_network_get.assert_called_once_with(
+            self.context, network_id)
 
     def test_create_with_source_share_group_snapshot_id_with_member(self):
         snap = fake_share_group_snapshot(
@@ -524,6 +568,10 @@ class ShareGroupsAPITestCase(test.TestCase):
             share_network_id='fake_network_id',
             share_server_id='fake_server_id')
         expected_values = share_group.copy()
+        share_network = {
+            'id': 'fakeid',
+            'status': constants.STATUS_NETWORK_ACTIVE
+        }
         for name in ('id', 'created_at', 'fake_network_id',
                      'fake_share_server_id'):
             expected_values.pop(name, None)
@@ -547,7 +595,8 @@ class ShareGroupsAPITestCase(test.TestCase):
         self.mock_object(
             share_types, 'get_share_type',
             mock.Mock(return_value={"id": self.fake_share_type['id']}))
-        self.mock_object(db_driver, 'share_network_get')
+        self.mock_object(db_driver, 'share_network_get',
+                         mock.Mock(return_value=share_network))
         self.mock_object(
             db_driver, 'share_instance_get', mock.Mock(return_value=share))
         self.mock_object(
@@ -593,6 +642,10 @@ class ShareGroupsAPITestCase(test.TestCase):
             status=constants.STATUS_CREATING,
             share_network_id='fake_network_id',
             share_server_id='fake_server_id')
+        share_network = {
+            'id': 'fakeid',
+            'status': constants.STATUS_NETWORK_ACTIVE
+        }
         expected_values = share_group.copy()
         for name in ('id', 'created_at', 'share_network_id',
                      'share_server_id'):
@@ -606,7 +659,8 @@ class ShareGroupsAPITestCase(test.TestCase):
                          mock.Mock(return_value=snap))
         self.mock_object(db_driver, 'share_group_get',
                          mock.Mock(return_value=orig_share_group))
-        self.mock_object(db_driver, 'share_network_get')
+        self.mock_object(db_driver, 'share_network_get',
+                         mock.Mock(return_value=share_network))
         self.mock_object(db_driver, 'share_instance_get',
                          mock.Mock(return_value=share))
         self.mock_object(db_driver, 'share_group_create',

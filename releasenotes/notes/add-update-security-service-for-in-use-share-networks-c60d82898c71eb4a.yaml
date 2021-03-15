@@ -1,0 +1,20 @@
+---
+features:
+  - |
+    Added the possibility to add and update an entire security service when
+    a share network is already being used.
+    A new field called ``status`` was added to the share network model and its
+    default value is ``active``. Some operations might be blocked depending on
+    the share network status.
+    A boolean field called ``security_service_update_support`` was added to the
+    share server's model. This field defaults to ``False``, and all of the
+    already deployed share servers are going to get the default value even if
+    their backend support it. Administrators will be able to update the field
+    value using ``manila-manage`` commands.
+    The scheduler will filter out backend that does not handle this request
+    during some operations.
+upgrade:
+  - |
+    ``manila-manage`` now supports share server commands, which allow
+    administrators to modify the field value of some share server's
+    capabilities.

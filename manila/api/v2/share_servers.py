@@ -18,6 +18,7 @@ from six.moves import http_client
 import webob
 from webob import exc
 
+from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.v1 import share_servers
 from manila.api.views import share_server_migration as server_migration_views
@@ -105,6 +106,17 @@ class ShareServerController(share_servers.ShareServerController,
         except exception.ShareServerNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
 
+        network_subnet_id = share_server.get('share_network_subnet_id', None)
+        if network_subnet_id:
+            subnet = db_api.share_network_subnet_get(context,
+                                                     network_subnet_id)
+            share_network_id = subnet['share_network_id']
+        else:
+            share_network_id = share_server.get('share_network_id')
+
+        share_network = db_api.share_network_get(context, share_network_id)
+        common.check_share_network_is_active(share_network)
+
         allowed_statuses = [constants.STATUS_ERROR, constants.STATUS_ACTIVE,
                             constants.STATUS_MANAGE_ERROR,
                             constants.STATUS_UNMANAGE_ERROR]
@@ -171,6 +183,8 @@ class ShareServerController(share_servers.ShareServerController,
                     "one or use a specific subnet to manage this share server "
                     "with API version >= 2.51.") % share_network_id
             raise exc.HTTPBadRequest(explanation=msg)
+
+        common.check_share_network_is_active(network_subnet['share_network'])
 
         if share_utils.extract_host(host, 'pool'):
             msg = _("Host parameter should not contain pool.")
@@ -242,6 +256,13 @@ class ShareServerController(share_servers.ShareServerController,
                 msg = _("Share network %s not "
                         "found.") % new_share_network_id
                 raise exc.HTTPBadRequest(explanation=msg)
+            common.check_share_network_is_active(new_share_network)
+        else:
+            share_network_id = (
+                share_server['share_network_subnet']['share_network_id'])
+            current_share_network = db_api.share_network_get(
+                context, share_network_id)
+            common.check_share_network_is_active(current_share_network)
 
         try:
             self.share_api.share_server_migration_start(
@@ -359,6 +380,13 @@ class ShareServerController(share_servers.ShareServerController,
                 msg = _("Share network %s not "
                         "found.") % new_share_network_id
                 raise exc.HTTPBadRequest(explanation=msg)
+            common.check_share_network_is_active(new_share_network)
+        else:
+            share_network_id = (
+                share_server['share_network_subnet']['share_network_id'])
+            current_share_network = db_api.share_network_get(
+                context, share_network_id)
+            common.check_share_network_is_active(current_share_network)
 
         try:
             result = self.share_api.share_server_migration_check(

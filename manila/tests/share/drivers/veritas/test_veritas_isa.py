@@ -446,6 +446,7 @@ class ACCESSShareDriverTestCase(test.TestCase):
             'revert_to_snapshot_support': False,
             'share_group_stats': {'consistent_snapshot_support': None},
             'snapshot_support': True,
+            'security_service_update_support': False,
         }
 
         self.assertEqual(data, self._driver._stats)

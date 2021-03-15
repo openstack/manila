@@ -19,6 +19,7 @@
 """
 Handles all requests relating to shares.
 """
+import json
 
 from oslo_config import cfg
 from oslo_log import log
@@ -27,7 +28,10 @@ from oslo_utils import strutils
 from oslo_utils import timeutils
 import six
 
+from manila.api import common as api_common
 from manila.common import constants
+from manila import context as manila_context
+from manila import coordination
 from manila.data import rpcapi as data_rpcapi
 from manila.db import base
 from manila import exception
@@ -61,6 +65,29 @@ GB = 1048576 * 1024
 QUOTAS = quota.QUOTAS
 
 
+def locked_security_service_update_operation(operation):
+    """Lock decorator for security service operation.
+
+    Takes a named lock prior to executing the operation. The lock is named with
+    the ids of the security services.
+    """
+
+    def wrapped(*args, **kwargs):
+        new_id = kwargs.get('new_security_service_id', '')
+        current_id = kwargs.get('current_security_service_id', '')
+
+        @coordination.synchronized(
+            'locked-security-service-update-operation-%(new)s-%(curr)s' % {
+                'new': new_id,
+                'curr': current_id,
+            })
+        def locked_security_service_operation(*_args, **_kwargs):
+            return operation(*_args, **_kwargs)
+        return locked_security_service_operation(*args, **kwargs)
+
+    return wrapped
+
+
 class API(base.Base):
     """API for interacting with the share manager."""
 
@@ -69,6 +96,7 @@ class API(base.Base):
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
         self.share_rpcapi = share_rpcapi.ShareAPI()
         self.access_helper = access.ShareInstanceAccess(self.db, None)
+        coordination.LOCK_COORDINATOR.start()
 
     def _get_all_availability_zones_with_subnets(self, context,
                                                  share_network_id):
@@ -825,6 +853,16 @@ class API(base.Base):
             subnet = self.db.share_network_subnet_get(
                 context, share_server['share_network_subnet_id'])
             share_data['share_network_id'] = subnet['share_network_id']
+
+            try:
+                share_network = self.db.share_network_get(
+                    context, share_data['share_network_id'])
+            except exception.ShareNetworkNotFound:
+                msg = _("Share network %s was not found."
+                        ) % share_data['share_network_id']
+                raise exception.InvalidInput(reason=msg)
+            # Check if share network is active, otherwise raise a BadRequest
+            api_common.check_share_network_is_active(share_network)
 
         share_data.update({
             'user_id': context.user_id,
@@ -2694,3 +2732,338 @@ class API(base.Base):
             'task_state': dest_share_server['task_state']
         })
         return result
+
+    def _share_network_update_initial_checks(self, context, share_network,
+                                             new_security_service,
+                                             current_security_service=None):
+        api_common.check_share_network_is_active(share_network)
+
+        if not current_security_service:
+            # Since we are adding a new security service, we can't have one
+            # of the same type already associated with this share network
+            for attached_service in share_network['security_services']:
+                if attached_service['type'] == new_security_service['type']:
+                    msg = _("Cannot add security service to share network. "
+                            "Security service with '%(ss_type)s' type already "
+                            "added to '%(sn_id)s' share network") % {
+                        'ss_type': new_security_service['type'],
+                        'sn_id': share_network['id']
+                    }
+                    raise exception.InvalidSecurityService(reason=msg)
+        else:
+            # Validations needed only for update operation
+            current_service_is_associated = (
+                self.db.share_network_security_service_association_get(
+                    context, share_network['id'],
+                    current_security_service['id']))
+
+            if not current_service_is_associated:
+                msg = _("The specified current security service %(service)s "
+                        "is not associated to the share network %(network)s."
+                        ) % {
+                    'service': current_security_service['id'],
+                    'network': share_network['id']
+                }
+                raise exception.InvalidSecurityService(reason=msg)
+
+            if (current_security_service['type'] !=
+                    new_security_service['type']):
+                msg = _("A security service can only be replaced by one of "
+                        "the same type. The current security service type is "
+                        "'%(ss_type)s' and the new security service type is "
+                        "'%(new_ss_type)s'") % {
+                    'ss_type': current_security_service['type'],
+                    'new_ss_type': new_security_service['type'],
+                    'sn_id': share_network['id']
+                }
+                raise exception.InvalidSecurityService(reason=msg)
+
+        share_servers = set()
+        for subnet in share_network['share_network_subnets']:
+            if subnet['share_servers']:
+                share_servers.update(subnet['share_servers'])
+
+        backend_hosts = set()
+        if share_servers:
+            if not share_network['security_service_update_support']:
+                msg = _("Updating security services is not supported on this "
+                        "share network (%(sn_id)s) while it has shares. "
+                        "See the capability "
+                        "'security_service_update_support'.") % {
+                    "sn_id": share_network["id"]
+                }
+                raise exception.InvalidShareNetwork(reason=msg)
+
+            # We can only handle "active" share servers for now
+            for share_server in share_servers:
+                if share_server['status'] != constants.STATUS_ACTIVE:
+                    msg = _('Some resources exported on share network '
+                            '%(shar_net_id)s are not currently available.') % {
+                        'shar_net_id': share_network['id']
+                    }
+                    raise exception.InvalidShareNetwork(reason=msg)
+                # Create a set of backend hosts
+                backend_hosts.add(share_server['host'])
+
+            for backend_host in backend_hosts:
+                # We need an admin context to validate these hosts
+                admin_ctx = manila_context.get_admin_context()
+                # Make sure the host is in the list of available hosts
+                utils.validate_service_host(admin_ctx, backend_host)
+
+            shares = self.get_all(
+                context, search_opts={'share_network_id': share_network['id']})
+            shares_not_available = [
+                share['id'] for share in shares if
+                share['status'] != constants.STATUS_AVAILABLE]
+
+            if shares_not_available:
+                msg = _("Some shares exported on share network %(sn_id)s are "
+                        "not available: %(share_ids)s.") % {
+                    'sn_id': share_network['id'],
+                    'share_ids': shares_not_available,
+                }
+                raise exception.InvalidShareNetwork(reason=msg)
+
+            shares_rules_not_available = [
+                share['id'] for share in shares if
+                share['instance'][
+                    'access_rules_status'] != constants.STATUS_ACTIVE]
+
+            if shares_rules_not_available:
+                msg = _(
+                    "Either these shares or one of their replicas or "
+                    "migration copies exported on share network %(sn_id)s "
+                    "are not available: %(share_ids)s.") % {
+                    'sn_id': share_network['id'],
+                    'share_ids': shares_rules_not_available,
+                }
+                raise exception.InvalidShareNetwork(reason=msg)
+
+            busy_shares = []
+            for share in shares:
+                try:
+                    self._check_is_share_busy(share)
+                except exception.ShareBusyException:
+                    busy_shares.append(share['id'])
+            if busy_shares:
+                msg = _("Some shares exported on share network %(sn_id)s "
+                        "are busy: %(share_ids)s.") % {
+                    'sn_id': share_network['id'],
+                    'share_ids': busy_shares,
+                }
+                raise exception.InvalidShareNetwork(reason=msg)
+
+        return list(share_servers), list(backend_hosts)
+
+    def get_security_service_update_key(
+            self, operation, new_security_service_id,
+            current_security_service_id=None):
+        if current_security_service_id:
+            return ('share_network_sec_service_update_' +
+                    current_security_service_id + '_' +
+                    new_security_service_id + '_' + operation)
+        else:
+            return ('share_network_sec_service_add_' +
+                    new_security_service_id + '_' + operation)
+
+    @locked_security_service_update_operation
+    def _security_service_update_validate_hosts(
+            self, context, share_network,
+            backend_hosts, share_servers,
+            new_security_service_id=None,
+            current_security_service_id=None):
+
+        # create a key based on users request
+        update_key = self.get_security_service_update_key(
+            'hosts_check', new_security_service_id,
+            current_security_service_id=current_security_service_id)
+
+        # check if there is an entry being processed
+        update_value = self.db.async_operation_data_get(
+            context, share_network['id'], update_key)
+        if not update_value:
+            # Create a new entry, send all asynchronous rpcs and return
+            hosts_to_validate = {}
+            for host in backend_hosts:
+                hosts_to_validate[host] = None
+            self.db.async_operation_data_update(
+                context, share_network['id'],
+                {update_key: json.dumps(hosts_to_validate)})
+            for host in backend_hosts:
+                (self.share_rpcapi.
+                    check_update_share_network_security_service(
+                        context, host, share_network['id'],
+                        new_security_service_id,
+                        current_security_service_id=(
+                            current_security_service_id)))
+            return None, hosts_to_validate
+
+        else:
+            # process current existing hosts and update them if needed
+            current_hosts = json.loads(update_value)
+            hosts_to_include = (
+                set(backend_hosts).difference(set(current_hosts.keys())))
+            hosts_to_validate = {}
+            for host in backend_hosts:
+                hosts_to_validate[host] = current_hosts.get(host, None)
+
+            # Check if there is any unsupported host
+            if any(hosts_to_validate[host] is False for host in backend_hosts):
+                return False, hosts_to_validate
+
+            # Update the list of hosts to be validated
+            if hosts_to_include:
+                self.db.async_operation_data_update(
+                    context, share_network['id'],
+                    {update_key: json.dumps(hosts_to_validate)})
+
+                for host in hosts_to_include:
+                    # send asynchronous check only for new backend hosts
+                    (self.share_rpcapi.
+                        check_update_share_network_security_service(
+                            context, host, share_network['id'],
+                            new_security_service_id,
+                            current_security_service_id=(
+                                current_security_service_id)))
+
+                return None, hosts_to_validate
+
+            if all(hosts_to_validate[host] for host in backend_hosts):
+                return True, hosts_to_validate
+
+            return None, current_hosts
+
+    def check_share_network_security_service_update(
+            self, context, share_network, new_security_service,
+            current_security_service=None, reset_operation=False):
+        share_servers, backend_hosts = (
+            self._share_network_update_initial_checks(
+                context, share_network, new_security_service,
+                current_security_service=current_security_service))
+
+        if not backend_hosts:
+            # There is no backend host to validate. Operation is supported.
+            return {
+                'compatible': True,
+                'hosts_check_result': {},
+            }
+        curr_sec_serv_id = (
+            current_security_service['id']
+            if current_security_service else None)
+
+        key = self.get_security_service_update_key(
+            'hosts_check', new_security_service['id'],
+            current_security_service_id=curr_sec_serv_id)
+        if reset_operation:
+            self.db.async_operation_data_delete(context, share_network['id'],
+                                                key)
+        try:
+            compatible, hosts_info = (
+                self._security_service_update_validate_hosts(
+                    context, share_network, backend_hosts, share_servers,
+                    new_security_service_id=new_security_service['id'],
+                    current_security_service_id=curr_sec_serv_id))
+        except Exception as e:
+            LOG.error(e)
+            # Due to an internal error, we will delete the entry
+            self.db.async_operation_data_delete(
+                context, share_network['id'], key)
+            msg = _(
+                'The share network %(share_net_id)s cannot be updated '
+                'since at least one of its backend hosts do not support '
+                'this operation.') % {
+                    'share_net_id': share_network['id']}
+            raise exception.InvalidShareNetwork(reason=msg)
+
+        return {
+            'compatible': compatible,
+            'hosts_check_result': hosts_info
+        }
+
+    def update_share_network_security_service(self, context, share_network,
+                                              new_security_service,
+                                              current_security_service=None):
+        share_servers, backend_hosts = (
+            self._share_network_update_initial_checks(
+                context, share_network, new_security_service,
+                current_security_service=current_security_service))
+        if not backend_hosts:
+            # There is no backend host to validate or update.
+            return
+
+        curr_sec_serv_id = (
+            current_security_service['id']
+            if current_security_service else None)
+
+        update_key = self.get_security_service_update_key(
+            'hosts_check', new_security_service['id'],
+            current_security_service_id=curr_sec_serv_id)
+        # check if there is an entry being processed at this moment
+        update_value = self.db.async_operation_data_get(
+            context, share_network['id'], update_key)
+        if not update_value:
+            msg = _(
+                'The share network %(share_net_id)s cannot start the update '
+                'process since no check operation was found. Before starting '
+                'the update operation, a "check" operation must be triggered '
+                'to validate if all backend hosts support the provided '
+                'configuration paramaters.') % {
+                'share_net_id': share_network['id']
+            }
+            raise exception.InvalidShareNetwork(reason=msg)
+
+        try:
+            result, __ = self._security_service_update_validate_hosts(
+                context, share_network, backend_hosts, share_servers,
+                new_security_service_id=new_security_service['id'],
+                current_security_service_id=curr_sec_serv_id)
+        except Exception:
+            # Due to an internal error, we will delete the entry
+            self.db.async_operation_data_delete(
+                context, share_network['id'], update_key)
+            msg = _(
+                'The share network %(share_net_id)s cannot be updated '
+                'since at least one of its backend hosts do not support '
+                'this operation.') % {
+                    'share_net_id': share_network['id']}
+            raise exception.InvalidShareNetwork(reason=msg)
+
+        if result is False:
+            msg = _(
+                'The share network %(share_net_id)s cannot be updated '
+                'since at least one of its backend hosts do not support '
+                'this operation.') % {
+                    'share_net_id': share_network['id']}
+            raise exception.InvalidShareNetwork(reason=msg)
+        elif result is None:
+            msg = _(
+                'Not all of the validation has been completed yet. A '
+                'validation check is in progress. This operation can be '
+                'retried.')
+            raise exception.InvalidShareNetwork(reason=msg)
+
+        self.db.share_network_update(
+            context, share_network['id'],
+            {'status': constants.STATUS_NETWORK_CHANGE})
+
+        # NOTE(dviroel): We want to change the status for all share servers to
+        # identify when all modifications are made, and update share network
+        # status to 'active' again.
+        share_servers_ids = [ss.id for ss in share_servers]
+        self.db.share_servers_update(
+            context, share_servers_ids,
+            {'status': constants.STATUS_SERVER_NETWORK_CHANGE})
+
+        for backend_host in backend_hosts:
+            self.share_rpcapi.update_share_network_security_service(
+                context, backend_host, share_network['id'],
+                new_security_service['id'],
+                current_security_service_id=curr_sec_serv_id)
+
+        # Erase db entry, since we won't need it anymore
+        self.db.async_operation_data_delete(
+            context, share_network['id'], update_key)
+
+        LOG.info('Security service update has been started for share network '
+                 '%(share_net_id)s.', {'share_net_id': share_network['id']})

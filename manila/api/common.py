@@ -254,6 +254,18 @@ def check_net_id_and_subnet_id(body):
         raise webob.exc.HTTPBadRequest(explanation=msg)
 
 
+def check_share_network_is_active(share_network):
+    network_status = share_network.get('status')
+    if network_status != constants.STATUS_NETWORK_ACTIVE:
+        msg = _("The share network %(id)s used isn't in an 'active' state. "
+                "Current status is %(status)s. The action may be retried "
+                "after the share network has changed its state.") % {
+            'id': share_network['id'],
+            'status': share_network.get('status'),
+        }
+        raise webob.exc.HTTPBadRequest(explanation=msg)
+
+
 class ViewBuilder(object):
     """Model API responses as dictionaries."""
 

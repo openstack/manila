@@ -341,3 +341,15 @@ user documentation.
 2.62
 ----
   Added quota control to per share size.
+
+2.63
+----
+  Added the possibility to attach security services to share networks in use.
+  Also, an attached security service can be replaced for another one of
+  the same 'type'. In order to support those operations a 'status' field was
+  added in the share networks as well as, a new property called
+  'security_service_update_support' was included in the share networks and
+  share servers. Also new action APIs have been added to the share-networks
+  endpoint: 'update_security_service', 'update_security_service_check' and
+  'add_security_service_check'.
+

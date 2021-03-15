@@ -23,6 +23,7 @@ import copy
 import datetime
 import functools
 import hashlib
+import json
 from operator import xor
 
 from oslo_config import cfg
@@ -183,6 +184,25 @@ def locked_share_replica_operation(operation):
     return wrapped
 
 
+def locked_share_network_operation(operation):
+    """Lock decorator for share network operations.
+
+    Takes a named lock prior to executing the operation. The lock is named with
+    the id of the share network.
+    """
+
+    def wrapped(*args, **kwargs):
+        share_network_id = kwargs.get('share_network_id')
+
+        @coordination.synchronized(
+            'locked-share-network-operation-%s' % share_network_id)
+        def locked_network_operation(*_args, **_kwargs):
+            return operation(*_args, **_kwargs)
+        return locked_network_operation(*args, **kwargs)
+
+    return wrapped
+
+
 def add_hooks(f):
     """Hook decorator to perform action before and after a share method call
 
@@ -218,7 +238,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.21'
+    RPC_API_VERSION = '1.22'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -698,6 +718,8 @@ class ShareManager(manager.SchedulerDependentManager):
                         'host': self.host,
                         'share_network_subnet_id': share_network_subnet_id,
                         'status': constants.STATUS_CREATING,
+                        'security_service_update_support': (
+                            self.driver.security_service_update_support),
                     }
                 )
 
@@ -785,6 +807,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     'host': self.host,
                     'share_network_subnet_id': share_network_subnet_id,
                     'status': constants.STATUS_CREATING,
+                    'security_service_update_support': (
+                        self.driver.security_service_update_support),
                 }
             )
 
@@ -962,7 +986,9 @@ class ShareManager(manager.SchedulerDependentManager):
                     {
                         'host': self.host,
                         'share_network_subnet_id': share_network_subnet_id,
-                        'status': constants.STATUS_CREATING
+                        'status': constants.STATUS_CREATING,
+                        'security_service_update_support': (
+                            self.driver.security_service_update_support),
                     }
                 )
 
@@ -2046,11 +2072,11 @@ class ShareManager(manager.SchedulerDependentManager):
             self._notify_about_share_usage(context, share,
                                            share_instance, "create.end")
 
-    def _update_share_replica_access_rules_state(self, context,
-                                                 share_replica_id, state):
-        """Update the access_rules_status for the share replica."""
+    def _update_share_instance_access_rules_state(self, context,
+                                                  share_instance_id, state):
+        """Update the access_rules_status for the share instance."""
         self.access_helper.get_and_update_share_instance_access_rules_status(
-            context, status=state, share_instance_id=share_replica_id)
+            context, status=state, share_instance_id=share_instance_id)
 
     def _get_replica_snapshots_for_snapshot(self, context, snapshot_id,
                                             active_replica_id,
@@ -2208,7 +2234,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, share_replica['id'],
                     {'status': constants.STATUS_ERROR,
                      'replica_state': constants.STATUS_ERROR})
-                self._update_share_replica_access_rules_state(
+                self._update_share_instance_access_rules_state(
                     context, share_replica['id'], constants.STATUS_ERROR)
                 self.message_api.create(
                     context,
@@ -2236,11 +2262,11 @@ class ShareManager(manager.SchedulerDependentManager):
                  'progress': '100%'})
 
         if replica_ref.get('access_rules_status'):
-            self._update_share_replica_access_rules_state(
+            self._update_share_instance_access_rules_state(
                 context, share_replica['id'],
                 replica_ref.get('access_rules_status'))
         else:
-            self._update_share_replica_access_rules_state(
+            self._update_share_instance_access_rules_state(
                 context, share_replica['id'],
                 constants.STATUS_ACTIVE)
 
@@ -2497,7 +2523,7 @@ class ShareManager(manager.SchedulerDependentManager):
                         context, updated_replica['id'], updates)
 
                 if updated_replica.get('access_rules_status'):
-                    self._update_share_replica_access_rules_state(
+                    self._update_share_instance_access_rules_state(
                         context, share_replica['id'],
                         updated_replica.get('access_rules_status'))
 
@@ -3861,6 +3887,7 @@ class ShareManager(manager.SchedulerDependentManager):
     def _report_driver_status(self, context):
         LOG.info('Updating share status')
         share_stats = self.driver.get_share_stats(refresh=True)
+
         if not share_stats:
             return
 
@@ -4629,7 +4656,9 @@ class ShareManager(manager.SchedulerDependentManager):
             'is_auto_deletable': share_server.get('is_auto_deletable', None),
             'identifier': share_server.get('identifier', None),
             'network_allocations': share_server.get('network_allocations',
-                                                    None)
+                                                    None),
+            'share_network_status': share_server.get(
+                'share_network_status', None)
         }
         return share_server_ref
 
@@ -4680,6 +4709,7 @@ class ShareManager(manager.SchedulerDependentManager):
             'source_share_group_snapshot_member_id': share_instance.get(
                 'source_share_group_snapshot_member_id'),
             'availability_zone': share_instance.get('availability_zone'),
+            'share_network_status': share_instance.get('share_network_status')
         }
         if share_instance_ref['share_server']:
             share_instance_ref['share_server'] = self._get_share_server_dict(
@@ -5486,3 +5516,204 @@ class ShareManager(manager.SchedulerDependentManager):
         return self.driver.share_server_migration_get_progress(
             context, src_share_server, dest_share_server, share_instances,
             snapshot_instances)
+
+    @locked_share_network_operation
+    def _check_share_network_update_finished(self, context, share_network_id):
+        # Check if this share network is already active
+        share_network = self.db.share_network_get(context, share_network_id)
+        if share_network['status'] == constants.STATUS_NETWORK_ACTIVE:
+            return
+
+        share_servers = self.db.share_server_get_all_with_filters(
+            context, {'share_network_id': share_network_id}
+        )
+
+        if all([ss['status'] != constants.STATUS_SERVER_NETWORK_CHANGE
+                for ss in share_servers]):
+            # All share servers have updated their configuration
+            self.db.share_network_update(
+                context, share_network_id,
+                {'status': constants.STATUS_NETWORK_ACTIVE})
+
+    def _update_share_network_security_service(
+            self, context, share_network_id, new_security_service_id,
+            current_security_service_id=None, check_only=False):
+
+        new_security_service = self.db.security_service_get(
+            context, new_security_service_id)
+
+        current_security_service = None
+        if current_security_service_id:
+            current_security_service = self.db.security_service_get(
+                context, current_security_service_id)
+
+        new_ss_type = new_security_service['type']
+        backend_details_data = {
+            'name': new_security_service['name'],
+            'ou': new_security_service['ou'],
+            'domain': new_security_service['domain'],
+            'server': new_security_service['server'],
+            'dns_ip': new_security_service['dns_ip'],
+            'user': new_security_service['user'],
+            'type': new_ss_type,
+            'password': new_security_service['password'],
+        }
+
+        share_network = self.db.share_network_get(
+            context, share_network_id)
+
+        share_servers = self.db.share_server_get_all_by_host(
+            context, self.host,
+            filters={'share_network_id': share_network_id})
+
+        for share_server in share_servers:
+            share_network_subnet = share_server['share_network_subnet']
+            share_network_subnet_id = share_network_subnet['id']
+
+            # Get share_network_subnet in case it was updated.
+            share_network_subnet = self.db.share_network_subnet_get(
+                context, share_network_subnet_id)
+            network_info = self._form_server_setup_info(
+                context, share_server, share_network, share_network_subnet)
+
+            share_instances = (
+                self.db.share_instances_get_all_by_share_server(
+                    context, share_server['id'], with_share_data=True))
+            share_instance_ids = [sn.id for sn in share_instances]
+
+            share_instances_rules = []
+            for share_instance_id in share_instance_ids:
+                instance_rules = {
+                    'share_instance_id': share_instance_id,
+                    'access_rules': (
+                        self.db.share_access_get_all_for_instance(
+                            context, share_instance_id))
+                }
+                share_instances_rules.append(instance_rules)
+
+            # Only check if the driver supports this kind of update.
+            if check_only:
+                if self.driver.check_update_share_server_security_service(
+                        context, share_server, network_info,
+                        share_instances, share_instances_rules,
+                        new_security_service,
+                        current_security_service=current_security_service):
+                    # Check the next share server.
+                    continue
+                else:
+                    # At least one share server doesn't support this update
+                    return False
+
+            # NOTE(dviroel): We always do backend details update since it
+            # should be the expected configuration for this share server. Any
+            # issue with this operation should be fixed by the admin which will
+            # guarantee that storage and backend_details configurations match.
+            self.db.share_server_backend_details_set(
+                context, share_server['id'],
+                {'security_service_' + new_ss_type: jsonutils.dumps(
+                    backend_details_data)})
+            try:
+                updates = self.driver.update_share_server_security_service(
+                    context, share_server, network_info,
+                    share_instances, share_instances_rules,
+                    new_security_service,
+                    current_security_service=current_security_service) or {}
+            except Exception:
+                operation = 'add'
+                sec_serv_info = ('new security service %s'
+                                 % new_security_service_id)
+                if current_security_service_id:
+                    operation = 'update'
+                    sec_serv_info = ('current security service %s and '
+                                     % current_security_service_id +
+                                     sec_serv_info)
+                msg = _("Share server %(server_id)s has failed on security "
+                        "service %(operation)s operation for "
+                        "%(sec_serv_ids)s.") % {
+                    'server_id': share_server['id'],
+                    'operation': operation,
+                    'sec_serv_ids': sec_serv_info,
+                }
+                LOG.exception(msg)
+                # Set share server to error. Security service configuration
+                # must be fixed before restoring it to active again.
+                self.db.share_server_update(
+                    context, share_server['id'],
+                    {'status': constants.STATUS_ERROR})
+
+                if current_security_service:
+                    # NOTE(dviroel): An already configured security service has
+                    # failed on update operation. We will set all share
+                    # instances to 'error'.
+                    if share_instance_ids:
+                        self.db.share_instances_status_update(
+                            context, share_instance_ids,
+                            {'status': constants.STATUS_ERROR})
+                        # Update share instance access rules status
+                        (self.access_helper
+                            .update_share_instances_access_rules_status(
+                                context, constants.SHARE_INSTANCE_RULES_ERROR,
+                                share_instance_ids))
+                # Go to the next share server
+                continue
+
+            # Update access rules based on drivers updates
+            for instance_id, rules_updates in updates.items():
+                self.access_helper.process_driver_rule_updates(
+                    context, rules_updates, instance_id)
+
+            msg = _("Security service was successfully updated on share "
+                    "server %s.") % share_server['id']
+            LOG.info(msg)
+            self.db.share_server_update(
+                context, share_server['id'],
+                {'status': constants.STATUS_ACTIVE})
+
+        if check_only:
+            # All share servers support the requested update
+            return True
+
+        # Check if all share servers have already finished their updates in
+        # order to properly update share network status
+        self._check_share_network_update_finished(context, share_network['id'])
+
+    def update_share_network_security_service(
+            self, context, share_network_id, new_security_service_id,
+            current_security_service_id=None):
+        self._update_share_network_security_service(
+            context, share_network_id, new_security_service_id,
+            current_security_service_id=current_security_service_id,
+            check_only=False)
+
+    def check_update_share_network_security_service(
+            self, context, share_network_id, new_security_service_id,
+            current_security_service_id=None):
+        is_supported = self._update_share_network_security_service(
+            context, share_network_id, new_security_service_id,
+            current_security_service_id=current_security_service_id,
+            check_only=True)
+        self._update_share_network_security_service_operations(
+            context, share_network_id, is_supported,
+            new_security_service_id=new_security_service_id,
+            current_security_service_id=current_security_service_id)
+
+    @api.locked_security_service_update_operation
+    def _update_share_network_security_service_operations(
+            self, context, share_network_id, is_supported,
+            new_security_service_id=None,
+            current_security_service_id=None):
+        update_check_key = self.share_api.get_security_service_update_key(
+            'hosts_check', new_security_service_id,
+            current_security_service_id)
+        current_hosts_info = self.db.async_operation_data_get(
+            context, share_network_id, update_check_key)
+        if current_hosts_info:
+            current_hosts = json.loads(current_hosts_info)
+            current_hosts[self.host] = is_supported
+            self.db.async_operation_data_update(
+                context, share_network_id,
+                {update_check_key: json.dumps(current_hosts)})
+        else:
+            LOG.debug('A share network security service check was requested '
+                      'but no entries were found in database. Ignoring call '
+                      'and returning.')
