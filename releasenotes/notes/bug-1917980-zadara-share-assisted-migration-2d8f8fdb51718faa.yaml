@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed an issue in Zadara driver to support host assisted migration.
+    The existing access rules required to be updated with share migration
+    are deleted and re-added.

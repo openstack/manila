@@ -66,9 +66,10 @@ class ZadaraVPSAShareDriver(driver.ShareDriver):
         20.12-22 - Addressing review comments from the manila community.
         20.12-23 - Addressing review comments from the manila community.
         20.12-24 - Addressing review comments from the manila community.
+        20.12-25 - Support host assisted share migration
     """
 
-    VERSION = '20.12-24'
+    VERSION = '20.12-25'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "ZadaraStorage_VPSA_CI"
@@ -347,8 +348,13 @@ class ZadaraVPSAShareDriver(driver.ShareDriver):
     def _deny_access(self, context, share, access, share_server=None):
         """Deny access to the share from the host.
 
-        Auto detach from all servers.
         """
+        access_type = access['access_type']
+        if access_type != 'ip':
+            LOG.warning('Only ip access type is allowed for zadara vpsa.')
+            return
+        access_ip = access['access_to']
+
         # First: Check Active controller: if not valid, raise exception
         ctrl = self.vpsa._get_active_controller_details()
         if not ctrl:
@@ -358,18 +364,35 @@ class ZadaraVPSAShareDriver(driver.ShareDriver):
         share_name = self._get_zadara_share_template_name(share['id'])
         volume = self.vpsa._get_vpsa_volume(share_name)
         if not volume:
-            LOG.error('Volume %s could not be found.'
-                      'It might be already deleted', share['id'])
+            LOG.warning('Volume %s could not be found. '
+                        'It might be already deleted', share['id'])
             return
 
-        self.vpsa._detach_vpsa_volume(vpsa_vol=volume)
+        vpsa_srv = self.vpsa._get_server_name(access_ip, True)
+        if not vpsa_srv:
+            LOG.warning('VPSA server %s could not be found.', access_ip)
+            return
+
+        servers_list = self.vpsa._get_servers_attached_to_volume(volume)
+        if vpsa_srv not in servers_list:
+            LOG.warning('VPSA server %(access_ip)s not attached '
+                        'to volume %(volume)s.',
+                        {'access_ip': access_ip, 'volume': share['id']})
+            return
+
+        self.vpsa._detach_vpsa_volume(vpsa_vol=volume,
+                                      vpsa_srv=vpsa_srv)
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
         access_updates = {}
-        if add_rules:
-            # Add rules for accessing share
-            for access_rule in add_rules:
+        if not (add_rules or delete_rules):
+            # add_rules and delete_rules can be empty lists, in cases
+            # like share migration for zadara driver, when the access
+            # level is to be changed for all existing rules. For zadara
+            # backend, we delete and re-add all the existing rules.
+            for access_rule in access_rules:
+                self._deny_access(context, share, access_rule)
                 try:
                     self._allow_access(context, share, access_rule)
                 except manila_exception.ZadaraInvalidShareAccessType:
@@ -382,10 +405,26 @@ class ZadaraVPSAShareDriver(driver.ShareDriver):
                                'id': access_rule['access_id']})
                     access_updates.update(
                         {access_rule['access_id']: {'state': 'error'}})
-        if delete_rules:
-            # Delete access rules for provided share
-            for access_rule in delete_rules:
-                self._deny_access(context, share, access_rule)
+        else:
+            if add_rules:
+                # Add rules for accessing share
+                for access_rule in add_rules:
+                    try:
+                        self._allow_access(context, share, access_rule)
+                    except manila_exception.ZadaraInvalidShareAccessType:
+                        LOG.error("Only ip access type allowed for Zadara "
+                                  "share. Failed to allow %(access_level)s "
+                                  "access to %(access_to)s for rule %(id)s. "
+                                  "Setting rule to 'error' state.",
+                                  {'access_level': access_rule['access_level'],
+                                   'access_to': access_rule['access_to'],
+                                   'id': access_rule['access_id']})
+                        access_updates.update(
+                            {access_rule['access_id']: {'state': 'error'}})
+            if delete_rules:
+                # Delete access rules for provided share
+                for access_rule in delete_rules:
+                    self._deny_access(context, share, access_rule)
         return access_updates
 
     def extend_share(self, share, new_size, share_server=None):
