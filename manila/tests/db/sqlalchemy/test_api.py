@@ -3159,9 +3159,19 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
 
     @ddt.data({'host': 'fakepool@fakehost'},
               {'status': constants.STATUS_SERVER_MIGRATING_TO},
-              {'source_share_server_id': 'fake_ss_id'})
+              {'source_share_server_id': 'fake_ss_id'},
+              {'share_network_id': uuidutils.generate_uuid()})
     def test_share_server_get_all_with_filters(self, filters):
-        db_utils.create_share_server(**filters)
+        server_data = copy.copy(filters)
+        share_network_id = server_data.pop('share_network_id', None)
+        share_network_subnet = {}
+        if share_network_id:
+            db_utils.create_share_network(id=share_network_id)
+            share_network_subnet = db_utils.create_share_network_subnet(
+                id=uuidutils.generate_uuid(),
+                share_network_id=share_network_id)
+            server_data['share_network_subnet_id'] = share_network_subnet['id']
+        db_utils.create_share_server(**server_data)
         db_utils.create_share_server()
         filter_keys = filters.keys()
 
@@ -3170,7 +3180,13 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         self.assertEqual(1, len(results))
         for result in results:
             for key in filter_keys:
-                self.assertEqual(result[key], filters[key])
+                if key == 'share_network_id':
+                    self.assertEqual(share_network_subnet['share_network_id'],
+                                     filters[key])
+                    self.assertEqual(share_network_subnet['id'],
+                                     result['share_network_subnet_id'])
+                else:
+                    self.assertEqual(result[key], filters[key])
 
     @ddt.data('fake@fake', 'host1@backend1')
     def test_share_server_get_all_by_host(self, host):

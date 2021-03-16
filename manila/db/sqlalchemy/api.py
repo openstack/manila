@@ -4170,7 +4170,11 @@ def share_server_get_all_with_filters(context, filters):
         query = query.filter_by(
             source_share_server_id=filters.get('source_share_server_id'))
     if filters.get('share_network_id'):
-        query = query.filter(
+        query = query.join(
+            models.ShareNetworkSubnet,
+            models.ShareNetworkSubnet.id ==
+            models.ShareServer.share_network_subnet_id
+        ).filter(
             models.ShareNetworkSubnet.share_network_id ==
             filters.get('share_network_id'))
     return query.all()
