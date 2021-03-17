@@ -37,6 +37,7 @@ from manila.common import constants
 from manila import coordination
 from manila import exception
 from manila.i18n import _
+from manila.message import api as message_api
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
@@ -161,6 +162,7 @@ class NetAppCmodeFileStorageLibrary(object):
                                self.configuration.netapp_api_trace_pattern)
         self._backend_name = self.configuration.safe_get(
             'share_backend_name') or driver_name
+        self.message_api = message_api.API()
 
     @na_utils.trace
     def do_setup(self, context):
@@ -440,6 +442,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'snapshot_support': True,
                 'create_share_from_snapshot_support': True,
                 'revert_to_snapshot_support': self._revert_to_snapshot_support,
+                'security_service_update_support': True,
             }
 
             # Add storage service catalog data.

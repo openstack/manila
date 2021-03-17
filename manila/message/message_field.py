@@ -20,6 +20,7 @@ class Resource(object):
     SHARE_GROUP = 'SHARE_GROUP'
     SHARE_REPLICA = 'SHARE_REPLICA'
     SHARE_SNAPSHOT = 'SHARE_SNAPSHOT'
+    SECURITY_SERVICE = 'SECURITY_SERVICE'
 
 
 class Action(object):
@@ -34,6 +35,7 @@ class Action(object):
     EXTEND = ('008', _('extend'))
     SHRINK = ('009', _('shrink'))
     UPDATE_ACCESS_RULES = ('010', _('update access rules'))
+    ADD_UPDATE_SECURITY_SERVICE = ('011', _('add or update security service'))
     ALL = (
         ALLOCATE_HOST,
         CREATE,
@@ -45,6 +47,7 @@ class Action(object):
         EXTEND,
         SHRINK,
         UPDATE_ACCESS_RULES,
+        ADD_UPDATE_SECURITY_SERVICE,
     )
 
 
@@ -111,6 +114,12 @@ class Detail(object):
         _("Failed to grant access to client. The access level or type may "
           "be unsupported. You may try again with a different access level "
           "or access type."))
+    UNSUPPORTED_ADD_UDPATE_SECURITY_SERVICE = (
+        '022',
+        _("Share driver has failed to setup one or more security services "
+          "that are associated with the used share network. The security "
+          "service may be unsupported or the provided parameters are invalid. "
+          "You may try again with a different set of configurations."))
 
     ALL = (
         UNKNOWN_ERROR,
@@ -134,6 +143,7 @@ class Detail(object):
         DRIVER_FAILED_SHRINK,
         FORBIDDEN_CLIENT_ACCESS,
         UNSUPPORTED_CLIENT_ACCESS,
+        UNSUPPORTED_ADD_UDPATE_SECURITY_SERVICE,
     )
 
     # Exception and detail mappings

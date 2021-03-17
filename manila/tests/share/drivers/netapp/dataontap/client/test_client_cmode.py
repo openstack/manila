@@ -2670,6 +2670,42 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           self.client.create_kerberos_realm,
                           fake.KERBEROS_SECURITY_SERVICE)
 
+    def test_update_kerberos_realm(self):
+        self.client.features.add_feature('KERBEROS_VSERVER')
+        self.mock_object(self.client, 'send_request')
+
+        self.client.update_kerberos_realm(fake.KERBEROS_SECURITY_SERVICE)
+
+        kerberos_realm_create_args = {
+            'admin-server-ip': fake.KERBEROS_SECURITY_SERVICE['server'],
+            'kdc-ip': fake.KERBEROS_SECURITY_SERVICE['server'],
+            'password-server-ip': fake.KERBEROS_SECURITY_SERVICE['server'],
+            'realm': fake.KERBEROS_SECURITY_SERVICE['domain'].upper(),
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('kerberos-realm-modify',
+                      kerberos_realm_create_args)])
+
+    def test_update_kerberos_realm_failure(self):
+        self.client.features.add_feature('KERBEROS_VSERVER')
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.update_kerberos_realm,
+                          fake.KERBEROS_SECURITY_SERVICE)
+
+        kerberos_realm_create_args = {
+            'admin-server-ip': fake.KERBEROS_SECURITY_SERVICE['server'],
+            'kdc-ip': fake.KERBEROS_SECURITY_SERVICE['server'],
+            'password-server-ip': fake.KERBEROS_SECURITY_SERVICE['server'],
+            'realm': fake.KERBEROS_SECURITY_SERVICE['domain'].upper(),
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('kerberos-realm-modify',
+                      kerberos_realm_create_args)])
+
     def test_configure_kerberos(self):
         self.client.features.add_feature('KERBEROS_VSERVER')
         self.mock_object(self.client, 'send_request')
@@ -2880,6 +2916,34 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('net-dns-modify', net_dns_create_args)])
 
+    def test_update_dns_configuration(self):
+        fake_configured_dns = {
+            'dns-state': 'enabled',
+            'domains': ['fake_domain_2'],
+            'dns-ips': ['fake_dns_ip_2']
+        }
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value=fake_configured_dns))
+        self.mock_object(self.client, 'send_request')
+
+        self.client.configure_dns(fake.KERBEROS_SECURITY_SERVICE)
+        domains = set()
+        domains.add(fake_configured_dns['domains'][0])
+        domains.add(fake.KERBEROS_SECURITY_SERVICE['domain'])
+
+        dns_ips = set()
+        dns_ips.add(fake_configured_dns['dns-ips'][0])
+        dns_ips.add(fake.KERBEROS_SECURITY_SERVICE['dns_ip'])
+
+        net_dns_create_args = {
+            'domains': [{'string': domain} for domain in domains],
+            'dns-state': 'enabled',
+            'name-servers': [{'ip-address': dns_ip} for dns_ip in dns_ips]
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('net-dns-modify', net_dns_create_args)])
+
     def test_configure_dns_api_error(self):
 
         self.mock_object(self.client, 'send_request', self._mock_api_error())
@@ -2959,6 +3023,34 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertRaises(exception.NetAppException,
                           self.client.set_preferred_dc,
                           security_service)
+
+    def test_remove_preferred_dcs(self):
+        self.mock_object(self.client, 'send_request')
+        security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+
+        self.client.remove_preferred_dcs(security_service)
+
+        preferred_dc_add_args = {
+            'domain': security_service['domain'],
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('cifs-domain-preferred-dc-remove',
+                      preferred_dc_add_args)])
+
+    def test_remove_preferred_dcs_error(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+        security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.remove_preferred_dcs,
+                          security_service)
+
+        preferred_dc_add_args = {
+            'domain': security_service['domain'],
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('cifs-domain-preferred-dc-remove',
+                      preferred_dc_add_args)])
 
     def test_create_volume(self):
 
@@ -7621,6 +7713,114 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertEqual(expected_result, result)
         self.client.send_request.assert_called_once_with(
             'volume-autosize-get', {'volume': fake.SHARE_NAME})
+
+    def test_modify_active_directory_security_service(self):
+        curr_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+        new_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_2)
+        # we don't support domain change, but this validation isn't made in
+        # within this method
+        new_sec_service['domain'] = curr_sec_service['domain']
+        api_responses = [fake.PASSED_RESPONSE, fake.PASSED_RESPONSE]
+
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(side_effect=api_responses))
+        self.mock_object(self.client, 'remove_preferred_dcs')
+        self.mock_object(self.client, 'set_preferred_dc')
+        differing_keys = {'password', 'user', 'server'}
+
+        self.client.modify_active_directory_security_service(
+            fake.VSERVER_NAME, differing_keys, new_sec_service,
+            curr_sec_service)
+
+        cifs_server = self.client._get_cifs_server_name(fake.VSERVER_NAME)
+        current_cifs_username = cifs_server + '\\' + curr_sec_service['user']
+        set_pass_api_args = {
+            'user-name': current_cifs_username,
+            'user-password': new_sec_service['password']
+        }
+        user_rename_api_args = {
+            'user-name': current_cifs_username,
+            'new-user-name': new_sec_service['user']
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('cifs-local-user-set-password', set_pass_api_args),
+            mock.call('cifs-local-user-rename', user_rename_api_args)])
+        self.client.remove_preferred_dcs.assert_called_once_with(
+            curr_sec_service)
+        self.client.set_preferred_dc.assert_called_once_with(new_sec_service)
+
+    @ddt.data(True, False)
+    def test_modify_active_directory_security_service_error(
+            self, cifs_set_password_failure):
+        curr_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+        new_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_2)
+        # we don't support domain change, but this validation isn't made in
+        # within this method
+        new_sec_service['domain'] = curr_sec_service['domain']
+        if cifs_set_password_failure:
+            api_responses = [netapp_api.NaApiError(code='fake'),
+                             fake.PASSED_RESPONSE]
+        else:
+            api_responses = [fake.PASSED_RESPONSE,
+                             netapp_api.NaApiError(code='fake')]
+
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(side_effect=api_responses))
+        differing_keys = {'password', 'user', 'server'}
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client.modify_active_directory_security_service,
+            fake.VSERVER_NAME, differing_keys, new_sec_service,
+            curr_sec_service)
+
+        cifs_server = self.client._get_cifs_server_name(fake.VSERVER_NAME)
+        current_cifs_username = cifs_server + '\\' + curr_sec_service['user']
+        set_pass_api_args = {
+            'user-name': current_cifs_username,
+            'user-password': new_sec_service['password']
+        }
+        user_rename_api_args = {
+            'user-name': current_cifs_username,
+            'new-user-name': new_sec_service['user']
+        }
+
+        if cifs_set_password_failure:
+            send_request_calls = [
+                mock.call('cifs-local-user-set-password', set_pass_api_args)]
+        else:
+            send_request_calls = [
+                mock.call('cifs-local-user-set-password', set_pass_api_args),
+                mock.call('cifs-local-user-rename', user_rename_api_args)
+            ]
+
+        self.client.send_request.assert_has_calls(send_request_calls)
+
+    @ddt.data(False, True)
+    def test_modify_ldap(self, api_not_found):
+        current_ldap_service = fake.LDAP_AD_SECURITY_SERVICE
+        new_ldap_service = fake.LDAP_LINUX_SECURITY_SERVICE
+        config_name = hashlib.md5(six.b(new_ldap_service['id'])).hexdigest()
+        api_result = (self._mock_api_error(code=netapp_api.EOBJECTNOTFOUND)
+                      if api_not_found else mock.Mock())
+        mock_create_client = self.mock_object(
+            self.client, '_create_ldap_client')
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=api_result))
+        mock_delete_client = self.mock_object(
+            self.client, '_delete_ldap_client',
+            mock.Mock(return_value=api_result))
+
+        self.client.modify_ldap(new_ldap_service, current_ldap_service)
+
+        api_args = {'client-config': config_name, 'client-enabled': 'true'}
+        mock_create_client.assert_called_once_with(new_ldap_service)
+        mock_send_request.assert_has_calls([
+            mock.call('ldap-config-delete'),
+            mock.call('ldap-config-create', api_args)])
+        mock_delete_client.assert_called_once_with(current_ldap_service)
 
     def test_create_fpolicy_event(self):
         self.mock_object(self.client, 'send_request')

@@ -35,6 +35,9 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
             True, *args, **kwargs)
         self.library = lib_multi_svm.NetAppCmodeMultiSVMFileStorageLibrary(
             self.DRIVER_NAME, **kwargs)
+        # NetApp driver supports updating security service for in use share
+        # networks.
+        self.security_service_update_support = True
 
     def do_setup(self, context):
         self.library.do_setup(context)
@@ -336,3 +339,19 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
                                             snapshots):
         return self.library.share_server_migration_get_progress(
             context, src_share_server, dest_share_server, shares, snapshots)
+
+    def update_share_server_security_service(
+            self, context, share_server, network_info, share_instances,
+            share_instance_rules, new_security_service,
+            current_security_service=None):
+        return self.library.update_share_server_security_service(
+            context, share_server, network_info, new_security_service,
+            current_security_service=current_security_service)
+
+    def check_update_share_server_security_service(
+            self, context, share_server, network_info, share_instances,
+            share_instance_rules, new_security_service,
+            current_security_service=None):
+        return self.library.check_update_share_server_security_service(
+            context, share_server, network_info, new_security_service,
+            current_security_service=current_security_service)

@@ -319,3 +319,15 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
             self, context, share_servers, share_group_ref,
             share_group_snapshot=None):
         raise NotImplementedError
+
+    def update_share_server_security_service(
+            self, context, share_server, network_info, share_instances,
+            share_instance_rules, new_security_service,
+            current_security_service=None):
+        raise NotImplementedError
+
+    def check_update_share_server_security_service(
+            self, context, share_server, network_info, share_instances,
+            share_instance_rules, new_security_service,
+            current_security_service=None):
+        raise NotImplementedError

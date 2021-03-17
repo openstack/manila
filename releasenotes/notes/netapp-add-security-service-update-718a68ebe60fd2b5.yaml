@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    NetApp ONTAP driver now supports add and update security services when
+    they are associated with in use share networks. Both add and update
+    operations are supported by all three security service types:
+    ``active_directory``, ``kerberos`` and ``ldap``. In order to update their
+    parameters in a non-disruptively way, ``active_directory`` and ``kerberos``
+    don't support ``domain`` updates.
+
