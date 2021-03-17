@@ -42,10 +42,11 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
     def test___format_filter_properties_active_replica_host_is_provided(self):
         sched = fakes.FakeFilterScheduler()
         fake_context = context.RequestContext('user', 'project')
+        fake_type = {'name': 'NFS'}
         request_spec = {
             'share_properties': {'project_id': 1, 'size': 1},
             'share_instance_properties': {},
-            'share_type': {'name': 'NFS'},
+            'share_type': fake_type,
             'share_id': ['fake-id1'],
             'active_replica_host': 'fake_ar_host',
         }
@@ -58,20 +59,21 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         retval = sched._format_filter_properties(
             fake_context, {}, request_spec)
 
+        self.assertDictMatch(fake_type, retval[0]['resource_type'])
         self.assertIn('replication_domain', retval[0])
+        # no "share_proto" was specified in the request_spec
+        self.assertNotIn('storage_protocol', retval[0])
 
     @ddt.data(True, False)
     def test__format_filter_properties_backend_specified_for_replica(
             self, has_share_backend_name):
         sched = fakes.FakeFilterScheduler()
         fake_context = context.RequestContext('user', 'project')
+        fake_type = {'name': 'NFS', 'extra_specs': {}}
         request_spec = {
             'share_properties': {'project_id': 1, 'size': 1},
             'share_instance_properties': {},
-            'share_type': {
-                'name': 'NFS',
-                'extra_specs': {},
-            },
+            'share_type': fake_type,
             'share_id': 'fake-id1',
             'active_replica_host': 'fake_ar_host',
         }
@@ -86,8 +88,36 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         retval = sched._format_filter_properties(
             fake_context, {}, request_spec)
 
+        self.assertDictMatch(fake_type, retval[0]['resource_type'])
         self.assertNotIn('share_backend_name',
                          retval[0]['share_type']['extra_specs'])
+
+    @ddt.data(True, False)
+    def test__format_filter_properties_storage_protocol_extra_spec_present(
+            self, spec_present):
+        sched = fakes.FakeFilterScheduler()
+        fake_context = context.RequestContext('user', 'project')
+        extra_specs_requested = (
+            {'storage_protocol': 'NFS_CIFS'} if spec_present else {}
+        )
+        fake_type = {
+            'name': 'regalia',
+            'extra_specs': extra_specs_requested,
+        }
+        request_spec = {
+            'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {},
+            'share_proto': 'CEPHFS',
+            'share_type': fake_type,
+            'share_id': 'fake-id1',
+        }
+        retval = sched._format_filter_properties(
+            fake_context, {}, request_spec)[0]
+
+        filter_spec = retval['share_type']['extra_specs']['storage_protocol']
+        expected_spec = 'NFS_CIFS' if spec_present else '<in> CEPHFS'
+        self.assertEqual(expected_spec, filter_spec)
+        self.assertDictMatch(fake_type, retval['resource_type'])
 
     def test_create_share_no_hosts(self):
         # Ensure empty hosts/child_zones result in NoValidHosts exception.
@@ -233,6 +263,56 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         }
         self.assertRaises(exception.NoValidHost, sched._schedule_share,
                           fake_context, request_spec, {})
+        self.assertTrue(_mock_service_get_all_by_topic.called)
+
+    @ddt.data({'storage_protocol': 'CEPHFS'},
+              {'storage_protocol': '<in> CEPHFS'},
+              {'name': 'foo'})
+    @mock.patch('manila.db.service_get_all_by_topic')
+    def test__schedule_share_storage_protocol_not_supported(
+            self, share_type, _mock_service_get_all_by_topic):
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        requested_share_proto = (
+            share_type.get('storage_protocol', '').strip('<in> ')
+            or 'MAPRFS'
+        )
+        fake_context = context.RequestContext('user', 'project', is_admin=True)
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+        request_spec = {
+            'share_type': share_type,
+            'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {'project_id': 1, 'size': 1},
+            'share_proto': requested_share_proto,
+        }
+
+        self.assertRaises(exception.NoValidHost, sched._schedule_share,
+                          fake_context, request_spec, {})
+        self.assertTrue(_mock_service_get_all_by_topic.called)
+
+    @ddt.data({'storage_protocol': 'GLUSTERFS'},
+              {'storage_protocol': '<in> GLUSTERFS'},
+              {'name': 'foo'})
+    @mock.patch('manila.db.service_get_all_by_topic')
+    def test__schedule_share_valid_storage_protocol(
+            self, share_type, _mock_service_get_all_by_topic):
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fake_context = context.RequestContext('user', 'project', is_admin=True)
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+        request_spec = {
+            'share_type': share_type,
+            'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {'project_id': 1, 'size': 1},
+            'share_proto': 'GLUSTERFS',
+        }
+        weighed_host = sched._schedule_share(fake_context, request_spec, {})
+
+        self.assertIsNotNone(weighed_host)
+        self.assertIsNotNone(weighed_host.obj)
+        self.assertEqual('GLUSTERFS',
+                         getattr(weighed_host.obj, 'storage_protocol'))
+        self.assertEqual('host6', weighed_host.obj.host.split('#')[0])
         self.assertTrue(_mock_service_get_all_by_topic.called)
 
     def _setup_dedupe_fakes(self, extra_specs):

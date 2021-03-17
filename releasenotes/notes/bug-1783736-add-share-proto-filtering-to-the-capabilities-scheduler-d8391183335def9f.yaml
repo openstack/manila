@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    A bug with storage protocol filtering in the scheduler has been fixed.
+    See `bug <https://launchpad.net/bugs/1783736>`_ for more details.

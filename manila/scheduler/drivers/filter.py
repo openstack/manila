@@ -130,10 +130,9 @@ class FilterScheduler(base.Scheduler):
         share_properties = request_spec['share_properties']
         share_instance_properties = (request_spec.get(
             'share_instance_properties', {}))
+        share_proto = request_spec.get('share_proto',
+                                       share_properties.get('share_proto'))
 
-        # Since Manila is using mixed filters from Oslo and it's own, which
-        # takes 'resource_XX' and 'volume_XX' as input respectively, copying
-        # 'volume_XX' to 'resource_XX' will make both filters happy.
         resource_properties = share_properties.copy()
         resource_properties.update(share_instance_properties.copy())
         share_type = request_spec.get("share_type", {})
@@ -144,18 +143,25 @@ class FilterScheduler(base.Scheduler):
             LOG.error(msg)
             raise exception.InvalidParameterValue(err=msg)
 
-        extra_specs = share_type.get('extra_specs', {})
+        share_type['extra_specs'] = share_type.get('extra_specs') or {}
 
-        if extra_specs:
+        if share_type['extra_specs']:
             for extra_spec_name in share_types.get_boolean_extra_specs():
-                extra_spec = extra_specs.get(extra_spec_name)
-
+                extra_spec = share_type['extra_specs'].get(extra_spec_name)
                 if extra_spec is not None:
                     if not extra_spec.startswith("<is>"):
                         extra_spec = "<is> %s" % extra_spec
-                    share_type['extra_specs'][extra_spec_name] = extra_spec
+                        share_type['extra_specs'][extra_spec_name] = extra_spec
 
-        resource_type = request_spec.get("share_type") or {}
+        storage_protocol_spec = (
+            share_type['extra_specs'].get('storage_protocol')
+        )
+        if storage_protocol_spec is None and share_proto is not None:
+            # a host can report multiple protocols as "storage_protocol"
+            spec_value = "<in> %s" % share_proto
+            share_type['extra_specs']['storage_protocol'] = spec_value
+
+        resource_type = share_type
         request_spec.update({'resource_properties': resource_properties})
 
         config_options = self._get_configuration_options()
