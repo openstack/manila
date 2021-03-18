@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Resizing 0.0.0.0/24 accessible NFS shares with generic driver
