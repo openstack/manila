@@ -46,16 +46,16 @@ def reset():
         _ENFORCER = None
 
 
-def init(rules=None, use_conf=True):
+def init(rules=None, use_conf=True, suppress_deprecation_warnings=False):
     """Init an Enforcer class.
 
         :param policy_file: Custom policy file to use, if none is specified,
                           `CONF.policy_file` will be used.
         :param rules: Default dictionary / Rules to use. It will be
                     considered just in the first instantiation.
-        :param default_rule: Default rule to use, CONF.default_rule will
-                           be used if none is specified.
         :param use_conf: Whether to load rules from config file.
+        :param suppress_deprecation_warnings: Whether to suppress policy
+                                            deprecation warnings.
     """
 
     global _ENFORCER
@@ -63,6 +63,18 @@ def init(rules=None, use_conf=True):
         _ENFORCER = policy.Enforcer(CONF,
                                     rules=rules,
                                     use_conf=use_conf)
+
+        # NOTE(gouthamr): Explicitly disable the warnings for policies
+        # changing their default check_str. During
+        # secure-rbac / policy-defaults-refresh work, all the policy
+        # defaults have been changed and warning for each policy started
+        # filling the log limits for various tools. Once we move to new
+        # defaults only world then we can enable these warning again.
+        _ENFORCER.suppress_default_change_warnings = True
+        # Suppressing deprecation warnings is fine for tests. However we
+        # won't do it by default
+        _ENFORCER.suppress_deprecation_warnings = suppress_deprecation_warnings
+
         register_rules(_ENFORCER)
 
 

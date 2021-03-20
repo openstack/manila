@@ -39,6 +39,7 @@ from manila import coordination
 from manila.db import migration
 from manila.db.sqlalchemy import api as db_api
 from manila.db.sqlalchemy import models as db_models
+from manila import policy
 from manila import rpc
 from manila import service
 from manila.tests import conf_fixture
@@ -160,6 +161,10 @@ class TestCase(base_test.BaseTestCase):
                           group='coordination')
         coordination.LOCK_COORDINATOR.start()
         self.addCleanup(coordination.LOCK_COORDINATOR.stop)
+
+        # policy
+        policy.init(suppress_deprecation_warnings=True)
+        self.addCleanup(policy.reset)
 
     def _disable_osprofiler(self):
         """Disable osprofiler.
