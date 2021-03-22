@@ -131,6 +131,10 @@ share_manager_opts = [
                      'configured, this option must be set to False. '
                      'If set to False - gathering share usage size will be'
                      ' disabled.'),
+    cfg.BoolOpt('share_service_inithost_offload',
+                default=False,
+                help='Offload pending share ensure during '
+                     'share service startup'),
 ]
 
 CONF = cfg.CONF
@@ -447,7 +451,12 @@ class ShareManager(manager.SchedulerDependentManager):
                     LOG.exception("Caught exception trying ensure "
                                   "share instances.")
                 else:
-                    self._ensure_share(ctxt, update_share_instances)
+                    for share_instance in update_share_instances:
+                        if CONF.share_service_inithost_offload:
+                            self._add_to_threadpool(self._ensure_share,
+                                                    ctxt, share_instance)
+                        else:
+                            self._ensure_share(ctxt, share_instance)
 
         if new_backend_info:
             self.db.backend_info_update(
@@ -517,20 +526,19 @@ class ShareManager(manager.SchedulerDependentManager):
                             "access rules for snapshot instance %s.",
                             snap_instance['id'])
 
-    def _ensure_share(self, ctxt, share_instances):
-        for share_instance in share_instances:
-            try:
-                export_locations = self.driver.ensure_share(
-                    ctxt, share_instance,
-                    share_server=share_instance['share_server'])
-            except Exception:
-                LOG.exception("Caught exception trying ensure "
-                              "share '%(s_id)s'.",
-                              {'s_id': share_instance['id']})
-                continue
-            if export_locations:
-                self.db.share_export_locations_update(
-                    ctxt, share_instance['id'], export_locations)
+    def _ensure_share(self, ctxt, share_instance):
+        export_locations = None
+        try:
+            export_locations = self.driver.ensure_share(
+                ctxt, share_instance,
+                share_server=share_instance['share_server'])
+        except Exception:
+            LOG.exception("Caught exception trying ensure "
+                          "share '%(s_id)s'.",
+                          {'s_id': share_instance['id']})
+        if export_locations:
+            self.db.share_export_locations_update(
+                ctxt, share_instance['id'], export_locations)
 
     def _check_share_server_backend_limits(
             self, context, available_share_servers, share_instance=None):

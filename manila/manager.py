@@ -51,6 +51,8 @@ This module provides Manager, a base class for managers.
 
 """
 
+
+from eventlet import greenpool
 from oslo_config import cfg
 from oslo_log import log
 from oslo_service import periodic_task
@@ -139,7 +141,11 @@ class SchedulerDependentManager(Manager):
         self.last_capabilities = None
         self.service_name = service_name
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
+        self._tp = greenpool.GreenPool()
         super(SchedulerDependentManager, self).__init__(host, db_driver)
+
+    def _add_to_threadpool(self, func, *args, **kwargs):
+        self._tp.spawn_n(func, *args, **kwargs)
 
     def update_service_capabilities(self, capabilities):
         """Remember these capabilities to send on next periodic update."""
