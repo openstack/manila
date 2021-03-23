@@ -202,7 +202,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: share_network_id
+   - id: share_network_subnet_id
    - neutron_net_id: share_network_subnet_neutron_net_id
    - neutron_subnet_id: share_network_subnet_neutron_subnet_id
    - network_type: share_network_subnet_network_type

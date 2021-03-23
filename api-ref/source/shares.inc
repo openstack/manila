@@ -140,7 +140,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_4
+   - id: share_id_response
    - links: links
    - name: name
    - count: count
@@ -208,36 +208,41 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - share_type_name: share_type_name
-   - links: links
+   - id: share_id_response
+   - size: size_response
    - availability_zone: availability_zone
-   - share_network_id: share_network_id
-   - export_locations: export_locations
-   - share_server_id: share_server_id
-   - snapshot_id: snapshot_id_share_response
-   - id: id_4
-   - size: size_2
-   - share_type: share_type_1
-   - export_location: export_location
-   - project_id: project_id
-   - metadata: metadata
-   - status: status_16
-   - progress: progress_share_instance
-   - description: description
-   - host: host_1
-   - access_rules_status: access_rules_status
-   - is_public: is_public
-   - share_group_id: share_group_id
-   - task_state: task_state
-   - snapshot_support: snapshot_support
-   - name: name
-   - has_replicas: has_replicas
-   - replication_type: replication_type
    - created_at: created_at
+   - status: share_status_response
+   - name: name
+   - description: description
+   - project_id: project_id
+   - snapshot_id: snapshot_id_shares_response
+   - share_network_id: share_network_id
    - share_proto: share_proto
-   - volume_type: volume_type
-   - count: count
+   - metadata: metadata
+   - share_type: share_type_shares_response
+   - links: links
+   - is_public: is_public_shares_response
+   - share_server_id: share_server_id
+   - host: host_resource_response
+   - snapshot_support: snapshot_support_share_capability
+   - task_state: task_state
+   - share_type_name: share_type_name
+   - access_rules_status: access_rules_status
+   - replication_type: replication_type_share_capability
+   - has_replicas: has_replicas
    - user_id: share_user_id
+   - create_share_from_snapshot_support: create_share_from_snapshot_support_share_capability
+   - revert_to_snapshot_support: revert_to_snapshot_support_share_capability
+   - share_group_id: share_group_id
+   - source_share_group_snapshot_member_id: source_share_group_snapshot_member_id
+   - mount_snapshot_support: mount_snapshot_support_share_capability
+   - progress: progress_share_instance
+   - count: count
+   - volume_type: volume_type_shares_response
+   - export_location: export_location
+   - export_locations: export_locations
+
 
 Response example
 ----------------
@@ -281,35 +286,40 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - share_type_name: share_type_name
-   - links: links
-   - availability_zone: availability_zone_1
-   - share_network_id: share_network_id
-   - export_locations: export_locations
-   - share_server_id: share_server_id
-   - snapshot_id: snapshot_id_share_response
-   - id: id_4
-   - size: size_2
-   - share_type: share_type_1
-   - export_location: export_location
-   - project_id: project_id
-   - metadata: metadata
-   - status: status_16
-   - progress: progress_share_instance
-   - description: description
-   - host: host_9
-   - access_rules_status: access_rules_status
-   - is_public: is_public
-   - share_group_id: share_group_id
-   - task_state: task_state
-   - snapshot_support: snapshot_support
-   - name: name
-   - has_replicas: has_replicas
-   - replication_type: replication_type
+   - id: share_id_response
+   - size: size_response
+   - availability_zone: availability_zone
    - created_at: created_at
+   - status: share_status_response
+   - name: name
+   - description: description
+   - project_id: project_id
+   - snapshot_id: snapshot_id_shares_response
+   - share_network_id: share_network_id
    - share_proto: share_proto
-   - volume_type: volume_type
+   - metadata: metadata
+   - share_type: share_type_shares_response
+   - links: links
+   - is_public: is_public_shares_response
+   - share_server_id: share_server_id
+   - host: host_resource_response
+   - snapshot_support: snapshot_support_share_capability
+   - task_state: task_state
+   - share_type_name: share_type_name
+   - access_rules_status: access_rules_status
+   - replication_type: replication_type_share_capability
+   - has_replicas: has_replicas
    - user_id: share_user_id
+   - create_share_from_snapshot_support: create_share_from_snapshot_support_share_capability
+   - revert_to_snapshot_support: revert_to_snapshot_support_share_capability
+   - share_group_id: share_group_id
+   - source_share_group_snapshot_member_id: source_share_group_snapshot_member_id
+   - mount_snapshot_support: mount_snapshot_support_share_capability
+   - progress: progress_share_instance
+   - count: count
+   - volume_type: volume_type_shares_response
+   - export_location: export_location
+   - export_locations: export_locations
 
 Response example
 ----------------
@@ -348,19 +358,18 @@ Request
 
    - project_id: project_id_path
    - share_proto: share_proto
-   - size: size
+   - size: size_request
    - name: name_request
    - description: description_request
    - display_name: display_name_request
    - display_description: display_description_request
-   - share_type: share_type
-   - volume_type: volume_type
+   - share_type: share_type_request
    - snapshot_id: snapshot_id_request
-   - is_public: is_public
+   - is_public: is_public_request
    - share_group_id: share_group_id_request
    - metadata: metadata
-   - share_network_id: share_network_id_2
-   - availability_zone: availability_zone
+   - share_network_id: share_network_id_request
+   - availability_zone: availability_zone_request
 
 Request example
 ---------------
@@ -373,34 +382,40 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_4
-   - status: status_3
-   - progress: progress_share_instance
-   - links: links
-   - project_id: project_id
-   - share_proto: share_proto
-   - size: size
+   - id: share_id_response
+   - size: size_response
+   - availability_zone: availability_zone
+   - created_at: created_at
+   - status: share_status_response
    - name: name
    - description: description
-   - share_type: share_type_1
-   - share_type_name: share_share_type_name
-   - has_replicas: has_replicas
-   - replication_type: replication_type
-   - volume_type: volume_type
-   - snapshot_id: snapshot_id_share_response
-   - is_public: is_public
-   - share_group_id: share_group_id
-   - metadata: metadata
+   - project_id: project_id
+   - snapshot_id: snapshot_id_shares_response
    - share_network_id: share_network_id
-   - availability_zone: availability_zone_1
+   - share_proto: share_proto
+   - metadata: metadata
+   - share_type: share_type_shares_response
+   - links: links
+   - is_public: is_public_shares_response
+   - share_server_id: share_server_id
+   - host: host_resource_response
+   - snapshot_support: snapshot_support_share_capability
+   - task_state: task_state
+   - share_type_name: share_type_name
+   - access_rules_status: access_rules_status
+   - replication_type: replication_type_share_capability
+   - has_replicas: has_replicas
+   - user_id: share_user_id
+   - create_share_from_snapshot_support: create_share_from_snapshot_support_share_capability
+   - revert_to_snapshot_support: revert_to_snapshot_support_share_capability
+   - share_group_id: share_group_id
+   - source_share_group_snapshot_member_id: source_share_group_snapshot_member_id
+   - mount_snapshot_support: mount_snapshot_support_share_capability
+   - progress: progress_share_instance
+   - count: count
+   - volume_type: volume_type_shares_response
    - export_location: export_location
    - export_locations: export_locations
-   - host: host_1
-   - task_state: task_state
-   - share_server_id: share_server_id
-   - snapshot_support: snapshot_support
-   - created_at: created_at
-   - user_id: share_user_id
 
 Response example
 ----------------
@@ -453,12 +468,12 @@ Request
    - share: share
    - protocol: protocol
    - name: name_request
-   - share_type: share_type_2
+   - share_type: share_type_request
    - driver_options: driver_options
    - export_path: export_path
    - service_host: service_host
    - share_server_id: manage_share_server_id
-   - is_public: is_public
+   - is_public: is_public_manage_request
    - description: description_request
 
 Request example
@@ -472,34 +487,40 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - share: share
-   - links: links
-   - availability_zone: availability_zone_1
-   - share_network_id: share_network_id
-   - export_locations: export_locations
-   - share_server_id: share_server_id
-   - snapshot_id: snapshot_id_share_response
-   - id: id_4
-   - size: size_2
-   - share_type: share_type_1
-   - share_type_name: share_share_type_name
-   - has_replicas: has_replicas
-   - replication_type: replication_type
-   - export_location: export_location
-   - project_id: project_id
-   - metadata: metadata
-   - status: status_8
-   - share_server_id: manage_share_server_id
-   - description: description
-   - host: host_9
-   - is_public: is_public
-   - share_group_id: share_group_id
-   - snapshot_support: snapshot_support
-   - name: name
+   - id: share_id_response
+   - size: size_response
+   - availability_zone: availability_zone
    - created_at: created_at
+   - status: share_status_response
+   - name: name
+   - description: description
+   - project_id: project_id
+   - snapshot_id: snapshot_id_shares_response
+   - share_network_id: share_network_id
    - share_proto: share_proto
-   - volume_type: volume_type
+   - metadata: metadata
+   - share_type: share_type_shares_response
+   - links: links
+   - is_public: is_public_shares_response
+   - share_server_id: share_server_id
+   - host: host_resource_response
+   - snapshot_support: snapshot_support_share_capability
+   - task_state: task_state
+   - share_type_name: share_type_name
+   - access_rules_status: access_rules_status
+   - replication_type: replication_type_share_capability
+   - has_replicas: has_replicas
    - user_id: managed_share_user_id
+   - create_share_from_snapshot_support: create_share_from_snapshot_support_share_capability
+   - revert_to_snapshot_support: revert_to_snapshot_support_share_capability
+   - share_group_id: share_group_id
+   - source_share_group_snapshot_member_id: source_share_group_snapshot_member_id
+   - mount_snapshot_support: mount_snapshot_support_share_capability
+   - progress: progress_share_instance
+   - count: count
+   - volume_type: volume_type_shares_response
+   - export_location: export_location
+   - export_locations: export_locations
 
 Response example
 ----------------
@@ -549,7 +570,7 @@ Request
 
    - project_id: project_id_path
    - share_id: share_id
-   - is_public: is_public
+   - is_public: is_public_request
    - display_name: display_name_request
    - display_description: display_description_request
 
@@ -564,34 +585,40 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - share_type_name: share_share_type_name
-   - links: links
-   - availability_zone: availability_zone_1
-   - share_network_id: share_network_id
-   - export_locations: export_locations
-   - share_server_id: share_server_id
-   - snapshot_id: snapshot_id_share_response
-   - id: id_4
-   - size: size_2
-   - share_type: share_type_1
-   - export_location: export_location
-   - project_id: project_id
-   - metadata: metadata
-   - status: status_16
-   - description: description
-   - host: host_9
-   - access_rules_status: access_rules_status
-   - is_public: is_public
-   - share_group_id: share_group_id
-   - task_state: task_state
-   - snapshot_support: snapshot_support
-   - name: name
-   - has_replicas: has_replicas
-   - replication_type: replication_type
+   - id: share_id_response
+   - size: size_response
+   - availability_zone: availability_zone
    - created_at: created_at
+   - status: share_status_response
+   - name: name
+   - description: description
+   - project_id: project_id
+   - snapshot_id: snapshot_id_shares_response
+   - share_network_id: share_network_id
    - share_proto: share_proto
-   - volume_type: volume_type
+   - metadata: metadata
+   - share_type: share_type_shares_response
+   - links: links
+   - is_public: is_public_shares_response
+   - share_server_id: share_server_id
+   - host: host_resource_response
+   - snapshot_support: snapshot_support_share_capability
+   - task_state: task_state
+   - share_type_name: share_type_name
+   - access_rules_status: access_rules_status
+   - replication_type: replication_type_share_capability
+   - has_replicas: has_replicas
    - user_id: share_user_id
+   - create_share_from_snapshot_support: create_share_from_snapshot_support_share_capability
+   - revert_to_snapshot_support: revert_to_snapshot_support_share_capability
+   - share_group_id: share_group_id
+   - source_share_group_snapshot_member_id: source_share_group_snapshot_member_id
+   - mount_snapshot_support: mount_snapshot_support_share_capability
+   - progress: progress_share_instance
+   - count: count
+   - volume_type: volume_type_shares_response
+   - export_location: export_location
+   - export_locations: export_locations
 
 Response example
 ----------------

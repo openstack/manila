@@ -124,7 +124,7 @@ Response parameters
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
    - replication_type: replication_type
-   - snapshot_support: snapshot_support_1
+   - snapshot_support: snapshot_support
    - mount_snapshot_support: mount_snapshot_support
    - revert_to_snapshot_support: revert_to_snapshot_support
    - share_type_access:is_public: share_type_access:is_public
@@ -176,7 +176,7 @@ Response parameters
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
-   - snapshot_support: snapshot_support_1
+   - snapshot_support: snapshot_support
    - share_type_access:is_public: share_type_access:is_public
    - name: share_type_name
    - description: share_type_description
@@ -227,7 +227,7 @@ Response Parameters
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
-   - snapshot_support: snapshot_support_1
+   - snapshot_support: snapshot_support
    - replication_type: replication_type
    - mount_snapshot_support: mount_snapshot_support
    - revert_to_snapshot_support: revert_to_snapshot_support
@@ -280,7 +280,7 @@ Response parameters
 
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
-   - snapshot_support: snapshot_support_1
+   - snapshot_support: snapshot_support
    - replication_type: replication_type
    - mount_snapshot_support: mount_snapshot_support
    - revert_to_snapshot_support: revert_to_snapshot_support
@@ -324,7 +324,7 @@ Request
    - project_id: project_id_path
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
-   - snapshot_support: snapshot_support_1
+   - snapshot_support: snapshot_support
    - os-share-type-access:is_public: os-share-type-access:is_public
    - name: share_type_name_request
    - replication_type: replication_type
@@ -348,7 +348,7 @@ Response parameters
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
-   - snapshot_support: snapshot_support_1
+   - snapshot_support: snapshot_support
    - os-share-type-access:is_public: os-share-type-access:is_public
    - share_type_access:is_public: share_type_access:is_public
    - name: share_type_name
@@ -663,10 +663,10 @@ Response parameters
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
-   - snapshot_support: snapshot_support_1
+   - snapshot_support: snapshot_support
    - share_type_access:is_public: share_type_access:is_public_body
    - name: share_type_name
-   - replication_type: replication_type_body
+   - replication_type: replication_type
    - mount_snapshot_support: mount_snapshot_support_body
    - revert_to_snapshot_support: revert_to_snapshot_support_body
    - create_share_from_snapshot_support: create_share_from_snapshot_support_body

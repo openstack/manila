@@ -271,7 +271,7 @@ Request
    - project_id: project_id_path
    - share_id: share_id
    - reset_status: reset_status
-   - status: access_status
+   - status: share_status_request
 
 
 Request example

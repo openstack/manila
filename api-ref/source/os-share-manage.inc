@@ -51,11 +51,10 @@ Request
    - protocol: protocol
    - name: name_request
    - display_name: display_name_request
-   - share_type: share_type_2
+   - share_type: share_type_request
    - driver_options: driver_options
    - export_path: export_path
    - service_host: service_host
-   - is_public: is_public
    - description: description_request
    - display_description: display_description_request
 
@@ -72,29 +71,26 @@ Response parameters
 
    - share: share
    - links: links
-   - availability_zone: availability_zone_1
+   - availability_zone: availability_zone
    - share_network_id: share_network_id
    - export_locations: export_locations
    - share_server_id: share_server_id
-   - snapshot_id: snapshot_id_share_response
-   - id: id_4
-   - size: size_2
-   - share_type: share_type_1
+   - snapshot_id: snapshot_id_shares_response
+   - id: share_id_response
+   - size: size_response
+   - share_type: share_type_shares_response
    - share_type_name: share_type_name
-   - has_replicas: has_replicas
-   - replication_type: replication_type
    - export_location: export_location
    - project_id: project_id
    - metadata: metadata
-   - status: status_8
+   - status: share_status_response
    - description: description
-   - host: host_1
-   - is_public: is_public
+   - host: host_resource_response
+   - is_public: is_public_shares_response
    - snapshot_support: snapshot_support
    - name: name
    - created_at: created_at
    - share_proto: share_proto
-   - volume_type: volume_type
 
 Response example
 ----------------

@@ -76,7 +76,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: share_network_id
+   - id: share_network_id_share_networks_response
    - name: name
 
 Response example
@@ -122,7 +122,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: share_network_id
+   - id: share_network_id_share_networks_response
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
@@ -184,7 +184,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: share_network_id
+   - id: share_network_id_share_networks_response
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
@@ -268,7 +268,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: share_network_id
+   - id: share_network_id_share_networks_response
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
@@ -342,7 +342,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: share_network_id
+   - id: share_network_id_share_networks_response
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
@@ -413,7 +413,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: share_network_id
+   - id: share_network_id_share_networks_response
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
@@ -492,7 +492,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: share_network_id
+   - id: share_network_id_share_networks_response
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id

@@ -491,12 +491,8 @@ source_share_group_snapshot_id_query:
   min_version: 2.31
 status_query:
   description: |
-    Filters by a share status. A valid value is
-    ``creating``, ``creating_from_snapshot``, ``error``, ``available``,
-    ``deleting``, ``error_deleting``,  ``manage_starting``, ``manage_error``,
-    ``unmanage_starting``, ``unmanage_error``, ``migrating``,
-    ``extending``, ``extending_error``, ``shrinking``,
-    ``shrinking_error``, or ``shrinking_possible_data_loss_error``.
+    Filters by a share status. For valid statuses, see the `section
+    above <#shares>`_.
   in: query
   required: false
   type: string
@@ -542,8 +538,10 @@ access_level:
   description: |
     The access level to the share.  To grant or deny
     access to a share, you specify one of the following share access
-    levels:  - ``rw``. Read and write (RW) access.  - ``ro``. Read-
-    only (RO) access.
+    levels:
+
+    - ``rw``. Read and write (RW) access.
+    - ``ro``. Read-only (RO) access.
   in: body
   required: true
   type: string
@@ -580,13 +578,6 @@ access_share_id:
   description: |
     The UUID of the share to which you are granted
     or denied access.
-  in: body
-  required: true
-  type: string
-access_status:
-  description: |
-    The share access status, which is ``new``,
-    ``error``, ``active``.
   in: body
   required: true
   type: string
@@ -654,26 +645,19 @@ allow_access:
   type: object
 availability_zone:
   description: |
-    The availability zone.
-  in: body
-  required: false
-  type: string
-  min_version: 2.1
-availability_zone_1:
-  description: |
-    The availability zone.
+    The name of the availability zone the share exists within.
   in: body
   required: true
   type: string
 availability_zone_id:
   description: |
-    The availability zone ID.
+    The availability zone ID the resource exists within.
   in: body
   required: true
   type: string
-availability_zone_id_2:
+availability_zone_id_share_group:
   description: |
-    The availability zone ID for create share group.
+    The availability zone ID that the share group exists within.
   in: body
   required: true
   type: string
@@ -686,7 +670,7 @@ availability_zone_name:
   type: string
 availability_zone_request:
   description: |
-    The UUID or name of an availability zone for the share network subnet.
+    The UUID or name of an availability zone for resource to be created within.
   in: body
   required: false
   type: string
@@ -705,8 +689,8 @@ backend:
 backend_details:
   description: |
     The back-end details for a server. Each back end
-    can store any key- value information that it requires. For
-    example, the generic back- end driver might store the router ID.
+    can store any key-value information that it requires. For
+    example, the generic back-end driver might store the router ID.
   in: body
   required: true
   type: object
@@ -719,9 +703,11 @@ backend_host:
 backend_name:
   description: |
     The name of the back end in this format:
-    ``host@backend#POOL``.  - ``host``. The host name for the back
-    end.  - ``backend``. The name of the back end.  - ``POOL``. The
-    pool name for the back end.
+    ``host@backend#POOL``:
+
+    - ``host``. The host name for the back end.
+    - ``backend``. The name of the back end.
+    - ``POOL``. The pool name for the back end.
   in: body
   required: true
   type: string
@@ -754,7 +740,7 @@ capability_driver_version:
 capability_free_capacity_gb:
   description: |
     The amount of free capacity for the back end, in
-    GBs. A valid value is a string, such as ``unknown``, or an
+    GiBs. A valid value is a string, such as ``unknown``, or an
     integer.
   in: body
   required: true
@@ -806,7 +792,7 @@ capability_storage_protocol:
   type: string
 capability_total_capacity_gb:
   description: |
-    The total capacity for the back end, in GBs. A
+    The total capacity for the back end, in GiBs. A
     valid value is a string, such as ``unknown``, or an integer.
   in: body
   required: true
@@ -836,7 +822,9 @@ consistent_snapshot_support:
   min_version: 2.34
 count:
   description: |
-    The total count of requested resource before pagination is applied.
+    The total count of requested resource before pagination is applied. This
+    parameter is only present in the API response if "with_count=True" is
+    supplied in the query.
   in: body
   required: false
   type: integer
@@ -856,6 +844,15 @@ create_share_from_snapshot_support_body:
   in: body
   required: false
   type: boolean
+create_share_from_snapshot_support_share_capability:
+  description: |
+    Whether or not this share supports snapshots that can be cloned into new
+    shares. Inconsequential if the share doesn't support snapshots. (see
+    capability "snapshot_support")
+  in: body
+  required: true
+  type: boolean
+  min_version: 2.24
 created_at:
   description: |
     The date and time stamp when the resource was created within the service's
@@ -941,9 +938,9 @@ export_location:
     The export location.  For newer API versions it is available in
     separate APIs. See sections `Share export locations
     <#share-share-export-locations>`_ and `Share instance export
-    locations <#share-share-instance-export- locations>`_.
+    locations <#share-share-instance-export-locations>`_.
   in: body
-  required: false
+  required: true
   type: string
   max_version: 2.8
 export_location_availability_zone:
@@ -1007,18 +1004,19 @@ export_locations:
     locations.  For newer API versions it is available in separate APIs.
     See sections `Share export locations <#share-share-export-locations>`_
     and `Share instance export locations <#share-share-instance-
-    export- locations>`_.
+    export-locations>`_.
   in: body
-  required: false
+  required: true
   type: array
   max_version: 2.8
 export_path:
   description: |
     The share export path in the format appropriate
-    for the protocol:  - NFS protocol. ``10.0.0.1:/foo_path``. For
-    example,   ``10.254.0.5:/shares/share-42033c24-0261-424f-abda-
-    4fef2f6dbfd5``.  - CIFS protocol.
-    ``\\10.0.0.1\foo_name_of_cifs_share``.
+    for the protocol:
+
+    - NFS protocol. ``10.0.0.1:/foo_path``. For example, ``10.254.0
+      .5:/shares/share-42033c24-0261-424f-abda-4fef2f6dbfd5``.
+    - CIFS protocol. For example, ``\\10.0.0.1\foo_name_of_cifs_share``.
   in: body
   required: true
   type: string
@@ -1163,33 +1161,13 @@ host:
   in: body
   required: true
   type: string
-host_1:
+host_resource_response:
   description: |
-    The share host name.
+    The host name of the service back end that the resource is contained
+    within. This parameter is always present in the response schema, but the
+    value may be represented as "null" to non-admin users.
   in: body
   required: true
-  type: string
-host_10:
-  description: |
-    The host pool of the destination back end, in
-    this format: ``host@backend#POOL``.  - ``host``. The host name for
-    the destination back end.  - ``backend``. The name of the
-    destination back end.  - ``POOL``. The pool name for the
-    destination back end.
-  in: body
-  required: true
-  type: string
-host_6:
-  description: |
-    The share instance host name.
-  in: body
-  required: true
-  type: string
-host_9:
-  description: |
-    The share host name.
-  in: body
-  required: false
   type: string
 host_share_server_body:
   description: |
@@ -1200,12 +1178,6 @@ host_share_server_body:
 id_13:
   description: |
     The share instance ID.
-  in: body
-  required: true
-  type: string
-id_4:
-  description: |
-    The UUID of the share.
   in: body
   required: true
   type: string
@@ -1259,26 +1231,42 @@ is_group_type_default:
   required: true
   type: boolean
   min_version: 2.46
-is_public:
+is_public_manage_request:
   description: |
     The level of visibility for the share. Set to ``true`` to make
-    share public. Set to ``false`` to make it private. Default value
-    is ``false``.
+    share visible to all projects in the cloud. Set to ``false`` to make it
+    private to your project. Default value is ``false``.
   in: body
   required: false
   type: boolean
   min_version: 2.8
+is_public_request:
+  description: |
+    The level of visibility for the share. Set to ``true`` to make
+    share visible to all projects in the cloud. Set to ``false`` to make it
+    private to your project. Default value is ``false``.
+  in: body
+  required: false
+  type: boolean
+is_public_shares_response:
+  description: |
+    Whether the share is visible publicly (by all projects in the cloud) or
+    not.
+  in: body
+  required: true
+  type: boolean
 links:
   description: |
-    The share links
+    Pagination and bookmark links for the resource.
   in: body
   required: true
   type: array
 manage_host:
   description: |
     The host of the destination back end, in this format: ``host@backend``.
-    - ``host``. The host name for the destination back end.
-    - ``backend``. The name of the destination back end.
+
+    - ``host``: The host name for the destination back end.
+    - ``backend``: The name of the destination back end.
   in: body
   required: true
   type: string
@@ -1437,7 +1425,7 @@ metadata:
     One or more metadata key and value pairs as a
     dictionary of strings.
   in: body
-  required: false
+  required: true
   type: object
 metadata_2:
   description: |
@@ -1511,6 +1499,15 @@ mount_snapshot_support_body:
   in: body
   required: false
   type: boolean
+mount_snapshot_support_share_capability:
+  description: |
+    Whether or not this share supports snapshots that can be mounted
+    and access controlled independently of the share. Inconsequential if the
+    share doesn't support snapshots (see capability "snapshot_support").
+  in: body
+  required: true
+  type: boolean
+  min_version: 2.32
 name:
   description: |
     The user defined name of the resource.
@@ -1968,17 +1965,31 @@ replica_state:
   min_version: 2.11
 replication_type:
   description: |
-    The share replication type.
+    Type of replication supported for shares of this type. Valid values are:
+
+    - ``null``: replication is not supported
+    - ``readable``: users can create replicas of the share that are
+      read-only until they are promoted,
+    - ``writable``: users can create read/write replicas
+    - ``dr``: users can create replicas that are not exported until
+      they are promoted.
   in: body
   required: false
+  type: string
+replication_type_share_capability:
+  description: |
+    The share replication type. The value can be:
+
+    - ``null``, if the share cannot be replicated.
+    - ``readable``, if one or more read-only replicas of the share can be
+      created
+    - ``writable``, if one or more active replicas of the share can be created
+    - ``dr``, if one or more replicas of the share can be created that will
+      remain inaccessible until they are promoted.
+  in: body
+  required: true
   type: string
   min_version: 2.11
-replication_type_body:
-  description: |
-    The share replication type.
-  in: body
-  required: false
-  type: string
 request_id_body:
   description: |
     The UUID of the request during which the message was created.
@@ -2025,6 +2036,15 @@ revert_to_snapshot_support_body:
   in: body
   required: false
   type: boolean
+revert_to_snapshot_support_share_capability:
+  description: |
+    Whether or not this share supports being reverted to its latest snapshot.
+    Inconsequential if the share doesn't support snapshots (see capability
+    "snapshot_support").
+  in: body
+  required: true
+  type: boolean
+  min_version: 2.27
 security_service_dns_ip:
   description: |
     The DNS IP address that is used inside the project network.
@@ -2200,9 +2220,11 @@ service_enable_host_response:
 service_host:
   description: |
     The manage-share service host in this format:
-    ``host@backend#POOL``.  - ``host``. The host name for the back
-    end.  - ``backend``. The name of the back end.  - ``POOL``. The
-    pool name for the back end.
+    ``host@backend#POOL``:
+
+    - ``host``. The host name for the back end.
+    - ``backend``. The name of the back end.
+    - ``POOL``. The pool name for the back end.
   in: body
   required: true
   type: string
@@ -2332,10 +2354,15 @@ share_group_type_name_request:
   in: body
   required: false
   type: string
-share_id_2:
+share_id_response:
   description: |
-    The UUID of the share from which the share
-    instance was created.
+    The UUID of the share.
+  in: body
+  required: true
+  type: string
+share_id_share_instances_response:
+  description: |
+    The UUID of the share to which the share instance belongs to.
   in: body
   required: true
   type: string
@@ -2370,34 +2397,31 @@ share_network_gateway:
   max_version: 2.50
 share_network_id:
   description: |
-    The share network ID.
+    The share network ID where the resource is exported to.
   in: body
   required: true
   type: string
-share_network_id_1:
+share_network_id_manage_server_request:
   description: |
-    The ID of a share network.  Note that when using
-    a share type with the ``driver_handles_share_servers`` extra spec
-    as ``False``, you should not provide a ``share_network_id``.
-  in: body
-  required: false
-  type: string
-share_network_id_2:
-  description: |
-    The UUID of a share network where the share
-    server exists or will be created. If ``share_network_id`` is
-    ``None`` and you provide a ``snapshot_id``, the
-    ``share_network_id`` value from the snapshot is used.
-  in: body
-  required: false
-  type: string
-share_network_id_4:
-  description: |
-    The share network ID.
+    The UUID of the share network that the share server will pertain to.
   in: body
   required: true
   type: string
-share_network_id_share_server_body:
+share_network_id_request:
+  description: |
+    The ID of a share network that the resource must be exported to.  Note
+    that when using a share type with the ``driver_handles_share_servers``
+    extra spec as ``False``, you should not provide a ``share_network_id``.
+  in: body
+  required: false
+  type: string
+share_network_id_share_networks_response:
+  description: |
+    The UUID of a share network resource.
+  in: body
+  required: true
+  type: string
+share_network_id_share_servers_response:
   description: |
     The UUID of a share network that is associated
     with the share server.
@@ -2540,7 +2564,7 @@ share_network_subnet_share_network_name:
   type: string
 share_new_size:
   description: |
-    New size of the share, in GBs.
+    New size of the share, in GiBs.
   in: body
   required: true
   type: integer
@@ -2666,29 +2690,19 @@ share_share_type_name:
   required: true
   type: string
   min_version: 2.6
-share_type:
+share_status_request:
   description: |
-    The share type name. If you omit this parameter,
-    the default share type is used. To view the default share type set
-    by the administrator, issue a list default share types request.
-    You cannot specify both the ``share_type`` and ``volume_type``
-    parameters.
-  in: body
-  required: false
-  type: string
-share_type_1:
-  description: |
-    The UUID of the share type.  In minor versions, this parameter is
-    a share type name, as a string.
+    The share or share instance status to be set. Possible values are listed in
+    the `section above <#shares>`_.
   in: body
   required: true
   type: string
-  min_version: 2.6
-share_type_2:
+share_status_response:
   description: |
-    The share type name.
+    The share or share instance status. Possible values are listed in
+    the `section above <#shares>`_.
   in: body
-  required: false
+  required: true
   type: string
 share_type_access:is_public:
   description: |
@@ -2759,6 +2773,24 @@ share_type_name_request:
   in: body
   required: false
   type: string
+share_type_request:
+  description: |
+    The name or ID of the share type to be used to create the resource. If you
+    omit this parameter, the default share type is used. To view the default
+    share type set by the administrator, issue a list default share types
+    request.
+  in: body
+  required: false
+  type: string
+share_type_shares_response:
+  description: |
+    The UUID of the share type that the share belongs to.  Prior to API
+    version 2.6, this parameter resolved to the name of the share type. In
+    API version 2.6 and beyond, this parameter holds the share type ID
+    instead of the name.
+  in: body
+  required: true
+  type: string
 share_types:
   description: |
     A list of one or more share type IDs.
@@ -2790,17 +2822,17 @@ shrink:
   in: body
   required: true
   type: object
-size:
+size_request:
   description: |
-    The share size, in GBs. The requested share size
-    cannot be greater than the allowed GB quota. To view the allowed
-    quota, issue a get limits request.
+    The share size, in GiBs. The requested share size cannot be greater than
+    the allowed GiB quota. To view the allowed quota, issue a get limits
+    request.
   in: body
   required: true
   type: integer
-size_2:
+size_response:
   description: |
-    The share size, in GBs.
+    The share size, in GiBs.
   in: body
   required: true
   type: integer
@@ -2824,7 +2856,7 @@ snapshot_id_request:
   in: body
   required: false
   type: string
-snapshot_id_share_response:
+snapshot_id_shares_response:
   description: |
     The UUID of the snapshot that was used to create
     the share.
@@ -2911,13 +2943,13 @@ snapshot_share_protocol:
   type: string
 snapshot_share_size:
   description: |
-    The share snapshot size, in GBs.
+    The share snapshot size, in GiBs.
   in: body
   required: true
   type: integer
 snapshot_size:
   description: |
-    The snapshot size, in GBs.
+    The snapshot size, in GiBs.
   in: body
   required: true
   type: integer
@@ -2947,13 +2979,14 @@ snapshot_support:
   required: true
   type: boolean
   min_version: 2.2
-snapshot_support_1:
+snapshot_support_share_capability:
   description: |
-    An extra specification that filters back ends by
-    whether they do or do not support share snapshots.
+    Whether or not this share supports snapshots. Snapshots are point in
+    time backups of the share.
   in: body
-  required: false
+  required: true
   type: boolean
+  min_version: 2.2
 snapshot_unmanage:
   description: |
     To unmanage a share snapshot, include this parameter and set its value to
@@ -2982,6 +3015,13 @@ source_share_group_snapshot_id_response:
   in: body
   required: true
   type: string
+source_share_group_snapshot_member_id:
+  description: |
+    ID of the group snapshot instance that was the source of this share.
+  in: body
+  required: true
+  type: string
+  min_version: 2.31
 state:
   description: |
     Prior to versions 2.28, the state of all access rules of a given share
@@ -2991,68 +3031,6 @@ state:
     ``applying``, ``active``, ``error``, ``queued_to_deny`` or ``denying``.
     A new rule starts out in ``queued_to_apply`` state and is successfully
     applied if it transitions to ``active`` state.
-  in: body
-  required: true
-  type: string
-status:
-  description: |
-    The consistency group snapshot status, which is
-    ``available``, ``creating``, ``error``, ``deleting``, or
-    ``error_deleting``.
-  in: body
-  required: true
-  type: string
-status_1:
-  description: |
-    The consistency group status. A valid value is
-    ``creating``, ``available``, ``error``, ``deleting``, or
-    ``error_deleting``.
-  in: body
-  required: true
-  type: string
-status_16:
-  description: |
-    The share status, which is ``creating``, ``creating_from_snapshot``,
-    ``error``, ``available``, ``deleting``, ``error_deleting``,
-    ``manage_starting``, ``manage_error``, ``unmanage_starting``,
-    ``unmanage_error``, ``unmanaged``, ``extend``,
-    ``extending_error``, ``shrinking``, ``shrinking_error``, or
-    ``shrinking_possible_data_loss_error``.
-  in: body
-  required: true
-  type: string
-status_3:
-  description: |
-    The share status. A valid value is:  -
-    ``creating``. The share is being created.  - ``deleting``. The
-    share is being deleted.  - ``error``. An error occurred during
-    share creation.  - ``error_deleting``. An error occurred during
-    share deletion.  - ``available``. The share is ready to use.  -
-    ``manage_starting``. Share manage started.  - ``manage_error``.
-    Share manage failed.  - ``unmanage_starting``. Share unmanage
-    started.  - ``unmanage_error``. Share cannot be unmanaged.  -
-    ``unmanaged``. Share was unmanaged.  - ``extending``. The extend,
-    or increase, share size request was   issued successfully.  -
-    ``extending_error``. Extend share failed.  - ``shrinking``. Share
-    is being shrunk.  - ``shrinking_error``. Failed to update quota on
-    share shrinking.  - ``shrinking_possible_data_loss_error``. Shrink
-    share failed due to   possible data loss. - ``creating_from_snapshot``.
-    The share is being created from a parent snapshot.
-  in: body
-  required: true
-  type: string
-status_5:
-  description: |
-    The share instance status. A valid value is
-    ``available``, ``error``, ``creating``, ``deleting``,
-    ``creating_from_snapshot``, or ``error_deleting``.
-  in: body
-  required: true
-  type: string
-status_8:
-  description: |
-    The share status, which is ``available``,
-    ``manage_starting``, or ``manage_error``.
   in: body
   required: true
   type: string
@@ -3069,8 +3047,7 @@ task_state:
     value is ``null``, ``migration_starting``, ``migration_error``,
     ``migration_success``, ``migration_completing``, or ``migrating``.
     The ``task_state`` is ``null`` unless the share is migrated from
-    one back-end to another. For details, see ``os-migrate_share``
-    extension request.
+    one back-end to another.
   in: body
   required: true
   type: string
@@ -3293,6 +3270,14 @@ volume_type:
     response shows both ``share_types`` and ``volume_types`` objects.
   in: body
   required: false
+  type: string
+volume_type_shares_response:
+  description: |
+    The share type ID. This is a legacy parameter that contains the same value
+    as the ``share_type`` parameter. Do not rely on this parameter as it may
+    be removed in a future API revision.
+  in: body
+  required: true
   type: string
 writable:
   description: |
