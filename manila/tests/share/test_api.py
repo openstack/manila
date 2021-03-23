@@ -16,6 +16,7 @@
 
 import copy
 import datetime
+import json
 from unittest import mock
 
 
@@ -5830,6 +5831,82 @@ class ShareAPITestCase(test.TestCase):
             self.context, share_network, new_sec_service,
         )
 
+    def test_update_share_network_security_service_no_share_servers(self):
+        mock_initial_checks = self.mock_object(
+            self.api, '_share_network_update_initial_checks',
+            mock.Mock(return_value=([], [])))
+        mock_get_key = self.mock_object(
+            self.api, 'get_security_service_update_key')
+        fake_share_network = {'id': 'fake_share_net_id'}
+        fake_sec_service = {'id': 'fake_sec_serv_id'}
+
+        self.api.update_share_network_security_service(
+            self.context, fake_share_network, fake_sec_service,
+            current_security_service=None)
+
+        mock_initial_checks.assert_called_once_with(
+            self.context, fake_share_network, fake_sec_service,
+            current_security_service=None)
+        mock_get_key.assert_not_called()
+
+    def test_update_share_network_security_service_without_check(self):
+        mock_initial_checks = self.mock_object(
+            self.api, '_share_network_update_initial_checks',
+            mock.Mock(return_value=(['fake_server'], ['fake_host'])))
+        mock_get_key = self.mock_object(
+            self.api, 'get_security_service_update_key',
+            mock.Mock(return_value=None))
+        fake_share_network = {'id': 'fake_share_net_id'}
+        fake_sec_service = {'id': 'fake_sec_serv_id'}
+
+        self.assertRaises(exception.InvalidShareNetwork,
+                          self.api.update_share_network_security_service,
+                          self.context, fake_share_network, fake_sec_service)
+
+        mock_initial_checks.assert_called_once_with(
+            self.context, fake_share_network, fake_sec_service,
+            current_security_service=None)
+        mock_get_key.assert_called_once_with(
+            'hosts_check', fake_sec_service['id'],
+            current_security_service_id=None)
+
+    def test_update_share_network_security_service_update_hosts_failure(self):
+        mock_initial_checks = self.mock_object(
+            self.api, '_share_network_update_initial_checks',
+            mock.Mock(return_value=(['fake_server'], ['fake_host'])))
+        mock_get_key = self.mock_object(
+            self.api, 'get_security_service_update_key',
+            mock.Mock(return_value='fake_key'))
+        mock_async_db_get = self.mock_object(
+            db_api, 'async_operation_data_get',
+            mock.Mock(return_value='fake_value'))
+        mock_validate_host = self.mock_object(
+            self.api, '_security_service_update_validate_hosts',
+            mock.Mock(side_effect=Exception))
+        mock_async_db_delete = self.mock_object(
+            db_api, 'async_operation_data_delete')
+        fake_share_network = {'id': 'fake_share_net_id'}
+        fake_sec_service = {'id': 'fake_sec_serv_id'}
+
+        self.assertRaises(exception.InvalidShareNetwork,
+                          self.api.update_share_network_security_service,
+                          self.context, fake_share_network, fake_sec_service)
+
+        mock_initial_checks.assert_called_once_with(
+            self.context, fake_share_network, fake_sec_service,
+            current_security_service=None)
+        mock_get_key.assert_called_once_with(
+            'hosts_check', fake_sec_service['id'],
+            current_security_service_id=None)
+        mock_async_db_get.assert_called_once_with(
+            self.context, fake_share_network['id'], 'fake_key')
+        mock_validate_host.assert_called_once_with(
+            self.context, fake_share_network, ['fake_host'], ['fake_server'],
+            new_security_service_id=fake_sec_service['id'],
+            current_security_service_id=None)
+        mock_async_db_delete.assert_called_once_with(
+            self.context, fake_share_network['id'], 'fake_key')
+
     def test_update_share_network_security_service_backend_host_failure(self):
         share_network = db_utils.create_share_network()
         security_service = db_utils.create_security_service()
@@ -5923,6 +6000,113 @@ class ShareAPITestCase(test.TestCase):
             security_service['id'], current_security_service_id=None)
         mock_db_async_op_del.assert_called_once_with(
             self.context, share_network['id'], fake_update_key)
+
+    def test__security_service_update_validate_hosts_new_check(self):
+        curr_sec_service_id = "fake_curr_sec_serv_id"
+        new_sec_service_id = "fake_new_sec_serv_id"
+        fake_key = (curr_sec_service_id + '_' + new_sec_service_id +
+                    '_' + 'hosts_check')
+        fake_share_network = {'id': 'fake_network_id'}
+        backend_hosts = {'hostA', 'hostB'}
+        hosts_to_validate = {}
+        for bh in backend_hosts:
+            hosts_to_validate[bh] = None
+        mock_get_key = self.mock_object(
+            self.api, 'get_security_service_update_key',
+            mock.Mock(return_value=fake_key))
+        mock_async_data_get = self.mock_object(
+            db_api, 'async_operation_data_get', mock.Mock(return_value=None))
+        mock_async_data_update = self.mock_object(
+            db_api, 'async_operation_data_update')
+        mock_shareapi_check = self.mock_object(
+            self.share_rpcapi, 'check_update_share_network_security_service')
+
+        compatible, hosts_info = (
+            self.api._security_service_update_validate_hosts(
+                self.context, fake_share_network, backend_hosts, None,
+                new_security_service_id=new_sec_service_id,
+                current_security_service_id=curr_sec_service_id))
+
+        self.assertIsNone(compatible)
+        self.assertEqual(hosts_to_validate, hosts_info)
+
+        mock_get_key.assert_called_once_with(
+            'hosts_check', new_sec_service_id,
+            current_security_service_id=curr_sec_service_id)
+        mock_async_data_get.assert_called_once_with(
+            self.context, fake_share_network['id'], fake_key)
+        mock_async_data_update.assert_called_once_with(
+            self.context, fake_share_network['id'],
+            {fake_key: json.dumps(hosts_to_validate)})
+        mock_shareapi_check_calls = []
+        for host in backend_hosts:
+            mock_shareapi_check_calls.append(
+                mock.call(self.context, host, fake_share_network['id'],
+                          new_sec_service_id,
+                          current_security_service_id=curr_sec_service_id))
+        mock_shareapi_check.assert_has_calls(mock_shareapi_check_calls)
+
+    @ddt.data(
+        {'new_host': None, 'host_support': None, 'exp_result': None},
+        {'new_host': None, 'host_support': False, 'exp_result': False},
+        {'new_host': None, 'host_support': True, 'exp_result': True},
+        {'new_host': 'hostC', 'host_support': None, 'exp_result': None},
+        {'new_host': 'hostC', 'host_support': False, 'exp_result': False},
+        {'new_host': 'hostC', 'host_support': True, 'exp_result': None})
+    @ddt.unpack
+    def test__security_service_update_validate_hosts(self, new_host,
+                                                     host_support,
+                                                     exp_result):
+        curr_sec_service_id = "fake_curr_sec_serv_id"
+        new_sec_service_id = "fake_new_sec_serv_id"
+        fake_key = (curr_sec_service_id + '_' + new_sec_service_id +
+                    '_' + 'hosts_check')
+        fake_share_network = {'id': 'fake_network_id'}
+        backend_hosts = ['hostA', 'hostB']
+        hosts_to_validate = {}
+        for bh in backend_hosts:
+            hosts_to_validate[bh] = host_support
+        json_orig_hosts = json.dumps(hosts_to_validate)
+
+        if new_host:
+            backend_hosts.append(new_host)
+            hosts_to_validate[new_host] = None
+
+        mock_get_key = self.mock_object(
+            self.api, 'get_security_service_update_key',
+            mock.Mock(return_value=fake_key))
+        mock_async_data_get = self.mock_object(
+            db_api, 'async_operation_data_get',
+            mock.Mock(return_value=json_orig_hosts))
+        mock_async_data_update = self.mock_object(
+            db_api, 'async_operation_data_update')
+        mock_shareapi_check = self.mock_object(
+            self.share_rpcapi, 'check_update_share_network_security_service')
+
+        result, hosts_info = (
+            self.api._security_service_update_validate_hosts(
+                self.context, fake_share_network, backend_hosts, None,
+                new_security_service_id=new_sec_service_id,
+                current_security_service_id=curr_sec_service_id))
+
+        self.assertEqual(exp_result, result)
+        self.assertEqual(hosts_to_validate, hosts_info)
+
+        mock_get_key.assert_called_once_with(
+            'hosts_check', new_sec_service_id,
+            current_security_service_id=curr_sec_service_id)
+        mock_async_data_get.assert_called_once_with(
+            self.context, fake_share_network['id'], fake_key)
+
+        # we fail earlier if one one the host answer False
+        if new_host and host_support is not False:
+            mock_async_data_update.assert_called_once_with(
+                self.context, fake_share_network['id'],
+                {fake_key: json.dumps(hosts_to_validate)})
+            mock_shareapi_check.assert_called_once_with(
+                self.context, new_host, fake_share_network['id'],
+                new_sec_service_id,
+                current_security_service_id=curr_sec_service_id)
 
 
 class OtherTenantsShareActionsTestCase(test.TestCase):
