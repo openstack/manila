@@ -805,6 +805,7 @@ class ShareSnapshotInstance(BASE, ManilaBase):
         ),
         viewonly=True,
         join_depth=2,
+        sync_backref=False,
     )
     share_group_snapshot = orm.relationship(
         "ShareGroupSnapshot",
@@ -815,6 +816,7 @@ class ShareSnapshotInstance(BASE, ManilaBase):
                      'ShareSnapshotInstance.share_group_snapshot_id'),
         viewonly=True,
         join_depth=2,
+        sync_backref=False,
     )
 
 

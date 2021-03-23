@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    View-only relationships in database objects have been appropriately
+    tagged to avoid sqlalchemy deprecation messages flooding the log files.
