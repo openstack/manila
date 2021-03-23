@@ -24,31 +24,45 @@ The security service API now supports system scope and default roles.
 
 deprecated_security_service_create = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'create',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_security_service_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_security_service_detail = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'detail',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_security_service_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_security_service_update = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'update',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_security_service_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_security_service_get_all = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get_all_security_services',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -64,9 +78,7 @@ security_service_policies = [
                 'path': '/security-services'
             }
         ],
-        deprecated_rule=deprecated_security_service_create,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_security_service_create
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -79,9 +91,7 @@ security_service_policies = [
                 'path': '/security-services/{security_service_id}'
             }
         ],
-        deprecated_rule=deprecated_security_service_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_security_service_show
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'detail',
@@ -98,9 +108,7 @@ security_service_policies = [
                 'path': '/security-services/detail'
             }
         ],
-        deprecated_rule=deprecated_security_service_detail,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_security_service_detail
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
@@ -117,9 +125,7 @@ security_service_policies = [
                 'path': '/security-services?{query}'
             }
         ],
-        deprecated_rule=deprecated_security_service_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_security_service_index
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
@@ -132,9 +138,7 @@ security_service_policies = [
                 'path': '/security-services/{security_service_id}',
             }
         ],
-        deprecated_rule=deprecated_security_service_update,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_security_service_update
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
@@ -147,9 +151,7 @@ security_service_policies = [
                 'path': '/security-services/{security_service_id}'
             }
         ],
-        deprecated_rule=deprecated_security_service_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_security_service_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all_security_services',
@@ -166,9 +168,7 @@ security_service_policies = [
                 'path': '/security-services/detail?all_tenants=1'
             }
         ],
-        deprecated_rule=deprecated_security_service_get_all,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_security_service_get_all
     ),
 ]
 

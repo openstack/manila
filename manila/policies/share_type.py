@@ -27,39 +27,57 @@ The share type API now supports system scope and default roles.
 
 deprecated_share_type_create = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'create',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_type_update = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'update',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_type_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_type_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_type_get_default = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'default',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_type_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_type_list_project_access = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'list_project_access',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_type_add_project_access = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'add_project_access',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_type_remove_project_access = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'remove_project_access',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -75,9 +93,7 @@ share_type_policies = [
                 'path': '/types',
             }
         ],
-        deprecated_rule=deprecated_share_type_create,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_type_create
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
@@ -90,9 +106,7 @@ share_type_policies = [
                 'path': '/types/{share_type_id}',
             }
         ],
-        deprecated_rule=deprecated_share_type_update,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_type_update
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -105,9 +119,7 @@ share_type_policies = [
                 'path': '/types/{share_type_id}',
             }
         ],
-        deprecated_rule=deprecated_share_type_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_type_show
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
@@ -124,9 +136,7 @@ share_type_policies = [
                 'path': '/types?is_public=all',
             }
         ],
-        deprecated_rule=deprecated_share_type_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_type_index
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'default',
@@ -139,9 +149,7 @@ share_type_policies = [
                 'path': '/types/default',
             }
         ],
-        deprecated_rule=deprecated_share_type_get_default,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_type_get_default
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
@@ -154,9 +162,7 @@ share_type_policies = [
                 'path': '/types/{share_type_id}',
             }
         ],
-        deprecated_rule=deprecated_share_type_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_type_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'list_project_access',
@@ -169,9 +175,7 @@ share_type_policies = [
                 'path': '/types/{share_type_id}',
             }
         ],
-        deprecated_rule=deprecated_share_type_list_project_access,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_type_list_project_access
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'add_project_access',
@@ -184,9 +188,7 @@ share_type_policies = [
                 'path': '/types/{share_type_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_type_add_project_access,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_type_add_project_access
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'remove_project_access',
@@ -199,9 +201,7 @@ share_type_policies = [
                 'path': '/types/{share_type_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_type_remove_project_access,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_type_remove_project_access
     ),
 ]
 

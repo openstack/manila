@@ -26,19 +26,27 @@ The share network subnet API now supports system scope and default roles.
 
 deprecated_subnet_create = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'create',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_subnet_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_subnet_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_subnet_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -54,9 +62,7 @@ share_network_subnet_policies = [
                 'path': '/share-networks/{share_network_id}/subnets'
             }
         ],
-        deprecated_rule=deprecated_subnet_create,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_subnet_create
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
@@ -70,9 +76,7 @@ share_network_subnet_policies = [
                         '{share_network_subnet_id}'
             }
         ],
-        deprecated_rule=deprecated_subnet_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_subnet_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -86,9 +90,7 @@ share_network_subnet_policies = [
                         '{share_network_subnet_id}'
             }
         ],
-        deprecated_rule=deprecated_subnet_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_subnet_show
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
@@ -101,9 +103,7 @@ share_network_subnet_policies = [
                 'path': '/share-networks/{share_network_id}/subnets'
             }
         ],
-        deprecated_rule=deprecated_subnet_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_subnet_index
     ),
 ]
 

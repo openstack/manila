@@ -24,55 +24,81 @@ The share server API now supports system scope and default roles.
 
 deprecated_server_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_server_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_server_details = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'details',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_server_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_manage_server = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'manage_share_server',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_unmanage_server = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'unmanage_share_server',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_server_reset_status = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'reset_status',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_server_migration_start = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'share_server_migration_start',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_server_migration_check = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'share_server_migration_check',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_server_migration_complete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'share_server_migration_complete',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_server_migration_cancel = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'share_server_migration_cancel',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_server_migration_get_progress = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'share_server_migration_get_progress',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_server_reset_task_state = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'share_server_reset_task_state',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -92,9 +118,7 @@ share_server_policies = [
                 'path': '/share-servers?{query}',
             }
         ],
-        deprecated_rule=deprecated_server_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_server_index
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -107,9 +131,7 @@ share_server_policies = [
                 'path': '/share-servers/{server_id}',
             }
         ],
-        deprecated_rule=deprecated_server_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_server_show
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'details',
@@ -122,9 +144,7 @@ share_server_policies = [
                 'path': '/share-servers/{server_id}/details',
             }
         ],
-        deprecated_rule=deprecated_server_details,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_server_details
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
@@ -137,9 +157,7 @@ share_server_policies = [
                 'path': '/share-servers/{server_id}',
             }
         ],
-        deprecated_rule=deprecated_server_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_server_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'manage_share_server',
@@ -152,9 +170,7 @@ share_server_policies = [
                 'path': '/share-servers/manage'
             }
         ],
-        deprecated_rule=deprecated_manage_server,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_manage_server
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'unmanage_share_server',
@@ -167,9 +183,7 @@ share_server_policies = [
                 'path': '/share-servers/{share_server_id}/action'
             }
         ],
-        deprecated_rule=deprecated_unmanage_server,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_unmanage_server
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
@@ -182,9 +196,7 @@ share_server_policies = [
                 'path': '/share-servers/{share_server_id}/action'
             }
         ],
-        deprecated_rule=deprecated_server_reset_status,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_server_reset_status
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'share_server_migration_start',
@@ -197,9 +209,7 @@ share_server_policies = [
                 'path': '/share-servers/{share_server_id}/action',
             }
         ],
-        deprecated_rule=deprecated_server_migration_start,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_server_migration_start
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'share_server_migration_check',
@@ -213,9 +223,7 @@ share_server_policies = [
                 'path': '/share-servers/{share_server_id}/action',
             }
         ],
-        deprecated_rule=deprecated_server_migration_check,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_server_migration_check
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'share_server_migration_complete',
@@ -228,9 +236,7 @@ share_server_policies = [
                 'path': '/share-servers/{share_server_id}/action',
             }
         ],
-        deprecated_rule=deprecated_server_migration_complete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_server_migration_complete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'share_server_migration_cancel',
@@ -243,9 +249,7 @@ share_server_policies = [
                 'path': '/share-servers/{share_server_id}/action',
             }
         ],
-        deprecated_rule=deprecated_server_migration_cancel,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_server_migration_cancel
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'share_server_migration_get_progress',
@@ -259,9 +263,7 @@ share_server_policies = [
                 'path': '/share-servers/{share_server_id}/action',
             }
         ],
-        deprecated_rule=deprecated_server_migration_get_progress,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_server_migration_get_progress
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'share_server_reset_task_state',
@@ -274,9 +276,7 @@ share_server_policies = [
                 'path': '/share-servers/{share_server_id}/action',
             }
         ],
-        deprecated_rule=deprecated_server_reset_task_state,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_server_reset_task_state
     ),
 ]
 

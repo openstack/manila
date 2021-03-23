@@ -24,19 +24,27 @@ The share snapshot instance API now supports system scope and default roles.
 
 deprecated_snapshot_instance_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_instance_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_instance_detail = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'detail',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_instance_reset_status = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'reset_status',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -52,9 +60,7 @@ share_snapshot_instance_policies = [
                 'path': '/snapshot-instances/{snapshot_instance_id}',
             }
         ],
-        deprecated_rule=deprecated_snapshot_instance_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_instance_show
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
@@ -71,9 +77,7 @@ share_snapshot_instance_policies = [
                 'path': '/snapshot-instances?{query}',
             },
         ],
-        deprecated_rule=deprecated_snapshot_instance_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_instance_index
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'detail',
@@ -90,9 +94,7 @@ share_snapshot_instance_policies = [
                 'path': '/snapshot-instances/detail?{query}',
             },
         ],
-        deprecated_rule=deprecated_snapshot_instance_detail,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_instance_detail
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
@@ -105,9 +107,7 @@ share_snapshot_instance_policies = [
                 'path': '/snapshot-instances/{snapshot_instance_id}/action',
             }
         ],
-        deprecated_rule=deprecated_snapshot_instance_reset_status,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_instance_reset_status
     ),
 ]
 

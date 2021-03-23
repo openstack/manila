@@ -28,11 +28,15 @@ roles.
 
 deprecated_instance_export_location_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_instance_export_location_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -49,9 +53,7 @@ share_export_location_policies = [
                          'export_locations'),
             }
         ],
-        deprecated_rule=deprecated_instance_export_location_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_instance_export_location_index
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -65,9 +67,7 @@ share_export_location_policies = [
                          'export_locations/{export_location_id}'),
             }
         ],
-        deprecated_rule=deprecated_instance_export_location_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_instance_export_location_show
     ),
 ]
 

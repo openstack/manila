@@ -25,11 +25,15 @@ default roles.
 
 deprecated_snapshot_instance_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_instance_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -46,9 +50,7 @@ share_snapshot_instance_export_location_policies = [
                           'export-locations'),
             }
         ],
-        deprecated_rule=deprecated_snapshot_instance_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_instance_index
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -63,9 +65,7 @@ share_snapshot_instance_export_location_policies = [
                           'export-locations/{export_location_id}'),
             }
         ],
-        deprecated_rule=deprecated_snapshot_instance_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_instance_show
     ),
 ]
 

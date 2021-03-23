@@ -24,39 +24,57 @@ The share replica API now supports system scope and default roles.
 
 deprecated_replica_create = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'create',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_replica_get_all = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get_all',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_replica_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_replica_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_replica_force_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'force_delete',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_replica_promote = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'promote',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_replica_resync = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'resync',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_replica_reset_state = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'reset_replica_state',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_replica_reset_status = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'reset_status',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -72,9 +90,7 @@ share_replica_policies = [
                 'path': '/share-replicas',
             }
         ],
-        deprecated_rule=deprecated_replica_create,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_replica_create
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
@@ -95,9 +111,7 @@ share_replica_policies = [
                 'path': '/share-replicas/detail?share_id={share_id}',
             }
         ],
-        deprecated_rule=deprecated_replica_get_all,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_replica_get_all
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -110,9 +124,7 @@ share_replica_policies = [
                 'path': '/share-replicas/{share_replica_id}',
             }
         ],
-        deprecated_rule=deprecated_replica_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_replica_show
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
@@ -125,9 +137,7 @@ share_replica_policies = [
                 'path': '/share-replicas/{share_replica_id}',
             }
         ],
-        deprecated_rule=deprecated_replica_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_replica_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
@@ -140,9 +150,7 @@ share_replica_policies = [
                 'path': '/share-replicas/{share_replica_id}/action',
             }
         ],
-        deprecated_rule=deprecated_replica_force_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_replica_force_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'promote',
@@ -155,9 +163,7 @@ share_replica_policies = [
                 'path': '/share-replicas/{share_replica_id}/action',
             }
         ],
-        deprecated_rule=deprecated_replica_promote,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_replica_promote
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'resync',
@@ -170,9 +176,7 @@ share_replica_policies = [
                 'path': '/share-replicas/{share_replica_id}/action',
             }
         ],
-        deprecated_rule=deprecated_replica_resync,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_replica_resync
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_replica_state',
@@ -185,9 +189,7 @@ share_replica_policies = [
                 'path': '/share-replicas/{share_replica_id}/action',
             }
         ],
-        deprecated_rule=deprecated_replica_reset_state,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_replica_reset_state
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
@@ -200,9 +202,7 @@ share_replica_policies = [
                 'path': '/share-replicas/{share_replica_id}/action',
             }
         ],
-        deprecated_rule=deprecated_replica_reset_status,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_replica_reset_status
     ),
 ]
 

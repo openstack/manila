@@ -24,11 +24,15 @@ The storage pool statistics API now support system scope and default roles.
 
 deprecated_pool_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_pool_detail = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'detail',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -49,9 +53,7 @@ scheduler_stats_policies = [
                 'path': '/scheduler-stats/pools?{query}'
             }
         ],
-        deprecated_rule=deprecated_pool_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_pool_index
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'detail',
@@ -69,9 +71,7 @@ scheduler_stats_policies = [
                 'path': '/scheduler-stats/pools/detail'
             }
         ],
-        deprecated_rule=deprecated_pool_detail,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_pool_detail
     ),
 ]
 

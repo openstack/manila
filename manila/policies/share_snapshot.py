@@ -24,39 +24,57 @@ The share snapshot API now supports system scope and default roles.
 
 deprecated_snapshot_get = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get_snapshot',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_get_all = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get_all_snapshots',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_force_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'force_delete',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_manage = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'manage_snapshot',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_unmanage = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'unmanage_snapshot',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_reset_status = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'reset_status',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_access_list = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'access_list',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_allow_access = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'allow_access',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_deny_access = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'deny_access',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -72,9 +90,7 @@ share_snapshot_policies = [
                 'path': '/snapshots/{snapshot_id}'
             }
         ],
-        deprecated_rule=deprecated_snapshot_get,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_get
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all_snapshots',
@@ -99,9 +115,7 @@ share_snapshot_policies = [
                 'path': '/snapshots/detail?{query}'
             }
         ],
-        deprecated_rule=deprecated_snapshot_get_all,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_get_all
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
@@ -114,9 +128,7 @@ share_snapshot_policies = [
                 'path': '/snapshots/{snapshot_id}'
             }
         ],
-        deprecated_rule=deprecated_snapshot_force_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_force_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'manage_snapshot',
@@ -129,9 +141,7 @@ share_snapshot_policies = [
                 'path': '/snapshots/manage'
             }
         ],
-        deprecated_rule=deprecated_snapshot_manage,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_manage
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'unmanage_snapshot',
@@ -144,9 +154,7 @@ share_snapshot_policies = [
                 'path': '/snapshots/{snapshot_id}/action'
             }
         ],
-        deprecated_rule=deprecated_snapshot_unmanage,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_unmanage
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
@@ -159,9 +167,7 @@ share_snapshot_policies = [
                 'path': '/snapshots/{snapshot_id}/action',
             }
         ],
-        deprecated_rule=deprecated_snapshot_reset_status,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_reset_status
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'access_list',
@@ -174,9 +180,7 @@ share_snapshot_policies = [
                 'path': '/snapshots/{snapshot_id}/access-list'
             }
         ],
-        deprecated_rule=deprecated_snapshot_access_list,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_access_list
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'allow_access',
@@ -189,9 +193,7 @@ share_snapshot_policies = [
                 'path': '/snapshots/{snapshot_id}/action'
             }
         ],
-        deprecated_rule=deprecated_snapshot_allow_access,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_allow_access
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'deny_access',
@@ -204,9 +206,7 @@ share_snapshot_policies = [
                 'path': '/snapshots/{snapshot_id}/action'
             }
         ],
-        deprecated_rule=deprecated_snapshot_deny_access,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_deny_access
     ),
 ]
 

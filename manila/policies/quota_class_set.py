@@ -24,11 +24,15 @@ The quota class API now supports system scope and default roles.
 
 deprecated_quota_class_update = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'update',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_quota_class_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -48,9 +52,7 @@ quota_class_set_policies = [
                 'path': '/os-quota-class-sets/{class_name}'
             }
         ],
-        deprecated_rule=deprecated_quota_class_update,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_quota_class_update
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -67,9 +69,7 @@ quota_class_set_policies = [
                 'path': '/os-quota-class-sets/{class_name}'
             }
         ],
-        deprecated_rule=deprecated_quota_class_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_quota_class_show
     ),
 ]
 

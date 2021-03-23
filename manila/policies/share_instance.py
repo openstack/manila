@@ -24,19 +24,27 @@ The share instances API now supports system scope and default roles.
 
 deprecated_share_instances_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_instance_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_instance_force_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'force_delete',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_instance_reset_status = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'reset_status',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -56,9 +64,7 @@ shares_policies = [
                 'path': '/share_instances?{query}',
             }
         ],
-        deprecated_rule=deprecated_share_instances_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_instances_index
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -71,9 +77,7 @@ shares_policies = [
                 'path': '/share_instances/{share_instance_id}'
             },
         ],
-        deprecated_rule=deprecated_share_instance_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_instance_show
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
@@ -86,9 +90,7 @@ shares_policies = [
                 'path': '/share_instances/{share_instance_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_instance_force_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_instance_force_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
@@ -101,9 +103,7 @@ shares_policies = [
                 'path': '/share_instances/{share_instance_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_instance_reset_status,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_instance_reset_status
     ),
 ]
 
