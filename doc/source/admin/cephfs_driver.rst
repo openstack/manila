@@ -102,7 +102,7 @@ however, their state is presented here for ease of access.
 +-------------------+----------+----------------------+-----------+
 | Victoria          | Nautilus | Nautilus, Octopus    | Nautilus  |
 +-------------------+----------+----------------------+-----------+
-| Wallaby           | Octopus  | Nautilus, Octopus    | Nautilus  |
+| Wallaby           | Octopus  | Nautilus, Octopus    | Pacific   |
 +-------------------+----------+----------------------+-----------+
 
 Additionally, it is expected that the version of the Ceph client
@@ -112,18 +112,36 @@ server and client versions is strongly unadvised.
 In case of using the NFS Ganesha driver, it's also a good practice to use
 the versions that align with the Ceph version of choice.
 
+.. important::
+
+   It's recommended to install the latest stable version of Ceph Nautilus/Octopus/Pacific release.
+   See, `Ceph releases <https://docs.ceph.com/en/latest/releases/index.html>`_
+
+   Prior to upgrading to Wallaby, please ensure that you're running at least the following versions of Ceph:
+
+   +----------+-----------------+
+   | Release  | Minimum version |
+   +----------+-----------------+
+   | Nautilus | 14.2.20         |
+   +----------+-----------------+
+   | Octopus  | 15.2.11         |
+   +----------+-----------------+
+   | Pacific  | 16.2.1          |
+   +----------+-----------------+
+
 Common Prerequisites
 --------------------
 
 - A Ceph cluster with a filesystem configured (See `Create ceph filesystem`_ on
   how to create a filesystem.)
-- ``ceph-common`` package installed in the servers running the
-  :term:`manila-share` service.
+- ``python3-rados`` and ``python3-ceph-argparse`` packages installed in the
+  servers running the :term:`manila-share` service.
 - Network connectivity between your Ceph cluster's public network and the
   servers running the :term:`manila-share` service.
 
 For CephFS native shares
 ------------------------
+
 - Ceph client installed in the guest
 - Network connectivity between your Ceph cluster's public network and guests.
   See :ref:`security_cephfs_native`.
@@ -131,7 +149,7 @@ For CephFS native shares
 For CephFS NFS shares
 ---------------------
 
-- 2.5 or later versions of NFS-Ganesha.
+- 3.0 or later versions of NFS-Ganesha.
 - NFS client installed in the guest.
 - Network connectivity between your Ceph cluster's public network and
   NFS-Ganesha server.
@@ -143,25 +161,43 @@ For CephFS NFS shares
 Authorizing the driver to communicate with Ceph
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Run the following commands to create a Ceph identity for a driver instance
-to use:
+Capabilities required for the Ceph manila identity have changed from the Wallaby
+release. The Ceph manila identity configured no longer needs any MDS capability.
+The MON and OSD capabilities can be reduced as well. However new MGR
+capabilities are now required. If not accorded, the driver cannot
+communicate to the Ceph Cluster.
+
+.. important::
+
+    The driver in the Wallaby (or later) release requires a Ceph identity
+    with a different set of Ceph capabilities when compared to the driver
+    in a pre-Wallaby release.
+
+    When upgrading to Wallaby you'll also have to update the capabilities
+    of the Ceph identity used by the driver (refer to `Ceph user capabilities docs
+    <https://docs.ceph.com/en/octopus/rados/operations/user-management/#modify-user-capabilities>`_)
+    E.g. a native driver that already uses `client.manila` Ceph identity,
+    issue command `ceph auth caps client.manila mon 'allow r' mgr 'allow rw'`
+
+For the CephFS Native driver, the auth ID should be set as follows:
 
 .. code-block:: console
 
-    read -d '' MON_CAPS << EOF
-    allow r,
-    allow command "auth del",
-    allow command "auth caps",
-    allow command "auth get",
-    allow command "auth get-or-create"
-    EOF
+    ceph auth get-or-create client.manila -o manila.keyring \
+      mgr 'allow rw' \
+      mon 'allow r'
+
+For the CephFS NFS driver, we use a specific pool to store exports
+(configurable with the config option "ganesha_rados_store_pool_name").
+We also need to specify osd caps for it.
+So, the auth ID should be set as follows:
+
+.. code-block:: console
 
     ceph auth get-or-create client.manila -o manila.keyring \
-    mds 'allow *' \
-    osd 'allow rw' \
-    mgr 'allow r' \
-    mon "$MON_CAPS"
-
+      osd 'allow rw pool=<ganesha_rados_store_pool_name>" \
+      mgr 'allow rw' \
+      mon 'allow r'
 
 ``manila.keyring``, along with your ``ceph.conf`` file, will then need to be
 placed on the server running the :term:`manila-share` service.
@@ -233,6 +269,7 @@ Create a section like this to define a CephFS native backend:
     cephfs_protocol_helper_type = CEPHFS
     cephfs_auth_id = manila
     cephfs_cluster_name = ceph
+    cephfs_filesystem_name = cephfs
 
 Set ``driver-handles-share-servers`` to ``False`` as the driver does not
 manage the lifecycle of ``share-servers``. For the driver backend to expose
@@ -242,6 +279,11 @@ shares via the native Ceph protocol, set ``cephfs_protocol_helper_type`` to
 Then edit ``enabled_share_backends`` to point to the driver's backend section
 using the section name. In this example we are also including another backend
 ("generic1"), you would include whatever other backends you have configured.
+
+Finally, edit ``cephfs_filesystem_name`` with the name of the Ceph filesystem
+(also referred to as a CephFS volume) you want to use.
+If you have more than one Ceph filesystem in the cluster, you need to set this
+option.
 
 
 .. code-block:: ini
@@ -278,6 +320,7 @@ Create a section to define a CephFS NFS share backend:
     cephfs_conf_path = /etc/ceph/ceph.conf
     cephfs_auth_id = manila
     cephfs_cluster_name = ceph
+    cephfs_filesystem_name = cephfs
     cephfs_ganesha_server_is_remote= False
     cephfs_ganesha_server_ip = 172.24.4.3
     ganesha_rados_store_enable = True
@@ -320,6 +363,11 @@ The following options are set in the driver backend section above:
 
 Edit ``enabled_share_backends`` to point to the driver's backend section
 using the section name, ``cephfsnfs1``.
+
+Finally, edit ``cephfs_filesystem_name`` with the name of the Ceph filesystem
+(also referred to as a CephFS volume) you want to use.
+If you have more than one Ceph filesystem in the cluster, you need to set this
+option.
 
 .. code-block:: ini
 
