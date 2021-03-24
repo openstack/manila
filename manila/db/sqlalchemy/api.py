@@ -678,7 +678,13 @@ def quota_create(context, project_id, resource, limit, user_id=None,
     quota_ref.hard_limit = limit
     session = get_session()
     with session.begin():
-        quota_ref.save(session)
+        try:
+            quota_ref.save(session)
+        except Exception as e:
+            if "out of range" in str(e).lower():
+                msg = _("Quota limit should not exceed 2147483647")
+                raise exception.InvalidInput(reason=msg)
+            raise
     return quota_ref
 
 

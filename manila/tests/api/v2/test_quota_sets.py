@@ -447,6 +447,30 @@ class QuotaSetsControllerTest(test.TestCase):
             mock_policy_update_check_call, mock_policy_show_check_call])
         quota_sets.db.share_type_get_by_name_or_id.assert_not_called()
 
+    @ddt.data(_get_request(True, True), _get_request(True, False))
+    def test_update_quota_with_value_greater_than_2147483647(self, req):
+        value = 2147483648
+        body = {'quota_set': {'tenant_id': self.project_id, 'shares': value}}
+
+        if req == _get_request(True, True):
+            self.mock_policy_update_check_call = mock.call(
+                req.environ['manila.context'], self.resource_name, 'update')
+            self.assertRaises(
+                webob.exc.HTTPBadRequest,
+                self.controller.update,
+                req, self.project_id, body
+            )
+            self.mock_policy_check.assert_called_once_with(
+                req.environ['manila.context'], self.resource_name, 'update')
+
+        if req == _get_request(True, False):
+            self.assertRaises(
+                webob.exc.HTTPBadRequest,
+                self.controller.update,
+                req, self.project_id, body
+            )
+            self.mock_policy_check.assert_not_called()
+
     @ddt.data('2.39', '2.40')
     def test_update_share_type_quota(self, microversion):
         self.mock_object(
