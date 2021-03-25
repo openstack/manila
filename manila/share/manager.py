@@ -641,19 +641,16 @@ class ShareManager(manager.SchedulerDependentManager):
                 share_instance and share_instance['status'] ==
                 constants.STATUS_MIGRATING_TO)
 
-            this_is_the_share_server_of_share_being_migrated = False
-
             if providing_server_for_share_migration:
                 share = self.db.share_get(context, share_instance['share_id'])
                 src_instance_id, dest_instance_id = (
                     self.share_api.get_migrating_instances(share))
                 src_instance = self.db.share_instance_get(
                     context, src_instance_id)
-                this_is_the_share_server_of_share_being_migrated = (
-                    src_instance['share_server_id'] == ss['id'])
-
-            if (not this_is_the_share_server_of_share_being_migrated and (
-                    achieved_gigabytes_limit or achieved_instances_limit)):
+                # remove unless it is the source share server of migration
+                if src_instance['share_server_id'] != ss['id']:
+                    available_share_servers.remove(ss)
+            elif (achieved_gigabytes_limit or achieved_instances_limit):
                 available_share_servers.remove(ss)
 
         return available_share_servers
