@@ -7822,6 +7822,47 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('ldap-config-create', api_args)])
         mock_delete_client.assert_called_once_with(current_ldap_service)
 
+    def test_modify_ldap_config_delete_failure(self):
+        current_ldap_service = fake.LDAP_AD_SECURITY_SERVICE
+        new_ldap_service = fake.LDAP_LINUX_SECURITY_SERVICE
+        mock_create_client = self.mock_object(
+            self.client, '_create_ldap_client')
+        mock_send_request = self.mock_object(
+            self.client, 'send_request', mock.Mock(
+                side_effect=netapp_api.NaApiError(code=netapp_api.EAPIERROR)))
+        mock_delete_client = self.mock_object(
+            self.client, '_delete_ldap_client')
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.modify_ldap,
+                          new_ldap_service,
+                          current_ldap_service)
+
+        mock_create_client.assert_called_once_with(new_ldap_service)
+        mock_send_request.assert_called_once_with('ldap-config-delete')
+        mock_delete_client.assert_called_once_with(new_ldap_service)
+
+    def test_modify_ldap_current_config_delete_error(self):
+        current_ldap_service = fake.LDAP_AD_SECURITY_SERVICE
+        new_ldap_service = fake.LDAP_LINUX_SECURITY_SERVICE
+        config_name = hashlib.md5(six.b(new_ldap_service['id'])).hexdigest()
+        mock_create_client = self.mock_object(
+            self.client, '_create_ldap_client')
+        mock_send_request = self.mock_object(
+            self.client, 'send_request')
+        mock_delete_client = self.mock_object(
+            self.client, '_delete_ldap_client', mock.Mock(
+                side_effect=netapp_api.NaApiError(code=netapp_api.EAPIERROR)))
+
+        self.client.modify_ldap(new_ldap_service, current_ldap_service)
+
+        api_args = {'client-config': config_name, 'client-enabled': 'true'}
+        mock_create_client.assert_called_once_with(new_ldap_service)
+        mock_send_request.assert_has_calls([
+            mock.call('ldap-config-delete'),
+            mock.call('ldap-config-create', api_args)])
+        mock_delete_client.assert_called_once_with(current_ldap_service)
+
     def test_create_fpolicy_event(self):
         self.mock_object(self.client, 'send_request')
 

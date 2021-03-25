@@ -1425,7 +1425,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 current_security_service=current_security_service):
             msg = _("The requested security service update is not supported "
                     "by the NetApp driver.")
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.NetAppException(msg)
 
         if current_security_service is None:
