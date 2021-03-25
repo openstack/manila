@@ -218,6 +218,13 @@ class CephFSDriverTestCase(test.TestCase):
         self.assertEqual(2, driver.rados_command.call_count)
 
     def test_delete_share(self):
+        clone_status_prefix = "fs clone status"
+
+        clone_status_dict = {
+            "vol_name": self._driver.volname,
+            "clone_name": self._share["id"],
+        }
+
         delete_share_prefix = "fs subvolume rm"
 
         delete_share_dict = {
@@ -226,10 +233,19 @@ class CephFSDriverTestCase(test.TestCase):
             "force": True,
         }
 
+        driver.rados_command.side_effect = [driver.rados.Error, mock.Mock()]
+
         self._driver.delete_share(self._context, self._share)
 
-        driver.rados_command.assert_called_once_with(
-            self._driver.rados_client, delete_share_prefix, delete_share_dict)
+        driver.rados_command.assert_has_calls([
+            mock.call(self._driver.rados_client,
+                      clone_status_prefix,
+                      clone_status_dict),
+            mock.call(self._driver.rados_client,
+                      delete_share_prefix,
+                      delete_share_dict)])
+
+        self.assertEqual(2, driver.rados_command.call_count)
 
     def test_extend_share(self):
         extend_share_prefix = "fs subvolume resize"
@@ -396,6 +412,91 @@ class CephFSDriverTestCase(test.TestCase):
         driver.rados_command.assert_called_once_with(
             self._driver.rados_client,
             group_snapshot_delete_prefix, group_snapshot_delete_dict)
+
+    def test_create_share_from_snapshot(self):
+        parent_share = {
+            'id': 'fakeparentshareid',
+            'name': 'fakeparentshare',
+        }
+
+        create_share_from_snapshot_prefix = "fs subvolume snapshot clone"
+
+        create_share_from_snapshot_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": parent_share["id"],
+            "snap_name": "_".join([
+                self._snapshot["snapshot_id"], self._snapshot["id"]]),
+            "target_sub_name": self._share["id"]
+        }
+
+        get_clone_status_prefix = "fs clone status"
+        get_clone_status_dict = {
+            "vol_name": self._driver.volname,
+            "clone_name": self._share["id"],
+        }
+        driver.rados_command.return_value = {
+            'status': {
+                'state': 'in-progress',
+            },
+        }
+
+        self._driver.create_share_from_snapshot(
+            self._context, self._share, self._snapshot, None,
+            parent_share=parent_share
+        )
+
+        driver.rados_command.assert_has_calls([
+            mock.call(self._driver.rados_client,
+                      create_share_from_snapshot_prefix,
+                      create_share_from_snapshot_dict),
+            mock.call(self._driver.rados_client,
+                      get_clone_status_prefix,
+                      get_clone_status_dict,
+                      True)])
+
+        self.assertEqual(2, driver.rados_command.call_count)
+
+    def test_delete_share_from_snapshot(self):
+        clone_status_prefix = "fs clone status"
+
+        clone_status_dict = {
+            "vol_name": self._driver.volname,
+            "clone_name": self._share["id"],
+        }
+
+        clone_cancel_prefix = "fs clone cancel"
+
+        clone_cancel_dict = {
+            "vol_name": self._driver.volname,
+            "clone_name": self._share["id"],
+            "force": True,
+        }
+
+        delete_share_prefix = "fs subvolume rm"
+
+        delete_share_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": self._share["id"],
+            "force": True,
+        }
+
+        driver.rados_command.side_effect = [
+            'in-progress', mock.Mock(), mock.Mock()]
+
+        self._driver.delete_share(self._context, self._share)
+
+        driver.rados_command.assert_has_calls([
+            mock.call(self._driver.rados_client,
+                      clone_status_prefix,
+                      clone_status_dict),
+            mock.call(self._driver.rados_client,
+                      clone_cancel_prefix,
+                      clone_cancel_dict),
+            mock.call(self._driver.rados_client,
+                      delete_share_prefix,
+                      delete_share_dict)])
+
+        self.assertEqual(3, driver.rados_command.call_count)
 
     def test_delete_driver(self):
         # Create share to prompt volume_client construction
