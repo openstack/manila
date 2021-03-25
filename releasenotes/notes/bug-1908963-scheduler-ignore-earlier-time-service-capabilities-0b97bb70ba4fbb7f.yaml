@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Share scheduler will ignore earlier time service capabilities. See
+    `bug 1908963 <https://bugs.launchpad.net/manila/+bug/1908963>`_ for
+    more details.

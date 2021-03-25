@@ -567,7 +567,8 @@ class HostManager(object):
                                                        hosts,
                                                        weight_properties)
 
-    def update_service_capabilities(self, service_name, host, capabilities):
+    def update_service_capabilities(self, service_name, host,
+                                    capabilities, timestamp):
         """Update the per-service capabilities based on this notification."""
         if service_name not in ('share',):
             LOG.debug('Ignoring %(service_name)s service update '
@@ -577,7 +578,15 @@ class HostManager(object):
 
         # Copy the capabilities, so we don't modify the original dict
         capability_copy = dict(capabilities)
-        capability_copy["timestamp"] = timeutils.utcnow()  # Reported time
+        timestamp = timestamp or timeutils.utcnow()
+        capability_copy["timestamp"] = timestamp  # Reported time
+
+        capab_old = self.service_states.get(host, {"timestamp": 0})
+        # Ignore older updates
+        if capab_old['timestamp'] and timestamp < capab_old['timestamp']:
+            LOG.info('Ignoring old capability report from %s.', host)
+            return
+
         self.service_states[host] = capability_copy
 
         LOG.debug("Received %(service_name)s service update from "

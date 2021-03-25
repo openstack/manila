@@ -121,7 +121,7 @@ class SchedulerManagerTestCase(test.TestCase):
             self.manager.update_service_capabilities(
                 self.context, service_name=service_name, host=host)
             (self.manager.driver.update_service_capabilities.
-                assert_called_once_with(service_name, host, {}))
+                assert_called_once_with(service_name, host, {}, None))
         with mock.patch.object(self.manager.driver,
                                'update_service_capabilities', mock.Mock()):
             capabilities = {'fake_capability': 'fake_value'}
@@ -129,7 +129,8 @@ class SchedulerManagerTestCase(test.TestCase):
                 self.context, service_name=service_name, host=host,
                 capabilities=capabilities)
             (self.manager.driver.update_service_capabilities.
-                assert_called_once_with(service_name, host, capabilities))
+                assert_called_once_with(service_name, host,
+                                        capabilities, None))
 
     @mock.patch.object(db, 'share_update', mock.Mock())
     @mock.patch('manila.message.api.API.create')

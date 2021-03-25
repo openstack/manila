@@ -19,6 +19,7 @@ Client side of the scheduler manager RPC API.
 from oslo_config import cfg
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
+from oslo_utils import timeutils
 
 from manila import rpc
 
@@ -64,11 +65,13 @@ class SchedulerAPI(object):
                                     service_name, host,
                                     capabilities):
         call_context = self.client.prepare(fanout=True, version='1.0')
+        timestamp = jsonutils.to_primitive(timeutils.utcnow())
         call_context.cast(context,
                           'update_service_capabilities',
                           service_name=service_name,
                           host=host,
-                          capabilities=capabilities)
+                          capabilities=capabilities,
+                          timestamp=timestamp)
 
     def get_pools(self, context, filters=None, cached=False):
         call_context = self.client.prepare(version='1.9')

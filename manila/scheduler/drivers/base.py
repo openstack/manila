@@ -87,11 +87,13 @@ class Scheduler(object):
         """Get the normalized set of capabilities for the services."""
         return self.host_manager.get_service_capabilities()
 
-    def update_service_capabilities(self, service_name, host, capabilities):
+    def update_service_capabilities(self, service_name, host,
+                                    capabilities, timestamp):
         """Process a capability update from a service node."""
         self.host_manager.update_service_capabilities(service_name,
                                                       host,
-                                                      capabilities)
+                                                      capabilities,
+                                                      timestamp)
 
     def hosts_up(self, context, topic):
         """Return the list of hosts that have a running service for topic."""
