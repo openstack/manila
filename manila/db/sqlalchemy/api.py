@@ -46,6 +46,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.sql import distinct
 from sqlalchemy.sql.expression import literal
 from sqlalchemy.sql.expression import true
 from sqlalchemy.sql import func
@@ -2123,7 +2124,7 @@ def share_get(context, share_id, session=None):
 def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
                                 share_group_id=None, filters=None,
                                 is_public=False, sort_key=None,
-                                sort_dir=None):
+                                sort_dir=None, show_count=False):
     """Returns sorted list of shares that satisfies filters.
 
     :param context: context to query under
@@ -2169,12 +2170,23 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
             msg = _("Wrong sorting key provided - '%s'.") % sort_key
             raise exception.InvalidInput(reason=msg)
 
+    count = None
+    # NOTE(carloss): Count must be calculated before limit and offset are
+    # applied into the query.
+    if show_count:
+        count = query.with_entities(
+            func.count(distinct(models.Share.id))).scalar()
+
     if 'limit' in filters:
         offset = filters.get('offset', 0)
         query = query.limit(filters['limit']).offset(offset)
 
     # Returns list of shares that satisfy filters.
     query = query.all()
+
+    if show_count:
+        return count, query
+
     return query
 
 
@@ -2189,15 +2201,35 @@ def share_get_all(context, filters=None, sort_key=None, sort_dir=None):
     return query
 
 
+@require_admin_context
+def share_get_all_with_count(context, filters=None, sort_key=None,
+                             sort_dir=None):
+    count, query = _share_get_all_with_filters(
+        context,
+        filters=filters, sort_key=sort_key, sort_dir=sort_dir,
+        show_count=True)
+    return count, query
+
+
 @require_context
 def share_get_all_by_project(context, project_id, filters=None,
                              is_public=False, sort_key=None, sort_dir=None):
     """Returns list of shares with given project ID."""
     query = _share_get_all_with_filters(
         context, project_id=project_id, filters=filters, is_public=is_public,
-        sort_key=sort_key, sort_dir=sort_dir,
-    )
+        sort_key=sort_key, sort_dir=sort_dir)
     return query
+
+
+@require_context
+def share_get_all_by_project_with_count(
+        context, project_id, filters=None, is_public=False, sort_key=None,
+        sort_dir=None):
+    """Returns list of shares with given project ID."""
+    count, query = _share_get_all_with_filters(
+        context, project_id=project_id, filters=filters, is_public=is_public,
+        sort_key=sort_key, sort_dir=sort_dir, show_count=True)
+    return count, query
 
 
 @require_context
@@ -2207,9 +2239,19 @@ def share_get_all_by_share_group_id(context, share_group_id,
     """Returns list of shares with given group ID."""
     query = _share_get_all_with_filters(
         context, share_group_id=share_group_id,
-        filters=filters, sort_key=sort_key, sort_dir=sort_dir,
-    )
+        filters=filters, sort_key=sort_key, sort_dir=sort_dir)
     return query
+
+
+@require_context
+def share_get_all_by_share_group_id_with_count(context, share_group_id,
+                                               filters=None, sort_key=None,
+                                               sort_dir=None):
+    """Returns list of shares with given share group ID."""
+    count, query = _share_get_all_with_filters(
+        context, share_group_id=share_group_id,
+        filters=filters, sort_key=sort_key, sort_dir=sort_dir, show_count=True)
+    return count, query
 
 
 @require_context
@@ -2218,9 +2260,18 @@ def share_get_all_by_share_server(context, share_server_id, filters=None,
     """Returns list of shares with given share server."""
     query = _share_get_all_with_filters(
         context, share_server_id=share_server_id, filters=filters,
-        sort_key=sort_key, sort_dir=sort_dir,
-    )
+        sort_key=sort_key, sort_dir=sort_dir)
     return query
+
+
+@require_context
+def share_get_all_by_share_server_with_count(
+        context, share_server_id, filters=None, sort_key=None, sort_dir=None):
+    """Returns list of shares with given share server."""
+    count, query = _share_get_all_with_filters(
+        context, share_server_id=share_server_id, filters=filters,
+        sort_key=sort_key, sort_dir=sort_dir, show_count=True)
+    return count, query
 
 
 @require_context

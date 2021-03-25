@@ -534,6 +534,17 @@ class ShareDatabaseAPITestCase(test.TestCase):
         self.assertEqual(2, len(actual_result))
         self.assertEqual(shares[0]['id'], actual_result[1]['id'])
 
+    @ddt.data('id')
+    def test_share_get_all_sort_by_share_fields(self, sort_key):
+        shares = [db_utils.create_share(**{sort_key: n, 'size': 1})
+                  for n in ('FAKE_UUID1', 'FAKE_UUID2')]
+
+        actual_result = db_api.share_get_all(
+            self.ctxt, sort_key=sort_key, sort_dir='desc')
+
+        self.assertEqual(2, len(actual_result))
+        self.assertEqual(shares[0]['id'], actual_result[1]['id'])
+
     @ddt.data('id', 'path')
     def test_share_get_all_by_export_location(self, type):
         share = db_utils.create_share()
@@ -584,6 +595,63 @@ class ShareDatabaseAPITestCase(test.TestCase):
         self.assertEqual(limit, len(shares_requested_ids))
         self.assertEqual(0, len(
             set(shares_requested_ids) & set(shares_not_requested_ids)))
+
+    @ddt.data(
+        ({'display_name~': 'fake_name'}, 3, 3),
+        ({'display_name~': 'fake_name', 'limit': 2}, 3, 2)
+    )
+    @ddt.unpack
+    def test_share_get_all_with_count(self, filters, amount_of_shares,
+                                      expected_shares_len):
+        [db_utils.create_share(display_name='fake_name_%s' % str(i))
+         for i in range(amount_of_shares)]
+
+        count, shares = db_api.share_get_all_with_count(
+            self.ctxt, filters=filters)
+
+        self.assertEqual(count, amount_of_shares)
+        for share in shares:
+            self.assertIn('fake_name', share['display_name'])
+        self.assertEqual(expected_shares_len, len(shares))
+
+    def test_share_get_all_by_share_group_id_with_count(self):
+        share_groups = [db_utils.create_share_group() for i in range(2)]
+        shares = [
+            db_utils.create_share(share_group_id=share_group['id'])
+            for share_group in share_groups]
+
+        count, result = db_api.share_get_all_by_share_group_id_with_count(
+            self.ctxt, share_groups[0]['id'])
+
+        self.assertEqual(count, 1)
+        self.assertEqual(shares[0]['id'], result[0]['id'])
+        self.assertEqual(1, len(result))
+
+    def test_share_get_all_by_share_server_with_count(self):
+        share_servers = [db_utils.create_share_server() for i in range(2)]
+        shares = [
+            db_utils.create_share(share_server_id=share_server['id'])
+            for share_server in share_servers]
+
+        count, result = db_api.share_get_all_by_share_server_with_count(
+            self.ctxt, share_servers[0]['id'])
+
+        self.assertEqual(count, 1)
+        self.assertEqual(shares[0]['id'], result[0]['id'])
+        self.assertEqual(1, len(result))
+
+    def test_share_get_all_by_project_with_count(self):
+        project_ids = ['fake_id_1', 'fake_id_2']
+        shares = [
+            db_utils.create_share(project_id=project_id)
+            for project_id in project_ids]
+
+        count, result = db_api.share_get_all_by_project_with_count(
+            self.ctxt, project_ids[0])
+
+        self.assertEqual(count, 1)
+        self.assertEqual(shares[0]['id'], result[0]['id'])
+        self.assertEqual(1, len(result))
 
     @ddt.data(
         ({'status': constants.STATUS_AVAILABLE}, 'status',

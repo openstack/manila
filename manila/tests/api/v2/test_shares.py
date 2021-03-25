@@ -1634,9 +1634,19 @@ class ShareAPITest(test.TestCase):
             search_opts.update(
                 {'display_name~': 'fake',
                  'display_description~': 'fake'})
+        method = 'get_all'
+        shares = [
+            {'id': 'id1', 'display_name': 'n1'},
+            {'id': 'id2', 'display_name': 'n2'},
+            {'id': 'id3', 'display_name': 'n3'},
+        ]
+
+        mock_action = {'return_value': [shares[1]]}
         if (api_version.APIVersionRequest(version) >=
                 api_version.APIVersionRequest('2.42')):
             search_opts.update({'with_count': 'true'})
+            method = 'get_all_with_count'
+            mock_action = {'side_effect': [(1, [shares[1]])]}
         if use_admin_context:
             search_opts['host'] = 'fake_host'
         # fake_key should be filtered for non-admin
@@ -1646,13 +1656,8 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank(url, version=version,
                                       use_admin_context=use_admin_context)
 
-        shares = [
-            {'id': 'id1', 'display_name': 'n1'},
-            {'id': 'id2', 'display_name': 'n2'},
-            {'id': 'id3', 'display_name': 'n3'},
-        ]
-        self.mock_object(share_api.API, 'get_all',
-                         mock.Mock(return_value=[shares[1]]))
+        mock_get_all = (
+            self.mock_object(share_api.API, method, mock.Mock(**mock_action)))
 
         result = self.controller.index(req)
 
@@ -1684,7 +1689,7 @@ class ShareAPITest(test.TestCase):
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
             search_opts_expected['host'] = search_opts['host']
-        share_api.API.get_all.assert_called_once_with(
+        mock_get_all.assert_called_once_with(
             req.environ['manila.context'],
             sort_key=search_opts['sort_key'],
             sort_dir=search_opts['sort_dir'],
@@ -1718,8 +1723,8 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank(url, version=version,
                                       use_admin_context=use_admin_context)
 
-        self.mock_object(share_api.API, 'get_all',
-                         mock.Mock(return_value=[]))
+        self.mock_object(share_api.API, 'get_all_with_count',
+                         mock.Mock(side_effect=[(0, [])]))
 
         result = self.controller.index(req)
 
@@ -1728,7 +1733,7 @@ class ShareAPITest(test.TestCase):
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
             search_opts_expected['host'] = search_opts['host']
-        share_api.API.get_all.assert_called_once_with(
+        share_api.API.get_all_with_count.assert_called_once_with(
             req.environ['manila.context'],
             sort_key=search_opts['sort_key'],
             sort_dir=search_opts['sort_dir'],
@@ -1788,18 +1793,6 @@ class ShareAPITest(test.TestCase):
             'export_location_id': 'fake_export_location_id',
             'export_location_path': 'fake_export_location_path',
         }
-        if (api_version.APIVersionRequest(version) >=
-                api_version.APIVersionRequest('2.42')):
-            search_opts.update({'with_count': 'true'})
-        if use_admin_context:
-            search_opts['host'] = 'fake_host'
-        # fake_key should be filtered for non-admin
-        url = '/v2/fake/shares/detail?fake_key=fake_value'
-        for k, v in search_opts.items():
-            url = url + '&' + k + '=' + v
-        req = fakes.HTTPRequest.blank(url, version=version,
-                                      use_admin_context=use_admin_context)
-
         shares = [
             {'id': 'id1', 'display_name': 'n1'},
             {
@@ -1817,8 +1810,24 @@ class ShareAPITest(test.TestCase):
             {'id': 'id3', 'display_name': 'n3'},
         ]
 
-        self.mock_object(share_api.API, 'get_all',
-                         mock.Mock(return_value=[shares[1]]))
+        method = 'get_all'
+        mock_action = {'return_value': [shares[1]]}
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.42')):
+            search_opts.update({'with_count': 'true'})
+            method = 'get_all_with_count'
+            mock_action = {'side_effect': [(1, [shares[1]])]}
+        if use_admin_context:
+            search_opts['host'] = 'fake_host'
+        # fake_key should be filtered for non-admin
+        url = '/v2/fake/shares/detail?fake_key=fake_value'
+        for k, v in search_opts.items():
+            url = url + '&' + k + '=' + v
+        req = fakes.HTTPRequest.blank(url, version=version,
+                                      use_admin_context=use_admin_context)
+
+        mock_get_all = self.mock_object(share_api.API, method,
+                                        mock.Mock(**mock_action))
 
         result = self.controller.detail(req)
 
@@ -1846,7 +1855,7 @@ class ShareAPITest(test.TestCase):
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
             search_opts_expected['host'] = search_opts['host']
-        share_api.API.get_all.assert_called_once_with(
+        mock_get_all.assert_called_once_with(
             req.environ['manila.context'],
             sort_key=search_opts['sort_key'],
             sort_dir=search_opts['sort_dir'],

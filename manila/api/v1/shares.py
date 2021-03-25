@@ -164,12 +164,16 @@ class ShareMixin(object):
         common.remove_invalid_options(
             context, search_opts, self._get_share_search_options())
 
-        shares = self.share_api.get_all(
-            context, search_opts=search_opts, sort_key=sort_key,
-            sort_dir=sort_dir)
         total_count = None
         if show_count:
-            total_count = len(shares)
+            count, shares = self.share_api.get_all_with_count(
+                context, search_opts=search_opts, sort_key=sort_key,
+                sort_dir=sort_dir)
+            total_count = count
+        else:
+            shares = self.share_api.get_all(
+                context, search_opts=search_opts, sort_key=sort_key,
+                sort_dir=sort_dir)
 
         if is_detail:
             shares = self._view_builder.detail_list(req, shares, total_count)
@@ -189,8 +193,7 @@ class ShareMixin(object):
             'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
             'share_group_id', 'share_group_snapshot_id', 'export_location_id',
             'export_location_path', 'display_name~', 'display_description~',
-            'display_description', 'limit', 'offset'
-        )
+            'display_description', 'limit', 'offset')
 
     @wsgi.Controller.authorize
     def update(self, req, id, body):
