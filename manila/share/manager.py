@@ -2702,6 +2702,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 )
 
             if not share_update.get('size'):
+                # NOTE(haixin)if failed to get real size of share, will not
+                # commit quota usages.
                 msg = _("Driver cannot calculate share size.")
                 raise exception.InvalidShare(reason=msg)
             else:
@@ -2766,12 +2768,12 @@ class ShareManager(manager.SchedulerDependentManager):
 
             self.db.share_update(context, share_id, share_update)
         except Exception:
-            # NOTE(vponomaryov): set size as 1 because design expects size
-            # to be set, it also will allow us to handle delete/unmanage
-            # operations properly with this errored share according to quotas.
+            # NOTE(haixin) we should set size 0 because we don't know the real
+            # size of the size, and we will skip quota cuts when
+            # delete/unmanage share.
             self.db.share_update(
                 context, share_id,
-                {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+                {'status': constants.STATUS_MANAGE_ERROR, 'size': 0})
             raise
 
     @add_hooks
@@ -2894,30 +2896,34 @@ class ShareManager(manager.SchedulerDependentManager):
                 ("Share can not be unmanaged: %s."), e)
             return
 
-        deltas = {
-            'project_id': project_id,
-            'shares': -1,
-            'gigabytes': -share_ref['size'],
-            'share_type_id': share_instance['share_type_id'],
-        }
-        # NOTE(carloss): while unmanaging a share, a share will not contain
-        # replicas other than the active one. So there is no need to
-        # recalculate the amount of share replicas to be deallocated.
-        if supports_replication:
-            deltas.update({'share_replicas': -1,
-                           'replica_gigabytes': -share_ref['size']})
-        try:
-            reservations = QUOTAS.reserve(context, **deltas)
-            QUOTAS.commit(
-                context, reservations, project_id=project_id,
-                share_type_id=share_instance['share_type_id'],
-            )
-        except Exception as e:
-            # Note(imalinovskiy):
-            # Quota reservation errors here are not fatal, because
-            # unmanage is administrator API and he/she could update user
-            # quota usages later if it's required.
-            LOG.warning("Failed to update quota usages: %s.", e)
+        # NOTE(haixin) we will skip quota cuts when unmanag share with
+        # 'error_manage' status, because we have not commit quota usages when
+        # we failed to manage the share.
+        if share_ref['status'] != constants.STATUS_MANAGE_ERROR_UNMANAGING:
+            deltas = {
+                'project_id': project_id,
+                'shares': -1,
+                'gigabytes': -share_ref['size'],
+                'share_type_id': share_instance['share_type_id'],
+            }
+            # NOTE(carloss): while unmanaging a share, a share will not
+            # contain replicas other than the active one. So there is no need
+            # to recalculate the amount of share replicas to be deallocated.
+            if supports_replication:
+                deltas.update({'share_replicas': -1,
+                               'replica_gigabytes': -share_ref['size']})
+            try:
+                reservations = QUOTAS.reserve(context, **deltas)
+                QUOTAS.commit(
+                    context, reservations, project_id=project_id,
+                    share_type_id=share_instance['share_type_id'],
+                )
+            except Exception as e:
+                # Note(imalinovskiy):
+                # Quota reservation errors here are not fatal, because
+                # unmanage is administrator API and he/she could update user
+                # quota usages later if it's required.
+                LOG.warning("Failed to update quota usages: %s.", e)
 
         if self.configuration.safe_get('unmanage_remove_access_rules'):
             try:

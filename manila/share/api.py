@@ -959,7 +959,12 @@ class API(base.Base):
 
         self._check_is_share_busy(share)
 
-        update_data = {'status': constants.STATUS_UNMANAGING,
+        if share['status'] == constants.STATUS_MANAGE_ERROR:
+            update_status = constants.STATUS_MANAGE_ERROR_UNMANAGING
+        else:
+            update_status = constants.STATUS_UNMANAGING
+
+        update_data = {'status': update_status,
                        'terminated_at': timeutils.utcnow()}
         share_ref = self.db.share_update(context, share['id'], update_data)
 
@@ -1171,7 +1176,6 @@ class API(base.Base):
                 _("Share still has %d dependent share group snapshot "
                   "members.") % share_group_snapshot_members_count)
             raise exception.InvalidShare(reason=msg)
-
         self._check_is_share_busy(share)
         for share_instance in share.instances:
             if share_instance['host']:
