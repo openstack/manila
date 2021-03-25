@@ -24,15 +24,21 @@ The quota API now supports system scope and default roles.
 
 deprecated_quota_update = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'update',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_quota_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_quota_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -65,9 +71,7 @@ quota_set_policies = [
                 'path': '/os-quota-sets/{tenant_id}?user_id={user_id}'
             },
         ],
-        deprecated_rule=deprecated_quota_update,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_quota_update
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -84,9 +88,7 @@ quota_set_policies = [
                 'path': '/os-quota-sets/{tenant_id}/defaults'
             }
         ],
-        deprecated_rule=deprecated_quota_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_quota_show
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
@@ -117,9 +119,7 @@ quota_set_policies = [
                 'path': '/os-quota-sets/{tenant_id}?user_id={user_id}'
             },
         ],
-        deprecated_rule=deprecated_quota_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_quota_delete
     ),
 ]
 

@@ -27,11 +27,15 @@ The share access rule API now supports system scope and default roles.
 
 deprecated_access_rule_get = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_access_rule_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -47,9 +51,7 @@ share_access_rule_policies = [
                 'path': '/share-access-rules/{share_access_id}'
             }
         ],
-        deprecated_rule=deprecated_access_rule_get,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_access_rule_get
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
@@ -63,9 +65,7 @@ share_access_rule_policies = [
                          '&key1=value1&key2=value2')
             }
         ],
-        deprecated_rule=deprecated_access_rule_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_access_rule_index
     ),
 ]
 

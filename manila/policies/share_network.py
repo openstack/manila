@@ -23,55 +23,81 @@ The share network API now support system scope and default roles.
 
 deprecated_share_network_create = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'create',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_network_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_network_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_network_detail = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'detail',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_network_update = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'update',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_network_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_network_add_security_service = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'add_security_service',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_network_remove_security_service = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'remove_security_service',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_network_get_all = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get_all_share_networks',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_network_add_security_service_check = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'add_security_service_check',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_network_update_security_service = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'update_security_service',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_network_update_security_service_check = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'update_security_service_check',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_network_reset_status = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'reset_status',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 share_network_policies = [
@@ -86,9 +112,7 @@ share_network_policies = [
                 'path': '/share-networks'
             }
         ],
-        deprecated_rule=deprecated_share_network_create,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_create
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -101,9 +125,7 @@ share_network_policies = [
                 'path': '/share-networks/{share_network_id}'
             }
         ],
-        deprecated_rule=deprecated_share_network_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_show
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
@@ -120,9 +142,7 @@ share_network_policies = [
                 'path': '/share-networks?{query}'
             }
         ],
-        deprecated_rule=deprecated_share_network_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_index
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'detail',
@@ -139,9 +159,7 @@ share_network_policies = [
                 'path': '/share-networks/detail'
             },
         ],
-        deprecated_rule=deprecated_share_network_detail,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_detail
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
@@ -154,9 +172,7 @@ share_network_policies = [
                 'path': '/share-networks/{share_network_id}'
             }
         ],
-        deprecated_rule=deprecated_share_network_update,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_update
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
@@ -169,9 +185,7 @@ share_network_policies = [
                 'path': '/share-networks/{share_network_id}'
             }
         ],
-        deprecated_rule=deprecated_share_network_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'add_security_service',
@@ -184,9 +198,7 @@ share_network_policies = [
                 'path': '/share-networks/{share_network_id}/action'
             }
         ],
-        deprecated_rule=deprecated_share_network_add_security_service,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_add_security_service
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'add_security_service_check',
@@ -200,9 +212,7 @@ share_network_policies = [
                 'path': '/share-networks/{share_network_id}/action'
             }
         ],
-        deprecated_rule=deprecated_share_network_add_security_service_check,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_add_security_service_check
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'remove_security_service',
@@ -215,9 +225,7 @@ share_network_policies = [
                 'path': '/share-networks/{share_network_id}/action'
             }
         ],
-        deprecated_rule=deprecated_share_network_remove_security_service,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_remove_security_service
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update_security_service',
@@ -230,9 +238,7 @@ share_network_policies = [
                 'path': '/share-networks/{share_network_id}/action'
             }
         ],
-        deprecated_rule=deprecated_share_network_update_security_service,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_update_security_service
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update_security_service_check',
@@ -246,9 +252,7 @@ share_network_policies = [
                 'path': '/share-networks/{share_network_id}/action'
             }
         ],
-        deprecated_rule=deprecated_share_network_update_security_service_check,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_update_security_service_check
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
@@ -261,9 +265,7 @@ share_network_policies = [
                 'path': '/share-networks/{share_network_id}/action'
             }
         ],
-        deprecated_rule=deprecated_share_network_reset_status,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_reset_status
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all_share_networks',
@@ -280,9 +282,7 @@ share_network_policies = [
                 'path': '/share-networks/detail?all_tenants=1'
             }
         ],
-        deprecated_rule=deprecated_share_network_get_all,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_network_get_all
     ),
 ]
 

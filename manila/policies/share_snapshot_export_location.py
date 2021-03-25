@@ -24,11 +24,15 @@ The share snapshot location API now supports system scope and default roles.
 
 deprecated_snapshot_location_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_snapshot_location_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -44,9 +48,7 @@ share_snapshot_export_location_policies = [
                 'path': '/snapshots/{snapshot_id}/export-locations/',
             }
         ],
-        deprecated_rule=deprecated_snapshot_location_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_location_index
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -61,9 +63,7 @@ share_snapshot_export_location_policies = [
                           'export-locations/{export_location_id}'),
             }
         ],
-        deprecated_rule=deprecated_snapshot_location_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_snapshot_location_show
     ),
 ]
 

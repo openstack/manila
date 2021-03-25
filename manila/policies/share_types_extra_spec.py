@@ -24,23 +24,33 @@ The share types extra specs API now supports system scope and default roles.
 
 deprecated_extra_spec_create = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'create',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_extra_spec_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_extra_spec_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_extra_spec_update = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'update',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_extra_spec_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -56,9 +66,7 @@ share_types_extra_spec_policies = [
                 'path': '/types/{share_type_id}/extra_specs',
             }
         ],
-        deprecated_rule=deprecated_extra_spec_create,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_extra_spec_create
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -71,9 +79,7 @@ share_types_extra_spec_policies = [
                 'path': '/types/{share_type_id}/extra_specs',
             }
         ],
-        deprecated_rule=deprecated_extra_spec_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_extra_spec_show
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
@@ -86,9 +92,7 @@ share_types_extra_spec_policies = [
                 'path': '/types/{share_type_id}/extra_specs/{extra_spec_id}',
             },
         ],
-        deprecated_rule=deprecated_extra_spec_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_extra_spec_index
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
@@ -101,9 +105,7 @@ share_types_extra_spec_policies = [
                 'path': '/types/{share_type_id}/extra_specs',
             }
         ],
-        deprecated_rule=deprecated_extra_spec_update,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_extra_spec_update
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
@@ -116,9 +118,7 @@ share_types_extra_spec_policies = [
                 'path': '/types/{share_type_id}/extra_specs/{key}',
             }
         ],
-        deprecated_rule=deprecated_extra_spec_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_extra_spec_delete
     ),
 ]
 

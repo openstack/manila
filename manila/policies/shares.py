@@ -25,129 +25,191 @@ The share API now supports system scope and default roles.
 # Deprecated share policies
 deprecated_share_create = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'create',
-    check_str=""
+    check_str="",
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_create_public = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'create_public_share',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_get = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_get_all = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get_all',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_update = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'update',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_set_public = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'set_public_share',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_force_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'force_delete',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_manage = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'manage',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_unmanage = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'unmanage',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_list_by_host = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'list_by_host',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_list_by_server_id = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'list_by_share_server_id',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_access_get = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'access_get',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_access_get_all = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'access_get_all',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_extend = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'extend',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_shrink = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'shrink',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_migration_start = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'migration_start',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_migration_complete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'migration_complete',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_migration_cancel = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'migration_cancel',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_migration_get_progress = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'migration_get_progress',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_reset_task_state = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'reset_task_state',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_reset_status = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'reset_status',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_revert_to_snapshot = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'revert_to_snapshot',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_allow_access = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'allow_access',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_deny_access = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'deny_access',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_update_metadata = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'update_share_metadata',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_delete_metadata = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete_share_metadata',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_get_metadata = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get_share_metadata',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 # deprecated legacy snapshot policies with "share" as base resource
 deprecated_share_create_snapshot = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'create_snapshot',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_delete_snapshot = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete_snapshot',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_snapshot_update = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'snapshot_update',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -163,9 +225,7 @@ shares_policies = [
                 'path': '/shares',
             }
         ],
-        deprecated_rule=deprecated_share_create,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_create
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create_public_share',
@@ -178,9 +238,7 @@ shares_policies = [
                 'path': '/shares',
             }
         ],
-        deprecated_rule=deprecated_share_create_public,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_create_public
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get',
@@ -193,9 +251,7 @@ shares_policies = [
                 'path': '/shares/{share_id}',
             }
         ],
-        deprecated_rule=deprecated_share_get,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_get
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
@@ -212,9 +268,7 @@ shares_policies = [
                 'path': '/shares/detail',
             }
         ],
-        deprecated_rule=deprecated_share_get_all,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_get_all
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
@@ -227,9 +281,7 @@ shares_policies = [
                 'path': '/shares',
             }
         ],
-        deprecated_rule=deprecated_share_update,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_update
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'set_public_share',
@@ -243,9 +295,7 @@ shares_policies = [
                 'path': '/shares',
             }
         ],
-        deprecated_rule=deprecated_share_set_public,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_set_public
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
@@ -258,9 +308,7 @@ shares_policies = [
                 'path': '/shares/{share_id}',
             }
         ],
-        deprecated_rule=deprecated_share_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
@@ -273,9 +321,7 @@ shares_policies = [
                 'path': '/shares/{share_id}',
             }
         ],
-        deprecated_rule=deprecated_share_force_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_force_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'manage',
@@ -288,9 +334,7 @@ shares_policies = [
                 'path': '/shares/manage',
             }
         ],
-        deprecated_rule=deprecated_share_manage,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_manage
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'unmanage',
@@ -303,9 +347,7 @@ shares_policies = [
                 'path': '/shares/unmanage',
             }
         ],
-        deprecated_rule=deprecated_share_unmanage,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_unmanage
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'list_by_host',
@@ -322,9 +364,7 @@ shares_policies = [
                 'path': '/shares/detail',
             }
         ],
-        deprecated_rule=deprecated_share_list_by_host,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_list_by_host
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'list_by_share_server_id',
@@ -341,9 +381,7 @@ shares_policies = [
                 'path': '/shares/detail',
             }
         ],
-        deprecated_rule=deprecated_share_list_by_server_id,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_list_by_server_id
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'access_get',
@@ -356,9 +394,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_access_get,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_access_get
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'access_get_all',
@@ -371,9 +407,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_access_get_all,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_access_get_all
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'extend',
@@ -386,9 +420,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_extend,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_extend
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'shrink',
@@ -401,9 +433,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_shrink,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_shrink
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'migration_start',
@@ -416,9 +446,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_migration_start,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_migration_start
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'migration_complete',
@@ -431,9 +459,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_migration_complete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_migration_complete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'migration_cancel',
@@ -446,9 +472,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_migration_cancel,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_migration_cancel
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'migration_get_progress',
@@ -462,9 +486,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_migration_get_progress,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_migration_get_progress
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_task_state',
@@ -477,9 +499,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_reset_task_state,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_reset_task_state
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
@@ -492,9 +512,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_reset_status,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_reset_status
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'revert_to_snapshot',
@@ -507,9 +525,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_revert_to_snapshot,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_revert_to_snapshot
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'allow_access',
@@ -522,9 +538,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_allow_access,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_allow_access
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'deny_access',
@@ -537,9 +551,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_deny_access,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_deny_access
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update_share_metadata',
@@ -552,9 +564,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/metadata',
             }
         ],
-        deprecated_rule=deprecated_share_update_metadata,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_update_metadata
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete_share_metadata',
@@ -567,9 +577,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/metadata/{key}',
             }
         ],
-        deprecated_rule=deprecated_share_delete_metadata,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_delete_metadata
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_share_metadata',
@@ -582,9 +590,7 @@ shares_policies = [
                 'path': '/shares/{share_id}/metadata',
             }
         ],
-        deprecated_rule=deprecated_share_get_metadata,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_get_metadata
     ),
 ]
 
@@ -603,9 +609,7 @@ base_snapshot_policies = [
                 'path': '/snapshots',
             }
         ],
-        deprecated_rule=deprecated_share_create_snapshot,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_create_snapshot
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete_snapshot',
@@ -618,9 +622,7 @@ base_snapshot_policies = [
                 'path': '/snapshots/{snapshot_id}',
             }
         ],
-        deprecated_rule=deprecated_share_delete_snapshot,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_delete_snapshot
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'snapshot_update',
@@ -633,9 +635,7 @@ base_snapshot_policies = [
                 'path': '/snapshots/{snapshot_id}/action',
             }
         ],
-        deprecated_rule=deprecated_share_snapshot_update,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_snapshot_update
     ),
 ]
 

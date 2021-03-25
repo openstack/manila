@@ -24,31 +24,45 @@ The share group API now supports system scope and default roles.
 
 deprecated_share_group_create = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'create',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_group_get = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_group_get_all = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get_all',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_group_update = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'update',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_group_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_group_force_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'force_delete',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_share_group_reset_status = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'reset_status',
-    check_str=base.RULE_ADMIN_API
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -64,9 +78,7 @@ share_group_policies = [
                 'path': '/share-groups'
             }
         ],
-        deprecated_rule=deprecated_share_group_create,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_group_create
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get',
@@ -79,9 +91,7 @@ share_group_policies = [
                 'path': '/share-groups/{share_group_id}'
             }
         ],
-        deprecated_rule=deprecated_share_group_get,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_group_get
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
@@ -106,9 +116,7 @@ share_group_policies = [
                 'path': '/share-groups/detail?{query}'
             }
         ],
-        deprecated_rule=deprecated_share_group_get_all,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_group_get_all
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
@@ -121,9 +129,7 @@ share_group_policies = [
                 'path': '/share-groups/{share_group_id}'
             }
         ],
-        deprecated_rule=deprecated_share_group_update,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_group_update
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
@@ -136,9 +142,7 @@ share_group_policies = [
                 'path': '/share-groups/{share_group_id}'
             }
         ],
-        deprecated_rule=deprecated_share_group_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_group_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
@@ -151,9 +155,7 @@ share_group_policies = [
                 'path': '/share-groups/{share_group_id}/action'
             }
         ],
-        deprecated_rule=deprecated_share_group_force_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_group_force_delete
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
@@ -166,9 +168,7 @@ share_group_policies = [
                 'path': '/share-groups/{share_group_id}/action'
             }
         ],
-        deprecated_rule=deprecated_share_group_reset_status,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_share_group_reset_status
     ),
 ]
 

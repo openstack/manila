@@ -24,11 +24,15 @@ The share export location API now support system scope and default roles.
 
 deprecated_export_location_index = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_export_location_show = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'show',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -44,9 +48,7 @@ share_export_location_policies = [
                 'path': '/shares/{share_id}/export_locations',
             }
         ],
-        deprecated_rule=deprecated_export_location_index,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_export_location_index
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
@@ -60,9 +62,7 @@ share_export_location_policies = [
                          '{export_location_id}'),
             }
         ],
-        deprecated_rule=deprecated_export_location_show,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_export_location_show
     ),
 ]
 

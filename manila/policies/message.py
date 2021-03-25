@@ -24,15 +24,21 @@ The messages API now supports system scope and default roles.
 
 deprecated_message_get = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_message_get_all = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'get_all',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 deprecated_message_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -48,9 +54,7 @@ message_policies = [
                 'path': '/messages/{message_id}'
             }
         ],
-        deprecated_rule=deprecated_message_get,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_message_get
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
@@ -67,9 +71,7 @@ message_policies = [
                 'path': '/messages?{query}'
             }
         ],
-        deprecated_rule=deprecated_message_get_all,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_message_get_all
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
@@ -82,9 +84,7 @@ message_policies = [
                 'path': '/messages/{message_id}'
             }
         ],
-        deprecated_rule=deprecated_message_delete,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_message_delete
     ),
 ]
 

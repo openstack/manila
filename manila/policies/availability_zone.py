@@ -24,7 +24,9 @@ The availability zone API now supports system scope and default roles.
 
 deprecated_get_availability_zone = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'index',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since=versionutils.deprecated.WALLABY
 )
 
 
@@ -44,9 +46,7 @@ availability_zone_policies = [
                 'path': '/availability-zone',
             },
         ],
-        deprecated_rule=deprecated_get_availability_zone,
-        deprecated_reason=DEPRECATED_REASON,
-        deprecated_since=versionutils.deprecated.WALLABY
+        deprecated_rule=deprecated_get_availability_zone
     ),
 ]
 
