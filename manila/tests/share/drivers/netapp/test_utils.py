@@ -394,3 +394,50 @@ class OpenstackInfoTestCase(test.TestCase):
         info._update_openstack_info()
 
         self.assertTrue(mock_updt_from_dpkg.called)
+
+
+@ddt.ddt
+class DataCacheTestCase(test.TestCase):
+
+    def setUp(self):
+        super(DataCacheTestCase, self).setUp()
+
+        self.cache = na_utils.DataCache(60)
+        self.cache._stop_watch = mock.Mock()
+
+    @ddt.data(True, False)
+    def test_is_expired(self, is_expired):
+        not_expired = not is_expired
+        self.mock_object(
+            self.cache._stop_watch, 'has_started',
+            mock.Mock(return_value=not_expired))
+
+        self.mock_object(
+            self.cache._stop_watch, 'expired',
+            mock.Mock(return_value=is_expired))
+
+        self.assertEqual(is_expired, self.cache.is_expired())
+
+    def test_get_data(self):
+        fake_data = 10
+        self.cache._cached_data = fake_data
+        self.assertEqual(fake_data, self.cache.get_data())
+
+    @ddt.data(True, False)
+    def test_update_data(self, started):
+        self.mock_object(
+            self.cache._stop_watch, 'has_started',
+            mock.Mock(return_value=started))
+        mock_start = self.mock_object(self.cache._stop_watch, 'start',
+                                      mock.Mock())
+        mock_restart = self.mock_object(self.cache._stop_watch, 'restart',
+                                        mock.Mock())
+        fake_data = 10
+
+        self.cache.update_data(fake_data)
+
+        self.assertEqual(self.cache._cached_data, fake_data)
+        if not started:
+            mock_start.assert_called_once()
+        else:
+            mock_restart.assert_called_once()

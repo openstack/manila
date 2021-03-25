@@ -22,6 +22,7 @@ import re
 
 from oslo_concurrency import processutils as putils
 from oslo_log import log
+from oslo_utils import timeutils
 import six
 
 from manila import exception
@@ -238,3 +239,29 @@ class OpenStackInfo(object):
         return '%(version)s|%(release)s|%(vendor)s|%(platform)s' % {
             'version': self._version, 'release': self._release,
             'vendor': self._vendor, 'platform': self._platform}
+
+
+class DataCache(object):
+    """DataCache class for caching NetApp information.
+
+    The cache validity is measured by a stop watch that is
+    not thread-safe.
+    """
+
+    def __init__(self, duration):
+        self._stop_watch = timeutils.StopWatch(duration)
+        self._cached_data = None
+
+    def is_expired(self):
+        return not self._stop_watch.has_started() or self._stop_watch.expired()
+
+    def get_data(self):
+        return self._cached_data
+
+    def update_data(self, cached_data):
+        if not self._stop_watch.has_started():
+            self._stop_watch.start()
+        else:
+            self._stop_watch.restart()
+
+        self._cached_data = cached_data

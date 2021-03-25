@@ -155,6 +155,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self._cluster_info = {}
         self._default_nfs_config = None
         self.is_nfs_config_supported = False
+        self._cache_pool_status = None
 
         self._app_version = kwargs.get('app_version', 'unknown')
 
@@ -187,6 +188,9 @@ class NetAppCmodeFileStorageLibrary(object):
                 list(self.NFS_CONFIG_EXTRA_SPECS_MAP.values()))
             LOG.debug('The default NFS configuration: %s',
                       self._default_nfs_config)
+
+        self._cache_pool_status = na_utils.DataCache(
+            self.configuration.netapp_cached_aggregates_status_lifetime)
 
     @na_utils.trace
     def _set_cluster_info(self):
@@ -390,13 +394,18 @@ class NetAppCmodeFileStorageLibrary(object):
 
         :param share_server: ShareServer class instance.
         """
-        return self._get_pools()
+
+        if self._cache_pool_status.is_expired():
+            return self._get_pools()
+
+        return self._cache_pool_status.get_data()
 
     @na_utils.trace
     def _get_pools(self, filter_function=None, goodness_function=None):
         """Retrieve list of pools available to this backend."""
 
         pools = []
+        cached_pools = []
         aggr_space = self._get_aggregate_space()
         aggregates = aggr_space.keys()
 
@@ -427,8 +436,8 @@ class NetAppCmodeFileStorageLibrary(object):
 
             pool = {
                 'pool_name': aggr_name,
-                'filter_function': filter_function,
-                'goodness_function': goodness_function,
+                'filter_function': None,
+                'goodness_function': None,
                 'total_capacity_gb': total_capacity_gb,
                 'free_capacity_gb': free_capacity_gb,
                 'allocated_capacity_gb': allocated_capacity_gb,
@@ -455,7 +464,14 @@ class NetAppCmodeFileStorageLibrary(object):
                 aggr_name)
             pool['utilization'] = na_utils.round_down(utilization)
 
-            pools.append(pool)
+            cached_pools.append(pool)
+            pool_with_func = copy.deepcopy(pool)
+            pool_with_func['filter_function'] = filter_function
+            pool_with_func['goodness_function'] = goodness_function
+
+            pools.append(pool_with_func)
+
+        self._cache_pool_status.update_data(cached_pools)
 
         return pools
 

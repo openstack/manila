@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    In order to optimize the NetApp ONTAP driver, this patch is caching
+    the status of driver pools and reusing for the each share server, given
+    that the pool is not separated by share server. It adds the option
+    `netapp_cached_aggregates_status_lifetime` for controlling the time that
+    the cached values is considered valid. Please refer to the
+    `Launchpad bug #1900469 <https://bugs.launchpad.net/manila/+bug/1900469>`_
+    for more details.

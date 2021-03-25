@@ -489,6 +489,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_pools',
                          mock.Mock(return_value=fake.POOLS))
+        self.library._cache_pool_status = na_utils.DataCache(60)
 
         result = self.library.get_share_server_pools(fake.SHARE_SERVER)
 
@@ -499,6 +500,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(
             self.library, '_get_aggregate_space',
             mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
+        self.library._cache_pool_status = na_utils.DataCache(60)
         self.library._have_cluster_creds = True
         self.library._revert_to_snapshot_support = True
         self.library._cluster_info = fake.CLUSTER_INFO
@@ -516,6 +518,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(
             self.library, '_get_aggregate_space',
             mock.Mock(return_value=fake.AGGREGATE_CAPACITIES_VSERVER_CREDS))
+        self.library._cache_pool_status = na_utils.DataCache(60)
         self.library._have_cluster_creds = False
         self.library._revert_to_snapshot_support = True
         self.library._cluster_info = fake.CLUSTER_INFO
