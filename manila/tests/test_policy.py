@@ -46,7 +46,7 @@ class PolicyTestCase(test.TestCase):
                                       "role:ADMIN"),
         ]
         policy.reset()
-        policy.init()
+        policy.init(suppress_deprecation_warnings=True)
         # before a policy rule can be used, its default has to be registered.
         policy._ENFORCER.register_defaults(rules)
         self.context = context.RequestContext('fake', 'fake', roles=['member'])
@@ -105,7 +105,7 @@ class PolicyTestCase(test.TestCase):
         project_context = context.RequestContext(project_id='fake-project-id',
                                                  roles=['bar'])
         policy.reset()
-        policy.init()
+        policy.init(suppress_deprecation_warnings=True)
         rule = common_policy.RuleDefault('foo', 'role:bar',
                                          scope_types=['system'])
         policy._ENFORCER.register_defaults([rule])
@@ -120,7 +120,7 @@ class PolicyTestCase(test.TestCase):
         project_context = context.RequestContext(project_id='fake-project-id',
                                                  roles=['bar'])
         policy.reset()
-        policy.init()
+        policy.init(suppress_deprecation_warnings=True)
         rule = common_policy.RuleDefault('foo', 'role:bar',
                                          scope_types=['system'])
         policy._ENFORCER.register_defaults([rule])
@@ -138,7 +138,7 @@ class DefaultPolicyTestCase(test.TestCase):
     def setUp(self):
         super(DefaultPolicyTestCase, self).setUp()
         policy.reset()
-        policy.init()
+        policy.init(suppress_deprecation_warnings=True)
 
         self.rules = {
             "default": [],
@@ -180,7 +180,7 @@ class ContextIsAdminPolicyTestCase(test.TestCase):
     def setUp(self):
         super(ContextIsAdminPolicyTestCase, self).setUp()
         policy.reset()
-        policy.init()
+        policy.init(suppress_deprecation_warnings=True)
 
     def _set_rules(self, rules, default_rule):
         these_rules = common_policy.Rules.from_dict(rules,
