@@ -1,0 +1,35 @@
+---
+prelude: >
+    The default check strings of all manila API RBAC policies have been
+    updated to support default roles and system-scope from the OpenStack
+    Identity Service (Keystone). This includes support for project member,
+    project reader, project administrator user roles as well as system
+    member, system reader and system administrator roles. A manila "admin"
+    persona is eventually expected to transition to the system scoped
+    "admin" persona and some isolated project administrator privileges (like
+    force-deleting a resource, resyncing a share replica or resetting state
+    of a resource) are retained to an admin user operating within the scope
+    of a project. Do read further impact in the ``upgrade`` section of these
+    notes.
+upgrade:
+  - |
+    During the Wallaby release, API RBAC policies have new defaults, however,
+    all old behavior is preserved as is, and the new defaults are not enabled.
+    We encourage operators to generate the default policies via
+    ``oslopolicy-sample-generator --namespace manila`` and compare them with
+    any overrides you may currently have. These new default rules may
+    enable you to remove matching overrides and reduce your policy
+    maintenance burden. Refer to `the document on Service API protection
+    <https://docs.openstack.org/keystone/latest/admin/service-api-protection.html>`_
+    from the OpenStack Identity Service to understand roles, scopes,
+    user personas and the motivation behind these changes. To be able to use
+    systems scoped personas, you will need to enable the ``enforce_scope``
+    configuration option in the ``[oslo_policy]`` section of manila.conf. To
+    enforce the new defaults, the configuration option
+    ``enforce_new_defaults`` must be enabled from the ``[oslo_policy]``
+    section of manila.conf. We do not advise enabling the new defaults in
+    production deployments yet. The manila developer community is actively
+    adding test coverage and we aim to backport fixes to the Wallaby release
+    and update code when we find any deficiencies. Refer to the future service
+    release notes and the administrator documentation to keep abreast of the
+    changes and the progress with these new defaults.
