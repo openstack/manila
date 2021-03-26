@@ -1614,6 +1614,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             self.send_request('ldap-config-delete')
         except netapp_api.NaApiError as e:
             if e.code != netapp_api.EOBJECTNOTFOUND:
+                # Delete previously created ldap client
+                self._delete_ldap_client(new_security_service)
+
                 msg = _("An error occurred while deleting original LDAP "
                         "configuration. %s")
                 raise exception.NetAppException(msg % e.message)
@@ -1633,9 +1636,17 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             self._delete_ldap_client(current_security_service)
         except netapp_api.NaApiError as e:
             if e.code != netapp_api.EOBJECTNOTFOUND:
+                current_config_name = (
+                    hashlib.md5(six.b(
+                        current_security_service['id'])).hexdigest())
                 msg = _("An error occurred while deleting original LDAP "
-                        "client configuration. %s")
-                raise exception.NetAppException(msg % e.message)
+                        "client configuration %(current_config)s. "
+                        "Error details: %(e_msg)s")
+                msg_args = {
+                    'current_config': current_config_name,
+                    'e_msg': e.message,
+                }
+                LOG.warning(msg, msg_args)
             else:
                 msg = _("Original LDAP client configuration was not found.")
                 LOG.debug(msg)
