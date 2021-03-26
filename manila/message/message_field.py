@@ -120,6 +120,12 @@ class Detail(object):
           "that are associated with the used share network. The security "
           "service may be unsupported or the provided parameters are invalid. "
           "You may try again with a different set of configurations."))
+    SECURITY_SERVICE_FAILED_AUTH = (
+        '023',
+        _("Share Driver failed to create share due to a security service "
+          "authentication issue. The security service user has either "
+          "insufficient privileges or wrong credentials. Please check your "
+          "user, password, ou and domain."))
 
     ALL = (
         UNKNOWN_ERROR,
@@ -144,6 +150,7 @@ class Detail(object):
         FORBIDDEN_CLIENT_ACCESS,
         UNSUPPORTED_CLIENT_ACCESS,
         UNSUPPORTED_ADD_UDPATE_SECURITY_SERVICE,
+        SECURITY_SERVICE_FAILED_AUTH,
     )
 
     # Exception and detail mappings
