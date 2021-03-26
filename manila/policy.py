@@ -195,7 +195,10 @@ def authorize(context, action, target, do_raise=True, exc=None):
         with excutils.save_and_reraise_exception():
             LOG.exception('Policy not registered')
     except policy.InvalidScope:
-        raise exception.PolicyNotAuthorized(action=action)
+        if do_raise:
+            raise exception.PolicyNotAuthorized(action=action)
+        else:
+            return False
     except Exception:
         with excutils.save_and_reraise_exception():
             msg_args = {
@@ -215,10 +218,9 @@ def check_is_admin(context):
     """Whether or not user is admin according to policy setting.
 
     """
-    init()
     # the target is user-self
     target = default_target(context)
-    return _ENFORCER.authorize('context_is_admin', target, context)
+    return authorize(context, 'context_is_admin', target, do_raise=False)
 
 
 def wrap_check_policy(resource):
