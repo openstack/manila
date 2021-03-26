@@ -31,20 +31,21 @@ class SchedulerAPI(object):
 
     API version history:
 
-        1.0 - Initial version.
-        1.1 - Add get_pools method
-        1.2 - Introduce Share Instances. Replace ``create_share()`` with
+        1.0  - Initial version.
+        1.1  - Add get_pools method
+        1.2  - Introduce Share Instances. Replace ``create_share()`` with
         ``create_share_instance()``
-        1.3 - Add create_consistency_group method (renamed in 1.7)
-        1.4 - Add migrate_share_to_host method
-        1.5 - Add create_share_replica
-        1.6 - Add manage_share
-        1.7 - Updated migrate_share_to_host method with new parameters
-        1.8 - Rename create_consistency_group -> create_share_group method
-        1.9 - Add cached parameter to get_pools method
+        1.3  - Add create_consistency_group method (renamed in 1.7)
+        1.4  - Add migrate_share_to_host method
+        1.5  - Add create_share_replica
+        1.6  - Add manage_share
+        1.7  - Updated migrate_share_to_host method with new parameters
+        1.8  - Rename create_consistency_group -> create_share_group method
+        1.9  - Add cached parameter to get_pools method
+        1.10 - Add timestamp to update_service_capabilities
     """
 
-    RPC_API_VERSION = '1.9'
+    RPC_API_VERSION = '1.10'
 
     def __init__(self):
         super(SchedulerAPI, self).__init__()
@@ -64,7 +65,7 @@ class SchedulerAPI(object):
     def update_service_capabilities(self, context,
                                     service_name, host,
                                     capabilities):
-        call_context = self.client.prepare(fanout=True, version='1.0')
+        call_context = self.client.prepare(fanout=True, version='1.10')
         timestamp = jsonutils.to_primitive(timeutils.utcnow())
         call_context.cast(context,
                           'update_service_capabilities',

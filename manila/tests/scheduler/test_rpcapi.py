@@ -75,7 +75,8 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  service_name='fake_name',
                                  host='fake_host',
                                  capabilities='fake_capabilities',
-                                 fanout=True)
+                                 fanout=True,
+                                 version='1.10')
 
     def test_create_share_instance(self):
         self._test_scheduler_api('create_share_instance',

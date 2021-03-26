@@ -65,7 +65,7 @@ MAPPING = {
 class SchedulerManager(manager.Manager):
     """Chooses a host to create shares."""
 
-    RPC_API_VERSION = '1.9'
+    RPC_API_VERSION = '1.10'
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
