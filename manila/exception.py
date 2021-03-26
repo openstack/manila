@@ -1096,3 +1096,7 @@ class ZadaraVPSASnapshotCreateFailed(ShareBackendException):
 class ZadaraVPSASnapshotManageFailed(ShareBackendException):
     message = _("Failed to manage VPSA share snapshot with id %(snap_id)s. "
                 "Error: %(error)s")
+
+
+class ZadaraServerNotFound(NotFound):
+    message = _("Unable to find server object for initiator %(name)s")
