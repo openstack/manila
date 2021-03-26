@@ -4671,8 +4671,6 @@ class ShareManager(manager.SchedulerDependentManager):
             'identifier': share_server.get('identifier', None),
             'network_allocations': share_server.get('network_allocations',
                                                     None),
-            'share_network_status': share_server.get(
-                'share_network_status', None)
         }
         return share_server_ref
 
@@ -4723,7 +4721,6 @@ class ShareManager(manager.SchedulerDependentManager):
             'source_share_group_snapshot_member_id': share_instance.get(
                 'source_share_group_snapshot_member_id'),
             'availability_zone': share_instance.get('availability_zone'),
-            'share_network_status': share_instance.get('share_network_status')
         }
         if share_instance_ref['share_server']:
             share_instance_ref['share_server'] = self._get_share_server_dict(

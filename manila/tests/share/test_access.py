@@ -796,3 +796,15 @@ class ShareInstanceAccessTestCase(test.TestCase):
             },
         ]
         return pass_rules, fail_rules
+
+    def test_update_share_instances_access_rules_status(self):
+        mock_db_instances_update = self.mock_object(
+            db, 'share_instances_status_update')
+        share_instances = ['fake_instance_id', 'fake_instance_id_2']
+
+        self.access_helper.update_share_instances_access_rules_status(
+            self.context, 'fake_status', share_instances)
+
+        mock_db_instances_update.assert_called_once_with(
+            self.context, share_instances,
+            {'access_rules_status': 'fake_status'})

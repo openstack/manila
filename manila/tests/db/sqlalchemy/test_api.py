@@ -3267,6 +3267,22 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         for share_server in share_servers:
             self.assertEqual(host, share_server['host'])
 
+    def test_share_servers_update(self):
+        servers = [db_utils.create_share_server()
+                   for __ in range(1, 3)]
+        server_ids = [server['id'] for server in servers]
+        values = {'status': constants.STATUS_NETWORK_CHANGE}
+
+        db_api.share_servers_update(
+            self.ctxt, server_ids, values)
+
+        share_servers = [
+            db_api.share_server_get(self.ctxt, server_id)
+            for server_id in server_ids]
+
+        for ss in share_servers:
+            self.assertEqual(constants.STATUS_NETWORK_CHANGE, ss['status'])
+
 
 class ServiceDatabaseAPITestCase(test.TestCase):
 
@@ -4345,8 +4361,10 @@ class ShareResourcesAPITestCase(test.TestCase):
 
     def test_share_instances_status_update(self):
         for i in range(1, 3):
-            instances = [db_utils.create_share_instance(
-                status=constants.STATUS_SERVER_MIGRATING, share_id='fake')]
+            instances = [
+                db_utils.create_share_instance(
+                    status=constants.STATUS_SERVER_MIGRATING, share_id='fake')
+                for __ in range(1, 3)]
         share_instance_ids = [instance['id'] for instance in instances]
         values = {'status': constants.STATUS_AVAILABLE}
 
@@ -4363,10 +4381,11 @@ class ShareResourcesAPITestCase(test.TestCase):
     def test_share_snapshot_instances_status_update(self):
         share_instance = db_utils.create_share_instance(
             status=constants.STATUS_AVAILABLE, share_id='fake')
-        for i in range(1, 3):
-            instances = [db_utils.create_snapshot_instance(
+        instances = [
+            db_utils.create_snapshot_instance(
                 'fake_snapshot_id_1', status=constants.STATUS_CREATING,
-                share_instance_id=share_instance['id'])]
+                share_instance_id=share_instance['id'])
+            for __ in range(1, 3)]
 
         snapshot_instance_ids = [instance['id'] for instance in instances]
         values = {'status': constants.STATUS_AVAILABLE}
@@ -4386,10 +4405,11 @@ class ShareResourcesAPITestCase(test.TestCase):
             status=constants.STATUS_AVAILABLE, share_id='fake')
         share_instance_ids = [share_instance['id']]
         fake_session = db_api.get_session()
-        for i in range(1, 3):
-            snap_instances = [db_utils.create_snapshot_instance(
+        snap_instances = [
+            db_utils.create_snapshot_instance(
                 'fake_snapshot_id_1', status=constants.STATUS_CREATING,
-                share_instance_id=share_instance['id'])]
+                share_instance_id=share_instance['id'])
+            for __ in range(1, 3)]
 
         snapshot_instance_ids = [instance['id'] for instance in snap_instances]
         values = {'status': constants.STATUS_AVAILABLE}
@@ -4466,3 +4486,131 @@ class ShareResourcesAPITestCase(test.TestCase):
             mock_snap_instances_get_all.assert_called_once_with(
                 self.context, {'instance_ids': snap_instance_ids},
                 session=fake_session)
+
+
+@ddt.ddt
+class AsyncOperationDatabaseAPITestCase(test.TestCase):
+
+    def setUp(self):
+        """Run before each test."""
+        super(AsyncOperationDatabaseAPITestCase, self).setUp()
+        self.user_id = uuidutils.generate_uuid()
+        self.project_id = uuidutils.generate_uuid()
+        self.ctxt = context.RequestContext(
+            user_id=self.user_id, project_id=self.project_id, is_admin=False)
+
+    def _get_async_operation_test_data(self):
+        return uuidutils.generate_uuid()
+
+    @ddt.data({"details": {"foo": "bar", "tee": "too"},
+               "valid": {"foo": "bar", "tee": "too"}},
+              {"details": {"foo": "bar", "tee": ["test"]},
+               "valid": {"foo": "bar", "tee": str(["test"])}})
+    @ddt.unpack
+    def test_update(self, details, valid):
+        entity_id = self._get_async_operation_test_data()
+
+        initial_data = db_api.async_operation_data_get(self.ctxt, entity_id)
+        db_api.async_operation_data_update(self.ctxt, entity_id, details)
+        actual_data = db_api.async_operation_data_get(self.ctxt, entity_id)
+
+        self.assertEqual({}, initial_data)
+        self.assertEqual(valid, actual_data)
+
+    @ddt.data({'with_deleted': True, 'append': False},
+              {'with_deleted': True, 'append': True},
+              {'with_deleted': False, 'append': False},
+              {'with_deleted': False, 'append': True})
+    @ddt.unpack
+    def test_update_with_more_values(self, with_deleted, append):
+        entity_id = self._get_async_operation_test_data()
+        details = {"tee": "too"}
+        more_details = {"foo": "bar"}
+        result = {"tee": "too", "foo": "bar"}
+
+        db_api.async_operation_data_update(self.ctxt, entity_id, details)
+        if with_deleted:
+            db_api.async_operation_data_delete(self.ctxt, entity_id)
+        if append:
+            more_details.update(details)
+        if with_deleted and not append:
+            result.pop("tee")
+        db_api.async_operation_data_update(self.ctxt, entity_id, more_details)
+
+        actual_result = db_api.async_operation_data_get(self.ctxt, entity_id)
+
+        self.assertEqual(result, actual_result)
+
+    @ddt.data(True, False)
+    def test_update_with_duplicate(self, with_deleted):
+        entity_id = self._get_async_operation_test_data()
+        details = {"tee": "too"}
+
+        db_api.async_operation_data_update(self.ctxt, entity_id, details)
+        if with_deleted:
+            db_api.async_operation_data_delete(self.ctxt, entity_id)
+        db_api.async_operation_data_update(self.ctxt, entity_id, details)
+
+        actual_result = db_api.async_operation_data_get(self.ctxt,
+                                                        entity_id)
+
+        self.assertEqual(details, actual_result)
+
+    def test_update_with_delete_existing(self):
+        resource_id = self._get_async_operation_test_data()
+        details = {"key1": "val1", "key2": "val2", "key3": "val3"}
+        details_update = {"key1": "val1_upd", "key4": "new_val"}
+
+        # Create new details
+        db_api.async_operation_data_update(self.ctxt, resource_id, details)
+        db_api.async_operation_data_update(self.ctxt, resource_id,
+                                           details_update,
+                                           delete_existing=True)
+
+        actual_result = db_api.async_operation_data_get(self.ctxt, resource_id)
+
+        self.assertEqual(details_update, actual_result)
+
+    def test_get(self):
+        resource_id = self._get_async_operation_test_data()
+        test_key = "foo"
+        test_keys = [test_key, "tee"]
+        details = {test_keys[0]: "val", test_keys[1]: "val", "mee": "foo"}
+        db_api.async_operation_data_update(self.ctxt, resource_id, details)
+
+        actual_result_all = db_api.async_operation_data_get(
+            self.ctxt, resource_id)
+        actual_result_single_key = db_api.async_operation_data_get(
+            self.ctxt, resource_id, test_key)
+        actual_result_list = db_api.async_operation_data_get(
+            self.ctxt, resource_id, test_keys)
+
+        self.assertEqual(details, actual_result_all)
+        self.assertEqual(details[test_key], actual_result_single_key)
+        self.assertEqual(dict.fromkeys(test_keys, "val"), actual_result_list)
+
+    def test_delete_single(self):
+        test_id = self._get_async_operation_test_data()
+        test_key = "foo"
+        details = {test_key: "bar", "tee": "too"}
+        valid_result = {"tee": "too"}
+        db_api.async_operation_data_update(self.ctxt, test_id, details)
+
+        db_api.async_operation_data_delete(self.ctxt, test_id, test_key)
+
+        actual_result = db_api.async_operation_data_get(
+            self.ctxt, test_id)
+
+        self.assertEqual(valid_result, actual_result)
+
+    def test_delete_all(self):
+        test_id = self._get_async_operation_test_data()
+        details = {"foo": "bar", "tee": "too"}
+        db_api.async_operation_data_update(self.ctxt, test_id, details)
+
+        db_api.async_operation_data_delete(self.ctxt, test_id)
+
+        actual_result = db_api.async_operation_data_get(
+            self.ctxt, test_id)
+
+        self.assertEqual({}, actual_result)

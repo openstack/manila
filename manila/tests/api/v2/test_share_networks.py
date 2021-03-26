@@ -1203,6 +1203,91 @@ class ShareNetworkAPITest(test.TestCase):
             share_networks.RESOURCE_NAME,
             'remove_security_service', target_obj=share_network)
 
+    @mock.patch.object(share_networks.policy, 'check_policy', mock.Mock())
+    def test_action_remove_security_service_share_no_share_servers(self):
+        share_network = fake_share_network.copy()
+        subnet = fake_share_network_subnet.copy()
+        share_network['share_network_subnets'] = [subnet]
+        mock_share_net_get = self.mock_object(
+            db_api, 'share_network_get', mock.Mock(return_value=share_network))
+        mock_contains_servers = self.mock_object(
+            self.controller, '_share_network_subnets_contain_share_servers',
+            mock.Mock(return_value=False))
+        mock_api_remove = self.mock_object(
+            db_api, 'share_network_remove_security_service',
+            mock.Mock(return_value=share_network))
+        mock_view = self.mock_object(
+            self.controller._view_builder, 'build_share_network',
+            mock.Mock(return_value='fake_view'))
+        body = {
+            'remove_security_service': {
+                'security_service_id': 'fake_ss_id',
+            },
+        }
+
+        view = self.controller.remove_security_service(
+            self.req, share_network['id'], body)
+
+        self.assertEqual('fake_view', view)
+        mock_share_net_get.assert_called_once_with(
+            self.req.environ['manila.context'], share_network['id'])
+        share_networks.policy.check_policy.assert_called_once_with(
+            self.req.environ['manila.context'],
+            share_networks.RESOURCE_NAME,
+            'remove_security_service', target_obj=share_network)
+        mock_contains_servers.assert_called_once_with(share_network)
+        mock_api_remove.assert_called_once_with(
+            self.req.environ['manila.context'], share_network['id'],
+            'fake_ss_id')
+        mock_view.assert_called_once_with(self.req, share_network)
+
+    @ddt.data(
+        (KeyError, webob_exc.HTTPBadRequest),
+        (exception.NotFound(message='fake'), webob_exc.HTTPNotFound),
+        (exception.ShareNetworkSecurityServiceDissociationError(
+            message='fake'), webob_exc.HTTPBadRequest))
+    @ddt.unpack
+    def test_action_remove_security_service_share_api_exception(self, api_exp,
+                                                                expect_exp):
+        share_network = fake_share_network.copy()
+        subnet = fake_share_network_subnet.copy()
+        share_network['share_network_subnets'] = [subnet]
+        mock_policy = self.mock_object(
+            share_networks.policy, 'check_policy', mock.Mock())
+        mock_share_net_get = self.mock_object(
+            db_api, 'share_network_get',
+            mock.Mock(return_value=share_network))
+        mock_contains_servers = self.mock_object(
+            self.controller, '_share_network_subnets_contain_share_servers',
+            mock.Mock(return_value=False))
+        mock_api_remove = self.mock_object(
+            db_api, 'share_network_remove_security_service',
+            mock.Mock(side_effect=api_exp))
+        body = {
+            'remove_security_service': {
+                'security_service_id': 'fake_ss_id',
+            },
+        }
+
+        self.assertRaises(expect_exp,
+                          self.controller.remove_security_service,
+                          self.req,
+                          share_network['id'],
+                          body)
+
+        mock_share_net_get.assert_called_once_with(
+            self.req.environ['manila.context'], share_network['id'])
+        db_api.share_network_get.assert_called_once_with(
+            self.req.environ['manila.context'], share_network['id'])
+        mock_policy.assert_called_once_with(
+            self.req.environ['manila.context'],
+            share_networks.RESOURCE_NAME,
+            'remove_security_service', target_obj=share_network)
+        mock_contains_servers.assert_called_once_with(share_network)
+        mock_api_remove.assert_called_once_with(
+            self.req.environ['manila.context'], share_network['id'],
+            'fake_ss_id')
+
     @ddt.data('add_security_service', 'remove_security_service')
     def test_action_security_service_contains_share_servers(self, action):
         share_network = fake_share_network.copy()
@@ -1237,24 +1322,28 @@ class ShareNetworkAPITest(test.TestCase):
             self.req.environ['manila.context'],
             share_networks.RESOURCE_NAME, action, target_obj=share_network)
 
-    def _setup_data_for_check_update_tests(self):
+    def _setup_data_for_update_tests(self, is_check=False):
         security_services = [
             db_utils.create_security_service() for i in range(2)]
         share_network = db_utils.create_share_network()
+        action = ('update_security_service_check' if is_check
+                  else 'update_security_service')
         body = {
-            'update_security_service_check': {
-                'reset_operation': False,
+            action: {
                 'current_service_id': security_services[0]['id'],
                 'new_service_id': security_services[1]['id'],
             }
         }
+        if is_check:
+            body[action]['reset_operation'] = False
         request = fakes.HTTPRequest.blank(
-            '/share-networks', use_admin_context=True, version='2.63')
+            '/v2/fake/share-networks/%s/action' % share_network['id'],
+            use_admin_context=True, version='2.63')
         return security_services, share_network, body, request
 
     def test_check_update_security_service_not_found(self):
         security_services, share_network, body, request = (
-            self._setup_data_for_check_update_tests())
+            self._setup_data_for_update_tests(is_check=True))
 
         context = request.environ['manila.context']
 
@@ -1279,7 +1368,7 @@ class ShareNetworkAPITest(test.TestCase):
 
     def test_check_update_security_service(self):
         security_services, share_network, body, request = (
-            self._setup_data_for_check_update_tests())
+            self._setup_data_for_update_tests(is_check=True))
         context = request.environ['manila.context']
         share_api_return = {'fake_key': 'fake_value'}
 
@@ -1315,12 +1404,14 @@ class ShareNetworkAPITest(test.TestCase):
     @ddt.data(
         (exception.ServiceIsDown(message='fake'), webob_exc.HTTPConflict),
         (exception.InvalidShareNetwork(message='fake'),
-         webob_exc.HTTPBadRequest))
+         webob_exc.HTTPBadRequest),
+        (exception.InvalidSecurityService(message='fake'),
+         webob_exc.HTTPConflict))
     @ddt.unpack
     def test_check_update_security_service_share_api_failed(
             self, captured_exception, exception_to_be_raised):
         security_services, share_network, body, request = (
-            self._setup_data_for_check_update_tests())
+            self._setup_data_for_update_tests(is_check=True))
         context = request.environ['manila.context']
 
         self.mock_object(share_networks.policy, 'check_policy')
@@ -1426,7 +1517,9 @@ class ShareNetworkAPITest(test.TestCase):
     @ddt.data(
         (exception.ServiceIsDown(message='fake'), webob_exc.HTTPConflict),
         (exception.InvalidShareNetwork(message='fake'),
-         webob_exc.HTTPBadRequest))
+         webob_exc.HTTPBadRequest),
+        (exception.InvalidSecurityService(message='fake'),
+         webob_exc.HTTPConflict))
     @ddt.unpack
     def test_check_add_security_service_share_api_failed(
             self, captured_exception, exception_to_be_raised):
@@ -1460,3 +1553,62 @@ class ShareNetworkAPITest(test.TestCase):
             assert_called_once_with(
                 context, share_network, security_service,
                 reset_operation=False))
+
+    @ddt.data(
+        (exception.ServiceIsDown(message='fake'), webob_exc.HTTPConflict),
+        (exception.InvalidShareNetwork(message='fake'),
+         webob_exc.HTTPBadRequest),
+        (exception.InvalidSecurityService(message='fake'),
+         webob_exc.HTTPConflict))
+    @ddt.unpack
+    def test_update_security_service_share_api_failed(
+            self, captured_exception, exception_to_be_raised):
+        security_services, share_network, body, request = (
+            self._setup_data_for_update_tests())
+        context = request.environ['manila.context']
+
+        self.mock_object(share_networks.policy, 'check_policy')
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value=share_network))
+        self.mock_object(
+            db_api, 'security_service_get',
+            mock.Mock(
+                side_effect=[security_services[0], security_services[1]]))
+        self.mock_object(
+            self.controller.share_api,
+            'update_share_network_security_service',
+            mock.Mock(side_effect=captured_exception))
+
+        self.assertRaises(exception_to_be_raised,
+                          self.controller.update_security_service,
+                          request,
+                          share_network['id'],
+                          body)
+
+        db_api.share_network_get.assert_called_once_with(
+            context, share_network['id'])
+        db_api.security_service_get.assert_has_calls(
+            [mock.call(context, security_services[0]['id']),
+             mock.call(context, security_services[1]['id'])])
+        (self.controller.share_api.update_share_network_security_service.
+            assert_called_once_with(
+                context, share_network, security_services[1],
+                current_security_service=security_services[0]))
+
+    def test_reset_status(self):
+        share_network = db_utils.create_share_network()
+        request = fakes.HTTPRequest.blank(
+            '/v2/fake/share-networks/%s/action' % share_network['id'],
+            use_admin_context=True, version='2.63')
+        self.mock_object(db_api, 'share_network_update')
+
+        status = {'status': 'active'}
+        body = {'reset_status': status}
+
+        response = self.controller.reset_status(request,
+                                                share_network['id'], body)
+
+        self.assertEqual(202, response.status_int)
+        db_api.share_network_update.assert_called_once_with(
+            request.environ['manila.context'],
+            share_network['id'], {'status': 'active'})

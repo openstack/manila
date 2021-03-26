@@ -217,3 +217,34 @@ class ViewBuilderTestCase(test.TestCase):
                                                    is_detail=False)
 
         self.assertEqual(expected, result)
+
+    @ddt.data(('update_security_service', True),
+              ('add_security_service', False))
+    @ddt.unpack
+    def test_build_security_service_update_check(self, operation, is_admin):
+        req = fakes.HTTPRequest.blank('/share-networks',
+                                      use_admin_context=is_admin)
+        params = {'new_service_id': 'new_id'}
+        if operation == 'update_security_service':
+            params['current_service_id'] = 'current_id'
+
+        hosts_result = {
+            'compatible': True,
+            'hosts_check_result': {'hostA': True}
+        }
+        expected = {
+            'compatible': True,
+            'requested_operation': {
+                'operation': operation,
+                'current_security_service': params.get('current_service_id'),
+                'new_security_service': params.get('new_service_id'),
+            },
+        }
+        if is_admin:
+            expected['hosts_check_result'] = hosts_result['hosts_check_result']
+
+        result = self.builder.build_security_service_update_check(req,
+                                                                  params,
+                                                                  hosts_result)
+
+        self.assertEqual(expected, result)

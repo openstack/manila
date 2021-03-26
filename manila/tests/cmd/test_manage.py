@@ -47,6 +47,7 @@ class ManilaCmdManageTestCase(test.TestCase):
         self.get_log_cmds = manila_manage.GetLogCommands()
         self.service_cmds = manila_manage.ServiceCommands()
         self.share_cmds = manila_manage.ShareCommands()
+        self.server_cmds = manila_manage.ShareServerCommands()
 
     @mock.patch.object(manila_manage.ShellCommands, 'run', mock.Mock())
     def test_shell_commands_bpython(self):
@@ -437,3 +438,44 @@ class ManilaCmdManageTestCase(test.TestCase):
         self.assertEqual(expected_op, intercepted_op.getvalue().strip())
         db.share_resources_host_update.assert_called_once_with(
             'admin_ctxt', current_host, new_host)
+
+    def test_share_server_update_capability(self):
+        self.mock_object(context, 'get_admin_context',
+                         mock.Mock(return_value='admin_ctxt'))
+        self.mock_object(db, 'share_servers_update')
+        share_servers = 'server_id_a,server_id_b'
+        share_server_list = [server.strip()
+                             for server in share_servers.split(",")]
+        capability = 'security_service_update_support'
+        values_to_update = {
+            capability: True
+        }
+
+        with mock.patch('sys.stdout', new=io.StringIO()) as output:
+            self.server_cmds.update_share_server_capabilities(
+                share_servers, capability, True)
+
+        expected_op = ("The capability(ies) %(cap)s of the following share "
+                       "server(s) %(servers)s was(were) updated to "
+                       "%(value)s.") % {
+            'cap': [capability],
+            'servers': share_server_list,
+            'value': True,
+        }
+
+        self.assertEqual(expected_op, output.getvalue().strip())
+        db.share_servers_update.assert_called_once_with(
+            'admin_ctxt', share_server_list, values_to_update)
+
+    def test_share_server_update_capability_not_supported(self):
+        share_servers = 'server_id_a'
+        capabilities = 'invalid_capability'
+
+        exit = self.assertRaises(
+            SystemExit,
+            self.server_cmds.update_share_server_capabilities,
+            share_servers,
+            capabilities,
+            True)
+
+        self.assertEqual(1, exit.code)

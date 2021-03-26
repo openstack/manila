@@ -188,8 +188,7 @@ class Share(BASE, ManilaBase):
     __tablename__ = 'shares'
     _extra_keys = ['name', 'export_location', 'export_locations', 'status',
                    'host', 'share_server_id', 'share_network_id',
-                   'availability_zone', 'access_rules_status', 'share_type_id',
-                   'share_network_status']
+                   'availability_zone', 'access_rules_status', 'share_type_id']
 
     @property
     def name(self):
@@ -228,8 +227,7 @@ class Share(BASE, ManilaBase):
     def __getattr__(self, item):
         proxified_properties = ('status', 'host', 'share_server_id',
                                 'share_network_id', 'availability_zone',
-                                'share_type_id', 'share_type',
-                                'share_network_status')
+                                'share_type_id', 'share_type')
 
         if item in proxified_properties:
             return getattr(self.instance, item, None)
@@ -1016,10 +1014,6 @@ class ShareNetworkSubnet(BASE, ManilaBase):
     def share_network_name(self):
         return self.share_network['name']
 
-    @property
-    def share_network_status(self):
-        return self.share_network['status']
-
 
 class ShareServer(BASE, ManilaBase):
     """Represents share server used by share."""
@@ -1077,10 +1071,6 @@ class ShareServer(BASE, ManilaBase):
     def backend_details(self):
         return {model['key']: model['value']
                 for model in self._backend_details}
-
-    @property
-    def share_network_status(self):
-        return self.share_network_subnet['share_network']['status']
 
     _extra_keys = ['backend_details']
 
