@@ -1,0 +1,28 @@
+{
+    "share_network": {
+        "id": "1e3f43b2-2290-4fb8-bdc3-fb741c336c2a",
+        "name": "my_share_network",
+        "project_id": "838f27f65c1d43baa37743c6884958ce",
+        "created_at": "2021-03-25T17: 48: 51.925433",
+        "updated_at": "2021-03-29T15: 06: 19.464021",
+        "description": null,
+        "share_network_subnets": [
+            {
+                "id": "14f7f4f6-b6b6-4b7e-a89c-1040700f3166",
+                "availability_zone": null,
+                "created_at": "2021-03-25T17: 48: 52.014525",
+                "updated_at": "2021-03-29T14: 50: 56.993391",
+                "segmentation_id": 1010,
+                "neutron_net_id": null,
+                "neutron_subnet_id": null,
+                "ip_version": 4,
+                "cidr": "10.0.0.0/24",
+                "network_type": "vlan",
+                "mtu": 1500,
+                "gateway": "10.0.0.1"
+            }
+        ],
+        "status": "network_change",
+        "security_service_update_support": true
+    }
+}
