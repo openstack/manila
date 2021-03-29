@@ -342,8 +342,8 @@ user documentation.
 ----
   Added quota control to per share size.
 
-2.63
-----
+2.63 (Maximum in Wallaby)
+-------------------------
   Added the possibility to attach security services to share networks in use.
   Also, an attached security service can be replaced for another one of
   the same 'type'. In order to support those operations a 'status' field was
