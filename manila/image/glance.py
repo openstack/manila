@@ -17,7 +17,6 @@ Handles all requests to Glance.
 """
 
 from glanceclient import client as glance_client
-from glanceclient import exc as glance_exception
 from keystoneauth1 import loading as ks_loading
 from oslo_config import cfg
 
@@ -53,9 +52,7 @@ def glanceclient(context):
     global AUTH_OBJ
     if not AUTH_OBJ:
         AUTH_OBJ = client_auth.AuthClientLoader(
-            client_class=glance_client.Client,
-            exception_module=glance_exception,
-            cfg_group=GLANCE_GROUP)
+            client_class=glance_client.Client, cfg_group=GLANCE_GROUP)
     return AUTH_OBJ.get_client(context,
                                version=CONF[GLANCE_GROUP].api_microversion,
                                region_name=CONF[GLANCE_GROUP].region_name)
