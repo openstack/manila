@@ -49,11 +49,11 @@ Response parameters
    - updated_at: updated_at
    - access_type: access_type
    - access_to: access_to
-   - access_key: access_key
+   - access_key: access_key_share_access_rules
    - state: state
    - access_level: access_level
    - id: access_rule_id
-   - access_metadata: access_metadata
+   - metadata: access_metadata
 
 Response example
 ----------------
@@ -106,7 +106,7 @@ Response parameters
 
    - metadata: access_metadata
    - access_type: access_type
-   - access_key: access_key
+   - access_key: access_key_share_access_rules
    - access_to: access_to
    - access_level: access_level
    - state: state

@@ -534,6 +534,12 @@ access_key:
   required: true
   type: string
   min_version: 2.21
+access_key_share_access_rules:
+  description: |
+    The access credential of the entity granted share access.
+  in: body
+  required: true
+  type: string
 access_level:
   description: |
     The access level to the share.  To grant or deny
@@ -559,6 +565,14 @@ access_metadata:
   in: body
   required: true
   type: object
+access_metadata_grant_access:
+  description: |
+    One or more access rule metadata key and value pairs as a
+    dictionary of strings.
+  in: body
+  required: true
+  type: object
+  min_version: 2.45
 access_rule_id:
   description: |
     The access rule ID.
