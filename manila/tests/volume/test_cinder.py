@@ -67,7 +67,6 @@ class CinderclientTestCase(test.TestCase):
 
         mock_client_loader.assert_called_once_with(
             client_class=cinder.cinder_client.Client,
-            exception_module=cinder.cinder_exception,
             cfg_group=cinder.CINDER_GROUP
         )
         mock_client_loader.return_value.get_client.assert_called_once_with(
