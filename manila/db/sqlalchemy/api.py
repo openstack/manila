@@ -1760,6 +1760,12 @@ def _share_replica_get_with_filters(context, share_id=None, replica_id=None,
     query = model_query(context, models.ShareInstance, session=session,
                         read_deleted="no")
 
+    if not context.is_admin:
+        query = query.join(
+            models.Share,
+            models.ShareInstance.share_id == models.Share.id).filter(
+            models.Share.project_id == context.project_id)
+
     if share_id is not None:
         query = query.filter(models.ShareInstance.share_id == share_id)
 
