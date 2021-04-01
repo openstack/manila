@@ -104,6 +104,9 @@ function correctly in manila, such as:
   that can replicate between each other;
 - replication_type: string specifying the type of replication supported by
   the driver. Can be one of ('readable', 'writable' or 'dr').
+- security_service_update_support: boolean specifying whether the driver
+  supports updating or adding security services in an already deployed share
+  server. It defaults to ``False``.
 
 Below is an example of drivers with multiple pools. "my" is used as an
 example vendor prefix:
@@ -152,6 +155,7 @@ example vendor prefix:
                                                   #/
              'ipv4_support': True,
              'ipv6_support': True,
+             'security_service_update_support': False,
 
             },
             {'pool_name': 'thick pool',
@@ -174,6 +178,7 @@ example vendor prefix:
              'my_super_hero_2': 'Robin',
              'ipv4_support': True,
              'ipv6_support': True,
+             'security_service_update_support': False,
             },
          ]
     }
