@@ -818,9 +818,10 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         self._layout.gluster_used_vols = set([glusterfs_target])
         self._layout.glusterfs_versions = {glusterfs_server: ('3', '7')}
         self.mock_object(old_gmgr, 'gluster_call',
-                         mock.Mock(side_effect=[('', ''), ('', '')]))
+                         mock.Mock(side_effect=[
+                             ('', ''), ('', ''), ('', ''), ('', '')]))
         self.mock_object(new_gmgr, 'gluster_call',
-                         mock.Mock(side_effect=[('', ''), ('', ''), ('', '')]))
+                         mock.Mock(side_effect=[('', ''), ('', '')]))
         self.mock_object(new_gmgr, 'get_vol_option',
                          mock.Mock())
         new_gmgr.get_vol_option.return_value = (
@@ -841,11 +842,11 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
             assert_called_once_with(old_gmgr, snapshot))
         args = (('snapshot', 'activate', 'fake_snap_id_xyz',
                  'force', '--mode=script'),
-                ('snapshot', 'clone', volume, 'fake_snap_id_xyz'))
+                ('snapshot', 'clone', volume, 'fake_snap_id_xyz'),
+                ('volume', 'start', volume))
         old_gmgr.gluster_call.assert_has_calls(
             [mock.call(*a, log=mock.ANY) for a in args])
-        args = (('volume', 'start', volume),
-                ('volume', 'set', volume, 'user.manila-share', share['id']),
+        args = (('volume', 'set', volume, 'user.manila-share', share['id']),
                 ('volume', 'set', volume, 'user.manila-cloned-from',
                  snapshot['share_id']))
         new_gmgr.gluster_call.assert_has_calls(
@@ -862,7 +863,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         self.assertIn(
             new_vol_addr,
             self._layout.gluster_used_vols)
-        self.assertEqual('host1:/gv1', ret)
+        self.assertEqual(['host1:/gv1'], ret)
 
     def test_create_share_from_snapshot_error_unsupported_gluster_version(
             self):

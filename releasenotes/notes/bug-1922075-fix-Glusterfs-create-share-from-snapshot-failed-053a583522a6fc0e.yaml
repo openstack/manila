@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed `bug #1922075  <https://bugs.launchpad.net/manila/+bug/1922075>`_
+    Fixed the problem that "gluster volume set nfs.rpc-auth-reject '*'"
+    failed when the glusterfs driver created an instance from a snapshot.
