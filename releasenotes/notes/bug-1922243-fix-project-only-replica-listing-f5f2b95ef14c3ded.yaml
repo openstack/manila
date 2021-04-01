@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed an issue that caused Manila to return all projects' share replicas
+    even when the user was not an administrator. Now, when the user is not an
+    administrator, only the replicas in the project perspective are going to
+    be displayed. For more details, please refer to
+    `Launchpad Bug #1922243 <https://bugs.launchpad.net/manila/+bug/1922243>`_
