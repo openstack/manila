@@ -82,53 +82,48 @@ SYSTEM_OR_PROJECT_READER = (
 
 rules = [
     # ***Default OpenStack scoped personas*** #
-    # System scoped Administrator
     policy.RuleDefault(
         name='system-admin',
         check_str='role:admin and '
                   'system_scope:all',
+        description='System scoped Administrator',
         scope_types=['system']),
-
-    # System scoped Member
     policy.RuleDefault(
         name='system-member',
         check_str='role:member and '
                   'system_scope:all',
+        description='System scoped Member',
         scope_types=['system']),
-
-    # System scoped Reader
     policy.RuleDefault(
         name='system-reader',
         check_str='role:reader and '
                   'system_scope:all',
+        description='System scoped Reader',
         scope_types=['system']),
-
-    # Project scoped Administrator
     policy.RuleDefault(
         name='project-admin',
         check_str='role:admin and '
                   'project_id:%(project_id)s',
+        description='Project scoped Administrator',
         scope_types=['project']),
-
-    # Project scoped Member
     policy.RuleDefault(
         name='project-member',
         check_str='role:member and '
                   'project_id:%(project_id)s',
+        description='Project scoped Member',
         scope_types=['project']),
-
-    # Project scoped Reader
     policy.RuleDefault(
         name='project-reader',
         check_str='role:reader and '
                   'project_id:%(project_id)s',
+        description='Project scoped Reader',
         scope_types=['project']),
 
     # ***Special personas for Manila*** #
-    # Privileged users checked via "context.is_admin"
     policy.RuleDefault(
         name='context_is_admin',
         check_str='rule:system-admin',
+        description='Privileged users checked via "context.is_admin"',
         deprecated_rule=DEPRECATED_CONTEXT_IS_ADMIN,
         scope_types=['system']),
 
@@ -136,9 +131,16 @@ rules = [
     # can be removed after "enforce_scope" defaults to True in oslo.policy
     policy.RuleDefault(
         name='admin_or_owner',
-        check_str='is_admin:True or project_id:%(project_id)s'),
-    policy.RuleDefault(name='default', check_str=RULE_ADMIN_OR_OWNER),
-    policy.RuleDefault(name='admin_api', check_str='is_admin:True'),
+        check_str='is_admin:True or project_id:%(project_id)s',
+        description='Administrator or Member of the project'),
+    policy.RuleDefault(
+        name='default',
+        check_str=RULE_ADMIN_OR_OWNER,
+        description='Default rule for most non-Admin APIs'),
+    policy.RuleDefault(
+        name='admin_api',
+        check_str='is_admin:True',
+        description='Default rule for most Admin APIs.'),
 ]
 
 
