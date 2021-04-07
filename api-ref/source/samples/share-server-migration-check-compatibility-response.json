@@ -1,0 +1,18 @@
+{
+    "compatible": false,
+    "requested_capabilities": {
+        "writable": "True",
+        "nondisruptive": "True",
+        "preserve_snapshots": "True",
+        "share_network_id": null,
+        "host": "foohost2@backend2"
+    },
+    "supported_capabilities": {
+        "writable": true,
+        "nondisruptive": false,
+        "preserve_snapshots": true,
+        "share_network_id": "1d04b755-649f-46a4-964c-be9f0395af13",
+        "migration_cancel": true,
+        "migration_get_progress": true
+    }
+}

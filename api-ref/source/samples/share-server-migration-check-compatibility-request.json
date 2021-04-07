@@ -1,0 +1,9 @@
+{
+    "migration_check": {
+        "host": "foohost2@backend2",
+        "preserve_snapshots": "True",
+        "writable": "True",
+        "nondisruptive": "True",
+        "new_share_network_id": null
+    }
+}
