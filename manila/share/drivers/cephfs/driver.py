@@ -149,7 +149,8 @@ class RadosError(Exception):
     pass
 
 
-def rados_command(rados_client, prefix=None, args=None, json_obj=False):
+def rados_command(rados_client, prefix=None, args=None, json_obj=False,
+                  target=('mon-mgr', )):
     """Safer wrapper for ceph_argparse.json_command
 
     Raises error exception instead of relying on caller to check return
@@ -172,12 +173,14 @@ def rados_command(rados_client, prefix=None, args=None, json_obj=False):
     argdict['format'] = 'json'
 
     LOG.debug("Invoking ceph_argparse.json_command - rados_client=%(cl)s, "
-              "prefix='%(pf)s', argdict=%(ad)s, timeout=%(to)s.",
-              {"cl": rados_client, "pf": prefix, "ad": argdict,
+              "target=%(tg)s, prefix='%(pf)s', argdict=%(ad)s, "
+              "timeout=%(to)s.",
+              {"cl": rados_client, "tg": target, "pf": prefix, "ad": argdict,
                "to": RADOS_TIMEOUT})
 
     try:
         ret, outbuf, outs = json_command(rados_client,
+                                         target=target,
                                          prefix=prefix,
                                          argdict=argdict,
                                          timeout=RADOS_TIMEOUT)
@@ -712,7 +715,8 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
 
     def get_mon_addrs(self):
         result = []
-        mon_map = rados_command(self.rados_client, "mon dump", json_obj=True)
+        mon_map = rados_command(self.rados_client, "mon dump", json_obj=True,
+                                target=('mon', ))
         for mon in mon_map['mons']:
             ip_port = mon['addr'].split("/")[0]
             result.append(ip_port)
