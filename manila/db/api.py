@@ -876,6 +876,11 @@ def share_network_get(context, id):
     return IMPL.share_network_get(context, id)
 
 
+def share_network_get_all_by_filter(context, filters=None):
+    """Get all share network DB records for the given filter."""
+    return IMPL.share_network_get_all_by_filter(context, filters=filters)
+
+
 def share_network_get_all(context):
     """Get all share network DB records."""
     return IMPL.share_network_get_all(context)

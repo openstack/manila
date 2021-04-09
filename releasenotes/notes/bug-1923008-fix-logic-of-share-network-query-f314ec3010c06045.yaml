@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix the query logic for share network list, put "created_since",
+    "created_before" search opts into database to increase query speed,
+    integrate the database query interface.

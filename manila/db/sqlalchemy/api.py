@@ -3927,6 +3927,33 @@ def share_network_get(context, id, session=None):
 
 
 @require_context
+def share_network_get_all_by_filter(context, filters=None):
+    model_sn = models.ShareNetwork
+    session = get_session()
+    with session.begin():
+        query = _network_get_query(context,
+                                   session=session)
+
+        legal_filter_keys = ('project_id', 'created_since', 'created_before')
+
+        if not filters:
+            filters = {}
+
+        query = exact_filter(query, model_sn, filters, legal_filter_keys)
+
+        if 'security_service_id' in filters:
+            security_service_id = filters.get('security_service_id')
+            query = query.join(
+                models.ShareNetworkSecurityServiceAssociation,
+                models.ShareNetwork.id == models.
+                ShareNetworkSecurityServiceAssociation.
+                share_network_id).filter_by(
+                security_service_id=security_service_id, deleted=0)
+
+        return query.all()
+
+
+@require_context
 def share_network_get_all(context):
     return _network_get_query(context).all()
 

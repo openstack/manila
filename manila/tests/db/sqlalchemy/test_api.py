@@ -2486,6 +2486,54 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
         for index, net in enumerate(share_networks):
             self._check_fields(expected=net, actual=result[index])
 
+    def test_get_all_by_filter_with_project_id(self):
+        db_api.share_network_create(self.fake_context, self.share_nw_dict)
+
+        share_nw_dict2 = dict(self.share_nw_dict)
+        share_nw_dict2['id'] = 'fake share nw id2'
+        share_nw_dict2['project_id'] = 'fake project 2'
+        new_context = context.RequestContext(user_id='fake user 2',
+                                             project_id='fake project 2',
+                                             is_admin=False)
+        db_api.share_network_create(new_context, share_nw_dict2)
+
+        filters = {'project_id': share_nw_dict2['project_id']}
+        result = db_api.share_network_get_all_by_filter(
+            self.fake_context.elevated(), filters=filters)
+
+        self.assertEqual(1, len(result))
+        self._check_fields(expected=share_nw_dict2, actual=result[0])
+
+    def test_get_all_with_created_since_or_before_filter(self):
+        now = timeutils.utcnow()
+
+        share_nw1 = dict(self.share_nw_dict)
+        share_nw2 = dict(self.share_nw_dict)
+        share_nw3 = dict(self.share_nw_dict)
+
+        share_nw1['created_at'] = (now - datetime.timedelta(seconds=1))
+        share_nw2['created_at'] = (now + datetime.timedelta(seconds=1))
+        share_nw3['created_at'] = (now + datetime.timedelta(seconds=2))
+
+        share_nw1['id'] = 'fake share nw id1'
+        share_nw2['id'] = 'fake share nw id2'
+        share_nw3['id'] = 'fake share nw id3'
+
+        db_api.share_network_create(self.fake_context, share_nw1)
+        db_api.share_network_create(self.fake_context, share_nw2)
+        db_api.share_network_create(self.fake_context, share_nw3)
+
+        filters1 = {'created_before': now}
+        filters2 = {'created_since': now}
+
+        result1 = db_api.share_network_get_all_by_filter(
+            self.fake_context.elevated(), filters=filters1)
+        result2 = db_api.share_network_get_all_by_filter(
+            self.fake_context.elevated(), filters=filters2)
+
+        self.assertEqual(1, len(result1))
+        self.assertEqual(2, len(result2))
+
     def test_get_all_by_project(self):
         db_api.share_network_create(self.fake_context, self.share_nw_dict)
 

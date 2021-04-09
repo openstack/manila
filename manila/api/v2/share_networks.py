@@ -162,41 +162,39 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
         context = req.environ['manila.context']
         search_opts = {}
         search_opts.update(req.GET)
+        filters = {}
 
-        if 'security_service_id' in search_opts:
-            networks = db_api.share_network_get_all_by_security_service(
-                context, search_opts['security_service_id'])
-        elif context.is_admin and 'project_id' in search_opts:
-            networks = db_api.share_network_get_all_by_project(
-                context, search_opts['project_id'])
-        elif context.is_admin and utils.is_all_tenants(search_opts):
-            networks = db_api.share_network_get_all(context)
-        else:
-            networks = db_api.share_network_get_all_by_project(
-                context,
-                context.project_id)
+        # if not context.is_admin, will ignore project_id and all_tenants here,
+        # in database will auto add context.project_id to search_opts.
+        if context.is_admin:
+            if 'project_id' in search_opts:
+                # if specified project_id, will not use all_tenants
+                filters['project_id'] = search_opts['project_id']
+            elif not utils.is_all_tenants(search_opts):
+                # if not specified project_id and all_tenants, will get
+                # share networks in admin project.
+                filters['project_id'] = context.project_id
 
         date_parsing_error_msg = '''%s is not in yyyy-mm-dd format.'''
-        if 'created_since' in search_opts:
-            try:
-                created_since = timeutils.parse_strtime(
-                    search_opts['created_since'],
-                    fmt="%Y-%m-%d")
-            except ValueError:
-                msg = date_parsing_error_msg % search_opts['created_since']
-                raise exc.HTTPBadRequest(explanation=msg)
-            networks = [network for network in networks
-                        if network['created_at'] >= created_since]
-        if 'created_before' in search_opts:
-            try:
-                created_before = timeutils.parse_strtime(
-                    search_opts['created_before'],
-                    fmt="%Y-%m-%d")
-            except ValueError:
-                msg = date_parsing_error_msg % search_opts['created_before']
-                raise exc.HTTPBadRequest(explanation=msg)
-            networks = [network for network in networks
-                        if network['created_at'] <= created_before]
+        for time_comparison_filter in ['created_since', 'created_before']:
+            if time_comparison_filter in search_opts:
+                time_str = search_opts.get(time_comparison_filter)
+                try:
+                    parsed_time = timeutils.parse_strtime(time_str,
+                                                          fmt="%Y-%m-%d")
+                except ValueError:
+                    msg = date_parsing_error_msg % time_str
+                    raise exc.HTTPBadRequest(explanation=msg)
+
+                filters[time_comparison_filter] = parsed_time
+
+        if 'security_service_id' in search_opts:
+            filters['security_service_id'] = search_opts.get(
+                'security_service_id')
+
+        networks = db_api.share_network_get_all_by_filter(context,
+                                                          filters=filters)
+
         opts_to_remove = [
             'all_tenants',
             'created_since',
