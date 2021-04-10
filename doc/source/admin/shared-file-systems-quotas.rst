@@ -110,6 +110,7 @@ you get the quotas for the specified project.
    +-----------------------+-----------------------------------+
    | id                    | d99c76b43b1743fd822d26ccc915989c  |
    | gigabytes             | 1000                              |
+   | per_share_gigabytes   | -1                                |
    | snapshot_gigabytes    | 1000                              |
    | snapshots             | 50                                |
    | shares                | 50                                |
@@ -132,6 +133,7 @@ the :command:`manila quota-defaults` command:
    +-----------------------+------------------------------------+
    | id                    | 1cc2154937bd40f4815d5f168d372263   |
    | gigabytes             | 1000                               |
+   | per_share_gigabytes   | -1                                 |
    | snapshot_gigabytes    | 1000                               |
    | snapshots             | 50                                 |
    | shares                | 50                                 |
@@ -152,6 +154,8 @@ arguments. It is possible to update the ``shares``, ``snapshots``,
     Since API version 2.53, the administrator is also able to update quotas
     for share replicas and replica gigabytes by specifying ``share_replicas``
     and/or ``replica_gigabytes``.
+    Since API version 2.62, the administrator is also able to update quotas
+    for per share gigabytes by specifying ``per_share_gigabytes``
 
 .. code-block:: console
 
