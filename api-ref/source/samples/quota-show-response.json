@@ -9,6 +9,7 @@
         "share_groups": 10,
         "share_group_snapshots": 10,
         "share_replicas": 100,
-        "replica_gigabytes": 1000
+        "replica_gigabytes": 1000,
+        "per_share_gigabytes": -1
     }
 }

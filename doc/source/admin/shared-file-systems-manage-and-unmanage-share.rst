@@ -60,6 +60,8 @@ Manage a share
     a ``replication_type`` extra spec while managing a share, manila quota
     system will reserve and consume resources for two additional quotas:
     ``share_replicas`` and ``replica_gigabytes``.
+    From API version 2.62, manila quota system will validate size of the
+    share against ``per_share_gigabytes`` quota.
 
 To register the non-managed share in the File System service, run the
 :command:`manila manage` command:

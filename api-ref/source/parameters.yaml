@@ -1662,6 +1662,20 @@ os-share-type-access:is_public:
   required: false
   type: boolean
   max_version: 2.6
+perShareGigabytes:
+  description: |
+    The number of gigabytes per share allowed in a project.
+  in: body
+  required: true
+  type: integer
+  min_version: 2.62
+perShareGigabytesOptional:
+  description: |
+    The number of gigabytes per share allowed in a project.
+  in: body
+  required: false
+  type: integer
+  min_version: 2.62
 pool:
   description: |
     The pool name for the back end.
@@ -1797,6 +1811,28 @@ quota_gigabytes_request:
   description: |
     The number of gigabytes for the project.
   in: body
+  required: false
+  type: integer
+quota_per_share_gigabytes:
+  description: |
+    The number of gigabytes per share allowed for each project.
+  in: body
+  required: true
+  min_version: 2.62
+  type: integer
+quota_per_share_gigabytes_detail:
+  description: |
+    The limit, in_use, reserved number of per share gigabytes
+    for each project.
+  in: body
+  min_version: 2.62
+  required: true
+  type: object
+quota_per_share_gigabytes_request:
+  description: |
+    The number of gigabytes per share allowed for each project.
+  in: body
+  min_version: 2.62
   required: false
   type: integer
 quota_project_id:
