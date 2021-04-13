@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed NotFound error in share replica periodic tasks. It could happen that
+    the parent share of the replica that was being worked on had already been
+    deleted.

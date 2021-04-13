@@ -1807,17 +1807,6 @@ def _share_replica_get_with_filters(context, share_id=None, replica_id=None,
     return query
 
 
-def _set_replica_share_data(context, replicas, session):
-    if replicas and not isinstance(replicas, list):
-        replicas = [replicas]
-
-    for replica in replicas:
-        parent_share = share_get(context, replica['share_id'], session=session)
-        replica.set_share_data(parent_share)
-
-    return replicas
-
-
 @require_context
 def share_replicas_get_all(context, with_share_data=False,
                            with_share_server=True, session=None):
@@ -1828,7 +1817,7 @@ def share_replicas_get_all(context, with_share_data=False,
         context, with_share_server=with_share_server, session=session).all()
 
     if with_share_data:
-        result = _set_replica_share_data(context, result, session)
+        result = _set_instances_share_data(context, result, session)
 
     return result
 
@@ -1845,7 +1834,7 @@ def share_replicas_get_all_by_share(context, share_id,
         share_id=share_id, session=session).all()
 
     if with_share_data:
-        result = _set_replica_share_data(context, result, session)
+        result = _set_instances_share_data(context, result, session)
 
     return result
 
@@ -1864,7 +1853,7 @@ def share_replicas_get_available_active_replica(context, share_id,
         status=constants.STATUS_AVAILABLE, session=session).first()
 
     if result and with_share_data:
-        result = _set_replica_share_data(context, result, session)[0]
+        result = _set_instances_share_data(context, result, session)[0]
 
     return result
 
@@ -1883,7 +1872,7 @@ def share_replica_get(context, replica_id, with_share_data=False,
         raise exception.ShareReplicaNotFound(replica_id=replica_id)
 
     if with_share_data:
-        result = _set_replica_share_data(context, result, session)[0]
+        result = _set_instances_share_data(context, result, session)[0]
 
     return result
 
@@ -1902,7 +1891,7 @@ def share_replica_update(context, share_replica_id, values,
             context, share_replica_id, values, session=session)
 
         if with_share_data:
-            updated_share_replica = _set_replica_share_data(
+            updated_share_replica = _set_instances_share_data(
                 context, updated_share_replica, session)[0]
 
     return updated_share_replica
