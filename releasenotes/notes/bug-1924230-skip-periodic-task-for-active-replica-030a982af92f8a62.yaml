@@ -1,0 +1,6 @@
+---
+fixes:
+  - Fixed periodic_share_replica_update() to skip active replicas similarly to
+    periodic_share_replica_snapshot_update(). The intention is to check on
+    non-active replicas, that can be 'in_sync', 'out_of_sync' or in 'error'
+    state.
