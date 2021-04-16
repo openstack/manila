@@ -2644,9 +2644,22 @@ class ShareManager(manager.SchedulerDependentManager):
                 with_share_data=True, with_share_server=True)
         )
 
-        _active_replica = [x for x in replica_list
-                           if x['replica_state'] ==
-                           constants.REPLICA_STATE_ACTIVE][0]
+        _active_replica = next((x for x in replica_list
+                                if x['replica_state'] ==
+                                constants.REPLICA_STATE_ACTIVE), None)
+
+        if _active_replica is None:
+            if share_replica['replica_state'] != constants.STATUS_ERROR:
+                # only log warning if replica_state was not already in error
+                msg = (("Replica parent share %(id)s has no active "
+                        "replica.") % {'id': share_replica['share_id']})
+                LOG.warning(msg)
+                self.db.share_replica_update(context, share_replica['id'],
+                                             {'replica_state':
+                                              constants.STATUS_ERROR})
+            # without a related active replica, we cannot act on any
+            # non-active replica
+            return
 
         # Get snapshots for the share.
         share_snapshots = self.db.share_snapshot_get_all_for_share(
