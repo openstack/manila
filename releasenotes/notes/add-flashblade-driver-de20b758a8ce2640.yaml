@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added Pure Storage FlashBlade driver.
+    Driver supports NFS protocol.
+    Share operations include create, delete, resize, snapshot and revert-to-snapshot.
