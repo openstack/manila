@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    mgr-commands are now directed to the mgr-daemon instead of the mon-daemon
+    in the CephFS drivers
+upgrade:
+  - |
+    MON write caps are not longer needed to interact with the backend
+    on the Ceph drivers. The capabilities of the driver user (configured with ``cephfs_auth_id``)
+    can hence be reduced. See the `administrator docs <https://docs.openstack.org/manila/wallaby/admin/cephfs_driver.html#authorizing-the-driver-to-communicate-with-ceph>`_
+    for the capabilities required.
