@@ -92,7 +92,7 @@ class SchedulerManager(manager.Manager):
         self.message_api = message_api.API()
         super(SchedulerManager, self).__init__(*args, **kwargs)
 
-    def init_host(self):
+    def init_host_with_rpc(self):
         # mark service alive by creating a probe
         try:
             open('/etc/manila/probe', 'a')
