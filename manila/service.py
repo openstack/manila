@@ -135,6 +135,7 @@ class Service(service.Service):
         LOG.info('Starting %(topic)s node (version %(version_string)s)',
                  {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
+        self.manager.init_host()
         ctxt = context.get_admin_context()
 
         if self.coordinator:
@@ -156,7 +157,8 @@ class Service(service.Service):
         self.rpcserver = rpc.get_server(target, endpoints)
         self.rpcserver.start()
 
-        self.manager.init_host()
+        self.manager.init_host_with_rpc()
+
         if self.report_interval:
             pulse = loopingcall.FixedIntervalLoopingCall(self.report_state)
             pulse.start(interval=self.report_interval,
