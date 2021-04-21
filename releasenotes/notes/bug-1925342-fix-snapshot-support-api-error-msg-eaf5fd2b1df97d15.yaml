@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Corrected an error message for attempts to create snapshots from shares
+    that do not support this operation.  The message said that the share
+    backend has no such support but that is not always true.  The original
+    share for the snapshot does not support snapshots because it was created
+    with a share type without the ``snapshot_support`` extra-spec set,
+    irrespective of whether the back end used can itself support snapshots
+    or not.
