@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    An issue with RPC handling on service restart was addressed by ensuring
+    proper initialization before creating the RPC consumer.  See `bug 1271568
+    <https://bugs.launchpad.net/manila/+bug/1271568>`_ for more details.
