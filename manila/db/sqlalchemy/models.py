@@ -685,8 +685,11 @@ class ShareSnapshot(BASE, ManilaBase):
         result = None
         if len(self.instances) > 0:
             def qualified_replica(x):
-                preferred_statuses = (constants.REPLICA_STATE_ACTIVE,)
-                return x['replica_state'] in preferred_statuses
+                if x is None:
+                    return False
+                else:
+                    preferred_statuses = (constants.REPLICA_STATE_ACTIVE,)
+                    return x['replica_state'] in preferred_statuses
 
             replica_snapshots = list(filter(
                 lambda x: qualified_replica(x.share_instance), self.instances))
@@ -714,9 +717,12 @@ class ShareSnapshot(BASE, ManilaBase):
         """
 
         def qualified_replica(x):
-            preferred_statuses = (constants.REPLICA_STATE_ACTIVE,
-                                  constants.REPLICA_STATE_IN_SYNC)
-            return x['replica_state'] in preferred_statuses
+            if x is None:
+                return False
+            else:
+                preferred_statuses = (constants.REPLICA_STATE_ACTIVE,
+                                      constants.REPLICA_STATE_IN_SYNC)
+                return x['replica_state'] in preferred_statuses
 
         replica_snapshots = list(filter(
             lambda x: qualified_replica(x['share_instance']), self.instances))
