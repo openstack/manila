@@ -501,6 +501,15 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         self._create_vserver_routes(vserver_client, network_info)
         vserver_client.enable_nfs(
             self.configuration.netapp_enabled_share_protocols)
+        security_services = network_info.get('security_services')
+        if security_services:
+            for security_service in security_services:
+                if security_service['type'].lower() == 'active_directory':
+                    try:
+                        vserver_client.configure_cifs_encryption()
+                        vserver_client.configure_cifs_options()
+                    except exception.NetAppException as e:
+                        LOG.warning(e.message)
 
     @na_utils.trace
     def teardown_server(self, server_details, security_services=None):
