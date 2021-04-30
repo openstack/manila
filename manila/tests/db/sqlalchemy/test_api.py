@@ -3583,12 +3583,6 @@ class PurgeDeletedTest(test.TestCase):
         return timeutils.utcnow() - datetime.timedelta(
             days=random.randint(begin, end))
 
-    def _sqlite_has_fk_constraint(self):
-        # SQLAlchemy doesn't support it at all with < SQLite 3.6.19
-        import sqlite3
-        tup = sqlite3.sqlite_version_info
-        return tup[0] > 3 or (tup[0] == 3 and tup[1] >= 7)
-
     def _turn_on_foreign_key(self):
         engine = db_api.get_engine()
         connection = engine.raw_connection()
@@ -3671,9 +3665,6 @@ class PurgeDeletedTest(test.TestCase):
                           age_in_days=-1)
 
     def test_purge_records_with_constraint(self):
-        if not self._sqlite_has_fk_constraint():
-            self.skipTest(
-                'sqlite is too old for reliable SQLA foreign_keys')
         self._turn_on_foreign_key()
         type_id = uuidutils.generate_uuid()
         # create share type1
