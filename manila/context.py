@@ -80,7 +80,7 @@ class RequestContext(context.RequestContext):
         if not timestamp:
             timestamp = timeutils.utcnow()
         if isinstance(timestamp, six.string_types):
-            timestamp = timeutils.parse_strtime(timestamp)
+            timestamp = timeutils.parse_isotime(timestamp)
         self.timestamp = timestamp
         if service_catalog:
             self.service_catalog = [s for s in service_catalog
