@@ -1661,14 +1661,25 @@ class ShareManager(manager.SchedulerDependentManager):
 
         helper.apply_new_access_rules(dest_share_instance, share_ref['id'])
 
-        self.db.share_instance_update(
-            context, dest_share_instance['id'],
-            {'status': constants.STATUS_AVAILABLE, 'progress': '100%'})
-
-        self.db.share_instance_update(context, src_share_instance['id'],
-                                      {'status': constants.STATUS_INACTIVE})
+        self._migration_complete_instance(context, share_ref,
+                                          src_share_instance['id'],
+                                          dest_share_instance['id'])
 
         self._migration_delete_instance(context, src_share_instance['id'])
+
+    def _migration_complete_instance(self, context, share_ref,
+                                     src_instance_id, dest_instance_id):
+        dest_updates = {
+            'status': constants.STATUS_AVAILABLE,
+            'progress': '100%'
+        }
+        if share_ref.get('replication_type'):
+            dest_updates['replica_state'] = constants.REPLICA_STATE_ACTIVE
+
+        self.db.share_instance_update(context, dest_instance_id, dest_updates)
+
+        self.db.share_instance_update(context, src_instance_id,
+                                      {'status': constants.STATUS_INACTIVE})
 
     def _migration_delete_instance(self, context, instance_id):
 
@@ -1840,12 +1851,9 @@ class ShareManager(manager.SchedulerDependentManager):
 
             raise exception.ShareMigrationFailed(reason=msg)
 
-        self.db.share_instance_update(
-            context, dest_share_instance['id'],
-            {'status': constants.STATUS_AVAILABLE, 'progress': '100%'})
-
-        self.db.share_instance_update(context, src_instance_id,
-                                      {'status': constants.STATUS_INACTIVE})
+        self._migration_complete_instance(context, share_ref,
+                                          src_share_instance['id'],
+                                          dest_share_instance['id'])
 
         helper.delete_instance_and_wait(src_share_instance)
 
