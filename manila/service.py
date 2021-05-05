@@ -24,7 +24,6 @@ import random
 from oslo_config import cfg
 from oslo_log import log
 import oslo_messaging as messaging
-from oslo_service import loopingcall
 from oslo_service import service
 from oslo_service import wsgi
 from oslo_utils import importutils
@@ -125,10 +124,10 @@ class Service(service.Service):
         self.periodic_interval = periodic_interval
         self.periodic_fuzzy_delay = periodic_fuzzy_delay
         self.saved_args, self.saved_kwargs = args, kwargs
-        self.timers = []
         self.coordinator = coordination
 
         setup_profiler(binary, host)
+        self.rpcserver = None
 
     def start(self):
         version_string = version.version_string()
@@ -160,10 +159,8 @@ class Service(service.Service):
         self.manager.init_host_with_rpc()
 
         if self.report_interval:
-            pulse = loopingcall.FixedIntervalLoopingCall(self.report_state)
-            pulse.start(interval=self.report_interval,
-                        initial_delay=self.report_interval)
-            self.timers.append(pulse)
+            self.tg.add_timer(self.report_interval, self.report_state,
+                              initial_delay=self.report_interval)
 
         if self.periodic_interval:
             if self.periodic_fuzzy_delay:
@@ -171,11 +168,8 @@ class Service(service.Service):
             else:
                 initial_delay = None
 
-            periodic = loopingcall.FixedIntervalLoopingCall(
-                self.periodic_tasks)
-            periodic.start(interval=self.periodic_interval,
-                           initial_delay=initial_delay)
-            self.timers.append(periodic)
+            self.tg.add_timer(self.periodic_interval, self.periodic_tasks,
+                              initial_delay=initial_delay)
 
     def _create_service_ref(self, context):
         service_args = {
@@ -247,11 +241,7 @@ class Service(service.Service):
             self.rpcserver.stop()
         except Exception:
             pass
-        for x in self.timers:
-            try:
-                x.stop()
-            except Exception:
-                pass
+
         if self.coordinator:
             try:
                 coordination.LOCK_COORDINATOR.stop()
@@ -259,16 +249,12 @@ class Service(service.Service):
                 LOG.exception("Unable to stop the Tooz Locking "
                               "Coordinator.")
 
-        self.timers = []
-
-        super(Service, self).stop()
+        super(Service, self).stop(graceful=True)
 
     def wait(self):
-        for x in self.timers:
-            try:
-                x.wait()
-            except Exception:
-                pass
+        if self.rpcserver:
+            self.rpcserver.wait()
+        super(Service, self).wait()
 
     def periodic_tasks(self, raise_on_error=False):
         """Tasks to be run at a periodic interval."""
