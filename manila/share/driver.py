@@ -2608,7 +2608,7 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
-    def get_filter_function(self):
+    def get_filter_function(self, pool=None):
         """Get filter_function string.
 
         Returns either the string from the driver instance or global section
@@ -2616,14 +2616,16 @@ class ShareDriver(object):
         find the default filter_function. When None is returned the scheduler
         will always pass the driver instance.
 
+        :param pool: pool name to get the filter or None
         :return: a filter_function string or None
         """
         ret_function = self.configuration.filter_function
         if not ret_function:
             ret_function = CONF.filter_function
         if not ret_function:
+            kwargs = {'pool': pool} if pool else {}
             # pylint: disable=assignment-from-none
-            ret_function = self.get_default_filter_function()
+            ret_function = self.get_default_filter_function(**kwargs)
             # pylint: enable=assignment-from-none
         return ret_function
 
@@ -2646,12 +2648,13 @@ class ShareDriver(object):
             # pylint: enable=assignment-from-none
         return ret_function
 
-    def get_default_filter_function(self):
+    def get_default_filter_function(self, pool=None):
         """Get the default filter_function string.
 
         Each driver could overwrite the method to return a well-known
         default string if it is available.
 
+        :param pool: pool name to get the filter or None
         :return: None
         """
         return None

@@ -20,6 +20,12 @@ NetApp Clustered Data ONTAP
 The Shared File Systems service can be configured to use
 NetApp Clustered Data ONTAP (cDOT) version 8.2 and later.
 
+The driver can work with two types of pools: FlexGroup and FlexVol. By default,
+it only works with FlexVol, if desired, the FlexGroup pool can be enabled
+together or standalone.
+
+FlexGroup pool requires ONTAP version 9.8 or later.
+
 Supported Operations
 --------------------
 
@@ -57,6 +63,19 @@ The following operations are supported on Clustered Data ONTAP:
 - Create a replicated snapshot (DHSS=False)
 - Delete a replicated snapshot (DHSS=False)
 - Update a replicated snapshot (DHSS=False)
+- Migrate share
+- Migrate share server
+
+.. note::
+
+    The operations are not fully supported configuring FlexGroup pool:
+
+    - Consistency group operations are only supported configuring the driver
+      without any FlexGroup pool.
+    - For FlexGroup share, create more than one replica is only allowed with
+      ONTAP 9.9.1 and newer.
+    - Migration of FlexGroup shares is not allowed.
+    - Migration of share servers containing FlexGroup share is not allowed.
 
 .. note::
 

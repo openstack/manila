@@ -167,7 +167,8 @@ class DataMotionSession(object):
                                 'last-transfer-end-timestamp'])
         return snapmirrors
 
-    def create_snapmirror(self, source_share_obj, dest_share_obj, mount=False):
+    def create_snapmirror(self, source_share_obj, dest_share_obj,
+                          relationship_type, mount=False):
         """Sets up a SnapMirror relationship between two volumes.
 
         1. Create SnapMirror relationship.
@@ -188,6 +189,7 @@ class DataMotionSession(object):
                                           src_volume_name,
                                           dest_vserver,
                                           dest_volume_name,
+                                          relationship_type,
                                           schedule='hourly')
 
         # 2. Initialize async transfer of the initial data
@@ -204,7 +206,7 @@ class DataMotionSession(object):
                 timeout=replica_config.netapp_mount_replica_timeout)
 
     def delete_snapmirror(self, source_share_obj, dest_share_obj,
-                          release=True):
+                          release=True, relationship_info_only=False):
         """Ensures all information about a SnapMirror relationship is removed.
 
         1. Abort snapmirror
@@ -251,21 +253,16 @@ class DataMotionSession(object):
                                                     vserver_name=src_vserver)
             except Exception:
                 src_client = None
+
             # 3. Cleanup SnapMirror relationship on source
-            try:
-                if src_client:
-                    src_client.release_snapmirror_vol(src_vserver,
-                                                      src_volume_name,
-                                                      dest_vserver,
-                                                      dest_volume_name)
-            except netapp_api.NaApiError as e:
-                with excutils.save_and_reraise_exception() as exc_context:
-                    if (e.code == netapp_api.EOBJECTNOTFOUND or
-                            e.code == netapp_api.ESOURCE_IS_DIFFERENT or
-                            "(entry doesn't exist)" in e.message):
-                        # Handle the case where the snapmirror is already
-                        # cleaned up
-                        exc_context.reraise = False
+            if src_client:
+                src_config = get_backend_configuration(src_backend)
+                release_timeout = (
+                    src_config.netapp_snapmirror_release_timeout)
+                self.wait_for_snapmirror_release_vol(
+                    src_vserver, dest_vserver, src_volume_name,
+                    dest_volume_name, relationship_info_only, src_client,
+                    timeout=release_timeout)
 
     def update_snapmirror(self, source_share_obj, dest_share_obj):
         """Schedule a snapmirror update to happen on the backend."""
@@ -419,7 +416,8 @@ class DataMotionSession(object):
 
     def change_snapmirror_source(self, replica,
                                  orig_source_replica,
-                                 new_source_replica, replica_list):
+                                 new_source_replica, replica_list,
+                                 is_flexgroup=False):
         """Creates SnapMirror relationship from the new source to destination.
 
         1. Delete all snapmirrors involving the replica, but maintain
@@ -443,11 +441,16 @@ class DataMotionSession(object):
             if other_replica['id'] == replica['id']:
                 continue
 
-            # We need to delete ALL snapmirror relationships
-            # involving this replica but do not remove snapmirror metadata
-            # so that the new snapmirror relationship is efficient.
-            self.delete_snapmirror(other_replica, replica, release=False)
-            self.delete_snapmirror(replica, other_replica, release=False)
+            # deletes all snapmirror relationships involving this replica to
+            # ensure new relation can be set. For efficient snapmirror, it
+            # does not remove the snapshots, only releasing the relationship
+            # info if FlexGroup volume.
+            self.delete_snapmirror(other_replica, replica,
+                                   release=is_flexgroup,
+                                   relationship_info_only=is_flexgroup)
+            self.delete_snapmirror(replica, other_replica,
+                                   release=is_flexgroup,
+                                   relationship_info_only=is_flexgroup)
 
         # 2. vserver operations when driver handles share servers
         replica_config = get_backend_configuration(replica_backend)
@@ -471,11 +474,14 @@ class DataMotionSession(object):
 
         # 3. create
         # TODO(ameade): Update the schedule if needed.
+        relationship_type = na_utils.get_relationship_type(is_flexgroup)
         replica_client.create_snapmirror_vol(new_src_vserver,
                                              new_src_volume_name,
                                              replica_vserver,
                                              replica_volume_name,
+                                             relationship_type,
                                              schedule='hourly')
+
         # 4. resync
         replica_client.resync_snapmirror_vol(new_src_vserver,
                                              new_src_volume_name,
@@ -792,4 +798,43 @@ class DataMotionSession(object):
             msg = _("Unable to perform mount operation for the share %(name)s "
                     "because a snapmirror initialize operation is still in "
                     "progress. Retries exhausted. Not retrying.") % msg_args
+            raise exception.NetAppException(message=msg)
+
+    def wait_for_snapmirror_release_vol(self, src_vserver, dest_vserver,
+                                        src_volume_name, dest_volume_name,
+                                        relationship_info_only, src_client,
+                                        timeout=300):
+        interval = 10
+        retries = (timeout / interval or 1)
+
+        @utils.retry(exception.NetAppException, interval=interval,
+                     retries=retries, backoff_rate=1)
+        def release_snapmirror():
+            snapmirrors = src_client.get_snapmirror_destinations(
+                source_vserver=src_vserver, dest_vserver=dest_vserver,
+                source_volume=src_volume_name, dest_volume=dest_volume_name)
+            if not snapmirrors:
+                LOG.debug("No snapmirrors to be released in source volume.")
+            else:
+                try:
+                    src_client.release_snapmirror_vol(
+                        src_vserver, src_volume_name, dest_vserver,
+                        dest_volume_name,
+                        relationship_info_only=relationship_info_only)
+                except netapp_api.NaApiError as e:
+                    if (e.code == netapp_api.EOBJECTNOTFOUND or
+                            e.code == netapp_api.ESOURCE_IS_DIFFERENT or
+                            "(entry doesn't exist)" in e.message):
+                        LOG.debug('Snapmirror relationship does not exist '
+                                  'anymore.')
+
+                msg = _('Snapmirror release sent to source volume. Waiting '
+                        'until it has been released.')
+                raise exception.NetAppException(vserver=msg)
+
+        try:
+            release_snapmirror()
+        except exception.NetAppException:
+            msg = _("Unable to release the snapmirror from source volume %s. "
+                    "Retries exhausted. Aborting") % src_volume_name
             raise exception.NetAppException(message=msg)

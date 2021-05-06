@@ -21,6 +21,7 @@ place to ensure re usability and better management of configuration options.
 """
 
 from oslo_config import cfg
+from oslo_config import types
 
 netapp_proxy_opts = [
     cfg.StrOpt('netapp_storage_family',
@@ -134,7 +135,48 @@ netapp_provisioning_opts = [
                default=60,
                help='The maximum time in seconds that the cached aggregates '
                     'status will be considered valid. Trying to read the '
-                    'expired cache leads to refreshing it.'), ]
+                    'expired cache leads to refreshing it.'),
+    cfg.BoolOpt('netapp_enable_flexgroup',
+                default=False,
+                help='Specify if the FlexGroup pool is enabled. When it is '
+                     'enabled, the driver will report a single pool '
+                     'representing all aggregates (ONTAP chooses on which the '
+                     'share will be allocated). If you want to Manila control '
+                     'the aggregate selection, you can configure its custom '
+                     'FlexGroup pools through netapp_flexgroup_pools option. '
+                     'The FlexGroup placement is done either by ONTAP or '
+                     'Manila, not both.'),
+    cfg.MultiOpt('netapp_flexgroup_pools',
+                 item_type=types.Dict(value_type=types.String()),
+                 default={},
+                 help="Multi opt of dict to represent the FlexGroup pools. "
+                      "A FlexGroup pool is configured with its name and its "
+                      "list of aggregates. Specify this option as many times "
+                      "as you have FlexGroup pools. Each entry takes the "
+                      "dict config form: "
+                      "netapp_flexgroup_pools = "
+                      "<pool_name>: <aggr_name1> <aggr_name2> .."),
+    cfg.BoolOpt('netapp_flexgroup_pool_only',
+                default=False,
+                help='Specify if the FlexVol pools must not be reported when '
+                     'the netapp_enable_flexgroup is enabled.'),
+    cfg.IntOpt('netapp_flexgroup_volume_online_timeout',
+               min=60,
+               default=360,  # Default to six minutes
+               help='Sets time in seconds to wait for a FlexGroup volume '
+                    'create to complete and go online.'),
+    cfg.IntOpt('netapp_flexgroup_aggregate_not_busy_timeout',
+               min=60,
+               default=360,  # Default to six minutes
+               help='Provisioning FlexGroup share requires that all of its '
+                    'aggregates to not be busy deploying another volume. So, '
+                    'sets time in seconds to retry to create the FlexGroup '
+                    'share.'),
+    cfg.IntOpt('netapp_delete_busy_flexgroup_snapshot_timeout',
+               min=60,
+               default=360,  # Default to six minutes
+               help='Sets time in seconds to wait for a FlexGroup snapshot '
+                    'to not be busy with clones after splitting them.'), ]
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',

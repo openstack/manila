@@ -56,6 +56,8 @@ SHARE_AGGREGATE_DISK_TYPES = ['SATA', 'SSD']
 SHARE_NAME = 'fake_share'
 SHARE_SIZE = '1000000000'
 SHARE_NAME_2 = 'fake_share_2'
+FLEXGROUP_STYLE_EXTENDED = 'flexgroup'
+FLEXVOL_STYLE_EXTENDED = 'flexvol'
 SNAPSHOT_NAME = 'fake_snapshot'
 CG_SNAPSHOT_ID = 'fake_cg_id'
 PARENT_SHARE_NAME = 'fake_parent_share'
@@ -120,6 +122,8 @@ FPOLICY_EXT_TO_INCLUDE_LIST = ['avi']
 FPOLICY_EXT_TO_EXCLUDE = 'jpg,mp3'
 FPOLICY_EXT_TO_EXCLUDE_LIST = ['jpg', 'mp3']
 
+JOB_ID = 123
+JOB_STATE = 'success'
 
 NETWORK_INTERFACES = [{
     'interface_name': 'fake_interface',
@@ -2057,6 +2061,26 @@ GET_AGGREGATE_FOR_VOLUME_RESPONSE = etree.XML("""
     'share': SHARE_NAME
 })
 
+GET_AGGREGATE_FOR_FLEXGROUP_VOL_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <aggr-list>
+            <aggr-name>%(aggr)s</aggr-name>
+          </aggr-list>
+          <name>%(share)s</name>
+          <owning-vserver-name>os_aa666789-5576-4835-87b7-868069856459</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'aggr': SHARE_AGGREGATE_NAME,
+    'share': SHARE_NAME
+})
+
 VOLUME_AUTOSIZE_GET_RESPONSE = etree.XML("""
   <results status="passed">
     <grow-threshold-percent>%(grow_percent)s</grow-threshold-percent>
@@ -2228,6 +2252,7 @@ VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
           <owning-vserver-name>%(vserver)s</owning-vserver-name>
           <style>flex</style>
           <type>rw</type>
+          <style-extended>%(style-extended)s</style-extended>
         </volume-id-attributes>
         <volume-space-attributes>
           <size>%(size)s</size>
@@ -2245,6 +2270,41 @@ VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
     'volume': SHARE_NAME,
     'size': SHARE_SIZE,
     'qos-policy-group-name': QOS_POLICY_GROUP_NAME,
+    'style-extended': FLEXVOL_STYLE_EXTENDED,
+})
+
+VOLUME_GET_ITER_FLEXGROUP_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <aggr-list>
+            <aggr-name>%(aggr)s</aggr-name>
+          </aggr-list>
+          <junction-path>/%(volume)s</junction-path>
+          <name>%(volume)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+          <style>flex</style>
+          <type>rw</type>
+          <style-extended>%(style-extended)s</style-extended>
+        </volume-id-attributes>
+        <volume-space-attributes>
+          <size>%(size)s</size>
+        </volume-space-attributes>
+        <volume-qos-attributes>
+          <policy-group-name>%(qos-policy-group-name)s</policy-group-name>
+        </volume-qos-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'aggr': SHARE_AGGREGATE_NAME,
+    'vserver': VSERVER_NAME,
+    'volume': SHARE_NAME,
+    'size': SHARE_SIZE,
+    'qos-policy-group-name': QOS_POLICY_GROUP_NAME,
+    'style-extended': FLEXGROUP_STYLE_EXTENDED,
 })
 
 VOLUME_GET_ITER_NO_QOS_RESPONSE = etree.XML("""
@@ -2258,6 +2318,7 @@ VOLUME_GET_ITER_NO_QOS_RESPONSE = etree.XML("""
           <owning-vserver-name>%(vserver)s</owning-vserver-name>
           <style>flex</style>
           <type>rw</type>
+          <style-extended>%(style-extended)s</style-extended>
         </volume-id-attributes>
         <volume-space-attributes>
           <size>%(size)s</size>
@@ -2271,6 +2332,7 @@ VOLUME_GET_ITER_NO_QOS_RESPONSE = etree.XML("""
     'vserver': VSERVER_NAME,
     'volume': SHARE_NAME,
     'size': SHARE_SIZE,
+    'style-extended': FLEXVOL_STYLE_EXTENDED,
 })
 
 CLONE_CHILD_1 = 'fake_child_1'
@@ -3097,3 +3159,81 @@ FAKE_MIGRATION_JOB_SUCCESS = {
     "state": "migrate_complete",
     "uuid": "4ea7a442-86d1-11e0-ae1c-123478563412"
 }
+
+
+VOLUME_GET_ITER_STATE_RESPONSE = etree.XML("""
+    <results status="passed">
+        <num-records>1</num-records>
+        <attributes-list>
+            <volume-attributes>
+                <volume-state-attributes>
+                    <state>online</state>
+                </volume-state-attributes>
+            </volume-attributes>
+        </attributes-list>
+    </results>
+""")
+
+ASYNC_OPERATION_RESPONSE = etree.XML("""
+  <results status="passed">
+    <result-status>in_progress</result-status>
+    <result-jobid>123</result-jobid>
+  </results>
+""")
+
+VOLUME_GET_ITER_STYLE_FLEXGROUP_RESPONSE = etree.XML("""
+    <results status="passed">
+        <num-records>1</num-records>
+        <attributes-list>
+            <volume-attributes>
+                <volume-id-attributes>
+                    <style-extended>%(style)s</style-extended>
+                </volume-id-attributes>
+            </volume-attributes>
+        </attributes-list>
+    </results>
+""" % {
+    'style': FLEXGROUP_STYLE_EXTENDED,
+})
+
+VOLUME_GET_ITER_STYLE_FLEXVOL_RESPONSE = etree.XML("""
+    <results status="passed">
+        <num-records>1</num-records>
+        <attributes-list>
+            <volume-attributes>
+                <volume-id-attributes>
+                    <style-extended>flexvol</style-extended>
+                </volume-id-attributes>
+            </volume-attributes>
+        </attributes-list>
+    </results>
+""")
+
+JOB_GET_STATE_RESPONSE = etree.XML("""
+    <results status="passed">
+        <num-records>1</num-records>
+        <attributes-list>
+            <job-info>
+                <job-state>%(state)s</job-state>
+            </job-info>
+        </attributes-list>
+    </results>
+""" % {
+    'state': JOB_STATE,
+})
+
+JOB_GET_STATE_NOT_UNIQUE_RESPONSE = etree.XML("""
+    <results status="passed">
+        <num-records>1</num-records>
+        <attributes-list>
+            <job-info>
+                <job-state>%(state)s</job-state>
+            </job-info>
+            <job-info>
+                <job-state>%(state)s</job-state>
+            </job-info>
+        </attributes-list>
+    </results>
+""" % {
+    'state': JOB_STATE,
+})

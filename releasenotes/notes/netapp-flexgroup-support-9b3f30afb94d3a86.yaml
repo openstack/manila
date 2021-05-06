@@ -1,0 +1,40 @@
+---
+features:
+  - |
+    The NetApp driver has been working  with FlexVol ONTAP volumes.
+    The driver does not support scaling FlexVol volumes higher than
+    100 TiB, which was a theoretical limit for the large namespace that
+    these containers were meant to handle. ONTAP's Flexgroup volumes
+    eliminate such limitations. So, added the support for provisioning
+    share as FlexGroup in the NetApp driver.
+
+    The FlexGroup provision is enabled by new option
+    ``netapp_enable_flexgroup``, which will make the driver report a single
+    pool represeting all aggregates. The selection on which aggregates the
+    FlexGroup share will reside is up to ONTAP. If the administrator desires
+    to control that selection through Manila scheduler, the configuration
+    option ``netapp_flexgroup_pools`` can be used to tune the storage pool
+    layout.
+
+    When enabling FlexGroup, the FlexVol pools continue enabled by default.
+    For having only FlexGroup, the new option ``netapp_flexgroup_pool_only``
+    must be set to `True`.
+
+    Now, each NetApp pool will report the capability: `netapp_flexgroup` informing
+    which type of share resides there (FlexGroup or FlexVol).
+
+    The following operations are allowed with FlexGroup shares (DHSS
+    True/False and NFS/CIFS):
+
+    - Create/Delete share;
+    - Shrink/Extend share;
+    - Create/Delete snapshot;
+    - Revert to snapshot;
+    - Manage/Unmanage snapshots;
+    - Create from snapshot;
+    - Replication;
+    - Manage/Unmanage shares;
+
+    FlexGroup feature requires ONTAP version 9.8 or newer.
+    Replication with more than one non-active replica per share requires
+    ONTAP 9.9.1 or newer.

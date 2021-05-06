@@ -71,7 +71,8 @@ class NetAppBaseHelper(object):
     @abc.abstractmethod
     def create_share(self, share, share_name,
                      clear_current_export_policy=True,
-                     ensure_share_already_exists=False, replica=False):
+                     ensure_share_already_exists=False, replica=False,
+                     is_flexgroup=False):
         """Creates NAS share."""
 
     @abc.abstractmethod

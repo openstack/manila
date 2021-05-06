@@ -65,8 +65,13 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     'configuration when the driver is managing share servers.')
             raise exception.InvalidInput(reason=msg)
 
+        # Ensure FlexGroup support
+        aggr_list = self._client.list_non_root_aggregates()
+        self._initialize_flexgroup_pools(set(aggr_list))
+
         # Ensure one or more aggregates are available.
-        if not self._find_matching_aggregates():
+        if (self.is_flexvol_pool_configured() and
+                not self._find_matching_aggregates(aggregate_names=aggr_list)):
             msg = _('No aggregates are available for provisioning shares. '
                     'Ensure that the configuration option '
                     'netapp_aggregate_name_search_pattern is set correctly.')
@@ -110,6 +115,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             'pools': {
                 'vserver': None,
                 'aggregates': self._find_matching_aggregates(),
+                'flexgroup_aggregates': self._flexgroup_pools,
             },
         }
 
@@ -124,9 +130,15 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             _handle_housekeeping_tasks())
 
     @na_utils.trace
-    def _find_matching_aggregates(self):
+    def _find_matching_aggregates(self, aggregate_names=None):
         """Find all aggregates match pattern."""
-        aggregate_names = self._client.list_non_root_aggregates()
+
+        if not self.is_flexvol_pool_configured():
+            return []
+
+        if not aggregate_names:
+            aggregate_names = self._client.list_non_root_aggregates()
+
         pattern = self.configuration.netapp_aggregate_name_search_pattern
         return [aggr_name for aggr_name in aggregate_names
                 if re.match(pattern, aggr_name)]
@@ -242,23 +254,26 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         ipspace_name = self._client.get_ipspace_name_for_vlan_port(
             node_name, port, vlan) or self._create_ipspace(network_info)
 
+        aggregate_names = self._find_matching_aggregates()
         if is_dp_destination:
             # Get Data ONTAP aggregate name as pool name.
             LOG.debug('Creating a new Vserver (%s) for data protection.',
                       vserver_name)
             self._client.create_vserver_dp_destination(
                 vserver_name,
-                self._find_matching_aggregates(),
+                aggregate_names,
                 ipspace_name)
             # Set up port and broadcast domain for the current ipspace
             self._create_port_and_broadcast_domain(ipspace_name, network_info)
         else:
             LOG.debug('Vserver %s does not exist, creating.', vserver_name)
+            aggr_set = set(aggregate_names).union(
+                self._get_flexgroup_aggr_set())
             self._client.create_vserver(
                 vserver_name,
                 self.configuration.netapp_root_volume_aggregate,
                 self.configuration.netapp_root_volume,
-                self._find_matching_aggregates(),
+                aggr_set,
                 ipspace_name)
 
             vserver_client = self._get_api_client(vserver=vserver_name)
@@ -680,8 +695,9 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                    share_server=None, parent_share=None):
         # NOTE(dviroel): If both parent and child shares are in the same host,
         # they belong to the same cluster, and we can skip all the processing
-        # below.
-        if parent_share['host'] != share['host']:
+        # below. Group snapshot is always to the same host too, so we can skip.
+        is_group_snapshot = share.get('source_share_group_snapshot_member_id')
+        if not is_group_snapshot and parent_share['host'] != share['host']:
             # 1. Retrieve source and destination vservers from source and
             # destination shares
             dm_session = data_motion.DataMotionSession()
@@ -922,10 +938,23 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         method = SERVER_MIGRATE_SVM_DR
         if (not src_client.is_svm_dr_supported()
                 or not dest_client.is_svm_dr_supported()):
-            msg = _("Cannot perform server migration because at least one of "
+            msg = _("Cannot perform server migration because at leat one of "
                     "the backends doesn't support SVM DR.")
             LOG.error(msg)
             return method, False
+
+        # Check that server does not have any FlexGroup volume.
+        if src_client.is_flexgroup_supported():
+            dm_session = data_motion.DataMotionSession()
+            for req_spec in shares_request_spec.get('shares_req_spec', []):
+                share_instance = req_spec.get('share_instance_properties', {})
+                host = share_instance.get('host')
+                if self.is_flexgroup_destination_host(host, dm_session):
+                    msg = _("Cannot perform server migration since a "
+                            "FlexGroup was encountered in share server to be "
+                            "migrated.")
+                    LOG.error(msg)
+                    return method, False
 
         # Check capacity.
         server_total_size = (shares_request_spec.get('shares_size', 0) +
@@ -1175,6 +1204,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         # requests.
         dst_client = data_motion.get_client_for_backend(dest_backend_name,
                                                         vserver_name=None)
+
         migration_method, compatibility = self._check_for_migration_support(
             src_client, dst_client, source_share_server, shares_request_spec,
             src_cluster_name, pools)

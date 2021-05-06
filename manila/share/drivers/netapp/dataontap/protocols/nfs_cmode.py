@@ -42,7 +42,8 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
     @na_utils.trace
     def create_share(self, share, share_name,
                      clear_current_export_policy=True,
-                     ensure_share_already_exists=False, replica=False):
+                     ensure_share_already_exists=False, replica=False,
+                     is_flexgroup=False):
         """Ensures the share export policy is set correctly.
 
         The export policy must have the same name as the share. If it matches,
@@ -57,12 +58,18 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
         the check.
         :param ensure_share_already_exists: ignored, CIFS only.
         :param replica: it is a replica volume (DP type).
+        :param is_flexgroup: whether the share is a FlexGroup or not.
         """
 
         if clear_current_export_policy:
             self._client.clear_nfs_export_policy_for_volume(share_name)
         self._ensure_export_policy(share, share_name)
-        export_path = self._client.get_volume_junction_path(share_name)
+
+        if is_flexgroup:
+            volume_info = self._client.get_volume(share_name)
+            export_path = volume_info['junction-path']
+        else:
+            export_path = self._client.get_volume_junction_path(share_name)
 
         # Return a callback that may be used for generating export paths
         # for this share.

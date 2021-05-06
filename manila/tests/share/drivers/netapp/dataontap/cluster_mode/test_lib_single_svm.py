@@ -64,6 +64,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.library._client.vserver_exists.return_value = True
         self.library._have_cluster_creds = True
+        mock_client = mock.Mock()
+        mock_client.list_vserver_aggregates.return_value = fake.AGGREGATES
+        self.mock_object(self.library,
+                         '_get_api_client',
+                         mock.Mock(return_value=mock_client))
+        mock_init_flexgroup = self.mock_object(self.library,
+                                               '_initialize_flexgroup_pools')
+        self.mock_object(self.library,
+                         'is_flexvol_pool_configured',
+                         mock.Mock(return_value=True))
         self.mock_object(self.library,
                          '_find_matching_aggregates',
                          mock.Mock(return_value=fake.AGGREGATES))
@@ -74,6 +84,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertTrue(lib_single_svm.LOG.info.called)
         mock_super.assert_called_once_with()
+        mock_client.list_vserver_aggregates.assert_called_once_with()
+        self.assertTrue(self.library._get_api_client.called)
+        mock_init_flexgroup.assert_called_once_with(set(fake.AGGREGATES))
+        self.assertTrue(self.library.is_flexvol_pool_configured.called)
         self.assertTrue(self.library._find_matching_aggregates.called)
 
     def test_check_for_setup_error_no_vserver(self):
@@ -92,6 +106,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._client.vserver_exists.return_value = True
         self.library._have_cluster_creds = False
         self.library._client.list_vservers.return_value = [fake.VSERVER1]
+        mock_client = mock.Mock()
+        mock_client.list_vserver_aggregates.return_value = fake.AGGREGATES
+        self.mock_object(self.library,
+                         '_get_api_client',
+                         mock.Mock(return_value=mock_client))
+        mock_init_flexgroup = self.mock_object(self.library,
+                                               '_initialize_flexgroup_pools')
+        self.mock_object(self.library,
+                         'is_flexvol_pool_configured',
+                         mock.Mock(return_value=True))
         self.mock_object(self.library,
                          '_find_matching_aggregates',
                          mock.Mock(return_value=fake.AGGREGATES))
@@ -101,6 +125,31 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library.check_for_setup_error()
 
         mock_super.assert_called_once_with()
+        mock_client.list_vserver_aggregates.assert_called_once_with()
+        self.assertTrue(self.library._get_api_client.called)
+        mock_init_flexgroup.assert_called_once_with(set(fake.AGGREGATES))
+        self.assertTrue(self.library.is_flexvol_pool_configured.called)
+        self.assertTrue(self.library._find_matching_aggregates.called)
+
+    def test_check_for_setup_error_no_aggregates_no_flexvol_pool(self):
+        self.library._client.vserver_exists.return_value = True
+        self.library._have_cluster_creds = True
+        mock_client = mock.Mock()
+        mock_client.list_vserver_aggregates.return_value = fake.AGGREGATES
+        self.mock_object(self.library,
+                         '_get_api_client',
+                         mock.Mock(return_value=mock_client))
+        self.mock_object(self.library, '_initialize_flexgroup_pools')
+        self.mock_object(self.library,
+                         'is_flexvol_pool_configured',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=[]))
+
+        self.library.check_for_setup_error()
+
+        self.assertTrue(self.library.is_flexvol_pool_configured.called)
         self.assertTrue(self.library._find_matching_aggregates.called)
 
     def test_check_for_setup_error_cluster_creds_vserver_mismatch(self):
@@ -114,12 +163,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_check_for_setup_error_no_aggregates(self):
         self.library._client.vserver_exists.return_value = True
         self.library._have_cluster_creds = True
+        mock_client = mock.Mock()
+        mock_client.list_vserver_aggregates.return_value = fake.AGGREGATES
+        self.mock_object(self.library,
+                         '_get_api_client',
+                         mock.Mock(return_value=mock_client))
+        self.mock_object(self.library, '_initialize_flexgroup_pools')
+        self.mock_object(self.library,
+                         'is_flexvol_pool_configured',
+                         mock.Mock(return_value=True))
         self.mock_object(self.library,
                          '_find_matching_aggregates',
                          mock.Mock(return_value=[]))
 
         self.assertRaises(exception.NetAppException,
                           self.library.check_for_setup_error)
+        self.assertTrue(self.library.is_flexvol_pool_configured.called)
         self.assertTrue(self.library._find_matching_aggregates.called)
 
     def test_get_vserver(self):
@@ -155,6 +214,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_find_matching_aggregates',
                          mock.Mock(return_value=['aggr1', 'aggr2']))
+        self.library._flexgroup_pools = {'fg': ['aggr1', 'aggr2']}
 
         result = self.library._get_ems_pool_info()
 
@@ -162,6 +222,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'pools': {
                 'vserver': fake.VSERVER1,
                 'aggregates': ['aggr1', 'aggr2'],
+                'flexgroup_aggregates': {'fg': ['aggr1', 'aggr2']},
             },
         }
         self.assertEqual(expected, result)
@@ -189,6 +250,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     @ddt.data(True, False)
     def test_find_matching_aggregates(self, have_cluster_creds):
 
+        self.mock_object(self.library,
+                         'is_flexvol_pool_configured',
+                         mock.Mock(return_value=True))
         self.library._have_cluster_creds = have_cluster_creds
         aggregates = fake.AGGREGATES + fake.ROOT_AGGREGATES
         mock_vserver_client = mock.Mock()
@@ -212,6 +276,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.assertListEqual([fake.AGGREGATES[0], fake.ROOT_AGGREGATES[0]],
                                  result)
             self.assertFalse(mock_client.list_root_aggregates.called)
+
+    def test_find_matching_aggregates_no_flexvol_pool(self):
+
+        self.mock_object(self.library,
+                         'is_flexvol_pool_configured',
+                         mock.Mock(return_value=False))
+
+        result = self.library._find_matching_aggregates()
+
+        self.assertListEqual([], result)
 
     def test_get_network_allocations_number(self):
         self.assertEqual(0, self.library.get_network_allocations_number())

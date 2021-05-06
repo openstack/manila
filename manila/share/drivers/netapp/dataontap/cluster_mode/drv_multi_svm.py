@@ -113,13 +113,13 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
 
     def _update_share_stats(self, data=None):
         data = self.library.get_share_stats(
-            filter_function=self.get_filter_function(),
+            get_filter_function=self.get_filter_function,
             goodness_function=self.get_goodness_function())
         super(NetAppCmodeMultiSvmShareDriver, self)._update_share_stats(
             data=data)
 
-    def get_default_filter_function(self):
-        return self.library.get_default_filter_function()
+    def get_default_filter_function(self, pool=None):
+        return self.library.get_default_filter_function(pool=pool)
 
     def get_default_goodness_function(self):
         return self.library.get_default_goodness_function()

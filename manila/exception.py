@@ -797,6 +797,11 @@ class NetAppException(ManilaException):
     message = _("Exception due to NetApp failure.")
 
 
+class NetAppBusyAggregateForFlexGroupException(ManilaException):
+    message = _("Exception due to an aggregate being busy while trying to "
+                "provision the FlexGroup.")
+
+
 class VserverNotFound(NetAppException):
     message = _("Vserver %(vserver)s not found.")
 

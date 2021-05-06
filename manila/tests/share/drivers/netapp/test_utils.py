@@ -26,6 +26,7 @@ from oslo_log import log
 from manila import exception
 from manila.share.drivers.netapp import utils as na_utils
 from manila import test
+from manila.tests.share.drivers.netapp.dataontap import fakes as fake
 from manila import version
 
 
@@ -151,6 +152,74 @@ class NetAppDriverUtilsTestCase(test.TestCase):
             sorted(['key1', 'key2']),
             sorted(na_utils.convert_to_list({'key1': 'value1',
                                              'key2': 'value2'})))
+
+    @ddt.data({'is_fg': True, 'type': na_utils.EXTENDED_DATA_PROTECTION_TYPE},
+              {'is_fg': False, 'type': na_utils.DATA_PROTECTION_TYPE})
+    @ddt.unpack
+    def test_get_relationship_type(self, is_fg, type):
+        relationship_type = na_utils.get_relationship_type(is_fg)
+
+        self.assertEqual(type, relationship_type)
+
+    @ddt.data({'is_style': True, 'style': na_utils.FLEXGROUP_STYLE_EXTENDED},
+              {'is_style': False, 'style': na_utils.FLEXVOL_STYLE_EXTENDED})
+    @ddt.unpack
+    def test_is_style_extended_flexgroup(self, is_style, style):
+        res = na_utils.is_style_extended_flexgroup(style)
+
+        self.assertEqual(is_style, res)
+
+    @ddt.data(True, False)
+    def test_parse_flexgroup_pool_config(self, check):
+
+        result = na_utils.parse_flexgroup_pool_config(
+            [fake.FLEXGROUP_POOL_OPT_RAW],
+            cluster_aggr_set=set(fake.FLEXGROUP_POOL_AGGR),
+            check=check)
+
+        self.assertEqual(fake.FLEXGROUP_POOL_OPT, result)
+
+    def test_parse_flexgroup_pool_config_raise_invalid_aggr(self):
+
+        self.assertRaises(exception.NetAppException,
+                          na_utils.parse_flexgroup_pool_config,
+                          [fake.FLEXGROUP_POOL_OPT_RAW],
+                          cluster_aggr_set=set(),
+                          check=True)
+
+    def test_parse_flexgroup_pool_config_raise_duplicated_pool(self):
+
+        fake_pool = {
+            'flexgroup1': fake.FLEXGROUP_POOL_AGGR[0],
+            'flexgroup2': fake.FLEXGROUP_POOL_AGGR[0],
+        }
+
+        self.assertRaises(exception.NetAppException,
+                          na_utils.parse_flexgroup_pool_config,
+                          [fake_pool],
+                          cluster_aggr_set=set(fake.FLEXGROUP_POOL_AGGR),
+                          check=True)
+
+    def test_parse_flexgroup_pool_config_raise_repeated_aggr(self):
+
+        aggr_pool = '%s %s' % (fake.FLEXGROUP_POOL_AGGR[0],
+                               fake.FLEXGROUP_POOL_AGGR[0])
+
+        self.assertRaises(exception.NetAppException,
+                          na_utils.parse_flexgroup_pool_config,
+                          [{'flexgroup1': aggr_pool}],
+                          cluster_aggr_set=set(fake.FLEXGROUP_POOL_AGGR),
+                          check=True)
+
+    def test_parse_flexgroup_pool_config_raise_invalid_pool_name(self):
+
+        aggr_pool = '%s %s' % (fake.FLEXGROUP_POOL_AGGR[0],
+                               fake.FLEXGROUP_POOL_AGGR[0])
+        self.assertRaises(exception.NetAppException,
+                          na_utils.parse_flexgroup_pool_config,
+                          [{fake.FLEXGROUP_POOL_AGGR[0]: aggr_pool}],
+                          cluster_aggr_set=set(fake.FLEXGROUP_POOL_AGGR),
+                          check=True)
 
 
 class OpenstackInfoTestCase(test.TestCase):

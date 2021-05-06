@@ -323,14 +323,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_get_aggregate_space_cluster_creds(self):
 
         self.library._have_cluster_creds = True
-        self.mock_object(self.library,
-                         '_find_matching_aggregates',
-                         mock.Mock(return_value=fake.AGGREGATES))
         self.mock_object(self.library._client,
                          'get_cluster_aggregate_capacities',
                          mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
 
-        result = self.library._get_aggregate_space()
+        result = self.library._get_aggregate_space(fake.AGGREGATES)
 
         (self.library._client.get_cluster_aggregate_capacities.
             assert_called_once_with(fake.AGGREGATES))
@@ -339,14 +336,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_get_aggregate_space_no_cluster_creds(self):
 
         self.library._have_cluster_creds = False
-        self.mock_object(self.library,
-                         '_find_matching_aggregates',
-                         mock.Mock(return_value=fake.AGGREGATES))
         self.mock_object(self.library._client,
                          'get_vserver_aggregate_capacities',
                          mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
 
-        result = self.library._get_aggregate_space()
+        result = self.library._get_aggregate_space(fake.AGGREGATES)
 
         (self.library._client.get_vserver_aggregate_capacities.
             assert_called_once_with(fake.AGGREGATES))
@@ -429,19 +423,47 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(self.library.DEFAULT_FILTER_FUNCTION, result)
 
+    def test_get_default_filter_function_flexgroup(self):
+        mock_is_flexgroup = self.mock_object(
+            self.library, '_is_flexgroup_pool',
+            mock.Mock(return_value=True))
+        mock_get_min = self.mock_object(
+            self.library, '_get_minimum_flexgroup_size',
+            mock.Mock(return_value=self.library.FLEXGROUP_MIN_SIZE_PER_AGGR))
+
+        result = self.library.get_default_filter_function(pool=fake.POOL_NAME)
+
+        expected_filer = (self.library.DEFAULT_FLEXGROUP_FILTER_FUNCTION %
+                          self.library.FLEXGROUP_MIN_SIZE_PER_AGGR)
+        self.assertEqual(expected_filer, result)
+        mock_is_flexgroup.assert_called_once_with(fake.POOL_NAME)
+        mock_get_min.assert_called_once_with(fake.POOL_NAME)
+
     def test_get_default_goodness_function(self):
 
         result = self.library.get_default_goodness_function()
 
         self.assertEqual(self.library.DEFAULT_GOODNESS_FUNCTION, result)
 
-    def test_get_share_stats(self):
+    @ddt.data(
+        {'replication': True, 'flexgroup': False},
+        {'replication': True, 'flexgroup': True},
+        {'replication': False, 'flexgroup': False},
+        {'replication': False, 'flexgroup': True},
+    )
+    @ddt.unpack
+    def test_get_share_stats(self, replication, flexgroup):
+
+        if replication:
+            self.library.configuration.replication_domain = "fake_domain"
+        if flexgroup:
+            self.library._flexgroup_pools = {'pool': ['aggr']}
 
         mock_get_pools = self.mock_object(
             self.library, '_get_pools',
             mock.Mock(return_value=fake.POOLS))
 
-        result = self.library.get_share_stats(filter_function='filter',
+        result = self.library.get_share_stats(get_filter_function='filter',
                                               goodness_function='goodness')
 
         expected = {
@@ -454,34 +476,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'pools': fake.POOLS,
             'share_group_stats': {'consistent_snapshot_support': 'host'},
         }
+        if flexgroup:
+            expected['share_group_stats']['consistent_snapshot_support'] = None
+        if replication:
+            expected['replication_type'] = ['dr', 'readable']
+            expected['replication_domain'] = 'fake_domain'
+
         self.assertDictEqual(expected, result)
-        mock_get_pools.assert_called_once_with(filter_function='filter',
-                                               goodness_function='goodness')
-
-    def test_get_share_stats_with_replication(self):
-
-        self.library.configuration.replication_domain = "fake_domain"
-        mock_get_pools = self.mock_object(
-            self.library, '_get_pools',
-            mock.Mock(return_value=fake.POOLS))
-
-        result = self.library.get_share_stats(filter_function='filter',
-                                              goodness_function='goodness')
-
-        expected = {
-            'share_backend_name': fake.BACKEND_NAME,
-            'driver_name': fake.DRIVER_NAME,
-            'vendor_name': 'NetApp',
-            'driver_version': '1.0',
-            'netapp_storage_family': 'ontap_cluster',
-            'storage_protocol': 'NFS_CIFS',
-            'replication_type': ['dr', 'readable'],
-            'replication_domain': 'fake_domain',
-            'pools': fake.POOLS,
-            'share_group_stats': {'consistent_snapshot_support': 'host'},
-        }
-        self.assertDictEqual(expected, result)
-        mock_get_pools.assert_called_once_with(filter_function='filter',
+        mock_get_pools.assert_called_once_with(get_filter_function='filter',
                                                goodness_function='goodness')
 
     def test_get_share_server_pools(self):
@@ -497,38 +499,128 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_get_pools(self):
 
-        self.mock_object(
+        fake_total = 1.0
+        fake_free = 1.0
+        fake_used = 1.0
+        fake_pool = copy.deepcopy(fake.POOLS)
+        fake_pool.append(fake.FLEXGROUP_POOL)
+        self.library._flexgroup_pools = fake.FLEXGROUP_POOL_OPT
+        mock_find_aggr = self.mock_object(
+            self.library, '_find_matching_aggregates',
+            mock.Mock(return_value=fake.AGGREGATES))
+        mock_get_flexgroup_aggr = self.mock_object(
+            self.library, '_get_flexgroup_aggr_set',
+            mock.Mock(return_value=fake.FLEXGROUP_AGGR_SET))
+        mock_get_aggregate_space = self.mock_object(
             self.library, '_get_aggregate_space',
             mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
+        mock_get_flexvol_space = self.mock_object(
+            self.library, '_get_flexvol_pool_space',
+            mock.Mock(return_value=(fake_total, fake_free, fake_used)))
+        mock_get_pool = self.mock_object(
+            self.library, '_get_pool',
+            mock.Mock(side_effect=fake_pool))
+        mock_get_flexgroup_space = self.mock_object(
+            self.library, '_get_flexgroup_pool_space',
+            mock.Mock(return_value=(fake_total, fake_free, fake_used)))
+
         self.library._cache_pool_status = na_utils.DataCache(60)
         self.library._have_cluster_creds = True
-        self.library._revert_to_snapshot_support = True
-        self.library._cluster_info = fake.CLUSTER_INFO
-        self.library._ssc_stats = fake.SSC_INFO
-        self.library._perf_library.get_node_utilization_for_pool = (
-            mock.Mock(side_effect=[30.0, 42.0]))
 
-        result = self.library._get_pools(filter_function='filter',
-                                         goodness_function='goodness')
+        result = self.library._get_pools(
+            get_filter_function=fake.fake_get_filter_function,
+            goodness_function='goodness')
 
-        self.assertListEqual(fake.POOLS, result)
+        self.assertListEqual(fake_pool, result)
+        mock_find_aggr.assert_called_once_with()
+        mock_get_flexgroup_aggr.assert_called_once_with()
+        mock_get_aggregate_space.assert_called_once_with(set(fake.AGGREGATES))
+        mock_get_flexvol_space.assert_has_calls([
+            mock.call(fake.AGGREGATE_CAPACITIES, fake.AGGREGATES[0]),
+            mock.call(fake.AGGREGATE_CAPACITIES, fake.AGGREGATES[1])])
+        mock_get_flexgroup_space.assert_has_calls([
+            mock.call(fake.AGGREGATE_CAPACITIES,
+                      fake.FLEXGROUP_POOL_OPT[fake.FLEXGROUP_POOL_NAME])])
+        mock_get_pool.assert_has_calls([
+            mock.call(fake.AGGREGATES[0], fake_total, fake_free, fake_used),
+            mock.call(fake.AGGREGATES[1], fake_total, fake_free, fake_used),
+            mock.call(fake.FLEXGROUP_POOL_NAME, fake_total, fake_free,
+                      fake_used)])
 
-    def test_get_pools_vserver_creds(self):
+    def test_get_pool_vserver_creds(self):
 
-        self.mock_object(
-            self.library, '_get_aggregate_space',
-            mock.Mock(return_value=fake.AGGREGATE_CAPACITIES_VSERVER_CREDS))
-        self.library._cache_pool_status = na_utils.DataCache(60)
+        fake_pool = fake.POOLS_VSERVER_CREDS[0]
         self.library._have_cluster_creds = False
         self.library._revert_to_snapshot_support = True
         self.library._cluster_info = fake.CLUSTER_INFO
         self.library._ssc_stats = fake.SSC_INFO_VSERVER_CREDS
         self.library._perf_library.get_node_utilization_for_pool = (
-            mock.Mock(side_effect=[50.0, 50.0]))
+            mock.Mock(return_value=50.0))
 
-        result = self.library._get_pools()
+        result = self.library._get_pool(
+            fake_pool['pool_name'], fake_pool['total_capacity_gb'],
+            fake_pool['free_capacity_gb'], fake_pool['allocated_capacity_gb'])
 
-        self.assertListEqual(fake.POOLS_VSERVER_CREDS, result)
+        self.assertEqual(fake_pool, result)
+
+    def test_get_pool_cluster_creds(self):
+
+        fake_pool = copy.deepcopy(fake.POOLS[0])
+        fake_pool['filter_function'] = None
+        fake_pool['goodness_function'] = None
+        self.library._have_cluster_creds = True
+        self.library._revert_to_snapshot_support = True
+        self.library._cluster_info = fake.CLUSTER_INFO
+        self.library._ssc_stats = fake.SSC_INFO
+        self.library._perf_library.get_node_utilization_for_pool = (
+            mock.Mock(return_value=30.0))
+
+        result = self.library._get_pool(
+            fake_pool['pool_name'], fake_pool['total_capacity_gb'],
+            fake_pool['free_capacity_gb'], fake_pool['allocated_capacity_gb'])
+
+        self.assertEqual(fake_pool, result)
+
+    def test_get_flexvol_pool_space(self):
+
+        total_gb, free_gb, used_gb = self.library._get_flexvol_pool_space(
+            fake.AGGREGATE_CAPACITIES, fake.AGGREGATES[0])
+
+        self.assertEqual(total_gb, fake.POOLS[0]['total_capacity_gb'])
+        self.assertEqual(free_gb, fake.POOLS[0]['free_capacity_gb'])
+        self.assertEqual(used_gb, fake.POOLS[0]['allocated_capacity_gb'])
+
+    def test_get_flexgroup_pool_space(self):
+
+        total_gb, free_gb, used_gb = self.library._get_flexgroup_pool_space(
+            fake.AGGREGATE_CAPACITIES, fake.FLEXGROUP_POOL_AGGR)
+
+        self.assertEqual(total_gb, fake.FLEXGROUP_POOL['total_capacity_gb'])
+        self.assertEqual(free_gb, fake.FLEXGROUP_POOL['free_capacity_gb'])
+        self.assertEqual(used_gb, fake.FLEXGROUP_POOL['allocated_capacity_gb'])
+
+    @ddt.data(
+        {'aggr_space': fake.AGGREGATE_CAPACITIES, 'aggr_pool': []},
+        {'aggr_space': fake.AGGREGATE_CAPACITIES, 'aggr_pool': ['fake']},
+        {'aggr_space': {fake.AGGREGATES[0]: {}},
+         'aggr_pool': [fake.AGGREGATES[0]]})
+    @ddt.unpack
+    def test_get_flexgroup_pool_space_zero(self, aggr_space, aggr_pool):
+
+        total_gb, free_gb, used_gb = self.library._get_flexgroup_pool_space(
+            aggr_space, aggr_pool)
+
+        self.assertEqual(total_gb, 0.0)
+        self.assertEqual(free_gb, 0.0)
+        self.assertEqual(used_gb, 0.0)
+
+    def test_get_flexgroup_aggr_set(self):
+
+        self.library._flexgroup_pools = fake.FLEXGROUP_POOL_OPT
+
+        result = self.library._get_flexgroup_aggr_set()
+
+        self.assertSetEqual(result, set(fake.FLEXGROUP_POOL_AGGR))
 
     def test_handle_ems_logging(self):
 
@@ -661,25 +753,41 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual(fake.POOL_NAME, result)
         self.assertFalse(self.client.get_aggregate_for_volume.called)
 
-    def test_get_pool_no_pool(self):
+    @ddt.data(True, False)
+    def test_get_pool_no_pool(self, is_flexgroup):
 
         fake_share = copy.deepcopy(fake.SHARE)
         fake_share['host'] = '%(host)s@%(backend)s' % {
             'host': fake.HOST_NAME, 'backend': fake.BACKEND_NAME}
-        self.client.get_aggregate_for_volume.return_value = fake.POOL_NAME
+        self.mock_object(self.library,
+                         '_get_flexgroup_pool_name',
+                         mock.Mock(return_value=fake.POOL_NAME))
+        if is_flexgroup:
+            self.client.get_aggregate_for_volume.return_value = [
+                fake.POOL_NAME]
+        else:
+            self.client.get_aggregate_for_volume.return_value = fake.POOL_NAME
 
         result = self.library.get_pool(fake_share)
 
         self.assertEqual(fake.POOL_NAME, result)
         self.assertTrue(self.client.get_aggregate_for_volume.called)
+        self.assertEqual(is_flexgroup,
+                         self.library._get_flexgroup_pool_name.called)
 
-    def test_get_pool_raises(self):
+    @ddt.data(True, False)
+    def test_get_pool_raises(self, is_flexgroup):
 
         fake_share = copy.deepcopy(fake.SHARE)
         fake_share['host'] = '%(host)s@%(backend)s' % {
             'host': fake.HOST_NAME, 'backend': fake.BACKEND_NAME}
-        self.client.get_aggregate_for_volume.side_effect = (
-            exception.NetAppException)
+        self.mock_object(self.library,
+                         '_get_flexgroup_pool_name',
+                         mock.Mock(return_value=None))
+        if is_flexgroup:
+            self.client.get_aggregate_for_volume.return_value = []
+        else:
+            self.client.get_aggregate_for_volume.return_value = None
 
         self.assertRaises(exception.NetAppException,
                           self.library.get_pool,
@@ -712,8 +820,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                    vserver_client)
         self.assertEqual('fake_export_location', result)
 
-    def test_create_share_from_snapshot(self):
+    @ddt.data(None, fake.CG_SNAPSHOT_MEMBER_ID1)
+    def test_create_share_from_snapshot(self, share_group_id):
 
+        share = copy.deepcopy(fake.SHARE)
+        share['source_share_group_snapshot_member_id'] = share_group_id
         vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_vserver',
@@ -729,24 +840,25 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         result = self.library.create_share_from_snapshot(
             self.context,
-            fake.SHARE,
+            share,
             fake.SNAPSHOT,
             share_server=fake.SHARE_SERVER,
-            parent_share=fake.SHARE)
+            parent_share=share)
 
         mock_allocate_container_from_snapshot.assert_called_once_with(
-            fake.SHARE,
+            share,
             fake.SNAPSHOT,
             fake.VSERVER1,
             vserver_client)
-        mock_create_export.assert_called_once_with(fake.SHARE,
+        mock_create_export.assert_called_once_with(share,
                                                    fake.SHARE_SERVER,
                                                    fake.VSERVER1,
                                                    vserver_client)
         self.assertEqual('fake_export_location', result)
 
     def _setup_mocks_for_create_share_from_snapshot(
-            self, allocate_attr=None, dest_cluster=fake.CLUSTER_NAME):
+            self, allocate_attr=None, dest_cluster=fake.CLUSTER_NAME,
+            is_flexgroup=False, flexgroup_error=False):
         class FakeDBObj(dict):
             def to_dict(self):
                 return self
@@ -779,10 +891,31 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_get_dest_cluster = self.mock_object(
             self.dest_vserver_client, 'get_cluster_name',
             mock.Mock(return_value=dest_cluster))
+        self.mock_extract_host = self.mock_object(
+            share_utils, 'extract_host',
+            mock.Mock(return_value=fake.POOL_NAME))
+        self.mock_is_flexgroup_share = self.mock_object(
+            self.library, '_is_flexgroup_share',
+            mock.Mock(return_value=is_flexgroup))
+        self.mock_is_flexgroup_pool = self.mock_object(
+            self.library, '_is_flexgroup_pool',
+            mock.Mock(return_value=(not is_flexgroup if flexgroup_error
+                                    else is_flexgroup)))
+        self.mock_get_aggregate_for_volume = self.mock_object(
+            self.src_vserver_client, 'get_aggregate_for_volume',
+            mock.Mock(return_value=[fake.POOL_NAME]))
+        self.mock_get_flexgroup_aggregate_list = self.mock_object(
+            self.library, '_get_flexgroup_aggregate_list',
+            mock.Mock(return_value=[fake.POOL_NAME]))
         self.mock_allocate_container_from_snapshot = self.mock_object(
             self.library, '_allocate_container_from_snapshot', allocate_attr)
         self.mock_allocate_container = self.mock_object(
             self.library, '_allocate_container')
+        self.mock_get_relationship_type = self.mock_object(
+            na_utils, 'get_relationship_type',
+            mock.Mock(return_value=(na_utils.EXTENDED_DATA_PROTECTION_TYPE
+                                    if is_flexgroup
+                                    else na_utils.DATA_PROTECTION_TYPE)))
         self.mock_dm_create_snapmirror = self.mock_object(
             self.mock_dm_session, 'create_snapmirror')
         self.mock_storage_update = self.mock_object(
@@ -805,10 +938,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'share_server': self.parent_share_server or None
         }
 
-    @ddt.data(fake.CLUSTER_NAME, fake.CLUSTER_NAME_2)
-    def test_create_share_from_snapshot_another_host(self, dest_cluster):
+    @ddt.data({'dest_cluster': fake.CLUSTER_NAME, 'is_flexgroup': False},
+              {'dest_cluster': fake.CLUSTER_NAME, 'is_flexgroup': True},
+              {'dest_cluster': fake.CLUSTER_NAME_2, 'is_flexgroup': False},
+              {'dest_cluster': fake.CLUSTER_NAME_2, 'is_flexgroup': True})
+    @ddt.unpack
+    def test_create_share_from_snapshot_another_host(self, dest_cluster,
+                                                     is_flexgroup):
         self._setup_mocks_for_create_share_from_snapshot(
-            dest_cluster=dest_cluster)
+            dest_cluster=dest_cluster, is_flexgroup=is_flexgroup)
+        mock_get_backend_shr_name = self.mock_object(
+            self.library, '_get_backend_share_name',
+            mock.Mock(return_value=fake.SHARE_NAME))
         result = self.library.create_share_from_snapshot(
             self.context,
             self.fake_share,
@@ -825,8 +966,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_get_src_cluster.assert_called_once()
         self.mock_get_vserver.assert_called_once_with(self.fake_share_server)
         self.mock_get_dest_cluster.assert_called_once()
+        mock_get_backend_shr_name.assert_called_once()
+        self.mock_is_flexgroup_share.assert_called_once()
+        self.mock_is_flexgroup_pool.assert_called_once()
+        self.assertEqual(is_flexgroup,
+                         self.mock_get_aggregate_for_volume.called)
+        self.assertEqual(is_flexgroup,
+                         self.mock_get_flexgroup_aggregate_list.called)
 
-        if dest_cluster != fake.CLUSTER_NAME:
+        if dest_cluster != fake.CLUSTER_NAME or is_flexgroup:
             self.mock_allocate_container_from_snapshot.assert_called_once_with(
                 self.fake_share, fake.SNAPSHOT, fake.VSERVER1,
                 self.src_vserver_client, split=False, create_fpolicy=False)
@@ -843,6 +991,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 self.src_vserver_client, split=True)
             state = self.library.STATE_SPLITTING_VOLUME_CLONE
 
+        self.temp_src_share['aggregate'] = ([fake.POOL_NAME] if is_flexgroup
+                                            else fake.POOL_NAME)
         self.temp_src_share['internal_state'] = state
         self.temp_src_share['status'] = constants.STATUS_ACTIVE
         str_temp_src_share = json.dumps(self.temp_src_share)
@@ -858,16 +1008,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             allocate_attr=mock.Mock(side_effect=exception.NetAppException))
         mock_delete_snapmirror = self.mock_object(
             self.mock_dm_session, 'delete_snapmirror')
-        mock_get_backend_shr_name = self.mock_object(
-            self.library, '_get_backend_share_name',
-            mock.Mock(return_value=fake.SHARE_NAME))
-        mock_share_exits = self.mock_object(
-            self.library, '_share_exists',
-            mock.Mock(return_value=True))
-        mock_deallocate_container = self.mock_object(
-            self.library, '_deallocate_container')
-        mock_delete_policy = self.mock_object(self.library,
-                                              '_delete_fpolicy_for_share')
+
+        mock_delete_share = self.mock_object(
+            self.library, '_delete_share')
 
         self.assertRaises(exception.NetAppException,
                           self.library.create_share_from_snapshot,
@@ -891,15 +1034,38 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.src_vserver_client, split=True)
         mock_delete_snapmirror.assert_called_once_with(self.temp_src_share,
                                                        self.fake_share)
-        mock_get_backend_shr_name.assert_called_once_with(
-            self.fake_share['id'])
-        mock_share_exits.assert_called_once_with(fake.SHARE_NAME,
-                                                 self.src_vserver_client)
-        mock_deallocate_container.assert_called_once_with(
-            fake.SHARE_NAME, self.src_vserver_client)
-        mock_delete_policy.assert_called_once_with(self.temp_src_share,
-                                                   fake.VSERVER1,
-                                                   self.src_vserver_client)
+        mock_delete_share.assert_called_once_with(
+            self.temp_src_share, fake.VSERVER1, self.src_vserver_client,
+            remove_export=False)
+
+    def test_create_share_from_snapshot_different_pool_types(self):
+
+        self._setup_mocks_for_create_share_from_snapshot(
+            dest_cluster=fake.CLUSTER_NAME_2, is_flexgroup=True,
+            flexgroup_error=True)
+        self.assertRaises(exception.NetAppException,
+                          self.library.create_share_from_snapshot,
+                          self.context,
+                          self.fake_share,
+                          fake.SNAPSHOT,
+                          share_server=self.fake_share_server,
+                          parent_share=self.parent_share)
+
+    def test_create_share_from_snapshot_mismatch_flexgroup_pools_len(self):
+
+        self._setup_mocks_for_create_share_from_snapshot(
+            dest_cluster=fake.CLUSTER_NAME_2, is_flexgroup=True)
+        self.mock_object(
+            self.library, '_get_flexgroup_aggregate_list',
+            mock.Mock(return_value=[]))
+        self.library._is_flexgroup_auto = False
+        self.assertRaises(exception.NetAppException,
+                          self.library.create_share_from_snapshot,
+                          self.context,
+                          self.fake_share,
+                          fake.SNAPSHOT,
+                          share_server=self.fake_share_server,
+                          parent_share=self.parent_share)
 
     def test__update_create_from_snapshot_status(self):
         fake_result = mock.Mock()
@@ -999,15 +1165,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self, src_host=fake.MANILA_HOST_NAME,
             dest_host=fake.MANILA_HOST_NAME, split_completed_result=True,
             move_completed_result=True, share_internal_state='fake_state',
-            replica_state='in_sync'):
+            replica_state='in_sync', is_flexgroup=False):
         self.fake_export_location = 'fake_export_location'
         self.fake_src_share = {
             'id': fake.SHARE['id'],
             'host': src_host,
+            'aggregate': src_host.split('#')[1],
             'internal_state': share_internal_state,
         }
         self.copy_fake_src_share = copy.deepcopy(self.fake_src_share)
-        src_pool = src_host.split('#')[1]
         dest_pool = dest_host.split('#')[1]
         self.src_vserver_client = mock.Mock()
         self.dest_vserver_client = mock.Mock()
@@ -1025,7 +1191,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                     fake.VSERVER1, fake.BACKEND_NAME)))
         self.mock_extract_host = self.mock_object(
             share_utils, 'extract_host',
-            mock.Mock(side_effect=[src_pool, dest_pool]))
+            mock.Mock(return_value=dest_pool))
+        self.mock_is_flexgroup_pool = self.mock_object(
+            self.library, '_is_flexgroup_pool',
+            mock.Mock(return_value=is_flexgroup))
+        self.mock_get_flexgroup_aggregate_list = self.mock_object(
+            self.library, '_get_flexgroup_aggregate_list',
+            mock.Mock(return_value=dest_pool))
         self.mock_dm_get_src_client = self.mock_object(
             data_motion, 'get_client_for_backend',
             mock.Mock(return_value=self.src_vserver_client))
@@ -1097,9 +1269,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                           'source_share')
         self.mock_dm_backend.assert_called_once_with(self.fake_src_share)
         self.mock_extract_host.assert_has_calls([
-            mock.call(self.fake_src_share['host'], level='pool'),
-            mock.call(fake.SHARE['host'], level='pool'),
-        ])
+            mock.call(fake.SHARE['host'], level='pool')])
         self.mock_dm_get_src_client.assert_called_once_with(
             fake.BACKEND_NAME, vserver_name=fake.VSERVER1)
         self.mock_get_vserver.assert_called_once_with(fake.SHARE_SERVER)
@@ -1164,7 +1334,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                           'source_share')
         self.mock_dm_backend.assert_called_once_with(self.fake_src_share)
         self.mock_extract_host.assert_has_calls([
-            mock.call(self.fake_src_share['host'], level='pool'),
             mock.call(fake.SHARE['host'], level='pool'),
         ])
         self.mock_dm_get_src_client.assert_called_once_with(
@@ -1189,12 +1358,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             )
             self.assertEqual(expect_result, result)
 
-    @ddt.data('in_sync', 'out_of_sync')
+    @ddt.data({'replica_state': 'in_sync', 'is_flexgroup': False},
+              {'replica_state': 'out_of_sync', 'is_flexgroup': False},
+              {'replica_state': 'out_of_sync', 'is_flexgroup': True})
+    @ddt.unpack
     def test__create_from_snapshot_continue_state_snapmirror(self,
-                                                             replica_state):
+                                                             replica_state,
+                                                             is_flexgroup):
         self._setup_mocks_for_create_from_snapshot_continue(
             share_internal_state=self.library.STATE_SNAPMIRROR_DATA_COPYING,
-            replica_state=replica_state)
+            replica_state=replica_state, is_flexgroup=is_flexgroup)
 
         result = self.library._create_from_snapshot_continue(fake.SHARE,
                                                              fake.SHARE_SERVER)
@@ -1206,9 +1379,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                           'source_share')
         self.mock_dm_backend.assert_called_once_with(self.fake_src_share)
         self.mock_extract_host.assert_has_calls([
-            mock.call(self.fake_src_share['host'], level='pool'),
-            mock.call(fake.SHARE['host'], level='pool'),
-        ])
+            mock.call(fake.SHARE['host'], level='pool')])
         self.mock_dm_get_src_client.assert_called_once_with(
             fake.BACKEND_NAME, vserver_name=fake.VSERVER1)
         self.mock_get_vserver.assert_called_once_with(fake.SHARE_SERVER)
@@ -1217,6 +1388,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             None, [self.fake_src_share], fake.SHARE, [], [], fake.SHARE_SERVER,
             replication=False
         )
+        self.assertEqual(is_flexgroup,
+                         self.mock_get_flexgroup_aggregate_list.called)
         if replica_state == constants.REPLICA_STATE_IN_SYNC:
             self.mock_update_snapmirror.assert_called_once_with(
                 self.fake_src_share, fake.SHARE)
@@ -1267,10 +1440,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.mock_pvt_storage_delete.assert_called_once_with(fake.SHARE_ID)
 
-    @ddt.data({'hide_snapdir': False, 'create_fpolicy': True},
-              {'hide_snapdir': True, 'create_fpolicy': False})
+    @ddt.data({'hide_snapdir': False, 'create_fpolicy': True, 'is_fg': True},
+              {'hide_snapdir': True, 'create_fpolicy': False, 'is_fg': True},
+              {'hide_snapdir': False, 'create_fpolicy': True, 'is_fg': False},
+              {'hide_snapdir': True, 'create_fpolicy': False, 'is_fg': False})
     @ddt.unpack
-    def test_allocate_container(self, hide_snapdir, create_fpolicy):
+    def test_allocate_container(self, hide_snapdir, create_fpolicy, is_fg):
 
         provisioning_options = copy.deepcopy(
             fake.PROVISIONING_OPTIONS_WITH_FPOLICY)
@@ -1284,6 +1459,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=provisioning_options))
         mock_create_fpolicy = self.mock_object(
             self.library, '_create_fpolicy_for_share')
+        self.mock_object(
+            self.library, '_is_flexgroup_pool', mock.Mock(return_value=is_fg))
+        mock_create_flexgroup = self.mock_object(self.library,
+                                                 '_create_flexgroup_share')
+        mock_get_aggr_flexgroup = self.mock_object(
+            self.library, '_get_flexgroup_aggregate_list',
+            mock.Mock(return_value=[fake.AGGREGATE]))
         vserver_client = mock.Mock()
 
         self.library._allocate_container(fake.SHARE_INSTANCE,
@@ -1295,9 +1477,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SHARE_INSTANCE, fake.VSERVER1, vserver_client=vserver_client,
             set_qos=True)
 
-        vserver_client.create_volume.assert_called_once_with(
-            fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
-            snapshot_reserve=8, **provisioning_options)
+        if is_fg:
+            mock_get_aggr_flexgroup.assert_called_once_with(fake.POOL_NAME)
+            mock_create_flexgroup.assert_called_once_with(
+                vserver_client, [fake.AGGREGATE], fake.SHARE_NAME,
+                fake.SHARE['size'], 8, **provisioning_options)
+        else:
+            mock_get_aggr_flexgroup.assert_not_called()
+            vserver_client.create_volume.assert_called_once_with(
+                fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
+                snapshot_reserve=8, **provisioning_options)
 
         if hide_snapdir:
             vserver_client.set_volume_snapdir_access.assert_called_once_with(
@@ -1365,6 +1554,105 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual(0,
                          self.library._check_extra_specs_validity.call_count)
         self.assertEqual(0, self.library._get_provisioning_options.call_count)
+
+    @ddt.data(None, 1000)
+    def test_create_flexgroup_share(self, max_files):
+        self.library.configuration.netapp_flexgroup_volume_online_timeout = 2
+        vserver_client = mock.Mock()
+        vserver_client.get_job_state.return_value = "success"
+        mock_wait_for_start = self.mock_object(
+            self.library, 'wait_for_start_create_flexgroup',
+            mock.Mock(return_value={'jobid': fake.JOB_ID, 'error-code': None}))
+        mock_wait_for_flexgroup_deployment = self.mock_object(
+            self.library, 'wait_for_flexgroup_deployment')
+        aggr_list = [fake.AGGREGATE]
+
+        self.library._create_flexgroup_share(vserver_client, aggr_list,
+                                             fake.SHARE_NAME, 100, 10,
+                                             max_files=max_files)
+
+        start_timeout = (self.library.configuration.
+                         netapp_flexgroup_aggregate_not_busy_timeout)
+        mock_wait_for_start.assert_called_once_with(
+            start_timeout, vserver_client, aggr_list, fake.SHARE_NAME, 100, 10)
+        mock_wait_for_flexgroup_deployment.assert_called_once_with(
+            vserver_client, fake.JOB_ID, 2)
+        (vserver_client.update_volume_efficiency_attributes.
+            assert_called_once_with(fake.SHARE_NAME, False, False,
+                                    is_flexgroup=True))
+        if max_files:
+            vserver_client.set_volume_max_files.assert_called_once_with(
+                fake.SHARE_NAME, max_files)
+        else:
+            self.assertFalse(vserver_client.set_volume_max_files.called)
+
+    @ddt.data(
+        {'jobid': fake.JOB_ID, 'error-code': 'fake', 'error-message': 'fake'},
+        {'jobid': None, 'error-code': None, 'error-message': 'fake'})
+    def test_create_flexgroup_share_raise_error_job(self, job):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library, 'wait_for_start_create_flexgroup',
+                         mock.Mock(return_value=job))
+        aggr_list = [fake.AGGREGATE]
+
+        self.assertRaises(
+            exception.NetAppException, self.library._create_flexgroup_share,
+            vserver_client, aggr_list, fake.SHARE_NAME, 100, 10)
+
+    def test_wait_for_start_create_flexgroup(self):
+        vserver_client = mock.Mock()
+        job = {'jobid': fake.JOB_ID, 'error-code': None}
+        vserver_client.create_volume_async.return_value = job
+        aggr_list = [fake.AGGREGATE]
+
+        result = self.library.wait_for_start_create_flexgroup(
+            20, vserver_client, aggr_list, fake.SHARE_NAME, 1, 10)
+
+        self.assertEqual(job, result)
+        vserver_client.create_volume_async.assert_called_once_with(
+            aggr_list, fake.SHARE_NAME, 1, snapshot_reserve=10,
+            auto_provisioned=self.library._is_flexgroup_auto)
+
+    def test_wait_for_start_create_flexgroup_timeout(self):
+        vserver_client = mock.Mock()
+        vserver_client.create_volume_async.side_effect = (
+            netapp_api.NaApiError(code=netapp_api.EAPIERROR,
+                                  message="try the command again"))
+        aggr_list = [fake.AGGREGATE]
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.wait_for_start_create_flexgroup, 10,
+            vserver_client, aggr_list, fake.SHARE_NAME, 1, 10)
+
+    def test_wait_for_flexgroup_deployment(self):
+        vserver_client = mock.Mock()
+        vserver_client.get_job_state.return_value = 'success'
+
+        result = self.library.wait_for_flexgroup_deployment(
+            vserver_client, fake.JOB_ID, 20)
+
+        self.assertIsNone(result)
+        vserver_client.get_job_state.assert_called_once_with(fake.JOB_ID)
+
+    def test_wait_for_flexgroup_deployment_timeout(self):
+        vserver_client = mock.Mock()
+        vserver_client.get_job_state.return_value = 'queued'
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.wait_for_flexgroup_deployment,
+            vserver_client, fake.JOB_ID, 10)
+
+    @ddt.data('failure', 'error')
+    def test_wai_for_flexgroup_deployment_job_error(self, error_state):
+        vserver_client = mock.Mock()
+        vserver_client.get_job_state.return_value = error_state
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.wait_for_flexgroup_deployment,
+            vserver_client, fake.JOB_ID, 10)
 
     def test_check_extra_specs_validity(self):
         boolean_extra_spec_keys = list(
@@ -1928,6 +2216,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=protocol_helper))
+        self.mock_object(self.library,
+                         '_is_flexgroup_pool', mock.Mock(return_value=False))
         vserver_client = mock.Mock()
         vserver_client.get_network_interfaces.return_value = fake.LIFS
         fake_interface_addresses_with_metadata = copy.deepcopy(
@@ -1947,7 +2237,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SHARE, fake.SHARE_SERVER, fake.LIFS, expected_host)
         protocol_helper.create_share.assert_called_once_with(
             fake.SHARE, fake.SHARE_NAME, clear_current_export_policy=True,
-            ensure_share_already_exists=False, replica=False)
+            ensure_share_already_exists=False, replica=False,
+            is_flexgroup=False)
 
     def test_create_export_lifs_not_found(self):
 
@@ -1962,8 +2253,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.VSERVER1,
                           vserver_client)
 
-    def test_get_export_addresses_with_metadata(self):
+    @ddt.data(True, False)
+    def test_get_export_addresses_with_metadata(self, is_flexgroup):
 
+        self.mock_object(
+            self.library, '_is_flexgroup_pool',
+            mock.Mock(return_value=is_flexgroup))
+        mock_get_aggr_flexgroup = self.mock_object(
+            self.library, '_get_flexgroup_aggregate_list',
+            mock.Mock(return_value=[fake.AGGREGATE]))
         mock_get_aggregate_node = self.mock_object(
             self.library, '_get_aggregate_node',
             mock.Mock(return_value=fake.CLUSTER_NODES[0]))
@@ -1975,12 +2273,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SHARE, fake.SHARE_SERVER, fake.LIFS, fake.SHARE['host'])
 
         self.assertEqual(fake.INTERFACE_ADDRESSES_WITH_METADATA, result)
-        mock_get_aggregate_node.assert_called_once_with(fake.POOL_NAME)
         mock_get_admin_addresses_for_share_server.assert_called_once_with(
             fake.SHARE_SERVER)
+        if is_flexgroup:
+            mock_get_aggr_flexgroup.assert_called_once_with(fake.POOL_NAME)
+            mock_get_aggregate_node.assert_called_once_with(fake.AGGREGATE)
+        else:
+            mock_get_aggregate_node.assert_called_once_with(fake.POOL_NAME)
 
     def test_get_export_addresses_with_metadata_node_unknown(self):
 
+        self.mock_object(
+            self.library, '_is_flexgroup_pool', mock.Mock(return_value=False))
         mock_get_aggregate_node = self.mock_object(
             self.library, '_get_aggregate_node',
             mock.Mock(return_value=None))
@@ -2109,6 +2413,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
+        mock_is_flexgroup_share = self.mock_object(
+            self.library, '_is_flexgroup_share', mock.Mock(return_value=False))
         mock_delete_snapshot = self.mock_object(self.library,
                                                 '_delete_snapshot')
 
@@ -2120,8 +2426,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SNAPSHOT['share_id'])
         snapshot_name = self.library._get_backend_snapshot_name(
             fake.SNAPSHOT['id'])
+        mock_is_flexgroup_share.assert_called_once_with(vserver_client,
+                                                        share_name)
         mock_delete_snapshot.assert_called_once_with(
-            vserver_client, share_name, snapshot_name)
+            vserver_client, share_name, snapshot_name, is_flexgroup=False)
 
     def test_delete_snapshot_with_provider_location(self):
         vserver_client = mock.Mock()
@@ -2150,6 +2458,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(side_effect=get_vserver_exception))
+        mock_is_flexgroup_share = self.mock_object(
+            self.library, '_is_flexgroup_share', mock.Mock(return_value=False))
         mock_delete_snapshot = self.mock_object(self.library,
                                                 '_delete_snapshot')
 
@@ -2157,6 +2467,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                      fake.SNAPSHOT,
                                      share_server=fake.SHARE_SERVER)
 
+        self.assertFalse(mock_is_flexgroup_share.called)
         self.assertFalse(mock_delete_snapshot.called)
 
     def test_delete_snapshot_not_found(self):
@@ -2166,6 +2477,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
+        mock_is_flexgroup_share = self.mock_object(
+            self.library, '_is_flexgroup_share', mock.Mock(return_value=False))
         mock_delete_snapshot = self.mock_object(
             self.library, '_delete_snapshot',
             mock.Mock(side_effect=exception.SnapshotResourceNotFound(
@@ -2179,8 +2492,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SNAPSHOT['share_id'])
         snapshot_name = self.library._get_backend_snapshot_name(
             fake.SNAPSHOT['id'])
+        mock_is_flexgroup_share.assert_called_once_with(
+            vserver_client, share_name)
         mock_delete_snapshot.assert_called_once_with(
-            vserver_client, share_name, snapshot_name)
+            vserver_client, share_name, snapshot_name, is_flexgroup=False)
 
     def test_delete_snapshot_not_unique(self):
 
@@ -2189,6 +2504,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
+        mock_is_flexgroup_share = self.mock_object(
+            self.library, '_is_flexgroup_share', mock.Mock(return_value=False))
         mock_delete_snapshot = self.mock_object(
             self.library, '_delete_snapshot',
             mock.Mock(side_effect=exception.NetAppException()))
@@ -2203,8 +2520,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SNAPSHOT['share_id'])
         snapshot_name = self.library._get_backend_snapshot_name(
             fake.SNAPSHOT['id'])
+        mock_is_flexgroup_share.assert_called_once_with(
+            vserver_client, share_name)
         mock_delete_snapshot.assert_called_once_with(
-            vserver_client, share_name, snapshot_name)
+            vserver_client, share_name, snapshot_name, is_flexgroup=False)
 
     def test__delete_snapshot(self):
 
@@ -2221,17 +2540,21 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertFalse(vserver_client.split_volume_clone.called)
         self.assertFalse(vserver_client.soft_delete_snapshot.called)
 
-    def test__delete_snapshot_busy_volume_clone(self):
+    @ddt.data(True, False)
+    def test__delete_snapshot_busy_volume_clone(self, is_flexgroup):
 
         vserver_client = mock.Mock()
         vserver_client.get_snapshot.return_value = (
             fake.CDOT_SNAPSHOT_BUSY_VOLUME_CLONE)
         vserver_client.get_clone_children_for_snapshot.return_value = (
             fake.CDOT_CLONE_CHILDREN)
+        mock_is_flexgroup_share = self.mock_object(
+            self.library, '_delete_busy_snapshot')
 
         self.library._delete_snapshot(vserver_client,
                                       fake.SHARE_NAME,
-                                      fake.SNAPSHOT_NAME)
+                                      fake.SNAPSHOT_NAME,
+                                      is_flexgroup=is_flexgroup)
 
         self.assertFalse(vserver_client.delete_snapshot.called)
         vserver_client.get_clone_children_for_snapshot.assert_called_once_with(
@@ -2240,14 +2563,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.call(fake.CDOT_CLONE_CHILD_1),
             mock.call(fake.CDOT_CLONE_CHILD_2),
         ])
-        vserver_client.soft_delete_snapshot.assert_called_once_with(
-            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+        if is_flexgroup:
+            mock_is_flexgroup_share.assert_called_once_with(
+                vserver_client, fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+            vserver_client.soft_delete_snapshot.assert_not_called()
+        else:
+            mock_is_flexgroup_share.assert_not_called()
+            vserver_client.soft_delete_snapshot.assert_called_once_with(
+                fake.SHARE_NAME, fake.SNAPSHOT_NAME)
 
     def test__delete_snapshot_busy_snapmirror(self):
 
         vserver_client = mock.Mock()
         vserver_client.get_snapshot.return_value = (
             fake.CDOT_SNAPSHOT_BUSY_SNAPMIRROR)
+        mock_is_flexgroup_share = self.mock_object(
+            self.library, '_delete_busy_snapshot')
 
         self.assertRaises(exception.ShareSnapshotIsBusy,
                           self.library._delete_snapshot,
@@ -2258,7 +2589,34 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertFalse(vserver_client.delete_snapshot.called)
         self.assertFalse(vserver_client.get_clone_children_for_snapshot.called)
         self.assertFalse(vserver_client.split_volume_clone.called)
+        self.assertFalse(mock_is_flexgroup_share.called)
         self.assertFalse(vserver_client.soft_delete_snapshot.called)
+
+    def test_delete_busy_snapshot(self):
+        (self.library.configuration.
+            netapp_delete_busy_flexgroup_snapshot_timeout) = 2
+        vserver_client = mock.Mock()
+        vserver_client.get_snapshot.return_value = fake.CDOT_SNAPSHOT
+
+        self.library._delete_busy_snapshot(vserver_client,
+                                           fake.SHARE_NAME,
+                                           fake.SNAPSHOT_NAME)
+
+        vserver_client.get_snapshot.assert_called_once_with(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+        vserver_client.delete_snapshot.assert_called_once_with(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+
+    def test_delete_busy_snapshot_raise_timeout(self):
+        (self.library.configuration.
+         netapp_delete_busy_flexgroup_snapshot_timeout) = 2
+        vserver_client = mock.Mock()
+        vserver_client.get_snapshot.return_value = (
+            fake.CDOT_SNAPSHOT_BUSY_VOLUME_CLONE)
+
+        self.assertRaises(
+            exception.NetAppException, self.library._delete_busy_snapshot,
+            vserver_client, fake.SHARE_NAME, fake.SNAPSHOT_NAME)
 
     @ddt.data(None, fake.VSERVER1)
     def test_manage_existing(self, fake_vserver):
@@ -2302,9 +2660,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertIsNone(result)
 
-    @ddt.data({'qos': True, 'fpolicy': False}, {'qos': False, 'fpolicy': True})
+    @ddt.data({'qos': True, 'fpolicy': False, 'is_flexgroup': False},
+              {'qos': False, 'fpolicy': True, 'is_flexgroup': False},
+              {'qos': True, 'fpolicy': False, 'is_flexgroup': True},
+              {'qos': False, 'fpolicy': True, 'is_flexgroup': True})
     @ddt.unpack
-    def test_manage_container(self, qos, fpolicy):
+    def test_manage_container(self, qos, fpolicy, is_flexgroup):
 
         vserver_client = mock.Mock()
         self.library._have_cluster_creds = True
@@ -2327,6 +2688,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=mock_helper))
+
+        fake_aggr = [fake.POOL_NAME] if is_flexgroup else fake.POOL_NAME
+        mock_is_flexgroup_pool = self.mock_object(
+            self.library, '_is_flexgroup_pool',
+            mock.Mock(return_value=is_flexgroup))
+        mock_get_flexgroup_aggregate_list = self.mock_object(
+            self.library, '_get_flexgroup_aggregate_list',
+            mock.Mock(return_value=fake_aggr))
+        mock_is_flexgroup_share = self.mock_object(
+            self.library, '_is_flexgroup_share',
+            mock.Mock(return_value=is_flexgroup))
 
         mock_get_volume_to_manage = self.mock_object(
             vserver_client,
@@ -2361,8 +2733,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                 fake.VSERVER1,
                                                 vserver_client)
 
+        mock_is_flexgroup_pool.assert_called_once_with(fake.POOL_NAME)
+        if is_flexgroup:
+            mock_get_flexgroup_aggregate_list.assert_called_once_with(
+                fake.POOL_NAME)
+        else:
+            mock_get_flexgroup_aggregate_list.assert_not_called()
+        mock_is_flexgroup_share.assert_called_once_with(vserver_client,
+                                                        fake.FLEXVOL_NAME)
         mock_get_volume_to_manage.assert_called_once_with(
-            fake.POOL_NAME, fake.FLEXVOL_NAME)
+            fake_aggr, fake.FLEXVOL_NAME)
         mock_check_extra_specs_validity.assert_called_once_with(
             share_to_manage, extra_specs)
         mock_check_aggregate_extra_specs_validity.assert_called_once_with(
@@ -2374,7 +2754,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.mount_volume.assert_called_once_with(
             fake.SHARE_NAME)
         vserver_client.modify_volume.assert_called_once_with(
-            fake.POOL_NAME, fake.SHARE_NAME, **provisioning_opts)
+            fake_aggr, fake.SHARE_NAME, **provisioning_opts)
         mock_modify_or_create_qos_policy.assert_called_once_with(
             share_to_manage, extra_specs, fake.VSERVER1, vserver_client)
         mock_validate_volume_for_manage.assert_called()
@@ -2434,6 +2814,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_helper',
                          mock.Mock(return_value=mock_helper))
 
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_share',
+                         mock.Mock(return_value=False))
+
         self.mock_object(vserver_client,
                          'get_volume_to_manage',
                          mock.Mock(return_value=None))
@@ -2456,6 +2841,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=mock_helper))
+
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_share',
+                         mock.Mock(return_value=False))
 
         self.mock_object(vserver_client,
                          'get_volume_to_manage',
@@ -2486,6 +2876,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_helper',
                          mock.Mock(return_value=mock_helper))
 
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_share',
+                         mock.Mock(return_value=False))
+
         self.mock_object(vserver_client,
                          'get_volume_to_manage',
                          mock.Mock(return_value=fake.FLEXVOL_TO_MANAGE))
@@ -2498,6 +2893,30 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=None))
 
         self.assertRaises(exception.ManageExistingShareTypeMismatch,
+                          self.library._manage_container,
+                          share_to_manage,
+                          fake.VSERVER1,
+                          vserver_client)
+
+    def test_manage_container_wrong_pool_style(self):
+
+        vserver_client = mock.Mock()
+
+        share_to_manage = copy.deepcopy(fake.SHARE)
+        share_to_manage['export_location'] = fake.EXPORT_LOCATION
+
+        mock_helper = mock.Mock()
+        mock_helper.get_share_name_for_share.return_value = fake.FLEXVOL_NAME
+        self.mock_object(self.library,
+                         '_get_helper',
+                         mock.Mock(return_value=mock_helper))
+
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_share',
+                         mock.Mock(return_value=True))
+
+        self.assertRaises(exception.ManageInvalidShare,
                           self.library._manage_container,
                           share_to_manage,
                           fake.VSERVER1,
@@ -2570,31 +2989,50 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.FLEXVOL_TO_MANAGE,
                           vserver_client)
 
-    @ddt.data(None, fake.VSERVER1)
-    def test_manage_existing_snapshot(self, fake_vserver):
+    @ddt.data(
+        {'fake_vserver': None, 'is_flexgroup': False},
+        {'fake_vserver': fake.VSERVER1, 'is_flexgroup': False},
+        {'fake_vserver': None, 'is_flexgroup': True},
+        {'fake_vserver': fake.VSERVER1, 'is_flexgroup': True})
+    @ddt.unpack
+    def test_manage_existing_snapshot(self, fake_vserver, is_flexgroup):
 
         vserver_client = mock.Mock()
         mock_get_vserver = self.mock_object(
             self.library, '_get_vserver',
             mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
         vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
+        vserver_client.snapshot_exists.return_value = True
         vserver_client.volume_has_snapmirror_relationships.return_value = False
+        self.mock_object(
+            na_utils, 'is_style_extended_flexgroup',
+            mock.Mock(return_value=is_flexgroup))
+
         result = self.library.manage_existing_snapshot(
             fake.SNAPSHOT_TO_MANAGE, {}, share_server=fake_vserver)
 
         share_name = self.library._get_backend_share_name(
             fake.SNAPSHOT['share_id'])
-        new_snapshot_name = self.library._get_backend_snapshot_name(
-            fake.SNAPSHOT['id'])
         mock_get_vserver.assert_called_once_with(share_server=fake_vserver)
+        vserver_client.snapshot_exists.assert_called_once_with(
+            fake.SNAPSHOT_NAME, share_name)
         (vserver_client.volume_has_snapmirror_relationships.
             assert_called_once_with(fake.FLEXVOL_TO_MANAGE))
-        vserver_client.rename_snapshot.assert_called_once_with(
-            share_name, fake.SNAPSHOT_NAME, new_snapshot_name)
-        self.library.private_storage.update.assert_called_once_with(
-            fake.SNAPSHOT['id'], {'original_name': fake.SNAPSHOT_NAME})
-        self.assertEqual({'size': 2, 'provider_location': new_snapshot_name},
-                         result)
+        na_utils.is_style_extended_flexgroup.assert_called_once_with(
+            fake.FLEXGROUP_STYLE_EXTENDED)
+        expected_result = {'size': 2}
+        if is_flexgroup:
+            vserver_client.rename_snapshot.assert_not_called()
+            self.library.private_storage.update.assert_not_called()
+        else:
+            new_snapshot_name = self.library._get_backend_snapshot_name(
+                fake.SNAPSHOT['id'])
+            vserver_client.rename_snapshot.assert_called_once_with(
+                share_name, fake.SNAPSHOT_NAME, new_snapshot_name)
+            self.library.private_storage.update.assert_called_once_with(
+                fake.SNAPSHOT['id'], {'original_name': fake.SNAPSHOT_NAME})
+            expected_result['provider_location'] = new_snapshot_name
+        self.assertEqual(expected_result, result)
 
     def test_manage_existing_snapshot_no_snapshot_name(self):
 
@@ -2604,6 +3042,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
         vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
+        vserver_client.snapshot_exists.return_value = True
         vserver_client.volume_has_snapmirror_relationships.return_value = False
         fake_snapshot = copy.deepcopy(fake.SNAPSHOT_TO_MANAGE)
         fake_snapshot['provider_location'] = ''
@@ -2630,6 +3069,20 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           self.library.manage_existing_snapshot,
                           fake.SNAPSHOT_TO_MANAGE, {})
 
+    def test_manage_existing_snapshot_not_from_share(self):
+
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
+        vserver_client.snapshot_exists.return_value = False
+
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          self.library.manage_existing_snapshot,
+                          fake.SNAPSHOT_TO_MANAGE, {})
+
     def test_manage_existing_snapshot_mirrors_present(self):
 
         vserver_client = mock.Mock()
@@ -2638,6 +3091,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
         vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
+        vserver_client.snapshot_exists.return_value = True
         vserver_client.volume_has_snapmirror_relationships.return_value = True
 
         self.assertRaises(exception.ManageInvalidShareSnapshot,
@@ -2653,6 +3107,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                  vserver_client)))
         vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
         vserver_client.volume_has_snapmirror_relationships.return_value = False
+        self.mock_object(
+            na_utils, 'is_style_extended_flexgroup',
+            mock.Mock(return_value=False))
         vserver_client.rename_snapshot.side_effect = netapp_api.NaApiError
 
         self.assertRaises(exception.ManageInvalidShareSnapshot,
@@ -3229,60 +3686,114 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_update_ssc_info(self):
 
+        self.library._flexgroup_pools = fake.FLEXGROUP_POOL_OPT
+        self.library._have_cluster_creds = True
         self.mock_object(self.library,
                          '_find_matching_aggregates',
                          mock.Mock(return_value=fake.AGGREGATES))
-        mock_update_ssc_aggr_info = self.mock_object(self.library,
-                                                     '_update_ssc_aggr_info')
+        self.mock_object(self.library,
+                         '_get_flexgroup_aggr_set',
+                         mock.Mock(return_value=fake.FLEXGROUP_AGGR_SET))
+        self.mock_object(self.library,
+                         '_get_aggregate_info',
+                         mock.Mock(return_value=fake.SSC_INFO_MAP))
 
         self.library._update_ssc_info()
 
         expected = {
             fake.AGGREGATES[0]: {
                 'netapp_aggregate': fake.AGGREGATES[0],
+                'netapp_flexgroup': False,
+                'netapp_raid_type': 'raid4',
+                'netapp_disk_type': ['FCAL'],
+                'netapp_hybrid_aggregate': 'false',
             },
             fake.AGGREGATES[1]: {
                 'netapp_aggregate': fake.AGGREGATES[1],
-            }
+                'netapp_flexgroup': False,
+                'netapp_raid_type': 'raid_dp',
+                'netapp_disk_type': ['SATA', 'SSD'],
+                'netapp_hybrid_aggregate': 'true',
+            },
+            fake.FLEXGROUP_POOL_NAME: {
+                'netapp_aggregate': fake.FLEXGROUP_POOL['netapp_aggregate'],
+                'netapp_flexgroup': True,
+                'netapp_raid_type': 'raid4 raid_dp',
+                'netapp_disk_type': ['FCAL', 'SATA', 'SSD'],
+                'netapp_hybrid_aggregate': 'false true',
+            },
         }
 
-        self.assertDictEqual(expected, self.library._ssc_stats)
-        self.assertTrue(mock_update_ssc_aggr_info.called)
+        self.assertEqual(expected, self.library._ssc_stats)
 
     def test_update_ssc_info_no_aggregates(self):
 
+        self.library._flexgroup_pools = {}
         self.mock_object(self.library,
                          '_find_matching_aggregates',
                          mock.Mock(return_value=[]))
-        mock_update_ssc_aggr_info = self.mock_object(self.library,
-                                                     '_update_ssc_aggr_info')
 
         self.library._update_ssc_info()
 
         self.assertDictEqual({}, self.library._ssc_stats)
-        self.assertFalse(mock_update_ssc_aggr_info.called)
 
-    def test_update_ssc_aggr_info(self):
+    def test_update_ssc_info_no_cluster_creds(self):
 
-        self.library._have_cluster_creds = True
+        self.library._flexgroup_pools = fake.FLEXGROUP_POOL_OPT
+        self.library._have_cluster_creds = False
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+        self.mock_object(self.library,
+                         '_get_flexgroup_aggr_set',
+                         mock.Mock(return_value=fake.FLEXGROUP_AGGR_SET))
+        self.mock_object(self.library,
+                         '_get_aggregate_info',
+                         mock.Mock(return_value=fake.SSC_INFO_MAP))
+
+        self.library._update_ssc_info()
+
+        expected = {
+            fake.AGGREGATES[0]: {
+                'netapp_aggregate': fake.AGGREGATES[0],
+                'netapp_flexgroup': False,
+            },
+            fake.AGGREGATES[1]: {
+                'netapp_aggregate': fake.AGGREGATES[1],
+                'netapp_flexgroup': False,
+            },
+            fake.FLEXGROUP_POOL_NAME: {
+                'netapp_aggregate': fake.FLEXGROUP_POOL['netapp_aggregate'],
+                'netapp_flexgroup': True,
+            },
+        }
+
+        self.assertDictEqual(self.library._ssc_stats, expected)
+
+    def test_get_aggregate_info(self):
         mock_get_aggregate = self.mock_object(
             self.client, 'get_aggregate',
             mock.Mock(side_effect=fake.SSC_AGGREGATES))
         mock_get_aggregate_disk_types = self.mock_object(
             self.client, 'get_aggregate_disk_types',
             mock.Mock(side_effect=fake.SSC_DISK_TYPES))
-        ssc_stats = {
+
+        result = self.library._get_aggregate_info(fake.AGGREGATES)
+
+        expected = {
             fake.AGGREGATES[0]: {
-                'netapp_aggregate': fake.AGGREGATES[0],
+                'netapp_raid_type': 'raid4',
+                'netapp_disk_type': 'FCAL',
+                'netapp_hybrid_aggregate': 'false',
             },
             fake.AGGREGATES[1]: {
-                'netapp_aggregate': fake.AGGREGATES[1],
+                'netapp_raid_type': 'raid_dp',
+                'netapp_disk_type': ['SATA', 'SSD'],
+                'netapp_hybrid_aggregate': 'true',
             },
         }
 
-        self.library._update_ssc_aggr_info(fake.AGGREGATES, ssc_stats)
-
-        self.assertDictEqual(fake.SSC_INFO, ssc_stats)
+        self.assertDictEqual(result, expected)
         mock_get_aggregate.assert_has_calls([
             mock.call(fake.AGGREGATES[0]),
             mock.call(fake.AGGREGATES[1]),
@@ -3291,46 +3802,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.call(fake.AGGREGATES[0]),
             mock.call(fake.AGGREGATES[1]),
         ])
-
-    def test_update_ssc_aggr_info_not_found(self):
-
-        self.library._have_cluster_creds = True
-        self.mock_object(self.client,
-                         'get_aggregate',
-                         mock.Mock(return_value={}))
-        self.mock_object(self.client,
-                         'get_aggregate_disk_types',
-                         mock.Mock(return_value=None))
-        ssc_stats = {
-            fake.AGGREGATES[0]: {},
-            fake.AGGREGATES[1]: {},
-        }
-
-        self.library._update_ssc_aggr_info(fake.AGGREGATES, ssc_stats)
-
-        expected = {
-            fake.AGGREGATES[0]: {
-                'netapp_raid_type': None,
-                'netapp_disk_type': None,
-                'netapp_hybrid_aggregate': None,
-            },
-            fake.AGGREGATES[1]: {
-                'netapp_raid_type': None,
-                'netapp_disk_type': None,
-                'netapp_hybrid_aggregate': None,
-            }
-        }
-        self.assertDictEqual(expected, ssc_stats)
-
-    def test_update_ssc_aggr_info_no_cluster_creds(self):
-
-        self.library._have_cluster_creds = False
-        ssc_stats = {}
-
-        self.library._update_ssc_aggr_info(fake.AGGREGATES, ssc_stats)
-
-        self.assertDictEqual({}, ssc_stats)
-        self.assertFalse(self.library._client.get_aggregate_raid_types.called)
 
     @ddt.data(
         {'is_readable': True, 'rules_status': constants.STATUS_ACTIVE},
@@ -3367,6 +3838,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_helper = self.mock_object(
             self.library, '_get_helper',
             mock.Mock(return_value=protocol_helper))
+        self.mock_object(mock_dm_session, 'get_backend_info_for_share',
+                         mock.Mock(return_value=(fake.SHARE_NAME,
+                                                 fake.VSERVER1,
+                                                 fake.BACKEND_NAME)))
+        self.mock_object(self.library, '_is_flexgroup_share',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(na_utils, 'get_relationship_type',
+                         mock.Mock(return_value=na_utils.DATA_PROTECTION_TYPE))
         expected_model_update = {
             'export_locations': [],
             'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC,
@@ -3379,9 +3860,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertDictEqual(expected_model_update, model_update)
         mock_dm_session.create_snapmirror.assert_called_once_with(
-            fake.SHARE, fake.SHARE, mount=is_readable)
-        data_motion.get_client_for_backend.assert_called_once_with(
-            fake.BACKEND_NAME, vserver_name=fake.VSERVER1)
+            fake.SHARE, fake.SHARE, na_utils.DATA_PROTECTION_TYPE,
+            mount=is_readable)
         mock_is_readable.assert_called_once_with(fake.SHARE)
         if is_readable:
             mock_create_export.assert_called_once_with(
@@ -3394,6 +3874,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock_get_helper.assert_not_called()
             protocol_helper.update_access.assert_not_called()
 
+        data_motion.get_client_for_backend.assert_has_calls(
+            [mock.call(fake.BACKEND_NAME, vserver_name=fake.VSERVER1),
+             mock.call(fake.BACKEND_NAME, vserver_name=fake.VSERVER1)])
+        self.library._is_flexgroup_pool.assert_called_once_with(fake.POOL_NAME)
+        na_utils.get_relationship_type.assert_called_once_with(False)
+
     def test_create_replica_with_share_server(self):
         self.mock_object(self.library,
                          '_allocate_container',
@@ -3401,6 +3887,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_dm_session = mock.Mock()
         self.mock_object(data_motion, "DataMotionSession",
                          mock.Mock(return_value=mock_dm_session))
+        self.mock_object(mock_dm_session, 'get_backend_info_for_share',
+                         mock.Mock(return_value=(fake.SHARE_NAME,
+                                                 fake.VSERVER1,
+                                                 fake.BACKEND_NAME)))
+        self.mock_object(self.library, '_is_flexgroup_share',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
         self.mock_object(data_motion, 'get_client_for_backend')
         self.mock_object(mock_dm_session, 'get_vserver_from_share',
                          mock.Mock(return_value=fake.VSERVER1))
@@ -3419,9 +3913,61 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertDictEqual(expected_model_update, model_update)
         mock_dm_session.create_snapmirror.assert_called_once_with(
-            fake.SHARE, fake.SHARE, mount=False)
-        data_motion.get_client_for_backend.assert_called_once_with(
-            fake.BACKEND_NAME, vserver_name=fake.VSERVER1)
+            fake.SHARE, fake.SHARE, na_utils.DATA_PROTECTION_TYPE,
+            mount=False)
+        data_motion.get_client_for_backend.assert_has_calls(
+            [mock.call(fake.BACKEND_NAME, vserver_name=fake.VSERVER1),
+             mock.call(fake.BACKEND_NAME, vserver_name=fake.VSERVER1)])
+        self.library._is_flexgroup_pool.assert_called_once_with(fake.POOL_NAME)
+
+    def test_create_replica_raise_different_type(self):
+
+        mock_dm_session = mock.Mock()
+        self.mock_object(data_motion, "DataMotionSession",
+                         mock.Mock(return_value=mock_dm_session))
+        self.mock_object(mock_dm_session, 'get_backend_info_for_share',
+                         mock.Mock(return_value=(fake.SHARE_NAME,
+                                                 fake.VSERVER1,
+                                                 fake.BACKEND_NAME)))
+        self.mock_object(self.library, '_is_flexgroup_share',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(data_motion, 'get_client_for_backend')
+
+        self.assertRaises(exception.NetAppException,
+                          self.library.create_replica,
+                          None, [fake.SHARE], fake.SHARE, [], [],
+                          share_server=None)
+
+    def test_create_replica_raise_flexgroup_no_fan_out_limit(self):
+
+        mock_dm_session = mock.Mock()
+        self.mock_object(data_motion, "DataMotionSession",
+                         mock.Mock(return_value=mock_dm_session))
+        self.mock_object(mock_dm_session, 'get_backend_info_for_share',
+                         mock.Mock(return_value=(fake.SHARE_NAME,
+                                                 fake.VSERVER1,
+                                                 fake.BACKEND_NAME)))
+        self.mock_object(self.library, '_is_flexgroup_share',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=True))
+
+        mock_src_client = mock.Mock()
+        self.mock_object(mock_src_client,
+                         'is_flexgroup_fan_out_supported',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library._client,
+                         'is_flexgroup_fan_out_supported',
+                         mock.Mock(return_value=False))
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=mock_src_client))
+
+        self.assertRaises(exception.NetAppException,
+                          self.library.create_replica,
+                          None, [fake.SHARE, fake.SHARE, fake.SHARE],
+                          fake.SHARE, [], [], share_server=None)
 
     def test_delete_replica(self):
 
@@ -3551,6 +4097,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_is_readable_replica',
                          mock.Mock(return_value=False))
+        self.mock_object(share_utils,
+                         'extract_host',
+                         mock.Mock(return_value=fake.POOL_NAME))
+        self.mock_object(self.library,
+                         '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(na_utils,
+                         'get_relationship_type',
+                         mock.Mock(return_value=na_utils.DATA_PROTECTION_TYPE))
         self.mock_dm_session.create_snapmirror.side_effect = (
             netapp_api.NaApiError(code=0))
 
@@ -3576,6 +4131,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_is_readable_replica',
                          mock.Mock(return_value=False))
+        self.mock_object(share_utils,
+                         'extract_host',
+                         mock.Mock(return_value=fake.POOL_NAME))
+        self.mock_object(self.library,
+                         '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(na_utils,
+                         'get_relationship_type',
+                         mock.Mock(return_value=na_utils.DATA_PROTECTION_TYPE))
+
         replica = copy.deepcopy(fake.SHARE)
         replica['status'] = status
 
@@ -3766,6 +4331,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         }
         fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
         fake_snapshot['share_id'] = fake.SHARE['id']
+        fake_snapshot['provider_location'] = 'fake'
         snapshots = [{'share_replica_snapshot': fake_snapshot}]
         vserver_client = mock.Mock()
         self.mock_object(vserver_client, 'snapshot_exists', mock.Mock(
@@ -3828,6 +4394,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value='fake_export_location'))
         self.mock_object(self.library, '_unmount_orig_active_replica')
         self.mock_object(self.library, '_handle_qos_on_replication_change')
+        self.mock_object(self.library,
+                         '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
 
         mock_dm_session = mock.Mock()
         self.mock_object(data_motion, "DataMotionSession",
@@ -3855,7 +4424,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_dm_session.change_snapmirror_source.assert_called_once_with(
             self.fake_replica, self.fake_replica, self.fake_replica_2,
-            mock.ANY
+            mock.ANY, is_flexgroup=False
         )
         self.assertEqual(2, len(replicas))
         actual_replica_1 = list(filter(
@@ -3899,6 +4468,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value='fake_export_location'))
         self.mock_object(self.library, '_unmount_orig_active_replica')
         self.mock_object(self.library, '_handle_qos_on_replication_change')
+        self.mock_object(self.library,
+                         '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
 
         mock_dm_session = mock.Mock()
         self.mock_object(data_motion, "DataMotionSession",
@@ -3916,7 +4488,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_dm_session.change_snapmirror_source.assert_called_once_with(
             self.fake_replica, self.fake_replica, self.fake_replica_2,
-            mock.ANY
+            mock.ANY, is_flexgroup=False
         )
         protocol_helper.cleanup_demoted_replica.assert_called_once_with(
             self.fake_replica, fake.SHARE['name'])
@@ -3968,6 +4540,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_helper',
                          mock.Mock(return_value=mock.Mock()))
 
+        self.mock_object(self.library,
+                         '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
         self.mock_object(self.library, '_create_export',
                          mock.Mock(return_value='fake_export_location'))
         mock_dm_session = mock.Mock()
@@ -3985,9 +4560,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_dm_session.change_snapmirror_source.assert_has_calls([
             mock.call(fake_replica_3, self.fake_replica, self.fake_replica_2,
-                      mock.ANY),
+                      mock.ANY, is_flexgroup=False),
             mock.call(self.fake_replica, self.fake_replica,
-                      self.fake_replica_2, mock.ANY)
+                      self.fake_replica_2, mock.ANY, is_flexgroup=False)
         ], any_order=True)
 
         self.assertEqual(3, len(replicas))
@@ -4022,6 +4597,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=mock_helper))
         self.mock_object(self.library, '_create_export',
                          mock.Mock(return_value='fake_export_location'))
+        self.mock_object(self.library,
+                         '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
 
         mock_dm_session = mock.Mock()
         self.mock_object(data_motion, "DataMotionSession",
@@ -4038,7 +4616,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_dm_session.change_snapmirror_source.assert_has_calls([
             mock.call(self.fake_replica, self.fake_replica,
-                      self.fake_replica_2, mock.ANY)
+                      self.fake_replica_2, mock.ANY, is_flexgroup=False)
         ], any_order=True)
         self.assertEqual(2, len(replicas))
         share_name = self.library._get_backend_share_name(
@@ -4253,16 +4831,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_create_export',
                          mock.Mock(return_value='fake_export_location'))
         self.mock_object(self.library,
+                         '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library,
                          '_is_readable_replica',
                          mock.Mock(return_value=False))
-
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2],
             self.fake_replica_2, fake_access_rules, share_server=None)
 
         self.mock_dm_session.change_snapmirror_source.assert_called_once_with(
             self.fake_replica, self.fake_replica, self.fake_replica_2,
-            mock.ANY
+            mock.ANY, is_flexgroup=False
         )
 
         self.assertEqual(2, len(replicas))
@@ -4581,10 +5161,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             any_order=True
         )
 
-    def test_create_replicated_snapshot_no_snapmirror(self):
+    @ddt.data(
+        netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND),
+        netapp_api.NaApiError(message='not initialized'))
+    def test_create_replicated_snapshot_no_snapmirror(self, api_exception):
         self.mock_dm_session.update_snapmirror.side_effect = [
             None,
-            netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND)
+            api_exception
         ]
         fake_replica_3 = copy.deepcopy(self.fake_replica_2)
         fake_replica_3['id'] = fake.SHARE_ID3
@@ -4745,10 +5328,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             any_order=True
         )
 
-    def test_delete_replicated_snapshot_missing_snapmirror(self):
+    @ddt.data(
+        netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND),
+        netapp_api.NaApiError(message='not initialized'))
+    def test_delete_replicated_snapshot_missing_snapmirror(self,
+                                                           api_exception):
         self.mock_dm_session.update_snapmirror.side_effect = [
             None,
-            netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND)
+            api_exception
         ]
         fake_replica_3 = copy.deepcopy(self.fake_replica_2)
         fake_replica_3['id'] = fake.SHARE_ID3
@@ -4878,12 +5465,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.fake_replica, self.fake_replica_2
         )
 
-    def test_update_replicated_snapshot_no_snapmirror(self):
+    @ddt.data(
+        netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND),
+        netapp_api.NaApiError(message='not initialized'))
+    def test_update_replicated_snapshot_no_snapmirror(self, api_exception):
         vserver_client = mock.Mock()
         vserver_client.snapshot_exists.return_value = False
-        self.mock_dm_session.update_snapmirror.side_effect = (
-            netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND)
-        )
+        self.mock_dm_session.update_snapmirror.side_effect = api_exception
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
@@ -5299,14 +5887,60 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_warning_log.assert_called_once()
         self.assertFalse(data_motion.get_backend_configuration.called)
 
+    @ddt.data(
+        {'src_flexgroup': True, 'dest_flexgroup': False},
+        {'src_flexgroup': False, 'dest_flexgroup': True})
+    @ddt.unpack
+    def test_migration_check_compatibility_flexgroup(self, src_flexgroup,
+                                                     dest_flexgroup):
+        self.library._have_cluster_creds = True
+        mock_dm = mock.Mock()
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm))
+        self.mock_object(self.library, 'is_flexgroup_destination_host',
+                         mock.Mock(return_value=dest_flexgroup))
+        mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
+        self.mock_object(share_utils, 'extract_host',
+                         mock.Mock(return_value=fake.POOL_NAME))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=src_flexgroup))
+
+        migration_compatibility = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), share_server=None,
+            destination_share_server=fake.SHARE_SERVER)
+
+        expected_compatibility = {
+            'compatible': False,
+            'writable': False,
+            'nondisruptive': False,
+            'preserve_metadata': False,
+            'preserve_snapshots': False,
+        }
+        self.assertDictEqual(expected_compatibility, migration_compatibility)
+        mock_exception_log.assert_called_once()
+        self.library._is_flexgroup_pool.assert_called_once_with(fake.POOL_NAME)
+        if src_flexgroup:
+            self.library.is_flexgroup_destination_host.assert_not_called()
+
     @ddt.data((None, exception.NetAppException),
               (exception.Invalid, None))
     @ddt.unpack
     def test_migration_check_compatibility_extra_specs_invalid(
             self, side_effect_1, side_effect_2):
         self.library._have_cluster_creds = True
+        mock_dm = mock.Mock()
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm))
+        self.mock_object(self.library, 'is_flexgroup_destination_host',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            side_effect=[
+                'destination_backend', 'destination_pool', 'source_pool']))
         mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
         self.mock_object(share_types, 'get_extra_specs_from_share')
         self.mock_object(self.library, '_check_extra_specs_validity',
@@ -5334,8 +5968,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_migration_check_compatibility_invalid_qos_configuration(self):
         self.library._have_cluster_creds = True
+        mock_dm = mock.Mock()
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm))
+        self.mock_object(self.library, 'is_flexgroup_destination_host',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            side_effect=[
+                'destination_backend', 'destination_pool', 'source_pool']))
         mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
         self.mock_object(share_types, 'get_extra_specs_from_share')
         self.mock_object(self.library, '_check_extra_specs_validity')
@@ -5362,6 +6006,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_migration_check_compatibility_destination_not_configured(self):
         self.library._have_cluster_creds = True
+        mock_dm = mock.Mock()
+        mock_dm = mock.Mock()
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm))
+        self.mock_object(self.library, 'is_flexgroup_destination_host',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
         self.mock_object(
@@ -5412,6 +6064,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             (exception.InvalidParameterValue, ('dest_vserver', None))))
     def test_migration_check_compatibility_errors(self, side_effects):
         self.library._have_cluster_creds = True
+        mock_dm = mock.Mock()
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm))
+        self.mock_object(self.library, 'is_flexgroup_destination_host',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
         self.mock_object(share_types, 'get_extra_specs_from_share')
         self.mock_object(self.library, '_check_extra_specs_validity')
         self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
@@ -5451,6 +6110,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_migration_check_compatibility_incompatible_vservers(self):
         self.library._have_cluster_creds = True
+        mock_dm = mock.Mock()
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm))
+        self.mock_object(self.library, 'is_flexgroup_destination_host',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
         self.mock_object(share_types, 'get_extra_specs_from_share')
         self.mock_object(self.library, '_check_extra_specs_validity')
         self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
@@ -5470,7 +6136,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_get_vserver',
                          mock.Mock(side_effect=get_vserver_returns))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
-            side_effect=['destination_backend', 'destination_pool']))
+            side_effect=[
+                'destination_backend', 'destination_pool', 'source_pool']))
         mock_move_check = self.mock_object(self.client, 'check_volume_move')
 
         migration_compatibility = self.library.migration_check_compatibility(
@@ -5496,6 +6163,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_migration_check_compatibility_client_error(self):
         self.library._have_cluster_creds = True
+        mock_dm = mock.Mock()
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm))
+        self.mock_object(self.library, 'is_flexgroup_destination_host',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
         self.mock_object(share_types, 'get_extra_specs_from_share')
         self.mock_object(self.library, '_check_extra_specs_validity')
         self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
@@ -5511,7 +6185,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
-            side_effect=['destination_backend', 'destination_pool']))
+            side_effect=[
+                'destination_backend', 'destination_pool', 'source_pool']))
         mock_move_check = self.mock_object(
             self.client, 'check_volume_move',
             mock.Mock(side_effect=netapp_api.NaApiError))
@@ -5544,6 +6219,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     @ddt.data(False, True)
     def test_migration_check_compatibility(self, fpolicy):
         self.library._have_cluster_creds = True
+        mock_dm = mock.Mock()
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm))
+        self.mock_object(self.library, 'is_flexgroup_destination_host',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
         mock_dest_client = mock.Mock()
         if fpolicy:
             provisioning_options = copy.deepcopy(
@@ -5562,7 +6244,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_get_vserver',
                          mock.Mock(side_effect=get_vserver_side_effect))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
-            side_effect=['destination_backend', 'destination_pool']))
+            side_effect=[
+                'destination_backend', 'destination_pool', 'source_pool']))
         mock_move_check = self.mock_object(self.client, 'check_volume_move')
         self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
                          mock.Mock(return_value=False))
@@ -5618,13 +6301,21 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_migration_check_compatibility_destination_type_is_encrypted(self):
         self.library._have_cluster_creds = True
+        mock_dm = mock.Mock()
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm))
+        self.mock_object(self.library, 'is_flexgroup_destination_host',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
         self.mock_object(data_motion, 'get_backend_configuration')
         self.mock_object(self.library, '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
-            side_effect=['destination_backend', 'destination_pool']))
+            side_effect=[
+                'destination_backend', 'destination_pool', 'source_pool']))
         mock_move_check = self.mock_object(self.client, 'check_volume_move')
         self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
                          mock.Mock(return_value=True))
@@ -6728,3 +7419,241 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 fake.FPOLICY_POLICY_NAME)
             mock_delete_event.assert_called_once_with(
                 fake.FPOLICY_EVENT_NAME)
+
+    @ddt.data(True, False)
+    def test_initialize_flexgroup_pools(self, auto_provision):
+        self.library.configuration.netapp_enable_flexgroup = True
+        pool = None if auto_provision else [fake.FLEXGROUP_POOL_OPT_RAW]
+        mock_safe_get = self.mock_object(
+            self.library.configuration, 'safe_get',
+            mock.Mock(return_value=pool))
+        mock_is_flex_support = self.mock_object(
+            self.library._client, 'is_flexgroup_supported',
+            mock.Mock(return_value=True))
+        mock_parse = self.mock_object(
+            na_utils, 'parse_flexgroup_pool_config',
+            mock.Mock(return_value=fake.FLEXGROUP_POOL_OPT))
+        aggr_set = set(fake.FLEXGROUP_POOL_AGGR)
+
+        self.library._initialize_flexgroup_pools(aggr_set)
+
+        mock_safe_get.assert_called_once_with('netapp_flexgroup_pools')
+        mock_is_flex_support.assert_called_once_with()
+        if auto_provision:
+            self.assertEqual(self.library._flexgroup_pools,
+                             {na_utils.FLEXGROUP_DEFAULT_POOL_NAME: sorted(
+                                 aggr_set)})
+            self.assertTrue(self.library._is_flexgroup_auto)
+            mock_parse.assert_not_called()
+        else:
+            self.assertEqual(self.library._flexgroup_pools,
+                             fake.FLEXGROUP_POOL_OPT)
+            self.assertFalse(self.library._is_flexgroup_auto)
+            mock_parse.assert_called_once_with(
+                [fake.FLEXGROUP_POOL_OPT_RAW],
+                cluster_aggr_set=set(fake.FLEXGROUP_POOL_AGGR), check=True)
+
+    def test_initialize_flexgroup_pools_no_opt(self):
+        self.library.configuration.netapp_enable_flexgroup = False
+        self.mock_object(self.library.configuration,
+                         'safe_get',
+                         mock.Mock(return_value=None))
+
+        self.library._initialize_flexgroup_pools(set(fake.FLEXGROUP_POOL_AGGR))
+
+        self.assertEqual(self.library._flexgroup_pools, {})
+
+    def test_initialize_flexgroup_pools_raise_version(self):
+        self.library.configuration.netapp_enable_flexgroup = True
+        self.mock_object(self.library.configuration,
+                         'safe_get',
+                         mock.Mock(return_value=[fake.FLEXGROUP_POOL_OPT_RAW]))
+        self.mock_object(self.library._client,
+                         'is_flexgroup_supported',
+                         mock.Mock(return_value=False))
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._initialize_flexgroup_pools,
+                          set(fake.FLEXGROUP_POOL_AGGR))
+
+    def test_initialize_flexgroup_pools_raise_no_enable_with_pool(self):
+        self.library.configuration.netapp_enable_flexgroup = False
+        self.mock_object(self.library.configuration,
+                         'safe_get',
+                         mock.Mock(return_value=[fake.FLEXGROUP_POOL_OPT_RAW]))
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._initialize_flexgroup_pools,
+                          set(fake.FLEXGROUP_POOL_AGGR))
+
+    @ddt.data(True, False)
+    def test_get_flexgroup_pool_name(self, auto_provisioned):
+
+        self.library._is_flexgroup_auto = auto_provisioned
+        self.library._flexgroup_pools = fake.FLEXGROUP_POOL_OPT
+
+        result = self.library._get_flexgroup_pool_name(
+            fake.FLEXGROUP_POOL_AGGR)
+
+        if auto_provisioned:
+            self.assertEqual(na_utils.FLEXGROUP_DEFAULT_POOL_NAME, result)
+        else:
+            self.assertEqual(fake.FLEXGROUP_POOL_NAME, result)
+
+    def test_get_flexgroup_pool_name_not_found(self):
+
+        self.library._is_flexgroup_auto = False
+        self.library._flexgroup_pools = fake.FLEXGROUP_POOL_OPT
+
+        result = self.library._get_flexgroup_pool_name([])
+
+        self.assertEqual('', result)
+
+    def test_is_flexgroup_pool(self):
+
+        self.library._flexgroup_pools = fake.FLEXGROUP_POOL_OPT
+
+        result = self.library._is_flexgroup_pool(fake.FLEXGROUP_POOL_NAME)
+
+        self.assertTrue(result)
+
+    @ddt.data({'pool_name': fake.FLEXGROUP_POOL_NAME,
+               'aggr_list': fake.FLEXGROUP_POOL_AGGR},
+              {'pool_name': '',
+               'aggr_list': []})
+    @ddt.unpack
+    def test_get_flexgroup_aggregate_list(self, pool_name, aggr_list):
+
+        self.library._flexgroup_pools = fake.FLEXGROUP_POOL_OPT
+
+        result = self.library._get_flexgroup_aggregate_list(pool_name)
+
+        self.assertEqual(aggr_list, result)
+
+    def test_is_flexgroup_share(self):
+        vserver_client = mock.Mock()
+        vserver_client.is_flexgroup_volume.return_value = True
+
+        result = self.library._is_flexgroup_share(vserver_client,
+                                                  fake.SHARE_NAME)
+
+        vserver_client.is_flexgroup_volume.assert_called_once_with(
+            fake.SHARE_NAME)
+        self.assertTrue(result)
+
+    def test_is_flexgroup_share_raise(self):
+        vserver_client = mock.Mock()
+        vserver_client.is_flexgroup_volume.side_effect = (
+            exception.NetAppException)
+
+        self.assertRaises(exception.ShareNotFound,
+                          self.library._is_flexgroup_share,
+                          vserver_client, fake.SHARE_NAME)
+
+        vserver_client.is_flexgroup_volume.assert_called_once_with(
+            fake.SHARE_NAME)
+
+    @ddt.data(
+        {'enabled': True, 'flexgroup_only': False, 'is_flexvol': True},
+        {'enabled': False, 'flexgroup_only': False, 'is_flexvol': True},
+        {'enabled': True, 'flexgroup_only': True, 'is_flexvol': False},
+        {'enabled': False, 'flexgroup_only': True, 'is_flexvol': True})
+    @ddt.unpack
+    def test_is_flexvol_pool_configured(self, enabled, flexgroup_only,
+                                        is_flexvol):
+
+        self.library.configuration.netapp_enable_flexgroup = enabled
+        self.library.configuration.netapp_flexgroup_pool_only = flexgroup_only
+
+        result = self.library.is_flexvol_pool_configured()
+
+        self.assertEqual(is_flexvol, result)
+
+    def test_get_minimum_flexgroup_size(self):
+        self.mock_object(self.library, '_get_flexgroup_aggregate_list',
+                         mock.Mock(return_value=fake.AGGREGATES))
+
+        result = self.library._get_minimum_flexgroup_size(fake.POOL_NAME)
+
+        expected = (len(fake.AGGREGATES) *
+                    self.library.FLEXGROUP_MIN_SIZE_PER_AGGR)
+        self.assertEqual(expected, result)
+        self.library._get_flexgroup_aggregate_list.assert_called_once_with(
+            fake.POOL_NAME)
+
+    def test_is_flexgroup_destination_host_not_enabled(self):
+        mock_config = mock.Mock()
+        dm_session = mock.Mock()
+        mock_get_backend = self.mock_object(
+            dm_session, 'get_backend_name_and_config_obj',
+            mock.Mock(return_value=('fake', mock_config)))
+        mock_safe_get = self.mock_object(
+            mock_config, 'safe_get', mock.Mock(return_value=False))
+
+        result = self.library.is_flexgroup_destination_host(fake.HOST_NAME,
+                                                            dm_session)
+
+        self.assertFalse(result)
+        mock_get_backend.assert_called_once_with(fake.HOST_NAME)
+        mock_safe_get.assert_called_once_with('netapp_enable_flexgroup')
+
+    @ddt.data(None, [{'fg1': fake.AGGREGATE}])
+    def test_is_flexgroup_destination_host_false(self, flexgroup_pools):
+        mock_config = mock.Mock()
+        dm_session = mock.Mock()
+        mock_get_backend = self.mock_object(
+            dm_session, 'get_backend_name_and_config_obj',
+            mock.Mock(return_value=('fake', mock_config)))
+        mock_safe_get = self.mock_object(
+            mock_config, 'safe_get',
+            mock.Mock(side_effect=[True, flexgroup_pools]))
+        mock_extract = self.mock_object(
+            share_utils, 'extract_host',
+            mock.Mock(return_value=fake.POOL_NAME))
+        mock_parse = self.mock_object(
+            na_utils, 'parse_flexgroup_pool_config',
+            mock.Mock(return_value={}))
+
+        result = self.library.is_flexgroup_destination_host(fake.HOST_NAME,
+                                                            dm_session)
+
+        self.assertFalse(result)
+        mock_get_backend.assert_called_once_with(fake.HOST_NAME)
+        mock_safe_get.assert_has_calls([
+            mock.call('netapp_enable_flexgroup'),
+            mock.call('netapp_flexgroup_pools'),
+        ])
+        mock_extract.assert_called_once_with(fake.HOST_NAME, level='pool')
+        if flexgroup_pools:
+            mock_parse.assert_called_once_with(flexgroup_pools)
+        else:
+            mock_parse.assert_not_called()
+
+    def test_is_flexgroup_destination_host_true(self):
+        flexgroup_pools = [{fake.POOL_NAME: fake.AGGREGATE}]
+        mock_config = mock.Mock()
+        dm_session = mock.Mock()
+        mock_get_backend = self.mock_object(
+            dm_session, 'get_backend_name_and_config_obj',
+            mock.Mock(return_value=('fake', mock_config)))
+        mock_safe_get = self.mock_object(
+            mock_config, 'safe_get',
+            mock.Mock(side_effect=[True, flexgroup_pools]))
+        mock_extract = self.mock_object(
+            share_utils, 'extract_host',
+            mock.Mock(return_value=fake.POOL_NAME))
+        mock_parse = self.mock_object(
+            na_utils, 'parse_flexgroup_pool_config',
+            mock.Mock(return_value=flexgroup_pools[0]))
+
+        result = self.library.is_flexgroup_destination_host(fake.HOST_NAME,
+                                                            dm_session)
+
+        self.assertTrue(result)
+        mock_get_backend.assert_called_once_with(fake.HOST_NAME)
+        mock_safe_get.assert_has_calls([
+            mock.call('netapp_enable_flexgroup'),
+            mock.call('netapp_flexgroup_pools'),
+        ])
+        mock_extract.assert_called_once_with(fake.HOST_NAME, level='pool')
+        mock_parse.assert_called_once_with(flexgroup_pools)
