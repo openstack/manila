@@ -74,6 +74,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontapi_1_120 = ontapi_version >= (1, 120)
         ontapi_1_140 = ontapi_version >= (1, 140)
         ontapi_1_150 = ontapi_version >= (1, 150)
+        ontap_9_10 = self.get_system_version()['version-tuple'] >= (9, 10, 0)
 
         self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
         self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
@@ -95,6 +96,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                   supported=ontapi_1_150)
         self.features.add_feature('LDAP_LDAP_SERVERS',
                                   supported=ontapi_1_120)
+        self.features.add_feature('SVM_MIGRATE', supported=ontap_9_10)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -1039,6 +1041,24 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             interfaces.append(lif)
 
         return interfaces
+
+    @na_utils.trace
+    def disable_network_interface(self, vserver_name, interface_name):
+        api_args = {
+            'administrative-status': 'down',
+            'interface-name': interface_name,
+            'vserver': vserver_name,
+        }
+        self.send_request('net-interface-modify', api_args)
+
+    @na_utils.trace
+    def delete_network_interface(self, vserver_name, interface_name):
+        self.disable_network_interface(vserver_name, interface_name)
+        api_args = {
+            'interface-name': interface_name,
+            'vserver': vserver_name
+        }
+        self.send_request('net-interface-delete', api_args)
 
     @na_utils.trace
     def get_ipspace_name_for_vlan_port(self, vlan_node, vlan_port, vlan_id):
@@ -3605,7 +3625,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         # NOTE(cknight): Cannot use deepcopy on the connection context
         node_client = copy.copy(self)
-        node_client.connection = copy.copy(self.connection)
+        node_client.connection = copy.copy(self.connection.get_client())
         node_client.connection.set_timeout(25)
 
         try:
@@ -5453,3 +5473,173 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(msg)
 
         return fpolicy_status
+
+    @na_utils.trace
+    def is_svm_migrate_supported(self):
+        """Checks if the cluster supports SVM Migrate."""
+        return self.features.SVM_MIGRATE
+
+    # ------------------------ REST CALLS ONLY ------------------------
+
+    @na_utils.trace
+    def _format_request(self, request_data, headers={}, query={},
+                        url_params={}):
+        """Receives the request data and formats it into a request pattern.
+
+        :param request_data: the body to be sent to the request.
+        :param headers: additional headers to the request.
+        :param query: filters to the request.
+        :param url_params: parameters to be added to the request.
+        """
+        request = {
+            "body": request_data,
+            "headers": headers,
+            "query": query,
+            "url_params": url_params
+        }
+        return request
+
+    @na_utils.trace
+    def svm_migration_start(
+            self, source_cluster_name, source_share_server_name,
+            dest_aggregates, dest_ipspace=None, check_only=False):
+        """Send a request to start the SVM migration in the backend.
+
+        :param source_cluster_name: the name of the source cluster.
+        :param source_share_server_name: the name of the source server.
+        :param dest_aggregates: the aggregates where volumes will be placed in
+        the migration.
+        :param dest_ipspace: created IPspace for the migration.
+        :param check_only: If the call will only check the feasibility.
+         deleted after the cutover or not.
+        """
+        request = {
+            "auto_cutover": False,
+            "auto_source_cleanup": True,
+            "check_only": check_only,
+            "source": {
+                "cluster": {"name": source_cluster_name},
+                "svm": {"name": source_share_server_name},
+            },
+            "destination": {
+                "volume_placement": {
+                    "aggregates": dest_aggregates,
+                },
+            },
+        }
+
+        if dest_ipspace:
+            ipspace_data = {
+                "ipspace": {
+                    "name": dest_ipspace,
+                }
+            }
+            request["destination"].update(ipspace_data)
+
+        api_args = self._format_request(request)
+
+        return self.send_request(
+            'svm-migration-start', api_args=api_args, use_zapi=False)
+
+    @na_utils.trace
+    def get_migration_check_job_state(self, job_id):
+        """Get the job state of a share server migration.
+
+        :param job_id: id of the job to be searched.
+        """
+        try:
+            job = self.get_job(job_id)
+            return job
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.ENFS_V4_0_ENABLED_MIGRATION_FAILURE:
+                msg = _(
+                    'NFS v4.0 is not supported while migrating vservers.')
+                LOG.error(msg)
+                raise exception.NetAppException(message=e.message)
+            if e.code == netapp_api.EVSERVER_MIGRATION_TO_NON_AFF_CLUSTER:
+                msg = _('Both source and destination clusters must be AFF '
+                        'systems.')
+                LOG.error(msg)
+                raise exception.NetAppException(message=e.message)
+            msg = (_('Failed to check migration support. Reason: '
+                     '%s' % e.message))
+            raise exception.NetAppException(msg)
+
+    @na_utils.trace
+    def svm_migrate_complete(self, migration_id):
+        """Send a request to complete the SVM migration.
+
+        :param migration_id: the id of the migration provided by the storage.
+        """
+        request = {
+            "action": "cutover"
+        }
+        url_params = {
+            "svm_migration_id": migration_id
+        }
+        api_args = self._format_request(
+            request, url_params=url_params)
+
+        return self.send_request(
+            'svm-migration-complete', api_args=api_args, use_zapi=False)
+
+    @na_utils.trace
+    def svm_migrate_cancel(self, migration_id):
+        """Send a request to cancel the SVM migration.
+
+        :param migration_id: the id of the migration provided by the storage.
+        """
+        request = {}
+        url_params = {
+            "svm_migration_id": migration_id
+        }
+        api_args = self._format_request(request, url_params=url_params)
+        return self.send_request(
+            'svm-migration-cancel', api_args=api_args, use_zapi=False)
+
+    @na_utils.trace
+    def svm_migration_get(self, migration_id):
+        """Send a request to get the progress of the SVM migration.
+
+        :param migration_id: the id of the migration provided by the storage.
+        """
+        request = {}
+        url_params = {
+            "svm_migration_id": migration_id
+        }
+        api_args = self._format_request(request, url_params=url_params)
+        return self.send_request(
+            'svm-migration-get', api_args=api_args, use_zapi=False)
+
+    @na_utils.trace
+    def svm_migrate_pause(self, migration_id):
+        """Send a request to pause a migration.
+
+        :param migration_id: the id of the migration provided by the storage.
+        """
+        request = {
+            "action": "pause"
+        }
+        url_params = {
+            "svm_migration_id": migration_id
+        }
+        api_args = self._format_request(
+            request, url_params=url_params)
+        return self.send_request(
+            'svm-migration-pause', api_args=api_args, use_zapi=False)
+
+    @na_utils.trace
+    def get_job(self, job_uuid):
+        """Get a job in ONTAP.
+
+        :param job_uuid: uuid of the job to be searched.
+        """
+        request = {}
+        url_params = {
+            "job_uuid": job_uuid
+        }
+
+        api_args = self._format_request(request, url_params=url_params)
+
+        return self.send_request(
+            'get-job', api_args=api_args, use_zapi=False)

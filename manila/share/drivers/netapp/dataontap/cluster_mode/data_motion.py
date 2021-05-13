@@ -85,6 +85,13 @@ def get_client_for_backend(backend_name, vserver_name=None):
     return client
 
 
+def get_client_for_host(host):
+    """Returns a cluster client to the desired host."""
+    backend_name = share_utils.extract_host(host, level='backend_name')
+    client = get_client_for_backend(backend_name)
+    return client
+
+
 class DataMotionSession(object):
 
     def _get_backend_volume_name(self, config, share_obj):

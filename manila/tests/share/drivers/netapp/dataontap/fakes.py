@@ -520,6 +520,10 @@ SHARE_SERVER = {
     'network_allocations': (USER_NETWORK_ALLOCATIONS +
                             ADMIN_NETWORK_ALLOCATIONS),
     'host': SERVER_HOST,
+    'share_network_subnet': {
+        'neutron_net_id': 'fake_neutron_net_id',
+        'neutron_subnet_id': 'fake_neutron_subnet_id'
+    }
 }
 
 SHARE_SERVER_2 = {
@@ -531,6 +535,10 @@ SHARE_SERVER_2 = {
     'network_allocations': (USER_NETWORK_ALLOCATIONS +
                             ADMIN_NETWORK_ALLOCATIONS),
     'host': SERVER_HOST_2,
+    'share_network_subnet': {
+        'neutron_net_id': 'fake_neutron_net_id_2',
+        'neutron_subnet_id': 'fake_neutron_subnet_id_2'
+    }
 }
 
 VSERVER_INFO = {

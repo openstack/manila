@@ -26,6 +26,7 @@ from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp import options as na_opts
+from manila.share import utils as share_utils
 from manila import test
 from manila.tests.share.drivers.netapp.dataontap import fakes as fake
 from manila.tests.share.drivers.netapp import fakes as na_fakes
@@ -92,6 +93,22 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
             username='fake_user', transport_type='https', port=8866,
             ssl_cert_path='/etc/ssl/certs', trace=mock.ANY,
             vserver='fake_vserver')
+
+    def test_get_client_for_host(self):
+        mock_extract_host = self.mock_object(
+            share_utils, 'extract_host',
+            mock.Mock(return_value=fake.BACKEND_NAME))
+        mock_get_client = self.mock_object(
+            data_motion, 'get_client_for_backend',
+            mock.Mock(return_value=self.mock_cmode_client))
+
+        returned_client = data_motion.get_client_for_host(
+            fake.HOST_NAME)
+
+        mock_extract_host.assert_called_once_with(
+            fake.HOST_NAME, level='backend_name')
+        mock_get_client.assert_called_once_with(fake.BACKEND_NAME)
+        self.assertEqual(returned_client, self.mock_cmode_client)
 
     def test_get_config_for_backend(self):
         self.mock_object(data_motion, "CONF")

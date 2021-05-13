@@ -304,7 +304,7 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
 
     def share_server_migration_start(self, context, src_share_server,
                                      dest_share_server, shares, snapshots):
-        self.library.share_server_migration_start(
+        return self.library.share_server_migration_start(
             context, src_share_server, dest_share_server, shares, snapshots)
 
     def share_server_migration_continue(self, context, src_share_server,

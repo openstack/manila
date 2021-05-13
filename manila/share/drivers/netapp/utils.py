@@ -36,6 +36,12 @@ VALID_TRACE_FLAGS = ['method', 'api']
 TRACE_METHOD = False
 TRACE_API = False
 API_TRACE_PATTERN = '(.*)'
+SVM_MIGRATE_POLICY_TYPE_NAME = 'migrate'
+MIGRATION_OPERATION_ID_KEY = 'migration_operation_id'
+MIGRATION_STATE_READY_FOR_CUTOVER = 'ready_for_cutover'
+MIGRATION_STATE_READY_FOR_SOURCE_CLEANUP = 'ready_for_source_cleanup'
+MIGRATION_STATE_MIGRATE_COMPLETE = 'migrate_complete'
+MIGRATION_STATE_MIGRATE_PAUSED = 'migrate_paused'
 
 
 def validate_driver_instantiation(**kwargs):

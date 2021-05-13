@@ -87,6 +87,7 @@ VSERVER_INFO = {
     'state': VSERVER_STATE,
 }
 SNAPMIRROR_POLICY_NAME = 'fake_snapmirror_policy'
+SNAPMIRROR_POLICY_TYPE = 'async_mirror'
 
 USER_NAME = 'fake_user'
 
@@ -2742,12 +2743,14 @@ SNAPMIRROR_POLICY_GET_ITER_RESPONSE = etree.XML("""
     <attributes-list>
       <snapmirror-policy-info>
         <policy-name>%(policy_name)s</policy-name>
+        <type>%(policy_type)s</type>
         <vserver-name>%(vserver_name)s</vserver-name>
       </snapmirror-policy-info>
     </attributes-list>
     <num-records>1</num-records>
   </results>""" % {
     'policy_name': SNAPMIRROR_POLICY_NAME,
+    'policy_type': SNAPMIRROR_POLICY_TYPE,
     'vserver_name': VSERVER_NAME,
 })
 
@@ -2899,6 +2902,7 @@ FAKE_NA_ELEMENT = api.NaElement(etree.XML(FAKE_VOL_XML))
 FAKE_INVOKE_DATA = 'somecontent'
 
 FAKE_XML_STR = 'abc'
+FAKE_REST_CALL_STR = 'def'
 
 FAKE_API_NAME = 'volume-get-iter'
 
@@ -2960,3 +2964,136 @@ FAKE_MANAGE_VOLUME = {
 
 FAKE_KEY_MANAGER_ERROR = "The onboard key manager is not enabled. To enable \
                          it, run \"security key-manager setup\"."
+
+FAKE_ACTION_URL = '/endpoint'
+FAKE_BASE_URL = '10.0.0.3/api'
+FAKE_HTTP_BODY = {'fake_key': 'fake_value'}
+FAKE_HTTP_QUERY = {'type': 'fake_type'}
+FAKE_HTTP_HEADER = {"fake_header_key": "fake_header_value"}
+FAKE_URL_PARAMS = {"fake_url_key": "fake_url_value_to_be_concatenated"}
+
+FAKE_MIGRATION_RESPONSE_WITH_JOB = {
+    "_links": {
+        "self": {
+            "href": "/api/resourcelink"
+        }
+    },
+    "job": {
+        "start_time": "2021-08-27T19:23:41.691Z",
+        "uuid": "1cd8a442-86d1-11e0-ae1c-123478563412",
+        "description": "Fake Job",
+        "state": "success",
+        "message": "Complete: Successful",
+        "end_time": "2021-08-27T19:23:41.691Z",
+        "code": "0"
+    }
+}
+FAKE_JOB_ID = FAKE_MIGRATION_RESPONSE_WITH_JOB['job']['uuid']
+FAKE_MIGRATION_POST_ID = 'fake_migration_id'
+FAKE_JOB_SUCCESS_STATE = {
+    "_links": {
+        "self": {
+            "href": "/api/resourcelink"
+        }
+    },
+    "start_time": "2021-08-27T19:23:41.691Z",
+    "uuid": "1cd8a442-86d1-11e0-ae1c-123478563412",
+    "description": "POST migrations/%s" % FAKE_MIGRATION_POST_ID,
+    "state": "success",
+    "message": "Complete: Successful",
+    "end_time": "2021-08-27T19:23:41.691Z",
+    "code": "0"
+}
+
+FAKE_MIGRATION_JOB_SUCCESS = {
+    "auto_cutover": True,
+    "auto_source_cleanup": True,
+    "current_operation": "none",
+    "cutover_complete_time": "2020-12-02T18:36:19-08:00",
+    "cutover_start_time": "2020-12-02T18:36:19-08:00",
+    "cutover_trigger_time": "2020-12-02T18:36:19-08:00",
+    "destination": {
+        "ipspace": {
+            "_links": {
+                "self": {
+                    "href": "/api/resourcelink"
+                }
+            },
+            "name": "exchange",
+            "uuid": "1cd8a442-86d1-11e0-ae1c-123478563412"
+        },
+        "volume_placement": {
+            "aggregates": [
+                {
+                    "_links": {
+                        "self": {
+                            "href": "/api/resourcelink"
+                        }
+                    },
+                    "name": "aggr1",
+                    "uuid": "1cd8a442-86d1-11e0-ae1c-123478563412"
+                }
+            ],
+            "volumes": [
+                {
+                    "aggregate": {
+                        "_links": {
+                            "self": {
+                                "href": "/api/resourcelink"
+                            }
+                        },
+                        "name": "aggr1",
+                        "uuid": "1cd8a442-86d1-11e0-ae1c-123478563412"
+                    },
+                    "volume": {
+                        "_links": {
+                            "self": {
+                                "href": "/api/resourcelink"
+                            }
+                        },
+                        "name": "this_volume",
+                        "uuid": "1cd8a442-86d1-11e0-ae1c-123478563412"
+                    }
+                }
+            ]
+        }
+    },
+    "end_time": "2020-12-02T18:36:19-08:00",
+    "last_failed_state": "precheck_started",
+    "last_operation": "none",
+    "last_pause_time": "2020-12-02T18:36:19-08:00",
+    "last_resume_time": "2020-12-02T18:36:19-08:00",
+    "messages": [
+        {
+            "code": 852126,
+            "message": "SVM migrate cannot start since a volume move is "
+                       "running.""Retry the command once volume move has "
+                       "finished."
+        }
+    ],
+    "point_of_no_return": True,
+    "restart_count": 0,
+    "source": {
+        "cluster": {
+            "_links": {
+                "self": {
+                    "href": "/api/resourcelink"
+                }
+            },
+            "name": "cluster1",
+            "uuid": "1cd8a442-86d1-11e0-ae1c-123478563412"
+        },
+        "svm": {
+            "_links": {
+                "self": {
+                    "href": "/api/resourcelink"
+                }
+            },
+            "name": "svm1",
+            "uuid": "02c9e252-41be-11e9-81d5-00a0986138f7"
+        }
+    },
+    "start_time": "2020-12-02T18:36:19-08:00",
+    "state": "migrate_complete",
+    "uuid": "4ea7a442-86d1-11e0-ae1c-123478563412"
+}

@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The NetApp ONTAP driver now supports nondisruptive share server migration
+    for clusters with version >= 9.10.

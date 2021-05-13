@@ -19,6 +19,7 @@
 Tests for NetApp API layer
 """
 
+from oslo_serialization import jsonutils
 from unittest import mock
 
 import ddt
@@ -26,6 +27,7 @@ import requests
 
 from manila import exception
 from manila.share.drivers.netapp.dataontap.client import api
+from manila.share.drivers.netapp.dataontap.client import rest_endpoints
 from manila import test
 from manila.tests.share.drivers.netapp.dataontap.client import fakes as fake
 
@@ -174,11 +176,11 @@ class NetAppApiElementTransTests(test.TestCase):
 
 
 @ddt.ddt
-class NetAppApiServerTests(test.TestCase):
+class NetAppApiServerZapiClientTests(test.TestCase):
     """Test case for NetApp API server methods"""
     def setUp(self):
-        self.root = api.NaServer('127.0.0.1')
-        super(NetAppApiServerTests, self).setUp()
+        self.root = api.NaServer('127.0.0.1').zapi_client
+        super(NetAppApiServerZapiClientTests, self).setUp()
 
     @ddt.data(None, fake.FAKE_XML_STR)
     def test_invoke_elem_value_error(self, na_element):
@@ -262,3 +264,201 @@ class NetAppApiServerTests(test.TestCase):
 
         expected_log_count = 2 if log else 0
         self.assertEqual(expected_log_count, api.LOG.debug.call_count)
+
+
+@ddt.ddt
+class NetAppApiServerRestClientTests(test.TestCase):
+    """Test case for NetApp API Rest server methods"""
+    def setUp(self):
+        self.root = api.NaServer('127.0.0.1').rest_client
+        super(NetAppApiServerRestClientTests, self).setUp()
+
+    def test_invoke_elem_value_error(self):
+        """Tests whether invalid NaElement parameter causes error"""
+        na_element = fake.FAKE_REST_CALL_STR
+        self.assertRaises(ValueError, self.root.invoke_elem, na_element)
+
+    def _setup_mocks_for_invoke_element(self, mock_post_action):
+
+        self.mock_object(api, 'LOG')
+        self.root._session = fake.FAKE_HTTP_SESSION
+        self.root._session.post = mock_post_action
+        self.mock_object(self.root, '_build_session')
+        self.mock_object(
+            self.root, '_get_request_info', mock.Mock(
+                return_value=(self.root._session.post, fake.FAKE_ACTION_URL)))
+        self.mock_object(
+            self.root, '_get_base_url',
+            mock.Mock(return_value=fake.FAKE_BASE_URL))
+
+        return fake.FAKE_BASE_URL
+
+    def test_invoke_elem_http_error(self):
+        """Tests handling of HTTPError"""
+        na_element = fake.FAKE_NA_ELEMENT
+        element_name = fake.FAKE_NA_ELEMENT.get_name()
+        self._setup_mocks_for_invoke_element(
+            mock_post_action=mock.Mock(side_effect=requests.HTTPError()))
+
+        self.assertRaises(api.NaApiError, self.root.invoke_elem,
+                          na_element)
+        self.assertTrue(self.root._get_base_url.called)
+        self.root._get_request_info.assert_called_once_with(
+            element_name, self.root._session)
+
+    def test_invoke_elem_urlerror(self):
+        """Tests handling of URLError"""
+        na_element = fake.FAKE_NA_ELEMENT
+        element_name = fake.FAKE_NA_ELEMENT.get_name()
+        self._setup_mocks_for_invoke_element(
+            mock_post_action=mock.Mock(side_effect=requests.URLRequired()))
+
+        self.assertRaises(exception.StorageCommunicationException,
+                          self.root.invoke_elem,
+                          na_element)
+
+        self.assertTrue(self.root._get_base_url.called)
+        self.root._get_request_info.assert_called_once_with(
+            element_name, self.root._session)
+
+    def test_invoke_elem_unknown_exception(self):
+        """Tests handling of Unknown Exception"""
+        na_element = fake.FAKE_NA_ELEMENT
+        element_name = fake.FAKE_NA_ELEMENT.get_name()
+        self._setup_mocks_for_invoke_element(
+            mock_post_action=mock.Mock(side_effect=Exception))
+
+        exception = self.assertRaises(api.NaApiError, self.root.invoke_elem,
+                                      na_element)
+        self.assertEqual('unknown', exception.code)
+        self.assertTrue(self.root._get_base_url.called)
+        self.root._get_request_info.assert_called_once_with(
+            element_name, self.root._session)
+
+    @ddt.data(
+        {'trace_enabled': False,
+         'trace_pattern': '(.*)',
+         'log': False,
+         'query': None,
+         'body': fake.FAKE_HTTP_BODY
+         },
+        {'trace_enabled': True,
+         'trace_pattern': '(?!(volume)).*',
+         'log': False,
+         'query': None,
+         'body': fake.FAKE_HTTP_BODY
+         },
+        {'trace_enabled': True,
+         'trace_pattern': '(.*)',
+         'log': True,
+         'query': fake.FAKE_HTTP_QUERY,
+         'body': fake.FAKE_HTTP_BODY
+         },
+        {'trace_enabled': True,
+         'trace_pattern': '^volume-(info|get-iter)$',
+         'log': True,
+         'query': fake.FAKE_HTTP_QUERY,
+         'body': fake.FAKE_HTTP_BODY
+         }
+    )
+    @ddt.unpack
+    def test_invoke_elem_valid(self, trace_enabled, trace_pattern, log, query,
+                               body):
+        """Tests the method invoke_elem with valid parameters"""
+        self.root._session = fake.FAKE_HTTP_SESSION
+        response = mock.Mock()
+        response.content = 'fake_response'
+        self.root._session.post = mock.Mock(return_value=response)
+        na_element = fake.FAKE_NA_ELEMENT
+        element_name = fake.FAKE_NA_ELEMENT.get_name()
+        self.root._trace = trace_enabled
+        self.root._api_trace_pattern = trace_pattern
+        expected_url = fake.FAKE_BASE_URL + fake.FAKE_ACTION_URL
+
+        api_args = {
+            "body": body,
+            "query": query
+        }
+
+        self.mock_object(api, 'LOG')
+        mock_build_session = self.mock_object(self.root, '_build_session')
+        mock_get_req_info = self.mock_object(
+            self.root, '_get_request_info', mock.Mock(
+                return_value=(self.root._session.post, fake.FAKE_ACTION_URL)))
+        mock_add_query_params = self.mock_object(
+            self.root, '_add_query_params_to_url', mock.Mock(
+                return_value=fake.FAKE_ACTION_URL))
+        mock_get_base_url = self.mock_object(
+            self.root, '_get_base_url',
+            mock.Mock(return_value=fake.FAKE_BASE_URL))
+        mock_json_loads = self.mock_object(
+            jsonutils, 'loads', mock.Mock(return_value='fake_response'))
+        mock_json_dumps = self.mock_object(
+            jsonutils, 'dumps', mock.Mock(return_value=body))
+
+        result = self.root.invoke_elem(na_element, api_args=api_args)
+
+        self.assertEqual('fake_response', result)
+        expected_log_count = 2 if log else 0
+        self.assertEqual(expected_log_count, api.LOG.debug.call_count)
+        self.assertTrue(mock_build_session.called)
+        mock_get_req_info.assert_called_once_with(
+            element_name, self.root._session)
+        if query:
+            mock_add_query_params.assert_called_once_with(
+                fake.FAKE_ACTION_URL, query)
+        self.assertTrue(mock_get_base_url.called)
+        self.root._session.post.assert_called_once_with(
+            expected_url, data=body)
+        mock_json_loads.assert_called_once_with('fake_response')
+        mock_json_dumps.assert_called_once_with(body)
+
+    @ddt.data(
+        ('svm-migration-start', rest_endpoints.ENDPOINT_MIGRATIONS, 'post'),
+        ('svm-migration-complete', rest_endpoints.ENDPOINT_MIGRATION_ACTIONS,
+         'patch')
+    )
+    @ddt.unpack
+    def test__get_request_info(self, api_name, expected_url, expected_method):
+        self.root._session = fake.FAKE_HTTP_SESSION
+        for http_method in ['post', 'get', 'put', 'delete', 'patch']:
+            setattr(self.root._session, http_method, mock.Mock())
+
+        method, url = self.root._get_request_info(api_name, self.root._session)
+
+        self.assertEqual(method, getattr(self.root._session, expected_method))
+        self.assertEqual(expected_url, url)
+
+    @ddt.data(
+        {'is_ipv6': False, 'protocol': 'http', 'port': '80'},
+        {'is_ipv6': False, 'protocol': 'https', 'port': '443'},
+        {'is_ipv6': True, 'protocol': 'http', 'port': '80'},
+        {'is_ipv6': True, 'protocol': 'https', 'port': '443'})
+    @ddt.unpack
+    def test__get_base_url(self, is_ipv6, protocol, port):
+        self.root._host = '10.0.0.3' if not is_ipv6 else 'FF01::1'
+        self.root._protocol = protocol
+        self.root._port = port
+
+        host_formated_for_url = (
+            '[%s]' % self.root._host if is_ipv6 else self.root._host)
+
+        # example of the expected format: http://10.0.0.3:80/api/
+        expected_result = (
+            protocol + '://' + host_formated_for_url + ':' + port + '/api/')
+
+        base_url = self.root._get_base_url()
+
+        self.assertEqual(expected_result, base_url)
+
+    def test__add_query_params_to_url(self):
+        url = 'endpoint/to/get/data'
+        filters = "?"
+        for k, v in fake.FAKE_HTTP_QUERY.items():
+            filters += "%(key)s=%(value)s&" % {"key": k, "value": v}
+        expected_formated_url = url + filters
+
+        formatted_url = self.root._add_query_params_to_url(
+            url, fake.FAKE_HTTP_QUERY)
+
+        self.assertEqual(expected_formated_url, formatted_url)
