@@ -943,7 +943,7 @@ def _get_share_type_quota_usages(context, session, project_id, share_type_id):
     ).filter(
         models.QuotaUsage.project_id == project_id,
         models.QuotaUsage.share_type_id == share_type_id,
-    ).with_lockmode('update').all()
+    ).with_for_update().all()
     return {row.resource: row for row in rows}
 
 
@@ -955,7 +955,7 @@ def _get_user_quota_usages(context, session, project_id, user_id):
             filter_by(project_id=project_id).
             filter(or_(models.QuotaUsage.user_id == user_id,
                        models.QuotaUsage.user_id is None)).
-            with_lockmode('update').
+            with_for_update().
             all())
     return {row.resource: row for row in rows}
 
@@ -966,7 +966,7 @@ def _get_project_quota_usages(context, session, project_id):
                         session=session).
             filter_by(project_id=project_id).
             filter(models.QuotaUsage.share_type_id is None).
-            with_lockmode('update').
+            with_for_update().
             all())
     result = dict()
     # Get the total count of in_use,reserved
@@ -1239,7 +1239,7 @@ def _quota_reservations_query(session, context, reservations):
                         read_deleted="no",
                         session=session).
             filter(models.Reservation.uuid.in_(reservations)).
-            with_lockmode('update'))
+            with_for_update())
 
 
 @require_context
