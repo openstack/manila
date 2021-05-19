@@ -491,9 +491,32 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         backend_snapshot_name = self._find_actual_backend_snapshot_name(
             old_gmgr, snapshot)
         volume = ''.join(['manila-', share['id']])
-        args_tuple = (('snapshot', 'activate', backend_snapshot_name,
-                      'force', '--mode=script'),
-                      ('snapshot', 'clone', volume, backend_snapshot_name))
+
+        # Query the status of the snapshot, if it is Started, the activate
+        # step will be skipped
+        args = ('snapshot', 'info', backend_snapshot_name)
+        out, err = old_gmgr.gluster_call(
+            *args,
+            log=("Query the status of the snapshot"))
+
+        gfs_snapshot_state = ""
+        for gfs_snapshot_info in out.split('\t'):
+            gfs_snapshot_states = re.search(r'Started', gfs_snapshot_info,
+                                            re.I)
+            if gfs_snapshot_states:
+                gfs_snapshot_state = "Started"
+
+        if gfs_snapshot_state == "Started":
+            args_tuple = (('snapshot', 'clone',
+                          volume, backend_snapshot_name),
+                          ('volume', 'start', volume))
+        else:
+            args_tuple = (('snapshot', 'activate', backend_snapshot_name,
+                          'force', '--mode=script'),
+                          ('snapshot', 'clone', volume,
+                          backend_snapshot_name),
+                          ('volume', 'start', volume))
+
         for args in args_tuple:
             out, err = old_gmgr.gluster_call(
                 *args,
@@ -507,10 +530,10 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
             {'share': share, 'manager': gmgr},
             {'share': snapshot['share_instance'], 'manager': old_gmgr})
 
+        export = [export, ]
         argseq = (('set',
                    [USER_CLONED_FROM, snapshot['share_id']]),
-                  ('set', [USER_MANILA_SHARE, share['id']]),
-                  ('start', []))
+                  ('set', [USER_MANILA_SHARE, share['id']]))
         for op, opargs in argseq:
             args = ['volume', op, gmgr.volume] + opargs
             gmgr.gluster_call(*args, log=("Creating share from snapshot"))
