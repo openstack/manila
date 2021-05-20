@@ -46,7 +46,6 @@ from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import subqueryload
-from sqlalchemy.sql import distinct
 from sqlalchemy.sql.expression import literal
 from sqlalchemy.sql.expression import true
 from sqlalchemy.sql import func
@@ -2163,8 +2162,7 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     # NOTE(carloss): Count must be calculated before limit and offset are
     # applied into the query.
     if show_count:
-        count = query.with_entities(
-            func.count(distinct(models.Share.id))).scalar()
+        count = query.count()
 
     if 'limit' in filters:
         offset = filters.get('offset', 0)
@@ -5266,11 +5264,7 @@ def _share_group_snapshot_get_all(
         sort_dir = 'desc'
 
     query = model_query(
-        context, models.ShareGroupSnapshot, session=session, read_deleted='no',
-    ).options(
-        joinedload('share_group'),
-        joinedload('share_group_snapshot_members'),
-    )
+        context, models.ShareGroupSnapshot, session=session, read_deleted='no')
 
     # Apply filters
     if not filters:
@@ -5295,7 +5289,10 @@ def _share_group_snapshot_get_all(
         raise exception.InvalidInput(reason=msg)
 
     if detailed:
-        return query.all()
+        return query.options(
+            joinedload('share_group'),
+            joinedload('share_group_snapshot_members')
+        ).all()
     else:
         query = query.with_entities(models.ShareGroupSnapshot.id,
                                     models.ShareGroupSnapshot.name)
