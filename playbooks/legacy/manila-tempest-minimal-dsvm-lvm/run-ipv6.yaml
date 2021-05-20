@@ -31,7 +31,7 @@
           [[local|localrc]]
           SKIP_EPEL_INSTALL=True
           enable_plugin manila https://opendev.org/openstack/manila
-          enable_plugin manila-tempest-plugin https://opendev.org/openstack/manila-tempest-plugin
+          TEMPEST_PLUGINS='/opt/stack/new/manila-tempest-plugin'
           enable_plugin neutron-dynamic-routing https://opendev.org/openstack/neutron-dynamic-routing
           SERVICE_IP_VERSION=6
           SERVICE_HOST=""

@@ -30,7 +30,7 @@
           cat << 'EOF' >>"/tmp/dg-local.conf"
           [[local|localrc]]
           enable_plugin manila https://opendev.org/openstack/manila
-          enable_plugin manila-tempest-plugin https://opendev.org/openstack/manila-tempest-plugin
+          TEMPEST_PLUGINS='/opt/stack/new/manila-tempest-plugin'
           EOF
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
@@ -44,7 +44,7 @@
           export DEVSTACK_GATE_NEUTRON=1
           export DEVSTACK_GATE_POSTGRES=0
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
-
+          export DEVSTACK_GATE_TEMPEST=1
           export ENABLED_SERVICES=tempest
 
           # Keep localrc to be able to set some vars in pre_test_hook
@@ -63,27 +63,11 @@
               source $BASE/new/manila/contrib/ci/pre_test_hook.sh \
                   1 \
                   generic \
-                  multibackend
-          }
-          export -f pre_test_hook
-
-          function post_test_hook {
-              # 'back_end_type' - defines which installation Manila is
-              # configured to - either 'singlebackend' or 'multibackend'.
-              # 'driver' - codename of a share driver that is configured in
-              # Manila. It is used for enabling/disabling tests that are not
-              # supported by share driver that is used.
-              # 'test_type' - defines which set of test suites should be used,
-              # can have 'api' and 'scenario' values.
-              # 'postgres_enabled' - set of test suites depends on DB backend
-              # in some cases, so it is provided explicitely. Boolean-like.
-              source $BASE/new/manila/contrib/ci/post_test_hook.sh \
                   multibackend \
-                  generic \
                   api \
                   0
           }
-          export -f post_test_hook
+          export -f pre_test_hook
 
           cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
           ./safe-devstack-vm-gate-wrap.sh
