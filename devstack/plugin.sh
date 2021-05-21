@@ -914,15 +914,6 @@ function stop_manila {
     done
 }
 
-function install_manila_tempest_plugin {
-    MANILA_TEMPEST_PLUGIN_REPO=${MANILA_TEMPEST_PLUGIN_REPO:-${GIT_BASE}/openstack/manila-tempest-plugin}
-    MANILA_TEMPEST_PLUGIN_BRANCH=${MANILA_TEMPEST_PLUGIN_BRANCH:-master}
-    MANILA_TEMPEST_PLUGIN_DIR=$DEST/manila-tempest-plugin
-
-    git_clone $MANILA_TEMPEST_PLUGIN_REPO $MANILA_TEMPEST_PLUGIN_DIR $MANILA_TEMPEST_PLUGIN_BRANCH
-    setup_develop $MANILA_TEMPEST_PLUGIN_DIR
-}
-
 # update_tempest - Function used for updating Tempest config if Tempest service enabled
 function update_tempest {
     if is_service_enabled tempest; then
@@ -1301,17 +1292,6 @@ elif [[ "$1" == "stack" && "$2" == "test-config" ]]; then
         start_rest_of_manila
     fi
     ###########################################################################
-
-
-    if [ $(trueorfalse False MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE) == True ]; then
-        echo_summary "Fetching and installing manila-tempest-plugin system-wide"
-        install_manila_tempest_plugin
-        export DEPRECATED_TEXT="$DEPRECATED_TEXT\nInstalling
-        manila-tempest-plugin can be done with the help of its own DevStack
-        plugin by adding: \n\n\t'enable_plugin manila-tempest-plugin
-        https://opendev.org/openstack/manila-tempest-plugin'.\n\nManila's
-        DevStack plugin will stop installing it automatically."
-    fi
 
     echo_summary "Update Tempest config"
     update_tempest

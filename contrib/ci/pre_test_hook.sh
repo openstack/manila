@@ -44,8 +44,6 @@ echo "IDENTITY_API_VERSION=3" >> $localconf
 echo "CINDER_OVERSUBSCRIPTION_RATIO=100.0" >> $localconf
 echo "MANILA_ENABLED_BACKENDS=london,paris" >> $localconf
 
-echo "MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=${MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE:=True}" >> $localconf
-
 echo "MANILA_ALLOW_NAS_SERVER_PORTS_ON_HOST=${MANILA_ALLOW_NAS_SERVER_PORTS_ON_HOST:=False}" >> $localconf
 
 # === Handle script arguments ===
