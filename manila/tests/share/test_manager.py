@@ -2631,7 +2631,7 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.db.share_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), share_id,
-            {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+            {'status': constants.STATUS_MANAGE_ERROR, 'size': 0})
         (self.share_manager._get_extra_specs_from_share_type.
             assert_called_once_with(
                 mock.ANY, share['instance']['share_type_id']))
@@ -2739,7 +2739,7 @@ class ShareManagerTestCase(test.TestCase):
             assert_called_once_with(mock.ANY, driver_options))
         self.share_manager.db.share_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), share_id,
-            {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+            {'status': constants.STATUS_MANAGE_ERROR, 'size': 0})
         (self.share_manager._get_extra_specs_from_share_type.
             assert_called_once_with(
                 mock.ANY, share['instance']['share_type_id']))
@@ -2772,7 +2772,7 @@ class ShareManagerTestCase(test.TestCase):
             assert_called_once_with(mock.ANY, driver_options))
         self.share_manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id,
-            {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+            {'status': constants.STATUS_MANAGE_ERROR, 'size': 0})
         (self.share_manager._get_extra_specs_from_share_type.
             assert_called_once_with(
                 mock.ANY, share['instance']['share_type_id']))

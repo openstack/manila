@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed `bug #1883506 <https://bugs.launchpad.net/manila/+bug/18835060>`_
+    that caused a quota error when delete or unmanage a share that failed to
+    manage.

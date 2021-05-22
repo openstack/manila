@@ -52,9 +52,9 @@ class ShareUnmanageTest(test.TestCase):
         self.mock_policy_check = self.mock_object(
             policy, 'check_policy', mock.Mock(return_value=True))
 
-    def test_unmanage_share(self):
-        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
-                     instance={})
+    @ddt.data(constants.STATUS_AVAILABLE, constants.STATUS_MANAGE_ERROR)
+    def test_unmanage_share(self, status):
+        share = dict(status=status, id='foo_id', instance={})
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(share_api.API, 'unmanage', mock.Mock())
         self.mock_object(

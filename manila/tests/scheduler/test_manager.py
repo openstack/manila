@@ -353,7 +353,7 @@ class SchedulerManagerTestCase(test.TestCase):
             {'share_id': share_id}, None)
         db_update.assert_called_once_with(
             self.context, share_id,
-            {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+            {'status': constants.STATUS_MANAGE_ERROR, 'size': 0})
 
     def test_create_share_replica_exception_path(self):
         """Test 'raisable' exceptions for create_share_replica."""
