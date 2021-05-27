@@ -38,7 +38,7 @@ provide feedback, or accept the code. For the submission to be accepted, it
 will need a minimum of one Code-Review:+2 and one Workflow:+1 votes, along
 with getting a Verified:+1 vote from the CI system. If no core reviewer pays
 attention to a code submission, feel free to remind the team on the
-#openstack-manila IRC channel on irc.freenode.com. [#]_ [#]_
+#openstack-manila IRC channel on irc.oftc.net. [#]_ [#]_
 
 Core code review guidelines
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

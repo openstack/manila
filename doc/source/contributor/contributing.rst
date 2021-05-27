@@ -94,7 +94,7 @@ IRC
 
 The team uses `IRC <https://docs.openstack.org/contributors/common/irc.html>`_
 extensively for communication and coordination of project activities. The
-IRC channel is ``#openstack-manila`` on Freenode. Contributors work in various
+IRC channel is ``#openstack-manila`` on OFTC. Contributors work in various
 timezones across the world; so many of them run IRC Bouncers and appear to be
 always online. If you ping someone, or raise a question on the IRC channel,
 someone will get back to you when they are back on their computer.
