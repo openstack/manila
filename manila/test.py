@@ -247,65 +247,7 @@ class TestCase(base_test.BaseTestCase):
         self.addCleanup(patcher.stop)
         return new_val
 
-    # Useful assertions
-    def assertDictMatch(self, d1, d2, approx_equal=False, tolerance=0.001):
-        """Assert two dicts are equivalent.
-
-        This is a 'deep' match in the sense that it handles nested
-        dictionaries appropriately.
-
-        NOTE:
-
-            If you don't care (or don't know) a given value, you can specify
-            the string DONTCARE as the value. This will cause that dict-item
-            to be skipped.
-
-        """
-        def raise_assertion(msg):
-            d1str = str(d1)
-            d2str = str(d2)
-            base_msg = ('Dictionaries do not match. %(msg)s d1: %(d1str)s '
-                        'd2: %(d2str)s' %
-                        {"msg": msg, "d1str": d1str, "d2str": d2str})
-            raise AssertionError(base_msg)
-
-        d1keys = set(d1.keys())
-        d2keys = set(d2.keys())
-        if d1keys != d2keys:
-            d1only = d1keys - d2keys
-            d2only = d2keys - d1keys
-            raise_assertion('Keys in d1 and not d2: %(d1only)s. '
-                            'Keys in d2 and not d1: %(d2only)s' %
-                            {"d1only": d1only, "d2only": d2only})
-
-        for key in d1keys:
-            d1value = d1[key]
-            d2value = d2[key]
-            try:
-                error = abs(float(d1value) - float(d2value))
-                within_tolerance = error <= tolerance
-            except (ValueError, TypeError):
-                # If both values aren't convertible to float, just ignore
-                # ValueError if arg is a str, TypeError if it's something else
-                # (like None)
-                within_tolerance = False
-
-            if hasattr(d1value, 'keys') and hasattr(d2value, 'keys'):
-                self.assertDictMatch(d1value, d2value)
-            elif 'DONTCARE' in (d1value, d2value):
-                continue
-            elif approx_equal and within_tolerance:
-                continue
-            elif d1value != d2value:
-                raise_assertion("d1['%(key)s']=%(d1value)s != "
-                                "d2['%(key)s']=%(d2value)s" %
-                                {
-                                    "key": key,
-                                    "d1value": d1value,
-                                    "d2value": d2value
-                                })
-
-    def assertDictListMatch(self, L1, L2, approx_equal=False, tolerance=0.001):
+    def assertDictListMatch(self, L1, L2):
         """Assert a list of dicts are equivalent."""
         def raise_assertion(msg):
             L1str = str(L1)
@@ -323,8 +265,7 @@ class TestCase(base_test.BaseTestCase):
                             {"L1count": L1count, "L2count": L2count})
 
         for d1, d2 in zip(L1, L2):
-            self.assertDictMatch(d1, d2, approx_equal=approx_equal,
-                                 tolerance=tolerance)
+            self.assertDictEqual(d1, d2)
 
     def assertSubDictMatch(self, sub_dict, super_dict):
         """Assert a sub_dict is subset of super_dict."""

@@ -686,7 +686,7 @@ class ShareAPITest(test.TestCase):
 
         expected = self._get_expected_share_detailed_response(
             shr, version='2.7')
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
         # pylint: disable=unsubscriptable-object
         self.assertEqual("fakenetid",
                          create_mock.call_args[1]['share_network_id'])
@@ -1352,7 +1352,7 @@ class ShareAPITest(test.TestCase):
         res_dict = self.controller.create(req, body)
         expected = self._get_expected_share_detailed_response(
             shr, version='2.7')
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
         # pylint: disable=unsubscriptable-object
         self.assertEqual(parent_share_net,
                          create_mock.call_args[1]['share_network_id'])
@@ -1443,7 +1443,7 @@ class ShareAPITest(test.TestCase):
 
         res_dict = self.controller.show(req, '1')
 
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
 
     def test_share_show_with_share_group_earlier_version(self):
         req = fakes.HTTPRequest.blank(
@@ -1452,7 +1452,7 @@ class ShareAPITest(test.TestCase):
 
         res_dict = self.controller.show(req, '1')
 
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
 
     def test_share_show_with_share_type_name(self):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1', version='2.6')

@@ -1589,7 +1589,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                               self.library._get_normalized_qos_specs,
                               extra_specs)
         else:
-            self.assertDictMatch(
+            self.assertDictEqual(
                 {}, self.library._get_normalized_qos_specs(extra_specs))
 
     @ddt.data({'qos': True, 'netapp:maxiops': '3000', 'netapp:maxbps': '9000'},
@@ -1614,7 +1614,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         qos_specs = self.library._get_normalized_qos_specs(extra_specs)
 
-        self.assertDictMatch(expected_normalized_spec, qos_specs)
+        self.assertDictEqual(expected_normalized_spec, qos_specs)
         self.assertEqual(1, len(qos_specs))
 
     @ddt.data({'qos': {'maxiops': '3000'}, 'expected': '3000iops'},
@@ -3276,7 +3276,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             None, [fake.SHARE], fake.SHARE, [], [],
             share_server=None)
 
-        self.assertDictMatch(expected_model_update, model_update)
+        self.assertDictEqual(expected_model_update, model_update)
         mock_dm_session.create_snapmirror.assert_called_once_with(
             fake.SHARE, fake.SHARE)
         data_motion.get_client_for_backend.assert_called_once_with(
@@ -3303,7 +3303,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             None, [fake.SHARE], fake.SHARE, [], [],
             share_server=fake.SHARE_SERVER)
 
-        self.assertDictMatch(expected_model_update, model_update)
+        self.assertDictEqual(expected_model_update, model_update)
         mock_dm_session.create_snapmirror.assert_called_once_with(
             fake.SHARE, fake.SHARE)
         data_motion.get_client_for_backend.assert_called_once_with(
@@ -5038,7 +5038,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'preserve_metadata': False,
             'preserve_snapshots': False,
         }
-        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        self.assertDictEqual(expected_compatibility, migration_compatibility)
         mock_warning_log.assert_called_once()
         self.assertFalse(data_motion.get_backend_configuration.called)
 
@@ -5071,7 +5071,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'preserve_metadata': False,
             'preserve_snapshots': False,
         }
-        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        self.assertDictEqual(expected_compatibility, migration_compatibility)
         mock_exception_log.assert_called_once()
         self.assertFalse(data_motion.get_backend_configuration.called)
 
@@ -5100,7 +5100,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'preserve_metadata': False,
             'preserve_snapshots': False,
         }
-        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        self.assertDictEqual(expected_compatibility, migration_compatibility)
         mock_exception_log.assert_called_once()
 
     def test_migration_check_compatibility_destination_not_configured(self):
@@ -5139,7 +5139,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'preserve_metadata': False,
             'preserve_snapshots': False,
         }
-        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        self.assertDictEqual(expected_compatibility, migration_compatibility)
         mock_exception_log.assert_called_once()
         data_motion.get_backend_configuration.assert_called_once_with(
             'destination_backend')
@@ -5186,7 +5186,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'preserve_metadata': False,
             'preserve_snapshots': False,
         }
-        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        self.assertDictEqual(expected_compatibility, migration_compatibility)
         mock_exception_log.assert_called_once()
         data_motion.get_backend_configuration.assert_called_once_with(
             'destination_backend')
@@ -5228,7 +5228,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'preserve_metadata': False,
             'preserve_snapshots': False,
         }
-        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        self.assertDictEqual(expected_compatibility, migration_compatibility)
         mock_exception_log.assert_called_once()
         data_motion.get_backend_configuration.assert_called_once_with(
             'destination_backend')
@@ -5273,7 +5273,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'preserve_metadata': False,
             'preserve_snapshots': False,
         }
-        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        self.assertDictEqual(expected_compatibility, migration_compatibility)
         mock_exception_log.assert_called_once()
         data_motion.get_backend_configuration.assert_called_once_with(
             'destination_backend')
@@ -5338,7 +5338,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'preserve_metadata': True,
             'preserve_snapshots': True,
         }
-        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        self.assertDictEqual(expected_compatibility, migration_compatibility)
         data_motion.get_backend_configuration.assert_called_once_with(
             'destination_backend')
         mock_move_check.assert_called_once_with(
@@ -5395,7 +5395,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'preserve_metadata': True,
             'preserve_snapshots': True,
         }
-        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        self.assertDictEqual(expected_compatibility, migration_compatibility)
         data_motion.get_backend_configuration.assert_called_once_with(
             'destination_backend')
 
@@ -5538,7 +5538,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'details': '%s:: Volume move job in progress' % phase,
             'phase': phase,
         }
-        self.assertDictMatch(expected_progress, migration_progress)
+        self.assertDictEqual(expected_progress, migration_progress)
         mock_info_log.assert_called_once()
 
     @ddt.data({'state': 'failed'},

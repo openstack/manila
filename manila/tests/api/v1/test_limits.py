@@ -846,7 +846,7 @@ class LimitsViewBuilderTest(test.TestCase):
         output = self.view_builder.build(request,
                                          self.rate_limits,
                                          self.absolute_limits)
-        self.assertDictMatch(expected_limits, output)
+        self.assertDictEqual(expected_limits, output)
 
     def test_build_limits_empty_limits(self):
         request = fakes.HTTPRequest.blank('/')
@@ -856,4 +856,4 @@ class LimitsViewBuilderTest(test.TestCase):
 
         output = self.view_builder.build(request, rate_limits, abs_limits)
 
-        self.assertDictMatch(expected_limits, output)
+        self.assertDictEqual(expected_limits, output)

@@ -235,7 +235,7 @@ class LVMHelperTestCase(test.TestCase):
             'preserve_metadata': True,
             'preserve_snapshots': False,
         }
-        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        self.assertDictEqual(expected_compatibility, migration_compatibility)
         if not compatible:
             mock_exception_log.assert_called_once()
 
@@ -252,7 +252,7 @@ class LVMHelperTestCase(test.TestCase):
         expected_progress = {
             'total_progress': 100,
         }
-        self.assertDictMatch(expected_progress, progress)
+        self.assertDictEqual(expected_progress, progress)
 
     @ddt.data({'source_host': 'host@back1', 'dest_host': 'host@back1',
                'shares_specs': {}},
@@ -279,7 +279,7 @@ class LVMHelperTestCase(test.TestCase):
                 self.context, source_server, dest_host, None, None,
                 shares_specs))
 
-        self.assertDictMatch(not_compatible, migration_compatibility)
+        self.assertDictEqual(not_compatible, migration_compatibility)
         mock_error_log.assert_called_once()
 
     @ddt.data({'source_host': 'host@back1', 'dest_host': 'host@back2#vg1',
@@ -308,7 +308,7 @@ class LVMHelperTestCase(test.TestCase):
                 self.context, source_server, dest_host, None, None,
                 shares_specs))
 
-        self.assertDictMatch(compatible, migration_compatibility)
+        self.assertDictEqual(compatible, migration_compatibility)
 
     def test_share_server_migration_continue(self):
         end1Phase = self.LVMHelper.share_server_migration_continue(
@@ -321,7 +321,7 @@ class LVMHelperTestCase(test.TestCase):
         expected_progress = {
             'total_progress': 100,
         }
-        self.assertDictMatch(expected_progress, progress)
+        self.assertDictEqual(expected_progress, progress)
 
     def test_get_share_pool_name(self):
         fake_vg_name = 'fake_vg'

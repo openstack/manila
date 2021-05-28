@@ -7060,7 +7060,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'phase': 'finishing',
         }
 
-        self.assertDictMatch(expected_status_info, actual_status_info)
+        self.assertDictEqual(expected_status_info, actual_status_info)
         self.client.send_iter_request.assert_called_once_with(
             'volume-move-get-iter', expected_api_args)
 
@@ -7153,7 +7153,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
         self.client.send_request.assert_called_once_with(
             'qos-policy-group-get-iter', qos_policy_group_get_iter_args, False)
-        self.assertDictMatch(fake.QOS_POLICY_GROUP, qos_info)
+        self.assertDictEqual(fake.QOS_POLICY_GROUP, qos_info)
 
     @ddt.data(None, fake.QOS_MAX_THROUGHPUT)
     def test_qos_policy_group_create(self, max_throughput):
@@ -7522,7 +7522,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         if api_response == fake.NO_RECORDS_RESPONSE:
             self.assertIsNone(result)
         else:
-            self.assertDictMatch(fake.VSERVER_INFO, result)
+            self.assertDictEqual(fake.VSERVER_INFO, result)
 
     @ddt.data({'discard_network': True, 'preserve_snapshots': False},
               {'discard_network': False, 'preserve_snapshots': True})

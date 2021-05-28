@@ -1065,7 +1065,7 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
     def test_share_group_get(self):
         share_group = db_utils.create_share_group()
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             dict(share_group),
             dict(db_api.share_group_get(self.ctxt, share_group['id'])))
 
@@ -1096,7 +1096,7 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
         share_groups = db_api.share_group_get_all(self.ctxt, detailed=True)
 
         self.assertEqual(1, len(share_groups))
-        self.assertDictMatch(dict(expected_share_group), dict(share_groups[0]))
+        self.assertDictEqual(dict(expected_share_group), dict(share_groups[0]))
 
     def test_share_group_get_all_by_host(self):
         fake_host = 'my_fake_host'
@@ -1122,7 +1122,7 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual(1, len(share_groups))
         share_group = share_groups[0]
-        self.assertDictMatch(dict(expected_share_group), dict(share_group))
+        self.assertDictEqual(dict(expected_share_group), dict(share_group))
         self.assertEqual(fake_host, share_group['host'])
 
     def test_share_group_get_all_by_project(self):
@@ -1167,7 +1167,7 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual(1, len(groups))
         group = groups[0]
-        self.assertDictMatch(dict(expected_group), dict(group))
+        self.assertDictEqual(dict(expected_group), dict(group))
         self.assertEqual(fake_project, group['project_id'])
 
     @ddt.data(({'name': 'fo'}, 0), ({'description': 'd'}, 0),
@@ -1191,10 +1191,10 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual(group_number, len(groups))
         if group_number == 1:
-            self.assertDictMatch(dict(expected_group1), dict(groups[0]))
+            self.assertDictEqual(dict(expected_group1), dict(groups[0]))
         elif group_number == 2:
-            self.assertDictMatch(dict(expected_group1), dict(groups[1]))
-            self.assertDictMatch(dict(expected_group2), dict(groups[0]))
+            self.assertDictEqual(dict(expected_group1), dict(groups[1]))
+            self.assertDictEqual(dict(expected_group2), dict(groups[0]))
 
     def test_share_group_update(self):
         fake_name = "my_fake_name"
@@ -1238,11 +1238,15 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
 
     def test_share_group_snapshot_get(self):
         sg = db_utils.create_share_group()
-        sg_snap = db_utils.create_share_group_snapshot(sg['id'])
+        sg_snap = dict(db_utils.create_share_group_snapshot(sg['id']))
+        sg_snap_source_group = sg_snap.pop('share_group', {})
+        get_sg_snap = dict(
+            db_api.share_group_snapshot_get(self.ctxt, sg_snap['id']))
+        get_sg_snap_source_group = get_sg_snap.pop('share_group', {})
 
-        self.assertDictMatch(
-            dict(sg_snap),
-            dict(db_api.share_group_snapshot_get(self.ctxt, sg_snap['id'])))
+        self.assertDictEqual(
+            dict(sg_snap_source_group), dict(get_sg_snap_source_group))
+        self.assertDictEqual(sg_snap, get_sg_snap)
 
     def test_share_group_snapshot_get_all(self):
         sg = db_utils.create_share_group()
@@ -1258,13 +1262,17 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
 
     def test_share_group_snapshot_get_all_with_detail(self):
         sg = db_utils.create_share_group()
-        expected_sg_snap = db_utils.create_share_group_snapshot(sg['id'])
+        expected_sg_snap = dict(db_utils.create_share_group_snapshot(sg['id']))
+        sg_snap_source_group = expected_sg_snap.pop('share_group', {})
 
         snaps = db_api.share_group_snapshot_get_all(self.ctxt, detailed=True)
 
         self.assertEqual(1, len(snaps))
-        snap = snaps[0]
-        self.assertDictMatch(dict(expected_sg_snap), dict(snap))
+        actual_sg_snap = dict(snaps[0])
+        get_sg_snap_source = actual_sg_snap.pop('share_group', {})
+        self.assertDictEqual(
+            dict(sg_snap_source_group), dict(get_sg_snap_source))
+        self.assertDictEqual(expected_sg_snap, actual_sg_snap)
 
     def test_share_group_snapshot_get_all_by_project(self):
         fake_project = uuidutils.generate_uuid()
@@ -1284,16 +1292,21 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
     def test_share_group_snapshot_get_all_by_project_with_details(self):
         fake_project = uuidutils.generate_uuid()
         sg = db_utils.create_share_group()
-        expected_sg_snap = db_utils.create_share_group_snapshot(
-            sg['id'], project_id=fake_project)
+        expected_sg_snap = dict(db_utils.create_share_group_snapshot(
+            sg['id'], project_id=fake_project))
+        sg_snap_source_group = expected_sg_snap.pop(
+            'share_group', {})
 
         snaps = db_api.share_group_snapshot_get_all_by_project(
             self.ctxt, fake_project, detailed=True)
 
         self.assertEqual(1, len(snaps))
-        snap = snaps[0]
-        self.assertDictMatch(dict(expected_sg_snap), dict(snap))
-        self.assertEqual(fake_project, snap['project_id'])
+        actual_snap = dict(snaps[0])
+        get_sg_snap_source = actual_snap.pop('share_group', {})
+        self.assertDictEqual(
+            dict(sg_snap_source_group), dict(get_sg_snap_source))
+        self.assertEqual(expected_sg_snap, actual_snap)
+        self.assertEqual(fake_project, actual_snap['project_id'])
 
     def test_share_group_snapshot_update(self):
         fake_name = "my_fake_name"
@@ -1324,14 +1337,23 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
         share = db_utils.create_share(share_group_id=sg['id'])
         si = db_utils.create_share_instance(share_id=share['id'])
         sg_snap = db_utils.create_share_group_snapshot(sg['id'])
-        expected_member = db_utils.create_share_group_snapshot_member(
-            sg_snap['id'], share_instance_id=si['id'])
+        expected_member = dict(db_utils.create_share_group_snapshot_member(
+            sg_snap['id'], share_instance_id=si['id']))
+        sg_snap_source_member = expected_member.pop(
+            'share_group_snapshot', {})
+        sg_snap_source_member = expected_member.pop('share_instance', {})
 
         members = db_api.share_group_snapshot_members_get_all(
             self.ctxt, sg_snap['id'])
 
         self.assertEqual(1, len(members))
-        self.assertDictMatch(dict(expected_member), dict(members[0]))
+        member = dict(members[0])
+        get_sg_snap_source_member = member.pop(
+            'share_group_snapshot', {})
+        get_sg_snap_source_member = member.pop('share_instance', {})
+        self.assertDictEqual(dict(
+            sg_snap_source_member), dict(get_sg_snap_source_member))
+        self.assertDictEqual(expected_member, member)
 
     def test_count_share_group_snapshot_members_in_share(self):
         sg = db_utils.create_share_group()
@@ -1355,13 +1377,19 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
         share = db_utils.create_share(share_group_id=sg['id'])
         si = db_utils.create_share_instance(share_id=share['id'])
         sg_snap = db_utils.create_share_group_snapshot(sg['id'])
-        expected_member = db_utils.create_share_group_snapshot_member(
-            sg_snap['id'], share_instance_id=si['id'])
+        expected_member = dict(db_utils.create_share_group_snapshot_member(
+            sg_snap['id'], share_instance_id=si['id']))
+        sg_snap_source_member = expected_member.pop('share_group_snapshot', {})
+        sg_snap_source_member = expected_member.pop('share_instance', {})
 
-        member = db_api.share_group_snapshot_member_get(
-            self.ctxt, expected_member['id'])
+        member = dict(db_api.share_group_snapshot_member_get(
+            self.ctxt, expected_member['id']))
+        get_sg_snap_source_member = member.pop('share_group_snapshot', {})
+        get_sg_snap_source_member = member.pop('share_instance', {})
 
-        self.assertDictMatch(dict(expected_member), dict(member))
+        self.assertDictEqual(dict(
+            sg_snap_source_member), dict(get_sg_snap_source_member))
+        self.assertDictEqual(expected_member, member)
 
     def test_share_group_snapshot_members_get_not_found(self):
         self.assertRaises(
@@ -1429,7 +1457,7 @@ class ShareGroupTypeAPITestCase(test.TestCase):
         # Let's cleanup share_group_type_1 and verify it is gone
         self.assertIsNone(db_api.share_group_type_destroy(
             self.ctxt, share_group_type_1['id']))
-        self.assertDictMatch(
+        self.assertDictEqual(
             {}, db_api.share_group_type_specs_get(
                 self.ctxt, share_group_type_1['id']))
         self.assertRaises(exception.ShareGroupTypeNotFound,
@@ -3118,7 +3146,7 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         db_api.share_server_backend_details_set(self.ctxt, server['id'],
                                                 details)
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             details,
             db_api.share_server_get(self.ctxt, server['id'])['backend_details']
         )
@@ -3147,7 +3175,7 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
                          server.share_network_subnet_id)
         self.assertEqual(values['host'], server.host)
         self.assertEqual(values['status'], server.status)
-        self.assertDictMatch(server['backend_details'], details)
+        self.assertDictEqual(server['backend_details'], details)
         self.assertIn('backend_details', server.to_dict())
 
     def test_delete_with_details(self):
@@ -3745,7 +3773,7 @@ class ShareTypeAPITestCase(test.TestCase):
 
         self.assertIsNone(
             db_api.share_type_destroy(self.ctxt, share_type_1['id']))
-        self.assertDictMatch(
+        self.assertDictEqual(
             {}, db_api.share_type_extra_specs_get(
                 self.ctxt, share_type_1['id']))
         self.assertRaises(exception.ShareTypeNotFound,
@@ -3832,7 +3860,7 @@ class ShareTypeAPITestCase(test.TestCase):
             'shares': 10,
             'snapshots': 30,
         }
-        self.assertDictMatch(expected_quotas, share_type_quotas)
+        self.assertDictEqual(expected_quotas, share_type_quotas)
 
         db_api.share_type_destroy(self.ctxt, share_type['id'])
 
@@ -3852,7 +3880,7 @@ class ShareTypeAPITestCase(test.TestCase):
                 self.ctxt, 'fake-project-id', share_type['id'])
             expected_q_usages = {'project_id': 'fake-project-id',
                                  'share_type_id': share_type['id']}
-            self.assertDictMatch(expected_q_usages, q_usages)
+            self.assertDictEqual(expected_q_usages, q_usages)
         if reservations:
             q_reservations = db_api._quota_reservations_query(
                 db_session, self.ctxt, reservation_uuids).all()
@@ -4250,7 +4278,7 @@ class ShareResourcesAPITestCase(test.TestCase):
                                                      new_host)
 
         expected_updates = {'instances': 0, 'servers': 0, 'groups': 0}
-        self.assertDictMatch(expected_updates, updates)
+        self.assertDictEqual(expected_updates, updates)
         # validate that resources are unmodified:
         share_instances = db_api.share_instances_get_all(
             self.context, filters={'share_id': share_id})

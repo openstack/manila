@@ -1158,7 +1158,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             None, [self.fake_replica], self.fake_new_replica, [], [],
             share_server=None)
 
-        self.assertDictMatch(lib_base_model_update, model_update)
+        self.assertDictEqual(lib_base_model_update, model_update)
         self.library._get_vservers_from_replicas.assert_called_once_with(
             None, [self.fake_replica], self.fake_new_replica
         )

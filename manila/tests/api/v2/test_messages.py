@@ -169,7 +169,7 @@ class MessageApiTest(test.TestCase):
         ex1 = self._expected_message_from_controller(msg1['id'])['message']
         ex2 = self._expected_message_from_controller(msg2['id'])['message']
         expected = {'messages': [ex1, ex2]}
-        self.assertDictMatch(expected, res_dict)
+        self.assertDictEqual(expected, res_dict)
 
     def test_index_with_limit_and_offset(self):
         msg2 = stubs.stub_message(fakes.get_fake_uuid())

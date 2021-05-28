@@ -364,7 +364,7 @@ class ShareTypesAPITest(test.TestCase):
         if self.is_microversion_ge(version, '2.41'):
             expected_share_type['description'] = 'description_test'
 
-        self.assertDictMatch(expected_share_type, output['share_type'])
+        self.assertDictEqual(expected_share_type, output['share_type'])
 
     @ddt.data(
         ('1.0', 'os-share-type-access', True),
@@ -427,7 +427,7 @@ class ShareTypesAPITest(test.TestCase):
             expected_share_type['description'] = 'description_test'
         for i in range(0, 10):
             expected_share_type['id'] = 42 + i
-            self.assertDictMatch(expected_share_type,
+            self.assertDictEqual(expected_share_type,
                                  output['share_types'][i])
 
     @ddt.data(None, True, 'true', 'false', 'all')
