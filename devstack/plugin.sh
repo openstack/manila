@@ -943,6 +943,10 @@ function update_tempest {
         iniset $TEMPEST_CONFIG identity alt_password $ADMIN_PASSWORD
         iniset $TEMPEST_CONFIG identity alt_tenant_name ${ALT_TENANT_NAME:-"alt_demo"}
         iniset $TEMPEST_CONFIG identity alt_domain_name $ADMIN_DOMAIN_NAME
+
+        # Max API micro-version for tempest tests
+        iniset $TEMPEST_CONFIG share min_api_microversion 2.0
+        iniset $TEMPEST_CONFIG share max_api_microversion 2.55
     fi
 }
 

@@ -30,7 +30,7 @@
           cat << 'EOF' >>"/tmp/dg-local.conf"
           [[local|localrc]]
           enable_plugin manila https://opendev.org/openstack/manila
-          enable_plugin manila-tempest-plugin https://opendev.org/openstack/manila-tempest-plugin
+          TEMPEST_PLUGINS='/opt/stack/new/manila-tempest-plugin'
           EOF
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'

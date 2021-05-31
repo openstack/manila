@@ -85,6 +85,7 @@
               multitenancy_enabled: False
               backend_names: LONDON,PARIS
               multi_backend: true
+              max_api_microversion: 2.55
       tempest_plugins:
         - manila-tempest-plugin
       tempest_test_regex: ^manila_tempest_tests.tests.api
