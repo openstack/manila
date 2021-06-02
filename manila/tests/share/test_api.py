@@ -2629,11 +2629,13 @@ class ShareAPITestCase(test.TestCase):
 
     def test_access_get(self):
         with mock.patch.object(db_api, 'share_access_get',
-                               mock.Mock(return_value='fake')):
+                               mock.Mock(return_value={'share_id': 'fake'})):
+            self.mock_object(self.api, 'get')
             rule = self.api.access_get(self.context, 'fakeid')
-            self.assertEqual('fake', rule)
+            self.assertEqual({'share_id': 'fake'}, rule)
             db_api.share_access_get.assert_called_once_with(
                 self.context, 'fakeid')
+            self.api.get.assert_called_once_with(self.context, 'fake')
 
     def test_access_get_all(self):
         share = db_utils.create_share(id='fakeid')
