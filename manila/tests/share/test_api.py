@@ -397,29 +397,35 @@ class ShareAPITestCase(test.TestCase):
 
     def test_get_all_admin_filter_by_status(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
-        self.mock_object(db_api, 'share_get_all_by_project',
-                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[1:]))
+        expected_filter = {'status': constants.STATUS_AVAILABLE}
+        self.mock_object(
+            db_api, 'share_get_all_by_project',
+            mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0::2]))
+
         shares = self.api.get_all(ctx, {'status': constants.STATUS_AVAILABLE})
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
         ])
         db_api.share_get_all_by_project.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at',
-            project_id='fake_pid_2', filters={}, is_public=False
+            project_id='fake_pid_2', filters=expected_filter, is_public=False
         )
-        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[2::4], shares)
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[0::2], shares)
 
     def test_get_all_admin_filter_by_status_and_all_tenants(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
-        self.mock_object(db_api, 'share_get_all',
-                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES))
+        self.mock_object(
+            db_api, 'share_get_all',
+            mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[1::2]))
+        expected_filter = {'status': constants.STATUS_ERROR}
         shares = self.api.get_all(
             ctx, {'status': constants.STATUS_ERROR, 'all_tenants': 1})
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
         ])
         db_api.share_get_all.assert_called_once_with(
-            ctx, sort_dir='desc', sort_key='created_at', filters={})
+            ctx, sort_dir='desc', sort_key='created_at',
+            filters=expected_filter)
         self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[1::2], shares)
 
     def test_get_all_non_admin_filter_by_all_tenants(self):
@@ -446,9 +452,12 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
         ])
+        expected_filter_1 = {'status': constants.STATUS_ERROR}
+        expected_filter_2 = {'status': constants.STATUS_AVAILABLE}
+
         db_api.share_get_all_by_project.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at',
-            project_id='fake_pid_2', filters={}, is_public=False
+            project_id='fake_pid_2', filters=expected_filter_1, is_public=False
         )
 
         # two items expected, one filtered
@@ -463,10 +472,14 @@ class ShareAPITestCase(test.TestCase):
             mock.call(ctx, 'share', 'get_all'),
         ])
         db_api.share_get_all_by_project.assert_has_calls([
-            mock.call(ctx, sort_dir='desc', sort_key='created_at',
-                      project_id='fake_pid_2', filters={}, is_public=False),
-            mock.call(ctx, sort_dir='desc', sort_key='created_at',
-                      project_id='fake_pid_2', filters={}, is_public=False),
+            mock.call(
+                ctx, sort_dir='desc', sort_key='created_at',
+                project_id='fake_pid_2', filters=expected_filter_1,
+                is_public=False),
+            mock.call(
+                ctx, sort_dir='desc', sort_key='created_at',
+                project_id='fake_pid_2', filters=expected_filter_2,
+                is_public=False),
         ])
 
     @ddt.data('True', 'true', '1', 'yes', 'y', 'on', 't', True)
