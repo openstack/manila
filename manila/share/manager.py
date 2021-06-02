@@ -2420,6 +2420,12 @@ class ShareManager(manager.SchedulerDependentManager):
                 msg = _("Driver cannot calculate share size.")
                 raise exception.InvalidShare(reason=msg)
 
+            # NOTE(carloss): Allowing OverQuota to do not compromise this
+            # operation. If this hit OverQuota error while managing a share,
+            # the admin would need to reset the state of the share and
+            # delete or force delete the share (bug 1863298). Allowing
+            # OverQuota makes this operation work properly and the admin will
+            # need to adjust quotas afterwards.
             reservations = QUOTAS.reserve(
                 context,
                 project_id=project_id,
@@ -2427,6 +2433,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 shares=1,
                 gigabytes=share_update['size'],
                 share_type_id=share_instance['share_type_id'],
+                overquota_allowed=True
             )
             QUOTAS.commit(
                 context, reservations, project_id=project_id,

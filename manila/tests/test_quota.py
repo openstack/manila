@@ -353,6 +353,7 @@ class DbQuotaDriverTestCase(test.TestCase):
             'project_id': self.ctxt.project_id,
             'user_id': self.ctxt.user_id,
             'share_type_id': None,
+            'overquota_allowed': False
         }
         expected_kwargs.update(kwargs)
         st_quotas = st_quotas if kwargs.get('share_type_id') else {}
@@ -624,7 +625,8 @@ class QuotaEngineTestCase(test.TestCase):
         self.driver.reserve.assert_called_once_with(
             self.ctxt, self.engine._resources, {'delta1': 1, 'delta2': 2},
             expire='fake_expire', project_id=self.project_id,
-            user_id=self.user_id, share_type_id=self.share_type_id)
+            user_id=self.user_id, share_type_id=self.share_type_id,
+            overquota_allowed=False)
 
     @ddt.data(Exception('FakeException'), [None])
     def test_commit(self, side_effect):
