@@ -89,6 +89,8 @@ class CephFSDriverTestCase(test.TestCase):
         self.mock_object(driver, 'NativeProtocolHelper')
         self.mock_object(driver, 'NFSProtocolHelper')
 
+        driver.ceph_default_target = ('mon-mgr', )
+
         self._driver = (
             driver.CephFSDriver(execute=self._execute,
                                 configuration=self.fake_conf))
@@ -120,6 +122,37 @@ class CephFSDriverTestCase(test.TestCase):
         self._driver.protocol_helper.init_helper.assert_called_once_with()
 
         self.assertEqual(DEFAULT_VOLUME_MODE, self._driver._cephfs_volume_mode)
+
+    @ddt.data(
+        ('{"version": "ceph version 16.2.4"}', 'pacific'),
+        ('{"version": "ceph version 15.1.2"}', 'octopus'),
+        ('{"version": "ceph version 14.3.1"}', 'nautilus'),
+    )
+    @ddt.unpack
+    def test_version_check(self, ceph_mon_version, codename):
+        driver.ceph_default_target = None
+        driver.rados_command.return_value = ceph_mon_version
+
+        self._driver.do_setup(self._context)
+
+        if codename == 'nautilus':
+            self.assertEqual(('mgr', ), driver.ceph_default_target)
+        else:
+            self.assertEqual(('mon-mgr', ), driver.ceph_default_target)
+
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client, "version", target=('mon', ))
+
+        self.assertEqual(1, driver.rados_command.call_count)
+
+    def test_version_check_not_supported(self):
+        driver.ceph_default_target = None
+        driver.rados_command.return_value = (
+            '{"version": "ceph version 13.0.1"}')
+
+        self.assertRaises(exception.ShareBackendException,
+                          self._driver.do_setup,
+                          self._context)
 
     @ddt.data('cephfs', 'nfs')
     def test_check_for_setup_error(self, protocol_helper):
@@ -551,6 +584,8 @@ class NativeProtocolHelperTestCase(test.TestCase):
 
         self.mock_object(driver, "rados_command")
 
+        driver.ceph_default_target = ('mon-mgr', )
+
         self._native_protocol_helper = driver.NativeProtocolHelper(
             None,
             self.fake_conf,
@@ -850,6 +885,8 @@ class NFSProtocolHelperTestCase(test.TestCase):
         self.mock_object(driver.ganesha_utils, 'RootExecutor')
         self.mock_object(driver.socket, 'gethostname')
         self.mock_object(driver, "rados_command")
+
+        driver.ceph_default_target = ('mon-mgr', )
 
         self._nfs_helper = driver.NFSProtocolHelper(
             self._execute,
@@ -1171,6 +1208,8 @@ class CephFSDriverAltConfigTestCase(test.TestCase):
         self.mock_object(driver, "rados_command")
         self.mock_object(driver, 'NativeProtocolHelper')
         self.mock_object(driver, 'NFSProtocolHelper')
+
+        driver.ceph_default_target = ('mon-mgr', )
 
     @ddt.data('cephfs', 'nfs')
     def test_do_setup_alt_volume_mode(self, protocol_helper):
