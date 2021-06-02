@@ -71,8 +71,12 @@ class SchedulerStatsController(wsgi.Controller):
                     msg = _("Share type %s not found.") % req_share_type
                     raise exc.HTTPBadRequest(explanation=msg)
 
-        pools = self.scheduler_api.get_pools(context, filters=search_opts,
-                                             cached=True)
+        try:
+            pools = self.scheduler_api.get_pools(context,
+                                                 filters=search_opts,
+                                                 cached=True)
+        except exception.NotAuthorized:
+            raise exc.HTTPForbidden()
         detail = (action == 'detail')
         return self._view_builder.pools(pools, detail=detail)
 
