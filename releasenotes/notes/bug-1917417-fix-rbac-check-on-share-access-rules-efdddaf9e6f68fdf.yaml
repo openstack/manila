@@ -1,0 +1,7 @@
+---
+security:
+  - |
+    An RBAC policy check has been enforced against the GET /share-access-rules
+    API to ensure that users are permitted to access the share that the
+    access rule belongs to. See `bug 1917417
+    <https://launchpad.net/bugs/1917417>`_ for more details.
