@@ -716,7 +716,7 @@ class DummyDriver(driver.ShareDriver):
             'nondisruptive': False,
             'share_network_id': new_share_network['id'],
             'migration_cancel': compatible,
-            'migration_get_progress': compatible
+            'migration_get_progress': compatible,
         }
 
     @slow_me_down

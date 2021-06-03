@@ -2900,7 +2900,8 @@ class ShareManagerTestCase(test.TestCase):
         }
         fake_metadata = {
             'migration_destination': True,
-            'request_host': fake_data['fake_dest_host']
+            'request_host': fake_data['fake_dest_host'],
+            'source_share_server': fake_data['source_share_server']
         }
 
         mock_subnet_get = self.mock_object(
@@ -8167,7 +8168,8 @@ class ShareManagerTestCase(test.TestCase):
     def _setup_server_migration_start_mocks(
             self, fake_share_instances, fake_snap_instances, fake_old_network,
             fake_new_network, fake_service, fake_request_spec,
-            fake_driver_result, fake_new_share_server):
+            fake_driver_result, fake_new_share_server, server_info,
+            network_subnet):
         self.mock_object(db, 'share_instances_get_all_by_share_server',
                          mock.Mock(return_value=fake_share_instances))
         self.mock_object(db, 'share_snapshot_instance_get_all_with_filters',
@@ -8191,14 +8193,50 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=fake_new_share_server))
         self.mock_object(self.share_manager,
                          '_cast_access_rules_to_readonly_for_server')
+        self.mock_object(db, 'share_network_subnet_get',
+                         mock.Mock(return_value=network_subnet))
+        self.mock_object(db, 'share_server_get',
+                         mock.Mock(return_value=fake_new_share_server))
+        self.mock_object(self.share_manager.driver, 'allocate_network')
+        self.mock_object(self.share_manager.driver, 'allocate_admin_network')
+        self.mock_object(self.share_manager.driver,
+                         'deallocate_network')
+        self.mock_object(db, 'share_server_delete')
         self.mock_object(db, 'share_server_update')
         self.mock_object(self.share_manager.driver,
-                         'share_server_migration_start')
+                         'share_server_migration_start',
+                         mock.Mock(return_value=server_info))
+        self.mock_object(db, 'share_server_backend_details_set')
+        self.mock_object(self.share_manager, 'delete_share_server')
 
-    @ddt.data(True, False)
-    def test__share_server_migration_start_driver(self, writable):
-        fake_old_share_server = db_utils.create_share_server()
-        fake_new_share_server = db_utils.create_share_server()
+    @ddt.data((True, True), (False, True))
+    @ddt.unpack
+    def test__share_server_migration_start_driver(self, writable,
+                                                  nondisruptive):
+        old_subnet_id = 'fake_id'
+        new_subnet_kwargs = {}
+        create_new_allocations = False
+        if not nondisruptive:
+            new_subnet_kwargs.update({
+                'neutron_net_id': 'fake_nn_id',
+                'neutron_subnet_id': 'fake_sn_id'
+            })
+            create_new_allocations = True
+
+        network_subnet = db_utils.create_share_network_subnet(id=old_subnet_id)
+        new_network_subnet = db_utils.create_share_network_subnet(
+            **new_subnet_kwargs)
+        fake_old_share_server = {
+            'id': 'fake_server_id',
+            'share_network_subnet': network_subnet,
+            'host': 'host@backend'
+        }
+        fake_new_share_server = {
+            'id': 'fake_server_id_2',
+            'share_network_subnet': new_network_subnet,
+            'host': 'host@backend'
+        }
+
         fake_old_network = db_utils.create_share_network()
         fake_new_network = db_utils.create_share_network()
         fake_share_instances = [
@@ -8212,7 +8250,6 @@ class ShareManagerTestCase(test.TestCase):
                         'availability_zone': {'name': 'fake_az1'}}
         fake_request_spec = {}
         fake_dest_host = 'fakehost@fakebackend'
-        nondisruptive = False
         preserve_snapshots = True
         fake_driver_result = {
             'compatible': True,
@@ -8223,16 +8260,21 @@ class ShareManagerTestCase(test.TestCase):
             'migration_cancel': False,
             'migration_get_progress': False
         }
+        server_info = {
+            'fake_server_info_key': 'fake_server_info_value',
+            'backend_details': {'fake': 'fake'}
+        }
+        create_on_backend = not nondisruptive
 
         self._setup_server_migration_start_mocks(
             fake_share_instances, fake_snap_instances, fake_old_network,
             fake_new_network, fake_service, fake_request_spec,
-            fake_driver_result, fake_new_share_server)
+            fake_driver_result, fake_new_share_server, server_info,
+            network_subnet)
 
         result = self.share_manager._share_server_migration_start_driver(
             self.context, fake_old_share_server, fake_dest_host, writable,
-            nondisruptive, preserve_snapshots, fake_new_network['id']
-        )
+            nondisruptive, preserve_snapshots, fake_new_network['id'])
 
         self.assertTrue(result)
         db.share_instances_get_all_by_share_server.assert_called_once_with(
@@ -8263,7 +8305,8 @@ class ShareManagerTestCase(test.TestCase):
         (self.share_manager._provide_share_server_for_migration.
             assert_called_once_with(
                 self.context, fake_old_share_server, fake_new_network['id'],
-                fake_service['availability_zone_id'], fake_dest_host))
+                fake_service['availability_zone_id'], fake_dest_host,
+                create_on_backend=create_on_backend))
         db.share_server_update.assert_has_calls(
             self._get_share_server_start_update_calls(
                 fake_old_share_server, fake_new_share_server))
@@ -8271,6 +8314,17 @@ class ShareManagerTestCase(test.TestCase):
             assert_called_once_with(
                 self.context, fake_old_share_server, fake_new_share_server,
                 fake_share_instances, fake_snap_instances))
+        if not create_on_backend:
+            db.share_server_get.assert_called_once_with(
+                self.context, fake_new_share_server['id'])
+            if create_new_allocations:
+                db.share_network_subnet_get.assert_called_once_with(
+                    self.context, fake_new_share_server['id'])
+                self.driver.allocate_network.assert_called_once_with(
+                    self.context, fake_new_share_server, fake_new_network,
+                    network_subnet)
+                self.driver.allocate_admin_network_assert_called_once_with(
+                    self.context, fake_new_share_server)
         if not writable:
             (self.share_manager._cast_access_rules_to_readonly_for_server.
                 assert_called_once_with(
@@ -8279,6 +8333,10 @@ class ShareManagerTestCase(test.TestCase):
         else:
             (self.share_manager._cast_access_rules_to_readonly_for_server.
              assert_not_called())
+        if server_info:
+            db.share_server_backend_details_set.assert_called_once_with(
+                self.context, fake_new_share_server['id'],
+                server_info.get('backend_details'))
 
     def test__share_server_migration_start_driver_exception(self):
         fake_old_share_server = db_utils.create_share_server()
@@ -8309,11 +8367,17 @@ class ShareManagerTestCase(test.TestCase):
             'migration_cancel': False,
             'migration_get_progress': False
         }
+        server_info = {
+            'fake_server_info_key': 'fake_server_info_value',
+            'backend_details': {'fake': 'fake'}
+        }
+        network_subnet = db_utils.create_share_network_subnet()
 
         self._setup_server_migration_start_mocks(
             fake_share_instances, fake_snap_instances, fake_old_network,
             fake_new_network, fake_service, fake_request_spec,
-            fake_driver_result, fake_new_share_server)
+            fake_driver_result, fake_new_share_server, server_info,
+            network_subnet)
         mock__reset_read_only = self.mock_object(
             self.share_manager, '_reset_read_only_access_rules_for_server')
 
@@ -8361,7 +8425,8 @@ class ShareManagerTestCase(test.TestCase):
         (self.share_manager._provide_share_server_for_migration.
             assert_called_once_with(
                 self.context, fake_old_share_server, fake_new_network['id'],
-                fake_service['availability_zone_id'], fake_dest_host))
+                fake_service['availability_zone_id'], fake_dest_host,
+                create_on_backend=True))
         db.share_server_update.assert_has_calls(
             self._get_share_server_start_update_calls(
                 fake_old_share_server, fake_new_share_server,
@@ -8383,6 +8448,8 @@ class ShareManagerTestCase(test.TestCase):
         else:
             (self.share_manager._cast_access_rules_to_readonly_for_server.
              assert_not_called())
+        self.share_manager.delete_share_server.assert_called_once_with(
+            self.context, fake_new_share_server)
 
     @ddt.data(None, exception.ShareServerMigrationFailed)
     def test_share_server_migration_check(self, check_action):
@@ -8747,11 +8814,16 @@ class ShareManagerTestCase(test.TestCase):
 
     def _setup_server_migration_complete_mocks(
             self, fake_source_share_server, fake_dest_share_server,
-            fake_share_instances, fake_snapshot_instances):
+            fake_share_instances, fake_snapshot_instances,
+            additional_server_get_side_effect=None):
+        server_get_side_effects = [fake_dest_share_server,
+                                   fake_source_share_server]
+        if additional_server_get_side_effect:
+            server_get_side_effects.append(additional_server_get_side_effect)
+
         self.mock_object(
             db, 'share_server_get',
-            mock.Mock(side_effect=[fake_dest_share_server,
-                                   fake_source_share_server]))
+            mock.Mock(side_effect=server_get_side_effects))
         self.mock_object(
             db, 'share_instances_get_all_by_share_server',
             mock.Mock(return_value=fake_share_instances))
@@ -8762,7 +8834,9 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager, '_update_resource_status')
         self.mock_object(db, 'share_server_update')
 
-    def test_share_server_migration_complete_exception(self):
+    @ddt.data(True, False)
+    def test_share_server_migration_complete_exception(
+            self, server_already_dropped):
         fake_source_share_server = db_utils.create_share_server()
         fake_dest_share_server = db_utils.create_share_server()
         fake_share_instances = [db_utils.create_share()['instance']]
@@ -8770,11 +8844,26 @@ class ShareManagerTestCase(test.TestCase):
             instance['id'] for instance in fake_share_instances]
         fake_snapshot_instances = []
         fake_snapshot_instance_ids = []
+        server_get_additional_se = (
+            exception.ShareServerNotFound
+            if server_already_dropped else fake_dest_share_server)
+        server_update_calls = [
+            mock.call(self.context, fake_source_share_server['id'],
+                      {'task_state': constants.TASK_STATE_MIGRATION_ERROR,
+                       'status': constants.STATUS_ERROR}),
+        ]
+        if not server_already_dropped:
+            server_update_calls.append(
+                mock.call(
+                    self.context, fake_dest_share_server['id'],
+                    {'task_state': constants.TASK_STATE_MIGRATION_ERROR,
+                     'status': constants.STATUS_ERROR})
+            )
 
         self._setup_server_migration_complete_mocks(
             fake_source_share_server, fake_dest_share_server,
-            fake_share_instances, fake_snapshot_instances
-        )
+            fake_share_instances, fake_snapshot_instances,
+            server_get_additional_se)
         mock__server_migration_complete = self.mock_object(
             self.share_manager, '_server_migration_complete_driver',
             mock.Mock(side_effect=Exception))
@@ -8801,24 +8890,30 @@ class ShareManagerTestCase(test.TestCase):
             self.context, constants.STATUS_ERROR,
             share_instance_ids=fake_share_instance_ids,
             snapshot_instance_ids=fake_snapshot_instance_ids)
-        db.share_server_update.assert_has_calls([
-            mock.call(self.context, fake_source_share_server['id'],
-                      {'task_state': constants.TASK_STATE_MIGRATION_ERROR,
-                       'status': constants.STATUS_ERROR}),
-            mock.call(
-                self.context, fake_dest_share_server['id'],
-                {'task_state': constants.TASK_STATE_MIGRATION_ERROR,
-                 'status': constants.STATUS_ERROR})])
+        db.share_server_update.assert_has_calls(server_update_calls)
 
-    def test_share_server_migration_complete(self):
-        fake_source_share_server = db_utils.create_share_server()
-        fake_dest_share_server = db_utils.create_share_server()
+    @ddt.data(('fake_src_identifier', 'fake_dest_identifier'),
+              ('fake_src_identifier', None))
+    @ddt.unpack
+    def test_share_server_migration_complete(
+            self, src_identifier, dest_identifier):
+        fake_source_share_server = db_utils.create_share_server(
+            identifier=src_identifier)
+        fake_dest_share_server = db_utils.create_share_server(
+            identifier=dest_identifier)
         fake_share_instances = [db_utils.create_share()['instance']]
         fake_share_instance_ids = [
             instance['id'] for instance in fake_share_instances]
         fake_snapshot_instances = []
         fake_snapshot_instance_ids = []
-
+        expected_identifier = (
+            dest_identifier if dest_identifier else src_identifier)
+        expected_server_update = {
+            'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
+            'status': constants.STATUS_ACTIVE,
+        }
+        if not dest_identifier:
+            expected_server_update['identifier'] = expected_identifier
         self._setup_server_migration_complete_mocks(
             fake_source_share_server, fake_dest_share_server,
             fake_share_instances, fake_snapshot_instances
@@ -8847,18 +8942,38 @@ class ShareManagerTestCase(test.TestCase):
             snapshot_instance_ids=fake_snapshot_instance_ids)
         db.share_server_update.assert_called_once_with(
             self.context, fake_dest_share_server['id'],
-            {'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
-             'status': constants.STATUS_ACTIVE})
+            expected_server_update)
 
     @ddt.data(
-        {'unmanage_source_server': False,
-         'snapshot_updates': {},
-         'share_updates': {}},
-        {'unmanage_source_server': True,
-         'snapshot_updates': {},
-         'share_updates': {}},
+        {'model_update': {
+            'unmanage_source_server': False,
+            'snapshot_updates': {},
+            'share_updates': {}},
+            'need_network_allocation': False,
+            'can_reuse_server': False},
+        {'model_update': {
+            'unmanage_source_server': True,
+            'snapshot_updates': {},
+            'share_updates': {}},
+            'need_network_allocation': False,
+            'can_reuse_server': True},
+        {'model_update': {
+            'unmanage_source_server': False,
+            'snapshot_updates': {},
+            'share_updates': {}},
+            'need_network_allocation': True,
+            'can_reuse_server': False},
+        {'model_update': {
+            'unmanage_source_server': True,
+            'snapshot_updates': {},
+            'share_updates': {}},
+            'need_network_allocation': True,
+            'can_reuse_server': True}
     )
-    def test__server_migration_complete_driver(self, model_update):
+    @ddt.unpack
+    def test__server_migration_complete_driver(self, model_update,
+                                               need_network_allocation,
+                                               can_reuse_server):
         fake_share_network = db_utils.create_share_network()
         fake_share_network_subnet = db_utils.create_share_network_subnet(
             share_network_id=fake_share_network['id'])
@@ -8872,7 +8987,10 @@ class ShareManagerTestCase(test.TestCase):
         fake_share_instances = [fake_share['instance']]
         fake_snapshot_instances = [fake_snapshot['instance']]
         fake_share_instance_id = fake_share['instance']['id']
-        fake_allocation_data = {}
+        fake_allocation_data = {
+            'network_allocations': [{'id': 'fake_id'}],
+            'admin_network_allocations': [{'id': 'fake_admin_id'}],
+        }
         model_update['share_updates'][fake_share['instance']['id']] = {
             'export_locations': {
                 "path": "10.10.10.31:/fake_mount_point",
@@ -8896,19 +9014,41 @@ class ShareManagerTestCase(test.TestCase):
             'share_network_id': fake_share_network['id'],
             'availability_zone_id': fake_service['availability_zone_id'],
         }
+        backend_details = fake_source_share_server.get("backend_details")
+        mock_backend_details_set_calls = []
+        if backend_details:
+            for k, v in backend_details.items():
+                mock_backend_details_set_calls.append(
+                    mock.call(
+                        self.context, fake_dest_share_server['id'],
+                        {k: v})
+                )
+
+        dest_network_allocations = []
+        if need_network_allocation:
+            dest_network_allocations.append({'id': 'fake_allocation'})
 
         mock_server_update = self.mock_object(db, 'share_server_update')
         mock_network_get = self.mock_object(
-            db, 'share_network_get', mock.Mock(return_vale=fake_share_network))
+            db, 'share_network_get',
+            mock.Mock(return_value=fake_share_network))
+        mock_allocations_get = self.mock_object(
+            db, 'network_allocations_get_for_share_server',
+            mock.Mock(return_value=dest_network_allocations)
+        )
         mock_subnet_get = self.mock_object(
             db, 'share_network_subnet_get',
             mock.Mock(return_value=fake_share_network_subnet))
-        self.mock_object(
+        mock_form_server_setup_info = self.mock_object(
             self.share_manager, '_form_server_setup_info',
             mock.Mock(return_value=fake_allocation_data))
         mock_server_migration_complete = self.mock_object(
             self.share_manager.driver, 'share_server_migration_complete',
             mock.Mock(return_value=model_update))
+        mock_network_allocation_update = self.mock_object(
+            db, 'network_allocation_update')
+        mock_share_server_backend_details_set = self.mock_object(
+            db, 'share_server_backend_details_set')
         mock_service_get_by_args = self.mock_object(
             db, 'service_get_by_args', mock.Mock(return_value=fake_service))
         mock_instance_update = self.mock_object(db, 'share_instance_update')
@@ -8919,8 +9059,9 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager, '_reset_read_only_access_rules_for_server')
         mock_unmanage_server = self.mock_object(
             rpcapi.ShareAPI, 'unmanage_share_server')
-        mock_check_delete_server = self.mock_object(
-            self.share_manager, '_check_delete_share_server')
+        mock_delete_server = self.mock_object(db, 'share_server_delete')
+        mock_deallocate_network = self.mock_object(
+            self.share_manager.driver, 'deallocate_network')
 
         self.share_manager._server_migration_complete_driver(
             self.context, fake_source_share_server, fake_share_instances,
@@ -8941,6 +9082,29 @@ class ShareManagerTestCase(test.TestCase):
             self.context, fake_share_network['id'])
         mock_subnet_get.assert_called_once_with(
             self.context, fake_share_network_subnet['id'])
+        mock_allocations_get.assert_called_once_with(
+            self.context, fake_dest_share_server['id'])
+
+        if not need_network_allocation:
+            mock_form_server_setup_info.assert_called_once_with(
+                self.context, fake_source_share_server, fake_share_network,
+                fake_share_network_subnet)
+        elif need_network_allocation:
+            mock_share_server_backend_details_set.assert_has_calls(
+                mock_backend_details_set_calls)
+            mock_form_server_setup_info.assert_called_once_with(
+                self.context, fake_dest_share_server, fake_share_network,
+                fake_share_network_subnet)
+            mock_network_allocation_update.assert_has_calls(
+                [mock.call(
+                    self.context,
+                    fake_allocation_data['network_allocations'][0]['id'],
+                    {'share_server_id': fake_dest_share_server['id']}),
+                 mock.call(
+                    self.context,
+                    fake_allocation_data['admin_network_allocations'][0]['id'],
+                    {'share_server_id': fake_dest_share_server['id']})])
+
         mock_server_migration_complete.assert_called_once_with(
             self.context, fake_source_share_server, fake_dest_share_server,
             fake_share_instances, fake_snapshot_instances, fake_allocation_data
@@ -8963,10 +9127,10 @@ class ShareManagerTestCase(test.TestCase):
             mock_unmanage_server.assert_called_once_with(
                 self.context, fake_source_share_server)
         else:
-            mock_check_delete_server.assert_called_once_with(
-                self.context, share_server=fake_source_share_server,
-                remote_host=True
-            )
+            mock_deallocate_network.assert_called_once_with(
+                self.context, fake_source_share_server['id'])
+            mock_delete_server.assert_called_once_with(
+                self.context, fake_source_share_server['id'])
 
     @ddt.data(constants.TASK_STATE_MIGRATION_SUCCESS,
               constants.TASK_STATE_MIGRATION_IN_PROGRESS)

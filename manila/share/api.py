@@ -2582,6 +2582,14 @@ class API(base.Base):
             payload = {'network': new_share_network_id}
             raise exception.InvalidShareServer(reason=msg % payload)
 
+        net_changes_identified = False
+        if new_share_network:
+            current_subnet = self.db.share_network_subnet_get(
+                context, share_server['share_network_subnet_id'])
+            for key in ['neutron_net_id', 'neutron_subnet_id']:
+                if current_subnet[key] != compatible_subnet[key]:
+                    net_changes_identified = True
+
         # NOTE(carloss): Refreshing the list of shares since something could've
         # changed from the initial list.
         shares = self.db.share_get_all_by_share_server(
@@ -2645,22 +2653,49 @@ class API(base.Base):
             except exception.ShareBusyException as e:
                 raise exception.InvalidShareServer(reason=e.msg)
 
-        return shares, types, service, new_share_network_id
+        return (
+            shares, types, service, new_share_network_id,
+            net_changes_identified)
 
     def share_server_migration_check(self, context, share_server, dest_host,
                                      writable, nondisruptive,
                                      preserve_snapshots,
                                      new_share_network=None):
         """Migrates share server to a new host."""
-        shares, types, service, new_share_network_id = (
+        shares, types, service, new_share_network_id, net_params_changed = (
             self._migration_initial_checks(context, share_server, dest_host,
                                            new_share_network))
+
+        # If a nondisruptive migration was requested and different neutron net
+        # id and neutron subnet ids were identified
+        if net_params_changed and nondisruptive:
+            result = {
+                'compatible': False,
+                'writable': False,
+                'nondisruptive': False,
+                'preserve_snapshots': False,
+                'migration_cancel': False,
+                'migration_get_progress': False,
+                'share_network_id': new_share_network_id
+            }
+            return result
 
         # NOTE(dviroel): Service is up according to validations made on initial
         # checks
         result = self.share_rpcapi.share_server_migration_check(
             context, share_server['id'], dest_host, writable, nondisruptive,
             preserve_snapshots, new_share_network_id)
+
+        # NOTE(carloss): In case users haven't requested a nondisruptive
+        # migration and a network change was identified, we must get the
+        # driver's check result and  if there is need to, manipulate it.
+        # The result is provided by the driver and based on the back end
+        # possibility to perform a nondisruptive migration or not. If
+        # a network change was provided, we know that the migration will be
+        # disruptive, so in order to do not confuse the user, we must present
+        # the share server migration as disruptive
+        if result.get('nondisruptive') and net_params_changed:
+            result['nondisruptive'] = False
 
         return result
 
@@ -2669,10 +2704,17 @@ class API(base.Base):
             preserve_snapshots, new_share_network=None):
         """Migrates share server to a new host."""
 
-        shares, types, dest_service, new_share_network_id = (
+        shares, types, service, new_share_network_id, net_params_changed = (
             self._migration_initial_checks(context, share_server,
                                            dest_host,
                                            new_share_network))
+
+        if nondisruptive and net_params_changed:
+            msg = _("Nondisruptive migration would only be feasible when the "
+                    "current and new share networks carry the same "
+                    "'neutron_net_id' and 'neutron_subnet_id', or when no "
+                    "network changes are occurring.")
+            raise exception.InvalidInput(reason=msg)
 
         # Updates the share server status to migration starting
         self.db.share_server_update(

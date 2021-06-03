@@ -915,7 +915,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             'preserve_snapshots': None,
             'migration_cancel': None,
             'migration_get_progress': None,
-            'share_network_id': None
+            'share_network_id': None,
         }
 
         # We need cluster creds, of course

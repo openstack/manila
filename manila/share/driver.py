@@ -2921,6 +2921,16 @@ class ShareDriver(object):
             migrated.
         :param snapshots: All snapshots in the source share server that should
             be migrated.
+        :return: Dict with migration information to be set in the destination
+            share server.
+
+            Example::
+
+                {
+                    'backend_details': {
+                        'migration_info_key':  'migration_info_value',
+                    }
+                }
         """
         raise NotImplementedError()
 
@@ -3085,7 +3095,7 @@ class ShareDriver(object):
                     'nondisruptive': True,
                     'preserve_snapshots': True,
                     'migration_cancel': True,
-                    'migration_get_progress': False
+                    'migration_get_progress': False,
                 }
 
         """
@@ -3095,7 +3105,7 @@ class ShareDriver(object):
             'nondisruptive': False,
             'preserve_snapshots': False,
             'migration_cancel': False,
-            'migration_get_progress': False
+            'migration_get_progress': False,
         }
 
     def share_server_migration_complete(self, context, src_share_server,
@@ -3189,6 +3199,11 @@ class ShareDriver(object):
                         ],
                         },
                     }
+                    'backend_details':
+                    {
+                        'new_share_server_info_key':
+                            'new_share_server_info_value',
+                    },
                 }
 
         """

@@ -270,7 +270,7 @@ class LVMHelperTestCase(test.TestCase):
             'nondisruptive': None,
             'preserve_snapshots': None,
             'migration_cancel': None,
-            'migration_get_progress': None
+            'migration_get_progress': None,
         }
         mock_error_log = self.mock_object(storage_helper.LOG, 'error')
 
@@ -300,7 +300,7 @@ class LVMHelperTestCase(test.TestCase):
             'nondisruptive': False,
             'preserve_snapshots': False,
             'migration_cancel': True,
-            'migration_get_progress': True
+            'migration_get_progress': True,
         }
 
         source_server = {'id': 'fake_id', 'host': source_host}

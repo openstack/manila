@@ -830,6 +830,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 # request can use this metadata to take actions.
                 server_metadata['migration_destination'] = True
                 server_metadata['request_host'] = destination_host
+                server_metadata['source_share_server'] = (
+                    source_share_server)
                 destination_share_server = (
                     self._create_share_server_in_backend(
                         context, destination_share_server,
@@ -3229,7 +3231,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.driver.network_api.unmanage_network_allocations(
                     context, share_server_id)
             elif (self.driver.get_admin_network_allocations_number() > 0
-                    and self.driver.admin_network_api):
+                  and self.driver.admin_network_api):
                 # NOTE(ganso): This is here in case there are only admin
                 # allocations.
                 self.driver.admin_network_api.unmanage_network_allocations(
@@ -3995,13 +3997,14 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def _form_server_setup_info(self, context, share_server, share_network,
                                 share_network_subnet):
+        share_server_id = share_server['id']
         # Network info is used by driver for setting up share server
         # and getting server info on share creation.
         network_allocations = self.db.network_allocations_get_for_share_server(
-            context, share_server['id'], label='user')
+            context, share_server_id, label='user')
         admin_network_allocations = (
             self.db.network_allocations_get_for_share_server(
-                context, share_server['id'], label='admin'))
+                context, share_server_id, label='admin'))
         # NOTE(vponomaryov): following network_info fields are deprecated:
         # 'segmentation_id', 'cidr' and 'network_type'.
         # And they should be used from network allocations directly.
@@ -5045,9 +5048,33 @@ class ShareManager(manager.SchedulerDependentManager):
                 snapshot_instances, compatibility, dest_host, nondisruptive,
                 writable, preserve_snapshots, resource_type='share server')
 
+            create_server_on_backend = not compatibility.get('nondisruptive')
             dest_share_server = self._provide_share_server_for_migration(
                 context, source_share_server, new_share_network_id,
-                service['availability_zone_id'], dest_host)
+                service['availability_zone_id'], dest_host,
+                create_on_backend=create_server_on_backend)
+
+            net_changes_identified = False
+            if not create_server_on_backend:
+                dest_share_server = self.db.share_server_get(
+                    context, dest_share_server['id'])
+                current_subnet = dest_share_server['share_network_subnet']
+                old_subnet = source_share_server['share_network_subnet']
+                for key in ['neutron_net_id', 'neutron_subnet_id']:
+                    if current_subnet.get(key) != old_subnet.get(key):
+                        net_changes_identified = True
+                if net_changes_identified:
+                    share_network_subnet = self.db.share_network_subnet_get(
+                        context, dest_share_server['share_network_subnet_id'])
+                    self.driver.allocate_network(
+                        context, dest_share_server, new_share_network,
+                        share_network_subnet)
+                    self.driver.allocate_admin_network(
+                        context, dest_share_server)
+                    # Refresh the share server so it will have the network
+                    # allocations when sent to the driver
+                    dest_share_server = self.db.share_server_get(
+                        context, dest_share_server['id'])
 
             self.db.share_server_update(
                 context, dest_share_server['id'],
@@ -5074,9 +5101,15 @@ class ShareManager(manager.SchedulerDependentManager):
                 {'task_state': (
                     constants.TASK_STATE_MIGRATION_DRIVER_STARTING)})
 
-            self.driver.share_server_migration_start(
+            server_info = self.driver.share_server_migration_start(
                 context, source_share_server, dest_share_server,
                 share_instances, snapshot_instances)
+
+            backend_details = (
+                server_info.get('backend_details') if server_info else None)
+            if backend_details:
+                self.db.share_server_backend_details_set(
+                    context, dest_share_server['id'], backend_details)
 
             self.db.share_server_update(
                 context, source_share_server['id'],
@@ -5102,8 +5135,14 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, dest_share_server['id'],
                     {'task_state': constants.TASK_STATE_MIGRATION_ERROR,
                      'status': constants.STATUS_ERROR})
-                self._check_delete_share_server(context,
-                                                share_server=dest_share_server)
+                if not create_server_on_backend:
+                    if net_changes_identified:
+                        self.driver.deallocate_network(
+                            context, dest_share_server['id'])
+                    self.db.share_server_delete(
+                        context, dest_share_server['id'])
+                else:
+                    self.delete_share_server(context, dest_share_server)
             msg = _("Driver-assisted migration of share server %s "
                     "failed.") % source_share_server['id']
             LOG.exception(msg)
@@ -5380,11 +5419,18 @@ class ShareManager(manager.SchedulerDependentManager):
                     'has failed in migration-complete phase.') % msg_args
             raise exception.ShareServerMigrationFailed(reason=msg)
 
+        server_update_args = {
+            'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
+            'status': constants.STATUS_ACTIVE
+        }
+
+        # Migration mechanism reused the share server
+        if not dest_server['identifier']:
+            server_update_args['identifier'] = src_server['identifier']
+
         # Update share server status for success scenario
         self.db.share_server_update(
-            context, dest_share_server_id,
-            {'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
-             'status': constants.STATUS_ACTIVE})
+            context, dest_share_server_id, server_update_args)
         self._update_resource_status(
             context, constants.STATUS_AVAILABLE,
             share_instance_ids=share_instance_ids,
@@ -5412,12 +5458,53 @@ class ShareManager(manager.SchedulerDependentManager):
         dest_sn = self.db.share_network_get(context, dest_sn_id)
         dest_sns = self.db.share_network_subnet_get(context, dest_sns_id)
 
+        migration_reused_network_allocations = (len(
+            self.db.network_allocations_get_for_share_server(
+                context, dest_share_server['id'])) == 0)
+
+        server_to_get_allocations = (
+            dest_share_server
+            if not migration_reused_network_allocations
+            else source_share_server)
+
         new_network_allocations = self._form_server_setup_info(
-            context, dest_share_server, dest_sn, dest_sns)
+            context, server_to_get_allocations, dest_sn, dest_sns)
 
         model_update = self.driver.share_server_migration_complete(
             context, source_share_server, dest_share_server, share_instances,
             snapshot_instances, new_network_allocations)
+
+        if not migration_reused_network_allocations:
+            all_allocations = [
+                new_network_allocations['network_allocations'],
+                new_network_allocations['admin_network_allocations']
+            ]
+            for allocations in all_allocations:
+                for allocation in allocations:
+                    allocation_id = allocation['id']
+                    values = {
+                        'share_server_id': dest_share_server['id']
+                    }
+                    self.db.network_allocation_update(
+                        context, allocation_id, values)
+
+        # If share server doesn't have an identifier, we didn't ask the driver
+        # to create a brand new server - this was a nondisruptive migration
+        share_server_was_reused = not dest_share_server['identifier']
+        if share_server_was_reused:
+            driver_backend_details = model_update.get(
+                'server_backend_details')
+            # Clean up the previous backend details set for migration details
+            if driver_backend_details:
+                self.db.share_server_backend_details_delete(
+                    context, dest_share_server['id'])
+            backend_details = (
+                driver_backend_details
+                or source_share_server.get("backend_details"))
+            if backend_details:
+                for k, v in backend_details.items():
+                    self.db.share_server_backend_details_set(
+                        context, dest_share_server['id'], {k: v})
 
         host_value = share_utils.extract_host(dest_share_server['host'])
         service = self.db.service_get_by_args(
@@ -5482,8 +5569,14 @@ class ShareManager(manager.SchedulerDependentManager):
             {'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
              'status': constants.STATUS_INACTIVE})
 
-        self._check_delete_share_server(
-            context, share_server=source_share_server, remote_host=True)
+        if share_server_was_reused:
+            self.driver.deallocate_network(context, source_share_server['id'])
+            self.db.share_server_delete(context, source_share_server['id'])
+        else:
+            source_share_server = self._get_share_server_dict(
+                context, source_share_server)
+            rpcapi = share_rpcapi.ShareAPI()
+            rpcapi.delete_share_server(context, source_share_server)
 
     @add_hooks
     @utils.require_driver_initialized

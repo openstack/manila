@@ -1956,7 +1956,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'preserve_snapshots': True,
             'migration_cancel': True,
             'migration_get_progress': False,
-            'share_network_id': fake.SHARE_NETWORK['id']
+            'share_network_id': fake.SHARE_NETWORK['id'],
         }
         self._configure_mocks_share_server_migration_check_compatibility()
 

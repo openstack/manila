@@ -1552,7 +1552,7 @@ SERVER_MIGRATION_CHECK_NOT_COMPATIBLE = {
     'preserve_snapshots': None,
     'migration_cancel': None,
     'migration_get_progress': None,
-    'share_network_id': None
+    'share_network_id': None,
 }
 
 CIFS_SECURITY_SERVICE = {

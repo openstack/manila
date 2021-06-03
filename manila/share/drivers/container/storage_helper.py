@@ -230,7 +230,7 @@ class LVMHelper(driver.ExecuteMixin):
             'nondisruptive': None,
             'preserve_snapshots': None,
             'migration_cancel': None,
-            'migration_get_progress': None
+            'migration_get_progress': None,
         }
 
         dest_backend_name = share_utils.extract_host(dest_host,
@@ -275,7 +275,7 @@ class LVMHelper(driver.ExecuteMixin):
             'nondisruptive': False,
             'preserve_snapshots': False,
             'migration_cancel': True,
-            'migration_get_progress': True
+            'migration_get_progress': True,
         }
 
     def share_server_migration_start(self, context, src_share_server,

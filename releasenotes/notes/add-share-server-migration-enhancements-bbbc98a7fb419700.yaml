@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added share server migration enhancements. Share back ends that support
+    non-disruptive migration are able to do so, in case no network changes
+    were identified and if the back end driver supports reusing ip addresses.

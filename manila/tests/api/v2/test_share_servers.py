@@ -532,16 +532,16 @@ class ShareServerControllerTest(test.TestCase):
             context, network_subnet['share_network_id'])
         is_active_mock.assert_called_once_with(share_network)
 
-    def _get_server_migration_request(self, server_id):
+    def _get_server_migration_request(self, server_id, version='2.57'):
         req = fakes.HTTPRequest.blank(
             '/share-servers/%s/action' % server_id,
-            use_admin_context=True, version='2.57')
+            use_admin_context=True, version=version)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
         return req
 
-    def test_share_server_migration_start(self):
+    def test__share_server_migration_start(self):
         server = db_utils.create_share_server(id='fake_server_id',
                                               status=constants.STATUS_ACTIVE)
         share_network = db_utils.create_share_network()
@@ -566,7 +566,8 @@ class ShareServerControllerTest(test.TestCase):
             }
         }
 
-        self.controller.share_server_migration_start(req, server['id'], body)
+        self.controller.share_server_migration_start(
+            req, server['id'], body)
 
         db_api.share_server_get.assert_called_once_with(
             context, server['id'])
@@ -581,10 +582,12 @@ class ShareServerControllerTest(test.TestCase):
     @ddt.data({'api_exception': exception.ServiceIsDown(service='fake_srv'),
                'expected_exception': webob.exc.HTTPBadRequest},
               {'api_exception': exception.InvalidShareServer(reason=""),
-               'expected_exception': webob.exc.HTTPConflict})
+               'expected_exception': webob.exc.HTTPConflict},
+              {'api_exception': exception.InvalidInput(),
+               'expected_exception': webob.exc.HTTPBadRequest})
     @ddt.unpack
-    def test_share_server_migration_start_conflict(self, api_exception,
-                                                   expected_exception):
+    def test__share_server_migration_start_conflict(self, api_exception,
+                                                    expected_exception):
         share_network = db_utils.create_share_network()
         share_network_subnet = db_utils.create_share_network_subnet(
             share_network_id=share_network['id'])
@@ -598,7 +601,7 @@ class ShareServerControllerTest(test.TestCase):
                 'host': 'fake_host',
                 'preserve_snapshots': True,
                 'writable': True,
-                'nondisruptive': True,
+                'nondisruptive': True
             }
         }
         self.mock_object(share_api.API, 'share_server_migration_start',
@@ -629,7 +632,7 @@ class ShareServerControllerTest(test.TestCase):
             new_share_network=None)
 
     @ddt.data('host', 'body')
-    def test_share_server_migration_start_missing_mandatory(self, param):
+    def test__share_server_migration_start_missing_mandatory(self, param):
         server = db_utils.create_share_server(
             id='fake_server_id', status=constants.STATUS_ACTIVE)
         req = self._get_server_migration_request(server['id'])
@@ -641,7 +644,7 @@ class ShareServerControllerTest(test.TestCase):
                 'preserve_metadata': True,
                 'preserve_snapshots': True,
                 'writable': True,
-                'nondisruptive': True,
+                'nondisruptive': True
             }
         }
 
@@ -650,20 +653,20 @@ class ShareServerControllerTest(test.TestCase):
         else:
             body['migration_start'].pop(param)
 
-        method = 'share_server_migration_start'
-
-        self.mock_object(share_api.API, method)
+        self.mock_object(share_api.API, 'share_server_migration_start')
         self.mock_object(db_api, 'share_server_get',
                          mock.Mock(return_value=server))
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          getattr(self.controller, method),
-                          req, server['id'], body)
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            getattr(self.controller, 'share_server_migration_start'),
+            req, server['id'], body)
+
         db_api.share_server_get.assert_called_once_with(context,
                                                         server['id'])
 
     @ddt.data('nondisruptive', 'writable', 'preserve_snapshots')
-    def test_share_server_migration_start_non_boolean(self, param):
+    def test__share_server_migration_start_non_boolean(self, param):
         server = db_utils.create_share_server(
             id='fake_server_id', status=constants.STATUS_ACTIVE)
         req = self._get_server_migration_request(server['id'])
@@ -674,25 +677,25 @@ class ShareServerControllerTest(test.TestCase):
                 'host': 'fake_host',
                 'preserve_snapshots': True,
                 'writable': True,
-                'nondisruptive': True,
+                'nondisruptive': True
             }
         }
 
         body['migration_start'][param] = None
 
-        method = 'share_server_migration_start'
-
-        self.mock_object(share_api.API, method)
+        self.mock_object(share_api.API, 'share_server_migration_start')
         self.mock_object(db_api, 'share_server_get',
                          mock.Mock(return_value=server))
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          getattr(self.controller, method),
-                          req, server['id'], body)
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            getattr(self.controller, 'share_server_migration_start'),
+            req, server['id'], body)
+
         db_api.share_server_get.assert_called_once_with(context,
                                                         server['id'])
 
-    def test_share_server_migration_start_share_server_not_found(self):
+    def test__share_server_migration_start_share_server_not_found(self):
         fake_id = 'fake_server_id'
         req = self._get_server_migration_request(fake_id)
         context = req.environ['manila.context']
@@ -709,7 +712,7 @@ class ShareServerControllerTest(test.TestCase):
         db_api.share_server_get.assert_called_once_with(context,
                                                         fake_id)
 
-    def test_share_server_migration_start_new_share_network_not_found(self):
+    def test__share_server_migration_start_new_share_network_not_found(self):
         server = db_utils.create_share_server(
             id='fake_server_id', status=constants.STATUS_ACTIVE)
         req = self._get_server_migration_request(server['id'])
@@ -737,7 +740,7 @@ class ShareServerControllerTest(test.TestCase):
         db_api.share_server_get.assert_called_once_with(context,
                                                         server['id'])
 
-    def test_share_server_migration_start_host_with_pool(self):
+    def test__share_server_migration_start_host_with_pool(self):
         server = db_utils.create_share_server(id='fake_server_id',
                                               status=constants.STATUS_ACTIVE)
         req = self._get_server_migration_request(server['id'])

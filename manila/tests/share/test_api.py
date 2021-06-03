@@ -4594,6 +4594,15 @@ class ShareAPITestCase(test.TestCase):
         }
         fake_share_network = (
             db_utils.create_share_network() if create_share_network else None)
+        current_subnet_data = {
+            'id': 'current_subnet_id',
+            'neutron_net_id': 'current_neutron_net_id',
+            'neutron_subnet_id': 'current_neutron_subnet_id',
+        }
+        fake_network_subnet = db_utils.create_share_network_subnet(
+            **current_subnet_data)
+        expected_network_change = create_share_network is True
+
         fake_share_network_id = (
             fake_share_network['id']
             if create_share_network else fake_share['share_network_id'])
@@ -4618,8 +4627,11 @@ class ShareAPITestCase(test.TestCase):
         mock_get_subnet = self.mock_object(
             db_api, 'share_network_subnet_get_by_availability_zone_id',
             mock.Mock(return_value=fake_subnet))
+        mock_get_current_subnet = self.mock_object(
+            db_api, 'share_network_subnet_get',
+            mock.Mock(return_value=fake_network_subnet))
 
-        exp_shares, exp_types, exp_service, exp_share_network_id = (
+        exp_shares, exp_types, exp_service, exp_network_id, net_change = (
             self.api._migration_initial_checks(
                 self.context, fake_share_server, fake_host,
                 fake_share_network))
@@ -4627,7 +4639,8 @@ class ShareAPITestCase(test.TestCase):
         self.assertEqual(exp_shares, [fake_share])
         self.assertEqual(exp_types, [share_type])
         self.assertEqual(exp_service, service)
-        self.assertEqual(exp_share_network_id, fake_share_network_id)
+        self.assertEqual(exp_network_id, fake_share_network_id)
+        self.assertIs(expected_network_change, net_change)
         mock_shares_get_all.assert_has_calls([
             mock.call(self.context, fake_share_server['id']),
             mock.call(self.context, fake_share_server['id'])])
@@ -4640,6 +4653,9 @@ class ShareAPITestCase(test.TestCase):
         mock_az_get.assert_called_once_with(
             self.context, service['availability_zone']['name']
         )
+        if create_share_network:
+            mock_get_current_subnet.assert_called_once_with(
+                self.context, fake_share_server['share_network_subnet_id'])
 
     def test_share_server_migration_get_destination(self):
         fake_source_server_id = 'fake_source_id'
@@ -5208,6 +5224,74 @@ class ShareAPITestCase(test.TestCase):
             self.context, service['availability_zone']['name']
         )
 
+    def test_server_migration_check_nondisruptive_and_network_change(self):
+        fake_shares = [db_utils.create_share() for i in range(2)]
+        fake_types = [{'id': 'fake_type_id'}]
+        fake_share_server = db_utils.create_share_server()
+        dest_host = fake_share_server['host']
+        service = {
+            'availability_zone_id': 'fake_az_id',
+            'availability_zone': {'name': 'fake_az_name'}
+        }
+        fake_share_network = db_utils.create_share_network()
+        network_has_changed = True
+        writable = preserve_snapshots = False
+        nondisruptive = True
+        expected_result = {
+            'compatible': False,
+            'writable': writable,
+            'nondisruptive': False,
+            'preserve_snapshots': preserve_snapshots,
+            'share_network_id': fake_share_network['id'],
+            'migration_cancel': False,
+            'migration_get_progress': False
+        }
+
+        mock_initial_checks = self.mock_object(
+            self.api, '_migration_initial_checks',
+            mock.Mock(
+                return_value=[fake_shares, fake_types, service,
+                              fake_share_network['id'], network_has_changed]))
+
+        check_result = self.api.share_server_migration_check(
+            self.context, fake_share_server, dest_host, writable,
+            nondisruptive, preserve_snapshots, fake_share_network
+        )
+
+        self.assertEqual(expected_result, check_result)
+        mock_initial_checks.assert_called_once_with(
+            self.context, fake_share_server, dest_host, fake_share_network)
+
+    def test_server_migration_start_nondisruptive_and_network_change(self):
+        fake_shares = [db_utils.create_share() for i in range(2)]
+        fake_types = [{'id': 'fake_type_id'}]
+        fake_share_server = db_utils.create_share_server()
+        dest_host = fake_share_server['host']
+        service = {
+            'availability_zone_id': 'fake_az_id',
+            'availability_zone': {'name': 'fake_az_name'}
+        }
+        fake_share_network = db_utils.create_share_network()
+        network_has_changed = True
+        writable = preserve_snapshots = False
+        nondisruptive = True
+
+        mock_initial_checks = self.mock_object(
+            self.api, '_migration_initial_checks',
+            mock.Mock(
+                return_value=[fake_shares, fake_types, service,
+                              fake_share_network['id'], network_has_changed]))
+
+        self.assertRaises(
+            exception.InvalidInput,
+            self.api.share_server_migration_start,
+            self.context, fake_share_server, dest_host, writable,
+            nondisruptive, preserve_snapshots, fake_share_network
+        )
+
+        mock_initial_checks.assert_called_once_with(
+            self.context, fake_share_server, dest_host, fake_share_network)
+
     def test_share_server_migration_check(self):
         type_data = {
             'extra_specs': {
@@ -5243,7 +5327,7 @@ class ShareAPITestCase(test.TestCase):
         mock_initial_checks = self.mock_object(
             self.api, '_migration_initial_checks',
             mock.Mock(return_value=[fake_shares, fake_types, service,
-                                    fake_share_network['id']]))
+                                    fake_share_network['id'], False]))
         # NOTE(carloss): Returning an "empty" dictionary should be enough for
         # this test case. The unit test to check the values being returned to
         # the user should be placed in the share manager, where the dict is
@@ -5308,7 +5392,7 @@ class ShareAPITestCase(test.TestCase):
         mock_initial_checks = self.mock_object(
             self.api, '_migration_initial_checks',
             mock.Mock(return_value=[fake_shares, fake_types, service,
-                                    fake_share_network['id']]))
+                                    fake_share_network['id'], False]))
         mock_migration_start = self.mock_object(
             self.share_rpcapi, 'share_server_migration_start')
         mock_server_update = self.mock_object(db_api, 'share_server_update')

@@ -278,6 +278,9 @@ class ShareServerController(share_servers.ShareServerController,
             # NOTE(dviroel): invalid share server meaning that some internal
             # resource have a invalid state.
             raise exc.HTTPConflict(explanation=e.msg)
+        except exception.InvalidInput as e:
+            # User provided controversial parameters in the request
+            raise exc.HTTPBadRequest(explanation=e.msg)
 
     @wsgi.Controller.api_version('2.57', experimental=True)
     @wsgi.action("migration_complete")

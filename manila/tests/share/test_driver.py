@@ -623,7 +623,7 @@ class ShareDriverTestCase(test.TestCase):
             'nondisruptive': False,
             'preserve_snapshots': False,
             'migration_cancel': False,
-            'migration_get_progress': False
+            'migration_get_progress': False,
         }
 
         driver_compatibility = (
