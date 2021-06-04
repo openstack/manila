@@ -3119,6 +3119,28 @@ class NetAppClientCmodeTestCase(test.TestCase):
         else:
             self.client.set_volume_max_files.assert_not_called()
 
+    @ddt.data(True, False)
+    def test_create_volume_thin_provisioned(self, thin_provisioned):
+
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'update_volume_efficiency_attributes')
+
+        self.client.create_volume(
+            fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100,
+            thin_provisioned=thin_provisioned)
+
+        volume_create_args = {
+            'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
+            'size': '100g',
+            'volume': fake.SHARE_NAME,
+            'volume-type': 'rw',
+            'junction-path': '/%s' % fake.SHARE_NAME,
+            'space-reserve': ('none' if thin_provisioned else 'volume'),
+        }
+
+        self.client.send_request.assert_called_once_with('volume-create',
+                                                         volume_create_args)
+
     def test_create_volume_adaptive_not_supported(self):
 
         self.client.features.add_feature('ADAPTIVE_QOS', supported=False)
@@ -3183,7 +3205,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.features.add_feature('FLEXVOL_ENCRYPTION')
         volume_type = 'rw'
-        thin_provisioned = 'none'
+        thin_provisioned = False
         snapshot_policy = 'default'
         language = 'en-US'
         reserve = 15
@@ -3198,7 +3220,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         expected_api_args = {
             'volume-type': volume_type,
             'junction-path': '/fake_share',
-            'space-reserve': thin_provisioned,
+            'space-reserve': 'volume',
             'snapshot-policy': snapshot_policy,
             'language-code': language,
             'percentage-snapshot-reserve': str(reserve),
@@ -3226,6 +3248,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         expected_api_args = {
             'volume-type': volume_type,
+            'space-reserve': 'volume',
         }
         self.assertEqual(expected_api_args, result_api_args)
 
