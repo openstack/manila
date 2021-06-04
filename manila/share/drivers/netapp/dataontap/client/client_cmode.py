@@ -1663,11 +1663,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'size': six.text_type(size_gb) + 'g',
             'volume': volume_name,
             'volume-type': volume_type,
+            'space-reserve': ('none' if thin_provisioned else 'volume'),
         }
         if volume_type != 'dp':
             api_args['junction-path'] = '/%s' % volume_name
-        if thin_provisioned:
-            api_args['space-reserve'] = 'none'
         if snapshot_policy is not None:
             api_args['snapshot-policy'] = snapshot_policy
         if language is not None:

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed an issue with ONTAP AFF platforms while creating shares that forced
+    volumes to have efficient data saving even when the contrary was
+    specified. For more details, please refer to
+    `launchpad bug #1929421 <https://bugs.launchpad.net/manila/+bug/1929421>`_
