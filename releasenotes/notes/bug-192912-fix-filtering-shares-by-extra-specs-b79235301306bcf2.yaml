@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Filtering shares by share-type "extra_specs" as
+    key=value now returns the expected output.
