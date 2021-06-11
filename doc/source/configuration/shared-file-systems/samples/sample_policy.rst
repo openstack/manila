@@ -20,6 +20,13 @@ instance, if you want to change the default value of "share:create", you only
 need to keep this single rule in your policy config
 file (**/etc/manila/policy.yaml**).
 
-.. literalinclude:: ../../../_static/manila.policy.yaml.sample
-   :language: ini
+.. only:: html
+
+   .. literalinclude:: ../../../_static/manila.policy.yaml.sample
+      :language: ini
+
+.. only:: latex
+
+   See the online version of this documentation for the sample file
+   (``manila.policy.yaml.sample``).
 

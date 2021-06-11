@@ -9,9 +9,6 @@
       - periodic-stable-jobs
     check:
       jobs:
-        # see https://launchpad.net/bugs/1918707
-        - openstack-tox-docs:
-            voting: false
         - manila-tox-genconfig
         - openstack-tox-pylint:
             voting: false
@@ -44,9 +41,6 @@
     gate:
       queue: manila
       jobs:
-        # see https://launchpad.net/bugs/1918707
-        - openstack-tox-docs:
-            voting: false
         - manila-tempest-plugin-dummy-no-dhss
         - manila-tempest-plugin-dummy-dhss
         - manila-tempest-plugin-lvm
