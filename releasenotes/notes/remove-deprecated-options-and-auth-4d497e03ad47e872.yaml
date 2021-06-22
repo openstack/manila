@@ -1,0 +1,165 @@
+---
+upgrade:
+  - |
+    Deprecations made prior to the Ussuri release have been enforced, with the following impact to ``manila.conf``:
+
+    - The deprecated ``memcached_servers`` option in the [DEFAULT] section had no effect and has been removed.
+
+    - The deprecated ``share_usage_audit_period`` option in the [DEFAULT] section had no effect and has been removed.
+
+    - The deprecated ``nova_api_microversion`` option in the [DEFAULT] has been removed.  Use 'api_microversion' in the [nova] section instead.
+
+    - The deprecated ``ca_certificates_file`` option in the [DEFAULT], [nova], [cinder], and [neutron] sections had no effect and has been removed.
+
+    - The deprecated ``nova_ca_certificates_file`` option in the [DEFAULT] section had no effect and has been removed.
+
+    - The deprecated ``cinder_ca_certificates_file`` option in the [DEFAULT] section had no effect and has been removed.
+
+    - The deprecated ``api_insecure`` option in the [DEFAULT], [nova], [cinder], and [neutron[ sections had no effect and has been removed.
+
+    - The deprecated ``nova_api_insecure`` option in the [DEFAULT] section had no effect and has been removed.
+
+    - The deprecated ``cinder_api_insecure`` option in the [DEFAULT] section had no effect and has been removed.
+
+    - The deprecated ``migration_tmp_location`` option is no longer recognized.  Use ``mount_tmp_location`` instead.
+
+    - The ``network_api_class`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``neutron_url`` option can no longer be set in the [DEFAULT] section.  Use the ``url`` option in the [neutron] section instead.
+
+    - The ``neutron_url_timeout`` option can no longer be set in the [DEFAULT] section.  Use the ``url_timeout`` option in the [neutron] section instead.
+
+    - The ``auth_strategy`` option for neutron can no longer be set in the [DEFAULT] section.  Set it in the [neutron] secton instead.
+
+    - The ``neutron_physical_net_name`` option for neutron can no longer be set in the [DEFAULT] section.  Set it in the [neutron] secton instead.
+
+    - The ``neutron_net_id`` option for neutron can no longer be set in the [DEFAULT] section.  Set it in the [neutron] secton instead.
+
+    - The ``neutron_subnet_id`` option for neutron can no longer be set in the [DEFAULT] section.  Set it in the [neutron] secton insteaad.
+
+    - The ``standalone_network_plugin_gateway`` option can no longer be set in the [DEFAULT] section. Set it in backend sections instead.
+
+    - The ``standalone_network_plugin_mask`` option can no longer be set in the [DEFAULT] section.    Set it in backend sections instead.
+
+    - The ``standalone_network_plugin_type`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``standalone_network_plugin_segmentation_id`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``standalone_network_plugin_allowed_ip_ranges`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``standalone_network_plugin_mtu`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The deprecated ``migration_readonly_rules_support`` is longer recognized.  All manila back ends are now required to support read only access rules.
+
+    - The deprecated Dell-EMC PowerMax ``vmax_server_container`` option is no longer recognized.  Use ``powermax_server_container`` instead.
+
+    - The deprecated Dell-EMC PowerMax ``vmax_share_data_pools`` option is no longer recognized.  Use ``powermax_share_data_pools`` instead.
+
+    - The deprecated Dell-EMC PowerMax ``vmax_ethernet_ports`` option is no longer recognized.  Use ``powermax_ethernet_ports`` instead.
+
+    - The deprecated Dell-EMC Unity ``emc_nas_server_pool`` option is no longer recognized.  Use ``unity_server_meta_pool`` instead.
+
+    - The deprecated Dell-EMC Unity ``emc_nas_pool_names`` option is no longer recognized.  Use ``unity_share_data_pools`` instead.
+
+    - The deprecated Dell-EMC Unity ``emc_interface_ports`` option is no longer recognized.  Use ``unity_ethernet_ports`` instead.
+
+    - The deprecated Dell-EMC Unity ``emc_nas_server_container`` option has no effect and has been removed.
+
+    - The deprecated Dell-EMC VNX ``emc_nas_server_container`` option has been removed.  Use ``vnx_server_container`` instead.
+
+    - The deprecated Dell-EMC VNX ``emc_nas_pool_names`` option has been removed.  Use ``vnx_share_data_pools`` instead.
+
+    - The deprecated Dell-EMC VNX ``emc_interface_ports`` option has been removed.  Use ``vnx_ethernet_ports`` instead.
+
+    - The deprecated GlusterFS ``glusterfs_native_server_password`` option has been removed.  Use ``glusterfs_server_password`` instead.
+
+    - The deprecated GlusterFS ``glusterfs_native_path_to_private_key`` option has been removed.  Use ``glusterfs_path_to_private_key`` instead.
+
+    - The deprecated GlusterFS ``glusterfs_targets`` option has been removed.  Use ``glusterfs_servers`` instead.
+
+    - The deprecated Hitachi HNAS ``hds_hnas_driver_helper`` option has been removed.  Use ``hitachi_hnas_driver_helper`` instead.
+
+    - The deprecated Hitachi HNAS ``hds_hnas_ip`` option has been removed.  Use ``hitachi_hnas_ip`` instead.
+
+    - The deprecated Hitachi HNAS ``hds_hnas_user`` option has been removed.  Use ``hitachi_hnas_user`` instead.
+
+    - The deprecated Hitachi HNAS ``hds_hnas_password`` option has been removed.  Use ``hitachi_hnas_password`` instead.
+
+    - The deprecated Hitachi HNAS ``hds_hnas_evs_id`` option has been removed.  Use ``hitachi_evs_id`` instead.
+
+    - The deprecated Hitachi HNAS ``hds_hnas_file_system_name`` option has been removed.  Use ``hitachi_hnas_file_system_name`` instead.
+
+    - The deprecated Hitachi HNAS ``hds_hnas_cluster_admin_ip0`` option has been removed.  Use ``hitachi_hnas_cluster_admin_ip0`` instead.
+    -  The deprecated Hitachi HNAS ``hds_hnas_stalled_job_timeout`` option has been removed.  Use ``hitachi_hnas_stalled_job_timeout`` instead.
+
+    - The deprecated Hitachi HNAS ``hds_hnas_driver_helper`` option has been removed.  Use ``hitachi_hnas_driver_helper`` instead.
+
+    - The deprecated Hitachi HNAS ``hds_hnas_allow_cifs_snapshot_while_mounted`` option has been removed.  Use ``hitachi_allow_cifs_snapshot_while_mounted`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_api_url`` option has been removed.  Use ``hpe3par_api_url`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_username`` option has been removed.  Use ``hpe3par_username`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_password`` option has been removed.  Use ``hpe3par_password`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_san_ip`` option has been removed.  Use ``hpe3par_san_ip`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_san_login`` option has been removed.  Use ``hpe3par_san_login`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_san_password`` option has been removed.  Use ``hpe3par_san_password`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_san_ssh_port`` option has been removed.  Use ``hpe3par_san_ssh_port`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_fpg`` option has been removed.  Use ``hpe3par_fpg`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_fstore_per_share`` option has been removed.  Use ``hpe3par_fstore_per_share`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_debug`` option has been removed.  Use ``hpe3par_debug`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_cifs_admin_access_username`` option has been removed.  Use ``hpe3par_cifs_admin_access_username`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_cifs_admin_access_password`` option has been removed.  Use ``hpe3par_cifs_admin_access_password`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_cifs_admin_access_domain`` option has been removed.  Use ``hpe3par_cifs_admin_access_domain`` instead.
+
+    - The deprecated HPE 3PAR ``hp3par_share_mount_path`` option has been removed.  Use ``hpe3par_share_mount_path`` instead.
+
+    - The deprecated IBM GPFS ``knfs_export_options`` option had no effect and has been removed.
+
+    - The deprecated Netapp ``netapp_nas_server_hostname`` option has been removed.  Use ``netapp_server_hostname`` instead.
+
+    - The deprecated Netapp ``netapp_nas_transport_type`` option has been removed.  Use ``netapp_transport_type`` instead.
+
+    - The deprecated Netapp ``netapp_nas_login`` option has been removed.  Use ``netapp_login`` instead.
+
+    - The deprecated Netapp ``netapp_nas_password`` option has been removed.  Use ``netapp_password`` instead.
+
+    - The deprecated Netapp ``netapp_nas_volume_name_template`` option has been removed.  Use ``netapp_volume_name_template`` instead.
+
+    - The deprecated Netapp ``netapp_root_volume_name`` option has been removed.  Use ``netapp_root_volume`` instead.
+
+    - The deprecated Nexenta ``nexenta_host`` option has been removed.  Use ``nexenta_nas_host`` instead.
+
+    - The ``enable_pre_hooks`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``enable_post_hooks`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``enable_periodic_hooks`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``enable_pre_hooks_errors`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``enable_post_hooks_errors`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``periodic_hooks_interval`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``hook_drivers`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``automatic_share_server_cleanup`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``unused_share_server_cleanup_interval`` option can no longer be set in the [DEFAULT] section.  Set it in backend sections instead.
+
+    - The ``cinder_cross_az_attach`` option can no longer be set in the [DEFAULT] section.  Use ``cross_az_attach`` in the [CINDER] section instead.
+
+    - The ``cinder_http_retries`` option can no longer be set in the [DEFAULT] section.  Use ``http_retries`` in the [CINDER] section instead.
+
+    - The ``cinder_cross_az_attach`` option can no longer be set in the [DEFAULT] section.  Use ``cross_az_attach`` in the [CINDER] section instead.

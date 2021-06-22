@@ -26,13 +26,11 @@ from manila import utils
 standalone_network_plugin_opts = [
     cfg.StrOpt(
         'standalone_network_plugin_gateway',
-        help="Gateway address that should be used. Required.",
-        deprecated_group='DEFAULT'),
+        help="Gateway address that should be used. Required."),
     cfg.StrOpt(
         'standalone_network_plugin_mask',
         help="Network mask that will be used. Can be either decimal "
-             "like '24' or binary like '255.255.255.0'. Required.",
-        deprecated_group='DEFAULT'),
+             "like '24' or binary like '255.255.255.0'. Required."),
     cfg.StrOpt(
         'standalone_network_plugin_network_type',
         help="Network type, such as 'flat', 'vlan', 'vxlan' or 'gre'. "
@@ -40,15 +38,13 @@ standalone_network_plugin_opts = [
              "It will be assigned to share-network and share drivers will be "
              "able to use this for network interfaces within provisioned "
              "share servers. Optional.",
-        choices=['flat', 'vlan', 'vxlan', 'gre'],
-        deprecated_group='DEFAULT'),
+        choices=['flat', 'vlan', 'vxlan', 'gre']),
     cfg.IntOpt(
         'standalone_network_plugin_segmentation_id',
         help="Set it if network has segmentation (VLAN, VXLAN, etc...). "
              "It will be assigned to share-network and share drivers will be "
              "able to use this for network interfaces within provisioned "
-             "share servers. Optional. Example: 1001",
-        deprecated_group='DEFAULT'),
+             "share servers. Optional. Example: 1001"),
     cfg.ListOpt(
         'standalone_network_plugin_allowed_ip_ranges',
         help="Can be IP address, range of IP addresses or list of addresses "
@@ -56,14 +52,12 @@ standalone_network_plugin_opts = [
              "to be used. If empty, then will be assumed that all host "
              "addresses from network can be used. Optional. "
              "Examples: 10.0.0.10 or 10.0.0.10-10.0.0.20 or "
-             "10.0.0.10-10.0.0.20,10.0.0.30-10.0.0.40,10.0.0.50",
-        deprecated_group='DEFAULT'),
+             "10.0.0.10-10.0.0.20,10.0.0.30-10.0.0.40,10.0.0.50"),
     cfg.IntOpt(
         'standalone_network_plugin_mtu',
         default=1500,
         help="Maximum Transmission Unit (MTU) value of the network. Default "
-             "value is 1500.",
-        deprecated_group='DEFAULT'),
+             "value is 1500."),
 ]
 
 CONF = cfg.CONF

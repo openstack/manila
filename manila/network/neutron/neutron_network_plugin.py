@@ -35,8 +35,7 @@ neutron_network_plugin_opts = [
         'neutron_physical_net_name',
         help="The name of the physical network to determine which net segment "
              "is used. This opt is optional and will only be used for "
-             "networks configured with multiple segments.",
-        deprecated_group='DEFAULT'),
+             "networks configured with multiple segments."),
 ]
 
 neutron_single_network_plugin_opts = [
@@ -44,15 +43,13 @@ neutron_single_network_plugin_opts = [
         'neutron_net_id',
         help="Default Neutron network that will be used for share server "
              "creation. This opt is used only with "
-             "class 'NeutronSingleNetworkPlugin'.",
-        deprecated_group='DEFAULT'),
+             "class 'NeutronSingleNetworkPlugin'."),
     cfg.StrOpt(
         'neutron_subnet_id',
         help="Default Neutron subnet that will be used for share server "
              "creation. Should be assigned to network defined in opt "
              "'neutron_net_id'. This opt is used only with "
-             "class 'NeutronSingleNetworkPlugin'.",
-        deprecated_group='DEFAULT'),
+             "class 'NeutronSingleNetworkPlugin'."),
 ]
 
 neutron_bind_network_plugin_opts = [

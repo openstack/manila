@@ -39,7 +39,6 @@ LOG = log.getLogger(__name__)
 glusterfs_volume_mapped_opts = [
     cfg.ListOpt('glusterfs_servers',
                 default=[],
-                deprecated_name='glusterfs_targets',
                 help='List of GlusterFS servers that can be used to create '
                      'shares. Each GlusterFS server should be of the form '
                      '[remoteuser@]<volserver>, and they are assumed to '

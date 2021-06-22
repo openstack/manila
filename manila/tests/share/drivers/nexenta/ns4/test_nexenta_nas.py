@@ -82,7 +82,7 @@ class TestNexentaNasDriver(test.TestCase):
             return getattr(self.cfg, opt)
 
         self.cfg = mock.Mock(spec=conf.Configuration)
-        self.cfg.nexenta_host = '1.1.1.1'
+        self.cfg.nexenta_nas_host = '1.1.1.1'
         super(TestNexentaNasDriver, self).setUp()
 
         self.ctx = context.get_admin_context()
@@ -110,7 +110,7 @@ class TestNexentaNasDriver(test.TestCase):
         self.cfg.driver_handles_share_servers = False
 
         self.request_params = RequestParams(
-            'http', self.cfg.nexenta_host, self.cfg.nexenta_rest_port,
+            'http', self.cfg.nexenta_nas_host, self.cfg.nexenta_rest_port,
             '/rest/nms/', self.cfg.nexenta_user, self.cfg.nexenta_password)
 
         self.drv = nexenta_nas.NexentaNasDriver(configuration=self.cfg)
@@ -185,7 +185,8 @@ class TestNexentaNasDriver(test.TestCase):
         }
         self.cfg.nexenta_thin_provisioning = False
         path = '%s/%s/%s' % (self.volume, self.share, share['name'])
-        location = {'path': '%s:/volumes/%s' % (self.cfg.nexenta_host, path)}
+        location = {'path': '%s:/volumes/%s' % (
+            self.cfg.nexenta_nas_host, path)}
         post.return_value = FakeResponse()
 
         self.assertEqual([location],
@@ -268,7 +269,8 @@ class TestNexentaNasDriver(test.TestCase):
         snapshot = {'name': 'sn1', 'share_name': share['name']}
         post.return_value = FakeResponse()
         path = '%s/%s/%s' % (self.volume, self.share, share['name'])
-        location = {'path': '%s:/volumes/%s' % (self.cfg.nexenta_host, path)}
+        location = {'path': '%s:/volumes/%s' % (
+            self.cfg.nexenta_nas_host, path)}
         snapshot_name = '%s/%s/%s@%s' % (
             self.volume, self.share, snapshot['share_name'], snapshot['name'])
 

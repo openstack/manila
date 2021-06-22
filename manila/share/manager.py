@@ -68,8 +68,7 @@ share_manager_opts = [
                 default=[],
                 help='Driver(s) to perform some additional actions before and '
                      'after share driver actions and on a periodic basis. '
-                     'Default is [].',
-                deprecated_group='DEFAULT'),
+                     'Default is [].'),
     cfg.BoolOpt('delete_share_server_with_last_share',
                 default=False,
                 help='Whether share servers will '
@@ -84,8 +83,7 @@ share_manager_opts = [
                 help='If set to True, then Manila will delete all share '
                      'servers which were unused more than specified time .'
                      'If set to False - automatic deletion of share servers '
-                     'will be disabled.',
-                deprecated_group='DEFAULT'),
+                     'will be disabled.'),
     cfg.IntOpt('unused_share_server_cleanup_interval',
                default=10,
                help='Unallocated share servers reclamation time interval '
@@ -96,7 +94,6 @@ share_manager_opts = [
                     'defines. This value reflects the shortest time Manila '
                     'will wait for a share server to go unutilized before '
                     'deleting it.',
-               deprecated_group='DEFAULT',
                min=10,
                max=60),
     cfg.IntOpt('replica_state_update_interval',

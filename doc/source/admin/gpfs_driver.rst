@@ -76,8 +76,6 @@ The following configuration parameters are optional:
 - `gpfs_nfs_server_type` = <KNFS|GNFS>
 - `gpfs_nfs_server_list` = <list of the fully qualified NFS server names>
 - `gpfs_ssh_port` = <ssh port number>
-- `knfs_export_options` = <options to use when creating a share using kernel
-                          NFS server>
 
 Restart of :term:`manila-share` service is needed for the configuration changes to take
 effect.

@@ -37,8 +37,6 @@ AUTH_OBJ = None
 nova_opts = [
     cfg.StrOpt('api_microversion',
                default='2.10',
-               deprecated_group="DEFAULT",
-               deprecated_name="nova_api_microversion",
                help='Version of Nova API to be used.'),
     cfg.StrOpt('endpoint_type',
                default='publicURL',
@@ -47,28 +45,11 @@ nova_opts = [
                help='Region name for connecting to nova.'),
     ]
 
-# These fallback options can be removed in/after 9.0.0 (Train)
-deprecated_opts = {
-    'cafile': [
-        cfg.DeprecatedOpt('ca_certificates_file', group="DEFAULT"),
-        cfg.DeprecatedOpt('ca_certificates_file', group=NOVA_GROUP),
-        cfg.DeprecatedOpt('nova_ca_certificates_file', group="DEFAULT"),
-        cfg.DeprecatedOpt('nova_ca_certificates_file', group=NOVA_GROUP),
-    ],
-    'insecure': [
-        cfg.DeprecatedOpt('api_insecure', group="DEFAULT"),
-        cfg.DeprecatedOpt('api_insecure', group=NOVA_GROUP),
-        cfg.DeprecatedOpt('nova_api_insecure', group="DEFAULT"),
-        cfg.DeprecatedOpt('nova_api_insecure', group=NOVA_GROUP),
-    ],
-}
-
 CONF = cfg.CONF
 CONF.register_opts(core_opts)
 CONF.register_opts(nova_opts, NOVA_GROUP)
 ks_loading.register_session_conf_options(CONF,
-                                         NOVA_GROUP,
-                                         deprecated_opts=deprecated_opts)
+                                         NOVA_GROUP)
 ks_loading.register_auth_conf_options(CONF, NOVA_GROUP)
 
 

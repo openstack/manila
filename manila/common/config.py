@@ -99,17 +99,6 @@ global_opts = [
                help='Default share type to use.'),
     cfg.StrOpt('default_share_group_type',
                help='Default share group type to use.'),
-    cfg.ListOpt('memcached_servers',
-                help='Memcached servers or None for in process cache.',
-                deprecated_reason="The config option is not used. It should "
-                "not be confused with [keystone_authtoken]/memcached_servers.",
-                deprecated_for_removal=True),
-    cfg.StrOpt('share_usage_audit_period',
-               default='month',
-               deprecated_for_removal=True,
-               help='Time period to generate share usages for.  '
-                    'Time period must be hour, day, month or year.',
-               deprecated_reason="The config option is not used."),
     cfg.StrOpt('rootwrap_config',
                help='Path to the rootwrap configuration file to use for '
                     'running commands as root.'),
