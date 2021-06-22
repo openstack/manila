@@ -161,5 +161,3 @@ upgrade:
     - The ``cinder_cross_az_attach`` option can no longer be set in the [DEFAULT] section.  Use ``cross_az_attach`` in the [CINDER] section instead.
 
     - The ``cinder_http_retries`` option can no longer be set in the [DEFAULT] section.  Use ``http_retries`` in the [CINDER] section instead.
-
-    - The ``cinder_cross_az_attach`` option can no longer be set in the [DEFAULT] section.  Use ``cross_az_attach`` in the [CINDER] section instead.
