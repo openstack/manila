@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp driver: fixed an issue with the ONTAP 9.8 and older, for scoped
+    account users, where the operation of deleting a replica was not working,
+    but returned a message of success. For more details, please refer to
+    `launchpad bug #1934889 <https://bugs.launchpad.net/manila/+bug/1934889>`_
