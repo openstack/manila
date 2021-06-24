@@ -5989,10 +5989,22 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
         self.assertEqual(expected, result)
 
-    @ddt.data(True, False)
-    def test_release_snapmirror(self, relationship_info_only):
-
+    @ddt.data({'snapmirror_destinations_list': [],
+               'relationship_info_only': True},
+              {'snapmirror_destinations_list': [],
+               'relationship_info_only': False},
+              {'snapmirror_destinations_list':
+               [{'relationship-id': 'fake_relationship_id'}],
+               'relationship_info_only': True},
+              {'snapmirror_destinations_list':
+               [{'relationship-id': 'fake_relationship_id'}],
+               'relationship_info_only': False})
+    @ddt.unpack
+    def test_release_snapmirror_vol(self, relationship_info_only,
+                                    snapmirror_destinations_list):
         self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'get_snapmirror_destinations',
+                         mock.Mock(return_value=snapmirror_destinations_list))
 
         self.client.release_snapmirror_vol(
             fake.SM_SOURCE_VSERVER, fake.SM_SOURCE_VOLUME,
@@ -6000,21 +6012,31 @@ class NetAppClientCmodeTestCase(test.TestCase):
             relationship_info_only=relationship_info_only)
 
         snapmirror_release_args = {
-            'query': {
-                'snapmirror-destination-info': {
-                    'source-vserver': fake.SM_SOURCE_VSERVER,
-                    'source-volume': fake.SM_SOURCE_VOLUME,
-                    'destination-vserver': fake.SM_DEST_VSERVER,
-                    'destination-volume': fake.SM_DEST_VOLUME,
-                    'relationship-info-only': ('true' if relationship_info_only
-                                               else 'false'),
-                }
-            }
+            'source-vserver': fake.SM_SOURCE_VSERVER,
+            'source-volume': fake.SM_SOURCE_VOLUME,
+            'destination-vserver': fake.SM_DEST_VSERVER,
+            'destination-volume': fake.SM_DEST_VOLUME,
+            'relationship-info-only': ('true' if relationship_info_only
+                                       else 'false'),
         }
 
-        self.client.send_request.assert_has_calls([
-            mock.call('snapmirror-release-iter', snapmirror_release_args,
-                      enable_tunneling=True)])
+        if len(snapmirror_destinations_list) == 1:
+            snapmirror_release_args['relationship-id'] = 'fake_relationship_id'
+
+        self.client.send_request.assert_called_once_with(
+            'snapmirror-release', snapmirror_release_args,
+            enable_tunneling=True)
+
+    def test_release_snapmirror_vol_error_not_unique_relationship(self):
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'get_snapmirror_destinations',
+                         mock.Mock(return_value=[{'relationship-id': 'fake'},
+                                                 {'relationship-id': 'fake'}]))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.release_snapmirror_vol,
+                          fake.SM_SOURCE_VSERVER, fake.SM_SOURCE_VOLUME,
+                          fake.SM_DEST_VSERVER, fake.SM_DEST_VOLUME)
 
     def test_release_snapmirror_svm(self):
         self.mock_object(self.client, 'send_request')
@@ -6027,9 +6049,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 'snapmirror-destination-info': {
                     'source-location': fake.SM_SOURCE_VSERVER + ':',
                     'destination-location': fake.SM_DEST_VSERVER + ':',
-                    'relationship-info-only': 'false'
-                }
-            }
+                },
+            },
+            'relationship-info-only': 'false',
         }
         self.client.send_request.assert_has_calls([
             mock.call('snapmirror-release-iter', snapmirror_release_args,

@@ -3731,11 +3731,36 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                dest_vserver, dest_volume,
                                relationship_info_only=False):
         """Removes a SnapMirror relationship on the source endpoint."""
-        self._release_snapmirror(source_vserver=source_vserver,
-                                 dest_vserver=dest_vserver,
-                                 source_volume=source_volume,
-                                 dest_volume=dest_volume,
-                                 relationship_info_only=relationship_info_only)
+
+        self._ensure_snapmirror_v2()
+        snapmirror_destinations_list = self.get_snapmirror_destinations(
+            source_vserver=source_vserver,
+            dest_vserver=dest_vserver,
+            source_volume=source_volume,
+            dest_volume=dest_volume,
+            desired_attributes=['relationship-id'])
+
+        if len(snapmirror_destinations_list) > 1:
+            msg = ("Expected snapmirror relationship to be unique. "
+                   "List returned: %s." % snapmirror_destinations_list)
+            raise exception.NetAppException(msg)
+
+        api_args = self._build_snapmirror_request(
+            source_vserver=source_vserver, dest_vserver=dest_vserver,
+            source_volume=source_volume, dest_volume=dest_volume)
+        api_args['relationship-info-only'] = (
+            'true' if relationship_info_only else 'false')
+
+        # NOTE(nahimsouza): This verification is needed because an empty list
+        # is returned in snapmirror_destinations_list when a single share is
+        # created with only one replica and this replica is deleted, thus there
+        # will be no relationship-id in that case.
+        if len(snapmirror_destinations_list) == 1:
+            api_args['relationship-id'] = (
+                snapmirror_destinations_list[0]['relationship-id'])
+
+        self.send_request('snapmirror-release', api_args,
+                          enable_tunneling=True)
 
     @na_utils.trace
     def release_snapmirror_svm(self, source_vserver, dest_vserver,
@@ -3743,30 +3768,18 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         """Removes a SnapMirror relationship on the source endpoint."""
         source_path = source_vserver + ':'
         dest_path = dest_vserver + ':'
-        self._release_snapmirror(source_path=source_path, dest_path=dest_path,
-                                 relationship_info_only=relationship_info_only,
-                                 enable_tunneling=False)
-
-    @na_utils.trace
-    def _release_snapmirror(self, source_path=None, dest_path=None,
-                            source_vserver=None, dest_vserver=None,
-                            source_volume=None, dest_volume=None,
-                            relationship_info_only=False,
-                            enable_tunneling=True):
-        """Removes a SnapMirror relationship on the source endpoint."""
         dest_info = self._build_snapmirror_request(
-            source_path, dest_path, source_vserver,
-            dest_vserver, source_volume, dest_volume)
+            source_path=source_path, dest_path=dest_path)
         self._ensure_snapmirror_v2()
-        dest_info['relationship-info-only'] = (
-            'true' if relationship_info_only else 'false')
         api_args = {
             'query': {
                 'snapmirror-destination-info': dest_info
-            }
+            },
+            'relationship-info-only': (
+                'true' if relationship_info_only else 'false'),
         }
         self.send_request('snapmirror-release-iter', api_args,
-                          enable_tunneling=enable_tunneling)
+                          enable_tunneling=False)
 
     @na_utils.trace
     def quiesce_snapmirror_vol(self, source_vserver, source_volume,
