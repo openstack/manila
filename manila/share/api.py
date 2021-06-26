@@ -48,7 +48,7 @@ share_api_opts = [
                      'be performed on the same host. '
                      'If set to True, then scheduler will be used.'
                      'When enabling this option make sure that filter '
-                     'CreateShareFromSnapshot is enabled and to have hosts '
+                     'CreateFromSnapshotFilter is enabled and to have hosts '
                      'reporting replication_domain option.'
                 )
 ]
