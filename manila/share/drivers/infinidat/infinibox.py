@@ -330,7 +330,7 @@ class InfiniboxShareDriver(driver.ShareDriver):
         # try treating the ip_address parameter as a range of IP addresses:
         ip_network = ipaddress.ip_network(ip_address, strict=False)
         ip_network_hosts = list(ip_network.hosts())
-        if len(ip_network_hosts) == 0:    # /32, single IP address
+        if len(ip_network_hosts) < 2:    # /32, single IP address
             return ip_address.split('/')[0]
         return "{}-{}".format(ip_network_hosts[0], ip_network_hosts[-1])
 
