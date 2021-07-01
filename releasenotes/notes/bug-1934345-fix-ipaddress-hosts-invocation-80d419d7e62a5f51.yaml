@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The Infinidat driver's been fixed to process single IP Addresses (/32)
+    correctly. See `bug 1934345 <https://launchpad.net/bugs/1934345>`_ for
+    more details.
