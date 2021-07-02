@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Authentication errors when loading service clients of OpenStack Compute
+    (nova), OpenStack Image (glance), OpenStack Volume (cinder) and OpenStack
+    Networking (neutron) services are now handled in a better manner.

@@ -67,9 +67,7 @@ def cinderclient(context):
     global AUTH_OBJ
     if not AUTH_OBJ:
         AUTH_OBJ = client_auth.AuthClientLoader(
-            client_class=cinder_client.Client,
-            exception_module=cinder_exception,
-            cfg_group=CINDER_GROUP)
+            client_class=cinder_client.Client, cfg_group=CINDER_GROUP)
     return AUTH_OBJ.get_client(context,
                                retries=CONF[CINDER_GROUP].http_retries,
                                endpoint_type=CONF[CINDER_GROUP].endpoint_type,

@@ -56,6 +56,10 @@ class GlanceClientTestCase(test.TestCase):
         with test_utils.create_temp_config_with_opts(data):
             glance.glanceclient(fake_context)
 
+        mock_client_loader.assert_called_once_with(
+            client_class=glance.glance_client.Client,
+            cfg_group=glance.GLANCE_GROUP
+        )
         mock_client_loader.return_value.get_client.assert_called_once_with(
             fake_context,
             version=data['glance']['api_microversion'],
