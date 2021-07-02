@@ -911,7 +911,7 @@ class ShareAPITestCase(test.TestCase):
                                                expected_exception):
         share, share_data = self._setup_create_mocks()
 
-        quota.CONF.set_default("quota_per_share_gigabytes", 5)
+        quota.CONF.set_default("per_share_gigabytes", 5, 'quota')
         share_data['size'] = 20
 
         usages = {'per_share_gigabytes': {'reserved': 0, 'in_use': 0}}
@@ -2867,7 +2867,7 @@ class ShareAPITestCase(test.TestCase):
                           self.api.extend, self.context, share, new_size)
 
     def test_extend_share_over_per_share_quota(self):
-        quota.CONF.set_default("quota_per_share_gigabytes", 5)
+        quota.CONF.set_default("per_share_gigabytes", 5, 'quota')
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
                                       size=4)
         new_size = 6

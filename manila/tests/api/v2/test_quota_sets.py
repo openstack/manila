@@ -80,7 +80,7 @@ class QuotaSetsControllerTest(test.TestCase):
     def test_defaults(self, quotas):
         req = _get_request(True, False)
         for k, v in quotas.items():
-            CONF.set_default('quota_' + k, v)
+            CONF.set_default(k, v, 'quota')
         expected = {
             'quota_set': {
                 'id': self.project_id,
@@ -174,7 +174,7 @@ class QuotaSetsControllerTest(test.TestCase):
             },
         }}
         for k, v in quotas.items():
-            CONF.set_default('quota_' + k, v)
+            CONF.set_default(k, v, 'quota')
 
         result = self.controller.detail(req, self.project_id)
 
@@ -206,7 +206,7 @@ class QuotaSetsControllerTest(test.TestCase):
             }
         }
         for k, v in quotas.items():
-            CONF.set_default('quota_' + k, v)
+            CONF.set_default(k, v, 'quota')
 
         result = self.controller.show(req, self.project_id)
 
@@ -355,7 +355,7 @@ class QuotaSetsControllerTest(test.TestCase):
             }
         }
         for k, v in quotas.items():
-            CONF.set_default('quota_' + k, v)
+            CONF.set_default(k, v, 'quota')
 
         result = self.controller.detail(request, self.project_id)
 
@@ -388,7 +388,7 @@ class QuotaSetsControllerTest(test.TestCase):
             }
         }
         for k, v in quotas.items():
-            CONF.set_default('quota_' + k, v)
+            CONF.set_default(k, v, 'quota')
 
         result = self.controller.show(request, self.project_id)
 
@@ -416,7 +416,7 @@ class QuotaSetsControllerTest(test.TestCase):
             quota_sets.db, 'share_type_get_by_name_or_id',
             mock.Mock(
                 return_value={'id': 'fake_st_id', 'name': 'fake_st_name'}))
-        CONF.set_default('quota_shares', 789)
+        CONF.set_default('shares', 789, 'quota')
         body = {'quota_set': {'tenant_id': self.project_id, 'shares': 788}}
         expected = {
             'quota_set': {
@@ -479,7 +479,7 @@ class QuotaSetsControllerTest(test.TestCase):
                 return_value={'id': 'fake_st_id', 'name': 'fake_st_name'}))
         req = self._get_share_type_request_object(microversion)
 
-        CONF.set_default('quota_shares', 789)
+        CONF.set_default('shares', 789, 'quota')
         body = {'quota_set': {'tenant_id': self.project_id, 'shares': 788}}
         expected = {
             'quota_set': {
@@ -558,7 +558,7 @@ class QuotaSetsControllerTest(test.TestCase):
 
     def test_user_quota_can_not_be_bigger_than_tenant_quota(self):
         value = 777
-        CONF.set_default('quota_shares', value)
+        CONF.set_default('shares', value, 'quota')
         body = {
             'quota_set': {
                 'tenant_id': self.project_id,

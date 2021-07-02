@@ -29,54 +29,79 @@ from manila import exception
 
 LOG = log.getLogger(__name__)
 
+QUOTA_GROUP = 'quota'
+
 quota_opts = [
-    cfg.IntOpt('quota_shares',
+    cfg.IntOpt('shares',
                default=50,
-               help='Number of shares allowed per project.'),
-    cfg.IntOpt('quota_snapshots',
+               help='Number of shares allowed per project.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_shares'),
+    cfg.IntOpt('snapshots',
                default=50,
-               help='Number of share snapshots allowed per project.'),
-    cfg.IntOpt('quota_gigabytes',
+               help='Number of share snapshots allowed per project.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_snapshots'),
+    cfg.IntOpt('gigabytes',
                default=1000,
-               help='Number of share gigabytes allowed per project.'),
-    cfg.IntOpt('quota_per_share_gigabytes',
+               help='Number of share gigabytes allowed per project.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_gigabytes'),
+    cfg.IntOpt('per_share_gigabytes',
                default=-1,
-               help='Max size allowed per share, in gigabytes.'),
-    cfg.IntOpt('quota_snapshot_gigabytes',
+               help='Max size allowed per share, in gigabytes.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_per_share_gigabytes'),
+    cfg.IntOpt('snapshot_gigabytes',
                default=1000,
-               help='Number of snapshot gigabytes allowed per project.'),
-    cfg.IntOpt('quota_share_networks',
+               help='Number of snapshot gigabytes allowed per project.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_snapshot_gigabytes'),
+    cfg.IntOpt('share_networks',
                default=10,
-               help='Number of share-networks allowed per project.'),
-    cfg.IntOpt('quota_share_replicas',
+               help='Number of share-networks allowed per project.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_share_networks'),
+    cfg.IntOpt('share_replicas',
                default=100,
-               help='Number of share-replicas allowed per project.'),
-    cfg.IntOpt('quota_replica_gigabytes',
+               help='Number of share-replicas allowed per project.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_share_replicas'),
+    cfg.IntOpt('replica_gigabytes',
                default=1000,
-               help='Number of replica gigabytes allowed per project.'),
-
-    cfg.IntOpt('quota_share_groups',
+               help='Number of replica gigabytes allowed per project.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_replica_gigabytes'),
+    cfg.IntOpt('share_groups',
                default=50,
-               help='Number of share groups allowed.'),
-    cfg.IntOpt('quota_share_group_snapshots',
+               help='Number of share groups allowed.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_share_groups'),
+    cfg.IntOpt('share_group_snapshots',
                default=50,
-               help='Number of share group snapshots allowed.'),
-
+               help='Number of share group snapshots allowed.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_share_group_snapshots'),
     cfg.IntOpt('reservation_expire',
                default=86400,
-               help='Number of seconds until a reservation expires.'),
+               help='Number of seconds until a reservation expires.',
+               deprecated_group='DEFAULT'),
     cfg.IntOpt('until_refresh',
                default=0,
-               help='Count of reservations until usage is refreshed.'),
+               help='Count of reservations until usage is refreshed.',
+               deprecated_group='DEFAULT'),
     cfg.IntOpt('max_age',
                default=0,
-               help='Number of seconds between subsequent usage refreshes.'),
-    cfg.StrOpt('quota_driver',
+               help='Number of seconds between subsequent usage refreshes.',
+               deprecated_group='DEFAULT'),
+    cfg.StrOpt('driver',
                default='manila.quota.DbQuotaDriver',
-               help='Default driver to use for quota checks.'), ]
+               help='Default driver to use for quota checks.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_driver'), ]
 
 CONF = cfg.CONF
-CONF.register_opts(quota_opts)
+CONF.register_opts(quota_opts, QUOTA_GROUP)
 
 
 class DbQuotaDriver(object):
@@ -473,7 +498,7 @@ class DbQuotaDriver(object):
 
         # Set up the reservation expiration
         if expire is None:
-            expire = CONF.reservation_expire
+            expire = CONF.quota.reservation_expire
         if isinstance(expire, six.integer_types):
             expire = datetime.timedelta(seconds=expire)
         if isinstance(expire, datetime.timedelta):
@@ -511,7 +536,7 @@ class DbQuotaDriver(object):
         #            have to do the work there.
         return db.quota_reserve(
             context, resources, quotas, user_quotas, share_type_quotas,
-            deltas, expire, CONF.until_refresh, CONF.max_age,
+            deltas, expire, CONF.quota.until_refresh, CONF.quota.max_age,
             project_id=project_id, user_id=user_id,
             share_type_id=share_type_id, overquota_allowed=overquota_allowed)
 
@@ -669,7 +694,7 @@ class BaseResource(object):
     def default(self):
         """Return the default value of the quota."""
 
-        return CONF[self.flag] if self.flag else -1
+        return CONF.quota[self.flag] if self.flag else -1
 
 
 class ReservableResource(BaseResource):
@@ -768,7 +793,7 @@ class QuotaEngine(object):
         if self.__driver:
             return self.__driver
         if not self._driver_cls:
-            self._driver_cls = CONF.quota_driver
+            self._driver_cls = CONF.quota.driver
         if isinstance(self._driver_cls, six.string_types):
             self._driver_cls = importutils.import_object(self._driver_cls)
         self.__driver = self._driver_cls
@@ -1132,23 +1157,23 @@ QUOTAS = QuotaEngine()
 
 
 resources = [
-    ReservableResource('shares', '_sync_shares', 'quota_shares'),
-    ReservableResource('snapshots', '_sync_snapshots', 'quota_snapshots'),
-    ReservableResource('gigabytes', '_sync_gigabytes', 'quota_gigabytes'),
+    ReservableResource('shares', '_sync_shares', 'shares'),
+    ReservableResource('snapshots', '_sync_snapshots', 'snapshots'),
+    ReservableResource('gigabytes', '_sync_gigabytes', 'gigabytes'),
     ReservableResource('per_share_gigabytes', None,
-                       'quota_per_share_gigabytes'),
+                       'per_share_gigabytes'),
     ReservableResource('snapshot_gigabytes', '_sync_snapshot_gigabytes',
-                       'quota_snapshot_gigabytes'),
+                       'snapshot_gigabytes'),
     ReservableResource('share_networks', '_sync_share_networks',
-                       'quota_share_networks'),
+                       'share_networks'),
     ReservableResource('share_groups', '_sync_share_groups',
-                       'quota_share_groups'),
+                       'share_groups'),
     ReservableResource('share_group_snapshots', '_sync_share_group_snapshots',
-                       'quota_share_group_snapshots'),
+                       'share_group_snapshots'),
     ReservableResource('share_replicas', '_sync_share_replicas',
-                       'quota_share_replicas'),
+                       'share_replicas'),
     ReservableResource('replica_gigabytes', '_sync_replica_gigabytes',
-                       'quota_replica_gigabytes'),
+                       'replica_gigabytes'),
 ]
 
 
