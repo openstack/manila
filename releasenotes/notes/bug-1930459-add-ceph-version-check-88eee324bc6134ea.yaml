@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    A Ceph version check has been added as part of this change to address
+    the absense of the mon-mgr target in Ceph Nautilus. With this change,
+    Ceph Nautilus users can leverage their storage backend with the
+    OpenStack manila Wallaby release.

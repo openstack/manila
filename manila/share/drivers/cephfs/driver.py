@@ -16,6 +16,7 @@
 
 import ipaddress
 import json
+import re
 import socket
 import sys
 
@@ -37,6 +38,7 @@ from manila.share.drivers import helpers as driver_helpers
 
 rados = None
 json_command = None
+ceph_default_target = None
 
 
 def setup_rados():
@@ -150,7 +152,7 @@ class RadosError(Exception):
 
 
 def rados_command(rados_client, prefix=None, args=None, json_obj=False,
-                  target=('mon-mgr', )):
+                  target=None):
     """Safer wrapper for ceph_argparse.json_command
 
     Raises error exception instead of relying on caller to check return
@@ -166,6 +168,9 @@ def rados_command(rados_client, prefix=None, args=None, json_obj=False,
             If json is False, return a decoded string (the data returned by
             ceph command)
     """
+
+    target = target or ceph_default_target
+
     if args is None:
         args = {}
 
@@ -216,7 +221,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         self._rados_client = None
         # name of the filesystem/volume used by the driver
         self._volname = None
-
+        self._ceph_mon_version = None
         self.configuration.append_config_values(cephfs_opts)
 
         try:
@@ -236,6 +241,8 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         else:
             protocol_helper_class = getattr(
                 sys.modules[__name__], 'NFSProtocolHelper')
+
+        self.setup_default_ceph_cmd_target()
 
         self.protocol_helper = protocol_helper_class(
             self._execute,
@@ -311,6 +318,44 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             self.rados_client, "fs subvolume getpath", argdict)
 
         return self.protocol_helper.get_export_locations(share, subvolume_path)
+
+    def setup_default_ceph_cmd_target(self):
+        global ceph_default_target
+        if not ceph_default_target:
+            ceph_default_target = ('mon-mgr', )
+
+            try:
+                ceph_major_version = self.ceph_mon_version['major']
+            except Exception:
+                msg = _("Error reading ceph version to set the default "
+                        "target. Please check your Ceph backend is reachable.")
+                raise exception.ShareBackendException(msg=msg)
+
+            if ceph_major_version == '14':
+                ceph_default_target = ('mgr', )
+            elif ceph_major_version < '14':
+                msg = _("CephFSDriver does not support Ceph "
+                        "cluster version less than 14.x (Nautilus)")
+                raise exception.ShareBackendException(msg=msg)
+
+    @property
+    def ceph_mon_version(self):
+        if self._ceph_mon_version:
+            return self._ceph_mon_version
+
+        self._ceph_mon_version = {}
+
+        output = rados_command(self.rados_client, "version", target=('mon', ))
+
+        version_str = json.loads(output)["version"]
+
+        p = re.compile(r"ceph version (\d+)\.(\d+)\.(\d+)")
+        major, minor, extra = p.match(version_str).groups()
+        self._ceph_mon_version['major'] = major
+        self._ceph_mon_version['minor'] = minor
+        self._ceph_mon_version['extra'] = extra
+
+        return self._ceph_mon_version
 
     @property
     def rados_client(self):
