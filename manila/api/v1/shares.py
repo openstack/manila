@@ -267,8 +267,10 @@ class ShareMixin(object):
         availability_zone = share.get('availability_zone')
         if availability_zone:
             try:
-                availability_zone_id = db.availability_zone_get(
-                    context, availability_zone).id
+                availability_zone_db = db.availability_zone_get(
+                    context, availability_zone)
+                availability_zone_id = availability_zone_db.id
+                availability_zone = availability_zone_db.name
             except exception.AvailabilityZoneNotFound as e:
                 raise exc.HTTPNotFound(explanation=six.text_type(e))
 
@@ -284,10 +286,11 @@ class ShareMixin(object):
                         "share group's one (%(sg_az)s).") % {
                             's_az': availability_zone_id, 'sg_az': sg_az_id}
                 raise exception.InvalidInput(msg)
-            availability_zone_id = sg_az_id
+            availability_zone = db.availability_zone_get(
+                context, sg_az_id).name
 
         kwargs = {
-            'availability_zone': availability_zone_id,
+            'availability_zone': availability_zone,
             'metadata': share.get('metadata'),
             'is_public': share.get('is_public', False),
             'share_group_id': share_group_id,
