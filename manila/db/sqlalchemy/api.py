@@ -42,6 +42,7 @@ from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import sqlalchemy
+from sqlalchemy import and_
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -2022,8 +2023,8 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
             models.ShareTypeExtraSpecs.share_type_id ==
             models.ShareInstance.share_type_id)
         for k, v in filters['extra_specs'].items():
-            query = query.filter(or_(models.ShareTypeExtraSpecs.key == k,
-                                     models.ShareTypeExtraSpecs.value == v))
+            query = query.filter(and_(models.ShareTypeExtraSpecs.key == k,
+                                 models.ShareTypeExtraSpecs.value == v))
 
     return query
 
