@@ -14,8 +14,9 @@
 #    under the License.
 """ Utility module for EMC Unity Manila Driver """
 
+import fnmatch
+
 from oslo_log import log
-from oslo_utils import fnmatch
 from oslo_utils import units
 
 from manila import exception
