@@ -86,7 +86,7 @@ class SchedulerManager(manager.Manager):
         self.message_api = message_api.API()
         super(SchedulerManager, self).__init__(*args, **kwargs)
 
-    def init_host(self):
+    def init_host_with_rpc(self):
         ctxt = context.get_admin_context()
         self.request_service_capabilities(ctxt)
 
