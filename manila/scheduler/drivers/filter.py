@@ -25,6 +25,8 @@ from oslo_log import log
 
 from manila import exception
 from manila.i18n import _
+from manila.message import api as message_api
+from manila.message import message_field
 from manila.scheduler.drivers import base
 from manila.scheduler import scheduler_options
 from manila.share import share_types
@@ -40,6 +42,7 @@ class FilterScheduler(base.Scheduler):
         self.cost_function_cache = None
         self.options = scheduler_options.SchedulerOptions()
         self.max_attempts = self._max_attempts()
+        self.message_api = message_api.API()
 
     def _get_configuration_options(self):
         """Fetch options dictionary. Broken out for testing."""
@@ -141,6 +144,13 @@ class FilterScheduler(base.Scheduler):
                     " and specify in request body or"
                     " set default_share_type in manila.conf.")
             LOG.error(msg)
+            self.message_api.create(
+                context,
+                message_field.Action.CREATE,
+                context.project_id,
+                resource_type=message_field.Resource.SHARE,
+                resource_id=request_spec.get('share_id', None),
+                detail=message_field.Detail.NO_DEFAULT_SHARE_TYPE)
             raise exception.InvalidParameterValue(err=msg)
 
         share_type['extra_specs'] = share_type.get('extra_specs') or {}

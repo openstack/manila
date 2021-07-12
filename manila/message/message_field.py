@@ -80,22 +80,29 @@ class Detail(object):
           "set to extending_error. This action cannot be re-attempted until "
           "the status has been rectified. Contact your administrator to "
           "determine the cause of this failure."))
+    NO_DEFAULT_SHARE_TYPE = (
+        '024',
+        _("No default share type has been made available. "
+          "You must specify a share type for creating shares."))
 
-    ALL = (UNKNOWN_ERROR,
-           NO_VALID_HOST,
-           UNEXPECTED_NETWORK,
-           NO_SHARE_SERVER,
-           NO_ACTIVE_AVAILABLE_REPLICA,
-           NO_ACTIVE_REPLICA,
-           FILTER_AVAILABILITY,
-           FILTER_CAPABILITIES,
-           FILTER_CAPACITY,
-           FILTER_DRIVER,
-           FILTER_IGNORE,
-           FILTER_JSON,
-           FILTER_RETRY,
-           FILTER_REPLICATION,
-           DRIVER_FAILED_EXTEND)
+    ALL = (
+        UNKNOWN_ERROR,
+        NO_VALID_HOST,
+        UNEXPECTED_NETWORK,
+        NO_SHARE_SERVER,
+        NO_ACTIVE_AVAILABLE_REPLICA,
+        NO_ACTIVE_REPLICA,
+        FILTER_AVAILABILITY,
+        FILTER_CAPABILITIES,
+        FILTER_CAPACITY,
+        FILTER_DRIVER,
+        FILTER_IGNORE,
+        FILTER_JSON,
+        FILTER_RETRY,
+        FILTER_REPLICATION,
+        DRIVER_FAILED_EXTEND,
+        NO_DEFAULT_SHARE_TYPE
+    )
 
     # Exception and detail mappings
     EXCEPTION_DETAIL_MAPPINGS = {

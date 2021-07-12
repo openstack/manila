@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    New user message now alerts users when attempting to create a new
+    share without identifying a share type, either through request body
+    or by setting a default share type. See `bug #1870280
+    <https://bugs.launchpad.net/manila/+bug/1870280>`_ for more details.
