@@ -112,6 +112,10 @@ class Detail(object):
           "be unsupported. You may try again with a different access level "
           "or access type."))
 
+    NO_DEFAULT_SHARE_TYPE = (
+        '024',
+        _("No default share type has been made available. "
+          "You must specify a share type for creating shares."))
     ALL = (
         UNKNOWN_ERROR,
         NO_VALID_HOST,
@@ -134,6 +138,7 @@ class Detail(object):
         DRIVER_FAILED_SHRINK,
         FORBIDDEN_CLIENT_ACCESS,
         UNSUPPORTED_CLIENT_ACCESS,
+        NO_DEFAULT_SHARE_TYPE
     )
 
     # Exception and detail mappings
