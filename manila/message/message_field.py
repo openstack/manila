@@ -127,6 +127,10 @@ class Detail(object):
           "insufficient privileges or wrong credentials. Please check your "
           "user, password, ou and domain."))
 
+    NO_DEFAULT_SHARE_TYPE = (
+        '024',
+        _("No default share type has been made available. "
+          "You must specify a share type for creating shares."))
     ALL = (
         UNKNOWN_ERROR,
         NO_VALID_HOST,
@@ -151,6 +155,7 @@ class Detail(object):
         UNSUPPORTED_CLIENT_ACCESS,
         UNSUPPORTED_ADD_UDPATE_SECURITY_SERVICE,
         SECURITY_SERVICE_FAILED_AUTH,
+        NO_DEFAULT_SHARE_TYPE,
     )
 
     # Exception and detail mappings
