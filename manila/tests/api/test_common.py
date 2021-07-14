@@ -279,7 +279,7 @@ class MiscFunctionsTest(test.TestCase):
         actual_params = common.validate_public_share_policy(
             'fake_context', api_params)
 
-        self.assertDictMatch(api_params, actual_params)
+        self.assertDictEqual(api_params, actual_params)
         policy.check_policy.assert_not_called()
 
     @ddt.data('foo', 123, 'all', None)
@@ -313,7 +313,7 @@ class MiscFunctionsTest(test.TestCase):
         actual_params = common.validate_public_share_policy(
             'fake_context', api_params, api='update')
 
-        self.assertDictMatch({'is_public': False, 'size': '16'}, actual_params)
+        self.assertDictEqual({'is_public': False, 'size': '16'}, actual_params)
         policy.check_policy.assert_called_once_with(
             'fake_context', 'share', 'set_public_share', do_raise=False)
 
@@ -325,7 +325,7 @@ class MiscFunctionsTest(test.TestCase):
         actual_params = common.validate_public_share_policy(
             'fake_context', api_params, api='update')
 
-        self.assertDictMatch({'is_public': True, 'size': '16'}, actual_params)
+        self.assertDictEqual({'is_public': True, 'size': '16'}, actual_params)
         policy.check_policy.assert_called_once_with(
             'fake_context', 'share', 'set_public_share', do_raise=False)
 

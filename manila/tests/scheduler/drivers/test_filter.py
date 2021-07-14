@@ -60,7 +60,7 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         retval = sched._format_filter_properties(
             fake_context, {}, request_spec)
 
-        self.assertDictMatch(fake_type, retval[0]['resource_type'])
+        self.assertDictEqual(fake_type, retval[0]['resource_type'])
         self.assertIn('replication_domain', retval[0])
         # no "share_proto" was specified in the request_spec
         self.assertNotIn('storage_protocol', retval[0])
@@ -89,7 +89,7 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         retval = sched._format_filter_properties(
             fake_context, {}, request_spec)
 
-        self.assertDictMatch(fake_type, retval[0]['resource_type'])
+        self.assertDictEqual(fake_type, retval[0]['resource_type'])
         self.assertNotIn('share_backend_name',
                          retval[0]['share_type']['extra_specs'])
 
@@ -118,7 +118,7 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         filter_spec = retval['share_type']['extra_specs']['storage_protocol']
         expected_spec = 'NFS_CIFS' if spec_present else '<in> CEPHFS'
         self.assertEqual(expected_spec, filter_spec)
-        self.assertDictMatch(fake_type, retval['resource_type'])
+        self.assertDictEqual(fake_type, retval['resource_type'])
 
     def test_create_share_no_hosts(self):
         # Ensure empty hosts/child_zones result in NoValidHosts exception.

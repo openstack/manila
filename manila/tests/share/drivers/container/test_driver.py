@@ -592,7 +592,7 @@ class ContainerShareDriverTestCase(test.TestCase):
         expected_result = {
             'share_updates': share_updates,
         }
-        self.assertDictMatch(expected_result,
+        self.assertDictEqual(expected_result,
                              self._driver.share_server_migration_complete(
                                  self._context, source_server, dest_server,
                                  shares_list, None, None))

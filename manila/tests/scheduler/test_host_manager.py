@@ -107,7 +107,7 @@ class HostManagerTestCase(test.TestCase):
 
     def test_update_service_capabilities_for_shares(self):
         service_states = self.host_manager.service_states
-        self.assertDictMatch(service_states, {})
+        self.assertDictEqual(service_states, {})
         host1_share_capabs = dict(free_capacity_gb=4321, timestamp=1)
         host2_share_capabs = dict(free_capacity_gb=5432, timestamp=1)
         host3_share_capabs = dict(free_capacity_gb=6543, timestamp=1)
@@ -135,7 +135,7 @@ class HostManagerTestCase(test.TestCase):
             'host2': host2_share_capabs,
             'host3': host3_share_capabs,
         }
-        self.assertDictMatch(service_states, expected)
+        self.assertDictEqual(service_states, expected)
 
     def test_get_all_host_states_share(self):
         fake_context = context.RequestContext('user', 'project')
@@ -1139,7 +1139,7 @@ class PoolStateTestCase(test.TestCase):
         self.assertEqual('pool0', fake_pool.pool_name)
         self.assertEqual(1024, fake_pool.total_capacity_gb)
         self.assertEqual(512, fake_pool.free_capacity_gb)
-        self.assertDictMatch(share_capability, fake_pool.capabilities)
+        self.assertDictEqual(share_capability, dict(fake_pool.capabilities))
 
         if 'thin_provisioning' in share_capability:
             thin_provisioned = scheduler_utils.thin_provisioning(

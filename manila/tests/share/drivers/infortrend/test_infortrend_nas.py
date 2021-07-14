@@ -162,7 +162,7 @@ class InfortrendNASDriverTestCase(test.TestCase):
 
         self._iftnas._check_channels_status()
 
-        self.assertDictMatch(expect_channel_dict, self._iftnas.channel_dict)
+        self.assertDictEqual(expect_channel_dict, self._iftnas.channel_dict)
 
     @mock.patch.object(infortrend_nas.LOG, 'warning')
     def test_channel_status_down(self, log_warning):
@@ -198,7 +198,7 @@ class InfortrendNASDriverTestCase(test.TestCase):
 
         self._iftnas._check_pools_setup()
 
-        self.assertDictMatch(expect_pool_dict, self._iftnas.pool_dict)
+        self.assertDictEqual(expect_pool_dict, self._iftnas.pool_dict)
 
     def test_unknow_pools_setup(self):
         self.fake_conf.set_default(

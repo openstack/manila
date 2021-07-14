@@ -461,7 +461,7 @@ class ShareTypesTestCase(test.TestCase):
             extra_specs[constants.ExtraSpecs.AVAILABILITY_ZONES] = spec_value
             expected_specs['availability_zones'] = 'az 1,az2,az 3'
 
-        self.assertDictMatch(expected_specs,
+        self.assertDictEqual(expected_specs,
                              share_types.sanitize_extra_specs(extra_specs))
 
     def test_add_access(self):

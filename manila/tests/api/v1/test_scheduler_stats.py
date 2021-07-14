@@ -102,7 +102,7 @@ class SchedulerStatsControllerTestCase(test.TestCase):
             ]
         }
 
-        self.assertDictMatch(result, expected)
+        self.assertDictEqual(result, expected)
         mock_get_pools.assert_called_once_with(self.ctxt, filters={},
                                                cached=True)
         self.mock_policy_check.assert_called_once_with(
@@ -149,7 +149,7 @@ class SchedulerStatsControllerTestCase(test.TestCase):
 
         result = self.controller._pools(req, action, False)
 
-        self.assertDictMatch(result, expected_result)
+        self.assertDictEqual(result, expected_result)
         mock_get_pools.assert_called_once_with(self.ctxt,
                                                filters=expected_filters,
                                                cached=True)
@@ -212,7 +212,7 @@ class SchedulerStatsControllerTestCase(test.TestCase):
 
         result = self.controller._pools(req, action, True)
 
-        self.assertDictMatch(result, expected_result)
+        self.assertDictEqual(result, expected_result)
         mock_get_pools.assert_called_once_with(self.ctxt,
                                                filters=expected_filters,
                                                cached=True)
@@ -274,7 +274,7 @@ class SchedulerStatsControllerTestCase(test.TestCase):
                 {'capabilities': {'snapshot_support': True}})
             expected_filters.pop('share_type', None)
 
-        self.assertDictMatch(result, expected)
+        self.assertDictEqual(result, expected)
         mock_get_pools.assert_called_once_with(self.ctxt,
                                                filters=expected_filters,
                                                cached=True)
@@ -328,7 +328,7 @@ class SchedulerStatsControllerTestCase(test.TestCase):
             ],
         }
 
-        self.assertDictMatch(expected, result)
+        self.assertDictEqual(expected, result)
         mock_get_pools.assert_called_once_with(self.ctxt, filters={},
                                                cached=True)
         self.mock_policy_check.assert_called_once_with(
