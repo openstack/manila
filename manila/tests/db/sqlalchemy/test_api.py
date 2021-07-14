@@ -377,6 +377,34 @@ class ShareDatabaseAPITestCase(test.TestCase):
         self.assertEqual(1, len(actual_result))
         self.assertEqual(share['id'], actual_result[0].id)
 
+    def test_share_in_recycle_bin_filter_all_by_share_server(self):
+        share_network = db_utils.create_share_network()
+        share_server = db_utils.create_share_server(
+            share_network_id=share_network['id'])
+        share = db_utils.create_share(share_server_id=share_server['id'],
+                                      share_network_id=share_network['id'],
+                                      is_soft_deleted=True)
+
+        actual_result = db_api.get_shares_in_recycle_bin_by_share_server(
+            self.ctxt, share_server['id'])
+
+        self.assertEqual(1, len(actual_result))
+        self.assertEqual(share['id'], actual_result[0].id)
+
+    def test_share_in_recycle_bin_filter_all_by_share_network(self):
+        share_network = db_utils.create_share_network()
+        share_server = db_utils.create_share_server(
+            share_network_id=share_network['id'])
+        share = db_utils.create_share(share_server_id=share_server['id'],
+                                      share_network_id=share_network['id'],
+                                      is_soft_deleted=True)
+
+        actual_result = db_api.get_shares_in_recycle_bin_by_network(
+            self.ctxt, share_network['id'])
+
+        self.assertEqual(1, len(actual_result))
+        self.assertEqual(share['id'], actual_result[0].id)
+
     def test_share_filter_all_by_share_group(self):
         group = db_utils.create_share_group()
         share = db_utils.create_share(share_group_id=group['id'])
@@ -500,6 +528,18 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         instances = db_api.share_instances_get_all(
             self.ctxt, filters={'export_location_' + type: value})
+
+        self.assertEqual(1, len(instances))
+        instance = instances[0]
+
+        self.assertEqual('share-%s' % instance['id'], instance['name'])
+
+    def test_share_instance_get_all_by_is_soft_deleted(self):
+        db_utils.create_share()
+        db_utils.create_share(is_soft_deleted=True)
+
+        instances = db_api.share_instances_get_all(
+            self.ctxt, filters={'is_soft_deleted': True})
 
         self.assertEqual(1, len(instances))
         instance = instances[0]
@@ -653,6 +693,25 @@ class ShareDatabaseAPITestCase(test.TestCase):
         self.assertEqual(shares[0]['id'], result[0]['id'])
         self.assertEqual(1, len(result))
 
+    def test_share_get_all_expired(self):
+        now_time = timeutils.utcnow()
+        time_delta = datetime.timedelta(seconds=3600)
+        time1 = now_time + time_delta
+        time2 = now_time - time_delta
+        share1 = db_utils.create_share(status=constants.STATUS_AVAILABLE,
+                                       is_soft_deleted=False,
+                                       scheduled_to_be_deleted_at=None)
+        share2 = db_utils.create_share(status=constants.STATUS_AVAILABLE,
+                                       is_soft_deleted=True,
+                                       scheduled_to_be_deleted_at=time1)
+        share3 = db_utils.create_share(status=constants.STATUS_AVAILABLE,
+                                       is_soft_deleted=True,
+                                       scheduled_to_be_deleted_at=time2)
+        shares = [share1, share2, share3]
+        result = db_api.get_all_expired_shares(self.ctxt)
+        self.assertEqual(1, len(result))
+        self.assertEqual(shares[2]['id'], result[0]['id'])
+
     @ddt.data(
         ({'status': constants.STATUS_AVAILABLE}, 'status',
          [constants.STATUS_AVAILABLE, constants.STATUS_ERROR]),
@@ -669,7 +728,9 @@ class ShareDatabaseAPITestCase(test.TestCase):
         ({'display_name': 'fake_share_name'}, 'display_name',
          ['fake_share_name', 'share_name']),
         ({'display_description': 'fake description'}, 'display_description',
-         ['fake description', 'description'])
+         ['fake description', 'description']),
+        ({'is_soft_deleted': True}, 'is_soft_deleted',
+         [True, False])
     )
     @ddt.unpack
     def test_share_get_all_with_filters(self, filters, key, share_values):
@@ -1046,6 +1107,20 @@ class ShareDatabaseAPITestCase(test.TestCase):
             self.assertIsNotNone(
                 db_api.share_instance_access_get(
                     self.ctxt, rule_id, instance['id']))
+
+    def test_share_soft_delete(self):
+        share = db_utils.create_share()
+        db_api.share_soft_delete(self.ctxt, share['id'])
+        share = db_api.share_get(self.ctxt, share['id'])
+
+        self.assertEqual(share['is_soft_deleted'], True)
+
+    def test_share_restore(self):
+        share = db_utils.create_share(is_soft_deleted=True)
+        db_api.share_restore(self.ctxt, share['id'])
+        share = db_api.share_get(self.ctxt, share['id'])
+
+        self.assertEqual(share['is_soft_deleted'], False)
 
 
 @ddt.ddt
@@ -4293,6 +4368,10 @@ class ShareResourcesAPITestCase(test.TestCase):
         else:
             new_host = 'new-controller-X'
         resources = [  # noqa
+            # share
+            db_utils.create_share_without_instance(
+                id=share_id,
+                status=constants.STATUS_AVAILABLE),
             # share instances
             db_utils.create_share_instance(
                 share_id=share_id,
@@ -4382,6 +4461,10 @@ class ShareResourcesAPITestCase(test.TestCase):
                                   + expected_updates['groups']
                                   + expected_updates['servers'])
         resources = [  # noqa
+            # share
+            db_utils.create_share_without_instance(
+                id=share_id,
+                status=constants.STATUS_AVAILABLE),
             # share instances
             db_utils.create_share_instance(
                 share_id=share_id,

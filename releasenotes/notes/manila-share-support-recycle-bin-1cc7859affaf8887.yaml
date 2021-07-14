@@ -1,0 +1,17 @@
+---
+features:
+  - |
+    Manila now supports a "recycle bin" for shares. End users can soft-delete
+    their shares and have the ability to restore them for a specified interval.
+    This interval defaults to 7 days and is configurable via
+    "soft_deleted_share_retention_time". After this time has elapsed,
+    soft-deleted shares are automatically cleaned up.
+upgrade:
+  - |
+    The share entity now contains two new fields: ``is_soft_deleted`` and
+    ``scheduled_to_be_deleted_at``. The ``is_soft_deleted`` will be used to
+    identify shares in the recycle bin.. The ``scheduled_to_be_deleted_at``
+    field to show when the share will be deleted automatically. A new parameter
+    called ``is_soft_deleted`` was added to the share list API, and users will
+    be able to query shares and filter out the ones that are currently in the
+    recycle bin.

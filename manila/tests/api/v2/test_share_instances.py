@@ -67,19 +67,25 @@ class ShareInstancesAPITest(test.TestCase):
         self.assertEqual([i['id'] for i in expected],
                          [i['id'] for i in actual])
 
-    @ddt.data("2.3", "2.34", "2.35")
+    @ddt.data("2.3", "2.34", "2.35", "2.69")
     def test_index(self, version):
         url = '/share_instances'
         if (api_version_request.APIVersionRequest(version) >=
                 api_version_request.APIVersionRequest('2.35')):
             url += "?export_location_path=/admin/export/location"
+        if (api_version_request.APIVersionRequest(version) >=
+                api_version_request.APIVersionRequest('2.69')):
+            url += "&is_soft_deleted=true"
         req = self._get_request(url, version=version)
         req_context = req.environ['manila.context']
+        last_instance = [db_utils.create_share(size=1,
+                                               is_soft_deleted=True).instance]
         share_instances_count = 3
-        test_instances = [
+        other_instances = [
             db_utils.create_share(size=s + 1).instance
             for s in range(0, share_instances_count)
         ]
+        test_instances = other_instances + last_instance
 
         db.share_export_locations_update(
             self.admin_context, test_instances[0]['id'],
@@ -88,8 +94,13 @@ class ShareInstancesAPITest(test.TestCase):
         actual_result = self.controller.index(req)
 
         if (api_version_request.APIVersionRequest(version) >=
+                api_version_request.APIVersionRequest('2.69')):
+            test_instances = []
+        elif (api_version_request.APIVersionRequest(version) >=
                 api_version_request.APIVersionRequest('2.35')):
             test_instances = test_instances[:1]
+        else:
+            test_instances = other_instances
         self._validate_ids_in_share_instances_list(
             test_instances, actual_result['share_instances'])
         self.mock_policy_check.assert_called_once_with(

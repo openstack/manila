@@ -500,3 +500,97 @@ Request example
 
 .. literalinclude:: samples/share-actions-revert-to-snapshot-request.json
    :language: javascript
+
+
+Soft delete share (since API v2.69)
+===================================
+
+.. rest_method::  POST /v2/shares/{share_id}/action
+
+.. versionadded:: 2.69
+
+Soft delete a share to recycle bin.
+
+Preconditions
+
+- Share status must be ``available``, ``error`` or ``inactive``
+
+- Share can't have any snapshot.
+
+- Share can't have a share group snapshot.
+
+- Share can't have dependent replicas.
+
+- You cannot soft delete share that already is in the Recycle Bin..
+
+- You cannot soft delete a share that doesn't belong to your project.
+
+- You cannot soft delete a share is busy with an active task.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - share_id: share_id
+
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-actions-soft-delete-request.json
+   :language: javascript
+
+
+Restore share (since API v2.69)
+===============================
+
+.. rest_method::  POST /v2/shares/{share_id}/action
+
+.. versionadded:: 2.69
+
+Restore a share from recycle bin.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 401
+   - 403
+   - 404
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - share_id: share_id
+
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-actions-restore-request.json
+   :language: javascript

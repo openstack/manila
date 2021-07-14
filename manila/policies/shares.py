@@ -317,6 +317,30 @@ shares_policies = [
         deprecated_rule=deprecated_share_delete
     ),
     policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'soft_delete',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Soft Delete a share.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/shares/{share_id}/action',
+            }
+        ],
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'restore',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Restore a share.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/shares/{share_id}/action',
+            }
+        ],
+    ),
+    policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
         check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
         scope_types=['system', 'project'],

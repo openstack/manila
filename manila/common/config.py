@@ -127,6 +127,11 @@ global_opts = [
                 help="Specify list of protocols to be allowed for share "
                      "creation. Available values are '%s'" %
                      list(constants.SUPPORTED_SHARE_PROTOCOLS)),
+    cfg.IntOpt('soft_deleted_share_retention_time',
+               default=604800,
+               help='Maximum time (in seconds) to keep a share in the recycle '
+                    'bin, it will be deleted automatically after this amount '
+                    'of time has elapsed.'),
 ]
 
 CONF.register_opts(global_opts)

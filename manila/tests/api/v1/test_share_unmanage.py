@@ -121,6 +121,28 @@ class ShareUnmanageTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'unmanage')
 
+    def test_unmanage_share_that_has_been_soft_deleted(self):
+        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
+                     instance={}, is_soft_deleted=True)
+        mock_api_unmanage = self.mock_object(self.controller.share_api,
+                                             'unmanage')
+        mock_db_snapshots_get = self.mock_object(
+            self.controller.share_api.db, 'share_snapshot_get_all_for_share')
+        self.mock_object(
+            self.controller.share_api, 'get',
+            mock.Mock(return_value=share))
+
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller.unmanage, self.request, share['id'])
+
+        self.assertFalse(mock_api_unmanage.called)
+        self.assertFalse(mock_db_snapshots_get.called)
+        self.controller.share_api.get.assert_called_once_with(
+            self.request.environ['manila.context'], share['id'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'unmanage')
+
     def test_unmanage_share_based_on_share_server(self):
         share = dict(instance=dict(share_server_id='foo_id'), id='bar_id')
         self.mock_object(

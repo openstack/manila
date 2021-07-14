@@ -376,4 +376,11 @@ ____
 
 2.68
 ----
-  Added admin only capabilities to share metadata API
+  Added admin only capabilities to share metadata API.
+
+2.69
+----
+  Manila support Recycle Bin. Soft delete share to Recycle Bin: ``POST
+  /v2/shares/{share_id}/action  {"soft_delete": null}``. List shares in
+  Recycle Bin: `` GET /v2/shares?is_soft_deleted=true``. Restore share from
+  Recycle Bin: `` POST /v2/shares/{share_id}/action  {'restore': null}``.

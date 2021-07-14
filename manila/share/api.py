@@ -988,11 +988,14 @@ class API(base.Base):
         # share server here, when manage/unmanage operations will be supported
         # for driver_handles_share_servers=True mode
 
-    def manage_snapshot(self, context, snapshot_data, driver_options):
-        try:
-            share = self.db.share_get(context, snapshot_data['share_id'])
-        except exception.NotFound:
-            raise exception.ShareNotFound(share_id=snapshot_data['share_id'])
+    def manage_snapshot(self, context, snapshot_data, driver_options,
+                        share=None):
+        if not share:
+            try:
+                share = self.db.share_get(context, snapshot_data['share_id'])
+            except exception.NotFound:
+                raise exception.ShareNotFound(
+                    share_id=snapshot_data['share_id'])
 
         if share['has_replicas']:
             msg = (_("Share %s has replicas. Snapshots of this share cannot "
@@ -1157,6 +1160,52 @@ class API(base.Base):
         # Send revert API to active replica host
         self.share_rpcapi.revert_to_snapshot(
             context, share, snapshot, active_replica['host'], reservations)
+
+    @policy.wrap_check_policy('share')
+    def soft_delete(self, context, share):
+        """Soft delete share."""
+        share_id = share['id']
+
+        if share['is_soft_deleted']:
+            msg = _("The share has been soft deleted already")
+            raise exception.InvalidShare(reason=msg)
+
+        statuses = (constants.STATUS_AVAILABLE, constants.STATUS_ERROR,
+                    constants.STATUS_INACTIVE)
+        if share['status'] not in statuses:
+            msg = _("Share status must be one of %(statuses)s") % {
+                "statuses": statuses}
+            raise exception.InvalidShare(reason=msg)
+
+        # If the share has more than one replica,
+        # it can't be soft deleted until the additional replicas are removed.
+        if share.has_replicas:
+            msg = _("Share %s has replicas. Remove the replicas before "
+                    "soft deleting the share.") % share_id
+            raise exception.Conflict(err=msg)
+
+        snapshots = self.db.share_snapshot_get_all_for_share(context, share_id)
+        if len(snapshots):
+            msg = _("Share still has %d dependent snapshots.") % len(snapshots)
+            raise exception.InvalidShare(reason=msg)
+
+        share_group_snapshot_members_count = (
+            self.db.count_share_group_snapshot_members_in_share(
+                context, share_id))
+        if share_group_snapshot_members_count:
+            msg = (
+                _("Share still has %d dependent share group snapshot "
+                  "members.") % share_group_snapshot_members_count)
+            raise exception.InvalidShare(reason=msg)
+
+        self._check_is_share_busy(share)
+        self.db.share_soft_delete(context, share_id)
+
+    @policy.wrap_check_policy('share')
+    def restore(self, context, share):
+        """Restore share."""
+        share_id = share['id']
+        self.db.share_restore(context, share_id)
 
     @policy.wrap_check_policy('share')
     def delete(self, context, share, force=False):
@@ -1859,7 +1908,7 @@ class API(base.Base):
             'display_description', 'display_description~', 'snapshot_id',
             'status', 'share_type_id', 'project_id', 'export_location_id',
             'export_location_path', 'limit', 'offset', 'host',
-            'share_network_id']
+            'share_network_id', 'is_soft_deleted']
 
         for key in filter_keys:
             if key in search_opts:
@@ -2516,9 +2565,18 @@ class API(base.Base):
         shares = self.db.share_get_all_by_share_server(
             context, share_server['id'])
 
+        shares_in_recycle_bin = (
+            self.db.get_shares_in_recycle_bin_by_share_server(
+                context, share_server['id']))
+
         if len(shares) == 0:
             msg = _("Share server %s does not have shares."
                     % share_server['id'])
+            raise exception.InvalidShareServer(reason=msg)
+
+        if shares_in_recycle_bin:
+            msg = _("Share server %s has at least one share that has "
+                    "been soft deleted." % share_server['id'])
             raise exception.InvalidShareServer(reason=msg)
 
         # We only handle "active" share servers for now
@@ -2983,6 +3041,14 @@ class API(base.Base):
                 admin_ctx = manila_context.get_admin_context()
                 # Make sure the host is in the list of available hosts
                 utils.validate_service_host(admin_ctx, backend_host)
+
+            shares_in_recycle_bin = (
+                self.db.get_shares_in_recycle_bin_by_network(
+                    context, share_network['id']))
+            if shares_in_recycle_bin:
+                msg = _("Some shares with share network %(sn_id)s have "
+                        "been soft deleted.") % {'sn_id': share_network['id']}
+                raise exception.InvalidShareNetwork(reason=msg)
 
             shares = self.get_all(
                 context, search_opts={'share_network_id': share_network['id']})

@@ -3044,3 +3044,43 @@ class AddUpdateSecurityServiceControlFields(BaseMigrationChecks):
         self.test_case.assertRaises(
             sa_exc.NoSuchTableError,
             utils.load_table, 'async_operation_data', engine)
+
+
+@map_to_migration('1946cb97bb8d')
+class ShareIsSoftDeleted(BaseMigrationChecks):
+
+    def setup_upgrade_data(self, engine):
+        # Setup shares
+        share_fixture = [{'id': 'foo_share_id1'}, {'id': 'bar_share_id1'}]
+        share_table = utils.load_table('shares', engine)
+        for fixture in share_fixture:
+            engine.execute(share_table.insert(fixture))
+
+        # Setup share instances
+        si_fixture = [
+            {'id': 'foo_share_instance_id_oof1',
+             'share_id': share_fixture[0]['id'],
+             'cast_rules_to_readonly': False},
+            {'id': 'bar_share_instance_id_rab1',
+             'share_id': share_fixture[1]['id'],
+             'cast_rules_to_readonly': False},
+        ]
+        si_table = utils.load_table('share_instances', engine)
+        for fixture in si_fixture:
+            engine.execute(si_table.insert(fixture))
+
+    def check_upgrade(self, engine, data):
+        s_table = utils.load_table('shares', engine)
+        for s in engine.execute(s_table.select()):
+            self.test_case.assertTrue(hasattr(s, 'is_soft_deleted'))
+            self.test_case.assertTrue(hasattr(s,
+                                              'scheduled_to_be_deleted_at'))
+            self.test_case.assertIn(s['is_soft_deleted'], (0, False))
+            self.test_case.assertIsNone(s['scheduled_to_be_deleted_at'])
+
+    def check_downgrade(self, engine):
+        s_table = utils.load_table('shares', engine)
+        for s in engine.execute(s_table.select()):
+            self.test_case.assertFalse(hasattr(s, 'is_soft_deleted'))
+            self.test_case.assertFalse(hasattr(s,
+                                               'scheduled_to_be_deleted_at'))

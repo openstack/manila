@@ -47,6 +47,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.sql.expression import false
 from sqlalchemy.sql.expression import literal
 from sqlalchemy.sql.expression import true
 from sqlalchemy.sql import func
@@ -1652,6 +1653,16 @@ def share_instances_get_all(context, filters=None, session=None):
                 models.ShareInstanceExportLocations.uuid ==
                 export_location_id)
 
+    query = query.join(
+        models.Share,
+        models.Share.id ==
+        models.ShareInstance.share_id)
+    is_soft_deleted = filters.get('is_soft_deleted')
+    if is_soft_deleted:
+        query = query.filter(models.Share.is_soft_deleted == true())
+    else:
+        query = query.filter(models.Share.is_soft_deleted == false())
+
     instance_ids = filters.get('instance_ids')
     if instance_ids:
         query = query.filter(models.ShareInstance.id.in_(instance_ids))
@@ -1987,7 +1998,7 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
     if filters is None:
         filters = {}
 
-    share_filter_keys = ['share_group_id', 'snapshot_id']
+    share_filter_keys = ['share_group_id', 'snapshot_id', 'is_soft_deleted']
     instance_filter_keys = ['share_server_id', 'status', 'share_type_id',
                             'host', 'share_network_id']
     share_filters = {}
@@ -2196,6 +2207,11 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     if share_server_id:
         filters['share_server_id'] = share_server_id
 
+    # if not specified is_soft_deleted filter, default is False, to get
+    # shares not in recycle bin.
+    if 'is_soft_deleted' not in filters:
+        filters['is_soft_deleted'] = False
+
     query = _process_share_filters(
         query, filters, project_id, is_public=is_public)
 
@@ -2226,6 +2242,25 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
         return count, query
 
     return query
+
+
+@require_admin_context
+def get_all_expired_shares(context):
+    query = (
+        _share_get_query(context).join(
+            models.ShareInstance,
+            models.ShareInstance.share_id == models.Share.id
+        )
+    )
+    filters = {"is_soft_deleted": True}
+    query = _process_share_filters(query, filters=filters)
+    scheduled_deleted_attr = getattr(models.Share,
+                                     'scheduled_to_be_deleted_at', None)
+    now_time = timeutils.utcnow()
+    query = query.filter(scheduled_deleted_attr.op('<=')(now_time))
+    result = query.all()
+
+    return result
 
 
 @require_admin_context
@@ -2303,6 +2338,19 @@ def share_get_all_by_share_server(context, share_server_id, filters=None,
 
 
 @require_context
+def get_shares_in_recycle_bin_by_share_server(
+        context, share_server_id, filters=None, sort_key=None, sort_dir=None):
+    """Returns list of shares in recycle bin with given share server."""
+    if filters is None:
+        filters = {}
+    filters["is_soft_deleted"] = True
+    query = _share_get_all_with_filters(
+        context, share_server_id=share_server_id, filters=filters,
+        sort_key=sort_key, sort_dir=sort_dir)
+    return query
+
+
+@require_context
 def share_get_all_by_share_server_with_count(
         context, share_server_id, filters=None, sort_key=None, sort_dir=None):
     """Returns list of shares with given share server."""
@@ -2310,6 +2358,19 @@ def share_get_all_by_share_server_with_count(
         context, share_server_id=share_server_id, filters=filters,
         sort_key=sort_key, sort_dir=sort_dir, show_count=True)
     return count, query
+
+
+@require_context
+def get_shares_in_recycle_bin_by_network(
+        context, share_network_id, filters=None, sort_key=None, sort_dir=None):
+    """Returns list of shares in recycle bin with given share network."""
+    if filters is None:
+        filters = {}
+    filters["share_network_id"] = share_network_id
+    filters["is_soft_deleted"] = True
+    query = _share_get_all_with_filters(context, filters=filters,
+                                        sort_key=sort_key, sort_dir=sort_dir)
+    return query
 
 
 @require_context
@@ -2328,6 +2389,40 @@ def share_delete(context, share_id):
 
         (session.query(models.ShareMetadata).
             filter_by(share_id=share_id).soft_delete())
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def share_soft_delete(context, share_id):
+    session = get_session()
+    now_time = timeutils.utcnow()
+    time_delta = datetime.timedelta(
+        seconds=CONF.soft_deleted_share_retention_time)
+    scheduled_to_be_deleted_at = now_time + time_delta
+    update_values = {
+        'is_soft_deleted': True,
+        'scheduled_to_be_deleted_at': scheduled_to_be_deleted_at
+    }
+
+    with session.begin():
+        share_ref = share_get(context, share_id, session=session)
+        share_ref.update(update_values)
+        share_ref.save(session=session)
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def share_restore(context, share_id):
+    session = get_session()
+    update_values = {
+        'is_soft_deleted': False,
+        'scheduled_to_be_deleted_at': None
+    }
+
+    with session.begin():
+        share_ref = share_get(context, share_id, session=session)
+        share_ref.update(update_values)
+        share_ref.save(session=session)
 
 
 ###################

@@ -731,9 +731,14 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
         data['snapshot']['share_id'] = 'fake'
         data['snapshot']['provider_location'] = 'fake_volume_snapshot_id'
         data['snapshot']['driver_options'] = {}
+        return_share = fake_share.fake_share(is_soft_deleted=False,
+                                             id='fake')
         return_snapshot = fake_share.fake_snapshot(
             create_instance=True, id='fake_snap',
             provider_location='fake_volume_snapshot_id')
+        self.mock_object(
+            share_api.API, 'get', mock.Mock(
+                return_value=return_share))
         self.mock_object(
             share_api.API, 'manage_snapshot', mock.Mock(
                 return_value=return_snapshot))
@@ -752,7 +757,8 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
 
         actual_snapshot = actual_result['snapshot']
         share_api.API.manage_snapshot.assert_called_once_with(
-            mock.ANY, share_snapshot, data['snapshot']['driver_options'])
+            mock.ANY, share_snapshot, data['snapshot']['driver_options'],
+            share=return_share)
         self.assertEqual(return_snapshot['id'],
                          actual_result['snapshot']['id'])
         self.assertEqual('fake_volume_snapshot_id',
@@ -781,6 +787,11 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
         body = get_fake_manage_body(
             share_id='fake', provider_location='fake_volume_snapshot_id',
             driver_options={})
+        return_share = fake_share.fake_share(is_soft_deleted=False,
+                                             id='fake')
+        self.mock_object(
+            share_api.API, 'get', mock.Mock(
+                return_value=return_share))
         self.mock_object(
             share_api.API, 'manage_snapshot', mock.Mock(
                 side_effect=exception_type))
@@ -792,6 +803,25 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
             http_ex = webob.exc.HTTPConflict
 
         self.assertRaises(http_ex,
+                          self.controller.manage,
+                          self.manage_request, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.manage_request.environ['manila.context'],
+            self.resource_name, 'manage_snapshot')
+
+    def test_manage_share_has_been_soft_deleted(self):
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
+        body = get_fake_manage_body(
+            share_id='fake', provider_location='fake_volume_snapshot_id',
+            driver_options={})
+        return_share = fake_share.fake_share(is_soft_deleted=True,
+                                             id='fake')
+        self.mock_object(
+            share_api.API, 'get', mock.Mock(
+                return_value=return_share))
+
+        self.assertRaises(webob.exc.HTTPForbidden,
                           self.controller.manage,
                           self.manage_request, body)
         self.mock_policy_check.assert_called_once_with(

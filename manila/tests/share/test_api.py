@@ -4663,6 +4663,9 @@ class ShareAPITestCase(test.TestCase):
         mock_shares_get_all = self.mock_object(
             db_api, 'share_get_all_by_share_server',
             mock.Mock(return_value=[fake_share]))
+        mock_shares_in_recycle_bin_get_all = self.mock_object(
+            db_api, 'get_shares_in_recycle_bin_by_share_server',
+            mock.Mock(return_value=[]))
         mock_get_type = self.mock_object(
             share_types, 'get_share_type', mock.Mock(return_value=share_type))
         mock_validate_service = self.mock_object(
@@ -4690,6 +4693,8 @@ class ShareAPITestCase(test.TestCase):
         self.assertIs(expected_network_change, net_change)
         mock_shares_get_all.assert_has_calls([
             mock.call(self.context, fake_share_server['id']),
+            mock.call(self.context, fake_share_server['id'])])
+        mock_shares_in_recycle_bin_get_all.assert_has_calls([
             mock.call(self.context, fake_share_server['id'])])
         mock_get_type.assert_called_once_with(self.context, share_type['id'])
         mock_validate_service.assert_called_once_with(self.context, fake_host)
@@ -6278,6 +6283,79 @@ class ShareAPITestCase(test.TestCase):
                 self.context, new_host, fake_share_network['id'],
                 new_sec_service_id,
                 current_security_service_id=curr_sec_service_id)
+
+    def test_soft_delete_share_already_soft_deleted(self):
+        share = fakes.fake_share(id='fake_id',
+                                 status=constants.STATUS_AVAILABLE,
+                                 is_soft_deleted=True)
+        self.assertRaises(exception.InvalidShare,
+                          self.api.soft_delete, self.context, share)
+
+    def test_soft_delete_invalid_status(self):
+        invalid_status = 'fake'
+        share = fakes.fake_share(id='fake_id',
+                                 status=invalid_status,
+                                 is_soft_deleted=False)
+
+        self.assertRaises(exception.InvalidShare,
+                          self.api.soft_delete, self.context, share)
+
+    def test_soft_delete_share_with_replicas(self):
+        share = fakes.fake_share(id='fake_id',
+                                 has_replicas=True,
+                                 status=constants.STATUS_AVAILABLE,
+                                 is_soft_deleted=False)
+
+        self.assertRaises(exception.Conflict,
+                          self.api.soft_delete, self.context, share)
+
+    def test_soft_delete_share_with_snapshot(self):
+        share = fakes.fake_share(id='fake_id',
+                                 status=constants.STATUS_AVAILABLE,
+                                 has_replicas=False,
+                                 is_soft_deleted=False)
+        snapshot = fakes.fake_snapshot(create_instance=True, as_primitive=True)
+        mock_db_snapshot_call = self.mock_object(
+            db_api, 'share_snapshot_get_all_for_share', mock.Mock(
+                return_value=[snapshot]))
+
+        self.assertRaises(exception.InvalidShare,
+                          self.api.soft_delete, self.context, share)
+
+        mock_db_snapshot_call.assert_called_once_with(
+            self.context, share['id'])
+
+    @mock.patch.object(db_api, 'count_share_group_snapshot_members_in_share',
+                       mock.Mock(return_value=2))
+    def test_soft_delete_share_with_group_snapshot_members(self):
+        share = fakes.fake_share(id='fake_id',
+                                 status=constants.STATUS_AVAILABLE,
+                                 has_replicas=False,
+                                 is_soft_deleted=False)
+
+        self.assertRaises(exception.InvalidShare,
+                          self.api.soft_delete, self.context, share)
+
+    def test_soft_delete_share(self):
+        share = fakes.fake_share(id='fake_id',
+                                 status=constants.STATUS_AVAILABLE,
+                                 has_replicas=False,
+                                 is_soft_deleted=False)
+        self.mock_object(db_api, 'share_snapshot_get_all_for_share',
+                         mock.Mock(return_value=[]))
+        self.mock_object(db_api, 'count_share_group_snapshot_members_in_share',
+                         mock.Mock(return_value=0))
+        self.mock_object(db_api, 'share_soft_delete')
+        self.mock_object(self.api, '_check_is_share_busy')
+        self.api.soft_delete(self.context, share)
+        self.api._check_is_share_busy.assert_called_once_with(share)
+
+    def test_restore_share(self):
+        share = fakes.fake_share(id='fake_id',
+                                 status=constants.STATUS_AVAILABLE,
+                                 is_soft_deleted=True)
+        self.mock_object(db_api, 'share_restore')
+        self.api.restore(self.context, share)
 
 
 class OtherTenantsShareActionsTestCase(test.TestCase):

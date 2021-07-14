@@ -112,6 +112,29 @@ class ShareSnapshotAPITest(test.TestCase):
 
         self.assertFalse(share_api.API.create_snapshot.called)
 
+    def test_snapshot_create_in_recycle_bin(self):
+        self.mock_object(share_api.API, 'create_snapshot')
+        self.mock_object(
+            share_api.API,
+            'get',
+            mock.Mock(return_value={'snapshot_support': True,
+                                    'is_soft_deleted': True}))
+        body = {
+            'snapshot': {
+                'share_id': 200,
+                'force': False,
+                'name': 'fake_share_name',
+                'description': 'fake_share_description',
+            }
+        }
+        req = fakes.HTTPRequest.blank('/fake/snapshots')
+
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller.create, req, body)
+
+        self.assertFalse(share_api.API.create_snapshot.called)
+
     def test_snapshot_create_no_body(self):
         body = {}
         req = fakes.HTTPRequest.blank('/fake/snapshots')

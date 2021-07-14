@@ -135,6 +135,11 @@ class ShareMixin(object):
                 'with_count', search_opts)
             search_opts.pop('with_count')
 
+        if 'is_soft_deleted' in search_opts:
+            is_soft_deleted = utils.get_bool_from_api_params(
+                'is_soft_deleted', search_opts)
+            search_opts['is_soft_deleted'] = is_soft_deleted
+
         # Deserialize dicts
         if 'metadata' in search_opts:
             search_opts['metadata'] = ast.literal_eval(search_opts['metadata'])
@@ -192,7 +197,7 @@ class ShareMixin(object):
             'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
             'share_group_id', 'share_group_snapshot_id', 'export_location_id',
             'export_location_path', 'display_name~', 'display_description~',
-            'display_description', 'limit', 'offset')
+            'display_description', 'limit', 'offset', 'is_soft_deleted')
 
     @wsgi.Controller.authorize
     def update(self, req, id, body):
@@ -217,6 +222,11 @@ class ShareMixin(object):
             share = self.share_api.get(context, id)
         except exception.NotFound:
             raise exc.HTTPNotFound()
+
+        if share.get('is_soft_deleted'):
+            msg = _("Share '%s cannot be updated, "
+                    "since it has been soft deleted.") % share['id']
+            raise exc.HTTPForbidden(explanation=msg)
 
         update_dict = common.validate_public_share_policy(
             context, update_dict, api='update')
@@ -443,6 +453,10 @@ class ShareMixin(object):
             access_data.pop('metadata', None)
         share = self.share_api.get(context, id)
 
+        if share.get('is_soft_deleted'):
+            msg = _("Cannot allow access for share '%s' "
+                    "since it has been soft deleted.") % id
+            raise exc.HTTPForbidden(explanation=msg)
         share_network_id = share.get('share_network_id')
         if share_network_id:
             share_network = db.share_network_get(context, share_network_id)
@@ -490,6 +504,12 @@ class ShareMixin(object):
             'deny_access', body.get('os-deny_access'))['access_id']
 
         share = self.share_api.get(context, id)
+
+        if share.get('is_soft_deleted'):
+            msg = _("Cannot deny access for share '%s' "
+                    "since it has been soft deleted.") % id
+            raise exc.HTTPForbidden(explanation=msg)
+
         share_network_id = share.get('share_network_id', None)
 
         if share_network_id:
@@ -521,6 +541,11 @@ class ShareMixin(object):
         share, size, force = self._get_valid_extend_parameters(
             context, id, body, 'os-extend')
 
+        if share.get('is_soft_deleted'):
+            msg = _("Cannot extend share '%s' "
+                    "since it has been soft deleted.") % id
+            raise exc.HTTPForbidden(explanation=msg)
+
         try:
             self.share_api.extend(context, share, size, force=force)
         except (exception.InvalidInput, exception.InvalidShare) as e:
@@ -535,6 +560,11 @@ class ShareMixin(object):
         context = req.environ['manila.context']
         share, size = self._get_valid_shrink_parameters(
             context, id, body, 'os-shrink')
+
+        if share.get('is_soft_deleted'):
+            msg = _("Cannot shrink share '%s' "
+                    "since it has been soft deleted.") % id
+            raise exc.HTTPForbidden(explanation=msg)
 
         try:
             self.share_api.shrink(context, share, size)

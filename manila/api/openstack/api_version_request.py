@@ -170,19 +170,25 @@ REST_API_VERSION_HISTORY = """
              actions on the share network's endpoint:
              'update_security_service', 'update_security_service_check' and
              'add_security_service_check'.
+    * 2.64 - Added 'force' field to extend share api, which can extend share
+             directly without validation through share scheduler.
     * 2.65 - Added ability to set affinity scheduler hints via the share
              create API.
     * 2.66 - Added filter search by group spec for share group type list.
     * 2.67 - Added ability to set 'only_host' scheduler hint for the share
              create and share replica create API.
     * 2.68 - Added admin only capabilities to share metadata API
+    * 2.69 - Added new share action to soft delete share to recycle bin or
+             restore share from recycle bin. Also, a new parameter called
+             `is_soft_deleted` was added so users can filter out
+             shares in the recycle bin while listing shares.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.68"
+_MAX_API_VERSION = "2.69"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

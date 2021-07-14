@@ -63,6 +63,9 @@ class ShareAPITest(test.TestCase):
                          stubs.stub_share_get)
         self.mock_object(share_api.API, 'update', stubs.stub_share_update)
         self.mock_object(share_api.API, 'delete', stubs.stub_share_delete)
+        self.mock_object(share_api.API, 'soft_delete',
+                         stubs.stub_share_soft_delete)
+        self.mock_object(share_api.API, 'restore', stubs.stub_share_restore)
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
         self.mock_object(share_types, 'get_share_type',
@@ -76,7 +79,31 @@ class ShareAPITest(test.TestCase):
             "share_proto": "fakeproto",
             "availability_zone": "zone1:host1",
             "is_public": False,
+            "task_state": None
+        }
+        self.share_in_recycle_bin = {
+            "id": "1",
+            "size": 100,
+            "display_name": "Share Test Name",
+            "display_description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "is_public": False,
             "task_state": None,
+            "is_soft_deleted": True,
+            "status": "available"
+        }
+        self.share_in_recycle_bin_is_deleting = {
+            "id": "1",
+            "size": 100,
+            "display_name": "Share Test Name",
+            "display_description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "is_public": False,
+            "task_state": None,
+            "is_soft_deleted": True,
+            "status": "deleting"
         }
         self.create_mock = mock.Mock(
             return_value=stubs.stub_share(
@@ -233,6 +260,23 @@ class ShareAPITest(test.TestCase):
             utils.IsAMatcher(context.RequestContext), '1')
         mock_revert_to_snapshot.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), share, snapshot)
+
+    def test__revert_share_has_been_soft_deleted(self):
+        snapshot = copy.deepcopy(self.snapshot)
+        body = {'revert': {'snapshot_id': '2'}}
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      use_admin_context=False,
+                                      version='2.27')
+        self.mock_object(
+            self.controller, '_validate_revert_parameters',
+            mock.Mock(return_value=body['revert']))
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=self.share_in_recycle_bin))
+        self.mock_object(
+            share_api.API, 'get_snapshot', mock.Mock(return_value=snapshot))
+        self.assertRaises(
+            webob.exc.HTTPForbidden, self.controller._revert,
+            req, 1, body)
 
     def test__revert_not_supported(self):
 
@@ -1100,6 +1144,24 @@ class ShareAPITest(test.TestCase):
         db.share_update.assert_called_once_with(utils.IsAMatcher(
             context.RequestContext), share['id'], update)
 
+    def test_reset_task_state_share_has_been_soft_deleted(self):
+        share = self.share_in_recycle_bin
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True,
+            version='2.22')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+        update = {'task_state': constants.TASK_STATE_MIGRATION_ERROR}
+        body = {'reset_task_state': update}
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=share))
+
+        self.assertRaises(webob.exc.HTTPForbidden,
+                          self.controller.reset_task_state, req, share['id'],
+                          body)
+
     def test_migration_complete(self):
         share = db_utils.create_share()
         req = fakes.HTTPRequest.blank(
@@ -1524,6 +1586,60 @@ class ShareAPITest(test.TestCase):
 
         self.assertEqual(expected, res_dict['share']['access_rules_status'])
 
+    def test_share_soft_delete(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      version='2.69')
+        body = {"soft_delete": None}
+        resp = self.controller.share_soft_delete(req, 1, body)
+        self.assertEqual(202, resp.status_int)
+
+    def test_share_soft_delete_has_been_soft_deleted_already(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      version='2.69')
+        body = {"soft_delete": None}
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=self.share_in_recycle_bin))
+        self.mock_object(share_api.API, 'soft_delete',
+                         mock.Mock(
+                             side_effect=exception.InvalidShare(reason='err')))
+
+        self.assertRaises(
+            webob.exc.HTTPForbidden, self.controller.share_soft_delete,
+            req, 1, body)
+
+    def test_share_soft_delete_has_replicas(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      version='2.69')
+        body = {"soft_delete": None}
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=self.share))
+        self.mock_object(share_api.API, 'soft_delete',
+                         mock.Mock(side_effect=exception.Conflict(err='err')))
+
+        self.assertRaises(
+            webob.exc.HTTPConflict, self.controller.share_soft_delete,
+            req, 1, body)
+
+    def test_share_restore(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      version='2.69')
+        body = {"restore": None}
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=self.share_in_recycle_bin))
+        resp = self.controller.share_restore(req, 1, body)
+        self.assertEqual(202, resp.status_int)
+
+    def test_share_restore_with_deleting_status(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      version='2.69')
+        body = {"restore": None}
+        self.mock_object(
+            share_api.API, 'get',
+            mock.Mock(return_value=self.share_in_recycle_bin_is_deleting))
+        self.assertRaises(
+            webob.exc.HTTPForbidden, self.controller.share_restore,
+            req, 1, body)
+
     def test_share_delete(self):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1')
         resp = self.controller.delete(req, 1)
@@ -1614,7 +1730,9 @@ class ShareAPITest(test.TestCase):
               {'use_admin_context': True, 'version': '2.36'},
               {'use_admin_context': False, 'version': '2.36'},
               {'use_admin_context': True, 'version': '2.42'},
-              {'use_admin_context': False, 'version': '2.42'})
+              {'use_admin_context': False, 'version': '2.42'},
+              {'use_admin_context': False, 'version': '2.69'},
+              {'use_admin_context': True, 'version': '2.69'})
     @ddt.unpack
     def test_share_list_summary_with_search_opts(self, use_admin_context,
                                                  version):
@@ -1640,6 +1758,9 @@ class ShareAPITest(test.TestCase):
             search_opts.update(
                 {'display_name~': 'fake',
                  'display_description~': 'fake'})
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.69')):
+            search_opts.update({'is_soft_deleted': True})
         method = 'get_all'
         shares = [
             {'id': 'id1', 'display_name': 'n1'},
@@ -1658,7 +1779,7 @@ class ShareAPITest(test.TestCase):
         # fake_key should be filtered for non-admin
         url = '/v2/fake/shares?fake_key=fake_value'
         for k, v in search_opts.items():
-            url = url + '&' + k + '=' + v
+            url = url + '&' + k + '=' + str(v)
         req = fakes.HTTPRequest.blank(url, version=version,
                                       use_admin_context=use_admin_context)
 
@@ -1691,6 +1812,10 @@ class ShareAPITest(test.TestCase):
             search_opts_expected.update(
                 {'display_name~': search_opts['display_name~'],
                  'display_description~': search_opts['display_description~']})
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.69')):
+            search_opts_expected['is_soft_deleted'] = (
+                search_opts['is_soft_deleted'])
 
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
@@ -1778,7 +1903,9 @@ class ShareAPITest(test.TestCase):
               {'use_admin_context': True, 'version': '2.35'},
               {'use_admin_context': False, 'version': '2.35'},
               {'use_admin_context': True, 'version': '2.42'},
-              {'use_admin_context': False, 'version': '2.42'})
+              {'use_admin_context': False, 'version': '2.42'},
+              {'use_admin_context': True, 'version': '2.69'},
+              {'use_admin_context': False, 'version': '2.69'})
     @ddt.unpack
     def test_share_list_detail_with_search_opts(self, use_admin_context,
                                                 version):
@@ -1812,6 +1939,8 @@ class ShareAPITest(test.TestCase):
                     'share_type_id': 'fake_share_type_id',
                 },
                 'has_replicas': False,
+                'is_soft_deleted': True,
+                'scheduled_to_be_deleted_at': 'fake_datatime',
             },
             {'id': 'id3', 'display_name': 'n3'},
         ]
@@ -1823,12 +1952,15 @@ class ShareAPITest(test.TestCase):
             search_opts.update({'with_count': 'true'})
             method = 'get_all_with_count'
             mock_action = {'side_effect': [(1, [shares[1]])]}
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.69')):
+            search_opts.update({'is_soft_deleted': True})
         if use_admin_context:
             search_opts['host'] = 'fake_host'
         # fake_key should be filtered for non-admin
         url = '/v2/fake/shares/detail?fake_key=fake_value'
         for k, v in search_opts.items():
-            url = url + '&' + k + '=' + v
+            url = url + '&' + k + '=' + str(v)
         req = fakes.HTTPRequest.blank(url, version=version,
                                       use_admin_context=use_admin_context)
 
@@ -1857,6 +1989,10 @@ class ShareAPITest(test.TestCase):
                 search_opts['export_location_id'])
             search_opts_expected['export_location_path'] = (
                 search_opts['export_location_path'])
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.69')):
+            search_opts_expected['is_soft_deleted'] = (
+                search_opts['is_soft_deleted'])
 
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
@@ -1889,6 +2025,11 @@ class ShareAPITest(test.TestCase):
         if (api_version.APIVersionRequest(version) >=
                 api_version.APIVersionRequest('2.42')):
             self.assertEqual(1, result['count'])
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.69')):
+            self.assertEqual(
+                shares[1]['scheduled_to_be_deleted_at'],
+                result['shares'][0]['scheduled_to_be_deleted_at'])
 
     def _list_detail_common_expected(self, admin=False):
         share_dict = {
@@ -2530,6 +2671,7 @@ class ShareAdminActionsAPITest(test.TestCase):
         req.headers['X-Openstack-Manila-Api-Version'] = version
         req.body = jsonutils.dumps(body).encode("utf-8")
         req.environ['manila.context'] = ctxt
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=model))
 
         resp = req.get_response(fakes.app())
 
@@ -2565,7 +2707,7 @@ class ShareAdminActionsAPITest(test.TestCase):
 
     @ddt.data('2.6', '2.7')
     def test_share_reset_status_for_missing(self, version):
-        fake_share = {'id': 'missing-share-id'}
+        fake_share = {'id': 'missing-share-id', 'is_soft_deleted': False}
         req = fakes.HTTPRequest.blank(
             '/v2/fake/shares/%s/action' % fake_share['id'], version=version)
 

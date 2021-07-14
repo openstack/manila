@@ -46,6 +46,7 @@ def stub_share(id, **kwargs):
         'mount_snapshot_support': False,
         'replication_type': None,
         'has_replicas': False,
+        'is_soft_deleted': False,
     }
 
     share_instance = {
@@ -146,6 +147,14 @@ def stub_share_get_notfound(self, context, share_id, **kwargs):
 
 
 def stub_share_delete(self, context, *args, **param):
+    pass
+
+
+def stub_share_soft_delete(self, context, *args, **param):
+    pass
+
+
+def stub_share_restore(self, context, *args, **param):
     pass
 
 

@@ -326,6 +326,15 @@ is_public_query:
   in: query
   required: false
   type: boolean
+is_soft_deleted_query:
+  description: |
+    A boolean query parameter that, when set to True, will return all shares
+    in recycle bin. Default is False, will return all shares not in recycle
+    bin.
+  in: query
+  required: false
+  type: boolean
+  min_version: 2.69
 limit:
   description: |
     The maximum number of shares to return.
@@ -1390,6 +1399,13 @@ is_public_shares_response:
   in: body
   required: true
   type: boolean
+is_soft_deleted_response:
+  description: |
+    Whether the share has been soft deleted to recycle bin or not.
+  in: body
+  required: false
+  type: boolean
+  min_version: 2.69
 links:
   description: |
     Pagination and bookmark links for the resource.
@@ -2321,6 +2337,14 @@ revert_to_snapshot_support_share_capability:
   required: true
   type: boolean
   min_version: 2.27
+scheduled_to_be_deleted_at_response:
+  description: |
+    Estimated time at which the share in the recycle bin will be deleted
+    automatically.
+  in: body
+  required: false
+  type: string
+  min_version: 2.69
 scheduler_hints:
   description: |
     One or more scheduler_hints key and value pairs as a dictionary of

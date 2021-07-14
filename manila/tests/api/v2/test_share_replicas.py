@@ -375,6 +375,27 @@ class ShareReplicasApiTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.member_context, self.resource_name, 'create')
 
+    def test_create_has_been_soft_deleted(self):
+        share_ref = fake_share.fake_share(is_soft_deleted=True)
+        body = {
+            'share_replica': {
+                'share_id': 'FAKE_SHAREID',
+                'availability_zone': 'FAKE_AZ'
+            }
+        }
+        mock__view_builder_call = self.mock_object(
+            share_replicas.replication_view.ReplicationViewBuilder,
+            'detail_list')
+        self.mock_object(share_replicas.db, 'share_get',
+                         mock.Mock(return_value=share_ref))
+
+        self.assertRaises(exc.HTTPForbidden,
+                          self.controller.create,
+                          self.replicas_req, body)
+        self.assertFalse(mock__view_builder_call.called)
+        self.mock_policy_check.assert_called_once_with(
+            self.member_context, self.resource_name, 'create')
+
     @ddt.data(exception.AvailabilityZoneNotFound,
               exception.ReplicationException, exception.ShareBusyException)
     def test_create_exception_path(self, exception_type):

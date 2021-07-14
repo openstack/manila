@@ -131,6 +131,11 @@ share_manager_opts = [
                 default=False,
                 help='Offload pending share ensure during '
                      'share service startup'),
+    cfg.IntOpt('check_for_expired_shares_in_recycle_bin_interval',
+               default=3600,
+               help='This value, specified in seconds, determines how often '
+                    'the share manager will check for expired shares and '
+                    'delete them from the Recycle bin.'),
 ]
 
 CONF = cfg.CONF
@@ -3482,6 +3487,17 @@ class ShareManager(manager.SchedulerDependentManager):
                                                                 updated_before)
         for server in servers:
             self.delete_share_server(ctxt, server)
+
+    @periodic_task.periodic_task(
+        spacing=CONF.check_for_expired_shares_in_recycle_bin_interval)
+    @utils.require_driver_initialized
+    def delete_expired_share(self, ctxt):
+        LOG.debug("Check for expired share in recycle bin to delete.")
+        expired_shares = self.db.get_all_expired_shares(ctxt)
+
+        for share in expired_shares:
+            LOG.debug("share %s has expired, will be deleted", share['id'])
+            self.share_api.delete(ctxt, share, force=True)
 
     @add_hooks
     @utils.require_driver_initialized

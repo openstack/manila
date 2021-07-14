@@ -169,6 +169,11 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
             msg = _("No share exists with ID %s.")
             raise exc.HTTPNotFound(explanation=msg % share_id)
 
+        if share_ref.get('is_soft_deleted'):
+            msg = _("Replica cannot be created for share '%s' "
+                    "since it has been soft deleted.") % share_id
+            raise exc.HTTPForbidden(explanation=msg)
+
         share_network_id = share_ref.get('share_network_id', None)
 
         if share_network_id:

@@ -190,6 +190,14 @@ class ShareSnapshotMixin(object):
             LOG.error(msg)
             raise exc.HTTPUnprocessableEntity(explanation=msg)
 
+        # we do not allow soft delete share with snapshot, and also
+        # do not allow create snapshot for shares in recycle bin,
+        # since it will lead to auto delete share failed.
+        if share['is_soft_deleted']:
+            msg = _("Snapshots cannot be created for share '%s' "
+                    "since it has been soft deleted.") % share_id
+            raise exc.HTTPForbidden(explanation=msg)
+
         LOG.info("Create snapshot from share %s",
                  share_id, context=context)
 

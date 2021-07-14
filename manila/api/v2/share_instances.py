@@ -21,6 +21,7 @@ from manila.api.views import share_instance as instance_view
 from manila import db
 from manila import exception
 from manila import share
+from manila import utils
 
 
 class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
@@ -72,7 +73,7 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
         instances = db.share_instances_get_all(context)
         return self._view_builder.detail_list(req, instances)
 
-    @wsgi.Controller.api_version("2.35")  # noqa
+    @wsgi.Controller.api_version("2.35", "2.68")  # noqa
     @wsgi.Controller.authorize
     def index(self, req):  # pylint: disable=function-redefined  # noqa F811
         context = req.environ['manila.context']
@@ -80,6 +81,23 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
         filters.update(req.GET)
         common.remove_invalid_options(
             context, filters, ('export_location_id', 'export_location_path'))
+
+        instances = db.share_instances_get_all(context, filters)
+        return self._view_builder.detail_list(req, instances)
+
+    @wsgi.Controller.api_version("2.69")  # noqa
+    @wsgi.Controller.authorize
+    def index(self, req):  # pylint: disable=function-redefined  # noqa F811
+        context = req.environ['manila.context']
+        filters = {}
+        filters.update(req.GET)
+        common.remove_invalid_options(
+            context, filters, ('export_location_id', 'export_location_path',
+                               'is_soft_deleted'))
+        if 'is_soft_deleted' in filters:
+            is_soft_deleted = utils.get_bool_from_api_params(
+                'is_soft_deleted', filters)
+            filters['is_soft_deleted'] = is_soft_deleted
 
         instances = db.share_instances_get_all(context, filters)
         return self._view_builder.detail_list(req, instances)

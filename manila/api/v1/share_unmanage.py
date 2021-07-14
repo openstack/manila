@@ -38,6 +38,10 @@ class ShareUnmanageMixin(object):
 
         try:
             share = self.share_api.get(context, id)
+            if share.get('is_soft_deleted'):
+                msg = _("Share '%s cannot be unmanaged, "
+                        "since it has been soft deleted.") % share['id']
+                raise exc.HTTPForbidden(explanation=msg)
             if share.get('has_replicas'):
                 msg = _("Share %s has replicas. It cannot be unmanaged "
                         "until all replicas are removed.") % share['id']

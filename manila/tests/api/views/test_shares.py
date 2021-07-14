@@ -55,13 +55,15 @@ class ViewBuilderTestCase(test.TestCase):
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': True,
             'progress': '100%',
+            'scheduled_to_be_deleted_at': 'fake_datetime',
         }
         return stubs.stub_share('fake_id', **fake_share)
 
     def test__collection_name(self):
         self.assertEqual('shares', self.builder._collection_name)
 
-    @ddt.data('2.6', '2.9', '2.10', '2.11', '2.16', '2.24', '2.27', '2.54')
+    @ddt.data('2.6', '2.9', '2.10', '2.11', '2.16',
+              '2.24', '2.27', '2.54', '2.69')
     def test_detail(self, microversion):
         req = fakes.HTTPRequest.blank('/shares', version=microversion)
 
@@ -91,6 +93,8 @@ class ViewBuilderTestCase(test.TestCase):
             expected['revert_to_snapshot_support'] = True
         if self.is_microversion_ge(microversion, '2.54'):
             expected['progress'] = '100%'
+        if self.is_microversion_ge(microversion, '2.69'):
+            expected['scheduled_to_be_deleted_at'] = 'fake_datetime'
 
         self.assertSubDictMatch(expected, result['share'])
 

@@ -315,6 +315,8 @@ class Share(BASE, ManilaBase):
 
     source_share_group_snapshot_member_id = Column(String(36), nullable=True)
     task_state = Column(String(255))
+    is_soft_deleted = Column(Boolean, default=False)
+    scheduled_to_be_deleted_at = Column(DateTime)
     instances = orm.relationship(
         "ShareInstance",
         lazy='subquery',

@@ -66,6 +66,11 @@ class ShareController(shares.ShareMixin,
             share = self.share_api.get(context, share_id)
             snapshot = self.share_api.get_snapshot(context, snapshot_id)
 
+            if share.get('is_soft_deleted'):
+                msg = _("Share '%s cannot revert to snapshot, "
+                        "since it has been soft deleted.") % share_id
+                raise exc.HTTPForbidden(explanation=msg)
+
             # Ensure share supports reverting to a snapshot
             if not share['revert_to_snapshot_support']:
                 msg_args = {'share_id': share_id, 'snap_id': snapshot_id}
@@ -219,11 +224,29 @@ class ShareController(shares.ShareMixin,
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-reset_status')
     def share_reset_status_legacy(self, req, id, body):
+        context = req.environ['manila.context']
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound:
+            raise exception.ShareNotFound(share_id=id)
+        if share.get('is_soft_deleted'):
+            msg = _("status cannot be reset for share '%s' "
+                    "since it has been soft deleted.") % id
+            raise exc.HTTPForbidden(explanation=msg)
         return self._reset_status(req, id, body)
 
     @wsgi.Controller.api_version('2.7')
     @wsgi.action('reset_status')
     def share_reset_status(self, req, id, body):
+        context = req.environ['manila.context']
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound:
+            raise exception.ShareNotFound(share_id=id)
+        if share.get('is_soft_deleted'):
+            msg = _("status cannot be reset for share '%s' "
+                    "since it has been soft deleted.") % id
+            raise exc.HTTPForbidden(explanation=msg)
         return self._reset_status(req, id, body)
 
     @wsgi.Controller.api_version('2.0', '2.6')
@@ -236,6 +259,60 @@ class ShareController(shares.ShareMixin,
     def share_force_delete(self, req, id, body):
         return self._force_delete(req, id, body)
 
+    @wsgi.Controller.api_version('2.69')
+    @wsgi.action('soft_delete')
+    def share_soft_delete(self, req, id, body):
+        """Soft delete a share."""
+        context = req.environ['manila.context']
+
+        LOG.debug("Soft delete share with id: %s", id, context=context)
+
+        try:
+            share = self.share_api.get(context, id)
+            self.share_api.soft_delete(context, share)
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+        except exception.InvalidShare as e:
+            raise exc.HTTPForbidden(explanation=e.msg)
+        except exception.ShareBusyException as e:
+            raise exc.HTTPForbidden(explanation=e.msg)
+        except exception.Conflict as e:
+            raise exc.HTTPConflict(explanation=e.msg)
+
+        return webob.Response(status_int=http_client.ACCEPTED)
+
+    @wsgi.Controller.api_version('2.69')
+    @wsgi.action('restore')
+    def share_restore(self, req, id, body):
+        """Restore a share from recycle bin."""
+        context = req.environ['manila.context']
+
+        LOG.debug("Restore share with id: %s", id, context=context)
+
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound:
+            msg = _("No share exists with ID %s.")
+            raise exc.HTTPNotFound(explanation=msg % id)
+
+        # If the share not exist in Recycle Bin, the API will return
+        # success directly.
+        is_soft_deleted = share.get('is_soft_deleted')
+        if not is_soft_deleted:
+            return webob.Response(status_int=http_client.OK)
+
+        # If the share has reached the expired time, and is been deleting,
+        # it too late to restore the share.
+        if share['status'] in [constants.STATUS_DELETING,
+                               constants.STATUS_ERROR_DELETING]:
+            msg = _("Share %s is being deleted or error deleted, "
+                    "cannot be restore.")
+            raise exc.HTTPForbidden(explanation=msg % id)
+
+        self.share_api.restore(context, share)
+
+        return webob.Response(status_int=http_client.ACCEPTED)
+
     @wsgi.Controller.api_version('2.29', experimental=True)
     @wsgi.action("migration_start")
     @wsgi.Controller.authorize
@@ -247,6 +324,12 @@ class ShareController(shares.ShareMixin,
         except exception.NotFound:
             msg = _("Share %s not found.") % id
             raise exc.HTTPNotFound(explanation=msg)
+
+        if share.get('is_soft_deleted'):
+            msg = _("Migration cannot start for share '%s' "
+                    "since it has been soft deleted.") % id
+            raise exception.InvalidShare(reason=msg)
+
         params = body.get('migration_start')
 
         if not params:
@@ -355,6 +438,15 @@ class ShareController(shares.ShareMixin,
     @wsgi.action("reset_task_state")
     @wsgi.Controller.authorize
     def reset_task_state(self, req, id, body):
+        context = req.environ['manila.context']
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound:
+            raise exception.ShareNotFound(share_id=id)
+        if share.get('is_soft_deleted'):
+            msg = _("task state cannot be reset for share '%s' "
+                    "since it has been soft deleted.") % id
+            raise exc.HTTPForbidden(explanation=msg)
         return self._reset_status(req, id, body, status_attr='task_state')
 
     @wsgi.Controller.api_version('2.0', '2.6')
@@ -482,6 +574,9 @@ class ShareController(shares.ShareMixin,
         if req.api_version_request < api_version.APIVersionRequest("2.42"):
             req.GET.pop('with_count', None)
 
+        if req.api_version_request < api_version.APIVersionRequest("2.69"):
+            req.GET.pop('is_soft_deleted', None)
+
         return self._get_shares(req, is_detail=False)
 
     @wsgi.Controller.api_version("2.0")
@@ -495,6 +590,9 @@ class ShareController(shares.ShareMixin,
             req.GET.pop('name~', None)
             req.GET.pop('description~', None)
             req.GET.pop('description', None)
+
+        if req.api_version_request < api_version.APIVersionRequest("2.69"):
+            req.GET.pop('is_soft_deleted', None)
 
         return self._get_shares(req, is_detail=True)
 

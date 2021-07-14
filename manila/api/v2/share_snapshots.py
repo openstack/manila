@@ -116,18 +116,29 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
         description = snapshot_data.get(
             'display_description', snapshot_data.get('description'))
 
+        share_id = snapshot_data['share_id']
         snapshot = {
-            'share_id': snapshot_data['share_id'],
+            'share_id': share_id,
             'provider_location': snapshot_data['provider_location'],
             'display_name': name,
             'display_description': description,
         }
 
+        try:
+            share_ref = self.share_api.get(context, share_id)
+        except exception.NotFound:
+            raise exception.ShareNotFound(share_id=share_id)
+        if share_ref.get('is_soft_deleted'):
+            msg = _("Can not manage snapshot for share '%s' "
+                    "since it has been soft deleted.") % share_id
+            raise exc.HTTPForbidden(explanation=msg)
+
         driver_options = snapshot_data.get('driver_options', {})
 
         try:
             snapshot_ref = self.share_api.manage_snapshot(context, snapshot,
-                                                          driver_options)
+                                                          driver_options,
+                                                          share=share_ref)
         except (exception.ShareNotFound, exception.ShareSnapshotNotFound) as e:
             raise exc.HTTPNotFound(explanation=e.msg)
         except (exception.InvalidShare,

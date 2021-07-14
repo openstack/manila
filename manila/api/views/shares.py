@@ -36,6 +36,7 @@ class ViewBuilder(common.ViewBuilder):
         "add_mount_snapshot_support_field",
         "add_progress_field",
         "translate_creating_from_snapshot_status",
+        "add_share_recycle_bin_field",
     ]
 
     def summary_list(self, request, shares, count=None):
@@ -197,3 +198,9 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("2.54")
     def add_progress_field(self, context, share_dict, share):
         share_dict['progress'] = share.get('progress')
+
+    @common.ViewBuilder.versioned_method("2.69")
+    def add_share_recycle_bin_field(self, context, share_dict, share):
+        share_dict['is_soft_deleted'] = share.get('is_soft_deleted')
+        share_dict['scheduled_to_be_deleted_at'] = share.get(
+            'scheduled_to_be_deleted_at')

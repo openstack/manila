@@ -451,6 +451,15 @@ def share_get_all_by_share_server(context, share_server_id, filters=None,
         sort_dir=sort_dir)
 
 
+def get_shares_in_recycle_bin_by_share_server(
+        context, share_server_id, filters=None,
+        sort_key=None, sort_dir=None):
+    """Returns all shares in recycle bin with given share server ID."""
+    return IMPL.get_shares_in_recycle_bin_by_share_server(
+        context, share_server_id, filters=filters, sort_key=sort_key,
+        sort_dir=sort_dir)
+
+
 def share_get_all_by_share_server_with_count(
         context, share_server_id, filters=None, sort_key=None, sort_dir=None):
     """Returns all shares with given share server ID."""
@@ -459,10 +468,28 @@ def share_get_all_by_share_server_with_count(
         sort_dir=sort_dir)
 
 
+def get_shares_in_recycle_bin_by_network(
+        context, share_network_id, filters=None,
+        sort_key=None, sort_dir=None):
+    """Returns all shares in recycle bin with given share network ID."""
+    return IMPL.get_shares_in_recycle_bin_by_network(
+        context, share_network_id, filters=filters, sort_key=sort_key,
+        sort_dir=sort_dir)
+
+
 def share_delete(context, share_id):
     """Delete share."""
     return IMPL.share_delete(context, share_id)
 
+
+def share_soft_delete(context, share_id):
+    """Soft delete share."""
+    return IMPL.share_soft_delete(context, share_id)
+
+
+def share_restore(context, share_id):
+    """Restore share."""
+    return IMPL.share_restore(context, share_id)
 
 ###################
 
@@ -1075,6 +1102,11 @@ def share_server_get_all_unused_deletable(context, host, updated_before):
     """Get all free share servers DB records."""
     return IMPL.share_server_get_all_unused_deletable(context, host,
                                                       updated_before)
+
+
+def get_all_expired_shares(context):
+    """Get all expired share DB records."""
+    return IMPL.get_all_expired_shares(context)
 
 
 def share_server_backend_details_set(context, share_server_id, server_details):
