@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import collections
+from collections import abc
 import datetime
 
 from manila.common import constants
@@ -68,7 +68,7 @@ def stub_share(id, **kwargs):
 
     # NOTE(ameade): We must wrap the dictionary in an class in order to stub
     # object attributes.
-    class wrapper(collections.Mapping):
+    class wrapper(abc.Mapping):
         def __getitem__(self, name):
             if hasattr(self, name):
                 return getattr(self, name)

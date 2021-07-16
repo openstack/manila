@@ -15,7 +15,7 @@
 #    under the License.
 """Utilities for NetApp drivers."""
 
-import collections
+from collections import abc
 import decimal
 import platform
 import re
@@ -107,7 +107,7 @@ def convert_to_list(value):
         return []
     elif isinstance(value, six.string_types):
         return [value]
-    elif isinstance(value, collections.Iterable):
+    elif isinstance(value, abc.Iterable):
         return list(value)
     else:
         return [value]
