@@ -81,6 +81,7 @@ import manila.share.drivers.lvm
 import manila.share.drivers.maprfs.maprfs_native
 import manila.share.drivers.netapp.options
 import manila.share.drivers.nexenta.options
+import manila.share.drivers.purestorage.flashblade
 import manila.share.drivers.qnap.qnap
 import manila.share.drivers.quobyte.quobyte
 import manila.share.drivers.service_instance
@@ -177,6 +178,9 @@ _global_opt_lists = [
     manila.share.drivers.nexenta.options.nexenta_connection_opts,
     manila.share.drivers.nexenta.options.nexenta_dataset_opts,
     manila.share.drivers.nexenta.options.nexenta_nfs_opts,
+    manila.share.drivers.purestorage.flashblade.flashblade_auth_opts,
+    manila.share.drivers.purestorage.flashblade.flashblade_extra_opts,
+    manila.share.drivers.purestorage.flashblade.flashblade_connection_opts,
     manila.share.drivers.qnap.qnap.qnap_manila_opts,
     manila.share.drivers.quobyte.quobyte.quobyte_manila_share_opts,
     manila.share.drivers.service_instance.common_opts,

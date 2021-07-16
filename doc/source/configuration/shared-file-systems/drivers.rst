@@ -34,6 +34,7 @@ Share drivers
    drivers/quobyte-driver.rst
    drivers/windows-smb-driver.rst
    drivers/nexentastor5-driver.rst
+   drivers/purestorage-flashblade-driver.rst
 
 
 To use different share drivers for the Shared File Systems service, use the
