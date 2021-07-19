@@ -41,7 +41,7 @@ Supported Operations
 
 The following operations are supported with CephFS backend:
 
-- Create/delete share
+- Create, delete, update and list share
 - Allow/deny access to share
 
   * Only ``cephx`` access type is supported for CephFS native protocol.
@@ -49,10 +49,12 @@ The following operations are supported with CephFS backend:
   * ``read-only`` and ``read-write`` access levels are supported.
 
 - Extend/shrink share
-- Create/delete snapshot
-- Create/delete share groups
-- Create/delete share group snapshots
+- Create, delete, update and list snapshot
+- Create, delete, update and list share groups
+- Delete and list share group snapshots
 
+.. important:: Share group snapshot creation is no longer supported in mainline
+               CephFS. This feature has been removed from manila W release.
 
 Prerequisites
 ~~~~~~~~~~~~~

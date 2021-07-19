@@ -601,7 +601,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         rados_command(self.rados_client, "fs subvolumegroup create", argdict)
 
     def delete_share_group(self, context, sg_dict, share_server=None):
-        # create a FS group
+        # delete a FS group
         LOG.debug("[%(be)s]: delete_share_group: share_group=%(id)s.",
                   {"be": self.backend_name, "id": sg_dict['id']})
 
@@ -641,16 +641,10 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                   {"be": self.backend_name, "id": snap_dict['share_group_id'],
                    "sn": snap_dict["id"]})
 
-        argdict = {
-            "vol_name": self.volname,
-            "group_name": snap_dict["share_group_id"],
-            "snap_name": snap_dict["id"]
-        }
-
-        rados_command(
-            self.rados_client, "fs subvolumegroup snapshot create", argdict)
-
-        return None, []
+        msg = _("Share group snapshot feature is no longer supported in "
+                "mainline CephFS (existing group snapshots can still be "
+                "listed and deleted).")
+        raise exception.ShareBackendException(msg=msg)
 
     def _get_clone_status(self, share):
         """Check the status of a newly cloned share."""

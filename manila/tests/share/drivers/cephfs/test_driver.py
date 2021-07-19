@@ -409,22 +409,15 @@ class CephFSDriverTestCase(test.TestCase):
             group_delete_prefix, group_delete_dict)
 
     def test_create_share_group_snapshot(self):
-        group_snapshot_create_prefix = "fs subvolumegroup snapshot create"
+        msg = ("Share group snapshot feature is no longer supported in "
+               "mainline CephFS (existing group snapshots can still be "
+               "listed and deleted).")
+        driver.rados_command.side_effect = exception.ShareBackendException(msg)
 
-        group_snapshot_create_dict = {
-            "vol_name": self._driver.volname,
-            "group_name": "sgid",
-            "snap_name": "snapid",
-        }
-
-        self._driver.create_share_group_snapshot(self._context, {
-            'share_group_id': 'sgid',
-            'id': 'snapid',
-        })
-
-        driver.rados_command.assert_called_once_with(
-            self._driver.rados_client,
-            group_snapshot_create_prefix, group_snapshot_create_dict)
+        self.assertRaises(exception.ShareBackendException,
+                          self._driver.create_share_group_snapshot,
+                          self._context, {'share_group_id': 'sgid',
+                                          'id': 'snapid'})
 
     def test_delete_share_group_snapshot(self):
         group_snapshot_delete_prefix = "fs subvolumegroup snapshot rm"
