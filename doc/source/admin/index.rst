@@ -94,6 +94,7 @@ each back end.
    hitachi_hnas_driver
    hpe_3par_driver
    infortrend_driver
+   purestorage_flashblade_driver
    tegile_driver
    nexentastor5_driver
    ../configuration/shared-file-systems/drivers/windows-smb-driver
