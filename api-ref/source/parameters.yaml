@@ -1076,7 +1076,39 @@ extra_spec_key:
   type: string
 extra_specs:
   description: |
-    The extra specifications for the share type.
+    Extra specifications of the share type. These are key=value pairs of
+    capabilities that the shares of this type are expected to possess.
+    For more information, see `Share Types
+    <https://docs.openstack.org/manila/latest/admin/shared-
+    file-systems-share-types.html>`_.
+    Some examples include:
+    ``driver_handles_share_servers``,
+    ``replication_type``,
+    ``snapshot_support``,
+    ``mount_snapshot_support``,
+    ``revert_to_snapshot_support``,
+    ``create_share_from_snapshot_support``
+  in: body
+  required: true
+  type: object
+extra_specs_request_body:
+  description: |
+    Extra specifications of the share type. These are key=value pairs of
+    capabilities that the shares of this type are expected to possess.
+    For more information, see `Share Types
+    <https://docs.openstack.org/manila/latest/admin/shared-
+    file-systems-share-types.html>`_. When creating a new share type, required
+    extra-specifications **must** be provided.
+    ``driver_handles_share_servers`` is a required extra-specification,
+    and ``snapshot_support`` was considered a required extra-specification
+    until API version 2.24. When updating extra-specs of a share type,
+    there's no need to provide required extra specifications unless they need
+    to be updated. Some examples of extra-specifications include:
+    ``replication_type``,
+    ``snapshot_support``,
+    ``mount_snapshot_support``,
+    ``revert_to_snapshot_support``,
+    ``create_share_from_snapshot_support``
   in: body
   required: true
   type: object
@@ -1425,6 +1457,31 @@ maxTotalSnapshotGigabytesOptional:
   in: body
   required: false
   type: integer
+message_expires_at_body:
+  description: |
+    The date and time stamp when the resource message will expire within the
+    service's database.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2016-12-31T13:14:15-05:00``.
+  in: body
+  required: true
+  type: string
+message_id_body:
+  description: |
+    The UUID of the message.
+  in: body
+  required: true
+  type: string
 message_level_body:
   in: body
   required: true
@@ -2059,7 +2116,9 @@ requested_capabilities:
 required_extra_specs:
   description: |
     The required extra specifications for the share
-    type.
+    type: ``driver_handles_share_servers``. ``snapshot_support`` was
+    treated as a required extra-specification until 
+    api version 2.24.
   in: body
   required: true
   type: object
