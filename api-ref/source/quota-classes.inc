@@ -9,6 +9,8 @@ Quota classes can be shown and updated for a project.
 .. important::
     Share replicas and replica gigabytes were added to quota management
     APIs in API version 2.53.
+    Per share gigabytes was added to quota management APIs in API
+    version 2.62.
 
 
 Show quota classes for a project
@@ -56,6 +58,7 @@ Response Parameters
    - share_networks: maxTotalShareNetworks
    - share_replicas: maxTotalShareReplicas
    - replica_gigabytes: maxTotalReplicaGigabytes
+   - per_share_gigabytes: perShareGigabytes
 
 Response Example
 ----------------
@@ -99,6 +102,7 @@ Request
    - share-networks: maxTotalShareNetworksOptional
    - share-replicas: maxTotalShareReplicasOptional
    - replica-gigabytes: maxTotalReplicaGigabytesOptional
+   - per-share-gigabytes: perShareGigabytesOptional
 
 Request Example
 ---------------
@@ -122,6 +126,7 @@ Response Parameters
    - share_networks: maxTotalShareNetworks
    - share_replicas: maxTotalShareReplicas
    - replica_gigabytes: maxTotalReplicaGigabytes
+   - per_share_gigabytes: perShareGigabytes
 
 Response Example
 ----------------

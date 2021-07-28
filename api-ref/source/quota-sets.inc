@@ -22,12 +22,16 @@ Provides quotas management support.
     - ``share_group_snapshots`` (since API version 2.40)
     - ``share_replicas`` (since API version 2.53)
     - ``replica_gigabytes`` (since API version 2.53)
+    - ``per_share_gigabytes`` (since API version 2.62)
 
     Share groups and share group snapshots were added to quota management
     APIs in API version 2.40.
 
     Share replicas and replica gigabytes were added to quota management
     APIs in API version 2.53.
+
+    Per share gigabytes was added to quota management APIs in API
+    version 2.62.
 
 
 Show default quota set
@@ -75,6 +79,7 @@ Response parameters
    - share_networks: quota_share_networks_default
    - share_replicas: quota_share_replicas
    - replica_gigabytes: quota_replica_gigabytes
+   - per_share_gigabytes: quota_per_share_gigabytes
 
 Response example
 ----------------
@@ -133,6 +138,7 @@ Response parameters
    - share_group_snapshots: quota_share_group_snapshots
    - share_replicas: quota_share_replicas
    - replica_gigabytes: quota_replica_gigabytes
+   - per_share_gigabytes: quota_per_share_gigabytes
 
 Response example
 ----------------
@@ -193,6 +199,7 @@ Response parameters
    - share_group_snapshots: quota_share_group_snapshots_detail
    - share_replicas: quota_share_replicas_detail
    - replica_gigabytes: quota_replica_gigabytes_detail
+   - per_share_gigabytes: quota_per_share_gigabytes_detail
 
 Response example
 ----------------
@@ -245,6 +252,7 @@ Request
    - share_type: share_type_for_quota
    - share_replicas: quota_share_replicas_request
    - replica_gigabytes: quota_replica_gigabytes_request
+   - per_share_gigabytes: quota_per_share_gigabytes_request
 
 Request example
 ---------------
@@ -268,6 +276,7 @@ Response parameters
    - share_group_snapshots: quota_share_group_snapshots
    - share_replicas: quota_share_replicas
    - replica_gigabytes: quota_replica_gigabytes
+   - per_share_gigabytes: quota_per_share_gigabytes
 
 Response example
 ----------------
