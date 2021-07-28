@@ -24,6 +24,7 @@ from oslo_utils import strutils
 from manila.common import constants
 from manila import context
 from manila import exception
+from manila.message import message_field
 from manila.scheduler.drivers import base
 from manila.scheduler.drivers import filter
 from manila.scheduler import host_manager
@@ -64,6 +65,29 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         self.assertIn('replication_domain', retval[0])
         # no "share_proto" was specified in the request_spec
         self.assertNotIn('storage_protocol', retval[0])
+
+    def test___format_filter_properties_no_default_share_type_provided(self):
+
+        sched = fakes.FakeFilterScheduler()
+        create_mock_message = self.mock_object(sched.message_api, 'create')
+        fake_context = context.RequestContext('user', 'project')
+        request_spec = {
+            'share_properties': {'project_id': 'string', 'size': 1},
+            'share_instance_properties': {},
+            'share_type': None,
+            'share_id': 'fake-id1',
+        }
+        self.assertRaises(exception.InvalidParameterValue,
+                          sched._format_filter_properties,
+                          fake_context, {}, request_spec)
+
+        create_mock_message.assert_called_once_with(
+            fake_context,
+            message_field.Action.CREATE,
+            fake_context.project_id,
+            resource_type=message_field.Resource.SHARE,
+            resource_id='fake-id1',
+            detail=message_field.Detail.NO_DEFAULT_SHARE_TYPE)
 
     @ddt.data(True, False)
     def test__format_filter_properties_backend_specified_for_replica(
