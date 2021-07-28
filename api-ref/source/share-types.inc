@@ -122,13 +122,7 @@ Response parameters
    - name: share_type_name
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
-   - driver_handles_share_servers: driver_handles_share_servers
-   - replication_type: replication_type
-   - snapshot_support: snapshot_support
-   - mount_snapshot_support: mount_snapshot_support
-   - revert_to_snapshot_support: revert_to_snapshot_support
-   - share_type_access:is_public: share_type_access:is_public
-   - create_share_from_snapshot_support: create_share_from_snapshot_support
+   - share_type_access:is_public: share_type_access:is_public_body
    - description: share_type_description
    - is_default: is_default_type
 
@@ -175,9 +169,7 @@ Response parameters
    - id: share_type_id_body
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
-   - driver_handles_share_servers: driver_handles_share_servers
-   - snapshot_support: snapshot_support
-   - share_type_access:is_public: share_type_access:is_public
+   - share_type_access:is_public: share_type_access:is_public_body
    - name: share_type_name
    - description: share_type_description
    - is_default: is_default_type
@@ -226,13 +218,7 @@ Response Parameters
    - id: share_type_id_body
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
-   - driver_handles_share_servers: driver_handles_share_servers
-   - snapshot_support: snapshot_support
-   - replication_type: replication_type
-   - mount_snapshot_support: mount_snapshot_support
-   - revert_to_snapshot_support: revert_to_snapshot_support
-   - create_share_from_snapshot_support: create_share_from_snapshot_support
-   - share_type_access:is_public: share_type_access:is_public
+   - share_type_access:is_public: share_type_access:is_public_body
    - name: share_type_name
    - description: share_type_description
    - is_default: is_default_type
@@ -279,12 +265,6 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - extra_specs: extra_specs
-   - driver_handles_share_servers: driver_handles_share_servers
-   - snapshot_support: snapshot_support
-   - replication_type: replication_type
-   - mount_snapshot_support: mount_snapshot_support
-   - revert_to_snapshot_support: revert_to_snapshot_support
-   - create_share_from_snapshot_support: create_share_from_snapshot_support
 
 Response example
 ----------------
@@ -322,15 +302,9 @@ Request
 
 
    - project_id: project_id_path
-   - extra_specs: extra_specs
-   - driver_handles_share_servers: driver_handles_share_servers
-   - snapshot_support: snapshot_support
+   - extra_specs: extra_specs_request_body
    - os-share-type-access:is_public: os-share-type-access:is_public
-   - name: share_type_name_request
-   - replication_type: replication_type
-   - mount_snapshot_support: mount_snapshot_support
-   - revert_to_snapshot_support: revert_to_snapshot_support
-   - create_share_from_snapshot_support: create_share_from_snapshot_support
+   - name: share_type_name
    - description: share_type_description_request
 
 Request example
@@ -347,15 +321,9 @@ Response parameters
    - id: share_type_id_body
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
-   - driver_handles_share_servers: driver_handles_share_servers
-   - snapshot_support: snapshot_support
    - os-share-type-access:is_public: os-share-type-access:is_public
    - share_type_access:is_public: share_type_access:is_public
    - name: share_type_name
-   - replication_type: replication_type
-   - mount_snapshot_support: mount_snapshot_support
-   - revert_to_snapshot_support: revert_to_snapshot_support
-   - create_share_from_snapshot_support: create_share_from_snapshot_support
    - description: share_type_description
    - is_default: is_default_type
 
@@ -446,7 +414,7 @@ Request
 
    - project_id: project_id_path
    - share_type_id: share_type_id
-   - extra_specs: extra_specs
+   - extra_specs: extra_specs_request_body
 
 Request example
 ---------------
@@ -662,14 +630,8 @@ Response parameters
    - id: share_type_id_body
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
-   - driver_handles_share_servers: driver_handles_share_servers
-   - snapshot_support: snapshot_support
    - share_type_access:is_public: share_type_access:is_public_body
    - name: share_type_name
-   - replication_type: replication_type
-   - mount_snapshot_support: mount_snapshot_support_body
-   - revert_to_snapshot_support: revert_to_snapshot_support_body
-   - create_share_from_snapshot_support: create_share_from_snapshot_support_body
    - description: share_type_description_body
    - is_default: is_default_type_body
 

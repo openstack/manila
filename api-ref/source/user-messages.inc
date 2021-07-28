@@ -63,6 +63,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - id: message_id_body
    - action_id: action_id_body
    - detail_id: detail_id_body
    - message_level: message_level_body
@@ -71,6 +72,8 @@ Response parameters
    - resource_id: resource_id_body
    - resource_type: resource_type_body
    - message_members_links: message_members_links
+   - expires_at : message_expires_at_body
+   - created_at : created_at
 
 
 Response example
@@ -116,6 +119,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
+   - id: message_id_body
    - action_id: action_id_body
    - detail_id: detail_id_body
    - message_level: message_level_body
@@ -124,6 +128,8 @@ Response parameters
    - resource_id: resource_id_body
    - resource_type: resource_type_body
    - message_links: message_links
+   - expires_at : message_expires_at_body
+   - created_at : created_at
 
 
 Response example
