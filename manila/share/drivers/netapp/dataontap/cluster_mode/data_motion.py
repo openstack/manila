@@ -160,11 +160,12 @@ class DataMotionSession(object):
                                 'last-transfer-end-timestamp'])
         return snapmirrors
 
-    def create_snapmirror(self, source_share_obj, dest_share_obj):
+    def create_snapmirror(self, source_share_obj, dest_share_obj, mount=False):
         """Sets up a SnapMirror relationship between two volumes.
 
-        1. Create SnapMirror relationship
-        2. Initialize data transfer asynchronously
+        1. Create SnapMirror relationship.
+        2. Initialize data transfer asynchronously.
+        3. Mount destination volume if requested.
         """
         dest_volume_name, dest_vserver, dest_backend = (
             self.get_backend_info_for_share(dest_share_obj))
@@ -187,6 +188,13 @@ class DataMotionSession(object):
                                               src_volume_name,
                                               dest_vserver,
                                               dest_volume_name)
+
+        # 3. Mount the destination volume and create a junction path
+        if mount:
+            replica_config = get_backend_configuration(dest_backend)
+            self.wait_for_mount_replica(
+                dest_client, dest_volume_name,
+                timeout=replica_config.netapp_mount_replica_timeout)
 
     def delete_snapmirror(self, source_share_obj, dest_share_obj,
                           release=True):
@@ -732,4 +740,39 @@ class DataMotionSession(object):
         except exception.NetAppException:
             msg = _("Unable to release the snapmirror from source vserver %s. "
                     "Retries exhausted. Aborting") % source_vserver
+            raise exception.NetAppException(message=msg)
+
+    def wait_for_mount_replica(self, vserver_client, share_name, timeout=300):
+        """Mount a replica share that is waiting for snapmirror initialize."""
+
+        interval = 10
+        retries = (timeout // interval or 1)
+
+        @utils.retry(exception.ShareBusyException, interval=interval,
+                     retries=retries, backoff_rate=1)
+        def try_mount_volume():
+            try:
+                vserver_client.mount_volume(share_name)
+            except netapp_api.NaApiError as e:
+                undergoing_snap_init = 'snapmirror initialize'
+                msg_args = {'name': share_name}
+                if (e.code == netapp_api.EAPIERROR and
+                        undergoing_snap_init in e.message):
+                    msg = _('The share %(name)s is undergoing a snapmirror '
+                            'initialize. Will retry the operation.') % msg_args
+                    LOG.warning(msg)
+                    raise exception.ShareBusyException(reason=msg)
+                else:
+                    msg = _("Unable to perform mount operation for the share "
+                            "%(name)s. Caught an unexpected error. Not "
+                            "retrying.") % msg_args
+                    raise exception.NetAppException(message=msg)
+
+        try:
+            try_mount_volume()
+        except exception.ShareBusyException:
+            msg_args = {'name': share_name}
+            msg = _("Unable to perform mount operation for the share %(name)s "
+                    "because a snapmirror initialize operation is still in "
+                    "progress. Retries exhausted. Not retrying.") % msg_args
             raise exception.NetAppException(message=msg)

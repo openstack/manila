@@ -210,6 +210,11 @@ netapp_data_motion_opts = [
                help='The maximum time in seconds that a share server '
                     'migration waits for a vserver to change its internal '
                     'states.'),
+    cfg.IntOpt('netapp_mount_replica_timeout',
+               min=0,
+               default=3600,  # One Hour
+               help='The maximum time in seconds to wait for mounting '
+                    'a replica.'),
 ]
 
 CONF = cfg.CONF

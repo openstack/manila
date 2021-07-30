@@ -5015,6 +5015,18 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('cifs-share-delete', cifs_share_delete_args)])
 
+    def test_remove_cifs_share_not_found(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         self._mock_api_error(code=netapp_api.EOBJECTNOTFOUND))
+
+        self.client.remove_cifs_share(fake.SHARE_NAME)
+
+        cifs_share_args = {'share-name': fake.SHARE_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('cifs-share-delete', cifs_share_args)])
+
     def test_add_nfs_export_rule(self):
 
         mock_get_nfs_export_rule_indices = self.mock_object(

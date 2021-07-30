@@ -379,7 +379,8 @@ class NetAppCmodeFileStorageLibrary(object):
         }
 
         if self.configuration.replication_domain:
-            data['replication_type'] = 'dr'
+            data['replication_type'] = [constants.REPLICATION_TYPE_DR,
+                                        constants.REPLICATION_TYPE_READABLE]
             data['replication_domain'] = self.configuration.replication_domain
 
         return data
@@ -642,7 +643,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 # 2. Create a replica in destination host
                 self._allocate_container(
                     dest_share, dest_vserver, dest_vserver_client,
-                    replica=True)
+                    replica=True, set_qos=False)
                 # 3. Initialize snapmirror relationship with cloned share.
                 src_share_instance['replica_state'] = (
                     constants.REPLICA_STATE_ACTIVE)
@@ -792,7 +793,8 @@ class NetAppCmodeFileStorageLibrary(object):
                 share,
                 [],  # access_rules
                 [],  # snapshot list
-                share_server)
+                share_server,
+                replication=False)
             if replica_state in [None, constants.STATUS_ERROR]:
                 msg = _("Destination share has failed on replicating data "
                         "from source share.")
@@ -864,7 +866,8 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def _allocate_container(self, share, vserver, vserver_client,
-                            replica=False, create_fpolicy=True):
+                            replica=False, create_fpolicy=True,
+                            set_qos=True):
         """Create new share on aggregate."""
         share_name = self._get_backend_share_name(share['id'])
 
@@ -875,7 +878,7 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.InvalidHost(reason=msg)
 
         provisioning_options = self._get_provisioning_options_for_share(
-            share, vserver, vserver_client=vserver_client, replica=replica)
+            share, vserver, vserver_client=vserver_client, set_qos=set_qos)
 
         if replica:
             # If this volume is intended to be a replication destination,
@@ -1101,7 +1104,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def _get_provisioning_options_for_share(
-            self, share, vserver, vserver_client=None, replica=False):
+            self, share, vserver, vserver_client=None, set_qos=True):
         """Return provisioning options from a share.
 
         Starting with a share, this method gets the extra specs, rationalizes
@@ -1117,7 +1120,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self.validate_provisioning_options_for_share(provisioning_options,
                                                      extra_specs=extra_specs,
                                                      qos_specs=qos_specs)
-        if qos_specs and not replica:
+        if qos_specs and set_qos:
             qos_policy_group = self._create_qos_policy_group(
                 share, vserver, qos_specs, vserver_client)
             provisioning_options['qos_policy_group'] = qos_policy_group
@@ -1264,7 +1267,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def _delete_share(self, share, vserver, vserver_client,
-                      remove_export=True):
+                      remove_export=True, remove_qos=True):
         share_name = self._get_backend_share_name(share['id'])
         # Share doesn't need to exist to be assigned to a fpolicy scope
         self._delete_fpolicy_for_share(share, vserver, vserver_client)
@@ -1273,10 +1276,11 @@ class NetAppCmodeFileStorageLibrary(object):
             if remove_export:
                 self._remove_export(share, vserver_client)
             self._deallocate_container(share_name, vserver_client)
-            qos_policy_for_share = self._get_backend_qos_policy_group_name(
-                share['id'])
-            vserver_client.mark_qos_policy_group_for_deletion(
-                qos_policy_for_share)
+            if remove_qos:
+                qos_policy_for_share = self._get_backend_qos_policy_group_name(
+                    share['id'])
+                vserver_client.mark_qos_policy_group_for_deletion(
+                    qos_policy_for_share)
         else:
             LOG.info("Share %s does not exist.", share['id'])
 
@@ -1306,7 +1310,7 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _create_export(self, share, share_server, vserver, vserver_client,
                        clear_current_export_policy=True,
-                       ensure_share_already_exists=False):
+                       ensure_share_already_exists=False, replica=False):
         """Creates NAS storage."""
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
@@ -1329,7 +1333,8 @@ class NetAppCmodeFileStorageLibrary(object):
         callback = helper.create_share(
             share, share_name,
             clear_current_export_policy=clear_current_export_policy,
-            ensure_share_already_exists=ensure_share_already_exists)
+            ensure_share_already_exists=ensure_share_already_exists,
+            replica=replica)
 
         # Generate export locations using addresses, metadata and callback
         export_locations = [
@@ -1907,11 +1912,13 @@ class NetAppCmodeFileStorageLibrary(object):
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
         """Updates access rules for a share."""
-        # NOTE(ameade): We do not need to add export rules to a non-active
-        # replica as it will fail.
+
+        # NOTE(felipe_rodrigues): do not add export rules to a non-active
+        # replica that is DR type, it might not have its policy yet.
         replica_state = share.get('replica_state')
         if (replica_state is not None and
-                replica_state != constants.REPLICA_STATE_ACTIVE):
+                replica_state != constants.REPLICA_STATE_ACTIVE and
+                not self._is_readable_replica(share)):
             return
         try:
             vserver, vserver_client = self._get_vserver(
@@ -2022,17 +2029,35 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client = data_motion.get_client_for_backend(
             dest_backend, vserver_name=vserver)
 
+        is_readable = self._is_readable_replica(new_replica)
         self._allocate_container(new_replica, vserver, vserver_client,
-                                 replica=True, create_fpolicy=False)
+                                 replica=True, create_fpolicy=False,
+                                 set_qos=is_readable)
 
-        # 2. Setup SnapMirror
-        dm_session.create_snapmirror(active_replica, new_replica)
+        # 2. Setup SnapMirror with mounting replica whether 'readable' type
+        dm_session.create_snapmirror(active_replica, new_replica,
+                                     mount=is_readable)
 
+        # 3. Create export location
         model_update = {
             'export_locations': [],
             'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC,
             'access_rules_status': constants.STATUS_ACTIVE,
         }
+        if is_readable:
+            model_update['export_locations'] = self._create_export(
+                new_replica, share_server, vserver, vserver_client,
+                replica=True)
+
+            if access_rules:
+                helper = self._get_helper(new_replica)
+                helper.set_client(vserver_client)
+                share_name = self._get_backend_share_name(new_replica['id'])
+                try:
+                    helper.update_access(new_replica, share_name, access_rules)
+                except Exception:
+                    model_update['access_rules_status'] = (
+                        constants.SHARE_INSTANCE_RULES_ERROR)
 
         return model_update
 
@@ -2054,14 +2079,15 @@ class NetAppCmodeFileStorageLibrary(object):
                 dm_session.delete_snapmirror(replica, other_replica)
 
         # 2. Delete share
+        is_readable = self._is_readable_replica(replica)
         vserver_client = data_motion.get_client_for_backend(
             dest_backend, vserver_name=vserver)
-        share_name = self._get_backend_share_name(replica['id'])
-        if self._share_exists(share_name, vserver_client):
-            self._deallocate_container(share_name, vserver_client)
+        self._delete_share(replica, vserver, vserver_client,
+                           remove_export=is_readable, remove_qos=is_readable)
 
     def update_replica_state(self, context, replica_list, replica,
-                             access_rules, share_snapshots, share_server=None):
+                             access_rules, share_snapshots, share_server=None,
+                             replication=True):
         """Returns the status of the given replica on this backend."""
         active_replica = self.find_active_replica(replica_list)
 
@@ -2088,10 +2114,12 @@ class NetAppCmodeFileStorageLibrary(object):
                           replica['id'])
             return constants.STATUS_ERROR
 
+        is_readable = replication and self._is_readable_replica(replica)
         if not snapmirrors:
             if replica['status'] != constants.STATUS_CREATING:
                 try:
-                    dm_session.create_snapmirror(active_replica, replica)
+                    dm_session.create_snapmirror(active_replica, replica,
+                                                 mount=is_readable)
                 except netapp_api.NaApiError:
                     LOG.exception("Could not create snapmirror for "
                                   "replica %s.", replica['id'])
@@ -2153,6 +2181,11 @@ class NetAppCmodeFileStorageLibrary(object):
         SnapMirror source volume) and the replica. Also attempts setting up
         SnapMirror relationships between the other replicas and the new
         SnapMirror source volume ('active' instance).
+
+        For DR style, the promotion creates the QoS policy and export policy
+        for the new active replica. While for 'readable', those specs are only
+        updated without unmounting.
+
         :param context: Request Context
         :param replica_list: List of replicas, including the 'active' instance
         :param replica: Replica to promote to SnapMirror source
@@ -2186,43 +2219,46 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # Change the source replica for all destinations to the new
         # active replica.
+        is_dr = not self._is_readable_replica(replica)
         for r in replica_list:
             if r['id'] != replica['id']:
                 r = self._safe_change_replica_source(dm_session, r,
                                                      orig_active_replica,
-                                                     replica,
-                                                     replica_list)
+                                                     replica, replica_list,
+                                                     is_dr, access_rules,
+                                                     share_server=share_server)
                 new_replica_list.append(r)
 
-        orig_active_vserver = dm_session.get_vserver_from_share(
-            orig_active_replica)
+        if is_dr:
+            # NOTE(felipe_rodrigues): non active DR replica does not have the
+            # export location set, so during replica deletion the driver cannot
+            # delete the ONTAP export. Clean up it when becoming non active.
+            orig_active_vserver = dm_session.get_vserver_from_share(
+                orig_active_replica)
+            orig_active_replica_backend = (
+                share_utils.extract_host(orig_active_replica['host'],
+                                         level='backend_name'))
+            orig_active_replica_name = self._get_backend_share_name(
+                orig_active_replica['id'])
+            orig_active_vserver_client = data_motion.get_client_for_backend(
+                orig_active_replica_backend, vserver_name=orig_active_vserver)
+            orig_active_replica_helper = self._get_helper(orig_active_replica)
+            orig_active_replica_helper.set_client(orig_active_vserver_client)
+            try:
+                orig_active_replica_helper.cleanup_demoted_replica(
+                    orig_active_replica, orig_active_replica_name)
+            except exception.StorageCommunicationException:
+                LOG.exception(
+                    "Could not cleanup the original active replica export %s.",
+                    orig_active_replica['id'])
 
-        # Cleanup the original active share if necessary
-        orig_active_replica_backend = (
-            share_utils.extract_host(orig_active_replica['host'],
-                                     level='backend_name'))
-        orig_active_replica_name = self._get_backend_share_name(
-            orig_active_replica['id'])
-        orig_active_vserver_client = data_motion.get_client_for_backend(
-            orig_active_replica_backend, vserver_name=orig_active_vserver)
-
-        orig_active_replica_helper = self._get_helper(orig_active_replica)
-        orig_active_replica_helper.set_client(orig_active_vserver_client)
-
-        try:
-            orig_active_replica_helper.cleanup_demoted_replica(
-                orig_active_replica, orig_active_replica_name)
-        except exception.StorageCommunicationException:
-            LOG.exception("Could not cleanup the original active replica %s.",
-                          orig_active_replica['id'])
-
-        # Unmount the original active replica.
-        self._unmount_orig_active_replica(orig_active_replica,
-                                          orig_active_vserver)
+            self._unmount_orig_active_replica(orig_active_replica,
+                                              orig_active_vserver)
 
         self._handle_qos_on_replication_change(dm_session,
                                                new_active_replica,
                                                orig_active_replica,
+                                               is_dr,
                                                share_server=share_server)
 
         return new_replica_list
@@ -2247,16 +2283,22 @@ class NetAppCmodeFileStorageLibrary(object):
                           orig_active_replica['id'])
 
     def _handle_qos_on_replication_change(self, dm_session, new_active_replica,
-                                          orig_active_replica,
+                                          orig_active_replica, is_dr,
                                           share_server=None):
-        # QoS operations: Remove and purge QoS policy on old active replica
-        # if any and create a new policy on the destination if necessary.
+        """Handle QoS change while promoting a replica."""
+
+        # QoS is only available for cluster credentials.
+        if not self._have_cluster_creds:
+            return
+
         extra_specs = share_types.get_extra_specs_from_share(
             orig_active_replica)
         qos_specs = self._get_normalized_qos_specs(extra_specs)
 
-        if qos_specs and self._have_cluster_creds:
+        if is_dr and qos_specs:
             dm_session.remove_qos_on_old_active_replica(orig_active_replica)
+
+        if qos_specs:
             # Check if a QoS policy already exists for the promoted replica,
             # if it does, modify it as necessary, else create it:
             try:
@@ -2293,6 +2335,7 @@ class NetAppCmodeFileStorageLibrary(object):
         For promotion, the existing SnapMirror relationship must be broken
         and access rules have to be granted to the broken off replica to
         use it as an independent share.
+
         :param context: Request Context
         :param dm_session: Data motion object for SnapMirror operations
         :param orig_active_replica: Original SnapMirror source
@@ -2340,15 +2383,21 @@ class NetAppCmodeFileStorageLibrary(object):
 
     def _safe_change_replica_source(self, dm_session, replica,
                                     orig_source_replica,
-                                    new_source_replica, replica_list):
+                                    new_source_replica, replica_list,
+                                    is_dr, access_rules,
+                                    share_server=None):
         """Attempts to change the SnapMirror source to new source.
 
         If the attempt fails, 'replica_state' is set to 'error'.
-        :param dm_session: Data motion object for SnapMirror operations
-        :param replica: Replica that requires a change of source
-        :param orig_source_replica: Original SnapMirror source volume
-        :param new_source_replica: New SnapMirror source volume
-        :return: Updated replica
+
+        :param dm_session: Data motion object for SnapMirror operations.
+        :param replica: Replica that requires a change of source.
+        :param orig_source_replica: Original SnapMirror source volume.
+        :param new_source_replica: New SnapMirror source volume.
+        :param is_dr: the replication type is dr, otherwise it is readable.
+        :param access_rules: share access rules to be applied.
+        :param share_server: share server.
+        :return: Updated replica.
         """
         try:
             dm_session.change_snapmirror_source(replica,
@@ -2358,22 +2407,70 @@ class NetAppCmodeFileStorageLibrary(object):
         except exception.StorageCommunicationException:
             replica['status'] = constants.STATUS_ERROR
             replica['replica_state'] = constants.STATUS_ERROR
-            replica['export_locations'] = []
+            if is_dr:
+                replica['export_locations'] = []
             msg = ("Failed to change replica (%s) to a SnapMirror "
                    "destination. Replica backend is unreachable.")
 
             LOG.exception(msg, replica['id'])
             return replica
         except netapp_api.NaApiError:
+            replica['status'] = constants.STATUS_ERROR
             replica['replica_state'] = constants.STATUS_ERROR
-            replica['export_locations'] = []
+            if is_dr:
+                replica['export_locations'] = []
             msg = ("Failed to change replica (%s) to a SnapMirror "
                    "destination.")
             LOG.exception(msg, replica['id'])
             return replica
 
         replica['replica_state'] = constants.REPLICA_STATE_OUT_OF_SYNC
-        replica['export_locations'] = []
+        replica['status'] = constants.STATUS_AVAILABLE
+        if is_dr:
+            replica['export_locations'] = []
+            return replica
+
+        # NOTE(felipe_rodrigues): readable replica might be in an error
+        # state without mounting and export. Retries to recover it.
+        replica_volume_name, replica_vserver, replica_backend = (
+            dm_session.get_backend_info_for_share(replica))
+        replica_client = data_motion.get_client_for_backend(
+            replica_backend, vserver_name=replica_vserver)
+
+        try:
+            replica_config = data_motion.get_backend_configuration(
+                replica_backend)
+            dm_session.wait_for_mount_replica(
+                replica_client, replica_volume_name,
+                timeout=replica_config.netapp_mount_replica_timeout)
+        except netapp_api.NaApiError:
+            replica['status'] = constants.STATUS_ERROR
+            replica['replica_state'] = constants.STATUS_ERROR
+            msg = "Failed to mount readable replica (%s)."
+            LOG.exception(msg, replica['id'])
+            return replica
+
+        try:
+            replica['export_locations'] = self._create_export(
+                replica, share_server, replica_vserver, replica_client,
+                replica=True)
+        except netapp_api.NaApiError:
+            replica['status'] = constants.STATUS_ERROR
+            replica['replica_state'] = constants.STATUS_ERROR
+            msg = "Failed to create export for readable replica (%s)."
+            LOG.exception(msg, replica['id'])
+            return replica
+
+        helper = self._get_helper(replica)
+        helper.set_client(replica_client)
+        try:
+            helper.update_access(
+                replica, replica_volume_name, access_rules)
+        except Exception:
+            replica['access_rules_status'] = (
+                constants.SHARE_INSTANCE_RULES_ERROR)
+        else:
+            replica['access_rules_status'] = constants.STATUS_ACTIVE
 
         return replica
 
@@ -2524,6 +2621,12 @@ class NetAppCmodeFileStorageLibrary(object):
             except netapp_api.NaApiError as e:
                 if e.code != netapp_api.EOBJECTNOTFOUND:
                     raise
+
+    def _is_readable_replica(self, replica):
+        """Check the replica type to find out if the replica is readable."""
+        extra_specs = share_types.get_extra_specs_from_share(replica)
+        return (extra_specs.get('replication_type') ==
+                constants.REPLICATION_TYPE_READABLE)
 
     def _check_destination_vserver_for_vol_move(self, source_share,
                                                 source_vserver,

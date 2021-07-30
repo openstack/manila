@@ -52,8 +52,26 @@ class NetAppBaseHelper(object):
         """Returns whether an access rule specifies read-only access."""
         return access_level == constants.ACCESS_LEVEL_RO
 
+    @staticmethod
+    def _get_share_export_location(share):
+        """Returns the export location of the share.
+
+        The share may contain only the list of export location, depending on
+        the entity provided by the manager.
+        """
+        export_location = share.get('export_location')
+        if not export_location:
+            export_location_list = share.get('export_locations')
+            if (isinstance(export_location_list, list) and
+                    len(export_location_list) > 0):
+                export_location = export_location_list[0]['path']
+
+        return export_location
+
     @abc.abstractmethod
-    def create_share(self, share, share_name):
+    def create_share(self, share, share_name,
+                     clear_current_export_policy=True,
+                     ensure_share_already_exists=False, replica=False):
         """Creates NAS share."""
 
     @abc.abstractmethod

@@ -163,6 +163,10 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
     def test_get_export_location(self):
 
+        export = fake.NFS_SHARE['export_location']
+        self.mock_object(self.helper, '_get_share_export_location',
+                         mock.Mock(return_value=export))
+
         host_ip, export_path = self.helper._get_export_location(
             fake.NFS_SHARE)
         self.assertEqual(fake.SHARE_ADDRESS_1, host_ip)
@@ -173,11 +177,15 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
         fake_share = fake.NFS_SHARE.copy()
         fake_share['export_location'] = export
+        self.mock_object(self.helper, '_get_share_export_location',
+                         mock.Mock(return_value=export))
 
         host_ip, export_path = self.helper._get_export_location(fake_share)
 
         self.assertEqual('', host_ip)
         self.assertEqual('', export_path)
+        self.helper._get_share_export_location.assert_called_once_with(
+            fake_share)
 
     def test_get_temp_export_policy_name(self):
 
@@ -233,3 +241,11 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         result = self.helper._get_auth_methods()
 
         self.assertEqual(security_flavors, result)
+
+    def test_cleanup_demoted_replica(self):
+
+        self.mock_object(self.helper, 'delete_share')
+        self.helper.cleanup_demoted_replica(fake.NFS_SHARE, fake.SHARE_NAME)
+
+        self.helper.delete_share.assert_called_once_with(fake.NFS_SHARE,
+                                                         fake.SHARE_NAME)

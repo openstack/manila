@@ -42,11 +42,23 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
     @na_utils.trace
     def create_share(self, share, share_name,
                      clear_current_export_policy=True,
-                     ensure_share_already_exists=False):
-        """Creates NFS share."""
-        # TODO(dviroel): Ensure that nfs share already exists if
-        #  ensure_share_already_exists is True. Although, no conflicts are
-        #  expected here since there is no create share operation being made.
+                     ensure_share_already_exists=False, replica=False):
+        """Ensures the share export policy is set correctly.
+
+        The export policy must have the same name as the share. If it matches,
+        nothing is done. Otherwise, the possible scenarios:
+
+        1. policy as 'default': a new export policy is created.
+        2. policy as any name: renames the assigned policy to match the name.
+
+        :param share: share entity.
+        :param share_name: share name that must be the export policy name.
+        :param clear_current_export_policy: set the policy to 'default' before
+        the check.
+        :param ensure_share_already_exists: ignored, CIFS only.
+        :param replica: it is a replica volume (DP type).
+        """
+
         if clear_current_export_policy:
             self._client.clear_nfs_export_policy_for_volume(share_name)
         self._ensure_export_policy(share, share_name)
@@ -139,7 +151,7 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
 
     @na_utils.trace
     def get_target(self, share):
-        """Returns ID of target OnTap device based on export location."""
+        """Returns ID of target ONTAP device based on export location."""
         return self._get_export_location(share)[0]
 
     @na_utils.trace
@@ -149,10 +161,10 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
         volume = self._client.get_volume_at_junction_path(volume_junction_path)
         return volume.get('name') if volume else None
 
-    @staticmethod
-    def _get_export_location(share):
+    @na_utils.trace
+    def _get_export_location(self, share):
         """Returns IP address and export location of an NFS share."""
-        export_location = share['export_location'] or ':'
+        export_location = self._get_share_export_location(share) or ':'
         result = export_location.rsplit(':', 1)
         if len(result) != 2:
             return ['', '']
@@ -205,4 +217,6 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
 
     @na_utils.trace
     def cleanup_demoted_replica(self, share, share_name):
+        """Cleans up export NFS policy for a demoted replica."""
+        self.delete_share(share, share_name)
         return
