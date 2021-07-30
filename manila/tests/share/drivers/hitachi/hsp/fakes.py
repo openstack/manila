@@ -73,6 +73,7 @@ stats_data = {
     'storage_protocol': 'NFS',
     'pools': [{
         'reserved_percentage': 0,
+        'reserved_snapshot_percentage': 0,
         'pool_name': 'HSP',
         'thin_provisioning': True,
         'total_capacity_gb': 100,

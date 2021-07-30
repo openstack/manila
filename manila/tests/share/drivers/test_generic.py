@@ -1332,7 +1332,8 @@ class GenericShareDriverTestCase(test.TestCase):
             'qos', 'driver_version', 'share_backend_name',
             'free_capacity_gb', 'total_capacity_gb',
             'driver_handles_share_servers',
-            'reserved_percentage', 'vendor_name', 'storage_protocol',
+            'reserved_percentage', 'reserved_snapshot_percentage',
+            'vendor_name', 'storage_protocol',
         ]
 
         result = self._driver.get_share_stats(True)

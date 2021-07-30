@@ -122,6 +122,9 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
             'storage_protocol': 'CIFS',
             'reserved_percentage':
                 self.configuration.reserved_share_percentage,
+            'reserved_snapshot_percentage':
+                self.configuration.reserved_share_from_snapshot_percentage or
+                self.configuration.reserved_share_percentage,
             'consistency_group_support': None,
             'snapshot_support': False,
             'create_share_from_snapshot_support': False,

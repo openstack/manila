@@ -622,6 +622,7 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             'total_capacity_gb': total_capacity,
             'free_capacity_gb': free_capacity,
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
             'QoS_support': False,
             'snapshot_support': True,
             'create_share_from_snapshot_support': True

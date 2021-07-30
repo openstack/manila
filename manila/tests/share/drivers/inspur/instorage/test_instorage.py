@@ -59,6 +59,8 @@ class FakeConfig(object):
         self.config_group = kwargs.get("config_group", "fake_config_group")
         self.reserved_share_percentage = kwargs.get(
             "reserved_share_percentage", 0)
+        self.reserved_share_from_snapshot_percentage = kwargs.get(
+            "reserved_share_from_snapshot_percentage", 0)
         self.max_over_subscription_ratio = kwargs.get(
             "max_over_subscription_ratio", 0)
         self.filter_function = kwargs.get("filter_function", None)
@@ -137,6 +139,7 @@ class InStorageShareDriverTestCase(test.TestCase):
                 'free_capacity_gb': 100,
                 'allocated_capacity_gb': 10,
                 'reserved_percentage': 0,
+                'reserved_snapshot_percentage': 0,
                 'qos': False,
                 'dedupe': False,
                 'compression': False,
@@ -160,6 +163,7 @@ class InStorageShareDriverTestCase(test.TestCase):
             'driver_version': '1.0.0',
             'storage_protocol': 'NFS_CIFS',
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
             'max_over_subscription_ratio': 0,
             'snapshot_support': False,
             'create_share_from_snapshot_support': False,
@@ -905,6 +909,7 @@ class InStorageAssistantTestCase(test.TestCase):
                 'allocated_capacity_gb': 10,
                 'qos': False,
                 'reserved_percentage': 0,
+                'reserved_snapshot_percentage': 0,
                 'dedupe': False,
                 'compression': False,
                 'thin_provisioning': False,

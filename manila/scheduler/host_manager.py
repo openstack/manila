@@ -127,6 +127,7 @@ class HostState(object):
         self.total_capacity_gb = 0
         self.free_capacity_gb = None
         self.reserved_percentage = 0
+        self.reserved_snapshot_percentage = 0
         self.allocated_capacity_gb = 0
         # NOTE(xyang): The apparent allocated space indicating how much
         # capacity has been provisioned. This could be the sum of sizes
@@ -185,12 +186,13 @@ class HostState(object):
 
                 'pools':[
                   {
-                     'pool_name': '1st pool',         #\
-                     'total_capacity_gb': 500,        #  mandatory stats
-                     'free_capacity_gb': 230,         #   for pools
-                     'allocated_capacity_gb': 270,    # |
-                     'qos': 'False',                  # |
-                     'reserved_percentage': 0,        #/
+                     'pool_name': '1st pool',           #\
+                     'total_capacity_gb': 500,          #  mandatory stats
+                     'free_capacity_gb': 230,           #   for pools
+                     'allocated_capacity_gb': 270,      # |
+                     'qos': 'False',                    # |
+                     'reserved_percentage': 0,          # |
+                     'reserved_snapshot_percentage': 0, #/
 
                      'dying_disks': 100,              #\
                      'super_hero_1': 'spider-man',    #  optional custom
@@ -205,6 +207,7 @@ class HostState(object):
                      'allocated_capacity_gb': 0,
                      'qos': 'False',
                      'reserved_percentage': 0,
+                     'reserved_snapshot_percentage': 0,
 
                      'dying_disks': 200,
                      'super_hero_1': 'superman',
@@ -434,6 +437,8 @@ class PoolState(HostState):
                 'allocated_capacity_gb', 0)
             self.qos = capability.get('qos', False)
             self.reserved_percentage = capability['reserved_percentage']
+            self.reserved_snapshot_percentage = (
+                capability['reserved_snapshot_percentage'])
             self.thin_provisioning = scheduler_utils.thin_provisioning(
                 capability.get('thin_provisioning', False))
             # NOTE(xyang): provisioned_capacity_gb is the apparent total

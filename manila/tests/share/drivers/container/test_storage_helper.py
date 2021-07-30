@@ -55,6 +55,7 @@ class LVMHelperTestCase(test.TestCase):
     @ddt.data("62.50g 72.50g", "    72.50g 62.50g\n", "  <62.50g <72.50g\n")
     def test_get_share_server_pools(self, ret_vgs):
         expected_result = [{'reserved_percentage': 0,
+                            'reserved_snapshot_percentage': 0,
                             'pool_name': 'manila_docker_volumes',
                             'total_capacity_gb': 72.5,
                             'free_capacity_gb': 62.5}]

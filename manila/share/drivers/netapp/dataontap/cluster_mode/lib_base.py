@@ -422,6 +422,9 @@ class NetAppCmodeFileStorageLibrary(object):
         for aggr_name in sorted(aggregates):
 
             reserved_percentage = self.configuration.reserved_share_percentage
+            reserved_snapshot_percentage = (
+                self.configuration.reserved_share_from_snapshot_percentage or
+                reserved_percentage)
             max_over_ratio = self.configuration.max_over_subscription_ratio
 
             total_capacity_gb = na_utils.round_down(float(
@@ -443,6 +446,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'allocated_capacity_gb': allocated_capacity_gb,
                 'qos': qos_support,
                 'reserved_percentage': reserved_percentage,
+                'reserved_snapshot_percentage': reserved_snapshot_percentage,
                 'max_over_subscription_ratio': max_over_ratio,
                 'dedupe': [True, False],
                 'compression': [True, False],

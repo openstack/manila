@@ -78,6 +78,7 @@ class VNXStorageConnection(driver.StorageConnection):
         self.manager = None
         self.pool_conf = None
         self.reserved_percentage = None
+        self.reserved_snapshot_percentage = None
         self.driver_handles_share_servers = True
         self.port_conf = None
         self.ipv6_implemented = True
@@ -588,6 +589,11 @@ class VNXStorageConnection(driver.StorageConnection):
         if self.reserved_percentage is None:
             self.reserved_percentage = 0
 
+        self.reserved_snapshot_percentage = config.safe_get(
+            'reserved_share_from_snapshot_percentage')
+        if self.reserved_snapshot_percentage is None:
+            self.reserved_snapshot_percentage = self.reserved_percentage
+
         self.manager = manager.StorageObjectManager(config)
         self.port_conf = config.safe_get('vnx_ethernet_ports')
 
@@ -636,6 +642,8 @@ class VNXStorageConnection(driver.StorageConnection):
                         total_size - used_size),
                     qos=False,
                     reserved_percentage=self.reserved_percentage,
+                    reserved_snapshot_percentage=(
+                        self.reserved_snapshot_percentage),
                 )
                 stats_dict['pools'].append(pool_stat)
 

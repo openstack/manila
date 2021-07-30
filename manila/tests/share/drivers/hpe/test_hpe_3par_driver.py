@@ -727,6 +727,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'free_capacity_gb': 0,
             'max_over_subscription_ratio': None,
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
             'provisioned_capacity_gb': 0,
             'share_backend_name': 'HPE_3PAR',
             'snapshot_support': True,
@@ -788,6 +789,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'hpe3par_flash_cache': False,
             'hp3par_flash_cache': False,
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
             'provisioned_capacity_gb': expected_capacity
         }
 
@@ -801,6 +803,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'free_capacity_gb': 0,
             'provisioned_capacity_gb': 0,
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
             'max_over_subscription_ratio': None,
             'max_share_server_size': -1,
             'max_shares_per_share_server': -1,
@@ -815,6 +818,7 @@ class HPE3ParDriverTestCase(test.TestCase):
                 'hpe3par_flash_cache': False,
                 'hp3par_flash_cache': False,
                 'reserved_percentage': 0,
+                'reserved_snapshot_percentage': 0,
                 'provisioned_capacity_gb': expected_capacity}],
             'snapshot_support': True,
             'create_share_from_snapshot_support': True,
@@ -858,6 +862,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'pools': None,
             'provisioned_capacity_gb': 0,
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
             'share_backend_name': 'HPE_3PAR',
             'storage_protocol': 'NFS_CIFS',
             'thin_provisioning': True,

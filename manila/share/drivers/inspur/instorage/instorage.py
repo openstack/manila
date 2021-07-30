@@ -123,6 +123,9 @@ class InStorageShareDriver(driver.ShareDriver):
                 'storage_protocol': 'NFS_CIFS',
                 'reserved_percentage':
                     self.configuration.reserved_share_percentage,
+                'reserved_snapshot_percentage': (
+                    self.configuration.reserved_share_from_snapshot_percentage
+                    or self.configuration.reserved_share_percentage),
                 'max_over_subscription_ratio':
                     self.configuration.max_over_subscription_ratio,
                 'snapshot_support': False,
@@ -299,6 +302,7 @@ class InStorageAssistant(object):
                 'free_capacity_gb': available,
                 'allocated_capacity_gb': total_allocated_capacity,
                 'reserved_percentage': 0,
+                'reserved_snapshot_percentage': 0,
                 'qos': False,
                 'dedupe': False,
                 'compression': False,

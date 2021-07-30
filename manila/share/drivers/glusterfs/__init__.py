@@ -122,7 +122,10 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             storage_protocol='NFS',
             vendor_name='Red Hat',
             share_backend_name=self.backend_name,
-            reserved_percentage=self.configuration.reserved_share_percentage)
+            reserved_percentage=self.configuration.reserved_share_percentage,
+            reserved_snapshot_percentage=(
+                self.configuration.reserved_share_from_snapshot_percentage
+                or self.configuration.reserved_share_percentage))
         super(GlusterfsShareDriver, self)._update_share_stats(data)
 
     def get_network_allocations_number(self):

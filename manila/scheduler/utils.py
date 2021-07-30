@@ -36,6 +36,8 @@ def generate_stats(host_state, properties):
         'allocated_capacity_gb': host_state.allocated_capacity_gb,
         'free_capacity_gb': host_state.free_capacity_gb,
         'reserved_percentage': host_state.reserved_percentage,
+        'reserved_snapshot_percentage':
+            host_state.reserved_snapshot_percentage,
         'driver_handles_share_servers':
             host_state.driver_handles_share_servers,
         'thin_provisioning': host_state.thin_provisioning,

@@ -612,6 +612,8 @@ class HitachiHNASDriver(driver.ShareDriver):
         total_space, free_space, dedupe = self.hnas.get_stats()
 
         reserved = self.configuration.safe_get('reserved_share_percentage')
+        reserved_snapshot = self.configuration.safe_get(
+            'reserved_share_from_snapshot_percentage') or reserved
 
         data = {
             'share_backend_name': self.backend_name,
@@ -622,6 +624,7 @@ class HitachiHNASDriver(driver.ShareDriver):
             'total_capacity_gb': total_space,
             'free_capacity_gb': free_space,
             'reserved_percentage': reserved,
+            'reserved_snapshot_percentage': reserved_snapshot,
             'qos': False,
             'thin_provisioning': True,
             'dedupe': dedupe,

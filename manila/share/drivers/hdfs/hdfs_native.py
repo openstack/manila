@@ -427,7 +427,10 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         data = dict(share_backend_name=self.backend_name,
                     storage_protocol='HDFS',
                     reserved_percentage=self.configuration.
-                    reserved_share_percentage)
+                    reserved_share_percentage,
+                    reserved_snapshot_percentage=self.configuration.
+                    reserved_share_from_snapshot_percentage
+                    or self.configuration.reserved_share_percentage)
 
         total, free = self._get_available_capacity()
 

@@ -62,6 +62,8 @@ class FakeConfig(object):
         self.config_group = kwargs.get("config_group", "fake_config_group")
         self.reserved_share_percentage = kwargs.get(
             "reserved_share_percentage", 0)
+        self.reserved_share_from_snapshot_percentage = kwargs.get(
+            "reserved_share_from_snapshot_percentage", 0)
         self.max_over_subscription_ratio = kwargs.get(
             "max_over_subscription_ratio", 15.0)
         self.filter_function = kwargs.get("filter_function", None)
@@ -279,6 +281,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         expected = [
             {'pool_name': 'foo', 'total_capacity_gb': 3.0,
              'free_capacity_gb': 2.0, 'reserved_percentage': 0,
+             'reserved_snapshot_percentage': 0,
              'compression': [True, False],
              'dedupe': [True, False],
              'thin_provisioning': [True],
@@ -287,6 +290,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
              'qos': [False]},
             {'pool_name': 'bar', 'total_capacity_gb': 4.0,
              'free_capacity_gb': 5.0, 'reserved_percentage': 0,
+             'reserved_snapshot_percentage': 0,
              'compression': [True, False],
              'dedupe': [True, False],
              'thin_provisioning': [True],
@@ -355,6 +359,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'qos': False,
             'replication_domain': replication_domain,
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
             'share_backend_name': self.driver.backend_name,
             'share_group_stats': {'consistent_snapshot_support': None},
             'snapshot_support': True,

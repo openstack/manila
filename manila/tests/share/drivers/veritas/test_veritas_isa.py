@@ -432,6 +432,7 @@ class ACCESSShareDriverTestCase(test.TestCase):
             'total_capacity_gb': 10,
             'free_capacity_gb': 9,
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
             'QoS_support': False,
             'create_share_from_snapshot_support': True,
             'driver_handles_share_servers': False,

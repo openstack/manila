@@ -971,6 +971,8 @@ class HitachiHNASTestCase(test.TestCase):
             'total_capacity_gb': 1000,
             'free_capacity_gb': 200,
             'reserved_percentage': driver.CONF.reserved_share_percentage,
+            'reserved_snapshot_percentage':
+                driver.CONF.reserved_share_from_snapshot_percentage,
             'qos': False,
             'thin_provisioning': True,
             'dedupe': True,

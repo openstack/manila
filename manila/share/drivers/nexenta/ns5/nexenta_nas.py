@@ -519,6 +519,9 @@ class NexentaNasDriver(driver.ShareDriver):
                 'free_capacity_gb': free,
                 'reserved_percentage': (
                     self.configuration.reserved_share_percentage),
+                'reserved_snapshot_percentage':
+                    (self.configuration.reserved_share_from_snapshot_percentage
+                        or self.configuration.reserved_share_percentage),
                 'max_over_subscription_ratio': (
                     self.configuration.safe_get(
                         'max_over_subscription_ratio')),

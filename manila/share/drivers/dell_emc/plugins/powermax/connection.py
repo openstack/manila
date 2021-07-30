@@ -81,6 +81,7 @@ class PowerMaxStorageConnection(driver.StorageConnection):
         self.manager = None
         self.pool_conf = None
         self.reserved_percentage = None
+        self.reserved_snapshot_percentage = None
         self.driver_handles_share_servers = True
         self.port_conf = None
         self.ipv6_implemented = True
@@ -594,6 +595,11 @@ class PowerMaxStorageConnection(driver.StorageConnection):
         if self.reserved_percentage is None:
             self.reserved_percentage = 0
 
+        self.reserved_snapshot_percentage = config.safe_get(
+            'reserved_share_from_snapshot_percentage')
+        if self.reserved_snapshot_percentage is None:
+            self.reserved_snapshot_percentage = self.reserved_percentage
+
         self.manager = manager.StorageObjectManager(config)
         self.port_conf = config.safe_get('powermax_ethernet_ports')
 
@@ -642,6 +648,8 @@ class PowerMaxStorageConnection(driver.StorageConnection):
                         enas_utils.mb_to_gb(total_size - used_size),
                     'qos': False,
                     'reserved_percentage': self.reserved_percentage,
+                    'reserved_snapshot_percentage':
+                        self.reserved_snapshot_percentage,
                     'snapshot_support': True,
                     'create_share_from_snapshot_support': True,
                     'revert_to_snapshot_support': False,
