@@ -1,0 +1,8 @@
+---
+deprecations:
+  - |
+    Create share group snapshot feature is no longer supported
+    in manila CephFS drivers (both Native and NFS Ganesha) since
+    the subvolume group snapshot feature is no longer supported
+    in mainline CephFS (existing group snapshots can still
+    be listed and deleted).
