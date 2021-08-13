@@ -80,9 +80,7 @@ def novaclient(context):
     global AUTH_OBJ
     if not AUTH_OBJ:
         AUTH_OBJ = client_auth.AuthClientLoader(
-            client_class=nova_client.Client,
-            exception_module=nova_exception,
-            cfg_group=NOVA_GROUP)
+            client_class=nova_client.Client, cfg_group=NOVA_GROUP)
     return AUTH_OBJ.get_client(context,
                                version=CONF[NOVA_GROUP].api_microversion,
                                endpoint_type=CONF[NOVA_GROUP].endpoint_type,
