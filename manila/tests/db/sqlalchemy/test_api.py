@@ -1567,6 +1567,20 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
         self.assertEqual(1, len(actual_result.instances))
         self.assertSubDictMatch(values, actual_result.to_dict())
 
+    def test_share_snapshot_get_all_with_filters_some(self):
+        expected_status = constants.STATUS_AVAILABLE
+        filters = {
+            'status': expected_status
+        }
+        snapshots = db_api.share_snapshot_get_all(
+            self.ctxt, filters=filters)
+
+        for snapshot in snapshots:
+            self.assertEqual('fake_snapshot_id_2', snapshot['id'])
+            self.assertEqual(snapshot['status'], filters['status'])
+
+        self.assertEqual(1, len(snapshots))
+
     def test_share_snapshot_get_latest_for_share(self):
 
         share = db_utils.create_share(size=1)

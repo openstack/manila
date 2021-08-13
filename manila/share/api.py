@@ -1907,8 +1907,8 @@ class API(base.Base):
         policy.check_policy(context, 'share_snapshot', 'get_snapshot')
         return self.db.share_snapshot_get(context, snapshot_id)
 
-    def get_all_snapshots(self, context, search_opts=None,
-                          sort_key='share_id', sort_dir='desc'):
+    def get_all_snapshots(self, context, search_opts=None, limit=None,
+                          offset=None, sort_key='share_id', sort_dir='desc'):
         policy.check_policy(context, 'share_snapshot', 'get_all_snapshots')
 
         search_opts = search_opts or {}
@@ -1925,29 +1925,16 @@ class API(base.Base):
                         "'%(v)s'.") % {'k': k, 'v': string_args[k]}
                 raise exception.InvalidInput(reason=msg)
 
-        if (context.is_admin and all_tenants):
+        if context.is_admin and all_tenants:
             snapshots = self.db.share_snapshot_get_all(
-                context, filters=search_opts,
+                context, filters=search_opts, limit=limit, offset=offset,
                 sort_key=sort_key, sort_dir=sort_dir)
         else:
             snapshots = self.db.share_snapshot_get_all_by_project(
                 context, context.project_id, filters=search_opts,
-                sort_key=sort_key, sort_dir=sort_dir)
+                limit=limit, offset=offset, sort_key=sort_key,
+                sort_dir=sort_dir)
 
-        # Remove key 'usage' if provided
-        search_opts.pop('usage', None)
-
-        if search_opts:
-            results = []
-            not_found = object()
-            for snapshot in snapshots:
-                if (all(snapshot.get(k, not_found) == v or
-                        (v in snapshot.get(k.rstrip('~'))
-                        if k.endswith('~') and
-                        snapshot.get(k.rstrip('~')) else ())
-                        for k, v in search_opts.items())):
-                    results.append(snapshot)
-            snapshots = results
         return snapshots
 
     def get_latest_snapshot_for_share(self, context, share_id):

@@ -2516,7 +2516,8 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all_by_project.assert_called_once_with(
-            ctx, 'fakepid', sort_dir='desc', sort_key='share_id', filters={})
+            ctx, 'fakepid', limit=None, offset=None, sort_dir='desc',
+            sort_key='share_id', filters={})
 
     @mock.patch.object(db_api, 'share_snapshot_get_all', mock.Mock())
     def test_get_all_snapshots_admin_all_tenants(self):
@@ -2525,7 +2526,8 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all.assert_called_once_with(
-            self.context, sort_dir='desc', sort_key='share_id', filters={})
+            self.context, limit=None, offset=None, sort_dir='desc',
+            sort_key='share_id', filters={})
 
     @mock.patch.object(db_api, 'share_snapshot_get_all_by_project',
                        mock.Mock())
@@ -2535,7 +2537,8 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all_by_project.assert_called_once_with(
-            ctx, 'fakepid', sort_dir='desc', sort_key='share_id', filters={})
+            ctx, 'fakepid', limit=None, offset=None, sort_dir='desc',
+            sort_key='share_id', filters={})
 
     def test_get_all_snapshots_not_admin_search_opts(self):
         search_opts = {'size': 'fakesize'}
@@ -2546,28 +2549,34 @@ class ShareAPITestCase(test.TestCase):
 
         result = self.api.get_all_snapshots(ctx, search_opts)
 
-        self.assertEqual([search_opts], result)
+        self.assertEqual(fake_objs, result)
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all_by_project.assert_called_once_with(
-            ctx, 'fakepid', sort_dir='desc', sort_key='share_id',
-            filters=search_opts)
+            ctx, 'fakepid', limit=None, offset=None, sort_dir='desc',
+            sort_key='share_id', filters=search_opts)
 
-    @ddt.data(({'name': 'fo'}, 0), ({'description': 'd'}, 0),
-              ({'name': 'foo', 'description': 'd'}, 0),
-              ({'name': 'foo'}, 1), ({'description': 'ds'}, 1),
-              ({'name~': 'foo', 'description~': 'ds'}, 2),
-              ({'name': 'foo', 'description~': 'ds'}, 1),
-              ({'name~': 'foo', 'description': 'ds'}, 1))
+    @ddt.data(({'name': 'fo'}, 0, []), ({'description': 'd'}, 0, []),
+              ({'name': 'foo', 'description': 'd'}, 0, []),
+              ({'name': 'foo'}, 1, [{'name': 'foo', 'description': 'ds'}]),
+              ({'description': 'ds'}, 1, [{'name': 'foo',
+                                           'description': 'ds'}]),
+              ({'name~': 'foo', 'description~': 'ds'}, 2,
+               [{'name': 'foo', 'description': 'ds'},
+                {'name': 'foo1', 'description': 'ds1'}]),
+              ({'name': 'foo', 'description~': 'ds'}, 1,
+               [{'name': 'foo', 'description': 'ds'}]),
+              ({'name~': 'foo', 'description': 'ds'}, 1,
+               [{'name': 'foo', 'description': 'ds'}]))
     @ddt.unpack
     def test_get_all_snapshots_filter_by_name_and_description(
-            self, search_opts, get_snapshot_number):
+            self, search_opts, get_snapshot_number, res_snapshots):
         fake_objs = [{'name': 'fo2', 'description': 'd2'},
                      {'name': 'foo', 'description': 'ds'},
                      {'name': 'foo1', 'description': 'ds1'}]
         ctx = context.RequestContext('fakeuid', 'fakepid', is_admin=False)
         self.mock_object(db_api, 'share_snapshot_get_all_by_project',
-                         mock.Mock(return_value=fake_objs))
+                         mock.Mock(return_value=res_snapshots))
 
         result = self.api.get_all_snapshots(ctx, search_opts)
 
@@ -2580,8 +2589,8 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all_by_project.assert_called_once_with(
-            ctx, 'fakepid', sort_dir='desc', sort_key='share_id',
-            filters=search_opts)
+            ctx, 'fakepid', limit=None, offset=None, sort_dir='desc',
+            sort_key='share_id', filters=search_opts)
 
     def test_get_all_snapshots_with_sorting_valid(self):
         self.mock_object(
@@ -2593,7 +2602,8 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all_by_project.assert_called_once_with(
-            ctx, 'fake_pid_1', sort_dir='asc', sort_key='status', filters={})
+            ctx, 'fake_pid_1', limit=None, offset=None, sort_dir='asc',
+            sort_key='status', filters={})
         self.assertEqual(_FAKE_LIST_OF_ALL_SNAPSHOTS[0], snapshots)
 
     def test_get_all_snapshots_sort_key_invalid(self):

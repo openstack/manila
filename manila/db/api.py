@@ -604,21 +604,21 @@ def share_snapshot_get(context, snapshot_id):
     return IMPL.share_snapshot_get(context, snapshot_id)
 
 
-def share_snapshot_get_all(context, filters=None, sort_key=None,
-                           sort_dir=None):
+def share_snapshot_get_all(context, filters=None, limit=None, offset=None,
+                           sort_key=None, sort_dir=None):
     """Get all snapshots."""
     return IMPL.share_snapshot_get_all(
-        context, filters=filters, sort_key=sort_key, sort_dir=sort_dir,
-    )
+        context, filters=filters, limit=limit, offset=offset,
+        sort_key=sort_key, sort_dir=sort_dir)
 
 
 def share_snapshot_get_all_by_project(context, project_id, filters=None,
-                                      sort_key=None, sort_dir=None):
+                                      limit=None, offset=None, sort_key=None,
+                                      sort_dir=None):
     """Get all snapshots belonging to a project."""
     return IMPL.share_snapshot_get_all_by_project(
-        context, project_id, filters=filters, sort_key=sort_key,
-        sort_dir=sort_dir,
-    )
+        context, project_id, filters=filters, limit=limit, offset=offset,
+        sort_key=sort_key, sort_dir=sort_dir)
 
 
 def share_snapshot_get_all_for_share(context, share_id, filters=None,
