@@ -19,12 +19,6 @@ __all__ = [
 import copy
 import itertools
 
-import oslo_concurrency.opts
-import oslo_log._options
-import oslo_middleware.opts
-import oslo_policy.opts
-import oslo_service.sslutils
-
 import manila.api.common
 import manila.api.middleware.auth
 import manila.common.config
@@ -205,15 +199,10 @@ _opts = [
      list(itertools.chain(manila.image.glance.glance_opts))),
 ]
 
-_opts.extend(oslo_concurrency.opts.list_opts())
-_opts.extend(oslo_log._options.list_opts())
-_opts.extend(oslo_middleware.opts.list_opts())
-_opts.extend(oslo_policy.opts.list_opts())
 _opts.extend(manila.network.neutron.api.list_opts())
 _opts.extend(manila.compute.nova.list_opts())
 _opts.extend(manila.image.glance.list_opts())
 _opts.extend(manila.volume.cinder.list_opts())
-_opts.extend(oslo_service.sslutils.list_opts())
 
 
 def list_opts():
