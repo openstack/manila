@@ -3121,6 +3121,21 @@ class SecurityServiceDatabaseAPITestCase(BaseDatabaseAPITestCase):
                           self.fake_context,
                           'wrong id')
 
+    def test_get_all_by_share_network(self):
+        db_api.security_service_create(self.fake_context,
+                                       security_service_dict)
+        share_nw_dict = {'id': 'fake network id',
+                         'project_id': 'fake project',
+                         'user_id': 'fake_user_id'}
+        db_api.share_network_create(self.fake_context, share_nw_dict)
+        db_api.share_network_add_security_service(
+            self.fake_context,
+            share_nw_dict['id'], security_service_dict['id'])
+
+        result = db_api.security_service_get_all_by_share_network(
+            self.fake_context, share_nw_dict['id'])
+        self._check_expected_fields(result[0], security_service_dict)
+
     def test_delete(self):
         db_api.security_service_create(self.fake_context,
                                        security_service_dict)

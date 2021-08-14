@@ -396,3 +396,7 @@ ____
 2.71
 ----
   Added 'updated_at' field in share instance show API output.
+
+2.72
+----
+  Added 'share_network' option to share replica create API.

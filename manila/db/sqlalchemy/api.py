@@ -3977,6 +3977,17 @@ def _security_service_get_query(context, session=None, project_only=False):
                        project_only=project_only)
 
 
+@require_context
+def security_service_get_all_by_share_network(context, share_network_id):
+    session = get_session()
+    return (model_query(context, models.SecurityService, session=session).
+            join(models.ShareNetworkSecurityServiceAssociation,
+            models.SecurityService.id ==
+            models.ShareNetworkSecurityServiceAssociation.security_service_id).
+            filter_by(share_network_id=share_network_id, deleted=0)
+            .all())
+
+
 ###################
 
 

@@ -21,6 +21,7 @@ import webob
 from webob import exc
 
 from manila.api import common
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.views import share_replicas as replication_view
 from manila.common import constants
@@ -174,11 +175,23 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
                     "since it has been soft deleted.") % share_id
             raise exc.HTTPForbidden(explanation=msg)
 
-        share_network_id = share_ref.get('share_network_id', None)
-
+        share_network_id = body.get('share_replica').get('share_network_id')
         if share_network_id:
-            share_network = db.share_network_get(context, share_network_id)
-            common.check_share_network_is_active(share_network)
+            if req.api_version_request < api_version.APIVersionRequest("2.72"):
+                msg = _("'share_network_id' option is not supported by this "
+                        "microversion. Use 2.72 or greater microversion to "
+                        "be able to use 'share_network_id'.")
+                raise exc.HTTPBadRequest(explanation=msg)
+        else:
+            share_network_id = share_ref.get('share_network_id', None)
+
+        try:
+            if share_network_id:
+                share_network = db.share_network_get(context, share_network_id)
+                common.check_share_network_is_active(share_network)
+        except exception.ShareNetworkNotFound:
+            msg = _("No share network exists with ID %s.")
+            raise exc.HTTPNotFound(explanation=msg % share_network_id)
 
         try:
             new_replica = self.share_api.create_share_replica(

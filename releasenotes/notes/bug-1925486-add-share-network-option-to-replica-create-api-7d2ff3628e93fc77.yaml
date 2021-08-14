@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1925486 <https://bugs.launchpad.net/manila/+bug/1925486>`_
+    Share replica create API does not support share network option and uses
+    parent share's share network. Fixed it to allow any share network by providing
+    option ``share-network``. Added in API microversion starting with '2.72'.
