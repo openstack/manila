@@ -109,7 +109,7 @@ class UnityStorageConnection(driver.StorageConnection):
         self.driver_handles_share_servers = (True, False)
         self.dhss_mandatory_security_service_association = {
             'nfs': None,
-            'cifs': 'active_directory',
+            'cifs': ['active_directory', ]
         }
 
     def connect(self, emc_share_driver, context):

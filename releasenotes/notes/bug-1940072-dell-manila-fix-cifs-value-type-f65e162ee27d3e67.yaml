@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Change cifs value from string to list for Dell manila drivers.
+    Fixed `bug 1940072 <https://bugs.launchpad.net/manila/+bug/1940072>`_
