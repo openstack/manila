@@ -197,10 +197,12 @@ class FlashBladeShareDriver(driver.ShareDriver):
         return config_value
 
     def _make_source_name(self, snapshot):
-        return "share-%s-manila" % snapshot["share_id"]
+        base_name = CONF.share_name_template + "-manila"
+        return base_name % snapshot["share_id"]
 
     def _make_share_name(self, manila_share):
-        return "share-%s-manila" % manila_share["id"]
+        base_name = CONF.share_name_template + "-manila"
+        return base_name % manila_share["id"]
 
     def _get_full_nfs_export_path(self, export_path):
         subnet_ip = self.data_address
