@@ -83,7 +83,7 @@ class VNXStorageConnection(driver.StorageConnection):
         self.ipv6_implemented = True
         self.dhss_mandatory_security_service_association = {
             'nfs': None,
-            'cifs': 'active_directory',
+            'cifs': ['active_directory', ]
         }
 
     def create_share(self, context, share, share_server=None):
