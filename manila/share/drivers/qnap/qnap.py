@@ -286,7 +286,7 @@ class QnapShareDriver(driver.ShareDriver):
         }
         super(QnapShareDriver, self)._update_share_stats(data)
 
-    @utils.retry(exception=exception.ShareBackendException,
+    @utils.retry(retry_param=exception.ShareBackendException,
                  interval=3,
                  retries=5)
     @utils.synchronized('qnap-create_share')
@@ -365,7 +365,7 @@ class QnapShareDriver(driver.ShareDriver):
                                        self.configuration.qnap_share_ip,
                                        volID)
 
-    @utils.retry(exception=exception.ShareBackendException,
+    @utils.retry(retry_param=exception.ShareBackendException,
                  interval=5, retries=5, backoff_rate=1)
     def _get_share_info(self, share_name):
         share = self.api_executor.get_share_info(
@@ -441,7 +441,7 @@ class QnapShareDriver(driver.ShareDriver):
         }
         self.api_executor.edit_share(share_dict)
 
-    @utils.retry(exception=exception.ShareBackendException,
+    @utils.retry(retry_param=exception.ShareBackendException,
                  interval=3,
                  retries=5)
     @utils.synchronized('qnap-create_snapshot')
@@ -514,7 +514,7 @@ class QnapShareDriver(driver.ShareDriver):
         self.api_executor.delete_snapshot_api(snapshot_id)
         self.private_storage.delete(snapshot['id'])
 
-    @utils.retry(exception=exception.ShareBackendException,
+    @utils.retry(retry_param=exception.ShareBackendException,
                  interval=3,
                  retries=5)
     @utils.synchronized('qnap-create_share_from_snapshot')

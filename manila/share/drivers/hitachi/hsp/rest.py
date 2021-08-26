@@ -191,7 +191,9 @@ class HSPRestBackend(object):
             msg = _("No cluster was found on HSP.")
             raise exception.HSPBackendException(msg=msg)
 
-    @utils.retry(exception.HSPTimeoutException, retries=10, wait_random=True)
+    @utils.retry(retry_param=exception.HSPTimeoutException,
+                 retries=10,
+                 wait_random=True)
     def _wait_job_status(self, job_url, target_status):
         resp_json = self._send_get(job_url)
 

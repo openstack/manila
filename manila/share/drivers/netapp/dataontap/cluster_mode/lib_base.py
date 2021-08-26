@@ -2652,8 +2652,10 @@ class NetAppCmodeFileStorageLibrary(object):
         retries = (self.configuration.netapp_start_volume_move_timeout / 5
                    or 1)
 
-        @manila_utils.retry(exception.ShareBusyException, interval=5,
-                            retries=retries, backoff_rate=1)
+        @manila_utils.retry(retry_param=exception.ShareBusyException,
+                            interval=5,
+                            retries=retries,
+                            backoff_rate=1)
         def try_move_volume():
             try:
                 self._move_volume(source_share, destination_share,
@@ -2805,8 +2807,8 @@ class NetAppCmodeFileStorageLibrary(object):
         """Abort an ongoing migration."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_volume = self._get_backend_share_name(source_share['id'])
-        retries = (self.configuration.netapp_migration_cancel_timeout / 5 or
-                   1)
+        retries = (math.ceil(
+            self.configuration.netapp_migration_cancel_timeout / 5) or 1)
 
         try:
             self._get_volume_move_status(source_share, share_server)
@@ -2816,7 +2818,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
         self._client.abort_volume_move(share_volume, vserver)
 
-        @manila_utils.retry(exception.InUse, interval=5,
+        @manila_utils.retry(retry_param=exception.InUse, interval=5,
                             retries=retries, backoff_rate=1)
         def wait_for_migration_cancel_complete():
             move_status = self._get_volume_move_status(source_share,
@@ -3028,8 +3030,10 @@ class NetAppCmodeFileStorageLibrary(object):
         retries = (self.configuration.netapp_volume_move_cutover_timeout / 5
                    or 1)
 
-        @manila_utils.retry(exception.ShareBusyException, interval=5,
-                            retries=retries, backoff_rate=1)
+        @manila_utils.retry(retry_param=exception.ShareBusyException,
+                            interval=5,
+                            retries=retries,
+                            backoff_rate=1)
         def check_move_completion():
             status = self._get_volume_move_status(source_share, share_server)
             if status['phase'].lower() != 'completed':

@@ -120,7 +120,7 @@ statsd==3.2.2
 stestr==3.0.1
 stevedore==3.2.2
 Tempita==0.5.2
-tenacity==6.0.0
+tenacity==6.3.1
 testrepository==0.0.20
 testresources==2.0.1
 testscenarios==0.4

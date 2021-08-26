@@ -145,7 +145,7 @@ class Copy(object):
                 self.current_size += int(size)
                 LOG.info(self.get_progress())
 
-    @utils.retry(exception.ShareDataCopyFailed, retries=2)
+    @utils.retry(retry_param=exception.ShareDataCopyFailed, retries=2)
     def _copy_and_validate(self, src_item, dest_item):
         utils.execute("cp", "-P", "--preserve=all", src_item,
                       dest_item, run_as_root=True)

@@ -1409,10 +1409,10 @@ class V3StorageConnection(driver.HuaweiBase):
         interval = wait_interval
         backoff_rate = 1
 
-        @utils.retry(exception.InvalidShare,
-                     interval,
-                     retries,
-                     backoff_rate)
+        @utils.retry(retry_param=exception.InvalidShare,
+                     interval=interval,
+                     retries=retries,
+                     backoff_rate=backoff_rate)
         def _check_AD_status():
             ad = self.helper.get_AD_config()
             if ad['DOMAINSTATUS'] != expected_status:

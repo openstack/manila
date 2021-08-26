@@ -144,7 +144,7 @@ class StorageObject(object):
             )
         )
 
-    @utils.retry(exception.EMCPowerMaxLockRequiredException)
+    @utils.retry(retry_param=exception.EMCPowerMaxLockRequiredException)
     def _send_request(self, req):
         req_xml = constants.XML_HEADER + ET.tostring(req).decode('utf-8')
 
@@ -161,7 +161,7 @@ class StorageObject(object):
 
         return response
 
-    @utils.retry(exception.EMCPowerMaxLockRequiredException)
+    @utils.retry(retry_param=exception.EMCPowerMaxLockRequiredException)
     def _execute_cmd(self, cmd, retry_patterns=None, check_exit_code=False):
         """Execute NAS command via SSH.
 
@@ -218,7 +218,7 @@ class FileSystem(StorageObject):
         super(FileSystem, self).__init__(conn, elt_maker, xml_parser, manager)
         self.filesystem_map = {}
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def create(self, name, size, pool_name, mover_name, is_vdm=True):
         pool_id = self.get_context('StoragePool').get_id(pool_name)
 
@@ -548,7 +548,7 @@ class MountPoint(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(MountPoint, self).__init__(conn, elt_maker, xml_parser, manager)
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def create(self, mount_path, fs_name, mover_name, is_vdm=True):
         fs_id = self.get_context('FileSystem').get_id(fs_name)
 
@@ -588,7 +588,7 @@ class MountPoint(StorageObject):
             LOG.error(message)
             raise exception.EMCPowerMaxXMLAPIError(err=message)
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def get(self, mover_name, is_vdm=True):
         mover_id = self._get_mover_id(mover_name, is_vdm)
 
@@ -619,7 +619,7 @@ class MountPoint(StorageObject):
         else:
             return constants.STATUS_OK, response['objects']
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def delete(self, mount_path, mover_name, is_vdm=True):
         mover_id = self._get_mover_id(mover_name, is_vdm)
 
@@ -855,7 +855,7 @@ class VDM(StorageObject):
         super(VDM, self).__init__(conn, elt_maker, xml_parser, manager)
         self.vdm_map = {}
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def create(self, name, mover_name):
         mover_id = self._get_mover_id(mover_name, False)
 
@@ -1145,7 +1145,7 @@ class MoverInterface(StorageObject):
         super(MoverInterface, self).__init__(conn, elt_maker, xml_parser,
                                              manager)
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def create(self, interface):
         # Maximum of 32 characters for mover interface name
         name = interface['name']
@@ -1226,7 +1226,7 @@ class MoverInterface(StorageObject):
 
         return constants.STATUS_NOT_FOUND, None
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def delete(self, ip_addr, mover_name):
         mover_id = self._get_mover_id(mover_name, False)
 
@@ -1268,7 +1268,7 @@ class DNSDomain(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(DNSDomain, self).__init__(conn, elt_maker, xml_parser, manager)
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def create(self, mover_name, name, servers, protocol='udp'):
         mover_id = self._get_mover_id(mover_name, False)
 
@@ -1298,7 +1298,7 @@ class DNSDomain(StorageObject):
             LOG.error(message)
             raise exception.EMCPowerMaxXMLAPIError(err=message)
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def delete(self, mover_name, name):
         mover_id = self._get_mover_id(mover_name, False)
 
@@ -1331,7 +1331,7 @@ class CIFSServer(StorageObject):
         super(CIFSServer, self).__init__(conn, elt_maker, xml_parser, manager)
         self.cifs_server_map = {}
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def create(self, server_args):
         compName = server_args['name']
         # Maximum of 14 characters for netBIOS name
@@ -1387,7 +1387,7 @@ class CIFSServer(StorageObject):
                 LOG.error(message)
                 raise exception.EMCPowerMaxXMLAPIError(err=message)
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def get_all(self, mover_name, is_vdm=True):
         mover_id = self._get_mover_id(mover_name, is_vdm)
 
@@ -1439,7 +1439,7 @@ class CIFSServer(StorageObject):
 
         return constants.STATUS_NOT_FOUND, None
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def modify(self, server_args):
         """Make CIFS server join or un-join the domain.
 
@@ -1552,7 +1552,7 @@ class CIFSShare(StorageObject):
         super(CIFSShare, self).__init__(conn, elt_maker, xml_parser, manager)
         self.cifs_share_map = {}
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def create(self, name, server_name, mover_name, is_vdm=True):
         mover_id = self._get_mover_id(mover_name, is_vdm)
 
@@ -1605,7 +1605,7 @@ class CIFSShare(StorageObject):
 
         return constants.STATUS_OK, self.cifs_share_map[name]
 
-    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
+    @utils.retry(retry_param=exception.EMCPowerMaxInvalidMoverID)
     def delete(self, name, mover_name, is_vdm=True):
         status, out = self.get(name)
         if constants.STATUS_NOT_FOUND == status:

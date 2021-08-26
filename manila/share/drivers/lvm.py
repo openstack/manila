@@ -272,7 +272,8 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
 
             retries = 10 if retry_busy_device else 1
 
-            @utils.retry(exception.ShareBusyException, retries=retries)
+            @utils.retry(retry_param=exception.ShareBusyException,
+                         retries=retries)
             def _unmount_device_with_retry():
                 try:
                     self._execute('umount', '-f', mount_path, run_as_root=True)

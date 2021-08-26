@@ -80,7 +80,8 @@ class SecurityServiceHelper(driver.ExecuteMixin):
         interval = 5
         retries = int(timeout / interval) or 1
 
-        @manila_utils.retry(exception.ProcessExecutionError, interval=interval,
+        @manila_utils.retry(retry_param=exception.ProcessExecutionError,
+                            interval=interval,
                             retries=retries, backoff_rate=1)
         def try_ldap_operation():
             try:

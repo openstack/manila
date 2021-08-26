@@ -186,7 +186,7 @@ class ShareMigrationHelper(object):
         else:
             LOG.debug("No access rules to sync to destination share instance.")
 
-    @utils.retry(exception.ShareServerNotReady, retries=8)
+    @utils.retry(retry_param=exception.ShareServerNotReady, retries=8)
     def wait_for_share_server(self, share_server_id):
         share_server = self.db.share_server_get(self.context, share_server_id)
         if share_server['status'] == constants.STATUS_ERROR:

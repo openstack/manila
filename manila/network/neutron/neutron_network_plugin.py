@@ -531,7 +531,7 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
             self._wait_for_ports_bind(ports, share_server)
             return ports
 
-    @utils.retry(exception.NetworkBindException, retries=20)
+    @utils.retry(retry_param=exception.NetworkBindException, retries=20)
     def _wait_for_ports_bind(self, ports, share_server):
         inactive_ports = []
         for port in ports:

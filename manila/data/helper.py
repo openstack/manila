@@ -235,12 +235,18 @@ class DataServiceHelper(object):
 
         return access_list
 
-    @utils.retry(exception.NotFound, 0.1, 10, 0.1)
+    @utils.retry(retry_param=exception.NotFound,
+                 interval=1,
+                 retries=10,
+                 backoff_rate=1)
     def _check_dir_exists(self, path):
         if not os.path.exists(path):
             raise exception.NotFound("Folder %s could not be found." % path)
 
-    @utils.retry(exception.Found, 0.1, 10, 0.1)
+    @utils.retry(retry_param=exception.Found,
+                 interval=1,
+                 retries=10,
+                 backoff_rate=1)
     def _check_dir_not_exists(self, path):
         if os.path.exists(path):
             raise exception.Found("Folder %s was found." % path)

@@ -282,8 +282,10 @@ class DataMotionSession(object):
         config = get_backend_configuration(dest_backend)
         retries = config.netapp_snapmirror_quiesce_timeout / 5
 
-        @utils.retry(exception.ReplicationException, interval=5,
-                     retries=retries, backoff_rate=1)
+        @utils.retry(retry_param=exception.ReplicationException,
+                     interval=5,
+                     retries=retries,
+                     backoff_rate=1)
         def wait_for_quiesced():
             snapmirror = dest_client.get_snapmirrors_svm(
                 source_vserver=source_vserver, dest_vserver=dest_vserver,
@@ -318,8 +320,10 @@ class DataMotionSession(object):
         config = get_backend_configuration(dest_backend)
         retries = config.netapp_snapmirror_quiesce_timeout / 5
 
-        @utils.retry(exception.ReplicationException, interval=5,
-                     retries=retries, backoff_rate=1)
+        @utils.retry(retry_param=exception.ReplicationException,
+                     interval=5,
+                     retries=retries,
+                     backoff_rate=1)
         def wait_for_quiesced():
             snapmirror = dest_client.get_snapmirrors(
                 source_vserver=src_vserver, dest_vserver=dest_vserver,
@@ -613,8 +617,10 @@ class DataMotionSession(object):
         interval = 10
         retries = (timeout / interval or 1)
 
-        @utils.retry(exception.VserverNotReady, interval=interval,
-                     retries=retries, backoff_rate=1)
+        @utils.retry(retry_param=exception.VserverNotReady,
+                     interval=interval,
+                     retries=retries,
+                     backoff_rate=1)
         def wait_for_state():
             vserver_info = client.get_vserver_info(vserver_name)
             if vserver_info.get('subtype') != 'default':
@@ -686,8 +692,10 @@ class DataMotionSession(object):
         if subtype:
             expected['subtype'] = subtype
 
-        @utils.retry(exception.VserverNotReady, interval=interval,
-                     retries=retries, backoff_rate=1)
+        @utils.retry(retry_param=exception.VserverNotReady,
+                     interval=interval,
+                     retries=retries,
+                     backoff_rate=1)
         def wait_for_state():
             vserver_info = client.get_vserver_info(vserver_name)
             if not all(item in vserver_info.items() for
@@ -705,8 +713,10 @@ class DataMotionSession(object):
         interval = 10
         retries = (timeout / interval or 1)
 
-        @utils.retry(exception.NetAppException, interval=interval,
-                     retries=retries, backoff_rate=1)
+        @utils.retry(retry_param=exception.NetAppException,
+                     interval=interval,
+                     retries=retries,
+                     backoff_rate=1)
         def release_snapmirror():
             snapmirrors = src_client.get_snapmirror_destinations_svm(
                 source_vserver=source_vserver, dest_vserver=dest_vserver)

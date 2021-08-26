@@ -334,8 +334,8 @@ class ShareManager(manager.SchedulerDependentManager):
         # we want to retry to setup the driver. In case of a multi-backend
         # scenario, working backends are usable and the non-working ones (where
         # do_setup() or check_for_setup_error() fail) retry.
-        @utils.retry(Exception, interval=2, backoff_rate=2,
-                     backoff_sleep_max=600, retries=0)
+        @utils.retry(interval=2, backoff_rate=2,
+                     infinite=True, backoff_sleep_max=600)
         def _driver_setup():
             self.driver.initialized = False
             LOG.debug("Start initialization of driver: '%s'", driver_host_pair)

@@ -1570,8 +1570,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         api_args = {'client-config': client_config_name,
                     'client-enabled': 'true'}
 
-        @manila_utils.retry(exception.ShareBackendException, interval=interval,
-                            retries=retries, backoff_rate=1)
+        @manila_utils.retry(retry_param=exception.ShareBackendException,
+                            interval=interval,
+                            retries=retries,
+                            backoff_rate=1)
         def try_enable_ldap_client():
             try:
                 self.send_request('ldap-config-create', api_args)
