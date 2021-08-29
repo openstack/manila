@@ -2435,6 +2435,15 @@ share_force_delete:
   in: body
   required: true
   type: string
+share_force_extend:
+  description: |
+    (Admin only). Defines whether to go through scheduler, Set to `True` will
+    extend share directly. Set to `False` will go through scheduler, default
+    is `False`.
+  in: body
+  required: false
+  type: boolean
+  min_version: 2.64
 share_group_host:
   description: |
     The share group host name.

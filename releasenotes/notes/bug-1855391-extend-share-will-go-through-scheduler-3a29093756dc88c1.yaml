@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Launchpad bug 1855391 <https://bugs.launchpad.net/manila/+bug/1855391>`_
+    has been fixed. The action of extend share will go through scheduler, if
+    there is no available share backend host, the share will rollback to
+    available state and create an user message about extend.

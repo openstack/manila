@@ -353,3 +353,8 @@ user documentation.
   endpoint: 'update_security_service', 'update_security_service_check' and
   'add_security_service_check'.
 
+2.64
+----
+  Added 'force' field to extend share api, which can extend share directly
+  without go through share scheduler.
+

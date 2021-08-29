@@ -515,11 +515,11 @@ class ShareMixin(object):
     def _extend(self, req, id, body):
         """Extend size of a share."""
         context = req.environ['manila.context']
-        share, size = self._get_valid_resize_parameters(
+        share, size, force = self._get_valid_extend_parameters(
             context, id, body, 'os-extend')
 
         try:
-            self.share_api.extend(context, share, size)
+            self.share_api.extend(context, share, size, force=force)
         except (exception.InvalidInput, exception.InvalidShare) as e:
             raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
         except exception.ShareSizeExceedsAvailableQuota as e:
@@ -530,7 +530,7 @@ class ShareMixin(object):
     def _shrink(self, req, id, body):
         """Shrink size of a share."""
         context = req.environ['manila.context']
-        share, size = self._get_valid_resize_parameters(
+        share, size = self._get_valid_shrink_parameters(
             context, id, body, 'os-shrink')
 
         try:
@@ -540,15 +540,40 @@ class ShareMixin(object):
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
-    def _get_valid_resize_parameters(self, context, id, body, action):
+    def _get_valid_extend_parameters(self, context, id, body, action):
         try:
             share = self.share_api.get(context, id)
         except exception.NotFound as e:
             raise webob.exc.HTTPNotFound(explanation=six.text_type(e))
 
         try:
-            size = int(body.get(action,
-                                body.get(action.split('os-')[-1]))['new_size'])
+            size = int(body.get(action, body.get('extend'))['new_size'])
+        except (KeyError, ValueError, TypeError):
+            msg = _("New share size must be specified as an integer.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        # force is True means share extend will extend directly, is False
+        # means will go through scheduler. Default value is False,
+        try:
+            force = strutils.bool_from_string(body.get(
+                action, body.get('extend'))['force'], strict=True)
+        except KeyError:
+            force = False
+        except (ValueError, TypeError):
+            msg = (_('Invalid boolean force : %(value)s') %
+                   {'value': body.get('extend')['force']})
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        return share, size, force
+
+    def _get_valid_shrink_parameters(self, context, id, body, action):
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound as e:
+            raise webob.exc.HTTPNotFound(explanation=six.text_type(e))
+
+        try:
+            size = int(body.get(action, body.get('shrink'))['new_size'])
         except (KeyError, ValueError, TypeError):
             msg = _("New share size must be specified as an integer.")
             raise webob.exc.HTTPBadRequest(explanation=msg)

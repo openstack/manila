@@ -65,7 +65,7 @@ MAPPING = {
 class SchedulerManager(manager.Manager):
     """Chooses a host to create shares."""
 
-    RPC_API_VERSION = '1.10'
+    RPC_API_VERSION = '1.11'
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
@@ -316,3 +316,35 @@ class SchedulerManager(manager.Manager):
     @coordination.synchronized('locked-clean-expired-messages')
     def _clean_expired_messages(self, context):
         self.message_api.cleanup_expired_messages(context)
+
+    def extend_share(self, context, share_id, new_size, reservations,
+                     request_spec=None, filter_properties=None):
+
+        def _extend_share_set_error(self, context, ex, request_spec):
+            share_state = {'status': constants.STATUS_AVAILABLE}
+            self._set_share_state_and_notify('extend_share', share_state,
+                                             context, ex, request_spec)
+
+        share = db.share_get(context, share_id)
+        try:
+            target_host = self.driver.host_passes_filters(
+                context,
+                share['host'],
+                request_spec, filter_properties)
+            target_host.consume_from_share(
+                {'size': int(new_size) - share['size']})
+            share_rpcapi.ShareAPI().extend_share(context, share, new_size,
+                                                 reservations)
+        except exception.NoValidHost as ex:
+            quota.QUOTAS.rollback(context, reservations,
+                                  project_id=share['project_id'],
+                                  user_id=share['user_id'],
+                                  share_type_id=share['share_type_id'])
+            _extend_share_set_error(self, context, ex, request_spec)
+            self.message_api.create(
+                context,
+                message_field.Action.EXTEND,
+                share['project_id'],
+                resource_type=message_field.Resource.SHARE,
+                resource_id=share['id'],
+                exception=ex)

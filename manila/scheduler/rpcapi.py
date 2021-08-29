@@ -43,9 +43,10 @@ class SchedulerAPI(object):
         1.8  - Rename create_consistency_group -> create_share_group method
         1.9  - Add cached parameter to get_pools method
         1.10 - Add timestamp to update_service_capabilities
+        1.11 - Add extend_share
     """
 
-    RPC_API_VERSION = '1.10'
+    RPC_API_VERSION = '1.11'
 
     def __init__(self):
         super(SchedulerAPI, self).__init__()
@@ -144,3 +145,17 @@ class SchedulerAPI(object):
                                  driver_options=driver_options,
                                  request_spec=request_spec,
                                  filter_properties=filter_properties)
+
+    def extend_share(self, context, share_id, new_size, reservations,
+                     request_spec, filter_properties=None):
+        call_context = self.client.prepare(version='1.11')
+
+        msg_args = {
+            'share_id': share_id,
+            'new_size': new_size,
+            'reservations': reservations,
+            'request_spec': request_spec,
+            'filter_properties': filter_properties,
+        }
+
+        return call_context.cast(context, 'extend_share', **msg_args)

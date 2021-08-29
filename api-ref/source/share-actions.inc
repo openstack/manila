@@ -351,6 +351,7 @@ Request
    - share_id: share_id
    - extend: extend
    - new_size: share_new_size
+   - force: share_force_extend
 
 
 Request example
