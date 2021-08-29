@@ -189,3 +189,25 @@ servers. The options to filter:
     +--------------------------------------+--------------+--------+----------------+----------------------------------+------------+
     | 441d806f-f0e0-4c90-b7e2-a553c6aa76b2 | manila@paris | active | share_net_test | fd6d30efa5ff4c99834dc0d13f96e8eb | None       |
     +--------------------------------------+--------------+--------+----------------+----------------------------------+------------+
+
+===========================================
+Share server limits (Since Wallaby release)
+===========================================
+
+Since Wallaby release, it is possible to specify limits for share servers size
+and amount of instances. It helps administrators to provision their resources
+in the cloud system and balance the share servers' size.
+If a value is not configured, there is no behavioral change and manila will
+consider it as unlimited. Then, will reuse share servers regardless
+their size and amount of built instances.
+
+- ``max_share_server_size``: Maximum sum of gigabytes a share server can have
+  considering all its share instances and snapshots.
+
+- ``max_shares_per_share_server``: Maximum number of share instances created
+  in a share server.
+
+.. note::
+   If one of these limits is reached during a request that requires a share
+   server to be provided, manila will create a new share server to place such
+   request.
