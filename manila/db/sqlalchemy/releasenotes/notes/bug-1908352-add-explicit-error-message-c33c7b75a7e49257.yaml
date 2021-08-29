@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    When a quota value greater than 2147483647 is set, the error
+    message "ERROR: Invalid input received:Quota limit should not
+    exceed 2147483647. (HTTP 400)" is communicated to the user.
+
