@@ -27,6 +27,10 @@
                            "reserved": 0},
         "replica_gigabytes": {"in_use": 0,
                               "limit": 1000,
-                              "reserved": 0}
+                              "reserved": 0},
+        "per_share_gigabytes": {"in_use": 0,
+                                "limit": -1,
+                                "reserved": 0}
+
     }
 }

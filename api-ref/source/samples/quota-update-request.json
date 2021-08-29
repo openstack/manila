@@ -3,6 +3,7 @@
         "snapshot_gigabytes": 999,
         "snapshots": 49,
         "share_networks": 9,
-        "share_replicas": 89
+        "share_replicas": 89,
+        "per_share_gigabytes": 5
     }
 }
