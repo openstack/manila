@@ -1020,6 +1020,7 @@ manila message-list
                            [--level <level>] [--limit <limit>]
                            [--offset <offset>] [--sort-key <sort_key>]
                            [--sort-dir <sort_dir>] [--columns <columns>]
+                           [--since <since>] [--before <before>]
 
 Lists all messages.
 
@@ -1065,6 +1066,16 @@ Lists all messages.
 ``--columns <columns>``
   Comma separated list of columns to be displayed
   example --columns "resource_id, user_message".
+
+``--since <since>``
+  Return only user messages created since given date.
+  The date format must be conforming to ISO8601.
+  Available only for microversion >= 2.52.
+
+``--before <before>``
+  Return only user messages created before given date.
+  The date format must be conforming to ISO8601.
+  Available only for microversion >= 2.52.
 
 .. _manila_message-show:
 
