@@ -432,7 +432,10 @@ class DummyDriver(driver.ShareDriver):
             "pool_name": "fake_pool_for_%s" % self.backend_name,
             "total_capacity_gb": 1230.0,
             "free_capacity_gb": 1210.0,
-            "reserved_percentage": self.configuration.reserved_share_percentage
+            "reserved_percentage":
+                self.configuration.reserved_share_percentage,
+            "reserved_snapshot_percentage":
+                self.configuration.reserved_share_from_snapshot_percentage
         }]
         if self.configuration.replication_domain:
             pools[0]["replication_type"] = "readable"
@@ -446,6 +449,8 @@ class DummyDriver(driver.ShareDriver):
             "storage_protocol": "NFS_CIFS",
             "reserved_percentage":
                 self.configuration.reserved_share_percentage,
+            "reserved_snapshot_percentage":
+                self.configuration.reserved_share_from_snapshot_percentage,
             "snapshot_support": True,
             "create_share_from_snapshot_support": True,
             "revert_to_snapshot_support": True,

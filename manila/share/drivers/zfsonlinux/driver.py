@@ -358,6 +358,9 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 'free_capacity_gb': float(free_size),
                 'reserved_percentage':
                     self.configuration.reserved_share_percentage,
+                'reserved_snapshot_percentage': (
+                    self.configuration.reserved_share_from_snapshot_percentage
+                    or self.configuration.reserved_share_percentage),
             }
             pool.update(self.common_capabilities)
             if self.configuration.replication_domain:
@@ -372,6 +375,9 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
             'storage_protocol': 'NFS',
             'reserved_percentage':
                 self.configuration.reserved_share_percentage,
+            'reserved_snapshot_percentage': (
+                self.configuration.reserved_share_from_snapshot_percentage
+                or self.configuration.reserved_share_percentage),
             'snapshot_support': True,
             'create_share_from_snapshot_support': True,
             'driver_name': 'ZFS',

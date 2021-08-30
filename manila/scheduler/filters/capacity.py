@@ -42,7 +42,11 @@ class CapacityFilter(base_host.BaseHostFilter):
 
         free_space = host_state.free_capacity_gb
         total_space = host_state.total_capacity_gb
-        reserved = float(host_state.reserved_percentage) / 100
+        if filter_properties.get('snapshot_id'):
+            reserved = float(host_state.reserved_snapshot_percentage) / 100
+        else:
+            reserved = float(host_state.reserved_percentage) / 100
+
         if free_space == 'unknown':
             # NOTE(zhiteng) for those back-ends cannot report actual
             # available capacity, we assume it is able to serve the

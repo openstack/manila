@@ -635,6 +635,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             share_backend_name=self.backend_name,
             storage_protocol='NFS_CIFS',
             reserved_percentage=self.configuration.reserved_share_percentage,
+            reserved_snapshot_percentage=(
+                self.configuration.reserved_share_from_snapshot_percentage
+                or self.configuration.reserved_share_percentage),
         )
         super(GenericShareDriver, self)._update_share_stats(data)
 

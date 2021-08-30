@@ -747,7 +747,10 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             share_backend_name=self.backend_name,
             vendor_name='IBM',
             storage_protocol='NFS',
-            reserved_percentage=self.configuration.reserved_share_percentage)
+            reserved_percentage=self.configuration.reserved_share_percentage,
+            reserved_snapshot_percentage=(
+                self.configuration.reserved_share_from_snapshot_percentage
+                or self.configuration.reserved_share_percentage))
 
         free, capacity = self._get_available_capacity(
             self.configuration.gpfs_mount_point_base)

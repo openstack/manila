@@ -197,6 +197,7 @@ class HostManagerTestCase(test.TestCase):
                         'driver_version': None,
                         'total_capacity_gb': 512,
                         'reserved_percentage': 0,
+                        'reserved_snapshot_percentage': 0,
                         'provisioned_capacity_gb': 312,
                         'max_over_subscription_ratio': 1.0,
                         'thin_provisioning': False,
@@ -226,6 +227,7 @@ class HostManagerTestCase(test.TestCase):
                         'driver_version': None,
                         'total_capacity_gb': 256,
                         'reserved_percentage': 0,
+                        'reserved_snapshot_percentage': 0,
                         'provisioned_capacity_gb': 400,
                         'max_over_subscription_ratio': 2.0,
                         'thin_provisioning': True,
@@ -255,6 +257,7 @@ class HostManagerTestCase(test.TestCase):
                         'driver_version': None,
                         'total_capacity_gb': 10000,
                         'reserved_percentage': 0,
+                        'reserved_snapshot_percentage': 0,
                         'provisioned_capacity_gb': 50000,
                         'max_over_subscription_ratio': 20.0,
                         'thin_provisioning': True,
@@ -306,6 +309,7 @@ class HostManagerTestCase(test.TestCase):
                         'driver_version': None,
                         'total_capacity_gb': 51,
                         'reserved_percentage': 0,
+                        'reserved_snapshot_percentage': 0,
                         'provisioned_capacity_gb': 10,
                         'max_over_subscription_ratio': 1.0,
                         'thin_provisioning': False,
@@ -336,6 +340,7 @@ class HostManagerTestCase(test.TestCase):
                         'driver_version': None,
                         'total_capacity_gb': 52,
                         'reserved_percentage': 0,
+                        'reserved_snapshot_percentage': 0,
                         'provisioned_capacity_gb': 60,
                         'max_over_subscription_ratio': 2.0,
                         'thin_provisioning': True,
@@ -366,6 +371,7 @@ class HostManagerTestCase(test.TestCase):
                         'driver_version': None,
                         'total_capacity_gb': 53,
                         'reserved_percentage': 0,
+                        'reserved_snapshot_percentage': 0,
                         'provisioned_capacity_gb': 100,
                         'max_over_subscription_ratio': 20.0,
                         'thin_provisioning': True,
@@ -396,6 +402,7 @@ class HostManagerTestCase(test.TestCase):
                         'driver_version': None,
                         'total_capacity_gb': 541,
                         'reserved_percentage': 0,
+                        'reserved_snapshot_percentage': 0,
                         'provisioned_capacity_gb': 800,
                         'max_over_subscription_ratio': 2.0,
                         'thin_provisioning': True,
@@ -426,6 +433,7 @@ class HostManagerTestCase(test.TestCase):
                         'driver_version': None,
                         'total_capacity_gb': 542,
                         'reserved_percentage': 0,
+                        'reserved_snapshot_percentage': 0,
                         'provisioned_capacity_gb': 2000,
                         'max_over_subscription_ratio': 10.0,
                         'thin_provisioning': True,
@@ -494,6 +502,7 @@ class HostManagerTestCase(test.TestCase):
                         'driver_version': None,
                         'total_capacity_gb': 512,
                         'reserved_percentage': 0,
+                        'reserved_snapshot_percentage': 0,
                         'vendor_name': None,
                         'storage_protocol': None,
                         'provisioned_capacity_gb': 312,
@@ -523,6 +532,7 @@ class HostManagerTestCase(test.TestCase):
                         'driver_version': None,
                         'total_capacity_gb': 256,
                         'reserved_percentage': 0,
+                        'reserved_snapshot_percentage': 0,
                         'vendor_name': None,
                         'storage_protocol': None,
                         'provisioned_capacity_gb': 400,
@@ -580,6 +590,7 @@ class HostManagerTestCase(test.TestCase):
                         'driver_version': None,
                         'total_capacity_gb': 52,
                         'reserved_percentage': 0,
+                        'reserved_snapshot_percentage': 0,
                         'provisioned_capacity_gb': 60,
                         'max_over_subscription_ratio': 2.0,
                         'thin_provisioning': True,
@@ -644,6 +655,7 @@ class HostStateTestCase(test.TestCase):
         share_capability = {'total_capacity_gb': 0,
                             'free_capacity_gb': 100,
                             'reserved_percentage': 0,
+                            'reserved_snapshot_percentage': 0,
                             'timestamp': None,
                             'ipv4_support': True,
                             'ipv6_support': False}
@@ -696,6 +708,7 @@ class HostStateTestCase(test.TestCase):
                  'allocated_capacity_gb': 270,
                  'qos': 'False',
                  'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
                  'dying_disks': 100,
                  'super_hero_1': 'spider-man',
                  'super_hero_2': 'flash',
@@ -707,6 +720,7 @@ class HostStateTestCase(test.TestCase):
                  'allocated_capacity_gb': 0,
                  'qos': 'False',
                  'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
                  'dying_disks': 200,
                  'super_hero_1': 'superman',
                  'super_hero_2': 'Hulk',
@@ -752,6 +766,7 @@ class HostStateTestCase(test.TestCase):
                  'allocated_capacity_gb': 0,
                  'qos': 'False',
                  'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
                  },
             ],
             'timestamp': None,
@@ -778,6 +793,7 @@ class HostStateTestCase(test.TestCase):
             'free_capacity_gb': 'unknown',
             'allocated_capacity_gb': 1,
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
             'timestamp': None
         }
         fake_context = context.RequestContext('user', 'project', is_admin=True)
@@ -806,6 +822,7 @@ class HostStateTestCase(test.TestCase):
             'provisioned_capacity_gb': provisioned_capacity_gb,
             'allocated_capacity_gb': provisioned_capacity_gb,
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
             'timestamp': None
         }
         fake_host = host_manager.PoolState('host1', share_capability, '_pool0')
@@ -827,6 +844,7 @@ class HostStateTestCase(test.TestCase):
             'provisioned_capacity_gb': None,
             'allocated_capacity_gb': 0,
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
             'timestamp': None
         }
         fake_context = context.RequestContext('user', 'project', is_admin=True)
@@ -864,6 +882,7 @@ class HostStateTestCase(test.TestCase):
             'allocated_capacity_gb': 5000,
             'timestamp': None,
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
         }
         fake_context = context.RequestContext('user', 'project', is_admin=True)
         fake_host = host_manager.HostState('host1')
@@ -886,6 +905,7 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'reserved_percentage': 0, 'timestamp': None,
+                 'reserved_snapshot_percentage': 0,
                  'thin_provisioning': True,
                  'cap1': 'val1', 'cap2': 'val2'},
             'instances':
@@ -908,6 +928,7 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'reserved_percentage': 0, 'timestamp': None,
+                 'reserved_snapshot_percentage': 0,
                  'thin_provisioning': False, 'cap1': 'val1', 'cap2': 'val2'},
             'instances':
                 [
@@ -929,6 +950,7 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'reserved_percentage': 0, 'timestamp': None,
+                 'reserved_snapshot_percentage': 0,
                  'thin_provisioning': [False], 'cap1': 'val1', 'cap2': 'val2'},
             'instances':
                 [
@@ -950,6 +972,7 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'reserved_percentage': 0, 'timestamp': None,
+                 'reserved_snapshot_percentage': 0,
                  'thin_provisioning': [True, False], 'cap1': 'val1',
                  'cap2': 'val2'},
             'instances':
@@ -972,6 +995,7 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'reserved_percentage': 0, 'timestamp': None,
+                 'reserved_snapshot_percentage': 0,
                  'cap1': 'val1', 'cap2': 'val2', 'ipv4_support': True,
                  'ipv6_support': False},
             'instances': []
@@ -980,6 +1004,7 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'reserved_percentage': 0, 'timestamp': None,
+                 'reserved_snapshot_percentage': 0,
                  'thin_provisioning': True, 'cap1': 'val1', 'cap2': 'val2',
                  'ipv4_support': True, 'ipv6_support': False},
             'instances': []
@@ -988,6 +1013,7 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'reserved_percentage': 0, 'timestamp': None,
+                 'reserved_snapshot_percentage': 0,
                  'thin_provisioning': [False], 'cap1': 'val1', 'cap2': 'val2',
                  'ipv4_support': True, 'ipv6_support': False},
             'instances': []
@@ -996,6 +1022,7 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'reserved_percentage': 0, 'timestamp': None,
+                 'reserved_snapshot_percentage': 0,
                  'thin_provisioning': [True, False], 'cap1': 'val1',
                  'cap2': 'val2', 'ipv4_support': True, 'ipv6_support': False},
             'instances': []
@@ -1004,6 +1031,7 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'allocated_capacity_gb': 256, 'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
                  'timestamp': None, 'cap1': 'val1', 'cap2': 'val2',
                  'ipv4_support': False, 'ipv6_support': True
                  },
@@ -1021,6 +1049,7 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'allocated_capacity_gb': 256, 'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
                  'timestamp': None, 'cap1': 'val1', 'cap2': 'val2',
                  'ipv4_support': True, 'ipv6_support': True},
             'instances': []
@@ -1029,6 +1058,7 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'provisioned_capacity_gb': 256, 'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
                  'timestamp': None, 'cap1': 'val1', 'cap2': 'val2',
                  'ipv4_support': False, 'ipv6_support': False
                  },
@@ -1047,6 +1077,7 @@ class PoolStateTestCase(test.TestCase):
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'allocated_capacity_gb': 256, 'provisioned_capacity_gb': 1,
                  'thin_provisioning': True, 'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
                  'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
             'instances':
                 [
@@ -1063,6 +1094,7 @@ class PoolStateTestCase(test.TestCase):
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'allocated_capacity_gb': 256, 'provisioned_capacity_gb': 1,
                  'thin_provisioning': [False], 'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
                  'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
             'instances':
                 [
@@ -1079,6 +1111,7 @@ class PoolStateTestCase(test.TestCase):
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'allocated_capacity_gb': 256, 'provisioned_capacity_gb': 1,
                  'thin_provisioning': [True, False], 'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
                  'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
             'instances':
                 [
@@ -1095,6 +1128,7 @@ class PoolStateTestCase(test.TestCase):
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'allocated_capacity_gb': 256, 'provisioned_capacity_gb': 256,
                  'thin_provisioning': False, 'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
                  'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
             'instances':
                 [
@@ -1111,6 +1145,7 @@ class PoolStateTestCase(test.TestCase):
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'allocated_capacity_gb': 256, 'provisioned_capacity_gb': 256,
                  'thin_provisioning': [False], 'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
                  'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
             'instances':
                 [

@@ -59,6 +59,8 @@ class FakeConfig(object):
         self.config_group = kwargs.get("config_group", "fake_config_group")
         self.reserved_share_percentage = kwargs.get(
             "reserved_share_percentage", 0)
+        self.reserved_share_from_snapshot_percentage = kwargs.get(
+            "reserved_share_from_snapshot_percentage", 0)
         self.max_over_subscription_ratio = kwargs.get(
             "max_over_subscription_ratio", 20.0)
         self.filter_function = kwargs.get("filter_function", None)
@@ -881,6 +883,7 @@ class AS13000ShareDriverTestCase(test.TestCase):
         pool = dict()
         pool['pool_name'] = 'fakepath'
         pool['reserved_percentage'] = 0
+        pool['reserved_snapshot_percentage'] = 0
         pool['max_over_subscription_ratio'] = 20.0
         pool['dedupe'] = False
         pool['compression'] = False

@@ -350,6 +350,7 @@ def do_connection_connect(conn, res):
     conn.pool_conf = ['pool_1', 'pool_2']
     conn.pool_set = set(['pool_1', 'pool_2'])
     conn.reserved_percentage = 0
+    conn.reserved_snapshot_percentage = 0
     conn.max_over_subscription_ratio = 20
     conn.port_set = set(['spa_eth1', 'spa_eth2'])
     conn.nas_server_pool = StorageObjectMock(res['nas_server_pool'])

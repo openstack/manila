@@ -611,6 +611,9 @@ class AS13000ShareDriver(driver.ShareDriver):
             'pool_name': path,
             'reserved_percentage':
                 self.configuration.reserved_share_percentage,
+            'reserved_snapshot_percentage':
+                self.configuration.reserved_share_from_snapshot_percentage
+                or self.configuration.reserved_share_percentage,
             'max_over_subscription_ratio':
                 self.configuration.max_over_subscription_ratio,
             'dedupe': False,

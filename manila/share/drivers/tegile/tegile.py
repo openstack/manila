@@ -447,6 +447,9 @@ class TegileShareDriver(driver.ShareDriver):
                 pool['qos'] = pool.pop('QoS_support', False)
                 pool['reserved_percentage'] = (
                     self.configuration.reserved_share_percentage)
+                pool['reserved_snapshot_percentage'] = (
+                    self.configuration.reserved_share_from_snapshot_percentage
+                    or self.configuration.reserved_share_percentage)
                 pool['dedupe'] = True
                 pool['compression'] = True
                 pool['thin_provisioning'] = True

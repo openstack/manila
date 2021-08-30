@@ -495,6 +495,9 @@ class ZadaraVPSAShareDriver(driver.ShareDriver):
             allocated_capacity_gb=(total - free),
             provisioned_capacity_gb=provisioned,
             reserved_percentage=self.configuration.reserved_share_percentage,
+            reserved_snapshot_percentage=(
+                self.configuration.reserved_share_from_snapshot_percentage
+                or self.configuration.reserved_share_percentage),
             compression=[True, False],
             dedupe=[True, False],
             thin_provisioning=True

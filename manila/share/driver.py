@@ -41,7 +41,17 @@ share_opts = [
     cfg.IntOpt(
         'reserved_share_percentage',
         default=0,
-        help='The percentage of backend capacity reserved.'),
+        help="The percentage of backend capacity reserved. Used for shares "
+             "which are not created from the snapshot."),
+    cfg.IntOpt(
+        'reserved_share_from_snapshot_percentage',
+        default=0,
+        help="The percentage of backend capacity reserved. Used for shares "
+             "created from the snapshot. On some platforms, shares can only "
+             "be created from the snapshot on the host where snapshot was "
+             "taken, so we can set a lower value in this option compared to "
+             "reserved_share_percentage, and allow to create shares from the "
+             "snapshot on the same host up to a higher threshold."),
     cfg.StrOpt(
         'share_backend_name',
         help='The backend name for a given driver implementation.'),
@@ -1301,6 +1311,7 @@ class ShareDriver(object):
             total_capacity_gb='unknown',
             free_capacity_gb='unknown',
             reserved_percentage=0,
+            reserved_snapshot_percentage=0,
             qos=False,
             pools=self.pools or None,
             snapshot_support=self.snapshots_are_supported,

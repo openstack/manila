@@ -329,6 +329,7 @@ class FilterScheduler(base.Scheduler):
         )
         filter_properties['user_id'] = shr.get('user_id')
         filter_properties['metadata'] = shr.get('metadata')
+        filter_properties['snapshot_id'] = shr.get('snapshot_id')
 
     def schedule_create_share_group(self, context, share_group_id,
                                     request_spec, filter_properties):

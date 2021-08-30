@@ -325,6 +325,7 @@ class V3StorageConnection(driver.HuaweiBase):
                     allocated_capacity_gb=capacity['CONSUMEDCAPACITY'],
                     qos=self._get_qos_capability(),
                     reserved_percentage=0,
+                    reserved_snapshot_percentage=0,
                     thin_provisioning=[True, False],
                     dedupe=[True, False],
                     compression=[True, False],

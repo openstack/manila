@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    'reserved_share_from_snapshot_percentage' backend config option allows
+    Manila to consider different reservation percentage for shares that are
+    being created from the snapshot.
+    In case this config option is not set, the shares created from snapshot
+    will use reservation percentage value set in 'reserved_share_percentage'.
+    This will be useful for users who want to keep same reservation percentage
+    for both non-snapshot/regular and snapshot shares.

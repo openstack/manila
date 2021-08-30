@@ -71,6 +71,48 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertFalse(self.filter.host_passes(host, filter_properties))
 
+    @ddt.data(
+        {'free_capacity': 120, 'total_capacity': 200,
+         'reserved': 20, 'reserved_snapshot': 5})
+    @ddt.unpack
+    def test_capacity_filter_passes_snapshot_reserved(self, free_capacity,
+                                                      total_capacity,
+                                                      reserved,
+                                                      reserved_snapshot):
+        self._stub_service_is_up(True)
+        filter_properties = {'size': 100, 'snapshot_id': 1234}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'total_capacity_gb': total_capacity,
+                                    'free_capacity_gb': free_capacity,
+                                    'reserved_percentage': reserved,
+                                    'reserved_snapshot_percentage':
+                                        reserved_snapshot,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertTrue(self.filter.host_passes(host, filter_properties))
+
+    @ddt.data(
+        {'free_capacity': 120, 'total_capacity': 200,
+         'reserved': 20, 'reserved_snapshot': 15})
+    @ddt.unpack
+    def test_capacity_filter_fails_snapshot_reserved(self, free_capacity,
+                                                     total_capacity,
+                                                     reserved,
+                                                     reserved_snapshot):
+        self._stub_service_is_up(True)
+        filter_properties = {'size': 100, 'snapshot_id': 1234}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'total_capacity_gb': total_capacity,
+                                    'free_capacity_gb': free_capacity,
+                                    'reserved_percentage': reserved,
+                                    'reserved_snapshot_percentage':
+                                        reserved_snapshot,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertFalse(self.filter.host_passes(host, filter_properties))
+
     def test_capacity_filter_passes_unknown(self):
         free = 'unknown'
         self._stub_service_is_up(True)
@@ -183,6 +225,7 @@ class HostFiltersTestCase(test.TestCase):
         self._stub_service_is_up(True)
         filter_properties = {
             'size': size,
+            'snapshot_id': None,
             'share_type': {
                 'extra_specs': {
                     cap_thin_key: cap_thin,

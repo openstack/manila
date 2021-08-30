@@ -102,6 +102,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self.configuration.admin_network_config_group = (
             'test_admin_network_config_group')
         self.configuration.reserved_share_percentage = 0
+        self.configuration.reserved_share_from_snapshot_percentage = 0
         self.configuration.filter_function = None
         self.configuration.goodness_function = None
         self.configuration.driver_handles_share_servers = False

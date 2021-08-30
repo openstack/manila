@@ -195,7 +195,10 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
             vendor_name='Red Hat',
             driver_version='1.1',
             storage_protocol='glusterfs',
-            reserved_percentage=self.configuration.reserved_share_percentage)
+            reserved_percentage=self.configuration.reserved_share_percentage,
+            reserved_snapshot_percentage=(
+                self.configuration.reserved_share_from_snapshot_percentage or
+                self.configuration.reserved_share_percentage))
 
         # We don't use a service mount to get stats data.
         # Instead we use glusterfs quota feature and use that to limit

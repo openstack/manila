@@ -92,6 +92,7 @@ class LVMShareDriverTestCase(test.TestCase):
         CONF.set_default('lvm_share_export_ips', ['10.0.0.1', '10.0.0.2'])
         CONF.set_default('driver_handles_share_servers', False)
         CONF.set_default('reserved_share_percentage', 50)
+        CONF.set_default('reserved_share_from_snapshot_percentage', 30)
 
         self._helper_cifs = mock.Mock()
         self._helper_nfs = mock.Mock()
@@ -531,6 +532,7 @@ class LVMShareDriverTestCase(test.TestCase):
             'total_capacity_gb': 33,
             'free_capacity_gb': 22,
             'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
         }, ]
         self.mock_object(
             self._driver,
