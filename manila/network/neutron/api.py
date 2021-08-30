@@ -102,9 +102,7 @@ class API(object):
     def get_client(self, context):
         if not self.auth_obj:
             self.auth_obj = client_auth.AuthClientLoader(
-                client_class=clientv20.Client,
-                exception_module=neutron_client_exc,
-                cfg_group=NEUTRON_GROUP)
+                client_class=clientv20.Client, cfg_group=NEUTRON_GROUP)
 
         return self.auth_obj.get_client(
             self,
