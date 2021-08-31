@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Changes the list of security services required for CIFS share creation when
+    the NetApp driver is being used. For more details, please refer to
+    `launchpad bug #1942124 <https://bugs.launchpad.net/manila/+bug/1942124>`_
