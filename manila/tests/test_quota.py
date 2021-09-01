@@ -361,7 +361,7 @@ class DbQuotaDriverTestCase(test.TestCase):
         self.assertEqual(quota.db.quota_reserve.return_value, result)
         quota.db.quota_reserve.assert_called_once_with(
             self.ctxt, self.resources, quotas, user_quotas, st_quotas,
-            deltas, mock.ANY, CONF.until_refresh, CONF.max_age,
+            deltas, mock.ANY, CONF.quota.until_refresh, CONF.quota.max_age,
             **expected_kwargs)
         self.assertEqual(
             3 if kwargs.get('share_type_id') else 2,

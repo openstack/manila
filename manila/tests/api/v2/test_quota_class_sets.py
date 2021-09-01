@@ -87,7 +87,7 @@ class QuotaSetsControllerTest(test.TestCase):
             }
         }
         for k, v in quotas.items():
-            CONF.set_default('quota_' + k, v)
+            CONF.set_default(k, v, 'quota')
 
         if req.api_version_request >= api_version.APIVersionRequest("2.40"):
             expected['quota_class_set']['share_groups'] = 50
@@ -129,7 +129,7 @@ class QuotaSetsControllerTest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             '/fooproject/%squota-class-sets' % url,
             version=version, use_admin_context=True)
-        CONF.set_default('quota_shares', 789)
+        CONF.set_default('shares', 789, 'quota')
         body = {
             'quota_class_set': {
                 'class_name': self.class_name,

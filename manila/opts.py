@@ -123,7 +123,6 @@ _global_opt_lists = [
     manila.network.neutron.neutron_network_plugin.
     neutron_binding_profile_opts,
     manila.network.standalone_network_plugin.standalone_network_plugin_opts,
-    manila.quota.quota_opts,
     manila.scheduler.drivers.base.scheduler_driver_opts,
     manila.scheduler.host_manager.host_manager_opts,
     [manila.scheduler.manager.scheduler_driver_opt],
@@ -201,6 +200,8 @@ _opts = [
      list(itertools.chain(manila.network.neutron.api.neutron_opts))),
     (manila.image.glance.GLANCE_GROUP,
      list(itertools.chain(manila.image.glance.glance_opts))),
+    (manila.quota.QUOTA_GROUP,
+     list(itertools.chain(manila.quota.quota_opts))),
 ]
 
 _opts.extend(manila.network.neutron.api.list_opts())

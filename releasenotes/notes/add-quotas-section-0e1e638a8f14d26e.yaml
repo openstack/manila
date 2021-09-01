@@ -1,0 +1,23 @@
+---
+deprecations:
+  - |
+    Configuration options to define default quota and behavior of the quota
+    feature must now be configured in the new ``[quota]`` section rather than
+    the ``[DEFAULT]`` section. The existing options in the ``[DEFAULT]``
+    section have been deprecated and will be removed in a future release.
+    Options that have changed in this releases are:
+ 
+    - ``[quota]/shares`` - previously ``[DEFAULT]/shares_quota`` 
+    - ``[quota]/snapshots`` - previously ``[DEFAULT]/snapshots_quota`` 
+    - ``[quota]/gigabytes`` - previously ``[DEFAULT]/quota_gigabytes``
+    - ``[quota]/per_share_gigabytes`` - previously ``[DEFAULT]/quota_per_share_gigabytes``
+    - ``[quota]/snapshot_gigabytes`` - previously ``[DEFAULT]/quota_snapshot_gigabytes``
+    - ``[quota]/share_networks`` - previously ``[DEFAULT]/quota_share_networks``
+    - ``[quota]/share_groups`` - previously ``[DEFAULT]/quota_share_groups``
+    - ``[quota]/share_group_snapshots`` - previously ``[DEFAULT]/quota_share_group_snapshots``
+    - ``[quota]/share_replicas`` - previously ``[DEFAULT]/quota_share_replicas``
+    - ``[quota]/replica_gigabytes`` - previously ``[DEFAULT]/quota_replica_gigabytes``
+    - ``[quota]/until_refresh`` - previously ``[DEFAULT]/until_refresh``
+    - ``[quota]/reservation_expire`` previously ``[DEFAULT]/reservation_expire``
+    - ``[quota]/driver`` - previously ``[DEFAULT]/quota_driver``
+    - ``[quota]/max_age`` - previously ``[DEFAULT]/max_age``
