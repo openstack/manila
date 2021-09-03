@@ -235,7 +235,8 @@ class ShareMixin(object):
     @wsgi.Controller.authorize('create')
     def _create(self, req, body,
                 check_create_share_from_snapshot_support=False,
-                check_availability_zones_extra_spec=False):
+                check_availability_zones_extra_spec=False,
+                scheduler_hints=None):
         """Creates a new share."""
         context = req.environ['manila.context']
 
@@ -412,6 +413,9 @@ class ShareMixin(object):
             kwargs['share_type'] = share_type
         if share_network_id:
             kwargs['share_network_id'] = share_network_id
+
+        kwargs['scheduler_hints'] = scheduler_hints
+
         new_share = self.share_api.create(context,
                                           share_proto,
                                           size,

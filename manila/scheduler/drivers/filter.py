@@ -23,6 +23,7 @@ filters and weighing functions.
 from oslo_config import cfg
 from oslo_log import log
 
+from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
 from manila.message import api as message_api
@@ -33,6 +34,11 @@ from manila.share import share_types
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
+
+AFFINITY_HINT = 'same_host'
+ANTI_AFFINITY_HINT = 'different_host'
+AFFINITY_KEY = "__affinity_same_host"
+ANTI_AFFINITY_KEY = "__affinity_different_host"
 
 
 class FilterScheduler(base.Scheduler):
@@ -214,7 +220,8 @@ class FilterScheduler(base.Scheduler):
                                   'replication_domain': replication_domain,
                                   })
 
-        self.populate_filter_properties_share(request_spec, filter_properties)
+        self.populate_filter_properties_share(context, request_spec,
+                                              filter_properties)
 
         return filter_properties, share_properties
 
@@ -315,7 +322,17 @@ class FilterScheduler(base.Scheduler):
                       "exc": "exc"
                       })
 
-    def populate_filter_properties_share(self, request_spec,
+    def populate_filter_properties_share_scheduler_hint(self, context,
+                                                        share_id, hints,
+                                                        key, hint):
+        try:
+            result = db_api.share_metadata_get_item(context, share_id, key)
+        except exception.ShareMetadataNotFound:
+            pass
+        else:
+            hints.update({hint: result.get(key)})
+
+    def populate_filter_properties_share(self, context, request_spec,
                                          filter_properties):
         """Stuff things into filter_properties.
 
@@ -330,6 +347,25 @@ class FilterScheduler(base.Scheduler):
         filter_properties['user_id'] = shr.get('user_id')
         filter_properties['metadata'] = shr.get('metadata')
         filter_properties['snapshot_id'] = shr.get('snapshot_id')
+
+        share_id = request_spec.get('share_id', None)
+        if not share_id:
+            filter_properties['scheduler_hints'] = {}
+            return
+
+        try:
+            db_api.share_get(context, share_id)
+        except exception.NotFound:
+            filter_properties['scheduler_hints'] = {}
+        else:
+            hints = {}
+            self.populate_filter_properties_share_scheduler_hint(
+                context, share_id, hints,
+                AFFINITY_KEY, AFFINITY_HINT)
+            self.populate_filter_properties_share_scheduler_hint(
+                context, share_id, hints,
+                ANTI_AFFINITY_KEY, ANTI_AFFINITY_HINT)
+            filter_properties['scheduler_hints'] = hints
 
     def schedule_create_share_group(self, context, share_group_id,
                                     request_spec, filter_properties):

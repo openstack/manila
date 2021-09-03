@@ -370,6 +370,7 @@ Request
    - metadata: metadata
    - share_network_id: share_network_id_request
    - availability_zone: availability_zone_request
+   - scheduler_hints: scheduler_hints
 
 Request example
 ---------------
