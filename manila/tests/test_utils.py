@@ -25,6 +25,7 @@ from oslo_utils import encodeutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import paramiko
+import tenacity
 from webob import exc
 
 import manila
@@ -557,12 +558,16 @@ class TestComparableMixin(test.TestCase):
                          self.one._compare(1, self.one._cmpkey))
 
 
+class WrongException(Exception):
+    pass
+
+
 class TestRetryDecorator(test.TestCase):
     def test_no_retry_required(self):
         self.counter = 0
 
-        with mock.patch.object(time, 'sleep') as mock_sleep:
-            @utils.retry(exception.ManilaException,
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
+            @utils.retry(retry_param=exception.ManilaException,
                          interval=2,
                          retries=3,
                          backoff_rate=2)
@@ -578,8 +583,8 @@ class TestRetryDecorator(test.TestCase):
     def test_no_retry_required_random(self):
         self.counter = 0
 
-        with mock.patch.object(time, 'sleep') as mock_sleep:
-            @utils.retry(exception.ManilaException,
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
+            @utils.retry(retry_param=exception.ManilaException,
                          interval=2,
                          retries=3,
                          backoff_rate=2,
@@ -593,42 +598,17 @@ class TestRetryDecorator(test.TestCase):
             self.assertEqual('success', ret)
             self.assertEqual(1, self.counter)
 
-    def test_retries_once_random(self):
-        self.counter = 0
-        interval = 2
-        backoff_rate = 2
-        retries = 3
-
-        with mock.patch.object(time, 'sleep') as mock_sleep:
-            @utils.retry(exception.ManilaException,
-                         interval,
-                         retries,
-                         backoff_rate,
-                         wait_random=True)
-            def fails_once():
-                self.counter += 1
-                if self.counter < 2:
-                    raise exception.ManilaException(message='fake')
-                else:
-                    return 'success'
-
-            ret = fails_once()
-            self.assertEqual('success', ret)
-            self.assertEqual(2, self.counter)
-            self.assertEqual(1, mock_sleep.call_count)
-            self.assertTrue(mock_sleep.called)
-
     def test_retries_once(self):
         self.counter = 0
         interval = 2
         backoff_rate = 2
         retries = 3
 
-        with mock.patch.object(time, 'sleep') as mock_sleep:
-            @utils.retry(exception.ManilaException,
-                         interval,
-                         retries,
-                         backoff_rate)
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
+            @utils.retry(retry_param=exception.ManilaException,
+                         interval=interval,
+                         retries=retries,
+                         backoff_rate=backoff_rate)
             def fails_once():
                 self.counter += 1
                 if self.counter < 2:
@@ -640,7 +620,32 @@ class TestRetryDecorator(test.TestCase):
             self.assertEqual('success', ret)
             self.assertEqual(2, self.counter)
             self.assertEqual(1, mock_sleep.call_count)
-            mock_sleep.assert_called_with(interval * backoff_rate)
+            mock_sleep.assert_called_with(interval)
+
+    def test_retries_once_random(self):
+        self.counter = 0
+        interval = 2
+        backoff_rate = 2
+        retries = 3
+
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
+            @utils.retry(retry_param=exception.ManilaException,
+                         interval=interval,
+                         retries=retries,
+                         backoff_rate=backoff_rate,
+                         wait_random=True)
+            def fails_once():
+                self.counter += 1
+                if self.counter < 2:
+                    raise exception.ManilaException(data='fake')
+                else:
+                    return 'success'
+
+            ret = fails_once()
+            self.assertEqual('success', ret)
+            self.assertEqual(2, self.counter)
+            self.assertEqual(1, mock_sleep.call_count)
+            self.assertTrue(mock_sleep.called)
 
     def test_limit_is_reached(self):
         self.counter = 0
@@ -648,11 +653,11 @@ class TestRetryDecorator(test.TestCase):
         interval = 2
         backoff_rate = 4
 
-        with mock.patch.object(time, 'sleep') as mock_sleep:
-            @utils.retry(exception.ManilaException,
-                         interval,
-                         retries,
-                         backoff_rate)
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
+            @utils.retry(retry_param=exception.ManilaException,
+                         interval=interval,
+                         retries=retries,
+                         backoff_rate=backoff_rate)
             def always_fails():
                 self.counter += 1
                 raise exception.ManilaException(data='fake')
@@ -662,34 +667,94 @@ class TestRetryDecorator(test.TestCase):
             self.assertEqual(retries, self.counter)
 
             expected_sleep_arg = []
-
             for i in range(retries):
                 if i > 0:
-                    interval *= backoff_rate
+                    interval *= (backoff_rate ** (i - 1))
                     expected_sleep_arg.append(float(interval))
 
-            mock_sleep.assert_has_calls(map(mock.call, expected_sleep_arg))
+            mock_sleep.assert_has_calls(
+                list(map(mock.call, expected_sleep_arg)))
 
     def test_wrong_exception_no_retry(self):
 
-        with mock.patch.object(time, 'sleep') as mock_sleep:
-            @utils.retry(exception.ManilaException)
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
+            @utils.retry(retry_param=exception.ManilaException)
             def raise_unexpected_error():
-                raise ValueError("value error")
+                raise WrongException("wrong exception")
 
-            self.assertRaises(ValueError, raise_unexpected_error)
+            self.assertRaises(WrongException, raise_unexpected_error)
             self.assertFalse(mock_sleep.called)
 
-    def test_wrong_retries_num(self):
-        self.assertRaises(ValueError, utils.retry, exception.ManilaException,
-                          retries=-1)
+    @mock.patch('tenacity.nap.sleep')
+    def test_retry_exit_code(self, sleep_mock):
+
+        exit_code = 5
+        exception = utils.processutils.ProcessExecutionError
+
+        @utils.retry(retry=utils.retry_if_exit_code, retry_param=exit_code)
+        def raise_retriable_exit_code():
+            raise exception(exit_code=exit_code)
+
+        self.assertRaises(exception, raise_retriable_exit_code)
+        # we should be sleeping 1 less time than the number of retries,
+        # default (10)
+        self.assertEqual(9, sleep_mock.call_count)
+        sleep_mock.assert_has_calls([mock.call(1.0),
+                                     mock.call(2.0),
+                                     mock.call(4.0),
+                                     mock.call(8.0),
+                                     mock.call(16.0),
+                                     mock.call(32.0),
+                                     mock.call(64.0),
+                                     mock.call(128.0),
+                                     mock.call(256.0)])
+
+    @mock.patch('tenacity.nap.sleep')
+    def test_retry_exit_code_non_retriable(self, sleep_mock):
+
+        exit_code = 5
+        exception = utils.processutils.ProcessExecutionError
+
+        @utils.retry(retry=utils.retry_if_exit_code, retry_param=exit_code)
+        def raise_non_retriable_exit_code():
+            raise exception(exit_code=exit_code + 1)
+
+        self.assertRaises(exception, raise_non_retriable_exit_code)
+        sleep_mock.assert_not_called()
+
+    def test_infinite_retry(self):
+        retry_param = exception.ManilaException
+
+        class FakeTenacityRetry(tenacity.Retrying):
+            def __init__(*args, **kwargs):
+                pass
+
+        with mock.patch('tenacity.Retrying',
+                        autospec=FakeTenacityRetry) as tenacity_retry:
+
+            @utils.retry(retry_param=retry_param,
+                         wait_random=True,
+                         infinite=True)
+            def some_retriable_function():
+                pass
+
+            some_retriable_function()
+
+            tenacity_retry.assert_called_once_with(
+                sleep=tenacity.nap.sleep,
+                before_sleep=mock.ANY,
+                after=mock.ANY,
+                stop=tenacity.stop.stop_never,
+                reraise=True,
+                retry=utils.IsAMatcher(tenacity.retry_if_exception_type),
+                wait=utils.IsAMatcher(tenacity.wait_random_exponential))
 
     def test_max_backoff_sleep(self):
         self.counter = 0
 
-        with mock.patch.object(time, 'sleep') as mock_sleep:
-            @utils.retry(exception.ManilaException,
-                         retries=0,
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
+            @utils.retry(retry_param=exception.ManilaException,
+                         infinite=True,
                          backoff_rate=2,
                          backoff_sleep_max=4)
             def fails_then_passes():
@@ -700,7 +765,8 @@ class TestRetryDecorator(test.TestCase):
                     return 'success'
 
             self.assertEqual('success', fails_then_passes())
-            mock_sleep.assert_has_calls(map(mock.call, [2, 4, 4, 4]))
+            mock_sleep.assert_has_calls(
+                [mock.call(1), mock.call(2), mock.call(4), mock.call(4)])
 
 
 @ddt.ddt

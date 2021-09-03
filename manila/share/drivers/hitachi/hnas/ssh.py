@@ -353,7 +353,7 @@ class HNASSSHBackend(object):
                 LOG.exception(msg)
                 raise exception.HNASBackendException(msg=msg)
 
-    @mutils.retry(exception=exception.HNASSSCContextChange, wait_random=True,
+    @mutils.retry(retry_param=exception.HNASSSCContextChange, wait_random=True,
                   retries=5)
     def create_directory(self, dest_path):
         self._locked_selectfs('create', dest_path)
@@ -366,7 +366,7 @@ class HNASSSHBackend(object):
             LOG.warning(msg)
             raise exception.HNASSSCContextChange(msg=msg)
 
-    @mutils.retry(exception=exception.HNASSSCContextChange, wait_random=True,
+    @mutils.retry(retry_param=exception.HNASSSCContextChange, wait_random=True,
                   retries=5)
     def delete_directory(self, path):
         try:
@@ -383,7 +383,7 @@ class HNASSSHBackend(object):
                 LOG.debug(msg)
                 raise exception.HNASSSCContextChange(msg=msg)
 
-    @mutils.retry(exception=exception.HNASSSCIsBusy, wait_random=True,
+    @mutils.retry(retry_param=exception.HNASSSCIsBusy, wait_random=True,
                   retries=5)
     def check_directory(self, path):
         command = ['path-to-object-number', '-f', self.fs_name, path]
@@ -621,7 +621,7 @@ class HNASSSHBackend(object):
             export_list.append(Export(items[i]))
         return export_list
 
-    @mutils.retry(exception=exception.HNASConnException, wait_random=True)
+    @mutils.retry(retry_param=exception.HNASConnException, wait_random=True)
     def _execute(self, commands):
         command = ['ssc', '127.0.0.1']
         if self.admin_ip0 is not None:

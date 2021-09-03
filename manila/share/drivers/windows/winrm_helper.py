@@ -93,7 +93,7 @@ class WinRMHelper(object):
         retries = self._config.winrm_retry_count if retry else 1
         conn = self._get_conn(server)
 
-        @utils.retry(exception=Exception,
+        @utils.retry(retry_param=Exception,
                      interval=self._config.winrm_retry_interval,
                      retries=retries)
         def _execute():

@@ -23,7 +23,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import units
-import retrying
 import six
 
 from manila.common import constants as const
@@ -243,7 +242,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             server_details, share['name'])
         return export_locations
 
-    @utils.retry(exception.ProcessExecutionError, backoff_rate=1)
+    @utils.retry(retry_param=exception.ProcessExecutionError, backoff_rate=1)
     def _is_device_file_available(self, server_details, volume):
         """Checks whether the device file is available"""
         command = ['sudo', 'test', '-b', volume['mountpoint']]
@@ -372,7 +371,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 raise exception.ShareBackendException(msg=six.text_type(e))
         return _mount_device_with_lock()
 
-    @utils.retry(exception.ProcessExecutionError)
+    @utils.retry(retry_param=exception.ProcessExecutionError)
     def _unmount_device(self, share, server_details):
         """Unmounts block device from directory on service vm."""
 
@@ -416,9 +415,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                         _('Volume %s is already attached to another instance')
                         % volume['id'])
 
-            @retrying.retry(stop_max_attempt_number=3,
-                            wait_fixed=2000,
-                            retry_on_exception=lambda exc: True)
+            @utils.retry(retries=3,
+                         interval=2,
+                         backoff_rate=1)
             def attach_volume():
                 self.compute_api.instance_volume_attach(
                     self.admin_context, instance_id, volume['id'])

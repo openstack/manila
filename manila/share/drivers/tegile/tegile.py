@@ -97,7 +97,7 @@ class TegileAPIExecutor(object):
         return self._send_api_request(*args, **kwargs)
 
     @debugger
-    @utils.retry(exception=(requests.ConnectionError, requests.Timeout),
+    @utils.retry(retry_param=(requests.ConnectionError, requests.Timeout),
                  interval=30,
                  retries=3,
                  backoff_rate=1)

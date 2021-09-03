@@ -22,11 +22,11 @@ import functools
 import inspect
 import os
 import pyclbr
-import random
 import re
 import shutil
 import sys
 import tempfile
+import tenacity
 import time
 
 from eventlet import pools
@@ -42,14 +42,15 @@ from oslo_utils import netutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 import paramiko
-import retrying
 import six
 from webob import exc
+
 
 from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
+
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -457,65 +458,59 @@ class ComparableMixin(object):
         return self._compare(other, lambda s, o: s != o)
 
 
-def retry(exception, interval=1, retries=10, backoff_rate=2,
-          wait_random=False, backoff_sleep_max=None):
-    """A wrapper around retrying library.
+class retry_if_exit_code(tenacity.retry_if_exception):
+    """Retry on ProcessExecutionError specific exit codes."""
+    def __init__(self, codes):
+        self.codes = (codes,) if isinstance(codes, int) else codes
+        super(retry_if_exit_code, self).__init__(self._check_exit_code)
 
-    This decorator allows to log and to check 'retries' input param.
-    Time interval between retries is calculated in the following way:
-    interval * backoff_rate ^ previous_attempt_number
+    def _check_exit_code(self, exc):
+        return (exc and isinstance(exc, processutils.ProcessExecutionError) and
+                exc.exit_code in self.codes)
 
-    :param exception: expected exception type. When wrapped function
-                      raises an exception of this type, the function
-                      execution is retried.
-    :param interval: param 'interval' is used to calculate time interval
-                     between retries:
-                     interval * backoff_rate ^ previous_attempt_number
-    :param retries: number of retries. Use 0 for an infinite retry loop.
-    :param backoff_rate: param 'backoff_rate' is used to calculate time
-                         interval between retries:
-                         interval * backoff_rate ^ previous_attempt_number
-    :param wait_random: boolean value to enable retry with random wait timer.
-    :param backoff_sleep_max: Maximum number of seconds for the calculated
-                              backoff sleep. Use None if no maximum is needed.
-    """
-    def _retry_on_exception(e):
-        return isinstance(e, exception)
 
-    def _backoff_sleep(previous_attempt_number, delay_since_first_attempt_ms):
-        exp = backoff_rate ** previous_attempt_number
-        wait_for = max(0, interval * exp)
+def retry(retry_param=Exception,
+          interval=1,
+          retries=10,
+          backoff_rate=2,
+          backoff_sleep_max=None,
+          wait_random=False,
+          infinite=False,
+          retry=tenacity.retry_if_exception_type):
 
-        if wait_random:
-            wait_val = random.randrange(interval * 1000.0, wait_for * 1000.0)
-        else:
-            wait_val = wait_for * 1000.0
+    if retries < 1:
+        raise ValueError('Retries must be greater than or '
+                         'equal to 1 (received: %s). ' % retries)
 
-        if backoff_sleep_max:
-            wait_val = min(backoff_sleep_max * 1000.0, wait_val)
+    if wait_random:
+        kwargs = {'multiplier': interval}
+        if backoff_sleep_max is not None:
+            kwargs.update({'max': backoff_sleep_max})
+        wait = tenacity.wait_random_exponential(**kwargs)
+    else:
+        kwargs = {'multiplier': interval, 'min': 0, 'exp_base': backoff_rate}
+        if backoff_sleep_max is not None:
+            kwargs.update({'max': backoff_sleep_max})
+        wait = tenacity.wait_exponential(**kwargs)
 
-        LOG.debug("Sleeping for %s seconds.", (wait_val / 1000.0))
-        return wait_val
-
-    def _print_stop(previous_attempt_number, delay_since_first_attempt_ms):
-        delay_since_first_attempt = delay_since_first_attempt_ms / 1000.0
-        LOG.debug("Failed attempt %s", previous_attempt_number)
-        LOG.debug("Have been at this for %s seconds",
-                  delay_since_first_attempt)
-        return retries > 0 and previous_attempt_number == retries
-
-    if retries < 0:
-        raise ValueError(_('Retries must be greater than or '
-                           'equal to 0 (received: %s).') % retries)
+    if infinite:
+        stop = tenacity.stop.stop_never
+    else:
+        stop = tenacity.stop_after_attempt(retries)
 
     def _decorator(f):
 
-        @six.wraps(f)
+        @functools.wraps(f)
         def _wrapper(*args, **kwargs):
-            r = retrying.Retrying(retry_on_exception=_retry_on_exception,
-                                  wait_func=_backoff_sleep,
-                                  stop_func=_print_stop)
-            return r.call(f, *args, **kwargs)
+            r = tenacity.Retrying(
+                sleep=tenacity.nap.sleep,
+                before_sleep=tenacity.before_sleep_log(LOG, logging.DEBUG),
+                after=tenacity.after_log(LOG, logging.DEBUG),
+                stop=stop,
+                reraise=True,
+                retry=retry(retry_param),
+                wait=wait)
+            return r(f, *args, **kwargs)
 
         return _wrapper
 

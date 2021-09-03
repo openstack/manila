@@ -69,7 +69,7 @@ class NexentaJSONProxy(object):
     def __repr__(self):
         return 'NMS proxy: %s' % self.url
 
-    @utils.retry(retry_exc_tuple, retries=6)
+    @utils.retry(retry_param=retry_exc_tuple, retries=6)
     def __call__(self, *args):
         data = jsonutils.dumps({
             'object': self.obj,

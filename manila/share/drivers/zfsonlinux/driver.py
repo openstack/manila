@@ -273,7 +273,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                     msg=_("Could not destroy '%s' dataset, "
                           "because it had opened files.") % name)
 
-        @utils.retry(exception.ProcessExecutionError)
+        @utils.retry(retry_param=exception.ProcessExecutionError, retries=10)
         def _zfs_destroy_with_retry():
             """Retry destroying dataset ten times with exponential backoff."""
             # NOTE(bswartz): There appears to be a bug in ZFS when creating and
@@ -869,7 +869,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         """Unmanage dataset snapshot."""
         self.private_storage.delete(snapshot_instance["snapshot_id"])
 
-    @utils.retry(exception.ZFSonLinuxException)
+    @utils.retry(retry_param=exception.ZFSonLinuxException, retries=10)
     def _unmount_share_with_retry(self, share_name):
         out, err = self.execute("sudo", "mount")
         if "%s " % share_name not in out:

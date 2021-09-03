@@ -96,7 +96,7 @@ class ExecuteMixin(driver.ExecuteMixin):
             cmd = cmd[1:]
         return executor(*cmd, **kwargs)
 
-    @utils.retry(exception.ProcessExecutionError,
+    @utils.retry(retry_param=exception.ProcessExecutionError,
                  interval=5, retries=36, backoff_rate=1)
     def execute_with_retry(self, *cmd, **kwargs):
         """Retry wrapper over common shell interface."""

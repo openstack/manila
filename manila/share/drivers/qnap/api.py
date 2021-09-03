@@ -41,7 +41,7 @@ MSG_UNEXPECT_RESP = _("Unexpected response from QNAP API")
 
 def _connection_checker(func):
     """Decorator to check session has expired or not."""
-    @utils.retry(exception=exception.ShareBackendException,
+    @utils.retry(retry_param=exception.ShareBackendException,
                  retries=5)
     @functools.wraps(func)
     def inner_connection_checker(self, *args, **kwargs):

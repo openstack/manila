@@ -234,8 +234,8 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.driver, 'do_setup',
                          mock.Mock(side_effect=Exception()))
         # break the endless retry loop
-        with mock.patch("time.sleep",
-                        side_effect=CustomTimeSleepException()):
+        with mock.patch('tenacity.nap.sleep') as sleep:
+            sleep.side_effect = CustomTimeSleepException()
             self.assertRaises(CustomTimeSleepException,
                               self.share_manager.init_host)
         self.assertRaises(
@@ -251,8 +251,8 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(manager.LOG, 'exception')
         self.share_manager.driver.initialized = False
 
-        with mock.patch("time.sleep",
-                        side_effect=CustomTimeSleepException()):
+        with mock.patch('time.sleep') as mock_sleep:
+            mock_sleep.side_effect = CustomTimeSleepException()
             self.assertRaises(CustomTimeSleepException,
                               self.share_manager.init_host)
 
