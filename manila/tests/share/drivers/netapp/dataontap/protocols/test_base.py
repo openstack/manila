@@ -45,3 +45,23 @@ class NetAppNASHelperBaseTestCase(test.TestCase):
         result = helper._is_readonly(level)
 
         self.assertEqual(readonly, result)
+
+    @ddt.data(
+        {'share': {'export_location': 'fake_export'},
+         'expected_export': 'fake_export'},
+        {'share': {'export_locations': [{'path': 'fake_export'}]},
+         'expected_export': 'fake_export'},
+        {'share': {'export_locations': 'error_type'},
+         'expected_export': None},
+        {'share': {'export_locations': []},
+         'expected_export': None},
+        {'share': {},
+         'expected_export': None})
+    @ddt.unpack
+    def test__get_share_export_location(self, share, expected_export):
+
+        helper = nfs_cmode.NetAppCmodeNFSHelper()
+
+        result = helper._get_share_export_location(share)
+
+        self.assertEqual(expected_export, result)

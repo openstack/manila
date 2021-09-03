@@ -199,13 +199,19 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
             fake.BACKEND_NAME, vserver_name=fake.VSERVER1
         )
 
-    def test_create_snapmirror(self):
+    @ddt.data(True, False)
+    def test_create_snapmirror_mount(self, mount):
         mock_dest_client = mock.Mock()
         self.mock_object(data_motion, 'get_client_for_backend',
                          mock.Mock(return_value=mock_dest_client))
+        self.mock_object(self.dm_session, 'wait_for_mount_replica')
+        mock_backend_config = na_fakes.create_configuration()
+        mock_backend_config.netapp_mount_replica_timeout = 30
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
 
         self.dm_session.create_snapmirror(self.fake_src_share,
-                                          self.fake_dest_share)
+                                          self.fake_dest_share, mount=mount)
 
         mock_dest_client.create_snapmirror_vol.assert_called_once_with(
             mock.ANY, self.fake_src_vol_name, mock.ANY,
@@ -215,6 +221,11 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
             mock.ANY, self.fake_src_vol_name, mock.ANY,
             self.fake_dest_vol_name
         )
+        if mount:
+            self.dm_session.wait_for_mount_replica.assert_called_once_with(
+                mock_dest_client, self.fake_dest_vol_name, timeout=30)
+        else:
+            self.dm_session.wait_for_mount_replica.assert_not_called()
 
     def test_create_snapmirror_svm(self):
         mock_dest_client = mock.Mock()
@@ -1051,3 +1062,48 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
         src_mock_client.release_snapmirror_svm.assert_called_once_with(
             fake.VSERVER1, fake.VSERVER2
         )
+
+    def test_wait_for_mount_replica(self):
+
+        mock_client = mock.Mock()
+        self.mock_object(time, 'sleep')
+        mock_warning_log = self.mock_object(data_motion.LOG, 'warning')
+
+        self.dm_session.wait_for_mount_replica(
+            mock_client, fake.SHARE_NAME)
+
+        mock_client.mount_volume.ssert_called_once_with(fake.SHARE_NAME)
+        self.assertEqual(0, mock_warning_log.call_count)
+
+    def test_wait_for_mount_replica_timeout(self):
+
+        mock_client = mock.Mock()
+        self.mock_object(time, 'sleep')
+        mock_warning_log = self.mock_object(data_motion.LOG, 'warning')
+        undergoing_snapmirror = (
+            'The volume is undergoing a snapmirror initialize.')
+        na_api_error = netapp_api.NaApiError(code=netapp_api.EAPIERROR,
+                                             message=undergoing_snapmirror)
+        mock_client.mount_volume.side_effect = na_api_error
+
+        self.assertRaises(exception.NetAppException,
+                          self.dm_session.wait_for_mount_replica,
+                          mock_client, fake.SHARE_NAME, timeout=30)
+
+        self.assertEqual(3, mock_client.mount_volume.call_count)
+        self.assertEqual(3, mock_warning_log.call_count)
+
+    def test_wait_for_mount_replica_api_not_found(self):
+
+        mock_client = mock.Mock()
+        self.mock_object(time, 'sleep')
+        mock_warning_log = self.mock_object(data_motion.LOG, 'warning')
+        na_api_error = netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND)
+        mock_client.mount_volume.side_effect = na_api_error
+
+        self.assertRaises(exception.NetAppException,
+                          self.dm_session.wait_for_mount_replica,
+                          mock_client, fake.SHARE_NAME, timeout=30)
+
+        mock_client.mount_volume.assert_called_once_with(fake.SHARE_NAME)
+        mock_warning_log.assert_not_called()

@@ -30,20 +30,32 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
     @na_utils.trace
     def create_share(self, share, share_name,
                      clear_current_export_policy=True,
-                     ensure_share_already_exists=False):
-        """Creates CIFS share on Data ONTAP Vserver."""
-        if not ensure_share_already_exists:
-            self._client.create_cifs_share(share_name)
-        elif not self._client.cifs_share_exists(share_name):
+                     ensure_share_already_exists=False, replica=False):
+        """Creates CIFS share if does not exist on Data ONTAP Vserver.
+
+        The new CIFS share has Everyone access, so it removes all access after
+        creating.
+
+        :param share: share entity.
+        :param share_name: share name that must be the CIFS share name.
+        :param clear_current_export_policy: ignored, NFS only.
+        :param ensure_share_already_exists: ensures that CIFS share exists.
+        :param replica: it is a replica volume (DP type).
+        """
+
+        cifs_exist = self._client.cifs_share_exists(share_name)
+        if ensure_share_already_exists and not cifs_exist:
             msg = _("The expected CIFS share %(share_name)s was not found.")
             msg_args = {'share_name': share_name}
             raise exception.NetAppException(msg % msg_args)
-        if clear_current_export_policy:
+        elif not cifs_exist:
+            self._client.create_cifs_share(share_name)
             self._client.remove_cifs_share_access(share_name, 'Everyone')
 
-        # Ensure 'ntfs' security style
-        self._client.set_volume_security_style(share_name,
-                                               security_style='ntfs')
+        # Ensure 'ntfs' security style for RW volume. DP volumes cannot set it.
+        if not replica:
+            self._client.set_volume_security_style(share_name,
+                                                   security_style='ntfs')
 
         # Return a callback that may be used for generating export paths
         # for this share.
@@ -159,10 +171,10 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
         _, share_name = self._get_export_location(share)
         return share_name
 
-    @staticmethod
-    def _get_export_location(share):
+    @na_utils.trace
+    def _get_export_location(self, share):
         """Returns host ip and share name for a given CIFS share."""
-        export_location = share['export_location'] or '\\\\\\'
+        export_location = self._get_share_export_location(share) or '\\\\\\'
         regex = r'^(?:\\\\|//)(?P<host_ip>.*)(?:\\|/)(?P<share_name>.*)$'
         match = re.match(regex, export_location)
         if match:
@@ -172,10 +184,5 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
 
     @na_utils.trace
     def cleanup_demoted_replica(self, share, share_name):
-        """Cleans up some things regarding a demoted replica."""
-        # NOTE(carloss): This is necessary due to bug 1879368. If we do not
-        # remove this CIFS share, in case the demoted replica is promoted
-        # back, the promotion will fail due to a duplicated entry for the
-        # share, since a create share request is sent to the backend every
-        # time a promotion occurs.
+        """Cleans up CIFS share for a demoted replica."""
         self._client.remove_cifs_share(share_name)

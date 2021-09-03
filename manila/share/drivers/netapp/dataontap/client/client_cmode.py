@@ -3281,7 +3281,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def remove_cifs_share(self, share_name):
-        self.send_request('cifs-share-delete', {'share-name': share_name})
+        try:
+            self.send_request('cifs-share-delete', {'share-name': share_name})
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EOBJECTNOTFOUND:
+                return
+            raise
 
     @na_utils.trace
     def add_nfs_export_rule(self, policy_name, client_match, readonly,

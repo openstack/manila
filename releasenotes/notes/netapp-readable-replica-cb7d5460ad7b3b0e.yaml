@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    NetApp ONTAP driver: added support for `readable` replication. The driver
+    will continue having support for the `dr` type as well.
+
