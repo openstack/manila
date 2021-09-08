@@ -5063,6 +5063,14 @@ class ShareManager(manager.SchedulerDependentManager):
                 for key in ['neutron_net_id', 'neutron_subnet_id']:
                     if current_subnet.get(key) != old_subnet.get(key):
                         net_changes_identified = True
+
+                # NOTE(carloss): Even though the share back end won't need to
+                # create a share server, if a network change was identified,
+                # there is need to allocate new interfaces to the share server,
+                # so the back end can set up the new ips considering
+                # the new networking parameters when completing the migration.
+                # In such case, the migration will be disruptive, since the old
+                # allocations will be replaced by the new ones.
                 if net_changes_identified:
                     share_network_subnet = self.db.share_network_subnet_get(
                         context, dest_share_server['share_network_subnet_id'])
