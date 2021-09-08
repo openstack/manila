@@ -81,12 +81,13 @@ class NetAppBaseClient(object):
             return string.split('}', 1)[1]
         return string
 
-    def send_request(self, api_name, api_args=None, enable_tunneling=True):
+    def send_request(self, api_name, api_args=None, enable_tunneling=True,
+                     use_zapi=True):
         """Sends request to Ontapi."""
         request = netapp_api.NaElement(api_name)
-        if api_args:
-            request.translate_struct(api_args)
-        return self.connection.invoke_successfully(request, enable_tunneling)
+        return self.connection.invoke_successfully(
+            request, api_args=api_args, enable_tunneling=enable_tunneling,
+            use_zapi=use_zapi)
 
     @na_utils.trace
     def get_licenses(self):

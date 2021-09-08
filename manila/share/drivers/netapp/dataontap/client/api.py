@@ -23,12 +23,14 @@ import re
 
 from lxml import etree
 from oslo_log import log
+from oslo_serialization import jsonutils
 import requests
 from requests import auth
 import six
 
 from manila import exception
 from manila.i18n import _
+from manila.share.drivers.netapp.dataontap.client import rest_endpoints
 from manila.share.drivers.netapp import utils
 
 LOG = log.getLogger(__name__)
@@ -62,28 +64,23 @@ EPOLICYNOTFOUND = '18251'
 EEVENTNOTFOUND = '18253'
 ESCOPENOTFOUND = '18259'
 ESVMDR_CANNOT_PERFORM_OP_FOR_STATUS = '18815'
+ENFS_V4_0_ENABLED_MIGRATION_FAILURE = '13172940'
+EVSERVER_MIGRATION_TO_NON_AFF_CLUSTER = '13172984'
+
+STYLE_LOGIN_PASSWORD = 'basic_auth'
+TRANSPORT_TYPE_HTTP = 'http'
+TRANSPORT_TYPE_HTTPS = 'https'
+STYLE_CERTIFICATE = 'certificate_auth'
 
 
-class NaServer(object):
+class BaseClient(object):
     """Encapsulates server connection logic."""
 
-    TRANSPORT_TYPE_HTTP = 'http'
-    TRANSPORT_TYPE_HTTPS = 'https'
-    SERVER_TYPE_FILER = 'filer'
-    SERVER_TYPE_DFM = 'dfm'
-    URL_FILER = 'servlets/netapp.servlets.admin.XMLrequest_filer'
-    URL_DFM = 'apis/XMLrequest'
-    NETAPP_NS = 'http://www.netapp.com/filer/admin'
-    STYLE_LOGIN_PASSWORD = 'basic_auth'
-    STYLE_CERTIFICATE = 'certificate_auth'
-
-    def __init__(self, host, server_type=SERVER_TYPE_FILER,
-                 transport_type=TRANSPORT_TYPE_HTTP,
-                 style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None, username=None,
-                 password=None, port=None, trace=False,
-                 api_trace_pattern=utils.API_TRACE_PATTERN):
+    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP, style=None,
+                 ssl_cert_path=None, username=None, password=None, port=None,
+                 trace=False, api_trace_pattern=None):
+        super(BaseClient, self).__init__()
         self._host = host
-        self.set_server_type(server_type)
         self.set_transport_type(transport_type)
         self.set_style(style)
         if port:
@@ -99,8 +96,20 @@ class NaServer(object):
             # Note(felipe_rodrigues): it will verify with the mozila CA roots,
             # given by certifi package.
             self._ssl_verify = True
-
         LOG.debug('Using NetApp controller: %s', self._host)
+
+    def get_style(self):
+        """Get the authorization style for communicating with the server."""
+        return self._auth_style
+
+    def set_style(self, style):
+        """Set the authorization style for communicating with the server.
+
+        Supports basic_auth for now. Certificate_auth mode to be done.
+        """
+        if style.lower() not in (STYLE_LOGIN_PASSWORD, STYLE_CERTIFICATE):
+            raise ValueError('Unsupported authentication style')
+        self._auth_style = style.lower()
 
     def get_transport_type(self):
         """Get the transport type protocol."""
@@ -112,38 +121,13 @@ class NaServer(object):
         Supports http and https transport types.
         """
         if transport_type.lower() not in (
-                NaServer.TRANSPORT_TYPE_HTTP,
-                NaServer.TRANSPORT_TYPE_HTTPS):
+                TRANSPORT_TYPE_HTTP, TRANSPORT_TYPE_HTTPS):
             raise ValueError('Unsupported transport type')
         self._protocol = transport_type.lower()
-        if self._protocol == NaServer.TRANSPORT_TYPE_HTTP:
-            if self._server_type == NaServer.SERVER_TYPE_FILER:
-                self.set_port(80)
-            else:
-                self.set_port(8088)
-        else:
-            if self._server_type == NaServer.SERVER_TYPE_FILER:
-                self.set_port(443)
-            else:
-                self.set_port(8488)
         self._refresh_conn = True
 
-    def get_style(self):
-        """Get the authorization style for communicating with the server."""
-        return self._auth_style
-
-    def set_style(self, style):
-        """Set the authorization style for communicating with the server.
-
-        Supports basic_auth for now. Certificate_auth mode to be done.
-        """
-        if style.lower() not in (NaServer.STYLE_LOGIN_PASSWORD,
-                                 NaServer.STYLE_CERTIFICATE):
-            raise ValueError('Unsupported authentication style')
-        self._auth_style = style.lower()
-
     def get_server_type(self):
-        """Get the target server type."""
+        """Get the server type."""
         return self._server_type
 
     def set_server_type(self, server_type):
@@ -151,16 +135,7 @@ class NaServer(object):
 
         Supports filer and dfm server types.
         """
-        if server_type.lower() not in (NaServer.SERVER_TYPE_FILER,
-                                       NaServer.SERVER_TYPE_DFM):
-            raise ValueError('Unsupported server type')
-        self._server_type = server_type.lower()
-        if self._server_type == NaServer.SERVER_TYPE_FILER:
-            self._url = NaServer.URL_FILER
-        else:
-            self._url = NaServer.URL_DFM
-        self._ns = NaServer.NETAPP_NS
-        self._refresh_conn = True
+        raise NotImplementedError()
 
     def set_api_version(self, major, minor):
         """Set the API version."""
@@ -216,14 +191,6 @@ class NaServer(object):
             return self._timeout
         return None
 
-    def get_vfiler(self):
-        """Get the vfiler to use in tunneling."""
-        return self._vfiler
-
-    def set_vfiler(self, vfiler):
-        """Set the vfiler to use if tunneling gets enabled."""
-        self._vfiler = vfiler
-
     def get_vserver(self):
         """Get the vserver to use in tunneling."""
         return self._vserver
@@ -242,10 +209,110 @@ class NaServer(object):
         self._password = password
         self._refresh_conn = True
 
+    def invoke_successfully(self, na_element, api_args=None,
+                            enable_tunneling=False, use_zapi=True):
+        """Invokes API and checks execution status as success.
+
+        Need to set enable_tunneling to True explicitly to achieve it.
+        This helps to use same connection instance to enable or disable
+        tunneling. The vserver or vfiler should be set before this call
+        otherwise tunneling remains disabled.
+        """
+        pass
+
+    def _build_session(self):
+        """Builds a session in the client."""
+        if self._auth_style == STYLE_LOGIN_PASSWORD:
+            auth_handler = self._create_basic_auth_handler()
+        else:
+            auth_handler = self._create_certificate_auth_handler()
+
+        self._session = requests.Session()
+        self._session.auth = auth_handler
+        self._session.verify = self._ssl_verify
+        headers = self._build_headers()
+
+        self._session.headers = headers
+
+    def _build_headers(self):
+        """Adds the necessary headers to the session."""
+        raise NotImplementedError()
+
+    def _create_basic_auth_handler(self):
+        """Creates and returns a basic HTTP auth handler."""
+        return auth.HTTPBasicAuth(self._username, self._password)
+
+    def _create_certificate_auth_handler(self):
+        """Creates and returns a certificate auth handler."""
+        raise NotImplementedError()
+
+    def __str__(self):
+        """Gets a representation of the client."""
+        return "server: %s" % (self._host)
+
+
+class ZapiClient(BaseClient):
+
+    SERVER_TYPE_FILER = 'filer'
+    SERVER_TYPE_DFM = 'dfm'
+    URL_FILER = 'servlets/netapp.servlets.admin.XMLrequest_filer'
+    URL_DFM = 'apis/XMLrequest'
+    NETAPP_NS = 'http://www.netapp.com/filer/admin'
+
+    def __init__(self, host, server_type=SERVER_TYPE_FILER,
+                 transport_type=TRANSPORT_TYPE_HTTP,
+                 style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None, username=None,
+                 password=None, port=None, trace=False,
+                 api_trace_pattern=utils.API_TRACE_PATTERN):
+        super(ZapiClient, self).__init__(
+            host, transport_type=transport_type, style=style,
+            ssl_cert_path=ssl_cert_path, username=username, password=password,
+            port=port, trace=trace, api_trace_pattern=api_trace_pattern)
+        self.set_server_type(server_type)
+        self._set_port()
+
+    def _set_port(self):
+        """Defines which port will be used to communicate with ONTAP."""
+        if self._protocol == TRANSPORT_TYPE_HTTP:
+            if self._server_type == ZapiClient.SERVER_TYPE_FILER:
+                self.set_port(80)
+            else:
+                self.set_port(8088)
+        else:
+            if self._server_type == ZapiClient.SERVER_TYPE_FILER:
+                self.set_port(443)
+            else:
+                self.set_port(8488)
+
+    def set_server_type(self, server_type):
+        """Set the target server type.
+
+        Supports filer and dfm server types.
+        """
+        if server_type.lower() not in (ZapiClient.SERVER_TYPE_FILER,
+                                       ZapiClient.SERVER_TYPE_DFM):
+            raise ValueError('Unsupported server type')
+        self._server_type = server_type.lower()
+        if self._server_type == ZapiClient.SERVER_TYPE_FILER:
+            self._url = ZapiClient.URL_FILER
+        else:
+            self._url = ZapiClient.URL_DFM
+        self._ns = ZapiClient.NETAPP_NS
+        self._refresh_conn = True
+
+    def get_vfiler(self):
+        """Get the vfiler to use in tunneling."""
+        return self._vfiler
+
+    def set_vfiler(self, vfiler):
+        """Set the vfiler to use if tunneling gets enabled."""
+        self._vfiler = vfiler
+
     def invoke_elem(self, na_element, enable_tunneling=False):
         """Invoke the API on the server."""
         if na_element and not isinstance(na_element, NaElement):
             ValueError('NaElement must be supplied to invoke API')
+
         request_element = self._create_request(na_element, enable_tunneling)
         request_d = request_element.to_string()
 
@@ -282,7 +349,8 @@ class NaServer(object):
 
         return response_element
 
-    def invoke_successfully(self, na_element, enable_tunneling=False):
+    def invoke_successfully(self, na_element, api_args=None,
+                            enable_tunneling=False, use_zapi=True):
         """Invokes API and checks execution status as success.
 
         Need to set enable_tunneling to True explicitly to achieve it.
@@ -290,7 +358,12 @@ class NaServer(object):
         tunneling. The vserver or vfiler should be set before this call
         otherwise tunneling remains disabled.
         """
-        result = self.invoke_elem(na_element, enable_tunneling)
+        if api_args:
+            na_element.translate_struct(api_args)
+
+        result = self.invoke_elem(
+            na_element, enable_tunneling=enable_tunneling)
+
         if result.has_attr('status') and result.get_attr('status') == 'passed':
             return result
         code = (result.get_attr('errno')
@@ -336,7 +409,8 @@ class NaServer(object):
                 raise ValueError('ontapi version has to be atleast 1.15'
                                  ' to send request to vserver')
 
-    def _parse_response(self, response):
+    @staticmethod
+    def _parse_response(response):
         """Get the NaElement for the response."""
         if not response:
             raise NaApiError('No response received')
@@ -349,28 +423,287 @@ class NaServer(object):
         return processed_response.get_child_by_name('results')
 
     def _get_url(self):
+        """Get the base url to send the request."""
         host = self._host
         if ':' in host:
             host = '[%s]' % host
         return '%s://%s:%s/%s' % (self._protocol, host, self._port, self._url)
 
-    def _build_session(self):
-        if self._auth_style == NaServer.STYLE_LOGIN_PASSWORD:
-            auth_handler = self._create_basic_auth_handler()
+    def _build_headers(self):
+        """Build and return headers."""
+        return {'Content-Type': 'text/xml'}
+
+
+class RestClient(BaseClient):
+
+    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP,
+                 style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None, username=None,
+                 password=None, port=None, trace=False,
+                 api_trace_pattern=utils.API_TRACE_PATTERN):
+        super(RestClient, self).__init__(
+            host, transport_type=transport_type, style=style,
+            ssl_cert_path=ssl_cert_path, username=username, password=password,
+            port=port, trace=trace, api_trace_pattern=api_trace_pattern)
+        self._set_port()
+
+    def _set_port(self):
+        if self._protocol == TRANSPORT_TYPE_HTTP:
+            self.set_port(80)
         else:
-            auth_handler = self._create_certificate_auth_handler()
+            self.set_port(443)
 
-        self._session = requests.Session()
-        self._session.auth = auth_handler
-        self._session.verify = self._ssl_verify
-        self._session.headers = {
-            'Content-Type': 'text/xml', 'charset': 'utf-8'}
+    def _get_request_info(self, api_name, session):
+        """Returns the request method and url to be used in the REST call."""
 
-    def _create_basic_auth_handler(self):
-        return auth.HTTPBasicAuth(self._username, self._password)
+        request_methods = {
+            'post': session.post,
+            'get': session.get,
+            'put': session.put,
+            'delete': session.delete,
+            'patch': session.patch,
+        }
+        rest_call = rest_endpoints.endpoints.get(api_name)
+        return request_methods[rest_call['method']], rest_call['url']
 
-    def _create_certificate_auth_handler(self):
-        raise NotImplementedError()
+    def _add_query_params_to_url(self, url, query):
+        """Populates the URL with specified filters."""
+        filters = ""
+        for k, v in query.items():
+            filters += "%(key)s=%(value)s&" % {"key": k, "value": v}
+        url += "?" + filters
+        return url
+
+    def invoke_elem(self, na_element, api_args=None):
+        """Invoke the API on the server."""
+        if na_element and not isinstance(na_element, NaElement):
+            raise ValueError('NaElement must be supplied to invoke API')
+
+        api_name = na_element.get_name()
+        api_name_matches_regex = (re.match(self._api_trace_pattern, api_name)
+                                  is not None)
+        data = api_args.get("body") if api_args else {}
+
+        if (not hasattr(self, '_session') or not self._session
+                or self._refresh_conn):
+            self._build_session()
+        request_method, action_url = self._get_request_info(
+            api_name, self._session)
+
+        url_params = api_args.get("url_params") if api_args else None
+        if url_params:
+            action_url = action_url % url_params
+
+        query = api_args.get("query") if api_args else None
+        if query:
+            action_url = self._add_query_params_to_url(
+                action_url, api_args['query'])
+
+        url = self._get_base_url() + action_url
+        data = jsonutils.dumps(data) if data else data
+
+        if self._trace and api_name_matches_regex:
+            message = ("Request: %(method)s %(url)s. Request body "
+                       "%(body)s") % {
+                "method": request_method,
+                "url": action_url,
+                "body": api_args.get("body") if api_args else {}
+            }
+            LOG.debug(message)
+
+        try:
+            if hasattr(self, '_timeout'):
+                response = request_method(
+                    url, data=data, timeout=self._timeout)
+            else:
+                response = request_method(url, data=data)
+        except requests.HTTPError as e:
+            raise NaApiError(e.errno, e.strerror)
+        except requests.URLRequired as e:
+            raise exception.StorageCommunicationException(six.text_type(e))
+        except Exception as e:
+            raise NaApiError(message=e)
+
+        response = (
+            jsonutils.loads(response.content) if response.content else None)
+        if self._trace and api_name_matches_regex:
+            LOG.debug("Response: %s", response)
+
+        return response
+
+    def invoke_successfully(self, na_element, api_args=None,
+                            enable_tunneling=False, use_zapi=False):
+        """Invokes API and checks execution status as success.
+
+        Need to set enable_tunneling to True explicitly to achieve it.
+        This helps to use same connection instance to enable or disable
+        tunneling. The vserver or vfiler should be set before this call
+        otherwise tunneling remains disabled.
+        """
+        result = self.invoke_elem(na_element, api_args=api_args)
+        if not result.get('error'):
+            return result
+        result_error = result.get('error')
+        code = (result_error.get('code')
+                or 'ESTATUSFAILED')
+        if code == ESIS_CLONE_NOT_LICENSED:
+            msg = 'Clone operation failed: FlexClone not licensed.'
+        else:
+            msg = (result_error.get('message')
+                   or 'Execution status is failed due to unknown reason')
+        raise NaApiError(code, msg)
+
+    def _get_base_url(self):
+        """Get the base URL for REST requests."""
+        host = self._host
+        if ':' in host:
+            host = '[%s]' % host
+        return '%s://%s:%s/api/' % (self._protocol, host, self._port)
+
+    def _build_headers(self):
+        """Build and return headers for a REST request."""
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+        return headers
+
+
+class NaServer(object):
+    """Encapsulates server connection logic."""
+
+    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP,
+                 style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None, username=None,
+                 password=None, port=None, trace=False,
+                 api_trace_pattern=utils.API_TRACE_PATTERN):
+        self.zapi_client = ZapiClient(
+            host, transport_type=transport_type, style=style,
+            ssl_cert_path=ssl_cert_path, username=username, password=password,
+            port=port, trace=trace, api_trace_pattern=api_trace_pattern)
+        self.rest_client = RestClient(
+            host, transport_type=transport_type, style=style,
+            ssl_cert_path=ssl_cert_path, username=username, password=password,
+            port=port, trace=trace, api_trace_pattern=api_trace_pattern
+        )
+        self._host = host
+
+        LOG.debug('Using NetApp controller: %s', self._host)
+
+    def get_transport_type(self, use_zapi_client=True):
+        """Get the transport type protocol."""
+        return self.get_client(use_zapi=use_zapi_client).get_transport_type()
+
+    def set_transport_type(self, transport_type):
+        """Set the transport type protocol for API.
+
+        Supports http and https transport types.
+        """
+        self.zapi_client.set_transport_type(transport_type)
+        self.rest_client.set_transport_type(transport_type)
+
+    def get_style(self, use_zapi_client=True):
+        """Get the authorization style for communicating with the server."""
+        return self.get_client(use_zapi=use_zapi_client).get_style()
+
+    def set_style(self, style):
+        """Set the authorization style for communicating with the server.
+
+        Supports basic_auth for now. Certificate_auth mode to be done.
+        """
+        self.zapi_client.set_style(style)
+        self.rest_client.set_style(style)
+
+    def get_server_type(self, use_zapi_client=True):
+        """Get the target server type."""
+        return self.get_client(use_zapi=use_zapi_client).get_server_type()
+
+    def set_server_type(self, server_type):
+        """Set the target server type.
+
+        Supports filer and dfm server types.
+        """
+        self.zapi_client.set_server_type(server_type)
+        self.rest_client.set_server_type(server_type)
+
+    def set_api_version(self, major, minor):
+        """Set the API version."""
+        self.zapi_client.set_api_version(major, minor)
+        self.rest_client.set_api_version(1, 0)
+
+    def set_system_version(self, system_version):
+        """Set the ONTAP system version."""
+        self.zapi_client.set_system_version(system_version)
+        self.rest_client.set_system_version(system_version)
+
+    def get_api_version(self, use_zapi_client=True):
+        """Gets the API version tuple."""
+        return self.get_client(use_zapi=use_zapi_client).get_api_version()
+
+    def get_system_version(self, use_zapi_client=True):
+        """Gets the ONTAP system version."""
+        return self.get_client(use_zapi=use_zapi_client).get_system_version()
+
+    def set_port(self, port):
+        """Set the server communication port."""
+        self.zapi_client.set_port(port)
+        self.rest_client.set_port(port)
+
+    def get_port(self, use_zapi_client=True):
+        """Get the server communication port."""
+        return self.get_client(use_zapi=use_zapi_client).get_port()
+
+    def set_timeout(self, seconds):
+        """Sets the timeout in seconds."""
+        self.zapi_client.set_timeout(seconds)
+        self.rest_client.set_timeout(seconds)
+
+    def get_timeout(self, use_zapi_client=True):
+        """Gets the timeout in seconds if set."""
+        return self.get_client(use_zapi=use_zapi_client).get_timeout()
+
+    def get_vfiler(self):
+        """Get the vfiler to use in tunneling."""
+        return self.zapi_client.get_vfiler()
+
+    def set_vfiler(self, vfiler):
+        """Set the vfiler to use if tunneling gets enabled."""
+        self.zapi_client.set_vfiler(vfiler)
+
+    def get_vserver(self, use_zapi_client=True):
+        """Get the vserver to use in tunneling."""
+        return self.get_client(use_zapi=use_zapi_client).get_vserver()
+
+    def set_vserver(self, vserver):
+        """Set the vserver to use if tunneling gets enabled."""
+        self.zapi_client.set_vserver(vserver)
+        self.rest_client.set_vserver(vserver)
+
+    def set_username(self, username):
+        """Set the user name for authentication."""
+        self.zapi_client.set_username(username)
+        self.rest_client.set_username(username)
+
+    def set_password(self, password):
+        """Set the password for authentication."""
+        self.zapi_client.set_password(password)
+        self.rest_client.set_password(password)
+
+    def get_client(self, use_zapi=True):
+        """Chooses the client to be used in the request."""
+        if use_zapi:
+            return self.zapi_client
+        return self.rest_client
+
+    def invoke_successfully(self, na_element, api_args=None,
+                            enable_tunneling=False, use_zapi=True):
+        """Invokes API and checks execution status as success.
+
+        Need to set enable_tunneling to True explicitly to achieve it.
+        This helps to use same connection instance to enable or disable
+        tunneling. The vserver or vfiler should be set before this call
+        otherwise tunneling remains disabled.
+        """
+        return self.get_client(use_zapi=use_zapi).invoke_successfully(
+            na_element, api_args=api_args, enable_tunneling=enable_tunneling)
 
     def __str__(self):
         return "server: %s" % (self._host)

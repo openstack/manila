@@ -1917,12 +1917,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.offline_volume.assert_called_with(fake.SHARE_NAME)
         vserver_client.delete_volume.assert_called_with(fake.SHARE_NAME)
 
-    def test_create_export(self):
+    @ddt.data(None, fake.MANILA_HOST_NAME_2)
+    def test_create_export(self, share_host):
 
         protocol_helper = mock.Mock()
         callback = (lambda export_address, export_path='fake_export_path':
                     ':'.join([export_address, export_path]))
         protocol_helper.create_share.return_value = callback
+        expected_host = share_host if share_host else fake.SHARE['host']
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=protocol_helper))
@@ -1937,11 +1939,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result = self.library._create_export(fake.SHARE,
                                              fake.SHARE_SERVER,
                                              fake.VSERVER1,
-                                             vserver_client)
+                                             vserver_client,
+                                             share_host=share_host)
 
         self.assertEqual(fake.NFS_EXPORTS, result)
         mock_get_export_addresses_with_metadata.assert_called_once_with(
-            fake.SHARE, fake.SHARE_SERVER, fake.LIFS)
+            fake.SHARE, fake.SHARE_SERVER, fake.LIFS, expected_host)
         protocol_helper.create_share.assert_called_once_with(
             fake.SHARE, fake.SHARE_NAME, clear_current_export_policy=True,
             ensure_share_already_exists=False, replica=False)
@@ -1969,7 +1972,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=[fake.LIF_ADDRESSES[1]]))
 
         result = self.library._get_export_addresses_with_metadata(
-            fake.SHARE, fake.SHARE_SERVER, fake.LIFS)
+            fake.SHARE, fake.SHARE_SERVER, fake.LIFS, fake.SHARE['host'])
 
         self.assertEqual(fake.INTERFACE_ADDRESSES_WITH_METADATA, result)
         mock_get_aggregate_node.assert_called_once_with(fake.POOL_NAME)
@@ -1986,7 +1989,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=[fake.LIF_ADDRESSES[1]]))
 
         result = self.library._get_export_addresses_with_metadata(
-            fake.SHARE, fake.SHARE_SERVER, fake.LIFS)
+            fake.SHARE, fake.SHARE_SERVER, fake.LIFS, fake.SHARE['host'])
 
         expected = copy.deepcopy(fake.INTERFACE_ADDRESSES_WITH_METADATA)
         for key, value in expected.items():

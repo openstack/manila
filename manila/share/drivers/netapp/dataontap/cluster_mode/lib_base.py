@@ -1310,7 +1310,8 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _create_export(self, share, share_server, vserver, vserver_client,
                        clear_current_export_policy=True,
-                       ensure_share_already_exists=False, replica=False):
+                       ensure_share_already_exists=False, replica=False,
+                       share_host=None):
         """Creates NAS storage."""
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
@@ -1325,9 +1326,11 @@ class NetAppCmodeFileStorageLibrary(object):
             msg_args = {'vserver': vserver, 'proto': share['share_proto']}
             raise exception.NetAppException(msg % msg_args)
 
+        host = share_host if share_host else share['host']
+
         # Get LIF addresses with metadata
         export_addresses = self._get_export_addresses_with_metadata(
-            share, share_server, interfaces)
+            share, share_server, interfaces, host)
 
         # Create the share and get a callback for generating export locations
         callback = helper.create_share(
@@ -1355,11 +1358,11 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def _get_export_addresses_with_metadata(self, share, share_server,
-                                            interfaces):
+                                            interfaces, share_host):
         """Return interface addresses with locality and other metadata."""
 
         # Get home node so we can identify preferred paths
-        aggregate_name = share_utils.extract_host(share['host'], level='pool')
+        aggregate_name = share_utils.extract_host(share_host, level='pool')
         home_node = self._get_aggregate_node(aggregate_name)
 
         # Get admin LIF addresses so we can identify admin export locations

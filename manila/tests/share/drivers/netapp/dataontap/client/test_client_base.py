@@ -42,6 +42,8 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.client = client_base.NetAppBaseClient(**fake.CONNECTION_INFO)
         self.client.connection = mock.MagicMock()
         self.connection = self.client.connection
+        self.connection.zapi_client = mock.Mock()
+        self.connection.rest_client = mock.Mock()
 
     def test_get_ontapi_version(self):
         version_response = netapp_api.NaElement(fake.ONTAPI_VERSION_RESPONSE)
@@ -97,16 +99,23 @@ class NetAppBaseClientTestCase(test.TestCase):
 
         self.assertEqual('tag_name', result)
 
-    def test_send_request(self):
+    @ddt.data(True, False)
+    def test_send_request(self, use_zapi):
 
         element = netapp_api.NaElement('fake-api')
 
-        self.client.send_request('fake-api')
+        self.client.send_request('fake-api', use_zapi=use_zapi)
 
         self.assertEqual(
             element.to_string(),
             self.connection.invoke_successfully.call_args[0][0].to_string())
-        self.assertTrue(self.connection.invoke_successfully.call_args[0][1])
+        self.assertTrue(
+            self.connection.invoke_successfully.call_args[1][
+                'enable_tunneling'])
+        self.assertEqual(
+            use_zapi,
+            self.connection.invoke_successfully.call_args[1][
+                'use_zapi'])
 
     def test_send_request_no_tunneling(self):
 
@@ -117,20 +126,32 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.assertEqual(
             element.to_string(),
             self.connection.invoke_successfully.call_args[0][0].to_string())
-        self.assertFalse(self.connection.invoke_successfully.call_args[0][1])
+        self.assertFalse(
+            self.connection.invoke_successfully.call_args[1][
+                'enable_tunneling'])
 
-    def test_send_request_with_args(self):
+    @ddt.data(True, False)
+    def test_send_request_with_args(self, use_zapi):
 
         element = netapp_api.NaElement('fake-api')
         api_args = {'arg1': 'data1', 'arg2': 'data2'}
-        element.translate_struct(api_args)
 
-        self.client.send_request('fake-api', api_args=api_args)
+        self.client.send_request('fake-api', api_args=api_args,
+                                 use_zapi=use_zapi)
 
         self.assertEqual(
             element.to_string(),
             self.connection.invoke_successfully.call_args[0][0].to_string())
-        self.assertTrue(self.connection.invoke_successfully.call_args[0][1])
+        self.assertEqual(
+            api_args, self.connection.invoke_successfully.call_args[1][
+                'api_args'])
+        self.assertTrue(
+            self.connection.invoke_successfully.call_args[1][
+                'enable_tunneling'])
+        self.assertEqual(
+            use_zapi,
+            self.connection.invoke_successfully.call_args[1][
+                'use_zapi'])
 
     def test_get_licenses(self):
 

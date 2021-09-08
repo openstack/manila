@@ -1769,6 +1769,40 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('net-interface-get-iter', None)])
         self.assertListEqual([], result)
 
+    def test_disable_network_interface(self):
+        interface_name = fake.NETWORK_INTERFACES[0]['interface_name']
+        vserver_name = fake.VSERVER_NAME
+        expected_api_args = {
+            'administrative-status': 'down',
+            'interface-name': interface_name,
+            'vserver': vserver_name,
+        }
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.disable_network_interface(vserver_name, interface_name)
+
+        self.client.send_request.assert_called_once_with(
+            'net-interface-modify', expected_api_args)
+
+    def test_delete_network_interface(self):
+        interface_name = fake.NETWORK_INTERFACES[0]['interface_name']
+        vserver_name = fake.VSERVER_NAME
+        expected_api_args = {
+            'interface-name': interface_name,
+            'vserver': vserver_name,
+        }
+
+        self.mock_object(self.client, 'disable_network_interface')
+        self.mock_object(self.client, 'send_request')
+
+        self.client.delete_network_interface(vserver_name, interface_name)
+
+        self.client.disable_network_interface.assert_called_once_with(
+            vserver_name, interface_name)
+        self.client.send_request.assert_called_once_with(
+            'net-interface-delete', expected_api_args)
+
     def test_get_ipspaces(self):
 
         self.client.features.add_feature('IPSPACES')
@@ -7627,8 +7661,10 @@ class NetAppClientCmodeTestCase(test.TestCase):
             fake.SNAPMIRROR_POLICY_GET_ITER_RESPONSE)
         self.mock_object(self.client, 'send_iter_request',
                          mock.Mock(return_value=api_response))
+        result_elem = [fake.SNAPMIRROR_POLICY_NAME]
 
-        result = self.client.get_snapmirror_policies(fake.VSERVER_NAME)
+        result = self.client.get_snapmirror_policies(
+            fake.VSERVER_NAME)
 
         expected_api_args = {
             'query': {
@@ -7645,7 +7681,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_iter_request.assert_called_once_with(
             'snapmirror-policy-get-iter', expected_api_args)
-        self.assertEqual([fake.SNAPMIRROR_POLICY_NAME], result)
+        self.assertEqual(result_elem, result)
 
     @ddt.data(True, False, None)
     def test_start_vserver(self, force):
@@ -8254,3 +8290,231 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertEqual(expected, result)
         self.client.send_iter_request.assert_called_once_with(
             'fpolicy-policy-status-get-iter', expected_args)
+
+    def test_is_svm_migrate_supported(self):
+        self.client.features.add_feature('SVM_MIGRATE')
+
+        result = self.client.is_svm_migrate_supported()
+
+        self.assertTrue(result)
+
+    @ddt.data(
+        {"body": fake.FAKE_HTTP_BODY,
+         "headers": fake.FAKE_HTTP_HEADER,
+         "query": {},
+         "url_params": fake.FAKE_URL_PARAMS
+         },
+        {"body": {},
+         "headers": fake.FAKE_HTTP_HEADER,
+         "query": fake.FAKE_HTTP_QUERY,
+         "url_params": fake.FAKE_URL_PARAMS
+         },
+    )
+    @ddt.unpack
+    def test__format_request(self, body, headers, query, url_params):
+        expected_result = {
+            "body": body,
+            "headers": headers,
+            "query": query,
+            "url_params": url_params
+        }
+
+        result = self.client._format_request(
+            body, headers=headers, query=query, url_params=url_params)
+
+        for k, v in expected_result.items():
+            self.assertIn(k, result)
+            self.assertEqual(result.get(k), v)
+
+    @ddt.data(
+        {"dest_ipspace": None, "check_only": True},
+        {"dest_ipspace": "fake_dest_ipspace", "check_only": False},
+    )
+    @ddt.unpack
+    def test_svm_migration_start(self, dest_ipspace, check_only):
+        api_args = {
+            "auto_cutover": False,
+            "auto_source_cleanup": True,
+            "check_only": check_only,
+            "source": {
+                "cluster": {"name": fake.CLUSTER_NAME},
+                "svm": {"name": fake.VSERVER_NAME},
+            },
+            "destination": {
+                "volume_placement": {
+                    "aggregates": [fake.SHARE_AGGREGATE_NAME],
+                },
+            },
+        }
+        if dest_ipspace:
+            ipspace_data = {
+                "ipspace": {"name": dest_ipspace}
+            }
+            api_args['destination'].update(ipspace_data)
+
+        self.mock_object(self.client, '_format_request',
+                         mock.Mock(return_value=api_args))
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=fake.FAKE_MIGRATION_RESPONSE_WITH_JOB))
+
+        result = self.client.svm_migration_start(
+            fake.CLUSTER_NAME, fake.VSERVER_NAME, [fake.SHARE_AGGREGATE_NAME],
+            dest_ipspace=dest_ipspace, check_only=check_only)
+
+        self.client._format_request.assert_called_once_with(api_args)
+        self.client.send_request.assert_called_once_with(
+            'svm-migration-start', api_args=api_args, use_zapi=False)
+
+        self.assertEqual(result, fake.FAKE_MIGRATION_RESPONSE_WITH_JOB)
+
+    @ddt.data({"check_only": False}, {"check_only": True})
+    def test_share_server_migration_start_failed(self, check_only):
+        api_args = {}
+
+        self.mock_object(self.client, '_format_request',
+                         mock.Mock(return_value=api_args))
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=netapp_api.NaApiError(message='fake')))
+
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.svm_migration_start,
+            fake.CLUSTER_NAME, fake.VSERVER_NAME,
+            [fake.SHARE_AGGREGATE_NAME],
+            check_only=check_only
+        )
+
+    def test_svm_migrate_complete(self):
+        migration_id = 'ongoing_migration_id'
+        request = {
+            'action': 'cutover'
+        }
+        expected_url_params = {
+            'svm_migration_id': migration_id
+        }
+
+        self.mock_object(self.client, '_format_request',
+                         mock.Mock(return_value=request))
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=fake.FAKE_MIGRATION_RESPONSE_WITH_JOB))
+
+        self.client.svm_migrate_complete(migration_id)
+
+        self.client._format_request.assert_called_once_with(
+            request, url_params=expected_url_params)
+        self.client.send_request.assert_called_once_with(
+            'svm-migration-complete', api_args=request, use_zapi=False)
+
+    def test_get_job(self):
+        request = {}
+        job_uuid = 'fake_job_uuid'
+        url_params = {
+            'job_uuid': job_uuid
+        }
+
+        self.mock_object(self.client, '_format_request',
+                         mock.Mock(return_value=request))
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=fake.FAKE_JOB_SUCCESS_STATE))
+
+        result = self.client.get_job(job_uuid)
+
+        self.assertEqual(fake.FAKE_JOB_SUCCESS_STATE, result)
+        self.client._format_request.assert_called_once_with(
+            request, url_params=url_params)
+        self.client.send_request.assert_called_once_with(
+            'get-job', api_args=request, use_zapi=False)
+
+    def test_svm_migrate_cancel(self):
+        request = {}
+        migration_id = 'fake_migration_uuid'
+        url_params = {
+            "svm_migration_id": migration_id
+        }
+
+        self.mock_object(self.client, '_format_request',
+                         mock.Mock(return_value=request))
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=fake.FAKE_MIGRATION_RESPONSE_WITH_JOB))
+
+        result = self.client.svm_migrate_cancel(migration_id)
+
+        self.assertEqual(fake.FAKE_MIGRATION_RESPONSE_WITH_JOB, result)
+        self.client._format_request.assert_called_once_with(
+            request, url_params=url_params)
+        self.client.send_request.assert_called_once_with(
+            'svm-migration-cancel', api_args=request, use_zapi=False)
+
+    def test_svm_migration_get(self):
+        request = {}
+        migration_id = 'fake_migration_uuid'
+        url_params = {
+            "svm_migration_id": migration_id
+        }
+
+        self.mock_object(self.client, '_format_request',
+                         mock.Mock(return_value=request))
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=fake.FAKE_MIGRATION_JOB_SUCCESS))
+
+        result = self.client.svm_migration_get(migration_id)
+
+        self.assertEqual(fake.FAKE_MIGRATION_JOB_SUCCESS, result)
+        self.client._format_request.assert_called_once_with(
+            request, url_params=url_params)
+        self.client.send_request.assert_called_once_with(
+            'svm-migration-get', api_args=request, use_zapi=False)
+
+    def test_svm_migrate_pause(self):
+        request = {
+            "action": "pause"
+        }
+        migration_id = 'fake_migration_uuid'
+        url_params = {
+            "svm_migration_id": migration_id
+        }
+
+        self.mock_object(self.client, '_format_request',
+                         mock.Mock(return_value=request))
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=fake.FAKE_MIGRATION_RESPONSE_WITH_JOB))
+
+        result = self.client.svm_migrate_pause(migration_id)
+
+        self.assertEqual(fake.FAKE_MIGRATION_RESPONSE_WITH_JOB, result)
+        self.client._format_request.assert_called_once_with(
+            request, url_params=url_params)
+        self.client.send_request.assert_called_once_with(
+            'svm-migration-pause', api_args=request, use_zapi=False)
+
+    def test_migration_check_job_state(self):
+        self.mock_object(self.client, 'get_job',
+                         mock.Mock(return_value=fake.FAKE_JOB_SUCCESS_STATE))
+
+        result = self.client.get_migration_check_job_state(
+            fake.FAKE_JOB_ID
+        )
+
+        self.assertEqual(result, fake.FAKE_JOB_SUCCESS_STATE)
+        self.client.get_job.assert_called_once_with(fake.FAKE_JOB_ID)
+
+    @ddt.data(netapp_api.ENFS_V4_0_ENABLED_MIGRATION_FAILURE,
+              netapp_api.EVSERVER_MIGRATION_TO_NON_AFF_CLUSTER)
+    def test_migration_check_job_state_failed(self, error_code):
+
+        self.mock_object(
+            self.client, 'get_job',
+            mock.Mock(side_effect=netapp_api.NaApiError(code=error_code)))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client.get_migration_check_job_state,
+            fake.FAKE_JOB_ID
+        )
+        self.client.get_job.assert_called_once_with(fake.FAKE_JOB_ID)

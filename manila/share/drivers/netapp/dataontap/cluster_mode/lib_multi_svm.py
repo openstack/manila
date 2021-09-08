@@ -44,6 +44,8 @@ SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
 SEGMENTED_NETWORK_TYPES = ('vlan',)
 DEFAULT_MTU = 1500
 CLUSTER_IPSPACES = ('Cluster', 'Default')
+SERVER_MIGRATE_SVM_DR = 'svm_dr'
+SERVER_MIGRATE_SVM_MIGRATE = 'svm_migrate'
 
 
 class NetAppCmodeMultiSVMFileStorageLibrary(
@@ -306,10 +308,12 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         return 'ipspace_' + network_id.replace('-', '_')
 
     @na_utils.trace
-    def _create_ipspace(self, network_info):
+    def _create_ipspace(self, network_info, client=None):
         """If supported, create an IPspace for a new Vserver."""
 
-        if not self._client.features.IPSPACES:
+        desired_client = client if client else self._client
+
+        if not desired_client.features.IPSPACES:
             return None
 
         if (network_info['network_allocations'][0]['network_type']
@@ -324,7 +328,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             return client_cmode.DEFAULT_IPSPACE
 
         ipspace_name = self._get_valid_ipspace_name(ipspace_id)
-        self._client.create_ipspace(ipspace_name)
+        desired_client.create_ipspace(ipspace_name)
 
         return ipspace_name
 
@@ -904,6 +908,213 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                 share_server=share_server))
 
     @na_utils.trace
+    def _check_compatibility_using_svm_dr(
+            self, src_client, dest_client, shares_request_spec, pools):
+        """Send a request to pause a migration.
+
+        :param src_client: source cluster client.
+        :param dest_client: destination cluster client.
+        :param shares_request_spec: shares specifications.
+        :param pools: pools to be used during the migration.
+        :returns server migration mechanism name and compatibility result
+            example: (svm_dr, True).
+        """
+        method = SERVER_MIGRATE_SVM_DR
+        if (not src_client.is_svm_dr_supported()
+                or not dest_client.is_svm_dr_supported()):
+            msg = _("Cannot perform server migration because at least one of "
+                    "the backends doesn't support SVM DR.")
+            LOG.error(msg)
+            return method, False
+
+        # Check capacity.
+        server_total_size = (shares_request_spec.get('shares_size', 0) +
+                             shares_request_spec.get('snapshots_size', 0))
+        # NOTE(dviroel): If the backend has a 'max_over_subscription_ratio'
+        # configured and greater than 1, we'll consider thin provisioning
+        # enable for all shares.
+        thin_provisioning = self.configuration.max_over_subscription_ratio > 1
+        if self.configuration.netapp_server_migration_check_capacity is True:
+            if not self._check_capacity_compatibility(pools, thin_provisioning,
+                                                      server_total_size):
+                msg = _("Cannot perform server migration because destination "
+                        "host doesn't have enough free space.")
+                LOG.error(msg)
+                return method, False
+        return method, True
+
+    @na_utils.trace
+    def _get_job_uuid(self, job):
+        """Get the uuid of a job."""
+        job = job.get("job", {})
+        return job.get("uuid")
+
+    @na_utils.trace
+    def _wait_for_operation_status(
+            self, operation_id, func_get_operation, desired_status='success',
+            timeout=None):
+        """Waits until a given operation reachs the desired status.
+
+        :param operation_id: ID of the operation to be searched.
+        :param func_get_operation: Function to be used to get the operation
+            details.
+        :param desired_status: Operation expected status.
+        :param timeout: How long (in seconds) should the driver wait for the
+            status to be reached.
+
+        """
+        if not timeout:
+            timeout = (
+                self.configuration.netapp_server_migration_state_change_timeout
+            )
+        interval = 10
+        retries = int(timeout / interval) or 1
+
+        @utils.retry(exception.ShareBackendException, interval=interval,
+                     retries=retries, backoff_rate=1)
+        def wait_for_status():
+            # Get the job based on its id.
+            operation = func_get_operation(operation_id)
+            status = operation.get("status") or operation.get("state")
+
+            if status != desired_status:
+                msg = _(
+                    "Operation %(operation_id)s didn't reach status "
+                    "%(desired_status)s. Current status is %(status)s.") % {
+                    'operation_id': operation_id,
+                    'desired_status': desired_status,
+                    'status': status
+                }
+                LOG.debug(msg)
+
+                # Failed, no need to retry.
+                if status == 'error':
+                    msg = _('Operation %(operation_id)s is in error status.'
+                            'Reason: %(message)s')
+                    raise exception.NetAppException(
+                        msg % {'operation_id': operation_id,
+                               'message': operation.get('message')})
+
+                # Didn't fail, so we can retry.
+                raise exception.ShareBackendException(msg)
+
+            elif status == desired_status:
+                msg = _(
+                    'Operation %(operation_id)s reached status %(status)s.')
+                LOG.debug(
+                    msg, {'operation_id': operation_id, 'status': status})
+                return
+        try:
+            wait_for_status()
+        except exception.NetAppException:
+            raise
+        except exception.ShareBackendException:
+            msg_args = {'operation_id': operation_id, 'status': desired_status}
+            msg = _('Timed out while waiting for operation %(operation_id)s '
+                    'to reach status %(status)s') % msg_args
+            raise exception.NetAppException(msg)
+
+    @na_utils.trace
+    def _check_compatibility_for_svm_migrate(
+            self, source_cluster_name, source_share_server_name,
+            source_share_server, dest_aggregates, dest_client):
+        """Checks if the migration can be performed using SVM Migrate.
+
+        1. Send the request to the backed to check if the migration is possible
+        2. Wait until the job finishes checking the migration status
+        """
+
+        # Reuse network information from the source share server in the SVM
+        # Migrate if the there was no share network changes.
+        network_info = {
+            'network_allocations':
+                source_share_server['network_allocations'],
+            'neutron_subnet_id':
+                source_share_server['share_network_subnet'].get(
+                    'neutron_subnet_id')
+        }
+
+        # 2. Create new ipspace, port and broadcast domain.
+        node_name = self._client.list_cluster_nodes()[0]
+        port = self._get_node_data_port(node_name)
+        vlan = network_info['network_allocations'][0]['segmentation_id']
+        destination_ipspace = self._client.get_ipspace_name_for_vlan_port(
+            node_name, port, vlan) or self._create_ipspace(
+            network_info, client=dest_client)
+        self._create_port_and_broadcast_domain(
+            destination_ipspace, network_info)
+
+        def _cleanup_ipspace(ipspace):
+            try:
+                dest_client.delete_ipspace(ipspace)
+            except Exception:
+                LOG.info(
+                    'Did not delete ipspace used to check the compatibility '
+                    'for SVM Migrate. It is possible that it was reused and '
+                    'there are other entities consuming it.')
+
+        # 1. Sends the request to the backend.
+        try:
+            job = dest_client.svm_migration_start(
+                source_cluster_name, source_share_server_name, dest_aggregates,
+                dest_ipspace=destination_ipspace, check_only=True)
+        except Exception:
+            LOG.error('Failed to check compatibility for migration.')
+            _cleanup_ipspace(destination_ipspace)
+            raise
+
+        job_id = self._get_job_uuid(job)
+
+        try:
+            # 2. Wait until the job to check the migration status concludes.
+            self._wait_for_operation_status(
+                job_id, dest_client.get_migration_check_job_state)
+            _cleanup_ipspace(destination_ipspace)
+            return True
+        except exception.NetAppException:
+            # Performed the check with the given parameters and the backend
+            # returned an error, so the migration is not compatible
+            _cleanup_ipspace(destination_ipspace)
+            return False
+
+    @na_utils.trace
+    def _check_for_migration_support(
+            self, src_client, dest_client, source_share_server,
+            shares_request_spec, src_cluster_name, pools):
+        """Checks if the migration is supported and chooses the way to do it
+
+        In terms of performance, SVM Migrate is more adequate and it should
+        be prioritised over a SVM DR migration. If both source and destination
+        clusters do not support SVM Migrate, then SVM DR is the option to be
+        used.
+        1. Checks if both source and destination clients support SVM Migrate.
+        2. Requests the migration.
+        """
+
+        # 1. Checks if both source and destination clients support SVM Migrate.
+        if (dest_client.is_svm_migrate_supported()
+                and src_client.is_svm_migrate_supported()):
+            source_share_server_name = self._get_vserver_name(
+                source_share_server['id'])
+
+            # Check if the migration is supported.
+            try:
+                result = self._check_compatibility_for_svm_migrate(
+                    src_cluster_name, source_share_server_name,
+                    source_share_server, self._find_matching_aggregates(),
+                    dest_client)
+                return SERVER_MIGRATE_SVM_MIGRATE, result
+            except Exception:
+                LOG.error('Failed to check the compatibility for the share '
+                          'server migration using SVM Migrate.')
+                return SERVER_MIGRATE_SVM_MIGRATE, False
+
+        # SVM Migrate is not supported, try to check the compatibility using
+        # SVM DR.
+        return self._check_compatibility_using_svm_dr(
+            src_client, dest_client, shares_request_spec, pools)
+
+    @na_utils.trace
     def share_server_migration_check_compatibility(
             self, context, source_share_server, dest_host, old_share_network,
             new_share_network, shares_request_spec):
@@ -958,16 +1169,17 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             LOG.error(msg)
             return not_compatible
 
-        # Check for SVM DR support
+        pools = self._get_pools()
+
         # NOTE(dviroel): These clients can only be used for non-tunneling
         # requests.
         dst_client = data_motion.get_client_for_backend(dest_backend_name,
                                                         vserver_name=None)
-        if (not src_client.is_svm_dr_supported()
-                or not dst_client.is_svm_dr_supported()):
-            msg = _("Cannot perform server migration because at leat one of "
-                    "the backends doesn't support SVM DR.")
-            LOG.error(msg)
+        migration_method, compatibility = self._check_for_migration_support(
+            src_client, dst_client, source_share_server, shares_request_spec,
+            src_cluster_name, pools)
+
+        if not compatibility:
             return not_compatible
 
         # Blocking different security services for now
@@ -985,7 +1197,6 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     LOG.error(msg)
                     return not_compatible
 
-        pools = self._get_pools()
         # Check 'netapp_flexvol_encryption' and 'revert_to_snapshot_support'
         specs_to_validate = ('netapp_flexvol_encryption',
                              'revert_to_snapshot_support')
@@ -1000,25 +1211,12 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     return not_compatible
             # TODO(dviroel): disk_type extra-spec
 
-        # Check capacity
-        server_total_size = (shares_request_spec.get('shares_size', 0) +
-                             shares_request_spec.get('snapshots_size', 0))
-        # NOTE(dviroel): If the backend has a 'max_over_subscription_ratio'
-        # configured and greater than 1, we'll consider thin provisioning
-        # enable for all shares.
-        thin_provisioning = self.configuration.max_over_subscription_ratio > 1
-        if self.configuration.netapp_server_migration_check_capacity is True:
-            if not self._check_capacity_compatibility(pools, thin_provisioning,
-                                                      server_total_size):
-                msg = _("Cannot perform server migration because destination "
-                        "host doesn't have enough free space.")
-                LOG.error(msg)
-                return not_compatible
+        nondisruptive = (migration_method == SERVER_MIGRATE_SVM_MIGRATE)
 
         compatibility = {
             'compatible': True,
             'writable': True,
-            'nondisruptive': False,
+            'nondisruptive': nondisruptive,
             'preserve_snapshots': True,
             'share_network_id': new_share_network['id'],
             'migration_cancel': True,
@@ -1027,9 +1225,9 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         return compatibility
 
-    def share_server_migration_start(self, context, source_share_server,
-                                     dest_share_server, share_intances,
-                                     snapshot_instances):
+    @na_utils.trace
+    def _migration_start_using_svm_dr(
+            self, source_share_server, dest_share_server):
         """Start share server migration using SVM DR.
 
         1. Create vserver peering between source and destination
@@ -1078,13 +1276,125 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             msg = _('Could not initialize SnapMirror between %(src)s and '
                     '%(dest)s vservers.') % msg_args
             raise exception.NetAppException(message=msg)
+        return None
+
+    @na_utils.trace
+    def _migration_start_using_svm_migrate(
+            self, context, source_share_server, dest_share_server, src_client,
+            dest_client):
+        """Start share server migration using SVM Migrate.
+
+        1. Check if share network reusage is supported
+        2. Create a new ipspace, port and broadcast domain to the dest server
+        3. Send the request start the share server migration
+        4. Read the job id and get the id of the migration
+        5. Set the migration uuid in the backend details
+        """
+
+        # 1. Check if share network reusage is supported
+        # NOTE(carloss): if share network was not changed, SVM migrate can
+        # reuse the network allocation from the source share server, so as
+        # Manila haven't made new allocations, we can just get allocation data
+        # from the source share server.
+        if not dest_share_server['network_allocations']:
+            share_server_to_get_network_info = source_share_server
+        else:
+            share_server_to_get_network_info = dest_share_server
+
+        # Reuse network information from the source share server in the SVM
+        # Migrate if the there was no share network changes.
+        network_info = {
+            'network_allocations':
+                share_server_to_get_network_info['network_allocations'],
+            'neutron_subnet_id':
+                share_server_to_get_network_info['share_network_subnet'].get(
+                    'neutron_subnet_id')
+        }
+
+        # 2. Create new ipspace, port and broadcast domain.
+        node_name = self._client.list_cluster_nodes()[0]
+        port = self._get_node_data_port(node_name)
+        vlan = network_info['network_allocations'][0]['segmentation_id']
+        destination_ipspace = self._client.get_ipspace_name_for_vlan_port(
+            node_name, port, vlan) or self._create_ipspace(
+            network_info, client=dest_client)
+        self._create_port_and_broadcast_domain(
+            destination_ipspace, network_info)
+
+        # Prepare the migration request.
+        src_cluster_name = src_client.get_cluster_name()
+        source_share_server_name = self._get_vserver_name(
+            source_share_server['id'])
+
+        # 3. Send the migration request to ONTAP.
+        try:
+            result = dest_client.svm_migration_start(
+                src_cluster_name, source_share_server_name,
+                self._find_matching_aggregates(),
+                dest_ipspace=destination_ipspace)
+
+            # 4. Read the job id and get the id of the migration.
+            result_job = result.get("job", {})
+            job_details = dest_client.get_job(result_job.get("uuid"))
+            job_description = job_details.get('description')
+            migration_uuid = job_description.split('/')[-1]
+        except Exception:
+            # As it failed, we must remove the ipspace, ports and broadcast
+            # domain.
+            dest_client.delete_ipspace(destination_ipspace)
+
+            msg = _("Unable to start the migration for share server %s."
+                    % source_share_server['id'])
+            raise exception.NetAppException(msg)
+
+        # 5. Returns migration data to be saved as backend details.
+        server_info = {
+            "backend_details": {
+                na_utils.MIGRATION_OPERATION_ID_KEY: migration_uuid
+            }
+        }
+        return server_info
+
+    @na_utils.trace
+    def share_server_migration_start(
+            self, context, source_share_server, dest_share_server,
+            share_intances, snapshot_instances):
+        """Start share server migration.
+
+        This method will choose the best migration strategy to perform the
+        migration, based on the storage functionalities support.
+        """
+        src_backend_name = share_utils.extract_host(
+            source_share_server['host'], level='backend_name')
+        dest_backend_name = share_utils.extract_host(
+            dest_share_server['host'], level='backend_name')
+        dest_client = data_motion.get_client_for_backend(
+            dest_backend_name, vserver_name=None)
+        __, src_client = self._get_vserver(
+            share_server=source_share_server, backend_name=src_backend_name)
+
+        use_svm_migrate = (
+            src_client.is_svm_migrate_supported()
+            and dest_client.is_svm_migrate_supported())
+
+        if use_svm_migrate:
+            result = self._migration_start_using_svm_migrate(
+                context, source_share_server, dest_share_server, src_client,
+                dest_client)
+        else:
+            result = self._migration_start_using_svm_dr(
+                source_share_server, dest_share_server)
 
         msg_args = {
             'src': source_share_server['id'],
             'dest': dest_share_server['id'],
+            'migration_method': 'SVM Migrate' if use_svm_migrate else 'SVM DR'
         }
-        msg = _('Starting share server migration from %(src)s to %(dest)s.')
+        msg = _('Starting share server migration from %(src)s to %(dest)s '
+                'using %(migration_method)s as migration method.')
         LOG.info(msg, msg_args)
+
+        return result
 
     def _get_snapmirror_svm(self, source_share_server, dest_share_server):
         dm_session = data_motion.DataMotionSession()
@@ -1104,9 +1414,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         return snapmirrors
 
     @na_utils.trace
-    def share_server_migration_continue(self, context, source_share_server,
-                                        dest_share_server, share_instances,
-                                        snapshot_instances):
+    def _share_server_migration_continue_svm_dr(
+            self, source_share_server, dest_share_server):
         """Continues a share server migration using SVM DR."""
         snapmirrors = self._get_snapmirror_svm(source_share_server,
                                                dest_share_server)
@@ -1141,10 +1450,69 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         return False
 
     @na_utils.trace
-    def share_server_migration_complete(self, context, source_share_server,
+    def _share_server_migration_continue_svm_migrate(self, dest_share_server,
+                                                     migration_id):
+        """Continues the migration for a share server.
+
+        :param dest_share_server: reference for the destination share server.
+        :param migration_id: ID of the migration.
+        """
+        dest_client = data_motion.get_client_for_host(
+            dest_share_server['host'])
+        try:
+            result = dest_client.svm_migration_get(migration_id)
+        except netapp_api.NaApiError as e:
+            msg = (_('Failed to continue the migration for share server '
+                     '%(server_id)s. Reason: %(reason)s'
+                     ) % {'server_id': dest_share_server['id'],
+                          'reason': e.message}
+                   )
+            raise exception.NetAppException(message=msg)
+        return (
+            result.get("state") == na_utils.MIGRATION_STATE_READY_FOR_CUTOVER)
+
+    @na_utils.trace
+    def share_server_migration_continue(self, context, source_share_server,
                                         dest_share_server, share_instances,
-                                        snapshot_instances, new_network_alloc):
-        """Completes share server migration using SVM DR.
+                                        snapshot_instances):
+        """Continues the migration of a share server."""
+        # If the migration operation was started using SVM migrate, it
+        # returned a migration ID to get information about the job afterwards.
+        migration_id = self._get_share_server_migration_id(
+            dest_share_server)
+
+        # Checks the progress for a SVM migrate migration.
+        if migration_id:
+            return self._share_server_migration_continue_svm_migrate(
+                dest_share_server, migration_id)
+
+        # Checks the progress of a SVM DR Migration.
+        return self._share_server_migration_continue_svm_dr(
+            source_share_server, dest_share_server)
+
+    def _setup_networking_for_destination_vserver(
+            self, vserver_client, vserver_name, new_net_allocations):
+        ipspace_name = vserver_client.get_vserver_ipspace(vserver_name)
+
+        # NOTE(dviroel): Security service and NFS configuration should be
+        # handled by SVM DR, so no changes will be made here.
+        vlan = new_net_allocations['segmentation_id']
+
+        @utils.synchronized('netapp-VLAN-%s' % vlan, external=True)
+        def setup_network_for_destination_vserver():
+            self._setup_network_for_vserver(
+                vserver_name, vserver_client, new_net_allocations,
+                ipspace_name,
+                enable_nfs=False,
+                security_services=None)
+
+        setup_network_for_destination_vserver()
+
+    @na_utils.trace
+    def _share_server_migration_complete_svm_dr(
+            self, source_share_server, dest_share_server, src_vserver,
+            src_client, share_instances, new_net_allocations):
+        """Perform steps to complete the SVM DR migration.
 
         1. Do a last SnapMirror update.
         2. Quiesce, abort and then break the relationship.
@@ -1152,9 +1520,12 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         4. Configure network interfaces in the destination vserver
         5. Start the destinarion vserver
         6. Delete and release the snapmirror
-        7. Build the list of export_locations for each share
-        8. Release all resources from the source share server
         """
+        dest_backend_name = share_utils.extract_host(
+            dest_share_server['host'], level='backend_name')
+        dest_vserver, dest_client = self._get_vserver(
+            share_server=dest_share_server, backend_name=dest_backend_name)
+
         dm_session = data_motion.DataMotionSession()
         try:
             # 1. Start an update to try to get a last minute transfer before we
@@ -1165,15 +1536,6 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             # Ignore any errors since the current source may be unreachable
             pass
 
-        src_backend_name = share_utils.extract_host(
-            source_share_server['host'], level='backend_name')
-        src_vserver, src_client = self._get_vserver(
-            share_server=source_share_server, backend_name=src_backend_name)
-
-        dest_backend_name = share_utils.extract_host(
-            dest_share_server['host'], level='backend_name')
-        dest_vserver, dest_client = self._get_vserver(
-            share_server=dest_share_server, backend_name=dest_backend_name)
         try:
             # 2. Attempt to quiesce, abort and then break SnapMirror
             dm_session.quiesce_and_break_snapmirror_svm(source_share_server,
@@ -1191,20 +1553,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             src_client.stop_vserver(src_vserver)
 
             # 4. Setup network configuration
-            ipspace_name = dest_client.get_vserver_ipspace(dest_vserver)
-
-            # NOTE(dviroel): Security service and NFS configuration should be
-            # handled by SVM DR, so no changes will be made here.
-            vlan = new_network_alloc['segmentation_id']
-
-            @utils.synchronized('netapp-VLAN-%s' % vlan, external=True)
-            def setup_network_for_destination_vserver():
-                self._setup_network_for_vserver(
-                    dest_vserver, dest_client, new_network_alloc, ipspace_name,
-                    enable_nfs=False,
-                    security_services=None)
-
-            setup_network_for_destination_vserver()
+            self._setup_networking_for_destination_vserver(
+                dest_client, dest_vserver, new_net_allocations)
 
             # 5. Start the destination.
             dest_client.start_vserver(dest_vserver)
@@ -1237,7 +1587,100 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         dm_session.delete_snapmirror_svm(source_share_server,
                                          dest_share_server)
 
-        # 7. Build a dict with shares/snapshot location updates
+    @na_utils.trace
+    def _share_server_migration_complete_svm_migrate(
+            self, migration_id, dest_share_server):
+        """Completes share server migration using SVM Migrate.
+
+        1. Call functions to conclude the migration for SVM Migrate
+        2. Waits until the job gets a success status
+        3. Wait until the migration cancellation reach the desired status
+        """
+        dest_client = data_motion.get_client_for_host(
+            dest_share_server['host'])
+
+        try:
+            # Triggers the migration completion.
+            job = dest_client.svm_migrate_complete(migration_id)
+            job_id = self._get_job_uuid(job)
+
+            # Wait until the job is successful.
+            self._wait_for_operation_status(
+                job_id, dest_client.get_job)
+
+            # Wait until the migration is entirely finished.
+            self._wait_for_operation_status(
+                migration_id, dest_client.svm_migration_get,
+                desired_status=na_utils.MIGRATION_STATE_MIGRATE_COMPLETE)
+        except exception.NetAppException:
+            msg = _(
+                "Failed to complete the migration for "
+                "share server %s.") % dest_share_server['id']
+            raise exception.NetAppException(msg)
+
+    @na_utils.trace
+    def share_server_migration_complete(self, context, source_share_server,
+                                        dest_share_server, share_instances,
+                                        snapshot_instances, new_network_alloc):
+        """Completes share server migration.
+
+        1. Call functions to conclude the migration for SVM DR or SVM Migrate
+        2. Build the list of export_locations for each share
+        3. Release all resources from the source share server
+        """
+        src_backend_name = share_utils.extract_host(
+            source_share_server['host'], level='backend_name')
+        src_vserver, src_client = self._get_vserver(
+            share_server=source_share_server, backend_name=src_backend_name)
+        dest_backend_name = share_utils.extract_host(
+            dest_share_server['host'], level='backend_name')
+
+        migration_id = self._get_share_server_migration_id(dest_share_server)
+
+        share_server_to_get_vserver_name_from = (
+            source_share_server if migration_id else dest_share_server)
+
+        dest_vserver, dest_client = self._get_vserver(
+            share_server=share_server_to_get_vserver_name_from,
+            backend_name=dest_backend_name)
+
+        server_backend_details = {}
+        # 1. Call functions to conclude the migration for SVM DR or SVM
+        # Migrate.
+        if migration_id:
+            self._share_server_migration_complete_svm_migrate(
+                migration_id, dest_share_server)
+
+            server_backend_details = source_share_server['backend_details']
+
+            # If there are new network allocations to be added, do so, and add
+            # them to the share server's backend details.
+            if dest_share_server['network_allocations']:
+                # Teardown the current network allocations
+                current_network_interfaces = (
+                    dest_client.list_network_interfaces())
+
+                # Need a cluster client to be able to remove the current
+                # network interfaces
+                dest_cluster_client = data_motion.get_client_for_host(
+                    dest_share_server['host'])
+                for interface_name in current_network_interfaces:
+                    dest_cluster_client.delete_network_interface(
+                        src_vserver, interface_name)
+                self._setup_networking_for_destination_vserver(
+                    dest_client, src_vserver, new_network_alloc)
+
+                server_backend_details.pop('ports')
+                ports = {}
+                for allocation in dest_share_server['network_allocations']:
+                    ports[allocation['id']] = allocation['ip_address']
+                server_backend_details['ports'] = jsonutils.dumps(ports)
+        else:
+            self._share_server_migration_complete_svm_dr(
+                source_share_server, dest_share_server, src_vserver,
+                src_client, share_instances, new_network_alloc)
+
+        # 2. Build a dict with shares/snapshot location updates.
         # NOTE(dviroel): For SVM DR, the share names aren't modified, only the
         # export_locations are updated due to network changes.
         share_updates = {}
@@ -1248,9 +1691,11 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 share_name = self._get_backend_share_name(instance['id'])
                 volume = dest_client.get_volume(share_name)
                 dest_aggregate = volume.get('aggregate')
-                # Update share attributes according with share extra specs
-                self._update_share_attributes_after_server_migration(
-                    instance, src_client, dest_aggregate, dest_client)
+
+                if not migration_id:
+                    # Update share attributes according with share extra specs.
+                    self._update_share_attributes_after_server_migration(
+                        instance, src_client, dest_aggregate, dest_client)
 
             except Exception:
                 msg_args = {
@@ -1262,36 +1707,58 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                         'in the destination vserver.') % msg_args
                 raise exception.NetAppException(message=msg)
 
+            new_share_data = {
+                'pool_name': volume.get('aggregate')
+            }
+
+            share_host = instance['host']
+
+            # If using SVM migrate, must already ensure the export policies
+            # using the new host information.
+            if migration_id:
+                old_aggregate = share_host.split('#')[1]
+                share_host = share_host.replace(
+                    old_aggregate, dest_aggregate)
+
             export_locations = self._create_export(
                 instance, dest_share_server, dest_vserver, dest_client,
                 clear_current_export_policy=False,
-                ensure_share_already_exists=True)
+                ensure_share_already_exists=True,
+                share_host=share_host)
+            new_share_data.update({'export_locations': export_locations})
 
-            share_updates.update({
-                instance['id']: {
-                    'export_locations': export_locations,
-                    'pool_name': volume.get('aggregate')
-                }})
+            share_updates.update({instance['id']: new_share_data})
 
         # NOTE(dviroel): Nothing to update in snapshot instances since the
         # provider location didn't change.
 
-        # 8. Release source share resources
-        for instance in share_instances:
-            self._delete_share(instance, src_vserver, src_client,
-                               remove_export=True)
+        # NOTE(carloss): as SVM DR works like a replica, we must delete the
+        # source shares after the migration. In case of SVM Migrate, the shares
+        # were moved to the destination, so there's no need to remove them.
+        # Then, we need to delete the source server
+        if not migration_id:
+            # 3. Release source share resources.
+            for instance in share_instances:
+                self._delete_share(instance, src_vserver, src_client,
+                                   remove_export=True)
 
         # NOTE(dviroel): source share server deletion must be triggered by
         # the manager after finishing the migration
         LOG.info('Share server migration completed.')
         return {
             'share_updates': share_updates,
+            'server_backend_details': server_backend_details
         }
 
-    def share_server_migration_cancel(self, context, source_share_server,
-                                      dest_share_server, shares, snapshots):
-        """Cancel a share server migration that is using SVM DR."""
+    @na_utils.trace
+    def _get_share_server_migration_id(self, dest_share_server):
+        return dest_share_server['backend_details'].get(
+            na_utils.MIGRATION_OPERATION_ID_KEY)
 
+    @na_utils.trace
+    def _migration_cancel_using_svm_dr(
+            self, source_share_server, dest_share_server, shares):
+        """Cancel a share server migration that is using SVM DR."""
         dm_session = data_motion.DataMotionSession()
         dest_backend_name = share_utils.extract_host(dest_share_server['host'],
                                                      level='backend_name')
@@ -1317,6 +1784,73 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             msg = _('Unable to cancel SnapMirror relationship between %(src)s '
                     'and %(dest)s vservers.') % msg_args
             raise exception.NetAppException(message=msg)
+
+    @na_utils.trace
+    def _migration_cancel_using_svm_migrate(self, migration_id,
+                                            dest_share_server):
+        """Cancel a share server migration that is using SVM migrate.
+
+        1. Gets information about the migration
+        2. Pauses the migration, as it can't be cancelled without pausing
+        3. Ask to ONTAP to actually cancel the migration
+        """
+
+        # 1. Gets information about the migration.
+        dest_client = data_motion.get_client_for_host(
+            dest_share_server['host'])
+        migration_information = dest_client.svm_migration_get(migration_id)
+
+        # Gets the ipspace that was created so we can delete it if it's not
+        # being used anymore.
+        dest_ipspace_name = (
+            migration_information["destination"]["ipspace"]["name"])
+
+        # 2. Pauses the migration.
+        try:
+            # Request the migration to be paused and wait until the job is
+            # successful.
+            job = dest_client.svm_migrate_pause(migration_id)
+            job_id = self._get_job_uuid(job)
+            self._wait_for_operation_status(job_id, dest_client.get_job)
+
+            # Wait until the migration get actually paused.
+            self._wait_for_operation_status(
+                migration_id, dest_client.svm_migration_get,
+                desired_status=na_utils.MIGRATION_STATE_MIGRATE_PAUSED)
+        except exception.NetAppException:
+            msg = _("Failed to pause the share server migration.")
+            raise exception.NetAppException(message=msg)
+
+        try:
+            # 3. Ask to ONTAP to actually cancel the migration.
+            job = dest_client.svm_migrate_cancel(migration_id)
+            job_id = self._get_job_uuid(job)
+            self._wait_for_operation_status(
+                job_id, dest_client.get_job)
+        except exception.NetAppException:
+            msg = _("Failed to cancel the share server migration.")
+            raise exception.NetAppException(message=msg)
+
+        # If there is need to, remove the ipspace.
+        if (dest_ipspace_name and dest_ipspace_name not in CLUSTER_IPSPACES
+                and not dest_client.ipspace_has_data_vservers(
+                    dest_ipspace_name)):
+            dest_client.delete_ipspace(dest_ipspace_name)
+        return
+
+    @na_utils.trace
+    def share_server_migration_cancel(self, context, source_share_server,
+                                      dest_share_server, shares, snapshots):
+        """Send the request to cancel the SVM migration."""
+
+        migration_id = self._get_share_server_migration_id(dest_share_server)
+
+        if migration_id:
+            return self._migration_cancel_using_svm_migrate(
+                migration_id, dest_share_server)
+
+        self._migration_cancel_using_svm_dr(
+            source_share_server, dest_share_server, shares)
 
         LOG.info('Share server migration was cancelled.')
 
