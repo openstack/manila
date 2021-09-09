@@ -30,7 +30,8 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
     @na_utils.trace
     def create_share(self, share, share_name,
                      clear_current_export_policy=True,
-                     ensure_share_already_exists=False, replica=False):
+                     ensure_share_already_exists=False, replica=False,
+                     is_flexgroup=False):
         """Creates CIFS share if does not exist on Data ONTAP Vserver.
 
         The new CIFS share has Everyone access, so it removes all access after
@@ -41,6 +42,7 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
         :param clear_current_export_policy: ignored, NFS only.
         :param ensure_share_already_exists: ensures that CIFS share exists.
         :param replica: it is a replica volume (DP type).
+        :param is_flexgroup: whether the share is a FlexGroup or not.
         """
 
         cifs_exist = self._client.cifs_share_exists(share_name)

@@ -131,9 +131,15 @@ class PerformanceLibrary(object):
 
         aggr_names = set()
         for pool_name, pool_info in aggregate_pools.items():
+            if pool_info.get('netapp_flexgroup', False):
+                continue
             aggr_names.add(pool_info.get('netapp_aggregate'))
+
         for pool_name, pool_info in flexvol_pools.items():
+            if pool_info.get('netapp_flexgroup', False):
+                continue
             aggr_names.add(pool_info.get('netapp_aggregate'))
+
         return list(aggr_names)
 
     def _get_nodes_for_aggregates(self, aggr_names):

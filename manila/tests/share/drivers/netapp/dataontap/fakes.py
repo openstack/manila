@@ -28,6 +28,7 @@ DRIVER_NAME = 'fake_driver_name'
 APP_VERSION = 'fake_app_vsersion'
 HOST_NAME = 'fake_host'
 POOL_NAME = 'fake_pool'
+FLEXGROUP_STYLE_EXTENDED = 'flexgroup'
 POOL_NAME_2 = 'fake_pool_2'
 VSERVER1 = 'fake_vserver_1'
 VSERVER2 = 'fake_vserver_2'
@@ -37,6 +38,7 @@ VOLUME_NAME_TEMPLATE = 'share_%(share_id)s'
 VSERVER_NAME_TEMPLATE = 'os_%s'
 AGGREGATE_NAME_SEARCH_PATTERN = '(.*)'
 SHARE_NAME = 'share_7cf7c200_d3af_4e05_b87e_9167c95dfcad'
+SHARE_NAME2 = 'share_d24e7257_124e_4fb6_b05b_d384f660bc85'
 SHARE_INSTANCE_NAME = 'share_d24e7257_124e_4fb6_b05b_d384f660bc85'
 FLEXVOL_NAME = 'fake_volume'
 JUNCTION_PATH = '/%s' % FLEXVOL_NAME
@@ -103,6 +105,9 @@ FPOLICY_EXT_TO_INCLUDE_LIST = ['avi']
 FPOLICY_EXT_TO_EXCLUDE = 'jpg,mp3'
 FPOLICY_EXT_TO_EXCLUDE_LIST = ['jpg', 'mp3']
 
+JOB_ID = '123'
+JOB_STATE = 'success'
+
 CLIENT_KWARGS = {
     'username': 'admin',
     'trace': False,
@@ -132,6 +137,7 @@ SHARE = {
     'status': constants.STATUS_AVAILABLE,
     'share_server': None,
     'encrypt': False,
+    'share_id': SHARE_ID,
 }
 
 SHARE_INSTANCE = {
@@ -156,6 +162,7 @@ FLEXVOL_TO_MANAGE = {
     'type': 'rw',
     'style': 'flex',
     'size': '1610612736',  # rounds up to 2 GB
+    'style-extended': FLEXGROUP_STYLE_EXTENDED,
 }
 
 FLEXVOL_WITHOUT_QOS = copy.deepcopy(FLEXVOL_TO_MANAGE)
@@ -863,6 +870,46 @@ AGGREGATE_CAPACITIES = {
     }
 }
 
+FLEXGROUP_POOL_NAME = 'flexgroup_pool'
+
+FLEXGROUP_POOL_AGGR = [AGGREGATES[0], AGGREGATES[1]]
+
+FLEXGROUP_POOL_OPT = {
+    FLEXGROUP_POOL_NAME: FLEXGROUP_POOL_AGGR,
+}
+
+FLEXGROUP_POOL_OPT_RAW = {
+    FLEXGROUP_POOL_NAME: '%s %s' % (AGGREGATES[0], AGGREGATES[1]),
+}
+
+FLEXGROUP_POOL = {
+    'pool_name': FLEXGROUP_POOL_NAME,
+    'netapp_aggregate': '%s %s' % (AGGREGATES[0], AGGREGATES[1]),
+    'total_capacity_gb': 6.6,
+    'free_capacity_gb': 2.2,
+    'allocated_capacity_gb': 4.39,
+    'reserved_percentage': 5,
+    'max_over_subscription_ratio': 2.0,
+    'dedupe': [True, False],
+    'compression': [True, False],
+    'thin_provisioning': [True, False],
+    'netapp_flexvol_encryption': True,
+    'netapp_raid_type': 'raid4 raid_dp',
+    'netapp_disk_type': ['FCAL', 'SATA', 'SSD'],
+    'netapp_hybrid_aggregate': 'false true',
+    'utilization': 50.0,
+    'filter_function': FLEXGROUP_POOL_NAME,
+    'goodness_function': 'goodness',
+    'snapshot_support': True,
+    'create_share_from_snapshot_support': True,
+    'revert_to_snapshot_support': True,
+    'qos': True,
+    'security_service_update_support': True,
+    'netapp_flexgroup': True,
+}
+
+FLEXGROUP_AGGR_SET = set(FLEXGROUP_POOL_OPT[FLEXGROUP_POOL_NAME])
+
 AGGREGATE_CAPACITIES_VSERVER_CREDS = {
     AGGREGATES[0]: {
         'available': 1181116007,  # 1.1 GB
@@ -878,21 +925,38 @@ SSC_INFO = {
         'netapp_disk_type': 'FCAL',
         'netapp_hybrid_aggregate': 'false',
         'netapp_aggregate': AGGREGATES[0],
+        'netapp_flexgroup': False,
     },
     AGGREGATES[1]: {
         'netapp_raid_type': 'raid_dp',
         'netapp_disk_type': ['SATA', 'SSD'],
         'netapp_hybrid_aggregate': 'true',
         'netapp_aggregate': AGGREGATES[1],
+        'netapp_flexgroup': False,
+    }
+}
+
+SSC_INFO_MAP = {
+    AGGREGATES[0]: {
+        'netapp_raid_type': 'raid4',
+        'netapp_disk_type': ['FCAL'],
+        'netapp_hybrid_aggregate': 'false',
+    },
+    AGGREGATES[1]: {
+        'netapp_raid_type': 'raid_dp',
+        'netapp_disk_type': ['SATA', 'SSD'],
+        'netapp_hybrid_aggregate': 'true',
     }
 }
 
 SSC_INFO_VSERVER_CREDS = {
     AGGREGATES[0]: {
         'netapp_aggregate': AGGREGATES[0],
+        'netapp_flexgroup': False,
     },
     AGGREGATES[1]: {
         'netapp_aggregate': AGGREGATES[1],
+        'netapp_flexgroup': False,
     }
 }
 
@@ -921,6 +985,7 @@ POOLS = [
         'revert_to_snapshot_support': True,
         'qos': True,
         'security_service_update_support': True,
+        'netapp_flexgroup': False,
     },
     {
         'pool_name': AGGREGATES[1],
@@ -946,12 +1011,15 @@ POOLS = [
         'revert_to_snapshot_support': True,
         'qos': True,
         'security_service_update_support': True,
+        'netapp_flexgroup': False,
     },
 ]
 
 POOLS_VSERVER_CREDS = [
     {
         'pool_name': AGGREGATES[0],
+        'filter_function': None,
+        'goodness_function': None,
         'netapp_aggregate': AGGREGATES[0],
         'total_capacity_gb': 'unknown',
         'free_capacity_gb': 1.1,
@@ -964,13 +1032,12 @@ POOLS_VSERVER_CREDS = [
         'thin_provisioning': [True, False],
         'netapp_flexvol_encryption': True,
         'utilization': 50.0,
-        'filter_function': None,
-        'goodness_function': None,
         'snapshot_support': True,
         'create_share_from_snapshot_support': True,
         'revert_to_snapshot_support': True,
         'qos': False,
         'security_service_update_support': True,
+        'netapp_flexgroup': False,
     },
     {
         'pool_name': AGGREGATES[1],
@@ -986,13 +1053,12 @@ POOLS_VSERVER_CREDS = [
         'thin_provisioning': [True, False],
         'netapp_flexvol_encryption': True,
         'utilization': 50.0,
-        'filter_function': None,
-        'goodness_function': None,
         'snapshot_support': True,
         'create_share_from_snapshot_support': True,
         'revert_to_snapshot_support': True,
         'qos': False,
         'security_service_update_support': True,
+        'netapp_flexgroup': False,
     },
 ]
 
@@ -1730,3 +1796,7 @@ def get_network_info(user_network_allocation, admin_network_allocation):
     net_info['admin_network_allocations'] = admin_network_allocation
 
     return net_info
+
+
+def fake_get_filter_function(pool=None):
+    return pool if pool else 'filter'

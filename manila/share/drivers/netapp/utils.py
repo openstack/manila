@@ -43,6 +43,15 @@ MIGRATION_STATE_READY_FOR_SOURCE_CLEANUP = 'ready_for_source_cleanup'
 MIGRATION_STATE_MIGRATE_COMPLETE = 'migrate_complete'
 MIGRATION_STATE_MIGRATE_PAUSED = 'migrate_paused'
 
+EXTENDED_DATA_PROTECTION_TYPE = 'extended_data_protection'
+MIRROR_ALL_SNAP_POLICY = 'MirrorAllSnapshots'
+DATA_PROTECTION_TYPE = 'data_protection'
+
+FLEXGROUP_STYLE_EXTENDED = 'flexgroup'
+FLEXVOL_STYLE_EXTENDED = 'flexvol'
+
+FLEXGROUP_DEFAULT_POOL_NAME = 'flexgroup_auto'
+
 
 def validate_driver_instantiation(**kwargs):
     """Checks if a driver is instantiated other than by the unified driver.
@@ -121,6 +130,76 @@ def convert_to_list(value):
 
 def convert_string_to_list(string, separator=','):
     return [elem.strip() for elem in string.split(separator)]
+
+
+def get_relationship_type(is_flexgroup):
+    """Returns the snapmirror relationship type."""
+    return (EXTENDED_DATA_PROTECTION_TYPE if is_flexgroup
+            else DATA_PROTECTION_TYPE)
+
+
+def is_style_extended_flexgroup(style_extended):
+    """Returns whether the style is extended type or not."""
+    return style_extended == FLEXGROUP_STYLE_EXTENDED
+
+
+def parse_flexgroup_pool_config(config, cluster_aggr_set={}, check=False):
+    """Returns the dict with the FlexGroup pools and if it is auto provisioned.
+
+    :param config: the configuration flexgroup list of dict.
+    :param cluster_aggr_set: the set of aggregates in the cluster.
+    :param check: should check the config is correct.
+    """
+
+    flexgroup_pools_map = {}
+    aggr_list_used = []
+    for pool_dic in config:
+        for pool_name, aggr_str in pool_dic.items():
+            aggr_name_list = aggr_str.split()
+
+            if not check:
+                aggr_name_list.sort()
+                flexgroup_pools_map[pool_name] = aggr_name_list
+                continue
+
+            if pool_name in cluster_aggr_set:
+                msg = _('The %s FlexGroup pool name is not valid, because '
+                        'it is a cluster aggregate name. Ensure that the '
+                        'configuration option netapp_flexgroup_pools is '
+                        'set correctly.')
+                raise exception.NetAppException(msg % pool_name)
+
+            aggr_name_set = set(aggr_name_list)
+            if len(aggr_name_set) != len(aggr_name_list):
+                msg = _('There is a repeated aggregate name in the '
+                        'FlexGroup pool %s definition. Ensure that the '
+                        'configuration option netapp_flexgroup_pools is '
+                        'set correctly.')
+                raise exception.NetAppException(msg % pool_name)
+
+            not_found_aggr = aggr_name_set - cluster_aggr_set
+            if not_found_aggr:
+                not_found_list = [str(s) for s in not_found_aggr]
+                not_found_str = ", ".join(not_found_list)
+                msg = _('There is an aggregate name in the FlexGroup pool '
+                        '%(pool)s that is not in the cluster: %(aggr)s. '
+                        'Ensure that the configuration option '
+                        'netapp_flexgroup_pools is set correctly.')
+                msg_args = {'pool': pool_name, 'aggr': not_found_str}
+                raise exception.NetAppException(msg % msg_args)
+
+            aggr_name_list.sort()
+            aggr_name_list_str = "".join(aggr_name_list)
+            if aggr_name_list_str in aggr_list_used:
+                msg = _('The FlexGroup pool %s is duplicated. Ensure that '
+                        'the configuration option netapp_flexgroup_pools '
+                        'is set correctly.')
+                raise exception.NetAppException(msg % pool_name)
+
+            aggr_list_used.append(aggr_name_list_str)
+            flexgroup_pools_map[pool_name] = aggr_name_list
+
+    return flexgroup_pools_map
 
 
 class OpenStackInfo(object):

@@ -44,14 +44,19 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
     def test__escaped_address(self, raw, escaped):
         self.assertEqual(escaped, self.helper._escaped_address(raw))
 
-    def test_create_share(self):
+    @ddt.data(True, False)
+    def test_create_share(self, is_flexgroup):
 
         mock_ensure_export_policy = self.mock_object(self.helper,
                                                      '_ensure_export_policy')
         self.mock_client.get_volume_junction_path.return_value = (
             fake.NFS_SHARE_PATH)
+        self.mock_client.get_volume.return_value = {
+            'junction-path': fake.NFS_SHARE_PATH,
+        }
 
-        result = self.helper.create_share(fake.NFS_SHARE, fake.SHARE_NAME)
+        result = self.helper.create_share(fake.NFS_SHARE, fake.SHARE_NAME,
+                                          is_flexgroup=is_flexgroup)
 
         export_addresses = [fake.SHARE_ADDRESS_1, fake.SHARE_ADDRESS_2]
         export_paths = [result(address) for address in export_addresses]
@@ -63,6 +68,10 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         (self.mock_client.clear_nfs_export_policy_for_volume.
             assert_called_once_with(fake.SHARE_NAME))
         self.assertTrue(mock_ensure_export_policy.called)
+        if is_flexgroup:
+            self.assertTrue(self.mock_client.get_volume.called)
+        else:
+            self.assertTrue(self.mock_client.get_volume_junction_path.called)
 
     def test_delete_share(self):
 

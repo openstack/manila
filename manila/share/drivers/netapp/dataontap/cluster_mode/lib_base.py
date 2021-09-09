@@ -28,6 +28,7 @@ import socket
 from oslo_config import cfg
 from oslo_log import log
 from oslo_service import loopingcall
+from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
 from oslo_utils import uuidutils
@@ -64,6 +65,11 @@ class NetAppCmodeFileStorageLibrary(object):
 
     DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70'
     DEFAULT_GOODNESS_FUNCTION = '100 - capabilities.utilization'
+    DEFAULT_FLEXGROUP_FILTER_FUNCTION = 'share.size >= %s'
+
+    # ONTAP requires 100G per FlexGroup member, since the driver is deploying
+    # with default number of members (four), the min size is 400G.
+    FLEXGROUP_MIN_SIZE_PER_AGGR = 400
 
     # Internal states when dealing with data motion
     STATE_SPLITTING_VOLUME_CLONE = 'splitting_volume_clone'
@@ -156,6 +162,8 @@ class NetAppCmodeFileStorageLibrary(object):
         self._default_nfs_config = None
         self.is_nfs_config_supported = False
         self._cache_pool_status = None
+        self._flexgroup_pools = {}
+        self._is_flexgroup_auto = False
 
         self._app_version = kwargs.get('app_version', 'unknown')
 
@@ -309,12 +317,11 @@ class NetAppCmodeFileStorageLibrary(object):
                    'share_id': share_id.replace('-', '_')})
 
     @na_utils.trace
-    def _get_aggregate_space(self):
-        aggregates = self._find_matching_aggregates()
+    def _get_aggregate_space(self, aggr_set):
         if self._have_cluster_creds:
-            return self._client.get_cluster_aggregate_capacities(aggregates)
+            return self._client.get_cluster_aggregate_capacities(aggr_set)
         else:
-            return self._client.get_vserver_aggregate_capacities(aggregates)
+            return self._client.get_vserver_aggregate_capacities(aggr_set)
 
     @na_utils.trace
     def _check_snaprestore_license(self):
@@ -352,17 +359,29 @@ class NetAppCmodeFileStorageLibrary(object):
         else:
             return None
 
-    def get_default_filter_function(self):
+    def get_default_filter_function(self, pool=None):
         """Get the default filter_function string."""
-        return self.DEFAULT_FILTER_FUNCTION
+        if not self._is_flexgroup_pool(pool):
+            return self.DEFAULT_FILTER_FUNCTION
+
+        min_size = self._get_minimum_flexgroup_size(pool)
+        return self.DEFAULT_FLEXGROUP_FILTER_FUNCTION % min_size
 
     def get_default_goodness_function(self):
         """Get the default goodness_function string."""
         return self.DEFAULT_GOODNESS_FUNCTION
 
     @na_utils.trace
-    def get_share_stats(self, filter_function=None, goodness_function=None):
+    def get_share_stats(self, get_filter_function=None,
+                        goodness_function=None):
         """Retrieve stats info from Data ONTAP backend."""
+
+        # NOTE(felipe_rodrigues): the share group stats is reported to the
+        # entire backend, not per pool. So, if there is a FlexGroup pool, the
+        # driver drops for all pools the consistent snapshot support.
+        consistent_snapshot_support = 'host'
+        if self._flexgroup_pools:
+            consistent_snapshot_support = None
 
         data = {
             'share_backend_name': self._backend_name,
@@ -371,10 +390,10 @@ class NetAppCmodeFileStorageLibrary(object):
             'driver_version': '1.0',
             'netapp_storage_family': 'ontap_cluster',
             'storage_protocol': 'NFS_CIFS',
-            'pools': self._get_pools(filter_function=filter_function,
+            'pools': self._get_pools(get_filter_function=get_filter_function,
                                      goodness_function=goodness_function),
             'share_group_stats': {
-                'consistent_snapshot_support': 'host',
+                'consistent_snapshot_support': consistent_snapshot_support,
             },
         }
 
@@ -402,72 +421,44 @@ class NetAppCmodeFileStorageLibrary(object):
         return self._cache_pool_status.get_data()
 
     @na_utils.trace
-    def _get_pools(self, filter_function=None, goodness_function=None):
+    def _get_pools(self, get_filter_function=None, goodness_function=None):
         """Retrieve list of pools available to this backend."""
 
         pools = []
         cached_pools = []
-        aggr_space = self._get_aggregate_space()
-        aggregates = aggr_space.keys()
+        aggr_pool = set(self._find_matching_aggregates())
+        flexgroup_pools = self._flexgroup_pools
+        flexgroup_aggr = self._get_flexgroup_aggr_set()
+        aggr_space = self._get_aggregate_space(aggr_pool.union(flexgroup_aggr))
 
         if self._have_cluster_creds:
             # Get up-to-date node utilization metrics just once.
             self._perf_library.update_performance_cache({}, self._ssc_stats)
-            qos_support = True
-        else:
-            qos_support = False
 
-        netapp_flexvol_encryption = self._cluster_info.get(
-            'nve_support', False)
+        # Add FlexVol pools.
+        filter_function = (get_filter_function() if get_filter_function
+                           else None)
+        for aggr_name in sorted(aggr_pool):
+            total_gb, free_gb, used_gb = self._get_flexvol_pool_space(
+                aggr_space, aggr_name)
 
-        for aggr_name in sorted(aggregates):
+            pool = self._get_pool(aggr_name, total_gb, free_gb, used_gb)
 
-            reserved_percentage = self.configuration.reserved_share_percentage
-            reserved_snapshot_percentage = (
-                self.configuration.reserved_share_from_snapshot_percentage or
-                reserved_percentage)
-            max_over_ratio = self.configuration.max_over_subscription_ratio
+            cached_pools.append(pool)
+            pool_with_func = copy.deepcopy(pool)
+            pool_with_func['filter_function'] = filter_function
+            pool_with_func['goodness_function'] = goodness_function
 
-            total_capacity_gb = na_utils.round_down(float(
-                aggr_space[aggr_name].get('total', 0)) / units.Gi)
-            free_capacity_gb = na_utils.round_down(float(
-                aggr_space[aggr_name].get('available', 0)) / units.Gi)
-            allocated_capacity_gb = na_utils.round_down(float(
-                aggr_space[aggr_name].get('used', 0)) / units.Gi)
+            pools.append(pool_with_func)
 
-            if total_capacity_gb == 0.0:
-                total_capacity_gb = 'unknown'
+        # Add FlexGroup pools.
+        for pool_name, aggr_list in flexgroup_pools.items():
+            filter_function = (get_filter_function(pool=pool_name)
+                               if get_filter_function else None)
+            total_gb, free_gb, used_gb = self._get_flexgroup_pool_space(
+                aggr_space, aggr_list)
 
-            pool = {
-                'pool_name': aggr_name,
-                'filter_function': None,
-                'goodness_function': None,
-                'total_capacity_gb': total_capacity_gb,
-                'free_capacity_gb': free_capacity_gb,
-                'allocated_capacity_gb': allocated_capacity_gb,
-                'qos': qos_support,
-                'reserved_percentage': reserved_percentage,
-                'reserved_snapshot_percentage': reserved_snapshot_percentage,
-                'max_over_subscription_ratio': max_over_ratio,
-                'dedupe': [True, False],
-                'compression': [True, False],
-                'netapp_flexvol_encryption': netapp_flexvol_encryption,
-                'thin_provisioning': [True, False],
-                'snapshot_support': True,
-                'create_share_from_snapshot_support': True,
-                'revert_to_snapshot_support': self._revert_to_snapshot_support,
-                'security_service_update_support': True,
-            }
-
-            # Add storage service catalog data.
-            pool_ssc_stats = self._ssc_stats.get(aggr_name)
-            if pool_ssc_stats:
-                pool.update(pool_ssc_stats)
-
-            # Add utilization info, or nominal value if not available.
-            utilization = self._perf_library.get_node_utilization_for_pool(
-                aggr_name)
-            pool['utilization'] = na_utils.round_down(utilization)
+            pool = self._get_pool(pool_name, total_gb, free_gb, used_gb)
 
             cached_pools.append(pool)
             pool_with_func = copy.deepcopy(pool)
@@ -479,6 +470,119 @@ class NetAppCmodeFileStorageLibrary(object):
         self._cache_pool_status.update_data(cached_pools)
 
         return pools
+
+    @na_utils.trace
+    def _get_pool(self, pool_name, total_capacity_gb, free_capacity_gb,
+                  allocated_capacity_gb):
+        """Gets the pool dictionary."""
+        if self._have_cluster_creds:
+            qos_support = True
+        else:
+            qos_support = False
+
+        netapp_flexvol_encryption = self._cluster_info.get(
+            'nve_support', False)
+
+        reserved_percentage = self.configuration.reserved_share_percentage
+        reserved_snapshot_percentage = (
+            self.configuration.reserved_share_from_snapshot_percentage or
+            reserved_percentage)
+        max_over_ratio = self.configuration.max_over_subscription_ratio
+
+        if total_capacity_gb == 0.0:
+            total_capacity_gb = 'unknown'
+
+        pool = {
+            'pool_name': pool_name,
+            'filter_function': None,
+            'goodness_function': None,
+            'total_capacity_gb': total_capacity_gb,
+            'free_capacity_gb': free_capacity_gb,
+            'allocated_capacity_gb': allocated_capacity_gb,
+            'qos': qos_support,
+            'reserved_percentage': reserved_percentage,
+            'reserved_snapshot_percentage': reserved_snapshot_percentage,
+            'max_over_subscription_ratio': max_over_ratio,
+            'dedupe': [True, False],
+            'compression': [True, False],
+            'netapp_flexvol_encryption': netapp_flexvol_encryption,
+            'thin_provisioning': [True, False],
+            'snapshot_support': True,
+            'create_share_from_snapshot_support': True,
+            'revert_to_snapshot_support': self._revert_to_snapshot_support,
+            'security_service_update_support': True,
+        }
+
+        # Add storage service catalog data.
+        pool_ssc_stats = self._ssc_stats.get(pool_name)
+        if pool_ssc_stats:
+            pool.update(pool_ssc_stats)
+
+        # Add utilization info, or nominal value if not available.
+        utilization = self._perf_library.get_node_utilization_for_pool(
+            pool_name)
+        pool['utilization'] = na_utils.round_down(utilization)
+
+        return pool
+
+    @na_utils.trace
+    def _get_flexvol_pool_space(self, aggr_space_map, aggr):
+        """Returns the space info tuple for a FlexVol pool."""
+        total_capacity_gb = na_utils.round_down(float(
+            aggr_space_map[aggr].get('total', 0)) / units.Gi)
+        free_capacity_gb = na_utils.round_down(float(
+            aggr_space_map[aggr].get('available', 0)) / units.Gi)
+        allocated_capacity_gb = na_utils.round_down(float(
+            aggr_space_map[aggr].get('used', 0)) / units.Gi)
+
+        return total_capacity_gb, free_capacity_gb, allocated_capacity_gb
+
+    @na_utils.trace
+    def _get_flexgroup_pool_space(self, aggr_space_map, aggr_pool):
+        """Returns the space info tuple for a FlexGroup pool.
+
+        Given that the set of aggregates that form a FlexGroup pool may have
+        different space information, the space info for the pool is not
+        calculated by summing their values. The FlexGroup share must have its
+        total size divided equally through the pool aggregates. So, the pool
+        size is limited by the least aggregate size:
+
+        - free_size = least_aggregate_free_size * number_aggregates
+        - total_size = least_aggregate_total_size * number_aggregates
+        - used_size = total_size - free_size
+
+        :param aggr_space_map: space info dict for the driver aggregates.
+        :param aggr_pool: list of aggregate names for the FlexGroup pool.
+        """
+        min_total = None
+        min_free = None
+        for aggr_name in aggr_pool:
+            if aggr_name not in aggr_space_map:
+                continue
+            aggr_total = aggr_space_map[aggr_name].get('total', 0)
+            aggr_free = aggr_space_map[aggr_name].get('available', 0)
+
+            if not min_total or min_total.get('total', 0) > aggr_total:
+                min_total = aggr_space_map[aggr_name]
+
+            if not min_free or min_free.get('available', 0) > aggr_free:
+                min_free = aggr_space_map[aggr_name]
+
+        total_gb = na_utils.round_down(0)
+        if min_total:
+            min_total_pool = min_total.get('total', 0) * len(aggr_pool)
+            total_gb = na_utils.round_down(float(min_total_pool) / units.Gi)
+
+        free_gb = na_utils.round_down(0)
+        if min_free:
+            min_free_pool = min_free.get('available', 0) * len(aggr_pool)
+            free_gb = na_utils.round_down(float(min_free_pool) / units.Gi)
+
+        used_gb = na_utils.round_down(0)
+        if total_gb > free_gb:
+            used_gb = na_utils.round_down(total_gb - free_gb)
+
+        return total_gb, free_gb, used_gb
 
     @na_utils.trace
     def _handle_ems_logging(self):
@@ -530,9 +634,16 @@ class NetAppCmodeFileStorageLibrary(object):
     def _handle_housekeeping_tasks(self):
         """Handle various cleanup activities."""
 
-    def _find_matching_aggregates(self):
+    def _find_matching_aggregates(self, aggregate_names=None):
         """Find all aggregates match pattern."""
         raise NotImplementedError()
+
+    @na_utils.trace
+    def _get_flexgroup_aggr_set(self):
+        aggr = set()
+        for aggr_list in self._flexgroup_pools.values():
+            aggr = aggr.union(aggr_list)
+        return aggr
 
     @na_utils.trace
     def _get_helper(self, share):
@@ -570,12 +681,24 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def get_pool(self, share):
+        """Returns the name of the pool for a given share."""
+
         pool = share_utils.extract_host(share['host'], level='pool')
         if pool:
             return pool
 
         share_name = self._get_backend_share_name(share['id'])
-        return self._client.get_aggregate_for_volume(share_name)
+        aggr = self._client.get_aggregate_for_volume(share_name)
+        if isinstance(aggr, list):
+            pool = self._get_flexgroup_pool_name(aggr)
+        else:
+            pool = aggr
+
+        if not pool:
+            msg = _('Could not find out the pool name for the share %s.')
+            raise exception.NetAppException(msg % share_name)
+
+        return pool
 
     @na_utils.trace
     def create_share(self, context, share, share_server):
@@ -590,7 +713,12 @@ class NetAppCmodeFileStorageLibrary(object):
                                    share_server=None, parent_share=None):
         """Creates new share from snapshot."""
         # TODO(dviroel) return progress info in asynchronous answers
-        if parent_share['host'] == share['host']:
+
+        # NOTE(felipe_rodrigues): when using FlexGroup, the NetApp driver will
+        # drop consistent snapshot support, calling this create from snap
+        # method for each member (no parent share is set).
+        is_group_snapshot = share.get('source_share_group_snapshot_member_id')
+        if is_group_snapshot or parent_share['host'] == share['host']:
             src_vserver, src_vserver_client = self._get_vserver(
                 share_server=share_server)
             # Creating a new share from snapshot in the source share's pool
@@ -631,39 +759,90 @@ class NetAppCmodeFileStorageLibrary(object):
         dest_vserver, dest_vserver_client = self._get_vserver(share_server)
         dest_cluster_name = dest_vserver_client.get_cluster_name()
 
+        # the parent share and new share must reside on same pool type: either
+        # FlexGroup or FlexVol.
+        parent_share_name = self._get_backend_share_name(parent_share['id'])
+        parent_is_flexgroup = self._is_flexgroup_share(src_vserver_client,
+                                                       parent_share_name)
+        dest_pool_name = share_utils.extract_host(share['host'], level='pool')
+        dest_is_flexgroup = self._is_flexgroup_pool(dest_pool_name)
+        if parent_is_flexgroup != dest_is_flexgroup:
+            parent_type = 'FlexGroup' if parent_is_flexgroup else 'FlexVol'
+            dest_type = 'FlexGroup' if dest_is_flexgroup else 'FlexVol'
+            msg = _('Could not create share %(share_id)s from snapshot '
+                    '%(snapshot_id)s in the destination host %(dest_host)s. '
+                    'The snapshot is from %(parent_type)s style, while the '
+                    'destination host is %(dest_type)s style.')
+            msg_args = {'share_id': share['id'], 'snapshot_id': snapshot['id'],
+                        'dest_host': dest_share['host'],
+                        'parent_type': parent_type, 'dest_type': dest_type}
+            raise exception.NetAppException(msg % msg_args)
+
+        # FlexGroup pools must have the same number of aggregates
+        if dest_is_flexgroup:
+            parent_aggr = src_vserver_client.get_aggregate_for_volume(
+                parent_share_name)
+
+            # NOTE(felipe_rodrigues): when FlexGroup is auto provisioned the
+            # match of number of aggregates cannot be checked. So, it might
+            # fail during snapmirror setup.
+            if not self._is_flexgroup_auto:
+                dest_aggr = self._get_flexgroup_aggregate_list(dest_pool_name)
+                if len(parent_aggr) != len(dest_aggr):
+                    msg = _('Could not create share %(share_id)s from '
+                            'snapshot %(snapshot_id)s in the destination host '
+                            '%(dest_host)s. The source and destination  '
+                            'FlexGroup pools must have the same number of '
+                            'aggregates.')
+                    msg_args = {'share_id': share['id'],
+                                'snapshot_id': snapshot['id'],
+                                'dest_host': dest_share['host']}
+                    raise exception.NetAppException(msg % msg_args)
+        else:
+            parent_aggr = share_utils.extract_host(parent_share['host'],
+                                                   level='pool')
+
         try:
-            if (src_cluster_name != dest_cluster_name or
+            # NOTE(felipe_rodrigues): no support to move volumes that are
+            # FlexGroup or without the cluster credential. So, performs the
+            # workaround using snapmirror even being in the same cluster.
+            if (src_cluster_name != dest_cluster_name or dest_is_flexgroup or
                     not self._have_cluster_creds):
-                # 1. Create a clone on source. We don't need to split from
-                # clone in order to replicate data. We don't need to create
-                # fpolicies since this copy will be deleted.
+                # 1. Create a clone on source (temporary volume). We don't need
+                # to split from clone in order to replicate data. We don't need
+                # to create fpolicies since this copy will be deleted.
                 self._allocate_container_from_snapshot(
                     dest_share, snapshot, src_vserver, src_vserver_client,
                     split=False, create_fpolicy=False)
-                # 2. Create a replica in destination host
+                # 2. Create a replica in destination host.
                 self._allocate_container(
                     dest_share, dest_vserver, dest_vserver_client,
                     replica=True, set_qos=False)
                 # 3. Initialize snapmirror relationship with cloned share.
                 src_share_instance['replica_state'] = (
                     constants.REPLICA_STATE_ACTIVE)
-                dm_session.create_snapmirror(src_share_instance, dest_share)
+                relationship_type = na_utils.get_relationship_type(
+                    dest_is_flexgroup)
+                dm_session.create_snapmirror(
+                    src_share_instance,
+                    dest_share,
+                    relationship_type)
                 # The snapmirror data copy can take some time to be concluded,
-                # we'll answer this call asynchronously
+                # we'll answer this call asynchronously.
                 state = self.STATE_SNAPMIRROR_DATA_COPYING
             else:
                 # NOTE(dviroel): there's a need to split the cloned share from
                 # its parent in order to move it to a different aggregate or
-                # vserver
+                # vserver.
                 self._allocate_container_from_snapshot(
                     dest_share, snapshot, src_vserver,
                     src_vserver_client, split=True)
                 # The split volume clone operation can take some time to be
-                # concluded and we'll answer the call asynchronously
+                # concluded and we'll answer the call asynchronously.
                 state = self.STATE_SPLITTING_VOLUME_CLONE
         except Exception:
-            # If the share exists on the source vserser, we need to
-            # delete it since it's a temporary share, not managed by the system
+            # If the share exists on the source vserver, we need to delete it
+            # since it's a temporary share, not managed by the system.
             dm_session.delete_snapmirror(src_share_instance, dest_share)
             self._delete_share(src_share_instance, src_vserver,
                                src_vserver_client, remove_export=False)
@@ -675,6 +854,7 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.NetAppException(msg % msg_args)
 
         # Store source share info on private storage using destination share id
+        src_share_instance['aggregate'] = parent_aggr
         src_share_instance['internal_state'] = state
         src_share_instance['status'] = constants.STATUS_ACTIVE
         self.private_storage.update(dest_share['id'], {
@@ -739,12 +919,19 @@ class NetAppCmodeFileStorageLibrary(object):
         # Source host info
         __, src_vserver, src_backend = (
             dm_session.get_backend_info_for_share(src_share))
-        src_aggr = share_utils.extract_host(src_share['host'], level='pool')
+        src_aggr = src_share['aggregate']
         src_vserver_client = data_motion.get_client_for_backend(
             src_backend, vserver_name=src_vserver)
         # Destination host info
         dest_vserver, dest_vserver_client = self._get_vserver(share_server)
         dest_aggr = share_utils.extract_host(share['host'], level='pool')
+        if self._is_flexgroup_pool(dest_aggr):
+            if self._is_flexgroup_auto:
+                dest_share_name = self._get_backend_share_name(share['id'])
+                dest_aggr = dest_vserver_client.get_aggregate_for_volume(
+                    dest_share_name)
+            else:
+                dest_aggr = self._get_flexgroup_aggregate_list(dest_aggr)
 
         if current_state == self.STATE_SPLITTING_VOLUME_CLONE:
             if self._check_volume_clone_split_completed(
@@ -766,7 +953,7 @@ class NetAppCmodeFileStorageLibrary(object):
                         share, src_vserver, src_vserver_client,
                         dest_vserver, dest_vserver_client)
                 # Move the share to the expected aggregate
-                if src_aggr != dest_aggr:
+                if set(src_aggr) != set(dest_aggr):
                     # Move volume and 'defer' the cutover. If it fails, the
                     # share will be deleted afterwards
                     self._move_volume_after_splitting(
@@ -891,10 +1078,18 @@ class NetAppCmodeFileStorageLibrary(object):
                   'provisioning options %(options)s',
                   {'share': share_name, 'pool': pool_name,
                    'options': provisioning_options})
-        vserver_client.create_volume(
-            pool_name, share_name, share['size'],
-            snapshot_reserve=self.configuration.
-            netapp_volume_snapshot_reserve_percent, **provisioning_options)
+        if self._is_flexgroup_pool(pool_name):
+            aggr_list = self._get_flexgroup_aggregate_list(pool_name)
+            self._create_flexgroup_share(
+                vserver_client, aggr_list, share_name,
+                share['size'],
+                self.configuration.netapp_volume_snapshot_reserve_percent,
+                **provisioning_options)
+        else:
+            vserver_client.create_volume(
+                pool_name, share_name, share['size'],
+                snapshot_reserve=self.configuration.
+                netapp_volume_snapshot_reserve_percent, **provisioning_options)
 
         if hide_snapdir:
             self._apply_snapdir_visibility(
@@ -917,6 +1112,121 @@ class NetAppCmodeFileStorageLibrary(object):
                   {'hide_snapdir': hide_snapdir, 'share': share_name})
 
         vserver_client.set_volume_snapdir_access(share_name, hide_snapdir)
+
+    @na_utils.trace
+    def _create_flexgroup_share(self, vserver_client, aggr_list, share_name,
+                                size, snapshot_reserve, dedup_enabled=False,
+                                compression_enabled=False, max_files=None,
+                                **provisioning_options):
+        """Create a FlexGroup share using async API with job."""
+
+        start_timeout = (
+            self.configuration.netapp_flexgroup_aggregate_not_busy_timeout)
+        job_info = self.wait_for_start_create_flexgroup(
+            start_timeout, vserver_client, aggr_list, share_name, size,
+            snapshot_reserve, **provisioning_options)
+
+        if not job_info['jobid'] or job_info['error-code']:
+            msg = "Error creating FlexGroup share: %s."
+            raise exception.NetAppException(msg % job_info['error-message'])
+
+        timeout = self.configuration.netapp_flexgroup_volume_online_timeout
+        self.wait_for_flexgroup_deployment(vserver_client, job_info['jobid'],
+                                           timeout)
+
+        vserver_client.update_volume_efficiency_attributes(
+            share_name, dedup_enabled, compression_enabled, is_flexgroup=True)
+
+        if max_files is not None:
+            vserver_client.set_volume_max_files(share_name, max_files)
+
+    @na_utils.trace
+    def wait_for_start_create_flexgroup(self, start_timeout, vserver_client,
+                                        aggr_list, share_name, size,
+                                        snapshot_reserve,
+                                        **provisioning_options):
+        """Wait for starting create FlexGroup volume succeed.
+
+        Create FlexGroup volume fails in case any of the selected aggregates
+        are being used for provision another volume. Instead of failing, tries
+        several times.
+
+        :param start_timeout: time in seconds to try create.
+        :param vserver_client: the client to call the create operation.
+        :param aggr_list: list of aggregates to create the FlexGroup.
+        :param share_name: name of the FlexGroup volume.
+        :param size: size to be provisioned.
+        :param snapshot_reserve: snapshot reserve option.
+        :param provisioning_options: other provision not required options.
+        """
+
+        interval = 5
+        retries = (start_timeout / interval or 1)
+
+        @manila_utils.retry(exception.NetAppBusyAggregateForFlexGroupException,
+                            interval=interval, retries=retries, backoff_rate=1)
+        def _start_create_flexgroup_volume():
+            try:
+                return vserver_client.create_volume_async(
+                    aggr_list, share_name, size,
+                    snapshot_reserve=snapshot_reserve,
+                    auto_provisioned=self._is_flexgroup_auto,
+                    **provisioning_options)
+            except netapp_api.NaApiError as e:
+                with excutils.save_and_reraise_exception() as raise_ctxt:
+                    try_msg = "try the command again"
+                    if (e.code == netapp_api.EAPIERROR and
+                            try_msg in e.message):
+                        msg = _("Another volume is currently being "
+                                "provisioned using one or more of the "
+                                "aggregates selected to provision FlexGroup "
+                                "volume %(share_name)s.")
+                        msg_args = {'share_name': share_name}
+                        LOG.error(msg, msg_args)
+                        raise_ctxt.reraise = False
+                        raise (exception.
+                               NetAppBusyAggregateForFlexGroupException())
+
+        try:
+            return _start_create_flexgroup_volume()
+        except exception.NetAppBusyAggregateForFlexGroupException:
+            msg_err = _("Unable to start provision the FlexGroup volume %s. "
+                        "Retries exhausted. Aborting")
+            raise exception.NetAppException(message=msg_err % share_name)
+
+    @na_utils.trace
+    def wait_for_flexgroup_deployment(self, vserver_client, job_id, timeout):
+        """Wait for creating FlexGroup share job to get finished.
+
+        :param vserver_client: the client to call the get job status.
+        :param job_id: create FlexGroup job ID.
+        :param timeout: time in seconds to wait create.
+        """
+
+        interval = 5
+        retries = (timeout / interval or 1)
+
+        @manila_utils.retry(exception.ShareBackendException, interval=interval,
+                            retries=retries, backoff_rate=1)
+        def _wait_job_is_completed():
+            job_state = vserver_client.get_job_state(job_id)
+            LOG.debug("Waiting for creating FlexGroup job %(job_id)s in "
+                      "state: %(job_state)s.",
+                      {'job_id': job_id, 'job_state': job_state})
+            if job_state == 'failure' or job_state == 'error':
+                msg_error = "Error performing the create FlexGroup job %s."
+                raise exception.NetAppException(msg_error % job_id)
+            elif job_state != 'success':
+                msg = _('FlexGroup share is being created. Will wait the '
+                        'job.')
+                LOG.warning(msg)
+                raise exception.ShareBackendException(msg=msg)
+        try:
+            _wait_job_is_completed()
+        except exception.ShareBackendException:
+            msg = _("Timeout waiting for FlexGroup create job %s to be "
+                    "finished.")
+            raise exception.NetAppException(msg % job_id)
 
     @na_utils.trace
     def _remap_standard_boolean_extra_specs(self, extra_specs):
@@ -1204,19 +1514,19 @@ class NetAppCmodeFileStorageLibrary(object):
         return nve
 
     @na_utils.trace
-    def _check_aggregate_extra_specs_validity(self, aggregate_name, specs):
+    def _check_aggregate_extra_specs_validity(self, pool_name, specs):
 
         for specs_key in ('netapp_disk_type', 'netapp_raid_type'):
-            aggr_value = self._ssc_stats.get(aggregate_name, {}).get(specs_key)
+            aggr_value = self._ssc_stats.get(pool_name, {}).get(specs_key)
             specs_value = specs.get(specs_key)
 
             if aggr_value and specs_value and aggr_value != specs_value:
                 msg = _('Invalid value "%(value)s" for extra_spec "%(key)s" '
-                        'in aggregate %(aggr)s.')
+                        'in pool %(pool)s.')
                 msg_args = {
                     'value': specs_value,
                     'key': specs_key,
-                    'aggr': aggregate_name
+                    'pool': pool_name
                 }
                 raise exception.NetAppException(msg % msg_args)
 
@@ -1333,11 +1643,13 @@ class NetAppCmodeFileStorageLibrary(object):
             share, share_server, interfaces, host)
 
         # Create the share and get a callback for generating export locations
+        pool = share_utils.extract_host(share['host'], level='pool')
         callback = helper.create_share(
             share, share_name,
             clear_current_export_policy=clear_current_export_policy,
             ensure_share_already_exists=ensure_share_already_exists,
-            replica=replica)
+            replica=replica,
+            is_flexgroup=self._is_flexgroup_pool(pool))
 
         # Generate export locations using addresses, metadata and callback
         export_locations = [
@@ -1361,9 +1673,18 @@ class NetAppCmodeFileStorageLibrary(object):
                                             interfaces, share_host):
         """Return interface addresses with locality and other metadata."""
 
-        # Get home node so we can identify preferred paths
-        aggregate_name = share_utils.extract_host(share_host, level='pool')
-        home_node = self._get_aggregate_node(aggregate_name)
+        # Get home nodes so we can identify preferred paths
+        pool = share_utils.extract_host(share_host, level='pool')
+        home_node_set = set()
+        if self._is_flexgroup_pool(pool):
+            for aggregate_name in self._get_flexgroup_aggregate_list(pool):
+                home_node = self._get_aggregate_node(aggregate_name)
+                if home_node:
+                    home_node_set.add(home_node)
+        else:
+            home_node = self._get_aggregate_node(pool)
+            if home_node:
+                home_node_set.add(home_node)
 
         # Get admin LIF addresses so we can identify admin export locations
         admin_addresses = self._get_admin_addresses_for_share_server(
@@ -1375,10 +1696,7 @@ class NetAppCmodeFileStorageLibrary(object):
             address = interface['address']
             is_admin_only = address in admin_addresses
 
-            if home_node:
-                preferred = interface.get('home-node') == home_node
-            else:
-                preferred = False
+            preferred = interface.get('home-node') in home_node_set
 
             addresses[address] = {
                 'is_admin_only': is_admin_only,
@@ -1460,13 +1778,24 @@ class NetAppCmodeFileStorageLibrary(object):
                          self._get_backend_snapshot_name(snapshot['id']))
 
         try:
-            self._delete_snapshot(vserver_client, share_name, snapshot_name)
+            is_flexgroup = self._is_flexgroup_share(vserver_client, share_name)
+        except exception.ShareNotFound:
+            msg = _('Could not determine if the share %(share)s is FlexGroup '
+                    'or FlexVol style. Share does not exist.')
+            msg_args = {'share': share_name}
+            LOG.info(msg, msg_args)
+            is_flexgroup = False
+
+        try:
+            self._delete_snapshot(vserver_client, share_name, snapshot_name,
+                                  is_flexgroup=is_flexgroup)
         except exception.SnapshotResourceNotFound:
-            msg = ("Snapshot %(snap)s does not exist on share %(share)s.")
+            msg = "Snapshot %(snap)s does not exist on share %(share)s."
             msg_args = {'snap': snapshot_name, 'share': share_name}
             LOG.info(msg, msg_args)
 
-    def _delete_snapshot(self, vserver_client, share_name, snapshot_name):
+    def _delete_snapshot(self, vserver_client, share_name, snapshot_name,
+                         is_flexgroup=False):
         """Deletes a backend snapshot, handling busy snapshots as needed."""
 
         backend_snapshot = vserver_client.get_snapshot(share_name,
@@ -1479,16 +1808,52 @@ class NetAppCmodeFileStorageLibrary(object):
             vserver_client.delete_snapshot(share_name, snapshot_name)
 
         elif backend_snapshot['owners'] == {'volume clone'}:
-            # Snapshots are locked by clone(s), so split clone and soft delete
+            # Snapshots are locked by clone(s), so split the clone(s)
             snapshot_children = vserver_client.get_clone_children_for_snapshot(
                 share_name, snapshot_name)
             for snapshot_child in snapshot_children:
                 vserver_client.split_volume_clone(snapshot_child['name'])
 
-            vserver_client.soft_delete_snapshot(share_name, snapshot_name)
+            if is_flexgroup:
+                # NOTE(felipe_rodrigues): ONTAP does not allow rename a
+                # FlexGroup snapshot, so it cannot be soft deleted. It will
+                # wait for all split clones complete.
+                self._delete_busy_snapshot(vserver_client, share_name,
+                                           snapshot_name)
+            else:
+                vserver_client.soft_delete_snapshot(share_name, snapshot_name)
 
         else:
             raise exception.ShareSnapshotIsBusy(snapshot_name=snapshot_name)
+
+    @na_utils.trace
+    def _delete_busy_snapshot(self, vserver_client, share_name, snapshot_name):
+        """Delete the snapshot waiting for it to not be busy."""
+
+        timeout = (self.configuration.
+                   netapp_delete_busy_flexgroup_snapshot_timeout)
+        interval = 5
+        retries = (int(timeout / interval) or 1)
+
+        @manila_utils.retry(exception.ShareSnapshotIsBusy, interval=interval,
+                            retries=retries, backoff_rate=1)
+        def _wait_snapshot_is_not_busy():
+            backend_snapshot = vserver_client.get_snapshot(share_name,
+                                                           snapshot_name)
+            if backend_snapshot['busy']:
+                msg = _("Cannot delete snapshot %s that is busy. Will wait it "
+                        "for not be busy.")
+                LOG.debug(msg, snapshot_name)
+                raise exception.ShareSnapshotIsBusy(
+                    snapshot_name=snapshot_name)
+
+        try:
+            _wait_snapshot_is_not_busy()
+            vserver_client.delete_snapshot(share_name, snapshot_name)
+        except exception.ShareSnapshotIsBusy:
+            msg = _("Error deleting the snapshot %s: timeout waiting for "
+                    "FlexGroup snapshot to not be busy.")
+            raise exception.NetAppException(msg % snapshot_name)
 
     @na_utils.trace
     def manage_existing(self, share, driver_options, share_server=None):
@@ -1516,33 +1881,54 @@ class NetAppCmodeFileStorageLibrary(object):
             msg_args = {'export': share['export_location']}
             raise exception.ManageInvalidShare(reason=msg % msg_args)
 
-        share_name = self._get_backend_share_name(share['id'])
-        aggregate_name = share_utils.extract_host(share['host'], level='pool')
+        # NOTE(felipe_rodrigues): depending on volume style, the aggregate_name
+        # is a string (FlexVol) or a list (FlexGroup).
+        pool_name = share_utils.extract_host(share['host'], level='pool')
+        flexgroup_pool = False
+        aggregate_name = pool_name
+        if self._is_flexgroup_pool(pool_name):
+            flexgroup_pool = True
+            if self._is_flexgroup_auto:
+                aggregate_name = self._client.get_aggregate_for_volume(
+                    volume_name)
+            else:
+                aggregate_name = self._get_flexgroup_aggregate_list(pool_name)
 
-        # Get existing volume info
+        # Check that share and pool are from same style.
+        flexgroup_vol = self._is_flexgroup_share(vserver_client, volume_name)
+        if flexgroup_vol != flexgroup_pool:
+            share_style = 'FlexGroup' if flexgroup_vol else 'FlexVol'
+            pool_style = 'FlexGroup' if flexgroup_pool else 'FlexVol'
+            msg = _('Could not manage share %(share)s on the specified pool '
+                    '%(pool_name)s. The share is from %(share_style)s style, '
+                    'while the pool is for %(pool_style)s style.')
+            msg_args = {'share': volume_name, 'pool_name': pool_name,
+                        'share_style': share_style, 'pool_style': pool_style}
+            raise exception.ManageInvalidShare(reason=msg % msg_args)
+
+        # Get existing volume info.
         volume = vserver_client.get_volume_to_manage(aggregate_name,
                                                      volume_name)
 
         if not volume:
-            msg = _('Volume %(volume)s not found on aggregate %(aggr)s.')
-            msg_args = {'volume': volume_name, 'aggr': aggregate_name}
+            msg = _('Volume %(volume)s not found on pool %(pool)s.')
+            msg_args = {'volume': volume_name, 'pool': pool_name}
             raise exception.ManageInvalidShare(reason=msg % msg_args)
 
         # When calculating the size, round up to the next GB.
         volume_size = int(math.ceil(float(volume['size']) / units.Gi))
 
-        # Validate extra specs
+        # Validate extra specs.
         extra_specs = share_types.get_extra_specs_from_share(share)
         extra_specs = self._remap_standard_boolean_extra_specs(extra_specs)
         try:
             self._check_extra_specs_validity(share, extra_specs)
-            self._check_aggregate_extra_specs_validity(aggregate_name,
-                                                       extra_specs)
+            self._check_aggregate_extra_specs_validity(pool_name, extra_specs)
         except exception.ManilaException as ex:
             raise exception.ManageExistingShareTypeMismatch(
                 reason=six.text_type(ex))
 
-        # Ensure volume is manageable
+        # Ensure volume is manageable.
         self._validate_volume_for_manage(volume, vserver_client)
 
         provisioning_options = self._get_provisioning_options(extra_specs)
@@ -1550,7 +1936,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self.validate_provisioning_options_for_share(provisioning_options,
                                                      extra_specs=extra_specs,
                                                      qos_specs=qos_specs)
-        # Check fpolicy extra-specs
+        # Check fpolicy extra-specs.
         fpolicy_ext_include = provisioning_options.get(
             'fpolicy_extensions_to_include')
         fpolicy_ext_exclude = provisioning_options.get(
@@ -1574,15 +1960,17 @@ class NetAppCmodeFileStorageLibrary(object):
                 raise exception.ManageExistingShareTypeMismatch(
                     reason=msg % msg_args)
 
+        share_name = self._get_backend_share_name(share['id'])
         debug_args = {
             'share': share_name,
-            'aggr': aggregate_name,
+            'aggr': (",".join(aggregate_name) if flexgroup_vol
+                     else aggregate_name),
             'options': provisioning_options
         }
-        LOG.debug('Managing share %(share)s on aggregate %(aggr)s with '
+        LOG.debug('Managing share %(share)s on aggregate(s) %(aggr)s with '
                   'provisioning options %(options)s', debug_args)
 
-        # Rename & remount volume on new path
+        # Rename & remount volume on new path.
         vserver_client.unmount_volume(volume_name)
         vserver_client.set_volume_name(volume_name, share_name)
         vserver_client.mount_volume(share_name)
@@ -1592,22 +1980,22 @@ class NetAppCmodeFileStorageLibrary(object):
         if qos_policy_group_name:
             provisioning_options['qos_policy_group'] = qos_policy_group_name
 
-        # Modify volume to match extra specs
+        # Modify volume to match extra specs.
         vserver_client.modify_volume(aggregate_name, share_name,
                                      **provisioning_options)
 
-        # Update fpolicy to include the new share name and remove the old one
+        # Update fpolicy to include the new share name and remove the old one.
         if fpolicy_scope is not None:
             shares_to_include = copy.deepcopy(
                 fpolicy_scope.get('shares-to-include', []))
             shares_to_include.remove(volume_name)
             shares_to_include.append(share_name)
             policy_name = fpolicy_scope.get('policy-name')
-            # Update
+            # Update.
             vserver_client.modify_fpolicy_scope(
                 policy_name, shares_to_include=shares_to_include)
 
-        # Save original volume info to private storage
+        # Save original volume info to private storage.
         original_data = {
             'original_name': volume['name'],
             'original_junction_path': volume['junction-path']
@@ -1631,7 +2019,8 @@ class NetAppCmodeFileStorageLibrary(object):
             msg_args = {'volume': volume['name']}
             raise exception.ManageInvalidShare(reason=msg % msg_args)
 
-        if vserver_client.volume_has_junctioned_volumes(volume['name']):
+        if vserver_client.volume_has_junctioned_volumes(
+                volume['junction-path']):
             msg = _('Volume %(volume)s must not have junctioned volumes.')
             msg_args = {'volume': volume['name']}
             raise exception.ManageInvalidShare(reason=msg % msg_args)
@@ -1649,13 +2038,12 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_backend_share_name(snapshot['share_id'])
         existing_snapshot_name = snapshot.get('provider_location')
-        new_snapshot_name = self._get_backend_snapshot_name(snapshot['id'])
 
         if not existing_snapshot_name:
             msg = _('provider_location not specified.')
             raise exception.ManageInvalidShareSnapshot(reason=msg)
 
-        # Get the volume containing the snapshot so we can report its size
+        # Get the volume containing the snapshot so we can report its size.
         try:
             volume = vserver_client.get_volume(share_name)
         except (netapp_api.NaApiError,
@@ -1667,30 +2055,47 @@ class NetAppCmodeFileStorageLibrary(object):
             LOG.exception(msg, msg_args)
             raise exception.ShareNotFound(share_id=snapshot['share_id'])
 
-        # Ensure there aren't any mirrors on this volume
+        # Ensure snapshot is from the share.
+        if not vserver_client.snapshot_exists(
+                existing_snapshot_name, share_name):
+            msg = _('Snapshot %(snap)s is not from the share %(vol)s.')
+            msg_args = {'snap': existing_snapshot_name, 'vol': share_name}
+            raise exception.ManageInvalidShareSnapshot(reason=msg % msg_args)
+
+        # Ensure there aren't any mirrors on this volume.
         if vserver_client.volume_has_snapmirror_relationships(volume):
             msg = _('Share %s has SnapMirror relationships.')
             msg_args = {'vol': share_name}
             raise exception.ManageInvalidShareSnapshot(reason=msg % msg_args)
 
-        # Rename snapshot
-        try:
-            vserver_client.rename_snapshot(share_name,
-                                           existing_snapshot_name,
-                                           new_snapshot_name)
-        except netapp_api.NaApiError:
-            msg = _('Could not rename snapshot %(snap)s in share %(vol)s.')
-            msg_args = {'snap': existing_snapshot_name, 'vol': share_name}
-            raise exception.ManageInvalidShareSnapshot(reason=msg % msg_args)
-
-        # Save original snapshot info to private storage
-        original_data = {'original_name': existing_snapshot_name}
-        self.private_storage.update(snapshot['id'], original_data)
-
         # When calculating the size, round up to the next GB.
         size = int(math.ceil(float(volume['size']) / units.Gi))
+        update_info = {'size': size}
 
-        return {'size': size, 'provider_location': new_snapshot_name}
+        # NOTE(felipe_rodrigues): ONTAP does not support rename FlexGroup
+        # snapshots, so those managed snapshots will keep the previous name
+        # being referenced by its provider_location field.
+        is_flexgroup = na_utils.is_style_extended_flexgroup(
+            volume['style-extended'])
+        if not is_flexgroup:
+            new_snapshot_name = self._get_backend_snapshot_name(snapshot['id'])
+            update_info['provider_location'] = new_snapshot_name
+
+            try:
+                vserver_client.rename_snapshot(share_name,
+                                               existing_snapshot_name,
+                                               new_snapshot_name)
+            except netapp_api.NaApiError:
+                msg = _('Could not rename snapshot %(snap)s in share %(vol)s.')
+                msg_args = {'snap': existing_snapshot_name, 'vol': share_name}
+                raise exception.ManageInvalidShareSnapshot(
+                    reason=msg % msg_args)
+
+            # Save original snapshot info to private storage.
+            original_data = {'original_name': existing_snapshot_name}
+            self.private_storage.update(snapshot['id'], original_data)
+
+        return update_info
 
     @na_utils.trace
     def unmanage_snapshot(self, snapshot, share_server=None):
@@ -1973,24 +2378,53 @@ class NetAppCmodeFileStorageLibrary(object):
             if aggregate_name not in ssc_stats:
                 ssc_stats[aggregate_name] = {
                     'netapp_aggregate': aggregate_name,
+                    'netapp_flexgroup': False,
                 }
 
-        if aggregate_names:
-            self._update_ssc_aggr_info(aggregate_names, ssc_stats)
+        # Initialize entries for each FlexGroup pool
+        flexgroup_pools = self._flexgroup_pools
+        for pool_name, aggr_list in flexgroup_pools.items():
+            if pool_name not in ssc_stats:
+                ssc_stats[pool_name] = {
+                    'netapp_aggregate': " ".join(aggr_list),
+                    'netapp_flexgroup': True,
+                }
+
+        # Add aggregate specs for pools
+        aggr_set = set(aggregate_names).union(self._get_flexgroup_aggr_set())
+        if self._have_cluster_creds and aggr_set:
+            aggr_info = self._get_aggregate_info(aggr_set)
+
+            # FlexVol pools
+            for aggr_name in aggregate_names:
+                ssc_stats[aggr_name].update(aggr_info[aggr_name])
+
+            # FlexGroup pools
+            for pool_name, aggr_list in flexgroup_pools.items():
+                raid_type = set()
+                hybrid = set()
+                disk_type = set()
+                for aggr in aggr_list:
+                    raid_type.add(aggr_info[aggr]['netapp_raid_type'])
+                    hybrid.add(aggr_info[aggr]['netapp_hybrid_aggregate'])
+                    disk_type = disk_type.union(
+                        aggr_info[aggr]['netapp_disk_type'])
+
+                ssc_stats[pool_name].update({
+                    'netapp_raid_type': " ".join(sorted(raid_type)),
+                    'netapp_hybrid_aggregate': " ".join(sorted(hybrid)),
+                    'netapp_disk_type': sorted(list(disk_type)),
+                })
 
         self._ssc_stats = ssc_stats
 
     @na_utils.trace
-    def _update_ssc_aggr_info(self, aggregate_names, ssc_stats):
-        """Updates the given SSC dictionary with new disk type information.
+    def _get_aggregate_info(self, aggregate_names):
+        """Gets the disk type information for the driver aggregates.
 
         :param aggregate_names: The aggregates this driver cares about
-        :param ssc_stats: The dictionary to update
         """
-
-        if not self._have_cluster_creds:
-            return
-
+        aggr_info = {}
         for aggregate_name in aggregate_names:
 
             aggregate = self._client.get_aggregate(aggregate_name)
@@ -1998,11 +2432,13 @@ class NetAppCmodeFileStorageLibrary(object):
                       if 'is-hybrid' in aggregate else None)
             disk_types = self._client.get_aggregate_disk_types(aggregate_name)
 
-            ssc_stats[aggregate_name].update({
+            aggr_info[aggregate_name] = {
                 'netapp_raid_type': aggregate.get('raid-type'),
                 'netapp_hybrid_aggregate': hybrid,
                 'netapp_disk_type': disk_types,
-            })
+            }
+
+        return aggr_info
 
     def find_active_replica(self, replica_list):
         # NOTE(ameade): Find current active replica. There can only be one
@@ -2022,6 +2458,45 @@ class NetAppCmodeFileStorageLibrary(object):
         active_replica = self.find_active_replica(replica_list)
         dm_session = data_motion.DataMotionSession()
 
+        # check that the source and new replica reside in the same pool type:
+        # either FlexGroup or FlexVol.
+        src_share_name, src_vserver, src_backend = (
+            dm_session.get_backend_info_for_share(active_replica))
+        src_client = data_motion.get_client_for_backend(
+            src_backend, vserver_name=src_vserver)
+        src_is_flexgroup = self._is_flexgroup_share(src_client, src_share_name)
+
+        pool_name = share_utils.extract_host(new_replica['host'], level='pool')
+        dest_is_flexgroup = self._is_flexgroup_pool(pool_name)
+
+        if src_is_flexgroup != dest_is_flexgroup:
+            src_type = 'FlexGroup' if src_is_flexgroup else 'FlexVol'
+            dest_type = 'FlexGroup' if dest_is_flexgroup else 'FlexVol'
+            msg = _('Could not create replica %(replica_id)s from share '
+                    '%(share_id)s in the destination host %(dest_host)s. The '
+                    'source share is from %(src_type)s style, while the '
+                    'destination replica host is %(dest_type)s style.')
+            msg_args = {'replica_id': new_replica['id'],
+                        'share_id': new_replica['share_id'],
+                        'dest_host': new_replica['host'],
+                        'src_type': src_type, 'dest_type': dest_type}
+            raise exception.NetAppException(msg % msg_args)
+
+        # NOTE(felipe_rodrigues): The FlexGroup replication does not support
+        # several replicas (fan-out) in some ONTAP versions, while FlexVol is
+        # always supported.
+        if dest_is_flexgroup:
+            fan_out = (src_client.is_flexgroup_fan_out_supported() and
+                       self._client.is_flexgroup_fan_out_supported())
+            if not fan_out and len(replica_list) > 2:
+                msg = _('Could not create replica %(replica_id)s from share '
+                        '%(share_id)s in the destination host %(dest_host)s. '
+                        'The share does not support more than one replica.')
+                msg_args = {'replica_id': new_replica['id'],
+                            'share_id': new_replica['share_id'],
+                            'dest_host': new_replica['host']}
+                raise exception.NetAppException(msg % msg_args)
+
         # 1. Create the destination share
         dest_backend = share_utils.extract_host(new_replica['host'],
                                                 level='backend_name')
@@ -2037,9 +2512,10 @@ class NetAppCmodeFileStorageLibrary(object):
                                  replica=True, create_fpolicy=False,
                                  set_qos=is_readable)
 
-        # 2. Setup SnapMirror with mounting replica whether 'readable' type
+        # 2. Setup SnapMirror with mounting replica whether 'readable' type.
+        relationship_type = na_utils.get_relationship_type(dest_is_flexgroup)
         dm_session.create_snapmirror(active_replica, new_replica,
-                                     mount=is_readable)
+                                     relationship_type, mount=is_readable)
 
         # 3. Create export location
         model_update = {
@@ -2121,7 +2597,12 @@ class NetAppCmodeFileStorageLibrary(object):
         if not snapmirrors:
             if replica['status'] != constants.STATUS_CREATING:
                 try:
+                    pool_name = share_utils.extract_host(replica['host'],
+                                                         level='pool')
+                    relationship_type = na_utils.get_relationship_type(
+                        self._is_flexgroup_pool(pool_name))
                     dm_session.create_snapmirror(active_replica, replica,
+                                                 relationship_type,
                                                  mount=is_readable)
                 except netapp_api.NaApiError:
                     LOG.exception("Could not create snapmirror for "
@@ -2170,7 +2651,9 @@ class NetAppCmodeFileStorageLibrary(object):
                      for snap in share_snapshots]
         for snap in snapshots:
             snapshot_name = snap.get('provider_location')
-            if not vserver_client.snapshot_exists(snapshot_name, share_name):
+            if (not snapshot_name or
+                    not vserver_client.snapshot_exists(snapshot_name,
+                                                       share_name)):
                 return constants.REPLICA_STATE_OUT_OF_SYNC
 
         return constants.REPLICA_STATE_IN_SYNC
@@ -2223,13 +2706,16 @@ class NetAppCmodeFileStorageLibrary(object):
         # Change the source replica for all destinations to the new
         # active replica.
         is_dr = not self._is_readable_replica(replica)
+        pool_name = share_utils.extract_host(replica['host'], level='pool')
+        is_flexgroup = self._is_flexgroup_pool(pool_name)
         for r in replica_list:
             if r['id'] != replica['id']:
                 r = self._safe_change_replica_source(dm_session, r,
                                                      orig_active_replica,
                                                      replica, replica_list,
                                                      is_dr, access_rules,
-                                                     share_server=share_server)
+                                                     share_server=share_server,
+                                                     is_flexgroup=is_flexgroup)
                 new_replica_list.append(r)
 
         if is_dr:
@@ -2388,7 +2874,7 @@ class NetAppCmodeFileStorageLibrary(object):
                                     orig_source_replica,
                                     new_source_replica, replica_list,
                                     is_dr, access_rules,
-                                    share_server=None):
+                                    share_server=None, is_flexgroup=False):
         """Attempts to change the SnapMirror source to new source.
 
         If the attempt fails, 'replica_state' is set to 'error'.
@@ -2400,13 +2886,15 @@ class NetAppCmodeFileStorageLibrary(object):
         :param is_dr: the replication type is dr, otherwise it is readable.
         :param access_rules: share access rules to be applied.
         :param share_server: share server.
+        :param is_flexgroup: the replication is over FlexGroup style
         :return: Updated replica.
         """
         try:
             dm_session.change_snapmirror_source(replica,
                                                 orig_source_replica,
                                                 new_source_replica,
-                                                replica_list)
+                                                replica_list,
+                                                is_flexgroup=is_flexgroup)
         except exception.StorageCommunicationException:
             replica['status'] = constants.STATUS_ERROR
             replica['replica_state'] = constants.STATUS_ERROR
@@ -2505,7 +2993,9 @@ class NetAppCmodeFileStorageLibrary(object):
                         dm_session.update_snapmirror(active_replica,
                                                      replica)
                     except netapp_api.NaApiError as e:
-                        if e.code != netapp_api.EOBJECTNOTFOUND:
+                        not_initialized = 'not initialized'
+                        if (e.code != netapp_api.EOBJECTNOTFOUND and
+                                not_initialized not in e.message):
                             raise
         return snapshots
 
@@ -2532,7 +3022,9 @@ class NetAppCmodeFileStorageLibrary(object):
                     try:
                         dm_session.update_snapmirror(active_replica, replica)
                     except netapp_api.NaApiError as e:
-                        if e.code != netapp_api.EOBJECTNOTFOUND:
+                        not_initialized = 'not initialized'
+                        if (e.code != netapp_api.EOBJECTNOTFOUND and
+                                not_initialized not in e.message):
                             raise
 
         return [active_snapshot]
@@ -2576,7 +3068,11 @@ class NetAppCmodeFileStorageLibrary(object):
         try:
             dm_session.update_snapmirror(active_replica, share_replica)
         except netapp_api.NaApiError as e:
-            if e.code != netapp_api.EOBJECTNOTFOUND:
+            # ignore exception in case the relationship does not exist or it
+            # is not completely initialized yet.
+            not_initialized = 'not initialized'
+            if (e.code != netapp_api.EOBJECTNOTFOUND and
+                    not_initialized not in e.message):
                 raise
 
     def revert_to_replicated_snapshot(self, context, active_replica,
@@ -2664,6 +3160,22 @@ class NetAppCmodeFileStorageLibrary(object):
                     destination_host, level='backend_name')
                 destination_aggregate = share_utils.extract_host(
                     destination_host, level='pool')
+                source_pool = share_utils.extract_host(
+                    source_share['host'], level='pool')
+
+                # Check the source/destination pool type, they must be FlexVol.
+                if self._is_flexgroup_pool(source_pool):
+                    msg = _("Cannot migrate share because it resides on a "
+                            "FlexGroup pool.")
+                    raise exception.NetAppException(msg)
+
+                dm_session = data_motion.DataMotionSession()
+                if self.is_flexgroup_destination_host(destination_host,
+                                                      dm_session):
+                    msg = _("Cannot migrate share because the destination "
+                            "pool is FlexGroup type.")
+                    raise exception.NetAppException(msg)
+
                 # Validate new extra-specs are valid on the destination
                 extra_specs = share_types.get_extra_specs_from_share(
                     destination_share)
@@ -3470,3 +3982,105 @@ class NetAppCmodeFileStorageLibrary(object):
                             vserver_client.delete_fpolicy_event(event)
 
         _delete_fpolicy_with_lock()
+
+    @na_utils.trace
+    def _initialize_flexgroup_pools(self, cluster_aggr_set):
+        """Initialize the FlexGroup pool map."""
+
+        flexgroup_pools = self.configuration.safe_get('netapp_flexgroup_pools')
+        if not self.configuration.netapp_enable_flexgroup and flexgroup_pools:
+            msg = _('Invalid configuration for FlexGroup: '
+                    'netapp_enable_flexgroup option must be True to configure '
+                    'its custom pools using netapp_flexgroup_pools.')
+            raise exception.NetAppException(msg)
+        elif not self.configuration.netapp_enable_flexgroup:
+            return
+
+        if not self._client.is_flexgroup_supported():
+            msg = _('FlexGroup pool is only supported with ONTAP version '
+                    'greater than or equal to 9.8.')
+            raise exception.NetAppException(msg)
+
+        if flexgroup_pools:
+            self._flexgroup_pools = na_utils.parse_flexgroup_pool_config(
+                flexgroup_pools, cluster_aggr_set=cluster_aggr_set, check=True)
+            self._is_flexgroup_auto = False
+        else:
+            self._flexgroup_pools[na_utils.FLEXGROUP_DEFAULT_POOL_NAME] = (
+                sorted(cluster_aggr_set))
+            self._is_flexgroup_auto = True
+
+    @na_utils.trace
+    def _get_flexgroup_pool_name(self, aggr_list):
+        """Gets the FlexGroup pool name that has the given aggregate list."""
+
+        # for FlexGroup auto provisioned is over the same single pool.
+        if self._is_flexgroup_auto:
+            return na_utils.FLEXGROUP_DEFAULT_POOL_NAME
+
+        pool_name = ''
+        aggr_list.sort()
+        for pool, aggr_pool in self._flexgroup_pools.items():
+            if aggr_pool == aggr_list:
+                pool_name = pool
+                break
+
+        return pool_name
+
+    @na_utils.trace
+    def _is_flexgroup_pool(self, pool_name):
+        """Check if the given pool name is a FlexGroup pool."""
+
+        return pool_name in self._flexgroup_pools
+
+    @na_utils.trace
+    def _get_flexgroup_aggregate_list(self, pool_name):
+        """Returns the aggregate list of a given FlexGroup pool name."""
+
+        return (self._flexgroup_pools[pool_name]
+                if self._is_flexgroup_pool(pool_name) else [])
+
+    @staticmethod
+    def _is_flexgroup_share(vserver_client, share_name):
+        """Determines if a given share name is a FlexGroup style or not."""
+
+        try:
+            return vserver_client.is_flexgroup_volume(share_name)
+        except (netapp_api.NaApiError,
+                exception.StorageResourceNotFound,
+                exception.NetAppException):
+            msg = _('Could not determine if the volume %s is a FlexGroup or '
+                    'a FlexVol style.')
+            LOG.exception(msg, share_name)
+            raise exception.ShareNotFound(share_id=share_name)
+
+    @na_utils.trace
+    def is_flexvol_pool_configured(self):
+        """Determines if the driver has FlexVol pools."""
+
+        return (not self.configuration.netapp_enable_flexgroup or
+                not self.configuration.netapp_flexgroup_pool_only)
+
+    @na_utils.trace
+    def _get_minimum_flexgroup_size(self, pool_name):
+        """Returns the minimum size for a FlexGroup share inside a pool."""
+
+        aggr_list = set(self._get_flexgroup_aggregate_list(pool_name))
+        return self.FLEXGROUP_MIN_SIZE_PER_AGGR * len(aggr_list)
+
+    @na_utils.trace
+    def is_flexgroup_destination_host(self, host, dm_session):
+        """Returns if the destination host is over a FlexGroup pool."""
+        __, config = dm_session.get_backend_name_and_config_obj(host)
+        if not config.safe_get('netapp_enable_flexgroup'):
+            return False
+
+        flexgroup_pools = config.safe_get('netapp_flexgroup_pools')
+        pools = {}
+        if flexgroup_pools:
+            pools = na_utils.parse_flexgroup_pool_config(flexgroup_pools)
+        else:
+            pools[na_utils.FLEXGROUP_DEFAULT_POOL_NAME] = {}
+
+        pool_name = share_utils.extract_host(host, level='pool')
+        return pool_name in pools

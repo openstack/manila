@@ -74,6 +74,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontapi_1_120 = ontapi_version >= (1, 120)
         ontapi_1_140 = ontapi_version >= (1, 140)
         ontapi_1_150 = ontapi_version >= (1, 150)
+        ontapi_1_180 = ontapi_version >= (1, 180)
+        ontapi_1_191 = ontapi_version >= (1, 191)
         ontap_9_10 = self.get_system_version()['version-tuple'] >= (9, 10, 0)
 
         self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
@@ -96,6 +98,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                   supported=ontapi_1_150)
         self.features.add_feature('LDAP_LDAP_SERVERS',
                                   supported=ontapi_1_120)
+        self.features.add_feature('FLEXGROUP', supported=ontapi_1_180)
+        self.features.add_feature('FLEXGROUP_FAN_OUT', supported=ontapi_1_191)
         self.features.add_feature('SVM_MIGRATE', supported=ontap_9_10)
 
     def _invoke_vserver_api(self, na_element, vserver):
@@ -123,7 +127,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.connection.set_vserver(vserver)
 
     def send_iter_request(self, api_name, api_args=None,
-                          max_page_length=DEFAULT_MAX_PAGE_LENGTH):
+                          max_page_length=DEFAULT_MAX_PAGE_LENGTH,
+                          enable_tunneling=True):
         """Invoke an iterator-style getter API."""
 
         if not api_args:
@@ -132,7 +137,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         api_args['max-records'] = max_page_length
 
         # Get first page
-        result = self.send_request(api_name, api_args)
+        result = self.send_request(api_name, api_args,
+                                   enable_tunneling=enable_tunneling)
 
         # Most commonly, we can just return here if there is no more data
         next_tag = result.get_child_content('next-tag')
@@ -150,7 +156,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         while next_tag is not None:
             next_api_args = copy.deepcopy(api_args)
             next_api_args['tag'] = next_tag
-            next_result = self.send_request(api_name, next_api_args)
+            next_result = self.send_request(api_name, next_api_args,
+                                            enable_tunneling=enable_tunneling)
 
             next_attributes_list = next_result.get_child_by_name(
                 'attributes-list') or netapp_api.NaElement('none')
@@ -2044,6 +2051,63 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'containing-aggr-name': aggregate_name,
             'size': six.text_type(size_gb) + 'g',
             'volume': volume_name,
+        }
+        api_args.update(self._get_create_volume_api_args(
+            volume_name, thin_provisioned, snapshot_policy, language,
+            snapshot_reserve, volume_type, qos_policy_group, encrypt,
+            adaptive_qos_policy_group))
+
+        self.send_request('volume-create', api_args)
+
+        self.update_volume_efficiency_attributes(volume_name,
+                                                 dedup_enabled,
+                                                 compression_enabled)
+        if max_files is not None:
+            self.set_volume_max_files(volume_name, max_files)
+
+    @na_utils.trace
+    def create_volume_async(self, aggregate_list, volume_name, size_gb,
+                            thin_provisioned=False, snapshot_policy=None,
+                            language=None, snapshot_reserve=None,
+                            volume_type='rw', qos_policy_group=None,
+                            encrypt=False, adaptive_qos_policy_group=None,
+                            auto_provisioned=False, **options):
+        """Creates a volume asynchronously."""
+
+        if adaptive_qos_policy_group and not self.features.ADAPTIVE_QOS:
+            msg = 'Adaptive QoS not supported on this backend ONTAP version.'
+            raise exception.NetAppException(msg)
+
+        api_args = {
+            'size': size_gb * units.Gi,
+            'volume-name': volume_name,
+        }
+        if auto_provisioned:
+            api_args['auto-provision-as'] = 'flexgroup'
+        else:
+            api_args['aggr-list'] = [{'aggr-name': aggr}
+                                     for aggr in aggregate_list]
+        api_args.update(self._get_create_volume_api_args(
+            volume_name, thin_provisioned, snapshot_policy, language,
+            snapshot_reserve, volume_type, qos_policy_group, encrypt,
+            adaptive_qos_policy_group))
+
+        result = self.send_request('volume-create-async', api_args)
+        job_info = {
+            'status': result.get_child_content('result-status'),
+            'jobid': result.get_child_content('result-jobid'),
+            'error-code': result.get_child_content('result-error-code'),
+            'error-message': result.get_child_content('result-error-message')
+        }
+
+        return job_info
+
+    def _get_create_volume_api_args(self, volume_name, thin_provisioned,
+                                    snapshot_policy, language,
+                                    snapshot_reserve, volume_type,
+                                    qos_policy_group, encrypt,
+                                    adaptive_qos_policy_group):
+        api_args = {
             'volume-type': volume_type,
         }
         if volume_type != 'dp':
@@ -2055,8 +2119,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if language is not None:
             api_args['language-code'] = language
         if snapshot_reserve is not None:
-            api_args['percentage-snapshot-reserve'] = six.text_type(
-                snapshot_reserve)
+            api_args['percentage-snapshot-reserve'] = str(snapshot_reserve)
         if qos_policy_group is not None:
             api_args['qos-policy-group-name'] = qos_policy_group
         if adaptive_qos_policy_group is not None:
@@ -2070,13 +2133,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             else:
                 api_args['encrypt'] = 'true'
 
-        self.send_request('volume-create', api_args)
-
-        self.update_volume_efficiency_attributes(volume_name,
-                                                 dedup_enabled,
-                                                 compression_enabled)
-        if max_files is not None:
-            self.set_volume_max_files(volume_name, max_files)
+        return api_args
 
     @na_utils.trace
     def enable_dedup(self, volume_name):
@@ -2107,6 +2164,36 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'enable-compression': 'false'
         }
         self.send_request('sis-set-config', api_args)
+
+    @na_utils.trace
+    def enable_dedupe_async(self, volume_name):
+        """Enable deduplication on FlexVol/FlexGroup volume asynchronously."""
+        api_args = {'volume-name': volume_name}
+        self.connection.send_request('sis-enable-async', api_args)
+
+    @na_utils.trace
+    def disable_dedupe_async(self, volume_name):
+        """Disable deduplication on FlexVol/FlexGroup volume asynchronously."""
+        api_args = {'volume-name': volume_name}
+        self.connection.send_request('sis-disable-async', api_args)
+
+    @na_utils.trace
+    def enable_compression_async(self, volume_name):
+        """Enable compression on FlexVol/FlexGroup volume asynchronously."""
+        api_args = {
+            'volume-name': volume_name,
+            'enable-compression': 'true'
+        }
+        self.connection.send_request('sis-set-config-async', api_args)
+
+    @na_utils.trace
+    def disable_compression_async(self, volume_name):
+        """Disable compression on FlexVol/FlexGroup volume asynchronously."""
+        api_args = {
+            'volume-name': volume_name,
+            'enable-compression': 'false'
+        }
+        self.connection.send_request('sis-set-config-async', api_args)
 
     @na_utils.trace
     def get_volume_efficiency_status(self, volume_name):
@@ -2312,7 +2399,24 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       qos_policy_group=None, hide_snapdir=None,
                       autosize_attributes=None,
                       adaptive_qos_policy_group=None, **options):
-        """Update backend volume for a share as necessary."""
+        """Update backend volume for a share as necessary.
+
+        :param aggregate_name: either a list or a string. List for aggregate
+            names where the FlexGroup resides, while a string for the aggregate
+            name where FlexVol volume is.
+        :param volume_name: name of the modified volume.
+        :param thin_provisioned: volume is thin.
+        :param snapshot_policy: policy of volume snapshot.
+        :param language: language of the volume.
+        :param dedup_enabled: is the deduplication enabled for the volume.
+        :param compression_enabled: is the compression enabled for the volume.
+        :param max_files: number of maximum files in the volume.
+        :param qos_policy_group: name of the QoS policy.
+        :param hide_snapdir: hide snapshot directory.
+        :param autosize_attributes: autosize for the volume.
+        :param adaptive_qos_policy_group: name of the adaptive QoS policy.
+        """
+
         if adaptive_qos_policy_group and not self.features.ADAPTIVE_QOS:
             msg = 'Adaptive QoS not supported on this backend ONTAP version.'
             raise exception.NetAppException(msg)
@@ -2321,7 +2425,6 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'query': {
                 'volume-attributes': {
                     'volume-id-attributes': {
-                        'containing-aggregate-name': aggregate_name,
                         'name': volume_name,
                     },
                 },
@@ -2341,6 +2444,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
+        if isinstance(aggregate_name, str):
+            is_flexgroup = False
+            api_args['query']['volume-attributes']['volume-id-attributes'][
+                'containing-aggregate-name'] = aggregate_name
+        elif isinstance(aggregate_name, list):
+            is_flexgroup = True
+            aggr_list = [{'aggr-name': aggr_name} for aggr_name in
+                         aggregate_name]
+            api_args['query']['volume-attributes']['volume-id-attributes'][
+                'aggr-list'] = aggr_list
         if language:
             api_args['attributes']['volume-attributes'][
                 'volume-language-attributes']['language'] = language
@@ -2373,11 +2486,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         # Efficiency options must be handled separately
         self.update_volume_efficiency_attributes(volume_name,
                                                  dedup_enabled,
-                                                 compression_enabled)
+                                                 compression_enabled,
+                                                 is_flexgroup=is_flexgroup)
 
     @na_utils.trace
     def update_volume_efficiency_attributes(self, volume_name, dedup_enabled,
-                                            compression_enabled):
+                                            compression_enabled,
+                                            is_flexgroup=False):
         """Update dedupe & compression attributes to match desired values."""
         efficiency_status = self.get_volume_efficiency_status(volume_name)
 
@@ -2386,15 +2501,27 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         # enable/disable dedup if needed
         if dedup_enabled and not efficiency_status['dedupe']:
-            self.enable_dedup(volume_name)
+            if is_flexgroup:
+                self.enable_dedupe_async(volume_name)
+            else:
+                self.enable_dedup(volume_name)
         elif not dedup_enabled and efficiency_status['dedupe']:
-            self.disable_dedup(volume_name)
+            if is_flexgroup:
+                self.disable_dedupe_async(volume_name)
+            else:
+                self.disable_dedup(volume_name)
 
         # enable/disable compression if needed
         if compression_enabled and not efficiency_status['compression']:
-            self.enable_compression(volume_name)
+            if is_flexgroup:
+                self.enable_compression_async(volume_name)
+            else:
+                self.enable_compression(volume_name)
         elif not compression_enabled and efficiency_status['compression']:
-            self.disable_compression(volume_name)
+            if is_flexgroup:
+                self.disable_compression_async(volume_name)
+            else:
+                self.disable_compression(volume_name)
 
     @na_utils.trace
     def volume_exists(self, volume_name):
@@ -2470,6 +2597,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'desired-attributes': {
                 'volume-attributes': {
                     'volume-id-attributes': {
+                        'aggr-list': {
+                            'aggr-name': None,
+                        },
                         'containing-aggregate-name': None,
                         'name': None,
                     },
@@ -2487,6 +2617,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         aggregate = volume_id_attributes.get_child_content(
             'containing-aggregate-name')
+        if not aggregate:
+            aggr_list_attr = volume_id_attributes.get_child_by_name(
+                'aggr-list') or netapp_api.NaElement('none')
+            aggregate = [aggr_elem.get_content()
+                         for aggr_elem in aggr_list_attr.get_children()]
 
         if not aggregate:
             msg = _('Could not find aggregate for volume %s.')
@@ -2515,9 +2650,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return self._has_records(result)
 
     @na_utils.trace
-    def volume_has_junctioned_volumes(self, volume_name):
+    def volume_has_junctioned_volumes(self, junction_path):
         """Checks if volume has volumes mounted beneath its junction path."""
-        junction_path = self.get_volume_junction_path(volume_name)
         if not junction_path:
             return False
 
@@ -2575,12 +2709,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'desired-attributes': {
                 'volume-attributes': {
                     'volume-id-attributes': {
+                        'aggr-list': {
+                            'aggr-name': None,
+                        },
                         'containing-aggregate-name': None,
                         'junction-path': None,
                         'name': None,
                         'owning-vserver-name': None,
                         'type': None,
                         'style': None,
+                        'style-extended': None,
                     },
                     'volume-qos-attributes': {
                         'policy-group-name': None,
@@ -2613,9 +2751,19 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         volume_space_attributes = volume_attributes.get_child_by_name(
             'volume-space-attributes') or netapp_api.NaElement('none')
 
+        aggregate = volume_id_attributes.get_child_content(
+            'containing-aggregate-name')
+        aggregate_list = []
+        if not aggregate:
+            aggregate = ''
+            aggr_list_attr = volume_id_attributes.get_child_by_name(
+                'aggr-list') or netapp_api.NaElement('none')
+            aggregate_list = [aggr_elem.get_content()
+                              for aggr_elem in aggr_list_attr.get_children()]
+
         volume = {
-            'aggregate': volume_id_attributes.get_child_content(
-                'containing-aggregate-name'),
+            'aggregate': aggregate,
+            'aggr-list': aggregate_list,
             'junction-path': volume_id_attributes.get_child_content(
                 'junction-path'),
             'name': volume_id_attributes.get_child_content('name'),
@@ -2625,7 +2773,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'style': volume_id_attributes.get_child_content('style'),
             'size': volume_space_attributes.get_child_content('size'),
             'qos-policy-group-name': volume_qos_attributes.get_child_content(
-                'policy-group-name')
+                'policy-group-name'),
+            'style-extended': volume_id_attributes.get_child_content(
+                'style-extended')
         }
         return volume
 
@@ -2640,21 +2790,17 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'volume-attributes': {
                     'volume-id-attributes': {
                         'junction-path': junction_path,
+                        'style-extended': '%s|%s' % (
+                            na_utils.FLEXGROUP_STYLE_EXTENDED,
+                            na_utils.FLEXVOL_STYLE_EXTENDED),
                     },
                 },
             },
             'desired-attributes': {
                 'volume-attributes': {
                     'volume-id-attributes': {
-                        'containing-aggregate-name': None,
-                        'junction-path': None,
                         'name': None,
-                        'type': None,
-                        'style': None,
                     },
-                    'volume-space-attributes': {
-                        'size': None,
-                    }
                 },
             },
         }
@@ -2668,30 +2814,26 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'volume-attributes') or netapp_api.NaElement('none')
         volume_id_attributes = volume_attributes.get_child_by_name(
             'volume-id-attributes') or netapp_api.NaElement('none')
-        volume_space_attributes = volume_attributes.get_child_by_name(
-            'volume-space-attributes') or netapp_api.NaElement('none')
 
         volume = {
-            'aggregate': volume_id_attributes.get_child_content(
-                'containing-aggregate-name'),
-            'junction-path': volume_id_attributes.get_child_content(
-                'junction-path'),
             'name': volume_id_attributes.get_child_content('name'),
-            'type': volume_id_attributes.get_child_content('type'),
-            'style': volume_id_attributes.get_child_content('style'),
-            'size': volume_space_attributes.get_child_content('size'),
         }
         return volume
 
     @na_utils.trace
     def get_volume_to_manage(self, aggregate_name, volume_name):
-        """Get flexvol to be managed by Manila."""
+        """Get flexvol to be managed by Manila.
+
+        :param aggregate_name: either a list or a string. List for aggregate
+            names where the FlexGroup resides, while a string for the aggregate
+            name where FlexVol volume is.
+        :param volume_name: name of the managed volume.
+        """
 
         api_args = {
             'query': {
                 'volume-attributes': {
                     'volume-id-attributes': {
-                        'containing-aggregate-name': aggregate_name,
                         'name': volume_name,
                     },
                 },
@@ -2699,6 +2841,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'desired-attributes': {
                 'volume-attributes': {
                     'volume-id-attributes': {
+                        'aggr-list': {
+                            'aggr-name': None,
+                        },
                         'containing-aggregate-name': None,
                         'junction-path': None,
                         'name': None,
@@ -2715,6 +2860,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
+        if isinstance(aggregate_name, str):
+            api_args['query']['volume-attributes']['volume-id-attributes'][
+                'containing-aggregate-name'] = aggregate_name
+        elif isinstance(aggregate_name, list):
+            aggr_list = [{'aggr-name': aggr_name} for aggr_name in
+                         aggregate_name]
+            api_args['query']['volume-attributes']['volume-id-attributes'][
+                'aggr-list'] = aggr_list
+
         result = self.send_iter_request('volume-get-iter', api_args)
         if not self._has_records(result):
             return None
@@ -2730,9 +2884,19 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         volume_space_attributes = volume_attributes.get_child_by_name(
             'volume-space-attributes') or netapp_api.NaElement('none')
 
+        aggregate = volume_id_attributes.get_child_content(
+            'containing-aggregate-name')
+        aggregate_list = []
+        if not aggregate:
+            aggregate = ''
+            aggr_list_attr = volume_id_attributes.get_child_by_name(
+                'aggr-list') or netapp_api.NaElement('none')
+            aggregate_list = [aggr_elem.get_content()
+                              for aggr_elem in aggr_list_attr.get_children()]
+
         volume = {
-            'aggregate': volume_id_attributes.get_child_content(
-                'containing-aggregate-name'),
+            'aggregate': aggregate,
+            'aggr-list': aggregate_list,
             'junction-path': volume_id_attributes.get_child_content(
                 'junction-path'),
             'name': volume_id_attributes.get_child_content('name'),
@@ -3991,8 +4155,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def create_snapmirror_vol(self, source_vserver, source_volume,
                               destination_vserver, destination_volume,
-                              schedule=None, policy=None,
-                              relationship_type='data_protection'):
+                              relationship_type, schedule=None,
+                              policy=na_utils.MIRROR_ALL_SNAP_POLICY):
         """Creates a SnapMirror relationship between volumes."""
         self._create_snapmirror(source_vserver, destination_vserver,
                                 source_volume=source_volume,
@@ -4003,7 +4167,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def create_snapmirror_svm(self, source_vserver, destination_vserver,
                               schedule=None, policy=None,
-                              relationship_type='data_protection',
+                              relationship_type=na_utils.DATA_PROTECTION_TYPE,
                               identity_preserve=True,
                               max_transfer_rate=None):
         """Creates a SnapMirror relationship between vServers."""
@@ -4017,7 +4181,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def _create_snapmirror(self, source_vserver, destination_vserver,
                            source_volume=None, destination_volume=None,
                            schedule=None, policy=None,
-                           relationship_type='data_protection',
+                           relationship_type=na_utils.DATA_PROTECTION_TYPE,
                            identity_preserve=None, max_transfer_rate=None):
         """Creates a SnapMirror relationship (cDOT 8.2 or later only)."""
         self._ensure_snapmirror_v2()
@@ -4167,7 +4331,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self._ensure_snapmirror_v2()
         api_args = {
             'query': {
-                'snapmirror-destination-info': dest_info
+                'snapmirror-destination-info': dest_info,
             },
             'relationship-info-only': (
                 'true' if relationship_info_only else 'false'),
@@ -5478,6 +5642,126 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def is_svm_migrate_supported(self):
         """Checks if the cluster supports SVM Migrate."""
         return self.features.SVM_MIGRATE
+
+    def get_volume_state(self, name):
+        """Returns volume state for a given name"""
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': name,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-state-attributes': {
+                        'state': None
+                    }
+                }
+            },
+        }
+
+        result = self.send_iter_request('volume-get-iter', api_args)
+
+        volume_state = ''
+        if self._has_records(result):
+            attributes_list = result.get_child_by_name(
+                'attributes-list') or netapp_api.NaElement('none')
+            volume_attributes = attributes_list.get_child_by_name(
+                'volume-attributes') or netapp_api.NaElement('none')
+            volume_state_attributes = volume_attributes.get_child_by_name(
+                'volume-state-attributes') or netapp_api.NaElement('none')
+            volume_state = volume_state_attributes.get_child_content('state')
+
+        return volume_state
+
+    @na_utils.trace
+    def is_flexgroup_volume(self, volume_name):
+        """Determines if the ONTAP volume is FlexGroup."""
+
+        if not self.is_flexgroup_supported():
+            return False
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'style-extended': None,
+                    },
+                },
+            },
+        }
+        result = self.send_request('volume-get-iter', api_args)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        volume_attributes_list = attributes_list.get_children()
+
+        if not self._has_records(result):
+            raise exception.StorageResourceNotFound(name=volume_name)
+        elif len(volume_attributes_list) > 1:
+            msg = _('More than one volume with volume name %(vol)s found.')
+            msg_args = {'vol': volume_name}
+            raise exception.NetAppException(msg % msg_args)
+
+        volume_attributes = volume_attributes_list[0]
+
+        volume_id_attributes = volume_attributes.get_child_by_name(
+            'volume-id-attributes') or netapp_api.NaElement('none')
+
+        return na_utils.is_style_extended_flexgroup(
+            volume_id_attributes.get_child_content('style-extended'))
+
+    @na_utils.trace
+    def is_flexgroup_supported(self):
+        return self.features.FLEXGROUP
+
+    @na_utils.trace
+    def is_flexgroup_fan_out_supported(self):
+        return self.features.FLEXGROUP_FAN_OUT
+
+    @na_utils.trace
+    def get_job_state(self, job_id):
+        """Returns job state for a given job id."""
+
+        api_args = {
+            'query': {
+                'job-info': {
+                    'job-id': job_id,
+                },
+            },
+            'desired-attributes': {
+                'job-info': {
+                    'job-state': None,
+                },
+            },
+        }
+
+        result = self.send_iter_request('job-get-iter', api_args,
+                                        enable_tunneling=False)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        job_info_list = attributes_list.get_children()
+        if not self._has_records(result):
+            msg = _('Could not find job with ID %(id)s.')
+            msg_args = {'id': job_id}
+            raise exception.NetAppException(msg % msg_args)
+        elif len(job_info_list) > 1:
+            msg = _('Could not find unique job for ID %(id)s.')
+            msg_args = {'id': job_id}
+            raise exception.NetAppException(msg % msg_args)
+
+        return job_info_list[0].get_child_content('job-state')
 
     # ------------------------ REST CALLS ONLY ------------------------
 

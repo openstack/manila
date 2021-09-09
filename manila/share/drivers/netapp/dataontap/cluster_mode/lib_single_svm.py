@@ -63,8 +63,14 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
                         'match supplied credentials.')
                 raise exception.InvalidInput(reason=msg)
 
+        # Ensure FlexGroup support
+        vserver_client = self._get_api_client(vserver=self._vserver)
+        aggr_list = vserver_client.list_vserver_aggregates()
+        self._initialize_flexgroup_pools(set(aggr_list))
+
         # Ensure one or more aggregates are available to the vserver.
-        if not self._find_matching_aggregates():
+        if (self.is_flexvol_pool_configured() and
+                not self._find_matching_aggregates(aggregate_names=aggr_list)):
             msg = _('No aggregates are available to Vserver %s for '
                     'provisioning shares. Ensure that one or more aggregates '
                     'are assigned to the Vserver and that the configuration '
@@ -105,6 +111,7 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
             'pools': {
                 'vserver': self._vserver,
                 'aggregates': self._find_matching_aggregates(),
+                'flexgroup_aggregates': self._flexgroup_pools,
             },
         }
 
@@ -123,10 +130,15 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
             _handle_housekeeping_tasks())
 
     @na_utils.trace
-    def _find_matching_aggregates(self):
-        """Find all aggregates match pattern."""
-        vserver_client = self._get_api_client(vserver=self._vserver)
-        aggregate_names = vserver_client.list_vserver_aggregates()
+    def _find_matching_aggregates(self, aggregate_names=None):
+        """Find all aggregates match pattern if FlexVol pool is configured."""
+
+        if not self.is_flexvol_pool_configured():
+            return []
+
+        if not aggregate_names:
+            vserver_client = self._get_api_client(vserver=self._vserver)
+            aggregate_names = vserver_client.list_vserver_aggregates()
 
         root_aggregate_names = []
         if self._have_cluster_creds:

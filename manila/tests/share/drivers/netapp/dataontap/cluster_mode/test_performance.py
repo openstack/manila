@@ -57,7 +57,11 @@ class PerformanceLibraryTestCase(test.TestCase):
         self.fake_aggregates = {
             'pool4': {
                 'netapp_aggregate': 'aggr3',
-            }
+            },
+            'flexgroup_pool': {
+                'netapp_aggregate': 'aggr1 aggr2',
+                'netapp_flexgroup': True,
+            },
         }
 
         self.fake_aggr_names = ['aggr1', 'aggr2', 'aggr3']
@@ -191,6 +195,7 @@ class PerformanceLibraryTestCase(test.TestCase):
             'pool2': 75,
             'pool3': 75,
             'pool4': 75,
+            'flexgroup_pool': performance.DEFAULT_UTILIZATION,
         }
         self.assertEqual(expected_pool_utilization,
                          self.perf_library.pool_utilization)
@@ -232,6 +237,7 @@ class PerformanceLibraryTestCase(test.TestCase):
             'pool2': performance.DEFAULT_UTILIZATION,
             'pool3': performance.DEFAULT_UTILIZATION,
             'pool4': performance.DEFAULT_UTILIZATION,
+            'flexgroup_pool': performance.DEFAULT_UTILIZATION,
         }
         self.assertEqual(expected_pool_utilization,
                          self.perf_library.pool_utilization)
@@ -271,6 +277,7 @@ class PerformanceLibraryTestCase(test.TestCase):
             'pool2': performance.DEFAULT_UTILIZATION,
             'pool3': performance.DEFAULT_UTILIZATION,
             'pool4': performance.DEFAULT_UTILIZATION,
+            'flexgroup_pool': performance.DEFAULT_UTILIZATION,
         }
         self.assertEqual(expected_pool_utilization,
                          self.perf_library.pool_utilization)
@@ -310,6 +317,7 @@ class PerformanceLibraryTestCase(test.TestCase):
             'pool2': performance.DEFAULT_UTILIZATION,
             'pool3': performance.DEFAULT_UTILIZATION,
             'pool4': performance.DEFAULT_UTILIZATION,
+            'flexgroup_pool': performance.DEFAULT_UTILIZATION,
         }
         self.assertEqual(expected_pool_utilization,
                          self.perf_library.pool_utilization)

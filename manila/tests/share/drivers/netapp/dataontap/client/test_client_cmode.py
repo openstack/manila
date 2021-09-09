@@ -27,6 +27,7 @@ from manila import exception
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_base
 from manila.share.drivers.netapp.dataontap.client import client_cmode
+from manila.share.drivers.netapp import utils as na_utils
 from manila import test
 from manila.tests.share.drivers.netapp.dataontap.client import fakes as fake
 
@@ -317,9 +318,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
         args3['tag'] = 'next_tag_2'
 
         mock_send_request.assert_has_calls([
-            mock.call('storage-disk-get-iter', args1),
-            mock.call('storage-disk-get-iter', args2),
-            mock.call('storage-disk-get-iter', args3),
+            mock.call('storage-disk-get-iter', args1, enable_tunneling=True),
+            mock.call('storage-disk-get-iter', args2, enable_tunneling=True),
+            mock.call('storage-disk-get-iter', args3, enable_tunneling=True),
         ])
 
     def test_send_iter_request_single_page(self):
@@ -348,7 +349,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         args['max-records'] = 10
 
         mock_send_request.assert_has_calls([
-            mock.call('storage-disk-get-iter', args),
+            mock.call('storage-disk-get-iter', args, enable_tunneling=True),
         ])
 
     def test_send_iter_request_not_found(self):
@@ -366,7 +367,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         args = {'max-records': client_cmode.DEFAULT_MAX_PAGE_LENGTH}
 
         mock_send_request.assert_has_calls([
-            mock.call('storage-disk-get-iter', args),
+            mock.call('storage-disk-get-iter', args, enable_tunneling=True),
         ])
 
     @ddt.data(fake.INVALID_GET_ITER_RESPONSE_NO_ATTRIBUTES,
@@ -3086,129 +3087,155 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('cifs-domain-preferred-dc-remove',
                       preferred_dc_add_args)])
 
-    def test_create_volume(self):
-
-        self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, 'update_volume_efficiency_attributes')
-
-        self.client.create_volume(
-            fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100)
-
-        volume_create_args = {
-            'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
-            'size': '100g',
-            'volume': fake.SHARE_NAME,
-            'volume-type': 'rw',
-            'junction-path': '/%s' % fake.SHARE_NAME,
-        }
-
-        self.client.send_request.assert_called_once_with('volume-create',
-                                                         volume_create_args)
-
-    @ddt.data({'qos_policy_group_name': None,
-               'adaptive_policy_group_name': None},
-              {'qos_policy_group_name': fake.QOS_POLICY_GROUP_NAME,
-               'adaptive_policy_group_name': None},
-              {'qos_policy_group_name': None,
-               'adaptive_policy_group_name':
-                   fake.ADAPTIVE_QOS_POLICY_GROUP_NAME},
-              )
-    @ddt.unpack
-    def test_create_volume_with_extra_specs(self, qos_policy_group_name,
-                                            adaptive_policy_group_name):
+    @ddt.data(True, False)
+    def test_create_volume(self, set_max_files):
         self.client.features.add_feature('ADAPTIVE_QOS')
         self.mock_object(self.client, 'set_volume_max_files')
-        self.mock_object(self.client, 'enable_dedup')
-        self.mock_object(self.client, 'enable_compression')
         self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'update_volume_efficiency_attributes')
         self.mock_object(
-            self.client,
-            'get_volume_efficiency_status',
-            mock.Mock(return_value={'dedupe': False, 'compression': False}))
+            self.client, '_get_create_volume_api_args',
+            mock.Mock(return_value={}))
 
         self.client.create_volume(
             fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100,
-            thin_provisioned=True, language='en-US',
-            snapshot_policy='default', dedup_enabled=True,
-            compression_enabled=True, max_files=5000, snapshot_reserve=15,
-            qos_policy_group=qos_policy_group_name,
-            adaptive_qos_policy_group=adaptive_policy_group_name)
+            max_files=fake.MAX_FILES if set_max_files else None)
 
         volume_create_args = {
             'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
             'size': '100g',
             'volume': fake.SHARE_NAME,
-            'junction-path': '/%s' % fake.SHARE_NAME,
-            'space-reserve': 'none',
-            'language-code': 'en-US',
-            'volume-type': 'rw',
-            'snapshot-policy': 'default',
-            'percentage-snapshot-reserve': '15',
         }
 
-        if qos_policy_group_name:
-            volume_create_args.update(
-                {'qos-policy-group-name': qos_policy_group_name})
-        if adaptive_policy_group_name:
-            volume_create_args.update(
-                {'qos-adaptive-policy-group-name': adaptive_policy_group_name})
-
+        self.client._get_create_volume_api_args.assert_called_once_with(
+            fake.SHARE_NAME, False, None, None, None, 'rw', None, False, None)
         self.client.send_request.assert_called_with('volume-create',
                                                     volume_create_args)
-        self.client.set_volume_max_files.assert_called_once_with(
-            fake.SHARE_NAME, fake.MAX_FILES)
-        self.client.enable_dedup.assert_called_once_with(fake.SHARE_NAME)
-        self.client.enable_compression.assert_called_once_with(fake.SHARE_NAME)
+        (self.client.update_volume_efficiency_attributes.
+            assert_called_once_with(fake.SHARE_NAME, False, False))
+        if set_max_files:
+            self.client.set_volume_max_files.assert_called_once_with(
+                fake.SHARE_NAME, fake.MAX_FILES)
+        else:
+            self.client.set_volume_max_files.assert_not_called()
 
-    def test_create_encrypted_volume(self):
+    def test_create_volume_adaptive_not_supported(self):
 
+        self.client.features.add_feature('ADAPTIVE_QOS', supported=False)
         self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, 'update_volume_efficiency_attributes')
-        self.client.features.add_feature('FLEXVOL_ENCRYPTION')
-
-        self.client.create_volume(
-            fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100, encrypt=True)
-
-        volume_create_args = {
-            'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
-            'size': '100g',
-            'volume': fake.SHARE_NAME,
-            'volume-type': 'rw',
-            'junction-path': '/%s' % fake.SHARE_NAME,
-            'encrypt': 'true',
-        }
-
-        self.client.send_request.assert_called_once_with('volume-create',
-                                                         volume_create_args)
-
-    def test_create_non_encrypted_volume(self):
-
-        self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, 'update_volume_efficiency_attributes')
-        self.client.features.add_feature('FLEXVOL_ENCRYPTION')
-
-        self.client.create_volume(
-            fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100, encrypt=False)
-
-        volume_create_args = {
-            'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
-            'size': '100g',
-            'volume': fake.SHARE_NAME,
-            'volume-type': 'rw',
-            'junction-path': '/%s' % fake.SHARE_NAME,
-        }
-
-        self.client.send_request.assert_called_once_with('volume-create',
-                                                         volume_create_args)
-
-    def test_create_encrypted_volume_not_supported(self):
-
         self.assertRaises(exception.NetAppException,
                           self.client.create_volume,
                           fake.SHARE_AGGREGATE_NAME,
                           fake.SHARE_NAME,
                           100,
-                          encrypt=True)
+                          adaptive_qos_policy_group='fake')
+        self.client.send_request.assert_not_called()
+
+    @ddt.data(True, False)
+    def test_create_volume_async(self, auto_provisioned):
+        api_response = netapp_api.NaElement(fake.ASYNC_OPERATION_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+        self.mock_object(
+            self.client, '_get_create_volume_api_args',
+            mock.Mock(return_value={}))
+
+        result = self.client.create_volume_async(
+            [fake.SHARE_AGGREGATE_NAME], fake.SHARE_NAME, 1,
+            auto_provisioned=auto_provisioned)
+
+        volume_create_args = {
+            'size': 1073741824,
+            'volume-name': fake.SHARE_NAME,
+        }
+        if auto_provisioned:
+            volume_create_args['auto-provision-as'] = 'flexgroup'
+        else:
+            volume_create_args['aggr-list'] = [
+                {'aggr-name': fake.SHARE_AGGREGATE_NAME}]
+
+        expected_result = {
+            'status': 'in_progress',
+            'jobid': '123',
+            'error-code': None,
+            'error-message': None,
+        }
+
+        self.client._get_create_volume_api_args.assert_called_once_with(
+            fake.SHARE_NAME, False, None, None, None, 'rw', None, False, None)
+        self.client.send_request.assert_called_with('volume-create-async',
+                                                    volume_create_args)
+        self.assertEqual(expected_result, result)
+
+    def test_create_volume_async_adaptive_not_supported(self):
+
+        self.client.features.add_feature('ADAPTIVE_QOS', supported=False)
+        self.mock_object(self.client, 'send_request')
+        self.assertRaises(exception.NetAppException,
+                          self.client.create_volume_async,
+                          [fake.SHARE_AGGREGATE_NAME],
+                          fake.SHARE_NAME,
+                          100,
+                          adaptive_qos_policy_group='fake')
+        self.client.send_request.assert_not_called()
+
+    def test_get_create_volume_api_args_with_extra_specs(self):
+
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION')
+        volume_type = 'rw'
+        thin_provisioned = 'none'
+        snapshot_policy = 'default'
+        language = 'en-US'
+        reserve = 15
+        qos_name = 'fake_qos'
+        encrypt = True
+        qos_adaptive_name = 'fake_adaptive_qos'
+
+        result_api_args = self.client._get_create_volume_api_args(
+            fake.SHARE_NAME, thin_provisioned, snapshot_policy, language,
+            reserve, volume_type, qos_name, encrypt, qos_adaptive_name)
+
+        expected_api_args = {
+            'volume-type': volume_type,
+            'junction-path': '/fake_share',
+            'space-reserve': thin_provisioned,
+            'snapshot-policy': snapshot_policy,
+            'language-code': language,
+            'percentage-snapshot-reserve': str(reserve),
+            'qos-policy-group-name': qos_name,
+            'qos-adaptive-policy-group-name': qos_adaptive_name,
+            'encrypt': 'true',
+        }
+        self.assertEqual(expected_api_args, result_api_args)
+
+    def test_get_create_volume_api_args_no_extra_specs(self):
+
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION')
+        volume_type = 'dp'
+        thin_provisioned = False
+        snapshot_policy = None
+        language = None
+        reserve = None
+        qos_name = None
+        encrypt = False
+        qos_adaptive_name = None
+
+        result_api_args = self.client._get_create_volume_api_args(
+            fake.SHARE_NAME, thin_provisioned, snapshot_policy, language,
+            reserve, volume_type, qos_name, encrypt, qos_adaptive_name)
+
+        expected_api_args = {
+            'volume-type': volume_type,
+        }
+        self.assertEqual(expected_api_args, result_api_args)
+
+    def test_get_create_volume_api_args_encrypted_not_supported(self):
+
+        encrypt = True
+        self.assertRaises(exception.NetAppException,
+                          self.client._get_create_volume_api_args,
+                          fake.SHARE_NAME, True, 'default', 'en-US',
+                          15, 'rw', 'fake_qos', encrypt, 'fake_qos_adaptive')
 
     def test_is_flexvol_encrypted_unsupported(self):
 
@@ -3349,6 +3376,53 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with('sis-set-config',
                                                          sis_set_config_args)
 
+    def test_enable_dedupe_async(self):
+        self.mock_object(self.client.connection, 'send_request')
+
+        self.client.enable_dedupe_async(fake.SHARE_NAME)
+
+        sis_enable_args = {'volume-name': fake.SHARE_NAME}
+
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-enable-async', sis_enable_args)
+
+    def test_disable_dedupe_async(self):
+
+        self.mock_object(self.client.connection, 'send_request')
+
+        self.client.disable_dedupe_async(fake.SHARE_NAME)
+
+        sis_enable_args = {'volume-name': fake.SHARE_NAME}
+
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-disable-async', sis_enable_args)
+
+    def test_enable_compression_async(self):
+        self.mock_object(self.client.connection, 'send_request')
+
+        self.client.enable_compression_async(fake.SHARE_NAME)
+
+        sis_set_config_args = {
+            'volume-name': fake.SHARE_NAME,
+            'enable-compression': 'true'
+        }
+
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-set-config-async', sis_set_config_args)
+
+    def test_disable_compression_async(self):
+        self.mock_object(self.client.connection, 'send_request')
+
+        self.client.disable_compression_async(fake.SHARE_NAME)
+
+        sis_set_config_args = {
+            'volume-name': fake.SHARE_NAME,
+            'enable-compression': 'false'
+        }
+
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-set-config-async', sis_set_config_args)
+
     def test_get_volume_efficiency_status(self):
 
         api_response = netapp_api.NaElement(fake.SIS_GET_ITER_RESPONSE)
@@ -3443,19 +3517,23 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'vserver-rename', vserver_api_args
         )
 
-    def test_modify_volume_no_optional_args(self):
+    @ddt.data(True, False)
+    def test_modify_volume_no_optional_args(self, is_flexgroup):
 
         self.mock_object(self.client, 'send_request')
         mock_update_volume_efficiency_attributes = self.mock_object(
             self.client, 'update_volume_efficiency_attributes')
 
-        self.client.modify_volume(fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME)
+        aggr = fake.SHARE_AGGREGATE_NAME
+        if is_flexgroup:
+            aggr = list(fake.SHARE_AGGREGATE_NAMES)
+
+        self.client.modify_volume(aggr, fake.SHARE_NAME)
 
         volume_modify_iter_api_args = {
             'query': {
                 'volume-attributes': {
                     'volume-id-attributes': {
-                        'containing-aggregate-name': fake.SHARE_AGGREGATE_NAME,
                         'name': fake.SHARE_NAME,
                     },
                 },
@@ -3473,10 +3551,19 @@ class NetAppClientCmodeTestCase(test.TestCase):
             },
         }
 
+        if is_flexgroup:
+            volume_modify_iter_api_args['query']['volume-attributes'][
+                'volume-id-attributes']['aggr-list'] = [
+                {'aggr-name': aggr[0]}, {'aggr-name': aggr[1]}]
+        else:
+            volume_modify_iter_api_args['query']['volume-attributes'][
+                'volume-id-attributes'][
+                'containing-aggregate-name'] = aggr
+
         self.client.send_request.assert_called_once_with(
             'volume-modify-iter', volume_modify_iter_api_args)
         mock_update_volume_efficiency_attributes.assert_called_once_with(
-            fake.SHARE_NAME, False, False)
+            fake.SHARE_NAME, False, False, is_flexgroup=is_flexgroup)
 
     @ddt.data((fake.QOS_POLICY_GROUP_NAME, None),
               (None, fake.ADAPTIVE_QOS_POLICY_GROUP_NAME))
@@ -3550,21 +3637,30 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             'volume-modify-iter', volume_modify_iter_api_args)
         mock_update_volume_efficiency_attributes.assert_called_once_with(
-            fake.SHARE_NAME, True, False)
+            fake.SHARE_NAME, True, False, is_flexgroup=False)
 
     @ddt.data(
-        {'existing': (True, True), 'desired': (True, True)},
-        {'existing': (True, True), 'desired': (False, False)},
-        {'existing': (True, True), 'desired': (True, False)},
-        {'existing': (True, False), 'desired': (True, False)},
-        {'existing': (True, False), 'desired': (False, False)},
-        {'existing': (True, False), 'desired': (True, True)},
-        {'existing': (False, False), 'desired': (False, False)},
-        {'existing': (False, False), 'desired': (True, False)},
-        {'existing': (False, False), 'desired': (True, True)},
+        {'existing': (True, True), 'desired': (True, True), 'fg': False},
+        {'existing': (True, True), 'desired': (False, False), 'fg': False},
+        {'existing': (True, True), 'desired': (True, False), 'fg': False},
+        {'existing': (True, False), 'desired': (True, False), 'fg': False},
+        {'existing': (True, False), 'desired': (False, False), 'fg': False},
+        {'existing': (True, False), 'desired': (True, True), 'fg': False},
+        {'existing': (False, False), 'desired': (False, False), 'fg': False},
+        {'existing': (False, False), 'desired': (True, False), 'fg': False},
+        {'existing': (False, False), 'desired': (True, True), 'fg': False},
+        {'existing': (True, True), 'desired': (True, True), 'fg': True},
+        {'existing': (True, True), 'desired': (False, False), 'fg': True},
+        {'existing': (True, True), 'desired': (True, False), 'fg': True},
+        {'existing': (True, False), 'desired': (True, False), 'fg': True},
+        {'existing': (True, False), 'desired': (False, False), 'fg': True},
+        {'existing': (True, False), 'desired': (True, True), 'fg': True},
+        {'existing': (False, False), 'desired': (False, False), 'fg': True},
+        {'existing': (False, False), 'desired': (True, False), 'fg': True},
+        {'existing': (False, False), 'desired': (True, True), 'fg': True},
     )
     @ddt.unpack
-    def test_update_volume_efficiency_attributes(self, existing, desired):
+    def test_update_volume_efficiency_attributes(self, existing, desired, fg):
 
         existing_dedupe = existing[0]
         existing_compression = existing[1]
@@ -3578,33 +3674,66 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                     'compression': existing_compression}))
         mock_enable_compression = self.mock_object(self.client,
                                                    'enable_compression')
+        mock_enable_compression_async = self.mock_object(
+            self.client, 'enable_compression_async')
         mock_disable_compression = self.mock_object(self.client,
                                                     'disable_compression')
+        mock_disable_compression_async = self.mock_object(
+            self.client, 'disable_compression_async')
         mock_enable_dedup = self.mock_object(self.client, 'enable_dedup')
+        mock_enable_dedup_async = self.mock_object(self.client,
+                                                   'enable_dedupe_async')
         mock_disable_dedup = self.mock_object(self.client, 'disable_dedup')
+        mock_disable_dedup_async = self.mock_object(self.client,
+                                                    'disable_dedupe_async')
 
         self.client.update_volume_efficiency_attributes(
-            fake.SHARE_NAME, desired_dedupe, desired_compression)
+            fake.SHARE_NAME, desired_dedupe, desired_compression,
+            is_flexgroup=fg)
 
         if existing_dedupe == desired_dedupe:
-            self.assertFalse(mock_enable_dedup.called)
-            self.assertFalse(mock_disable_dedup.called)
+            if fg:
+                self.assertFalse(mock_enable_dedup_async.called)
+                self.assertFalse(mock_disable_dedup_async.called)
+            else:
+                self.assertFalse(mock_enable_dedup.called)
+                self.assertFalse(mock_disable_dedup.called)
         elif existing_dedupe and not desired_dedupe:
-            self.assertFalse(mock_enable_dedup.called)
-            self.assertTrue(mock_disable_dedup.called)
+            if fg:
+                self.assertFalse(mock_enable_dedup_async.called)
+                self.assertTrue(mock_disable_dedup_async.called)
+            else:
+                self.assertFalse(mock_enable_dedup.called)
+                self.assertTrue(mock_disable_dedup.called)
         elif not existing_dedupe and desired_dedupe:
-            self.assertTrue(mock_enable_dedup.called)
-            self.assertFalse(mock_disable_dedup.called)
+            if fg:
+                self.assertTrue(mock_enable_dedup_async.called)
+                self.assertFalse(mock_disable_dedup_async.called)
+            else:
+                self.assertTrue(mock_enable_dedup.called)
+                self.assertFalse(mock_disable_dedup.called)
 
         if existing_compression == desired_compression:
-            self.assertFalse(mock_enable_compression.called)
-            self.assertFalse(mock_disable_compression.called)
+            if fg:
+                self.assertFalse(mock_enable_compression_async.called)
+                self.assertFalse(mock_disable_compression_async.called)
+            else:
+                self.assertFalse(mock_enable_compression.called)
+                self.assertFalse(mock_disable_compression.called)
         elif existing_compression and not desired_compression:
-            self.assertFalse(mock_enable_compression.called)
-            self.assertTrue(mock_disable_compression.called)
+            if fg:
+                self.assertFalse(mock_enable_compression_async.called)
+                self.assertTrue(mock_disable_compression_async.called)
+            else:
+                self.assertFalse(mock_enable_compression.called)
+                self.assertTrue(mock_disable_compression.called)
         elif not existing_compression and desired_compression:
-            self.assertTrue(mock_enable_compression.called)
-            self.assertFalse(mock_disable_compression.called)
+            if fg:
+                self.assertTrue(mock_enable_compression_async.called)
+                self.assertFalse(mock_disable_compression_async.called)
+            else:
+                self.assertTrue(mock_enable_compression.called)
+                self.assertFalse(mock_disable_compression.called)
 
     def test_set_volume_size(self):
 
@@ -3865,10 +3994,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.SNAPSHOT_NAME,
                           fake.SHARE_NAME)
 
-    def test_get_aggregate_for_volume(self):
+    @ddt.data(True, False)
+    def test_get_aggregate_for_volume(self, is_flexgroup):
 
         api_response = netapp_api.NaElement(
-            fake.GET_AGGREGATE_FOR_VOLUME_RESPONSE)
+            fake.GET_AGGREGATE_FOR_FLEXGROUP_VOL_RESPONSE if is_flexgroup
+            else fake.GET_AGGREGATE_FOR_VOLUME_RESPONSE)
         self.mock_object(self.client,
                          'send_iter_request',
                          mock.Mock(return_value=api_response))
@@ -3886,6 +4017,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'desired-attributes': {
                 'volume-attributes': {
                     'volume-id-attributes': {
+                        'aggr-list': {
+                            'aggr-name': None,
+                        },
                         'containing-aggregate-name': None,
                         'name': None
                     }
@@ -3895,7 +4029,10 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_iter_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
-        self.assertEqual(fake.SHARE_AGGREGATE_NAME, result)
+        if is_flexgroup:
+            self.assertEqual([fake.SHARE_AGGREGATE_NAME], result)
+        else:
+            self.assertEqual(fake.SHARE_AGGREGATE_NAME, result)
 
     def test_get_aggregate_for_volume_not_found(self):
 
@@ -3954,11 +4091,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          mock.Mock(return_value=api_response))
 
         fake_junction_path = '/%s' % fake.SHARE_NAME
-        self.mock_object(self.client,
-                         'get_volume_junction_path',
-                         mock.Mock(return_value=fake_junction_path))
-
-        result = self.client.volume_has_junctioned_volumes(fake.SHARE_NAME)
+        result = self.client.volume_has_junctioned_volumes(fake_junction_path)
 
         volume_get_iter_args = {
             'query': {
@@ -3982,11 +4115,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_volume_has_junctioned_volumes_no_junction_path(self):
 
-        self.mock_object(self.client,
-                         'get_volume_junction_path',
-                         mock.Mock(return_value=''))
-
-        result = self.client.volume_has_junctioned_volumes(fake.SHARE_NAME)
+        result = self.client.volume_has_junctioned_volumes(None)
 
         self.assertFalse(result)
 
@@ -3998,18 +4127,17 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          mock.Mock(return_value=api_response))
 
         fake_junction_path = '/%s' % fake.SHARE_NAME
-        self.mock_object(self.client,
-                         'get_volume_junction_path',
-                         mock.Mock(return_value=fake_junction_path))
-
-        result = self.client.volume_has_junctioned_volumes(fake.SHARE_NAME)
+        result = self.client.volume_has_junctioned_volumes(fake_junction_path)
 
         self.assertFalse(result)
 
-    def test_get_volume(self):
+    @ddt.data(True, False)
+    def test_get_volume(self, is_flexgroup):
 
         api_response = netapp_api.NaElement(
-            fake.VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE)
+            fake.VOLUME_GET_ITER_FLEXGROUP_VOLUME_TO_MANAGE_RESPONSE
+            if is_flexgroup
+            else fake.VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE)
         self.mock_object(self.client,
                          'send_request',
                          mock.Mock(return_value=api_response))
@@ -4027,12 +4155,16 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'desired-attributes': {
                 'volume-attributes': {
                     'volume-id-attributes': {
+                        'aggr-list': {
+                            'aggr-name': None,
+                        },
                         'containing-aggregate-name': None,
                         'junction-path': None,
                         'name': None,
                         'owning-vserver-name': None,
                         'type': None,
                         'style': None,
+                        'style-extended': None,
                     },
                     'volume-space-attributes': {
                         'size': None,
@@ -4045,7 +4177,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
 
         expected = {
-            'aggregate': fake.SHARE_AGGREGATE_NAME,
+            'aggregate': '' if is_flexgroup else fake.SHARE_AGGREGATE_NAME,
+            'aggr-list': [fake.SHARE_AGGREGATE_NAME] if is_flexgroup else [],
             'junction-path': '/%s' % fake.SHARE_NAME,
             'name': fake.SHARE_NAME,
             'type': 'rw',
@@ -4053,6 +4186,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'size': fake.SHARE_SIZE,
             'owning-vserver-name': fake.VSERVER_NAME,
             'qos-policy-group-name': fake.QOS_POLICY_GROUP_NAME,
+            'style-extended': (fake.FLEXGROUP_STYLE_EXTENDED
+                               if is_flexgroup
+                               else fake.FLEXVOL_STYLE_EXTENDED),
         }
         self.client.send_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
@@ -4078,12 +4214,16 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'desired-attributes': {
                 'volume-attributes': {
                     'volume-id-attributes': {
+                        'aggr-list': {
+                            'aggr-name': None,
+                        },
                         'containing-aggregate-name': None,
                         'junction-path': None,
                         'name': None,
                         'owning-vserver-name': None,
                         'type': None,
                         'style': None,
+                        'style-extended': None,
                     },
                     'volume-space-attributes': {
                         'size': None,
@@ -4097,6 +4237,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         expected = {
             'aggregate': fake.SHARE_AGGREGATE_NAME,
+            'aggr-list': [],
             'junction-path': '/%s' % fake.SHARE_NAME,
             'name': fake.SHARE_NAME,
             'type': 'rw',
@@ -4104,6 +4245,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'size': fake.SHARE_SIZE,
             'owning-vserver-name': fake.VSERVER_NAME,
             'qos-policy-group-name': None,
+            'style-extended': fake.FLEXVOL_STYLE_EXTENDED,
         }
         self.client.send_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
@@ -4148,31 +4290,20 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 'volume-attributes': {
                     'volume-id-attributes': {
                         'junction-path': fake_junction_path,
+                        'style-extended': 'flexgroup|flexvol',
                     },
                 },
             },
             'desired-attributes': {
                 'volume-attributes': {
                     'volume-id-attributes': {
-                        'containing-aggregate-name': None,
-                        'junction-path': None,
                         'name': None,
-                        'type': None,
-                        'style': None,
                     },
-                    'volume-space-attributes': {
-                        'size': None,
-                    }
                 },
             },
         }
         expected = {
-            'aggregate': fake.SHARE_AGGREGATE_NAME,
-            'junction-path': fake_junction_path,
             'name': fake.SHARE_NAME,
-            'type': 'rw',
-            'style': 'flex',
-            'size': fake.SHARE_SIZE,
         }
         self.client.send_iter_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
@@ -4196,22 +4327,26 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertIsNone(result)
 
-    def test_get_volume_to_manage(self):
+    @ddt.data(True, False)
+    def test_get_volume_to_manage(self, is_flexgroup):
 
         api_response = netapp_api.NaElement(
-            fake.VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE)
+            fake.VOLUME_GET_ITER_FLEXGROUP_VOLUME_TO_MANAGE_RESPONSE
+            if is_flexgroup
+            else fake.VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE)
         self.mock_object(self.client,
                          'send_iter_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_volume_to_manage(fake.SHARE_AGGREGATE_NAME,
-                                                  fake.SHARE_NAME)
+        aggr = fake.SHARE_AGGREGATE_NAME
+        result = self.client.get_volume_to_manage(
+            [aggr] if is_flexgroup else aggr,
+            fake.SHARE_NAME)
 
         volume_get_iter_args = {
             'query': {
                 'volume-attributes': {
                     'volume-id-attributes': {
-                        'containing-aggregate-name': fake.SHARE_AGGREGATE_NAME,
                         'name': fake.SHARE_NAME,
                     },
                 },
@@ -4219,6 +4354,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'desired-attributes': {
                 'volume-attributes': {
                     'volume-id-attributes': {
+                        'aggr-list': {
+                            'aggr-name': None,
+                        },
                         'containing-aggregate-name': None,
                         'junction-path': None,
                         'name': None,
@@ -4235,8 +4373,16 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 },
             },
         }
+        if is_flexgroup:
+            volume_get_iter_args['query']['volume-attributes'][
+                'volume-id-attributes']['aggr-list'] = [{'aggr-name': aggr}]
+        else:
+            volume_get_iter_args['query']['volume-attributes'][
+                'volume-id-attributes']['containing-aggregate-name'] = aggr
+
         expected = {
-            'aggregate': fake.SHARE_AGGREGATE_NAME,
+            'aggregate': '' if is_flexgroup else aggr,
+            'aggr-list': [aggr] if is_flexgroup else [],
             'junction-path': '/%s' % fake.SHARE_NAME,
             'name': fake.SHARE_NAME,
             'type': 'rw',
@@ -6144,14 +6290,14 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.create_snapmirror_vol(
             fake.SM_SOURCE_VSERVER, fake.SM_SOURCE_VOLUME,
             fake.SM_DEST_VSERVER, fake.SM_DEST_VOLUME,
-            schedule=schedule, policy=policy)
+            na_utils.DATA_PROTECTION_TYPE, schedule=schedule, policy=policy)
 
         snapmirror_create_args = {
             'source-vserver': fake.SM_SOURCE_VSERVER,
             'source-volume': fake.SM_SOURCE_VOLUME,
             'destination-vserver': fake.SM_DEST_VSERVER,
             'destination-volume': fake.SM_DEST_VOLUME,
-            'relationship-type': 'data_protection',
+            'relationship-type': na_utils.DATA_PROTECTION_TYPE,
         }
         if schedule:
             snapmirror_create_args['schedule'] = schedule
@@ -6167,14 +6313,16 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.create_snapmirror_vol(
             fake.SM_SOURCE_VSERVER, fake.SM_SOURCE_VOLUME,
-            fake.SM_DEST_VSERVER, fake.SM_DEST_VOLUME)
+            fake.SM_DEST_VSERVER, fake.SM_DEST_VOLUME,
+            na_utils.DATA_PROTECTION_TYPE)
 
         snapmirror_create_args = {
             'source-vserver': fake.SM_SOURCE_VSERVER,
             'source-volume': fake.SM_SOURCE_VOLUME,
             'destination-vserver': fake.SM_DEST_VSERVER,
             'destination-volume': fake.SM_DEST_VOLUME,
-            'relationship-type': 'data_protection',
+            'relationship-type': na_utils.DATA_PROTECTION_TYPE,
+            'policy': na_utils.MIRROR_ALL_SNAP_POLICY,
         }
         self.client.send_request.assert_has_calls([
             mock.call('snapmirror-create', snapmirror_create_args)])
@@ -6187,7 +6335,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertRaises(netapp_api.NaApiError,
                           self.client.create_snapmirror_vol,
                           fake.SM_SOURCE_VSERVER, fake.SM_SOURCE_VOLUME,
-                          fake.SM_DEST_VSERVER, fake.SM_DEST_VOLUME)
+                          fake.SM_DEST_VSERVER, fake.SM_DEST_VOLUME,
+                          na_utils.DATA_PROTECTION_TYPE)
         self.assertTrue(self.client.send_request.called)
 
     def test_create_snapmirror_svm(self):
@@ -6200,7 +6349,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         snapmirror_create_args = {
             'source-vserver': fake.SM_SOURCE_VSERVER,
             'destination-vserver': fake.SM_DEST_VSERVER,
-            'relationship-type': 'data_protection',
+            'relationship-type': na_utils.DATA_PROTECTION_TYPE,
             'identity-preserve': 'true',
             'max-transfer-rate': 'fake_xfer_rate'
         }
@@ -6295,6 +6444,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(self.client, 'send_request')
         self.mock_object(self.client, 'get_snapmirror_destinations',
                          mock.Mock(return_value=snapmirror_destinations_list))
+        self.mock_object(self.client, '_ensure_snapmirror_v2')
 
         self.client.release_snapmirror_vol(
             fake.SM_SOURCE_VSERVER, fake.SM_SOURCE_VOLUME,
@@ -6329,7 +6479,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.SM_DEST_VSERVER, fake.SM_DEST_VOLUME)
 
     def test_release_snapmirror_svm(self):
+
         self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_ensure_snapmirror_v2')
 
         self.client.release_snapmirror_svm(
             fake.SM_SOURCE_VSERVER, fake.SM_DEST_VSERVER)
@@ -8518,3 +8670,189 @@ class NetAppClientCmodeTestCase(test.TestCase):
             fake.FAKE_JOB_ID
         )
         self.client.get_job.assert_called_once_with(fake.FAKE_JOB_ID)
+
+    @ddt.data(True, False)
+    def test_get_volume_state(self, has_record):
+
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_GET_ITER_STATE_RESPONSE)
+        mock_send_iter_request = self.mock_object(
+            self.client, 'send_iter_request',
+            mock.Mock(return_value=api_response))
+        mock_has_record = self.mock_object(self.client,
+                                           '_has_records',
+                                           mock.Mock(return_value=has_record))
+
+        state = self.client.get_volume_state(fake.SHARE_NAME)
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-state-attributes': {
+                        'state': None
+                    }
+                }
+            },
+        }
+        mock_send_iter_request.assert_called_once_with(
+            'volume-get-iter', volume_get_iter_args)
+        mock_has_record.assert_called_once_with(api_response)
+        if has_record:
+            self.assertEqual('online', state)
+        else:
+            self.assertEqual('', state)
+
+    @ddt.data(True, False)
+    def test_is_flexgroup_volume(self, is_flexgroup):
+
+        self.client.features.add_feature('FLEXGROUP', supported=True)
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_GET_ITER_STYLE_FLEXGROUP_RESPONSE
+            if is_flexgroup else fake.VOLUME_GET_ITER_STYLE_FLEXVOL_RESPONSE)
+        mock_send_iter_request = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=api_response))
+        mock_has_record = self.mock_object(self.client,
+                                           '_has_records',
+                                           mock.Mock(return_value=True))
+        mock_is_style_extended_flexgroup = self.mock_object(
+            na_utils, 'is_style_extended_flexgroup',
+            mock.Mock(return_value=is_flexgroup))
+
+        is_flexgroup_res = self.client.is_flexgroup_volume(fake.SHARE_NAME)
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'style-extended': None,
+                    },
+                },
+            },
+        }
+        mock_send_iter_request.assert_called_once_with(
+            'volume-get-iter', volume_get_iter_args)
+        mock_has_record.assert_called_once_with(api_response)
+        mock_is_style_extended_flexgroup.assert_called_once_with(
+            fake.FLEXGROUP_STYLE_EXTENDED
+            if is_flexgroup else fake.FLEXVOL_STYLE_EXTENDED)
+        self.assertEqual(is_flexgroup, is_flexgroup_res)
+
+    def test_is_flexgroup_volume_not_found(self):
+
+        self.client.features.add_feature('FLEXGROUP', supported=True)
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.StorageResourceNotFound,
+                          self.client.is_flexgroup_volume,
+                          fake.SHARE_NAME)
+
+    def test_is_flexgroup_volume_not_unique(self):
+
+        self.client.features.add_feature('FLEXGROUP', supported=True)
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_GET_ITER_NOT_UNIQUE_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.is_flexgroup_volume,
+                          fake.SHARE_NAME)
+
+    def test_is_flexgroup_volume_unsupported(self):
+
+        self.client.features.add_feature('FLEXGROUP', supported=False)
+
+        result = self.client.is_flexgroup_volume(fake.SHARE_NAME)
+
+        self.assertFalse(result)
+
+    def test_is_flexgroup_supported(self):
+        self.client.features.add_feature('FLEXGROUP')
+
+        result = self.client.is_flexgroup_supported()
+
+        self.assertTrue(result)
+
+    def test_is_flexgroup_fan_out_supported(self):
+        self.client.features.add_feature('FLEXGROUP_FAN_OUT')
+
+        result = self.client.is_flexgroup_fan_out_supported()
+
+        self.assertTrue(result)
+
+    def test_get_job_state(self):
+
+        api_response = netapp_api.NaElement(fake.JOB_GET_STATE_RESPONSE)
+        mock_send_iter_request = self.mock_object(
+            self.client, 'send_iter_request',
+            mock.Mock(return_value=api_response))
+        mock_has_record = self.mock_object(self.client,
+                                           '_has_records',
+                                           mock.Mock(return_value=True))
+
+        job_state_res = self.client.get_job_state(fake.JOB_ID)
+
+        job_get_iter_args = {
+            'query': {
+                'job-info': {
+                    'job-id': fake.JOB_ID,
+                },
+            },
+            'desired-attributes': {
+                'job-info': {
+                    'job-state': None,
+                },
+            },
+        }
+        mock_send_iter_request.assert_called_once_with(
+            'job-get-iter', job_get_iter_args, enable_tunneling=False)
+        mock_has_record.assert_called_once_with(api_response)
+        self.assertEqual(fake.JOB_STATE, job_state_res)
+
+    def test_get_job_state_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         '_has_records',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_job_state,
+                          fake.JOB_ID)
+
+    def test_get_job_state_not_unique(self):
+
+        api_response = netapp_api.NaElement(
+            fake.JOB_GET_STATE_NOT_UNIQUE_RESPONSE)
+        self.mock_object(self.client,
+                         '_has_records',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_job_state,
+                          fake.JOB_ID)
