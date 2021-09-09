@@ -20,6 +20,7 @@ import webob
 
 from manila.api.v1 import share_metadata
 from manila.api.v1 import shares
+from manila.common import constants
 from manila import context
 from manila import db
 from manila.share import api
@@ -27,6 +28,8 @@ from manila import test
 from manila.tests.api import fakes
 
 CONF = cfg.CONF
+AFFINITY_KEY = constants.AdminOnlyMetadata.AFFINITY_KEY
+ANTI_AFFINITY_KEY = constants.AdminOnlyMetadata.ANTI_AFFINITY_KEY
 
 
 @ddt.ddt
@@ -60,6 +63,7 @@ class ShareMetaDataTest(test.TestCase):
                 'key3': 'value3',
             },
         }
+
         self.assertEqual(expected, res_dict)
 
     def test_index_nonexistent_share(self):
@@ -115,6 +119,51 @@ class ShareMetaDataTest(test.TestCase):
         req.method = 'DELETE'
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.delete, req, self.share_id, 'key6')
+
+    @ddt.data((AFFINITY_KEY, '/' + AFFINITY_KEY),
+              (ANTI_AFFINITY_KEY, '/' + ANTI_AFFINITY_KEY))
+    @ddt.unpack
+    def test_delete_affinities_user(self, key, path):
+        self.userctxt = context.RequestContext('demo', 'fake', False)
+        req = fakes.HTTPRequest.blank(self.url + path)
+        req.method = 'DELETE'
+        req.content_type = "application/json"
+        req.environ['manila.context'] = self.userctxt
+        establish = {key: 'share1'}
+        db.share_metadata_update(
+            self.ctxt, self.share_id, establish, delete=False)
+
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller.delete,
+            req, self.share_id, key)
+
+        #  test that nothing was deleted
+        data = db.share_metadata_get(self.userctxt, self.share_id)
+        if key in data:
+            res_dict = {'meta': {key: data[key]}}
+        self.assertEqual(res_dict, {'meta': establish})
+
+    @ddt.data((AFFINITY_KEY, '/' + AFFINITY_KEY),
+              (ANTI_AFFINITY_KEY, '/' + ANTI_AFFINITY_KEY))
+    @ddt.unpack
+    def test_delete_affinities_admin(self, key, path):
+        req = fakes.HTTPRequest.blank(self.url + path)
+        req.method = 'DELETE'
+        req.content_type = "application/json"
+        admin_context = req.environ['manila.context'].elevated()
+        req.environ['manila.context'] = admin_context
+        establish = {key: 'share1'}
+        db.share_metadata_update(
+            self.ctxt, self.share_id, establish, delete=False)
+
+        self.controller.delete(
+            req, self.share_id, key)
+
+        #  test that key was deleted
+        data = db.share_metadata_get(self.ctxt, self.share_id)
+        res_dict = {'meta': data}
+        self.assertEqual(res_dict, {'meta': self.origin_metadata})
 
     def test_create(self):
         req = fakes.HTTPRequest.blank('/v1/share_metadata')
@@ -228,6 +277,59 @@ class ShareMetaDataTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.update_all, req, '100', body)
 
+    @ddt.data({AFFINITY_KEY: 'foo'},
+              {ANTI_AFFINITY_KEY: 'foo'},
+              {AFFINITY_KEY: 'foo',
+               ANTI_AFFINITY_KEY: 'bar'},
+              {AFFINITY_KEY: 'foo',
+               ANTI_AFFINITY_KEY: 'bar',
+               'foo': 'bar'})
+    def test_update_all_affinities_user(self, metadata):
+        body = {'metadata': metadata}
+        self.userctxt = context.RequestContext('demo', 'fake', False)
+        req = fakes.HTTPRequest.blank(self.url)
+        req.method = 'PUT'
+        req.content_type = "application/json"
+        req.environ['manila.context'] = self.userctxt
+        establish = {AFFINITY_KEY: 'share1'}
+        db.share_metadata_update(
+            self.ctxt, self.share_id, establish, delete=False)
+        before_update_all = db.share_metadata_get(self.userctxt, self.share_id)
+
+        body = {'metadata': metadata}
+        req.body = jsonutils.dumps(body).encode("utf-8")
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller.update_all,
+            req, self.share_id, body)
+
+        #  test nothing was deleted or updated
+        after_update_all = db.share_metadata_get(self.userctxt, self.share_id)
+        self.assertEqual(after_update_all, before_update_all)
+
+    @ddt.data({AFFINITY_KEY: 'foo'},
+              {ANTI_AFFINITY_KEY: 'foo'},
+              {AFFINITY_KEY: 'foo',
+               ANTI_AFFINITY_KEY: 'bar'},
+              {AFFINITY_KEY: 'foo',
+               ANTI_AFFINITY_KEY: 'bar',
+               'foo': 'bar'})
+    def test_update_all_affinities_admin(self, metadata):
+        req = fakes.HTTPRequest.blank(self.url)
+        req.method = 'PUT'
+        req.content_type = "application/json"
+        admin_context = req.environ['manila.context'].elevated()
+        req.environ['manila.context'] = admin_context
+        establish = {AFFINITY_KEY: 'share1'}
+        db.share_metadata_update(
+            self.ctxt, self.share_id, establish, delete=False)
+
+        body = {'metadata': metadata}
+        req.body = jsonutils.dumps(body).encode("utf-8")
+        res_dict = self.controller.update_all(req, self.share_id, body)
+        expected = body
+        self.assertEqual(res_dict, expected)
+
     def test_update_item(self):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
@@ -312,6 +414,52 @@ class ShareMetaDataTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update, req, self.share_id, 'bad',
                           body)
+
+    @ddt.data((AFFINITY_KEY, '/' + AFFINITY_KEY),
+              (ANTI_AFFINITY_KEY, '/' + ANTI_AFFINITY_KEY))
+    @ddt.unpack
+    def test_update_item_affinities_user(self, key, path):
+        self.userctxt = context.RequestContext('demo', 'fake', False)
+        req = fakes.HTTPRequest.blank(self.url + path)
+        req.method = 'PUT'
+        req.content_type = "application/json"
+        req.environ['manila.context'] = self.userctxt
+        establish = {AFFINITY_KEY: 'share1'}
+        db.share_metadata_update(
+            self.ctxt, self.share_id, establish, delete=False)
+
+        body = {'meta': {key: 'share1,share2'}}
+        req.body = jsonutils.dumps(body).encode("utf-8")
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller.update,
+            req, self.share_id, key, body)
+
+        #  test that nothing was updated
+        data = db.share_metadata_get(self.ctxt, self.share_id)
+        if AFFINITY_KEY in data:
+            res_dict = {'meta': {AFFINITY_KEY: data[AFFINITY_KEY]}}
+        self.assertEqual(res_dict, {'meta': establish})
+
+    @ddt.data((AFFINITY_KEY, '/' + AFFINITY_KEY),
+              (ANTI_AFFINITY_KEY, '/' + ANTI_AFFINITY_KEY))
+    @ddt.unpack
+    def test_update_item_affinities_admin(self, key, path):
+        req = fakes.HTTPRequest.blank(self.url + path)
+        req.method = 'PUT'
+        req.content_type = "application/json"
+        admin_context = req.environ['manila.context'].elevated()
+        req.environ['manila.context'] = admin_context
+        establish = {AFFINITY_KEY: 'share1'}
+        db.share_metadata_update(
+            self.ctxt, self.share_id, establish, delete=False)
+
+        body = {'meta': {key: 'share1,share2'}}
+        req.body = jsonutils.dumps(body).encode("utf-8")
+        res_dict = self.controller.update(
+            req, self.share_id, key, body)
+        expected = body
+        self.assertEqual(res_dict, expected)
 
     def test_invalid_metadata_items_on_create(self):
         req = fakes.HTTPRequest.blank(self.url)

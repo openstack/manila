@@ -212,6 +212,12 @@ deprecated_share_snapshot_update = policy.DeprecatedRule(
     deprecated_since=versionutils.deprecated.WALLABY
 )
 
+deprecated_update_admin_only_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update_admin_only_metadata',
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since="YOGA"
+)
 
 shares_policies = [
     policy.DocumentedRuleDefault(
@@ -647,6 +653,21 @@ base_snapshot_policies = [
             }
         ],
         deprecated_rule=deprecated_share_snapshot_update
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'update_admin_only_metadata',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
+        scope_types=['system', 'project'],
+        description=(
+            "Update metadata items that are considered \"admin only\" "
+            "by the service."),
+        operations=[
+            {
+                'method': 'PUT',
+                'path': '/shares/{share_id}/metadata',
+            }
+        ],
+        deprecated_rule=deprecated_update_admin_only_metadata
     ),
 ]
 

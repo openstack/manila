@@ -175,13 +175,14 @@ REST_API_VERSION_HISTORY = """
     * 2.66 - Added filter search by group spec for share group type list.
     * 2.67 - Added ability to set 'only_host' scheduler hint via the share
              create API.
+    * 2.68 - Added admin only capabilities to share metadata API
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.67"
+_MAX_API_VERSION = "2.68"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 
