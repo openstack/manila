@@ -358,8 +358,8 @@ user documentation.
   Added 'force' field to extend share api, which can extend share directly
   without go through share scheduler.
 
-2.65
-----
+2.65 (Maximum in Xena)
+----------------------
   Added ability to specify "scheduler_hints" in the request body of the POST
   /shares request. These hints will invoke Affinity/Anti-Affinity scheduler
   filters during share creation and share migration.
