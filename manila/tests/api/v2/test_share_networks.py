@@ -537,14 +537,13 @@ class ShareNetworkAPITest(test.TestCase):
     def test_index_no_filters(self):
         networks = [fake_share_network]
         with mock.patch.object(db_api,
-                               'share_network_get_all_by_project',
+                               'share_network_get_all_by_filter',
                                mock.Mock(return_value=networks)):
 
             result = self.controller.index(self.req)
 
-            db_api.share_network_get_all_by_project.assert_called_once_with(
-                self.context,
-                self.context.project_id)
+            db_api.share_network_get_all_by_filter.assert_called_once_with(
+                self.context, filters={})
 
             self.assertEqual(1, len(result[share_networks.RESOURCES_NAME]))
             self._check_share_network_view_shortened(
@@ -554,55 +553,56 @@ class ShareNetworkAPITest(test.TestCase):
     def test_index_detailed(self):
         networks = [fake_share_network]
         with mock.patch.object(db_api,
-                               'share_network_get_all_by_project',
+                               'share_network_get_all_by_filter',
                                mock.Mock(return_value=networks)):
 
             result = self.controller.detail(self.req)
 
-            db_api.share_network_get_all_by_project.assert_called_once_with(
-                self.context,
-                self.context.project_id)
+            db_api.share_network_get_all_by_filter.assert_called_once_with(
+                self.context, filters={})
 
             self.assertEqual(1, len(result[share_networks.RESOURCES_NAME]))
             self._check_share_network_view(
                 result[share_networks.RESOURCES_NAME][0],
                 fake_share_network)
 
-    @mock.patch.object(db_api, 'share_network_get_all_by_security_service',
+    @mock.patch.object(db_api, 'share_network_get_all_by_filter',
                        mock.Mock())
     def test_index_filter_by_security_service(self):
-        db_api.share_network_get_all_by_security_service.return_value = [
+        db_api.share_network_get_all_by_filter.return_value = [
             fake_share_network_with_ss]
         req = fakes.HTTPRequest.blank(
             '/share_networks?security_service_id=fake-ss-id')
         result = self.controller.index(req)
-        (db_api.share_network_get_all_by_security_service.
+        filters = {'security_service_id': 'fake-ss-id'}
+        (db_api.share_network_get_all_by_filter.
             assert_called_once_with(req.environ['manila.context'],
-                                    'fake-ss-id'))
+                                    filters=filters))
         self.assertEqual(1, len(result[share_networks.RESOURCES_NAME]))
         self._check_share_network_view_shortened(
             result[share_networks.RESOURCES_NAME][0],
             fake_sn_with_ss_shortened)
 
-    @mock.patch.object(db_api, 'share_network_get_all_by_project', mock.Mock())
+    @mock.patch.object(db_api, 'share_network_get_all_by_filter', mock.Mock())
     def test_index_all_tenants_non_admin_context(self):
         req = fakes.HTTPRequest.blank(
             '/share_networks?all_tenants=1')
         fake_context = req.environ['manila.context']
-        db_api.share_network_get_all_by_project.return_value = []
+        db_api.share_network_get_all_by_filter.return_value = []
         self.controller.index(req)
-        db_api.share_network_get_all_by_project.assert_called_with(
-            fake_context, fake_context.project_id)
+        db_api.share_network_get_all_by_filter.assert_called_with(
+            fake_context, filters={})
 
-    @mock.patch.object(db_api, 'share_network_get_all', mock.Mock())
+    @mock.patch.object(db_api, 'share_network_get_all_by_filter', mock.Mock())
     def test_index_all_tenants_admin_context(self):
-        db_api.share_network_get_all.return_value = [fake_share_network]
+        db_api.share_network_get_all_by_filter.return_value = [
+            fake_share_network]
         req = fakes.HTTPRequest.blank(
             '/share_networks?all_tenants=1',
             use_admin_context=True)
         result = self.controller.index(req)
-        db_api.share_network_get_all.assert_called_once_with(
-            req.environ['manila.context'])
+        db_api.share_network_get_all_by_filter.assert_called_once_with(
+            req.environ['manila.context'], filters={})
         self.assertEqual(1, len(result[share_networks.RESOURCES_NAME]))
         self._check_share_network_view_shortened(
             result[share_networks.RESOURCES_NAME][0],
@@ -616,10 +616,9 @@ class ShareNetworkAPITest(test.TestCase):
 
         self.assertRaises(exception.InvalidInput, self.controller.index, req)
 
-    @mock.patch.object(db_api, 'share_network_get_all_by_project', mock.Mock())
-    @mock.patch.object(db_api, 'share_network_get_all', mock.Mock())
+    @mock.patch.object(db_api, 'share_network_get_all_by_filter', mock.Mock())
     def test_index_all_tenants_with_value_zero(self):
-        db_api.share_network_get_all_by_project.return_value = [
+        db_api.share_network_get_all_by_filter.return_value = [
             fake_share_network]
         req = fakes.HTTPRequest.blank(
             '/share_networks?all_tenants=0',
@@ -631,49 +630,51 @@ class ShareNetworkAPITest(test.TestCase):
         self._check_share_network_view_shortened(
             result[share_networks.RESOURCES_NAME][0],
             fake_share_network_shortened)
-        db_api.share_network_get_all_by_project.assert_called_once_with(
-            req.environ['manila.context'], self.context.project_id)
-        db_api.share_network_get_all.assert_not_called()
+        filters = {'project_id': 'fake'}
+        db_api.share_network_get_all_by_filter.assert_called_once_with(
+            req.environ['manila.context'], filters=filters)
 
-    @mock.patch.object(db_api, 'share_network_get_all_by_project', mock.Mock())
+    @mock.patch.object(db_api, 'share_network_get_all_by_filter', mock.Mock())
     def test_index_filter_by_project_id_non_admin_context(self):
         req = fakes.HTTPRequest.blank(
             '/share_networks?project_id=fake project')
         fake_context = req.environ['manila.context']
-        db_api.share_network_get_all_by_project.return_value = []
+        db_api.share_network_get_all_by_filter.return_value = []
         self.controller.index(req)
-        db_api.share_network_get_all_by_project.assert_called_with(
-            fake_context, fake_context.project_id)
+        db_api.share_network_get_all_by_filter.assert_called_with(
+            fake_context, filters={})
 
-    @mock.patch.object(db_api, 'share_network_get_all_by_project', mock.Mock())
+    @mock.patch.object(db_api, 'share_network_get_all_by_filter', mock.Mock())
     def test_index_filter_by_project_id_admin_context(self):
-        db_api.share_network_get_all_by_project.return_value = [
+        db_api.share_network_get_all_by_filter.return_value = [
             fake_share_network_with_ss
         ]
         req = fakes.HTTPRequest.blank(
             '/share_networks?project_id=fake',
             use_admin_context=True)
         result = self.controller.index(req)
-        db_api.share_network_get_all_by_project.assert_called_once_with(
-            req.environ['manila.context'], 'fake')
+        filters = {'project_id': 'fake'}
+        db_api.share_network_get_all_by_filter.assert_called_once_with(
+            req.environ['manila.context'], filters=filters)
         self.assertEqual(1, len(result[share_networks.RESOURCES_NAME]))
         self._check_share_network_view_shortened(
             result[share_networks.RESOURCES_NAME][0],
             fake_sn_with_ss_shortened)
 
-    @mock.patch.object(db_api, 'share_network_get_all_by_security_service',
+    @mock.patch.object(db_api, 'share_network_get_all_by_filter',
                        mock.Mock())
     def test_index_filter_by_ss_and_project_id_admin_context(self):
-        db_api.share_network_get_all_by_security_service.return_value = [
+        db_api.share_network_get_all_by_filter.return_value = [
             fake_share_network_with_ss
         ]
         req = fakes.HTTPRequest.blank(
             '/share_networks?security_service_id=fake-ss-id&project_id=fake',
             use_admin_context=True)
         result = self.controller.index(req)
-        (db_api.share_network_get_all_by_security_service.
-            assert_called_once_with(req.environ['manila.context'],
-                                    'fake-ss-id'))
+        filters = {'project_id': 'fake',
+                   'security_service_id': 'fake-ss-id'}
+        db_api.share_network_get_all_by_filter.assert_called_once_with(
+            req.environ['manila.context'], filters=filters)
         self.assertEqual(1, len(result[share_networks.RESOURCES_NAME]))
         self._check_share_network_view_shortened(
             result[share_networks.RESOURCES_NAME][0],
@@ -686,20 +687,21 @@ class ShareNetworkAPITest(test.TestCase):
               ('name=foo&description~=ds', 1),
               ('name~=foo&description=ds', 1))
     @ddt.unpack
-    @mock.patch.object(db_api, 'share_network_get_all_by_project',
+    @mock.patch.object(db_api, 'share_network_get_all_by_filter',
                        mock.Mock())
     def test_index_filter_by_name_and_description(
             self, filter, share_network_number):
         fake_objs = [{'name': 'fo2', 'description': 'd2', 'id': 'fake1'},
                      {'name': 'foo', 'description': 'ds', 'id': 'fake2'},
                      {'name': 'foo1', 'description': 'ds1', 'id': 'fake3'}]
-        db_api.share_network_get_all_by_project.return_value = fake_objs
+        db_api.share_network_get_all_by_filter.return_value = fake_objs
         req = fakes.HTTPRequest.blank(
             '/share_networks?' + filter,
             use_admin_context=True, version='2.36')
         result = self.controller.index(req)
-        db_api.share_network_get_all_by_project.assert_called_with(
-            req.environ['manila.context'], self.context.project_id)
+        filters = {'project_id': self.context.project_id}
+        db_api.share_network_get_all_by_filter.assert_called_with(
+            req.environ['manila.context'], filters=filters)
         self.assertEqual(share_network_number,
                          len(result[share_networks.RESOURCES_NAME]))
         if share_network_number > 0:
@@ -709,7 +711,7 @@ class ShareNetworkAPITest(test.TestCase):
             self._check_share_network_view_shortened(
                 result[share_networks.RESOURCES_NAME][1], fake_objs[2])
 
-    @mock.patch.object(db_api, 'share_network_get_all_by_project',
+    @mock.patch.object(db_api, 'share_network_get_all_by_filter',
                        mock.Mock())
     def test_index_all_filter_opts(self):
         valid_filter_opts = {
@@ -717,8 +719,7 @@ class ShareNetworkAPITest(test.TestCase):
             'created_since': '1999-01-01',
             'name': 'test-sn'
         }
-        db_api.share_network_get_all_by_project.return_value = [
-            fake_share_network,
+        db_api.share_network_get_all_by_filter.return_value = [
             fake_share_network_with_ss]
 
         query_string = '/share-networks?' + parse.urlencode(sorted(
@@ -727,9 +728,16 @@ class ShareNetworkAPITest(test.TestCase):
             req = fakes.HTTPRequest.blank(query_string,
                                           use_admin_context=use_admin_context)
             result = self.controller.index(req)
-            db_api.share_network_get_all_by_project.assert_called_with(
-                req.environ['manila.context'],
-                'fake')
+            parsed_created_before = timeutils.parse_strtime(
+                valid_filter_opts['created_before'], fmt="%Y-%m-%d")
+            parsed_created_since = timeutils.parse_strtime(
+                valid_filter_opts['created_since'], fmt="%Y-%m-%d")
+            filters = {'created_before': parsed_created_before,
+                       'created_since': parsed_created_since}
+            if use_admin_context:
+                filters['project_id'] = 'fake'
+            db_api.share_network_get_all_by_filter.assert_called_with(
+                req.environ['manila.context'], filters=filters)
             self.assertEqual(1, len(result[share_networks.RESOURCES_NAME]))
             self._check_share_network_view_shortened(
                 result[share_networks.RESOURCES_NAME][0],
