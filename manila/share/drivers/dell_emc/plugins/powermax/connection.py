@@ -43,8 +43,9 @@ from manila import utils
     3.2.0 - Wrong format of export locations (bug #1871999)
     3.3.0 - Victoria release
     3.4.0 - Wallaby release
+    3.5.0 - Xena release
 """
-VERSION = "3.4.0"
+VERSION = "3.5.0"
 
 LOG = log.getLogger(__name__)
 
