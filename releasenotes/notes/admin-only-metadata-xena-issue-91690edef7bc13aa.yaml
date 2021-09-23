@@ -1,0 +1,10 @@
+---
+
+issues:
+  - |
+    User specified scheduler hints such as "same_host" and "different_host"
+    are stored as share metadata with keys such as "__affinity_same_host" and
+    "__affinity_different_host" respectively. These can be manipulated or
+    deleted by end users like all metadata unless prevented by RBAC policy.
+    In a future release, the service will restrict the deletion or
+    manipulation of these specific metadata items.
