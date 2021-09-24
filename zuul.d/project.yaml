@@ -23,6 +23,8 @@
             voting: false
         - manila-tempest-plugin-glusterfs-nfs:
             voting: false
+        - manila-tempest-plugin-lvm-fips-stable:
+            voting: false
         - manila-grenade:
             voting: false
         - manila-rally-no-ss:
