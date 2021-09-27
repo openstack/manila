@@ -34,9 +34,8 @@ needed to load all needed parameters dynamically.
 
 
 class AuthClientLoader(object):
-    def __init__(self, client_class, exception_module, cfg_group):
+    def __init__(self, client_class, cfg_group):
         self.client_class = client_class
-        self.exception_module = exception_module
         self.group = cfg_group
         self.admin_auth = None
         self.conf = CONF
@@ -75,7 +74,7 @@ class AuthClientLoader(object):
             return self.auth_plugin
 
         msg = _('Cannot load auth plugin for %s') % self.group
-        raise self.exception_module.Unauthorized(message=msg)
+        raise exception.BadConfigurationException(reason=msg)
 
     def get_client(self, context, admin=False, **kwargs):
         """Get's the client with the correct auth/session context
