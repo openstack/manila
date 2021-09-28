@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp cDOT driver Custom port configuration using ``netapp_server_port``
+    was accidentally ignored after a refactor. This option should now be
+    properly read. See `Launchpad bug 1945365 <https://bugs.launchpad.net/manila/+bug/1945365>`_
+    for more details.
