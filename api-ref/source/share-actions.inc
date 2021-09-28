@@ -99,7 +99,7 @@ Request
    - access_level: access_level
    - access_type: access_type
    - access_to: access_to
-   - access_metadata: metadata
+   - metadata: access_metadata_grant_access
 
 Request example
 ---------------
@@ -121,7 +121,7 @@ Response parameters
    - access: access
    - access_level: access_level
    - id: access_rule_id
-   - access_metadata: access_metadata
+   - metadata: access_metadata
 
 Response example
 ----------------
