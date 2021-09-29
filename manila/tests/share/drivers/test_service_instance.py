@@ -506,6 +506,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         expected_details = fake_server.copy()
         expected_details.pop('pk_path')
         expected_details['instance_id'] = expected_details.pop('id')
+        expected_instance_name = self._manager._get_service_instance_name(
+            fake_network_info['server_id'])
         self.mock_object(self._manager, '_create_service_instance',
                          mock.Mock(return_value=fake_server))
         self.mock_object(self._manager, '_check_server_availability')
@@ -515,7 +517,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
 
         self._manager._create_service_instance.assert_called_once_with(
             self._manager.admin_context,
-            fake_network_info['server_id'], fake_network_info)
+            expected_instance_name, fake_network_info)
         self._manager._check_server_availability.assert_called_once_with(
             expected_details)
         self.assertEqual(expected_details, result)
@@ -532,6 +534,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         expected_details = fake_server.copy()
         expected_details.pop('pk_path')
         expected_details['instance_id'] = expected_details.pop('id')
+        expected_instance_name = self._manager._get_service_instance_name(
+            fake_network_info['server_id'])
         self.mock_object(self._manager, '_create_service_instance',
                          mock.Mock(return_value=fake_server))
         self.mock_object(self._manager, '_check_server_availability',
@@ -547,7 +551,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             {'server_details': expected_details}, result.detail_data)
         self._manager._create_service_instance.assert_called_once_with(
             self._manager.admin_context,
-            fake_network_info['server_id'], fake_network_info)
+            expected_instance_name, fake_network_info)
         self._manager._check_server_availability.assert_called_once_with(
             expected_details)
 
