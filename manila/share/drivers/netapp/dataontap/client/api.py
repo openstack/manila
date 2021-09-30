@@ -269,7 +269,9 @@ class ZapiClient(BaseClient):
             ssl_cert_path=ssl_cert_path, username=username, password=password,
             port=port, trace=trace, api_trace_pattern=api_trace_pattern)
         self.set_server_type(server_type)
-        self._set_port()
+        if port is None:
+            # Not yet set in parent, use defaults
+            self._set_port()
 
     def _set_port(self):
         """Defines which port will be used to communicate with ONTAP."""
@@ -444,7 +446,9 @@ class RestClient(BaseClient):
             host, transport_type=transport_type, style=style,
             ssl_cert_path=ssl_cert_path, username=username, password=password,
             port=port, trace=trace, api_trace_pattern=api_trace_pattern)
-        self._set_port()
+        if port is None:
+            # Not yet set in parent, use defaults
+            self._set_port()
 
     def _set_port(self):
         if self._protocol == TRANSPORT_TYPE_HTTP:

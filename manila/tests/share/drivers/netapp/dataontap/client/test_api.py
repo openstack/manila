@@ -265,6 +265,11 @@ class NetAppApiServerZapiClientTests(test.TestCase):
         expected_log_count = 2 if log else 0
         self.assertEqual(expected_log_count, api.LOG.debug.call_count)
 
+    @ddt.data('1234', 5678)
+    def test_custom_port(self, port):
+        root = api.NaServer('127.0.0.1', port=port).zapi_client
+        self.assertEqual(str(port), root.get_port())
+
 
 @ddt.ddt
 class NetAppApiServerRestClientTests(test.TestCase):
@@ -462,3 +467,8 @@ class NetAppApiServerRestClientTests(test.TestCase):
             url, fake.FAKE_HTTP_QUERY)
 
         self.assertEqual(expected_formated_url, formatted_url)
+
+    @ddt.data('1234', 5678)
+    def test_custom_port(self, port):
+        root = api.NaServer('127.0.0.1', port=port).rest_client
+        self.assertEqual(str(port), root.get_port())
