@@ -101,7 +101,6 @@ class NeutronclientTestCase(test.TestCase):
 
         mock_client_loader.assert_called_once_with(
             client_class=neutron_api.clientv20.Client,
-            exception_module=neutron_api.neutron_client_exc,
             cfg_group=neutron_api.NEUTRON_GROUP
         )
         mock_client_loader.return_value.get_client.assert_called_once_with(

@@ -30,8 +30,7 @@ class ClientAuthTestCase(test.TestCase):
         self.context = mock.Mock()
         self.fake_client = mock.Mock()
         self.exception_mod = fake_client_exception_class
-        self.auth = client_auth.AuthClientLoader(
-            self.fake_client, self.exception_mod, 'foo_group')
+        self.auth = client_auth.AuthClientLoader(self.fake_client, 'foo_group')
 
     def test_get_client_admin_true(self):
         mock_load_session = self.mock_object(auth,
@@ -61,7 +60,7 @@ class ClientAuthTestCase(test.TestCase):
     def test_load_auth_plugin_no_auth(self):
         auth.load_auth_from_conf_options.return_value = None
 
-        self.assertRaises(fake_client_exception_class.Unauthorized,
+        self.assertRaises(exception.BadConfigurationException,
                           self.auth._load_auth_plugin)
 
     @mock.patch.object(auth, 'get_session_conf_options')

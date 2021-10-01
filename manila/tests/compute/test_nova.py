@@ -145,7 +145,6 @@ class NovaclientTestCase(test.TestCase):
 
         mock_client_loader.assert_called_once_with(
             client_class=nova.nova_client.Client,
-            exception_module=nova.nova_exception,
             cfg_group=nova.NOVA_GROUP
         )
         mock_client_loader.return_value.get_client.assert_called_once_with(
