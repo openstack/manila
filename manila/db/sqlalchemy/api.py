@@ -4805,6 +4805,7 @@ def share_type_get_by_name_or_id(context, name_or_id):
 
 
 @require_admin_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_type_destroy(context, id):
     session = get_session()
     with session.begin():
