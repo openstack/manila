@@ -4,7 +4,7 @@ Unit Tests
 Manila contains a suite of unit tests, in the manila/tests directory.
 
 Any proposed code change will be automatically rejected by the OpenStack
-Jenkins server if the change causes unit test failures.
+Zuul server if the change causes unit test failures.
 
 Running the tests
 -----------------
