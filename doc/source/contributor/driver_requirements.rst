@@ -186,7 +186,7 @@ Every driver vendor must supply a CI system that tests its drivers
 continuously for each patch submitted to OpenStack gerrit. This allows for
 better QA and quicker response and notification for driver vendors when a
 patch submitted affects an existing driver. The CI system must run all
-applicable tempest tests, test all patches Jenkins has posted +1 and post its
+applicable tempest tests, test all patches Zuul has posted +1 and post its
 test results.
 
 .. note:: for more information please see http://docs.openstack.org/infra/system-config/third_party.html
