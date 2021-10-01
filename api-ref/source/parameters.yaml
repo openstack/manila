@@ -201,6 +201,12 @@ backend_query:
   in: query
   required: false
   type: string
+cidr_query:
+  description: |
+    The CIDR to filter share networks.
+  in: query
+  required: false
+  type: string
 created_before:
   description: |
     The date and time stamp when the query operation, only return user
@@ -221,6 +227,13 @@ created_before:
   required: false
   type: string
   min_version: 2.52
+created_before_query:
+  description: |
+    Search for the list of resources that were created prior to the specified
+    date. The date is in 'yyyy-mm-dd' format.
+  in: query
+  required: false
+  type: string
 created_since:
   description: |
     The date and time stamp when the query operation, only return user
@@ -241,6 +254,13 @@ created_since:
   required: false
   type: string
   min_version: 2.52
+created_since_query:
+  description: |
+    Search for the list of resources that were created after the specified
+    date. The date is in 'yyyy-mm-dd' format.
+  in: query
+  required: false
+  type: string
 description_inexact_query:
   description: |
     The description pattern that can be used to filter shares,
@@ -306,6 +326,12 @@ host_query:
   in: query
   required: false
   type: string
+ip_version_query:
+  description: |
+    The IP version to filter share networks.
+  in: query
+  required: false
+  type: string
 is_public_query:
   description: |
     A boolean query parameter that, when set to true, allows retrieving
@@ -352,6 +378,31 @@ name_query:
   in: query
   required: false
   type: string
+network_type_query:
+  description: |
+    The network type to filter out share networks.
+  in: query
+  required: false
+  type: string
+neutron_net_id_query:
+  description: |
+    The neutron network id to filter out share networks.
+  in: query
+  required: false
+  type: string
+neutron_subnet_id_query:
+  description: |
+    The neutron network subnet id to filter out share networks.
+  in: query
+  required: false
+  type: string
+nova_net_id_query:
+  description: |
+    The ID of a Nova network to filter out share networks.
+  in: query
+  required: false
+  type: string
+  max_version: 2.26
 offset:
   description: |
     The offset to define start point of share or share group
@@ -387,6 +438,18 @@ resource_id:
 resource_type:
   description: |
     The type of the resource for which the message was created.
+  in: query
+  required: false
+  type: string
+security_service_query:
+  description: |
+    The security service ID to filter out share networks.
+  in: query
+  required: false
+  type: string
+segmentation_id_query:
+  description: |
+    The segmentation id to filter out share networks.
   in: query
   required: false
   type: string
