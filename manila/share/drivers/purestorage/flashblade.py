@@ -89,8 +89,14 @@ def purity_fb_to_manila_exceptions(func):
 
 
 class FlashBladeShareDriver(driver.ShareDriver):
+    """Version hisotry:
 
-    VERSION = "2.0"  # driver version
+       1.0.0 - Initial version
+       2.0.0 - Xena release
+       3.0.0 - Yoga release
+    """
+
+    VERSION = "3.0"  # driver version
     USER_AGENT_BASE = "OpenStack Manila"
 
     def __init__(self, *args, **kwargs):
