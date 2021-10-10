@@ -42,6 +42,7 @@ from manila import utils
 host_manager_opts = [
     cfg.ListOpt('scheduler_default_filters',
                 default=[
+                    'OnlyHostFilter',
                     'AvailabilityZoneFilter',
                     'CapacityFilter',
                     'CapabilitiesFilter',

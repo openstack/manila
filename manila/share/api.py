@@ -884,7 +884,8 @@ class API(base.Base):
                                               export_location_path)
 
         request_spec = self._get_request_spec_dict(
-            share, share_type, size=0, share_proto=share_data['share_proto'],
+            share, share_type, context, size=0,
+            share_proto=share_data['share_proto'],
             host=share_data['host'])
 
         # NOTE(ganso): Scheduler is called to validate if share type
@@ -895,7 +896,7 @@ class API(base.Base):
 
         return self.db.share_get(context, share['id'])
 
-    def _get_request_spec_dict(self, share, share_type, **kwargs):
+    def _get_request_spec_dict(self, share, share_type, context, **kwargs):
 
         if share is None:
             share = {'instance': {}}
@@ -908,6 +909,8 @@ class API(base.Base):
             'size': kwargs.get('size', share.get('size')),
             'user_id': kwargs.get('user_id', share.get('user_id')),
             'project_id': kwargs.get('project_id', share.get('project_id')),
+            'metadata': self.db.share_metadata_get(
+                context, share_instance.get('share_id')),
             'snapshot_support': kwargs.get(
                 'snapshot_support',
                 share_type.get('extra_specs', {}).get('snapshot_support')
@@ -1548,6 +1551,7 @@ class API(base.Base):
         request_spec = self._get_request_spec_dict(
             share,
             share_type,
+            context,
             availability_zone_id=service['availability_zone_id'],
             share_network_id=new_share_network_id)
 
@@ -2323,7 +2327,8 @@ class API(base.Base):
         else:
             share_type = share_types.get_share_type(
                 context, share['instance']['share_type_id'])
-            request_spec = self._get_request_spec_dict(share, share_type)
+            request_spec = self._get_request_spec_dict(share, share_type,
+                                                       context)
             self.scheduler_rpcapi.extend_share(context, share['id'], new_size,
                                                reservations, request_spec)
         LOG.info("Extend share request issued successfully.",
@@ -2474,7 +2479,7 @@ class API(base.Base):
             share_type_id = share_instance['share_type_id']
             share_type = share_types.get_share_type(context, share_type_id)
             req_spec = self._get_request_spec_dict(share_instance,
-                                                   share_type,
+                                                   share_type, context,
                                                    **kwargs)
             shares_req_spec.append(req_spec)
 

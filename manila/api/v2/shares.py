@@ -186,6 +186,9 @@ class ShareController(shares.ShareMixin,
 
         share = body['share']
         scheduler_hints = share.pop('scheduler_hints', None)
+        if req.api_version_request < api_version.APIVersionRequest("2.67"):
+            if scheduler_hints:
+                scheduler_hints.pop('only_host', None)
         return self._create(req, body,
                             check_create_share_from_snapshot_support=True,
                             check_availability_zones_extra_spec=True,

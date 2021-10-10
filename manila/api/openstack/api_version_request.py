@@ -170,15 +170,18 @@ REST_API_VERSION_HISTORY = """
              actions on the share network's endpoint:
              'update_security_service', 'update_security_service_check' and
              'add_security_service_check'.
-    * 2.65 - Added ability to set scheduler hints via the share create API.
+    * 2.65 - Added ability to set affinity scheduler hints via the share
+             create API.
     * 2.66 - Added filter search by group spec for share group type list.
+    * 2.67 - Added ability to set 'only_host' scheduler hint via the share
+             create API.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.66"
+_MAX_API_VERSION = "2.67"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

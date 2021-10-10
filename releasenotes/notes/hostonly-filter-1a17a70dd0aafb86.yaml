@@ -1,0 +1,10 @@
+---
+features:
+  - Add OnlyHostFilter to manila's scheduler. This filter needs admin to
+    specify host@backend#pool to "share.scheduler_hints.only_host" in the
+    request payload when creating a manila share. The hint is used only
+    for share creation and not stored as share metadata. For non-admin users
+    the OnlyHostFilter will always be ignored.
+upgrade:
+  - To add OnlyHostFilter to an active deployment, its reference must be
+    enabled in manila.conf.
