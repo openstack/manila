@@ -36,13 +36,11 @@ from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
-from oslo_utils import encodeutils
 from oslo_utils import importutils
 from oslo_utils import netutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 import paramiko
-import six
 from webob import exc
 
 
@@ -287,10 +285,7 @@ def monkey_patch():
                 # NOTE(vponomaryov): we need to distinguish class methods types
                 # for py2 and py3, because the concept of 'unbound methods' has
                 # been removed from the python3.x
-                if six.PY3:
-                    member_type = inspect.isfunction
-                else:
-                    member_type = inspect.ismethod
+                member_type = inspect.isfunction
                 for method, func in inspect.getmembers(clz, member_type):
                     setattr(
                         clz, method,
@@ -368,7 +363,7 @@ def cidr_to_network(cidr):
 
 def cidr_to_netmask(cidr):
     """Convert cidr to netmask."""
-    return six.text_type(cidr_to_network(cidr).netmask)
+    return str(cidr_to_network(cidr).netmask)
 
 
 def cidr_to_prefixlen(cidr):
@@ -415,7 +410,7 @@ def is_all_tenants(search_opts):
         try:
             all_tenants = strutils.bool_from_string(all_tenants, True)
         except ValueError as err:
-            raise exception.InvalidInput(six.text_type(err))
+            raise exception.InvalidInput(str(err))
     else:
         # The empty string is considered enabling all_tenants
         all_tenants = 'all_tenants' in search_opts
@@ -579,17 +574,12 @@ def convert_str(text):
 
     Convert bytes and Unicode strings to native strings:
 
-    * convert to bytes on Python 2:
-      encode Unicode using encodeutils.safe_encode()
     * convert to Unicode on Python 3: decode bytes from UTF-8
     """
-    if six.PY2:
-        return encodeutils.safe_encode(text)
+    if isinstance(text, bytes):
+        return text.decode('utf-8')
     else:
-        if isinstance(text, bytes):
-            return text.decode('utf-8')
-        else:
-            return text
+        return text
 
 
 def translate_string_size_to_float(string, multiplier='G'):
@@ -606,7 +596,7 @@ def translate_string_size_to_float(string, multiplier='G'):
         - float if correct input data provided
         - None if incorrect
     """
-    if not isinstance(string, six.string_types):
+    if not isinstance(string, str):
         return None
     multipliers = ('K', 'M', 'G', 'T', 'P')
     mapping = {
