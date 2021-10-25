@@ -17,29 +17,168 @@
 Generic approach for share provisioning
 =======================================
 
-The Shared File Systems service can be configured to use Nova
-VMs and Cinder volumes. There are two modules that handle them in manila:
-1) 'service_instance' module creates VMs in Nova with predefined image called
-service image. This module can be used by any backend driver for provisioning
-of service VMs to be able to separate share resources among tenants.
-2) 'generic' module operates with Cinder volumes and VMs created by
-'service_instance' module, then creates shared filesystems based on volumes
-attached to VMs.
+The Shared File Systems service can be configured to use Nova VMs and Cinder
+volumes. Using this driver, Manila will use SSH to configure the shares on
+the service virtual machine instance.
+
+The following options may be specified in the manila.conf configuration file:
+
+.. code-block:: ini
+
+  # User in service instance that will be used for authentication.
+  # (string value)
+  #service_instance_user = <None>
+
+  # Password for service instance user. (string value)
+  #service_instance_password = <None>
+
+  # Path to host's private key. (string value)
+  #path_to_private_key = <None>
+
+  # Maximum time in seconds to wait for creating service instance.
+  # (integer value)
+  #max_time_to_build_instance = 300
+
+  # Block SSH connection to the service instance from other networks
+  # than service network. (boolean value)
+  #limit_ssh_access = false
+
+Additionally, this driver supports both ``DHSS=False`` and ``DHSS=True``.
+Depending on which one you use, you need to specify different configuration
+options in your manila.conf configuration file.
+
+- With ``DHSS=False``:
+
+.. code-block:: ini
+
+  # Name or ID of service instance in Nova to use for share exports.
+  # Used only when share servers handling is disabled. (string value)
+  #service_instance_name_or_id = <None>
+
+  # Can be either name of network that is used by service instance
+  # within Nova to get IP address or IP address itself (either IPv4 or
+  # IPv6) for managing shares there. Used only when share servers
+  # handling is disabled. (host address value)
+  #service_net_name_or_ip = <None>
+
+  # Can be either name of network that is used by service instance
+  # within Nova to get IP address or IP address itself (either IPv4 or
+  # IPv6) for exporting shares. Used only when share servers handling is
+  # disabled. (host address value)
+  #tenant_net_name_or_ip = <None>
+
+- With ``DHSS=True``:
+
+.. code-block:: ini
+
+  # Name of image in Glance, that will be used for service instance
+  # creation. Only used if driver_handles_share_servers=True. (string
+  # value)
+  #service_image_name = manila-service-image
+
+  # Name of service instance. Only used if
+  # driver_handles_share_servers=True. (string value)
+  #service_instance_name_template = manila_service_instance_%s
+
+  # Keypair name that will be created and used for service instances.
+  # Only used if driver_handles_share_servers=True. (string value)
+  #manila_service_keypair_name = manila-service
+
+  # Path to hosts public key. Only used if
+  # driver_handles_share_servers=True. (string value)
+  #path_to_public_key = ~/.ssh/id_rsa.pub
+
+  # Security group name, that will be used for service instance
+  # creation. Only used if driver_handles_share_servers=True. (string
+  # value)
+  #service_instance_security_group = manila-service
+
+  # ID of flavor, that will be used for service instance creation. Only
+  # used if driver_handles_share_servers=True. (string value)
+  #service_instance_flavor_id = 100
+
+  # Name of manila service network. Used only with Neutron. Only used if
+  # driver_handles_share_servers=True. (string value)
+  #service_network_name = manila_service_network
+
+  # CIDR of manila service network. Used only with Neutron and if
+  # driver_handles_share_servers=True. (string value)
+  #service_network_cidr = 10.254.0.0/16
+
+  # This mask is used for dividing service network into subnets, IP
+  # capacity of subnet with this mask directly defines possible amount
+  # of created service VMs per tenant's subnet. Used only with Neutron
+  # and if driver_handles_share_servers=True. (integer value)
+  #service_network_division_mask = 28
+
+  # Module path to the Virtual Interface (VIF) driver class. This option
+  # is used only by drivers operating in
+  # `driver_handles_share_servers=True` mode that provision OpenStack
+  # compute instances as share servers. This option is only supported
+  # with Neutron networking. Drivers provided in tree work with Linux
+  # Bridge (manila.network.linux.interface.BridgeInterfaceDriver) and
+  # OVS (manila.network.linux.interface.OVSInterfaceDriver). If the
+  # manila-share service is running on a host that is connected to the
+  # administrator network, a no-op driver
+  # (manila.network.linux.interface.NoopInterfaceDriver) may be used.
+  # (string value)
+  #interface_driver = manila.network.linux.interface.OVSInterfaceDriver
+
+  # Attach share server directly to share network. Used only with
+  # Neutron and if driver_handles_share_servers=True. (boolean value)
+  #connect_share_server_to_tenant_network = false
+
+  # ID of neutron network used to communicate with admin network, to
+  # create additional admin export locations on. (string value)
+  #admin_network_id = <None>
+
+  # ID of neutron subnet used to communicate with admin network, to
+  # create additional admin export locations on. Related to
+  # 'admin_network_id'. (string value)
+  #admin_subnet_id = <None>
+
+Configuring the right options depends on the network layout of your
+setup, see next section for more details.
 
 Network configurations
 ----------------------
 
-Each backend driver can handle networking in its own way,
-see: https://wiki.openstack.org/wiki/Manila/Networking
+If using ``DHSS=True``, there are two possible network configurations that can
+be chosen for share provisioning using this driver:
 
-One of two possible configurations can be chosen for share provisioning
-using 'service_instance' module:
+- Service VM has one NIC connected to a network that connects to a public
+  router. This is, the service VM will be connected to a static administrative
+  network created beforehand by an administrator. This approach is valid in
+  'flat' network topologies, where a single Neutron network is defined for
+  all projects (no tenant networks).
+- Service VM has two NICs, first one connected to service network, second one
+  connected directly to user's network. This is, in a tenant-networks-enabled
+  Neutron deployment, manila will create a dedicated network for the share.
 
-- Service VM has one net interface from net that is connected to public router.
-  For successful creation of share, user network should be connected to public
-  router too.
-- Service VM has two net interfaces, first one connected to service network,
-  second one connected directly to user's network.
+Depending on the setup, specific configuration options are required in the
+manila.conf file.
+
+In particular, if you are using only a static administrative network, you need
+the following:
+
+.. code-block:: ini
+
+  driver_handles_share_servers = True
+  connect_share_server_to_tenant_network = True
+  admin_network_id = <value>
+  admin_subnet_id = <value>
+  # Module path to the Virtual Interface (VIF) driver class. This option
+  # is used only by drivers operating in
+  # `driver_handles_share_servers=True` mode that provision OpenStack
+  # compute instances as share servers. This option is only supported
+  # with Neutron networking. Drivers provided in tree work with Linux
+  # Bridge (manila.network.linux.interface.BridgeInterfaceDriver) and
+  # OVS (manila.network.linux.interface.OVSInterfaceDriver). If the
+  # manila-share service is running on a host that is connected to the
+  # administrator network, a no-op driver
+  # (manila.network.linux.interface.NoopInterfaceDriver) may be used.
+  # (string value)
+  interface_driver = manila.network.linux.interface.NoopInterfaceDriver
 
 Requirements for service image
 ------------------------------
