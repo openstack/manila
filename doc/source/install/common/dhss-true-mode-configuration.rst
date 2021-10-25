@@ -19,8 +19,8 @@ Configure components
         Back end names are arbitrary. As an example, this guide uses the name
         of the driver.
 
-   * In the ``[neutron]``, ``[nova]``, and ``[cinder]`` sections, enable
-     authentication for those services:
+   * In the ``[neutron]``, ``[nova]``, ``[cinder]`` and ``[glance]`` sections,
+     enable authentication for those services:
 
      .. code-block:: ini
 
@@ -63,6 +63,19 @@ Configure components
         project_name = service
         username = cinder
         password = CINDER_PASS
+
+        [glance]
+        ...
+        www_authenticate_uri = http://controller:5000
+        auth_url = http://controller:5000
+        memcached_servers = controller:11211
+        auth_type = password
+        project_domain_name = Default
+        user_domain_name = Default
+        region_name = RegionOne
+        project_name = service
+        username = glance
+        password = GLANCE_PASS
 
    * In the ``[generic]`` section, configure the generic driver:
 
