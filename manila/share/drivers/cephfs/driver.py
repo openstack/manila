@@ -987,9 +987,16 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
     def get_export_locations(self, share, subvolume_path):
         export_locations = []
         for export_ip in self.export_ips:
+            # Try to escape the export ip. If it fails, means that the
+            # `cephfs_ganesha_server_ip` wasn't possibly set and the used
+            # address is the hostname
+            try:
+                server_address = driver_helpers.escaped_address(export_ip)
+            except ValueError:
+                server_address = export_ip
+
             export_path = "{server_address}:{mount_path}".format(
-                server_address=driver_helpers.escaped_address(export_ip),
-                mount_path=subvolume_path)
+                server_address=server_address, mount_path=subvolume_path)
 
             LOG.info("Calculated export path for share %(id)s: %(epath)s",
                      {"id": share['id'], "epath": export_path})
