@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed an issue that made migrated shares with replication support to do
+    not have a share instance with its `replica_state` set to active. Now,
+    when the share supports replication, the destination share instance will
+    have its replica state set as active right after the migration gets
+    completed. For more details, please refer to
+    `bug 1927060 <https://bugs.launchpad.net/manila/+bug/1927060>`_
