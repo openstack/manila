@@ -49,7 +49,7 @@ share_servers_handling_mode_opts = [
              "creation. Only used if driver_handles_share_servers=True."),
     cfg.StrOpt(
         "service_instance_name_template",
-        default="manila_service_instance_%s",
+        default="%s",
         help="Name of service instance. "
              "Only used if driver_handles_share_servers=True."),
     cfg.StrOpt(
@@ -306,7 +306,7 @@ class ServiceInstanceManager(object):
 
     def _get_service_instance_name(self, share_server_id):
         """Returns service vms name."""
-        if self.driver_config:
+        if self.driver_config and self.driver_config.config_group:
             # Make service instance name unique for multibackend installation
             name = "%s_%s" % (self.driver_config.config_group, share_server_id)
         else:
@@ -450,7 +450,8 @@ class ServiceInstanceManager(object):
         :returns: dict with service instance details
         :raises: exception.ServiceInstanceException
         """
-        instance_name = network_info['server_id']
+        instance_name = self._get_service_instance_name(
+            network_info['server_id'])
         server = self._create_service_instance(
             context, instance_name, network_info)
         instance_details = self._get_new_instance_details(server)

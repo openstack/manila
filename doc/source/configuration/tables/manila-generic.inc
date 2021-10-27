@@ -52,7 +52,7 @@
      - (String) ID of flavor, that will be used for service instance creation. Only used if driver_handles_share_servers=True.
    * - ``service_instance_name_or_id`` = ``None``
      - (String) Name or ID of service instance in Nova to use for share exports. Used only when share servers handling is disabled.
-   * - ``service_instance_name_template`` = ``manila_service_instance_%s``
+   * - ``service_instance_name_template`` = ``%s``
      - (String) Name of service instance. Only used if driver_handles_share_servers=True.
    * - ``service_instance_network_helper_type`` = ``neutron``
      - (String) DEPRECATED: Used to select between neutron and nova helpers when driver_handles_share_servers=True. Obsolete. This option isn't used any longer because nova networking is no longer supported.
