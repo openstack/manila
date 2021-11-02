@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    The option ``service_instance_name_template`` will start being honored
+    by the Generic driver, so review your configuration and
+    revert to the default if you don't want it to be taken into account.
+fixes:
+  - |
+    The ``service_instance_name_template`` option was not being taken into
+    account by the Generic driver, this issue is now addressed. See `bug
+    #1945463 <https://launchpad.net/bugs/1945463>`_ for more information.
