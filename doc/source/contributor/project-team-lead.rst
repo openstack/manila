@@ -167,6 +167,11 @@ Release cycle activities
 
     * https://releases.openstack.org/reference/using.html#using-new-release-command
 
+  .. note::
+     When proposing new releases, ensure that the releases for newer branches
+     are proposed and accepted in the order of the most recent branch to the
+     older.
+
 
 Project Team Gathering
 ----------------------
