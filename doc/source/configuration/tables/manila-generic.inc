@@ -88,61 +88,231 @@
      - (String) Volume name template.
    * - ``volume_snapshot_name_template`` = ``manila-snapshot-%s``
      - (String) Volume snapshot name template.
+   * - **[glance]**
+     -
+   * - ``api_microversion`` = ``2``
+     - (String) Version of Glance API to be used.
+   * - ``region_name`` = ``RegionOne``
+     - (String) Region name for connecting to glance.
+   * - ``auth_url`` = ``None``
+     - (String) Authentication URL
+   * - ``auth_type`` = ``None``
+     - (String) Authentication type to load
+   * - ``cafile`` = ``None``
+     - (String) PEM encoded Certificate Authority to use when verifying HTTPs connections.
+   * - ``certfile`` = ``None``
+     - (String) PEM encoded client certificate cert file
+   * - ``collect_timing`` = ``false``
+     - (Boolean) Collect per-API call timing information.
+   * - ``default_domain_id`` = ``None``
+     - (String) Optional domain ID to use with v3 and v2 parameters. It will be used for both the user and project domain in v3 and ignored in v2 authentication
+   * - ``default_domain_name`` = ``None``
+     - (String) Optional domain name to use with v3 API and v2 parameters. It will be used for both the user and project domain in v3 and ignored in v2 authentication.
+   * - ``domain_id`` = ``None``
+     - (String) Domain ID to scope to
+   * - ``domain_name`` = ``None``
+     - (String) Domain name to scope to
+   * - ``insecure`` = ``false``
+     - (Boolean) Verify HTTPS connections.
+   * - ``keyfile`` = ``None``
+     - (String) PEM encoded client certificate key file
+   * - ``password`` = ``None``
+     - (String) User's password.
+   * - ``project_domain_id`` = ``None``
+     - (String) Domain ID containing project
+   * - ``project_domain_name`` = ``None``
+     - (String) Domain name containing project
+   * - ``project_id`` = ``None``
+     - (String) Project ID to scope to
+   * - ``project_name`` = ``None``
+     - (String) Project name to scope to
+   * - ``split_loggers`` = ``false``
+     - (Boolean) Log requests to multiple loggers.
+   * - ``system_scope`` = ``None``
+     - (String) Scope for system operations
+   * - ``timeout`` = ``None``
+     - (Integer) Timeout value for http requests
+   * - ``trust_id`` = ``None``
+     - (String) Trust ID
+   * - ``user_domain_id`` = ``None``
+     - (String) User's domain id
+   * - ``user_domain_name`` = ``None``
+     - (String) User's domain name
+   * - ``user_id`` = ``None``
+     - (String) User id
+   * - ``username`` = ``None``
+     - (String) Username
    * - **[cinder]**
      -
-   * - ``auth_section`` = ``None``
-     - (Unknown) Config Section from which to load plugin specific options
-   * - ``auth_type`` = ``None``
-     - (Unknown) Authentication type to load
-   * - ``cafile`` = ``None``
-     - (String) PEM encoded Certificate Authority to use when verifying HTTPs connections.
-   * - ``certfile`` = ``None``
-     - (String) PEM encoded client certificate cert file
    * - ``cross_az_attach`` = ``True``
      - (Boolean) Allow attaching between instances and volumes in different availability zones.
-   * - ``endpoint_type`` = ``publicURL``
-     - (String) Endpoint type to be used with cinder client calls.
    * - ``http_retries`` = ``3``
      - (Integer) Number of cinderclient retries on failed HTTP calls.
-   * - ``insecure`` = ``False``
-     - (Boolean) Verify HTTPS connections.
-   * - ``keyfile`` = ``None``
-     - (String) PEM encoded client certificate key file
-   * - ``region_name`` = ``None``
+   * - ``endpoint_type`` = ``publicURL``
+     - (String) Endpoint type to be used with cinder client calls.
+   * - ``region_name`` = ``RegionOne``
      - (String) Region name for connecting to cinder.
-   * - ``timeout`` = ``None``
-     - (Integer) Timeout value for http requests
-   * - **[neutron]**
-     -
+   * - ``auth_url`` = ``None``
+     - (String) Authentication URL
+   * - ``auth_type`` = ``None``
+     - (String) Authentication type to load
    * - ``cafile`` = ``None``
      - (String) PEM encoded Certificate Authority to use when verifying HTTPs connections.
    * - ``certfile`` = ``None``
      - (String) PEM encoded client certificate cert file
-   * - ``insecure`` = ``False``
+   * - ``collect_timing`` = ``false``
+     - (Boolean) Collect per-API call timing information.
+   * - ``default_domain_id`` = ``None``
+     - (String) Optional domain ID to use with v3 and v2 parameters. It will be used for both the user and project domain in v3 and ignored in v2 authentication
+   * - ``default_domain_name`` = ``None``
+     - (String) Optional domain name to use with v3 API and v2 parameters. It will be used for both the user and project domain in v3 and ignored in v2 authentication.
+   * - ``domain_id`` = ``None``
+     - (String) Domain ID to scope to
+   * - ``domain_name`` = ``None``
+     - (String) Domain name to scope to
+   * - ``insecure`` = ``false``
      - (Boolean) Verify HTTPS connections.
    * - ``keyfile`` = ``None``
      - (String) PEM encoded client certificate key file
+   * - ``password`` = ``None``
+     - (String) User's password.
+   * - ``project_domain_id`` = ``None``
+     - (String) Domain ID containing project
+   * - ``project_domain_name`` = ``None``
+     - (String) Domain name containing project
+   * - ``project_id`` = ``None``
+     - (String) Project ID to scope to
+   * - ``project_name`` = ``None``
+     - (String) Project name to scope to
+   * - ``split_loggers`` = ``false``
+     - (Boolean) Log requests to multiple loggers.
+   * - ``system_scope`` = ``None``
+     - (String) Scope for system operations
    * - ``timeout`` = ``None``
      - (Integer) Timeout value for http requests
+   * - ``trust_id`` = ``None``
+     - (String) Trust ID
+   * - ``user_domain_id`` = ``None``
+     - (String) User's domain id
+   * - ``user_domain_name`` = ``None``
+     - (String) User's domain name
+   * - ``user_id`` = ``None``
+     - (String) User id
+   * - ``username`` = ``None``
+     - (String) Username
+   * - **[neutron]**
+     -
+   * - ``url`` = ``http://127.0.0.1:9696``
+     - (String) URL for connecting to neutron.
+   * - ``url_timeout`` = ``30``
+     - (Integer) Timeout value for connecting to neutron in seconds.
+   * - ``auth_strategy`` = ``keystone``
+     - (String) Auth strategy for connecting to neutron in admin context.
+   * - ``endpoint_type`` = ``publicURL``
+     - (String) Endpoint type to be used with neutron client calls.
+   * - ``region_name`` = ``None``
+     - (String) Region name for connecting to neutron in admin context.
+   * - ``auth_url`` = ``None``
+     - (String) Authentication URL
+   * - ``auth_type`` = ``None``
+     - (String) Authentication type to load
+   * - ``cafile`` = ``None``
+     - (String) PEM encoded Certificate Authority to use when verifying HTTPs connections.
+   * - ``certfile`` = ``None``
+     - (String) PEM encoded client certificate cert file
+   * - ``collect_timing`` = ``false``
+     - (Boolean) Collect per-API call timing information.
+   * - ``default_domain_id`` = ``None``
+     - (String) Optional domain ID to use with v3 and v2 parameters. It will be used for both the user and project domain in v3 and ignored in v2 authentication
+   * - ``default_domain_name`` = ``None``
+     - (String) Optional domain name to use with v3 API and v2 parameters. It will be used for both the user and project domain in v3 and ignored in v2 authentication.
+   * - ``domain_id`` = ``None``
+     - (String) Domain ID to scope to
+   * - ``domain_name`` = ``None``
+     - (String) Domain name to scope to
+   * - ``insecure`` = ``false``
+     - (Boolean) Verify HTTPS connections.
+   * - ``keyfile`` = ``None``
+     - (String) PEM encoded client certificate key file
+   * - ``password`` = ``None``
+     - (String) User's password.
+   * - ``project_domain_id`` = ``None``
+     - (String) Domain ID containing project
+   * - ``project_domain_name`` = ``None``
+     - (String) Domain name containing project
+   * - ``project_id`` = ``None``
+     - (String) Project ID to scope to
+   * - ``project_name`` = ``None``
+     - (String) Project name to scope to
+   * - ``split_loggers`` = ``false``
+     - (Boolean) Log requests to multiple loggers.
+   * - ``system_scope`` = ``None``
+     - (String) Scope for system operations
+   * - ``timeout`` = ``None``
+     - (Integer) Timeout value for http requests
+   * - ``trust_id`` = ``None``
+     - (String) Trust ID
+   * - ``user_domain_id`` = ``None``
+     - (String) User's domain id
+   * - ``user_domain_name`` = ``None``
+     - (String) User's domain name
+   * - ``user_id`` = ``None``
+     - (String) User id
+   * - ``username`` = ``None``
+     - (String) Username
    * - **[nova]**
      -
    * - ``api_microversion`` = ``2.10``
      - (String) Version of Nova API to be used.
-   * - ``auth_section`` = ``None``
-     - (Unknown) Config Section from which to load plugin specific options
+   * - ``endpoint_type`` = ``publicURL``
+     - (String) Endpoint type to be used with nova client calls.
+   * - ``region_name`` = ``None``
+     - (String) Region name for connecting to nova.
+   * - ``auth_url`` = ``None``
+     - (String) Authentication URL
    * - ``auth_type`` = ``None``
-     - (Unknown) Authentication type to load
+     - (String) Authentication type to load
    * - ``cafile`` = ``None``
      - (String) PEM encoded Certificate Authority to use when verifying HTTPs connections.
    * - ``certfile`` = ``None``
      - (String) PEM encoded client certificate cert file
-   * - ``endpoint_type`` = ``publicURL``
-     - (String) Endpoint type to be used with nova client calls.
-   * - ``insecure`` = ``False``
+   * - ``collect_timing`` = ``false``
+     - (Boolean) Collect per-API call timing information.
+   * - ``default_domain_id`` = ``None``
+     - (String) Optional domain ID to use with v3 and v2 parameters. It will be used for both the user and project domain in v3 and ignored in v2 authentication
+   * - ``default_domain_name`` = ``None``
+     - (String) Optional domain name to use with v3 API and v2 parameters. It will be used for both the user and project domain in v3 and ignored in v2 authentication.
+   * - ``domain_id`` = ``None``
+     - (String) Domain ID to scope to
+   * - ``domain_name`` = ``None``
+     - (String) Domain name to scope to
+   * - ``insecure`` = ``false``
      - (Boolean) Verify HTTPS connections.
    * - ``keyfile`` = ``None``
      - (String) PEM encoded client certificate key file
-   * - ``region_name`` = ``None``
-     - (String) Region name for connecting to nova.
+   * - ``password`` = ``None``
+     - (String) User's password.
+   * - ``project_domain_id`` = ``None``
+     - (String) Domain ID containing project
+   * - ``project_domain_name`` = ``None``
+     - (String) Domain name containing project
+   * - ``project_id`` = ``None``
+     - (String) Project ID to scope to
+   * - ``project_name`` = ``None``
+     - (String) Project name to scope to
+   * - ``split_loggers`` = ``false``
+     - (Boolean) Log requests to multiple loggers.
+   * - ``system_scope`` = ``None``
+     - (String) Scope for system operations
    * - ``timeout`` = ``None``
      - (Integer) Timeout value for http requests
+   * - ``trust_id`` = ``None``
+     - (String) Trust ID
+   * - ``user_domain_id`` = ``None``
+     - (String) User's domain id
+   * - ``user_domain_name`` = ``None``
+     - (String) User's domain name
+   * - ``user_id`` = ``None``
+     - (String) User id
+   * - ``username`` = ``None``
+     - (String) Username
