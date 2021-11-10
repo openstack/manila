@@ -127,28 +127,37 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         return self._view_builder.detail(req, replica)
 
+    def _validate_body(self, body):
+        if not self.is_valid_body(body, 'share_replica'):
+            msg = _("Body does not contain 'share_replica' information.")
+            raise exc.HTTPUnprocessableEntity(explanation=msg)
+
     @wsgi.Controller.api_version(
         MIN_SUPPORTED_API_VERSION, PRE_GRADUATION_VERSION, experimental=True)
     @wsgi.response(202)
     def create(self, req, body):
         return self._create(req, body)
 
-    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    @wsgi.Controller.api_version(GRADUATION_VERSION, "2.66")  # noqa
     @wsgi.response(202)
     def create(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         return self._create(req, body)
 
+    @wsgi.Controller.api_version("2.67") # noqa
+    @wsgi.response(202)
+    def create(self, req, body): # pylint: disable=function-redefined  # noqa F811
+        return self._create(req, body, allow_scheduler_hints=True)
+
     @wsgi.Controller.authorize('create')
-    def _create(self, req, body):
+    def _create(self, req, body, allow_scheduler_hints=False):
         """Add a replica to an existing share."""
         context = req.environ['manila.context']
-
-        if not self.is_valid_body(body, 'share_replica'):
-            msg = _("Body does not contain 'share_replica' information.")
-            raise exc.HTTPUnprocessableEntity(explanation=msg)
-
+        self._validate_body(body)
         share_id = body.get('share_replica').get('share_id')
         availability_zone = body.get('share_replica').get('availability_zone')
+        scheduler_hints = None
+        if allow_scheduler_hints:
+            scheduler_hints = body.get('share_replica').get('scheduler_hints')
 
         if not share_id:
             msg = _("Must provide Share ID to add replica.")
@@ -169,7 +178,8 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         try:
             new_replica = self.share_api.create_share_replica(
                 context, share_ref, availability_zone=availability_zone,
-                share_network_id=share_network_id)
+                share_network_id=share_network_id,
+                scheduler_hints=scheduler_hints)
         except exception.AvailabilityZoneNotFound as e:
             raise exc.HTTPBadRequest(explanation=e.message)
         except exception.ReplicationException as e:

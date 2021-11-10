@@ -173,8 +173,8 @@ REST_API_VERSION_HISTORY = """
     * 2.65 - Added ability to set affinity scheduler hints via the share
              create API.
     * 2.66 - Added filter search by group spec for share group type list.
-    * 2.67 - Added ability to set 'only_host' scheduler hint via the share
-             create API.
+    * 2.67 - Added ability to set 'only_host' scheduler hint for the share
+             create and share replica create API.
     * 2.68 - Added admin only capabilities to share metadata API
 """
 

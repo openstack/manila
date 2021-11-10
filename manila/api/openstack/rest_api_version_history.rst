@@ -371,8 +371,8 @@ user documentation.
 2.67
 ____
   Added support for 'only_host' key in "scheduler_hints" in the request body
-  of the POST/shares request. This hint will invoke OnlyHost scheduler
-  filter during share creation.
+  of the POST/shares and POST/share-replicas request. This hint will invoke
+  'OnlyHost' scheduler filter during share and share-replica creation.
 
 2.68
 ----

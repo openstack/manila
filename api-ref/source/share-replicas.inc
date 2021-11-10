@@ -84,6 +84,7 @@ Request
    - share_id: share_replica_share_id
    - availability_zone: share_replica_az
    - share_network_id: share_replica_share_network_id
+   - scheduler_hints: share_replica_scheduler_hints
 
 Request example
 ---------------
