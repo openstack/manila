@@ -795,7 +795,7 @@ manila extend
 
 .. code-block:: console
 
-   usage: manila extend <share> <new_size>
+   usage: manila extend [--wait] [--force] <share> <new_size>
 
 Increases the size of an existing share.
 
@@ -806,6 +806,14 @@ Increases the size of an existing share.
 
 ``<new_size>``
   New size of share, in GiBs.
+
+**Optional arguments:**
+
+``--wait``
+  Wait for share extension.
+
+``--force``
+  Extend share directly and not go through scheduler.
 
 .. _manila_extra-specs-list:
 
