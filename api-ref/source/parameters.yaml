@@ -201,6 +201,46 @@ backend_query:
   in: query
   required: false
   type: string
+created_before:
+  description: |
+    The date and time stamp when the query operation, only return user
+    messages before it.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2021-11-10T09:49:58+08:00``.
+  in: query
+  required: false
+  type: string
+  min_version: 2.52
+created_since:
+  description: |
+    The date and time stamp when the query operation, only return user
+    messages since it.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2021-11-10T09:49:58+08:00``.
+  in: query
+  required: false
+  type: string
+  min_version: 2.52
 description_inexact_query:
   description: |
     The description pattern that can be used to filter shares,
