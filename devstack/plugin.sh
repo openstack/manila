@@ -956,7 +956,7 @@ function install_docker_ubuntu {
 }
 
 function install_docker_fedora {
-    sudo yum install -y docker
+    install_package docker
     sudo systemctl enable docker
     sudo systemctl start docker
 }
