@@ -57,6 +57,8 @@ Request
    - request_id: request_id
    - resource_id: resource_id
    - resource_type: resource_type
+   - created_since: created_since
+   - created_before: created_before
 
 Response parameters
 -------------------
