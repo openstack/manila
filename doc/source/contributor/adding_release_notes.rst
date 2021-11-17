@@ -65,18 +65,12 @@ To create a release note for your change, use:
 
     $ reno new slug-goes-here
 
-If reno is not installed globally on your system, you can use it from venv
-of your manila's tox. Prior to running the above command, run:
+If reno is not installed globally on your system, you can use a tox
+environment in manila:
 
 .. code-block:: console
 
-    $ source .tox/py3/bin/activate
-
-Or directly as a one-liner, with:
-
-.. code-block:: console
-
-    $ tox -e venv -- reno new slug-goes-here
+    $ tox -e newnote slug-goes-here
 
 .. note::
 
