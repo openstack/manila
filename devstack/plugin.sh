@@ -7,6 +7,9 @@
 XTRACE=$(set +o | grep xtrace)
 set -o xtrace
 
+# Source openrc credentials
+source $TOP_DIR/openrc admin admin
+
 # Entry Points
 # ------------
 
