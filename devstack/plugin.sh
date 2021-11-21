@@ -308,6 +308,12 @@ function configure_manila {
     if [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
         _config_manila_apache_wsgi
     fi
+
+    if [[ "$MANILA_ENFORCE_SCOPE" == True ]] ; then
+        iniset $MANILA_CONF oslo_policy enforce_scope true
+        iniset $MANILA_CONF oslo_policy enforce_new_defaults true
+        OS_CLOUD="devstack-system-admin"
+    fi
 }
 
 
@@ -520,19 +526,14 @@ function create_default_share_group_type {
     # for OSC support
     # TODO(gouthamr): Remove workaround when we replace the commands below
     # with OSC equivalents
-    source $TOP_DIR/openrc admin admin
 
-    local type_exists=$( manila share-group-type-list | grep " $MANILA_DEFAULT_SHARE_GROUP_TYPE " )
+    local type_exists=$( openstack --os-cloud $OS_CLOUD share group type list | grep " $MANILA_DEFAULT_SHARE_GROUP_TYPE " )
     if [[ -z $type_exists ]]; then
-        manila share-group-type-create $MANILA_DEFAULT_SHARE_GROUP_TYPE $MANILA_DEFAULT_SHARE_TYPE
+        openstack --os-cloud $OS_CLOUD share group type create $MANILA_DEFAULT_SHARE_GROUP_TYPE $MANILA_DEFAULT_SHARE_TYPE
     fi
     if [[ $MANILA_DEFAULT_SHARE_GROUP_TYPE_SPECS ]]; then
-        manila share-group-type-key $MANILA_DEFAULT_SHARE_GROUP_TYPE set $MANILA_DEFAULT_SHARE_GROUP_TYPE_SPECS
+        openstack --os-cloud $OS_CLOUD share group type set $MANILA_DEFAULT_SHARE_GROUP_TYPE --group-specs $MANILA_DEFAULT_SHARE_GROUP_TYPE_SPECS
     fi
-
-    for key in $( set | awk -F= '/^OS_/ {print $1}' ); do
-        unset "${key}"
-    done
 
 }
 
@@ -544,13 +545,13 @@ function create_default_share_type {
     enabled_backends=(${MANILA_ENABLED_BACKENDS//,/ })
     driver_handles_share_servers=$(iniget $MANILA_CONF ${enabled_backends[0]} driver_handles_share_servers)
 
-    local type_exists=$( openstack --os-cloud devstack-admin share type list | grep " $MANILA_DEFAULT_SHARE_TYPE " )
+    local type_exists=$( openstack --os-cloud $OS_CLOUD share type list | grep " $MANILA_DEFAULT_SHARE_TYPE " )
     if [[ -z $type_exists ]]; then
         local command_args="$MANILA_DEFAULT_SHARE_TYPE $driver_handles_share_servers"
         if [[ $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS ]]; then
             command_args="$command_args --extra-specs $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS"
         fi
-        openstack --os-cloud devstack-admin share type create $command_args
+        openstack --os-cloud $OS_CLOUD share type create $command_args
     fi
 
 }
@@ -562,13 +563,13 @@ function create_custom_share_types {
     if [[ $MANILA_DHSS_TRUE_SHARE_TYPE_EXTRA_SPECS ]]; then
         command_args="$command_args --extra-specs $MANILA_DHSS_TRUE_SHARE_TYPE_EXTRA_SPECS"
     fi
-    openstack --os-cloud devstack-admin share type create $command_args
+    openstack --os-cloud $OS_CLOUD share type create $command_args
 
     command_args="dhss_false False"
     if [[ $MANILA_DHSS_FALSE_SHARE_TYPE_EXTRA_SPECS ]]; then
         command_args="$command_args --extra-specs $MANILA_DHSS_FALSE_SHARE_TYPE_EXTRA_SPECS"
     fi
-    openstack --os-cloud devstack-admin share type create $command_args
+    openstack --os-cloud $OS_CLOUD share type create $command_args
 }
 
 # configure_backing_file - Set up backing file for LVM
@@ -958,6 +959,7 @@ function update_tempest {
         iniset $TEMPEST_CONFIG identity alt_password $ADMIN_PASSWORD
         iniset $TEMPEST_CONFIG identity alt_tenant_name ${ALT_TENANT_NAME:-"alt_demo"}
         iniset $TEMPEST_CONFIG identity alt_domain_name $ADMIN_DOMAIN_NAME
+        iniset $TEMPEST_CONFIG enforce_scope manila "$MANILA_ENFORCE_SCOPE"
 
         # If testing a stable branch, we need to ensure we're testing with supported
         # API micro-versions; so set the versions from code if we're not testing the
