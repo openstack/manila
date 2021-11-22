@@ -235,7 +235,7 @@ def _def_parser():
     nums = pyparsing.nums
     oneOf = pyparsing.oneOf
     opAssoc = pyparsing.opAssoc
-    operatorPrecedence = pyparsing.operatorPrecedence
+    infixNotation = pyparsing.infixNotation
     Word = pyparsing.Word
 
     integer = Word(nums)
@@ -256,7 +256,7 @@ def _def_parser():
     negateop = oneOf('NOT not !')
 
     operand.setParseAction(EvalConstant)
-    expr = operatorPrecedence(operand, [
+    expr = infixNotation(operand, [
         (fn, 1, opAssoc.RIGHT, EvalFunction),
         ("^", 2, opAssoc.RIGHT, EvalPowerOp),
         (signop, 1, opAssoc.RIGHT, EvalSignOp),
