@@ -26,6 +26,7 @@ import six
 from manila import exception
 from manila.i18n import _
 from manila.share.drivers.ganesha import utils as ganesha_utils
+from manila import utils
 
 LOG = log.getLogger(__name__)
 
@@ -313,6 +314,7 @@ class GlusterManager(object):
                 'volume': self.volume, 'option': option, 'value': value})
 
     @_check_volume_presence
+    @utils.retry(retry_param=exception.GlusterfsException)
     def set_vol_option(self, option, value, ignore_failure=False):
         value = {True: self.GLUSTERFS_TRUE_VALUES[0],
                  False: self.GLUSTERFS_FALSE_VALUES[0]}.get(value, value)
