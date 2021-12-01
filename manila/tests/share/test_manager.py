@@ -5470,6 +5470,8 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(
             migration_api.ShareMigrationHelper, 'wait_for_share_server',
             mock.Mock(return_value=dest_server))
+        self.mock_object(self.share_manager.db, 'share_instance_update',
+                         mock.Mock(return_value=migrating_instance))
         self.mock_object(self.share_manager, '_migration_delete_instance')
         self.mock_object(self.share_manager.driver,
                          'migration_check_compatibility',
@@ -5484,7 +5486,7 @@ class ShareManagerTestCase(test.TestCase):
             exception.ShareMigrationFailed,
             self.share_manager._migration_start_driver,
             self.context, share, src_instance, fake_dest_host, True, True,
-            True, not has_snapshots, 'fake_net_id', 'fake_az_id',
+            nondisruptive, not has_snapshots, 'fake_net_id', 'fake_az_id',
             'fake_new_type_id')
 
         # asserts
@@ -5492,13 +5494,23 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext), 'src_server_id')
         self.share_manager.db.share_instance_get.assert_called_once_with(
             self.context, migrating_instance['id'], with_share_data=True)
-        (rpcapi.ShareAPI.provide_share_server.
-         assert_called_once_with(
-             self.context, migrating_instance, 'fake_net_id'))
-        rpcapi.ShareAPI.create_share_server.assert_called_once_with(
-            self.context, migrating_instance, 'fake_dest_share_server_id')
-        (migration_api.ShareMigrationHelper.wait_for_share_server.
-         assert_called_once_with('fake_dest_share_server_id'))
+        if nondisruptive:
+            self.share_manager.db.share_instance_update.assert_called_with(
+                self.context, migrating_instance['id'],
+                {'share_server_id': src_server['id']},
+                with_share_data=True
+            )
+            rpcapi.ShareAPI.provide_share_server.assert_not_called()
+            rpcapi.ShareAPI.create_share_server.assert_not_called()
+        else:
+            (rpcapi.ShareAPI.provide_share_server.
+                assert_called_once_with(
+                    self.context, migrating_instance, 'fake_net_id'))
+            rpcapi.ShareAPI.create_share_server.assert_called_once_with(
+                self.context, migrating_instance, 'fake_dest_share_server_id')
+            (migration_api.ShareMigrationHelper.wait_for_share_server.
+             assert_called_once_with('fake_dest_share_server_id'))
+
         (api.API.create_share_instance_and_get_request_spec.
          assert_called_once_with(self.context, share, 'fake_az_id', None,
                                  'fake_host', 'fake_net_id',

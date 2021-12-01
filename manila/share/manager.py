@@ -1187,19 +1187,34 @@ class ShareManager(manager.SchedulerDependentManager):
 
         try:
             if dest_share_instance['share_network_id']:
-                rpcapi = share_rpcapi.ShareAPI()
+                # NOTE(carloss): For a nondisruptive migration request, we must
+                # not change the share server, otherwise the share's export
+                # location will change, disconnecting the user. Disruptive
+                # migration requests to the driver the share server.
+                if nondisruptive:
+                    dest_share_server = self._get_share_server_dict(
+                        context, share_server)
+                    dest_share_instance = self.db.share_instance_update(
+                        context,
+                        dest_share_instance['id'],
+                        {'share_server_id': dest_share_server['id']},
+                        with_share_data=True
+                    )
+                else:
+                    rpcapi = share_rpcapi.ShareAPI()
 
-                # NOTE(ganso): Obtaining the share_server_id asynchronously so
-                # we can wait for it to be ready.
-                dest_share_server_id = rpcapi.provide_share_server(
-                    context, dest_share_instance,
-                    dest_share_instance['share_network_id'])
+                    # NOTE(ganso): Obtaining the share_server_id asynchronously
+                    # so we can wait for it to be ready.
+                    dest_share_server_id = rpcapi.provide_share_server(
+                        context, dest_share_instance,
+                        dest_share_instance['share_network_id'])
 
-                rpcapi.create_share_server(
-                    context, dest_share_instance, dest_share_server_id)
+                    rpcapi.create_share_server(
+                        context, dest_share_instance, dest_share_server_id)
 
-                dest_share_server = helper.wait_for_share_server(
-                    dest_share_server_id)
+                    dest_share_server = helper.wait_for_share_server(
+                        dest_share_server_id)
+
             else:
                 dest_share_server = None
 
