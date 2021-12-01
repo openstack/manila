@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Non-disruptive share migration will no longer choose a different
+    destination server even if limits of shares or gigabytes were exceeded in
+    the source.
+    For more details, please see
+    `bug #1920942 <https://bugs.launchpad.net/manila/+bug/1920942>`_.
