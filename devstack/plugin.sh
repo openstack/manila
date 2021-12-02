@@ -7,9 +7,6 @@
 XTRACE=$(set +o | grep xtrace)
 set -o xtrace
 
-# Source openrc credentials
-source $TOP_DIR/openrc admin admin
-
 # Entry Points
 # ------------
 
@@ -316,9 +313,9 @@ function configure_manila {
 
 function create_manila_service_keypair {
     if is_service_enabled nova; then
-        local keypair_exists=$( openstack keypair list | grep " $MANILA_SERVICE_KEYPAIR_NAME " )
+        local keypair_exists=$( openstack --os-cloud devstack-admin keypair list | grep " $MANILA_SERVICE_KEYPAIR_NAME " )
         if [[ -z $keypair_exists ]]; then
-            openstack keypair create $MANILA_SERVICE_KEYPAIR_NAME --public-key $MANILA_PATH_TO_PUBLIC_KEY
+            openstack --os-cloud devstack-admin keypair create $MANILA_SERVICE_KEYPAIR_NAME --public-key $MANILA_PATH_TO_PUBLIC_KEY
         fi
     fi
 }
@@ -347,10 +344,10 @@ function create_service_share_servers {
         if [[ $share_driver == $generic_driver ]]; then
             if [[ $(trueorfalse False driver_handles_share_servers) == False ]]; then
                 vm_name='manila_service_share_server_'$BE
-                local vm_exists=$( openstack server list --all-projects | grep " $vm_name " )
+                local vm_exists=$( openstack --os-cloud devstack-admin server list --all-projects | grep " $vm_name " )
                 if [[ -z $vm_exists ]]; then
-                    private_net_id=$(openstack network show $PRIVATE_NETWORK_NAME -f value -c id)
-                    vm_id=$(openstack server create $vm_name \
+                    private_net_id=$(openstack --os-cloud devstack-admin network show $PRIVATE_NETWORK_NAME -f value -c id)
+                    vm_id=$(openstack --os-cloud devstack-admin server create $vm_name \
                         --flavor $MANILA_SERVICE_VM_FLAVOR_NAME \
                         --image $MANILA_SERVICE_IMAGE_NAME \
                         --nic net-id=$private_net_id \
@@ -358,11 +355,11 @@ function create_service_share_servers {
                         --key-name $MANILA_SERVICE_KEYPAIR_NAME \
                         | grep ' id ' | get_field 2)
                 else
-                    vm_id=$(openstack server show $vm_name -f value -c id)
+                    vm_id=$(openstack --os-cloud devstack-admin server show $vm_name -f value -c id)
                 fi
 
-                floating_ip=$(openstack floating ip create $PUBLIC_NETWORK_NAME --subnet $PUBLIC_SUBNET_NAME | grep 'floating_ip_address' | get_field 2)
-                openstack server add floating ip $vm_id $floating_ip
+                floating_ip=$(openstack --os-cloud devstack-admin floating ip create $PUBLIC_NETWORK_NAME --subnet $PUBLIC_SUBNET_NAME | grep 'floating_ip_address' | get_field 2)
+                openstack --os-cloud devstack-admin server add floating ip $vm_id $floating_ip
 
                 iniset $MANILA_CONF $BE service_instance_name_or_id $vm_id
                 iniset $MANILA_CONF $BE service_net_name_or_ip $floating_ip
@@ -371,17 +368,17 @@ function create_service_share_servers {
                 if is_service_enabled neutron; then
                     if ! [[ -z $MANILA_ADMIN_NET_RANGE ]]; then
                         if [ $created_admin_network == false ]; then
-                            project_id=$(openstack project show $SERVICE_PROJECT_NAME -c id -f value)
-                            local admin_net_id=$( openstack network show admin_net -f value -c id )
+                            project_id=$(openstack --os-cloud devstack-admin project show $SERVICE_PROJECT_NAME -c id -f value)
+                            local admin_net_id=$( openstack --os-cloud devstack-admin network show admin_net -f value -c id )
                             if [[ -z $admin_net_id ]]; then
-                                openstack network create admin_net --project $project_id
-                                admin_net_id=$(openstack network show admin_net -f value -c id)
+                                openstack --os-cloud devstack-admin network create admin_net --project $project_id
+                                admin_net_id=$(openstack --os-cloud devstack-admin network show admin_net -f value -c id)
                             fi
 
-                            local admin_subnet_id=$( openstack subnet show admin_subnet -f value -c id )
+                            local admin_subnet_id=$( openstack --os-cloud devstack-admin subnet show admin_subnet -f value -c id )
                             if [[ -z $admin_subnet_id ]]; then
-                                openstack subnet create admin_subnet --project $project_id --ip-version 4 --network $admin_net_id --gateway None --subnet-range $MANILA_ADMIN_NET_RANGE
-                                admin_subnet_id=$(openstack subnet show admin_subnet -f value -c id)
+                                openstack --os-cloud devstack-admin subnet create admin_subnet --project $project_id --ip-version 4 --network $admin_net_id --gateway None --subnet-range $MANILA_ADMIN_NET_RANGE
+                                admin_subnet_id=$(openstack --os-cloud devstack-admin subnet show admin_subnet -f value -c id)
                             fi
                             created_admin_network=true
                         fi
@@ -414,10 +411,10 @@ function configure_data_service_generic_driver {
 # with configured generic driver to boot Nova VMs with.
 function create_manila_service_flavor {
     if is_service_enabled nova; then
-        local flavor_exists=$( openstack flavor list | grep " $MANILA_SERVICE_VM_FLAVOR_NAME " )
+        local flavor_exists=$( openstack --os-cloud devstack-admin flavor list | grep " $MANILA_SERVICE_VM_FLAVOR_NAME " )
         if [[ -z $flavor_exists ]]; then
             # Create flavor for Manila's service VM
-            openstack flavor create \
+            openstack --os-cloud devstack-admin --os-cloud devstack-admin flavor create \
                 $MANILA_SERVICE_VM_FLAVOR_NAME \
                 --id $MANILA_SERVICE_VM_FLAVOR_REF \
                 --ram $MANILA_SERVICE_VM_FLAVOR_RAM \
@@ -431,8 +428,8 @@ function create_manila_service_flavor {
 # with configured generic driver to boot Nova VMs from.
 function create_manila_service_image {
     if is_service_enabled nova g-api; then
-        TOKEN=$(openstack token issue -c id -f value)
-        local image_exists=$( openstack image list | grep " $MANILA_SERVICE_IMAGE_NAME " )
+        TOKEN=$(openstack --os-cloud devstack-admin token issue -c id -f value)
+        local image_exists=$( openstack --os-cloud devstack-admin image list | grep " $MANILA_SERVICE_IMAGE_NAME " )
         if [[ -z $image_exists ]]; then
             # Download Manila's image
             upload_image $MANILA_SERVICE_IMAGE_URL $TOKEN
@@ -444,42 +441,42 @@ function create_manila_service_image {
 # Nova VMs when generic driver is configured.
 function create_manila_service_secgroup {
     # Create a secgroup
-    if ! openstack security group list | grep -q $MANILA_SERVICE_SECGROUP; then
-        openstack security group create $MANILA_SERVICE_SECGROUP --description "$MANILA_SERVICE_SECGROUP description"
-        if ! timeout 30 sh -c "while ! openstack security group list | grep -q $MANILA_SERVICE_SECGROUP; do sleep 1; done"; then
+    if ! openstack --os-cloud devstack-admin security group list | grep -q $MANILA_SERVICE_SECGROUP; then
+        openstack --os-cloud devstack-admin security group create $MANILA_SERVICE_SECGROUP --description "$MANILA_SERVICE_SECGROUP description"
+        if ! timeout 30 sh -c "while ! openstack --os-cloud devstack-admin security group list | grep -q $MANILA_SERVICE_SECGROUP; do sleep 1; done"; then
             echo "Security group not created"
             exit 1
         fi
     fi
 
     # Configure Security Group Rules
-    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q icmp; then
-        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol icmp
+    if ! openstack --os-cloud devstack-admin security group rule list $MANILA_SERVICE_SECGROUP | grep -q icmp; then
+        openstack --os-cloud devstack-admin security group rule create $MANILA_SERVICE_SECGROUP --protocol icmp
     fi
-    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 22 "; then
-        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol tcp --dst-port 22
+    if ! openstack --os-cloud devstack-admin security group rule list $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 22 "; then
+        openstack --os-cloud devstack-admin security group rule create $MANILA_SERVICE_SECGROUP --protocol tcp --dst-port 22
     fi
-    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 2049 "; then
-        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol tcp --dst-port 2049
+    if ! openstack --os-cloud devstack-admin security group rule list $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 2049 "; then
+        openstack --os-cloud devstack-admin security group rule create $MANILA_SERVICE_SECGROUP --protocol tcp --dst-port 2049
     fi
-    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " udp .* 2049 "; then
-        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol udp --dst-port 2049
+    if ! openstack --os-cloud devstack-admin security group rule list $MANILA_SERVICE_SECGROUP | grep -q " udp .* 2049 "; then
+        openstack --os-cloud devstack-admin security group rule create $MANILA_SERVICE_SECGROUP --protocol udp --dst-port 2049
     fi
-    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " udp .* 445 "; then
-        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol udp --dst-port 445
+    if ! openstack --os-cloud devstack-admin security group rule list $MANILA_SERVICE_SECGROUP | grep -q " udp .* 445 "; then
+        openstack --os-cloud devstack-admin security group rule create $MANILA_SERVICE_SECGROUP --protocol udp --dst-port 445
     fi
-    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 445 "; then
-        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol tcp --dst-port 445
+    if ! openstack --os-cloud devstack-admin security group rule list $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 445 "; then
+        openstack --os-cloud devstack-admin security group rule create $MANILA_SERVICE_SECGROUP --protocol tcp --dst-port 445
     fi
-    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 139 "; then
-        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol tcp --dst-port 137:139
+    if ! openstack --os-cloud devstack-admin security group rule list $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 139 "; then
+        openstack --os-cloud devstack-admin security group rule create $MANILA_SERVICE_SECGROUP --protocol tcp --dst-port 137:139
     fi
-    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " udp .* 139 "; then
-        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol udp --dst-port 137:139
+    if ! openstack --os-cloud devstack-admin security group rule list $MANILA_SERVICE_SECGROUP | grep -q " udp .* 139 "; then
+        openstack --os-cloud devstack-admin security group rule create $MANILA_SERVICE_SECGROUP --protocol udp --dst-port 137:139
     fi
 
     # List secgroup rules
-    openstack security group rule list $MANILA_SERVICE_SECGROUP
+    openstack --os-cloud devstack-admin security group rule list $MANILA_SERVICE_SECGROUP
 }
 
 # create_manila_accounts - Set up common required manila accounts
@@ -516,6 +513,15 @@ function create_manila_accounts {
 
 # create_default_share_group_type - create share group type that will be set as default.
 function create_default_share_group_type {
+
+    # NOTE(gouthamr): manilaclient's shell doesn't support cloud profiles;
+    # OSC is the best approach here: https://review.opendev.org/805064, but,
+    # we need a temporary workaround to use legacy credentials while we wait
+    # for OSC support
+    # TODO(gouthamr): Remove workaround when we replace the commands below
+    # with OSC equivalents
+    source $TOP_DIR/openrc admin admin
+
     local type_exists=$( manila share-group-type-list | grep " $MANILA_DEFAULT_SHARE_GROUP_TYPE " )
     if [[ -z $type_exists ]]; then
         manila share-group-type-create $MANILA_DEFAULT_SHARE_GROUP_TYPE $MANILA_DEFAULT_SHARE_TYPE
@@ -523,6 +529,11 @@ function create_default_share_group_type {
     if [[ $MANILA_DEFAULT_SHARE_GROUP_TYPE_SPECS ]]; then
         manila share-group-type-key $MANILA_DEFAULT_SHARE_GROUP_TYPE set $MANILA_DEFAULT_SHARE_GROUP_TYPE_SPECS
     fi
+
+    for key in $( set | awk -F= '/^OS_/ {print $1}' ); do
+        unset "${key}"
+    done
+
 }
 
 # create_default_share_type - create share type that will be set as default
@@ -533,33 +544,31 @@ function create_default_share_type {
     enabled_backends=(${MANILA_ENABLED_BACKENDS//,/ })
     driver_handles_share_servers=$(iniget $MANILA_CONF ${enabled_backends[0]} driver_handles_share_servers)
 
-    local type_exists=$( manila type-list | grep " $MANILA_DEFAULT_SHARE_TYPE " )
+    local type_exists=$( openstack --os-cloud devstack-admin share type list | grep " $MANILA_DEFAULT_SHARE_TYPE " )
     if [[ -z $type_exists ]]; then
         local command_args="$MANILA_DEFAULT_SHARE_TYPE $driver_handles_share_servers"
-        #if is_driver_enabled $MANILA_CONTAINER_DRIVER; then
-        #    # TODO(aovchinnikov): Remove this condition when Container driver supports
-        #    # snapshots
-        #    command_args="$command_args --snapshot_support false"
-        #fi
-        manila type-create $command_args
+        if [[ $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS ]]; then
+            command_args="$command_args --extra-specs $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS"
+        fi
+        openstack --os-cloud devstack-admin share type create $command_args
     fi
-    if [[ $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS ]]; then
-        manila type-key $MANILA_DEFAULT_SHARE_TYPE set $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS
-    fi
+
 }
 
 # create_custom_share_types - create share types suitable for both possible
 # driver modes with names "dhss_true" and "dhss_false".
 function create_custom_share_types {
-    manila type-create dhss_true True
+    local command_args="dhss_true True"
     if [[ $MANILA_DHSS_TRUE_SHARE_TYPE_EXTRA_SPECS ]]; then
-        manila type-key dhss_true set $MANILA_DHSS_TRUE_SHARE_TYPE_EXTRA_SPECS
+        command_args="$command_args --extra-specs $MANILA_DHSS_TRUE_SHARE_TYPE_EXTRA_SPECS"
     fi
+    openstack --os-cloud devstack-admin share type create $command_args
 
-    manila type-create dhss_false False
+    command_args="dhss_false False"
     if [[ $MANILA_DHSS_FALSE_SHARE_TYPE_EXTRA_SPECS ]]; then
-        manila type-key dhss_false set $MANILA_DHSS_FALSE_SHARE_TYPE_EXTRA_SPECS
+        command_args="$command_args --extra-specs $MANILA_DHSS_FALSE_SHARE_TYPE_EXTRA_SPECS"
     fi
+    openstack --os-cloud devstack-admin share type create $command_args
 }
 
 # configure_backing_file - Set up backing file for LVM
@@ -924,7 +933,7 @@ function update_tempest {
         if [[ "$(trueorfalse False MANILA_SETUP_IPV6)" == "True" ]]; then
             # The public network was created by us, so set it explicitly in
             # tempest.conf
-            public_net_id=$(openstack network list --name $PUBLIC_NETWORK_NAME -f value -c ID )
+            public_net_id=$(openstack --os-cloud devstack-admin network list --name $PUBLIC_NETWORK_NAME -f value -c ID )
             iniset $TEMPEST_CONFIG network public_network_id $public_net_id
         fi
 
@@ -1065,26 +1074,26 @@ function setup_ipv6 {
     sudo ovs-vsctl set Bridge $PUBLIC_BRIDGE other_config:disable-in-band=true
 
     # Create address scopes and subnet pools
-    openstack address scope create --share --ip-version 4 scope-v4
-    openstack address scope create --share --ip-version 6 scope-v6
-    openstack subnet pool create $SUBNETPOOL_NAME_V4 --default-prefix-length $SUBNETPOOL_SIZE_V4 --pool-prefix $SUBNETPOOL_PREFIX_V4 --address-scope scope-v4 --default --share
-    openstack subnet pool create $SUBNETPOOL_NAME_V6 --default-prefix-length $SUBNETPOOL_SIZE_V6 --pool-prefix $SUBNETPOOL_PREFIX_V6 --address-scope scope-v6 --default --share
+    openstack --os-cloud devstack-admin address scope create --share --ip-version 4 scope-v4
+    openstack --os-cloud devstack-admin address scope create --share --ip-version 6 scope-v6
+    openstack --os-cloud devstack-admin subnet pool create $SUBNETPOOL_NAME_V4 --default-prefix-length $SUBNETPOOL_SIZE_V4 --pool-prefix $SUBNETPOOL_PREFIX_V4 --address-scope scope-v4 --default --share
+    openstack --os-cloud devstack-admin subnet pool create $SUBNETPOOL_NAME_V6 --default-prefix-length $SUBNETPOOL_SIZE_V6 --pool-prefix $SUBNETPOOL_PREFIX_V6 --address-scope scope-v6 --default --share
 
     # Create example private network and router
-    openstack router create $Q_ROUTER_NAME
-    openstack network create $PRIVATE_NETWORK_NAME
-    openstack subnet create --ip-version 6 --use-default-subnet-pool --ipv6-address-mode $IPV6_ADDRESS_MODE --ipv6-ra-mode $IPV6_RA_MODE --network $PRIVATE_NETWORK_NAME $IPV6_PRIVATE_SUBNET_NAME
-    openstack subnet create --ip-version 4 --use-default-subnet-pool --network $PRIVATE_NETWORK_NAME $PRIVATE_SUBNET_NAME
-    openstack router add subnet $Q_ROUTER_NAME $IPV6_PRIVATE_SUBNET_NAME
-    openstack router add subnet $Q_ROUTER_NAME $PRIVATE_SUBNET_NAME
+    openstack --os-cloud devstack-admin router create $Q_ROUTER_NAME
+    openstack --os-cloud devstack-admin network create $PRIVATE_NETWORK_NAME
+    openstack --os-cloud devstack-admin subnet create --ip-version 6 --use-default-subnet-pool --ipv6-address-mode $IPV6_ADDRESS_MODE --ipv6-ra-mode $IPV6_RA_MODE --network $PRIVATE_NETWORK_NAME $IPV6_PRIVATE_SUBNET_NAME
+    openstack --os-cloud devstack-admin subnet create --ip-version 4 --use-default-subnet-pool --network $PRIVATE_NETWORK_NAME $PRIVATE_SUBNET_NAME
+    openstack --os-cloud devstack-admin router add subnet $Q_ROUTER_NAME $IPV6_PRIVATE_SUBNET_NAME
+    openstack --os-cloud devstack-admin router add subnet $Q_ROUTER_NAME $PRIVATE_SUBNET_NAME
 
     # Create public network
-    openstack network create $PUBLIC_NETWORK_NAME --external --default --provider-network-type flat --provider-physical-network $PUBLIC_PHYSICAL_NETWORK
-    local public_gateway_ipv6=$(openstack subnet create $IPV6_PUBLIC_SUBNET_NAME --ip-version 6 --network $PUBLIC_NETWORK_NAME --subnet-pool $SUBNETPOOL_NAME_V6 --no-dhcp -c gateway_ip -f value)
-    local public_gateway_ipv4=$(openstack subnet create $PUBLIC_SUBNET_NAME --ip-version 4 --network $PUBLIC_NETWORK_NAME --subnet-range $FLOATING_RANGE --no-dhcp -c gateway_ip -f value)
+    openstack --os-cloud devstack-admin network create $PUBLIC_NETWORK_NAME --external --default --provider-network-type flat --provider-physical-network $PUBLIC_PHYSICAL_NETWORK
+    local public_gateway_ipv6=$(openstack --os-cloud devstack-admin subnet create $IPV6_PUBLIC_SUBNET_NAME --ip-version 6 --network $PUBLIC_NETWORK_NAME --subnet-pool $SUBNETPOOL_NAME_V6 --no-dhcp -c gateway_ip -f value)
+    local public_gateway_ipv4=$(openstack --os-cloud devstack-admin subnet create $PUBLIC_SUBNET_NAME --ip-version 4 --network $PUBLIC_NETWORK_NAME --subnet-range $FLOATING_RANGE --no-dhcp -c gateway_ip -f value)
 
     # Set router to use public network
-    openstack router set --external-gateway $PUBLIC_NETWORK_NAME $Q_ROUTER_NAME
+    openstack --os-cloud devstack-admin router set --external-gateway $PUBLIC_NETWORK_NAME $Q_ROUTER_NAME
 
     # Configure interfaces due to NEUTRON_CREATE_INITIAL_NETWORKS=False
     local ipv4_cidr_len=${FLOATING_RANGE#*/}
@@ -1191,11 +1200,11 @@ function setup_ipv6 {
 }
 
 function setup_bgp_for_ipv6 {
-    public_gateway_ipv6=$(openstack subnet show ipv6-public-subnet -c gateway_ip -f value)
-    neutron bgp-speaker-create --ip-version 6 --local-as 100 bgpspeaker
-    neutron bgp-speaker-network-add bgpspeaker $PUBLIC_NETWORK_NAME
-    neutron bgp-peer-create --peer-ip $public_gateway_ipv6 --remote-as 200 bgppeer
-    neutron bgp-speaker-peer-add bgpspeaker bgppeer
+    public_gateway_ipv6=$(openstack --os-cloud devstack-admin subnet show ipv6-public-subnet -c gateway_ip -f value)
+    openstack --os-cloud devstack-admin bgp speaker create --ip-version 6 --local-as 100 bgpspeaker
+    openstack --os-cloud devstack-admin bgp speaker add network bgpspeaker $PUBLIC_NETWORK_NAME
+    openstack --os-cloud devstack-admin bgp peer create --peer-ip $public_gateway_ipv6 --remote-as 200 bgppeer
+    openstack --os-cloud devstack-admin bgp speaker add peer bgpspeaker bgppeer
 }
 
 # Main dispatcher
