@@ -2599,7 +2599,7 @@ share_instance_cast_rules_to_readonly:
     True, all existing access rules will be cast to read/only.
   in: body
   required: true
-  type: string
+  type: boolean
   min_version: 2.30
 share_instance_id_1:
   description: |
@@ -2815,7 +2815,7 @@ share_replica_cast_rules_to_readonly:
     True, all existing access rules will be cast to read/only.
   in: body
   required: true
-  type: string
+  type: boolean
   min_version: 2.30
 share_replica_force_delete:
   description: |
