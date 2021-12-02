@@ -2237,6 +2237,50 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share', 'create_snapshot', share)
 
+    def test_create_snapshot_fail(self):
+        share = fakes.fake_share(
+            has_replicas=False, status=constants.STATUS_AVAILABLE)
+        mock_db_share_snapshot_create = self.mock_object(
+            db_api, 'share_snapshot_create', mock.Mock(
+                side_effect=exception.NotFound))
+
+        self.mock_object(quota.QUOTAS, 'rollback')
+
+        self.assertRaises(exception.NotFound,
+                          self.api.create_snapshot,
+                          self.context, share,
+                          'fake_name', 'fake_desc')
+
+        self.assertTrue(mock_db_share_snapshot_create.called)
+        quota.QUOTAS.rollback.assert_called_once_with(
+            self.context,
+            mock.ANY,
+            share_type_id=share['instance']['share_type_id'])
+
+    def test_create_snapshot_quota_commit_fail(self):
+        share = fakes.fake_share(
+            has_replicas=False, status=constants.STATUS_AVAILABLE)
+        snapshot = fakes.fake_snapshot(
+            create_instance=True, share_instance_id='id2')
+        self.mock_object(
+            quota.QUOTAS, 'commit', mock.Mock(
+                side_effect=exception.QuotaError('fake')))
+
+        self.mock_object(db_api, 'share_snapshot_create', mock.Mock(
+            return_value=snapshot))
+        self.mock_object(db_api, 'share_snapshot_instance_delete')
+        self.mock_object(quota.QUOTAS, 'rollback')
+
+        self.assertRaises(exception.QuotaError,
+                          self.api.create_snapshot,
+                          self.context, share,
+                          'fake_name', 'fake_desc')
+
+        quota.QUOTAS.rollback.assert_called_once_with(
+            self.context,
+            mock.ANY,
+            share_type_id=share['instance']['share_type_id'])
+
     @ddt.data({'use_scheduler': False, 'valid_host': 'fake',
                'az': None},
               {'use_scheduler': True, 'valid_host': None,
