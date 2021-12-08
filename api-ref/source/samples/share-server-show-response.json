@@ -18,6 +18,7 @@
         "share_network_id": "713df749-aac0-4a54-af52-10f6c991e80c",
         "share_network_subnet_id": "f53252f0-c2a9-4d7c-af41-1c6f3cfb3af3",
         "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
-        "id": "ba11930a-bf1a-4aa7-bae4-a8dfbaa3cc73"
+        "id": "ba11930a-bf1a-4aa7-bae4-a8dfbaa3cc73",
+        "security_service_update_support": true
     }
 }

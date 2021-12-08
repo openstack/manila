@@ -935,6 +935,12 @@ created_at:
   in: body
   required: true
   type: string
+current_share_network_security_service_id:
+  description: |
+    The ID of a security service that is currently attached to a share network.
+  in: body
+  required: true
+  type: string
 deny_access:
   description: |
     The ``deny_access`` object.
@@ -1284,6 +1290,13 @@ host_share_server_migration:
   in: body
   required: true
   type: string
+hosts_check_result:
+  description: |
+    (Admin only). Result received from each host in a security service update
+    check operation.
+  in: body
+  required: true
+  type: object
 id_13:
   description: |
     The share instance ID.
@@ -1713,6 +1726,13 @@ new_share_network_id_server_migration:
   in: body
   required: false
   type: string
+new_share_network_security_service_id:
+  description: |
+    The ID of a security service that must be attached to a share
+    network after a share network security service update operation.
+  in: body
+  required: true
+  type: string
 new_share_type_id:
   description: |
      If willing to retype the share so it can be allocated in the
@@ -1762,6 +1782,13 @@ nondisruptive_server_migration:
     When set to ``True`` and drivers are not capable of allowing
     the share server to remain accessible through the two phases of the
     migration, migration will result in an error status.
+  in: body
+  required: true
+  type: boolean
+operation_is_compatible:
+  description: |
+    Indicates the result of a check operation. If ``True`` indicates that the
+    addition/update of security service is possible.
   in: body
   required: true
   type: boolean
@@ -2203,6 +2230,25 @@ requested_capabilities:
   in: body
   required: true
   type: object
+requested_check_operation:
+  description: |
+    Information about the requested operation.
+  in: body
+  required: true
+  type: object
+requested_operation:
+  description: |
+    Data about the operation that was requested.
+  in: body
+  required: true
+  type: object
+requested_operation_name:
+  description: |
+    The name of the check operation that was triggered, being
+    ``add_security_service`` or ``update_security_service``.
+  in: body
+  required: true
+  type: string
 required_extra_specs:
   description: |
     The required extra specifications for the share
@@ -2212,6 +2258,14 @@ required_extra_specs:
   in: body
   required: true
   type: object
+reset_operation:
+  description: |
+    Whether a share network security service check update or add operation for
+    a given share network should ignore previous check results, and check the
+    operation's compatibility again.
+  in: body
+  required: true
+  type: boolean
 reset_status:
   description: |
     The ``reset_status`` object.
@@ -2352,6 +2406,13 @@ security_service_type_request:
   in: body
   required: false
   type: string
+security_service_update_support:
+  description: |
+    Whether a share network or server supports security service updates or not.
+  in: body
+  required: true
+  type: boolean
+  min_version: 2.63
 security_service_user:
   description: |
     The security service user or group name that is used by the project.
@@ -2677,6 +2738,14 @@ share_network_security_service_id:
   in: body
   required: true
   type: string
+share_network_security_service_update_support:
+  description: |
+    Whether the share network supports its security services being updated
+    when it is already being used.
+  in: body
+  required: true
+  type: boolean
+  min_version: 2.63
 share_network_share_network_subnets:
   description: |
     A list of share network subnets that pertain to the related share network.
@@ -2684,6 +2753,14 @@ share_network_share_network_subnets:
   required: true
   type: array
   min_version: 2.51
+share_network_status:
+  description: |
+    The status of a share network. Possible values are: ``active``, ``error``
+    or ``network_change``.
+  in: body
+  required: true
+  type: string
+  min_version: 2.63
 share_network_subnet_availability_zone:
   description: |
     The name of the availability zone that the share network subnet belongs to.
@@ -2877,6 +2954,14 @@ share_server_id:
   in: body
   required: true
   type: string
+share_server_security_service_update_support:
+  description: |
+    Whether the share server supports its security services being updated after
+    its creation.
+  in: body
+  required: true
+  type: boolean
+  min_version: 2.63
 share_server_show_identifier:
   description: |
     The identifier of the share server in the back-end storage system.

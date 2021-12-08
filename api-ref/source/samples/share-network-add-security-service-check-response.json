@@ -1,0 +1,11 @@
+{
+    "compatible": true,
+    "requested_operation": {
+        "operation": "add_security_service",
+        "current_security_service": null,
+        "new_security_service": "8971c5f6-52ec-4c53-bf6a-3fae38a9221e"
+    },
+    "hosts_check_result": {
+        "ubuntu@dummy2": true
+    }
+}

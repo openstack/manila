@@ -13,6 +13,8 @@
         "network_type": null,
         "description": null,
         "gateway": null,
-        "mtu": null
+        "mtu": null,
+        "security_service_update_support": true,
+        "status": "active"
     }
 }

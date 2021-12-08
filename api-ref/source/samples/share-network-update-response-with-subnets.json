@@ -6,6 +6,8 @@
         "created_at": "2019-11-12T17:18:10.000000",
         "updated_at": null,
         "description": "i'm adding a description",
+        "security_service_update_support": true,
+        "status": "active",
         "share_network_subnets": [
             {
                 "id": "687ab361-5c40-406e-945c-6326254782d4",

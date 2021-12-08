@@ -6,6 +6,8 @@
         "id": "77eb3421-4549-4789-ac39-0d5185d68c29",
         "project_id": "e10a683c20da41248cfd5e1ab3d88c62",
         "description": "This is my share network",
+        "security_service_update_support": true,
+        "status": "active",
         "share_network_subnets": [
             {
                 "id": "91cc63b5-6c61-4078-b054-560923709654",

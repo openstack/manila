@@ -80,6 +80,7 @@ Response parameters
    - host: host_share_server_body
    - updated_at: updated_at
    - share_network_subnet_id: share_network_subnet_id_share_server_body
+   - security_service_update_support: share_server_security_service_update_support
 
 Response example
 ----------------
@@ -134,6 +135,7 @@ Response parameters
   - identifier: share_server_show_identifier
   - is_auto_deletable: share_server_show_is_auto_deletable
   - share_network_subnet_id: share_network_subnet_id_share_server_body
+  - security_service_update_support: security_service_update_support
 
 Response example
 ----------------
@@ -279,6 +281,7 @@ Response parameters
     - is_auto_deletable: is_auto_deletable
     - identifier: identifier
     - share_network_subnet_id: share_network_subnet_id_manage_server_body
+    - security_service_update_support: security_service_update_support
 
 
 Response examples

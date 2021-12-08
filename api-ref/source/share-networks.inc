@@ -137,6 +137,8 @@ Response parameters
    - gateway: share_network_gateway
    - mtu: share_network_mtu
    - share_network_subnets: share_network_share_network_subnets
+   - security_service_update_support: share_network_security_service_update_support
+   - status: share_network_status
 
 Response example
 ----------------
@@ -199,6 +201,8 @@ Response parameters
    - gateway: share_network_gateway
    - mtu: share_network_mtu
    - share_network_subnets: share_network_share_network_subnets
+   - security_service_update_support: share_network_security_service_update_support
+   - status: share_network_status
 
 Response example
 ----------------
@@ -283,6 +287,8 @@ Response parameters
    - gateway: share_network_gateway
    - mtu: share_network_mtu
    - share_network_subnets: share_network_share_network_subnets
+   - security_service_update_support: share_network_security_service_update_support
+   - status: share_network_status
 
 Response example
 ----------------
@@ -305,6 +311,13 @@ Add security service to share network
 .. rest_method::  POST /v2/share-networks/{share_network_id}/action
 
 Adds a security service to a share network.
+
+.. note::
+    As of API version 2.63, manila allows adding security services to share
+    networks that are being used if supported by the share backends. Before
+    requesting to add a security service to a share network that is in use,
+    make sure to use the `check add API
+    <https://docs.openstack.org/api-ref/shared-file-system/#check-share-network-security-service-add-since-api-v2-63>`_.
 
 Response codes
 --------------
@@ -357,6 +370,8 @@ Response parameters
    - gateway: share_network_gateway
    - mtu: share_network_mtu
    - share_network_subnets: share_network_share_network_subnets
+   - security_service_update_support: share_network_security_service_update_support
+   - status: share_network_status
 
 Response example
 ----------------
@@ -427,6 +442,8 @@ Response parameters
    - updated_at: updated_at
    - gateway: share_network_gateway
    - mtu: share_network_mtu
+   - security_service_update_support: share_network_security_service_update_support
+   - status: share_network_status
 
 Response example
 ----------------
@@ -506,6 +523,8 @@ Response parameters
    - updated_at: updated_at
    - gateway: share_network_gateway
    - mtu: share_network_mtu
+   - security_service_update_support: share_network_security_service_update_support
+   - status: share_network_status
 
 Response example
 ----------------
@@ -557,3 +576,256 @@ Request
 
    - project_id: project_id_path
    - share_network_id: share_network_id_path
+
+
+Update share network security service (since API v2.63)
+=======================================================
+
+.. rest_method::  POST /v2/share-networks/{share_network_id}/action
+
+.. versionadded:: 2.63
+
+Replaces a security service in a share network. Both current and the new
+security service must have the same type and must have the
+``security_service_update_support`` capability set to ``True``.
+
+.. important::
+    Before calling the update share network security service API, make sure
+    to check if the share backends within the share network can hold the
+    operation, through the `check update API
+    <https://docs.openstack.org/api-ref/shared-file-system/#check-share-network-security-service-update-since-api-v2-63>`_.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - share_network_id: share_network_id_path
+   - current_security_service: current_share_network_security_service_id
+   - new_security_service: new_share_network_security_service_id
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-network-update-security-service-request.json
+   :language: javascript
+
+Response parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - id: share_network_id
+   - project_id: project_id
+   - neutron_net_id: neutron_net_id
+   - neutron_subnet_id: neutron_subnet_id
+   - network_type: network_type
+   - segmentation_id: segmentation_id
+   - cidr: cidr
+   - ip_version: ip_version
+   - name: name
+   - description: description
+   - created_at: created_at
+   - updated_at: updated_at
+   - gateway: share_network_gateway
+   - mtu: share_network_mtu
+   - share_network_subnets: share_network_share_network_subnets
+   - security_service_update_support: share_network_security_service_update_support
+   - status: share_network_status
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-network-update-security-service-response.json
+   :language: javascript
+
+
+.. _share-net-sec-service-update-check:
+
+Check share network security service update (since API v2.63)
+=============================================================
+
+.. rest_method::  POST /v2/share-networks/{share_network_id}/action
+
+.. versionadded:: 2.63
+
+Checks if an existing security service can be replaced on a share network that
+is in use. This operation must be triggered before an actual request to update
+a share network security service is requested.
+
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 404
+   - 409
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - share_network_id: share_network_id_path
+   - current_service_id: current_share_network_security_service_id
+   - new_service_id: new_share_network_security_service_id
+   - reset_operation: reset_operation
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-network-update-security-service-check-request.json
+   :language: javascript
+
+Response parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - operation: requested_operation_name
+   - current_security_service: current_share_network_security_service_id
+   - new_security_service: new_share_network_security_service_id
+   - compatible: operation_is_compatible
+   - requested_operation: requested_check_operation
+   - hosts_check_result: hosts_check_result
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-network-update-security-service-check-response.json
+   :language: javascript
+
+
+Check share network security service add (since API v2.63)
+==========================================================
+
+.. rest_method::  POST /v2/share-networks/{share_network_id}/action
+
+.. versionadded:: 2.63
+
+Checks if a new security service can be added to a share network that's already
+in use. This  operation must be triggered before an actual request to add a
+security service to an in use share network.
+
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 404
+   - 409
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - share_network_id: share_network_id_path
+   - security_service_id: current_share_network_security_service_id
+   - reset_operation: reset_operation
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-network-add-security-service-check-request.json
+   :language: javascript
+
+Response parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - operation: requested_operation_name
+   - current_security_service: current_share_network_security_service_id
+   - new_security_service: new_share_network_security_service_id
+   - compatible: operation_is_compatible
+   - requested_operation: requested_operation
+   - hosts_check_result: hosts_check_result
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-network-add-security-service-check-response.json
+   :language: javascript
+
+
+Reset status (since API v2.63)
+==============================
+
+.. rest_method:: POST /v2/share-networks/{share_network_id}/action
+
+.. versionadded:: 2.63
+
+Resets a share network status.
+
+Administrator only. Explicitly updates the state of a share network.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+    - 202
+
+.. rest_status_code:: error status.yaml
+
+    - 400
+    - 401
+    - 403
+    - 404
+
+Request parameters
+------------------
+
+.. rest_parameters:: parameters.yaml
+
+    - project_id: project_id_path
+    - share_network_id: share_network_id_path
+    - status: share_network_status
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-network-reset-state-request.json
+   :language: javascript
+
+
+Response parameters
+-------------------
+
+There is no body content for the response.

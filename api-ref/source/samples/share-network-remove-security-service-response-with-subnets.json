@@ -6,6 +6,8 @@
         "id": "d8ae6799-2567-4a89-aafb-fa4424350d2b",
         "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
         "description": null,
+        "security_service_update_support": true,
+        "status": "active",
         "share_network_subnets": [
             {
                 "id": "e4db03dc-6041-4c6a-a8f9-80bb4141a1eb",
