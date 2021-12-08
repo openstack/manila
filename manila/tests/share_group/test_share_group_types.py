@@ -102,7 +102,7 @@ class ShareGroupTypesTestCase(test.TestCase):
 
     def test_get_all_types_search(self):
         share_group_type = self.fake_type_w_extra
-        search_filter = {"group_specs": {"gold": "True"}, 'is_public': True}
+        search_filter = {'group_specs': {'gold': 'True'}, 'is_public': True}
         self.mock_object(
             db, 'share_group_type_get_all',
             mock.Mock(return_value=share_group_type))
@@ -113,10 +113,16 @@ class ShareGroupTypesTestCase(test.TestCase):
         db.share_group_type_get_all.assert_called_once_with(
             mock.ANY, 0, filters={'is_public': True})
         self.assertEqual(sorted(share_group_type), sorted(returned_type))
-        search_filter = {"group_specs": {"gold": "False"}}
+        search_filter = {'group_specs': {'gold': 'False'}}
         returned_type = share_group_types.get_all(
             self.context, search_opts=search_filter)
         self.assertEqual({}, returned_type)
+
+        share_group_type = self.fake_type_w_extra
+        search_filter = {'group_specs': {'gold': 'True'}}
+        returned_type = share_group_types.get_all(
+            self.context, search_opts=search_filter)
+        self.assertItemsEqual(share_group_type, returned_type)
 
     def test_add_access(self):
         project_id = '456'

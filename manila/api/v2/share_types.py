@@ -25,6 +25,7 @@ from six.moves import http_client
 import webob
 from webob import exc
 
+from manila.api import common
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.views import types as views_types
@@ -125,7 +126,7 @@ class ShareTypesController(wsgi.Controller):
         context = req.environ['manila.context']
         if context.is_admin:
             # Only admin has query access to all share types
-            filters['is_public'] = self._parse_is_public(
+            filters['is_public'] = common.parse_is_public(
                 req.params.get('is_public'))
         else:
             filters['is_public'] = True
@@ -147,26 +148,6 @@ class ShareTypesController(wsgi.Controller):
         limited_types = share_types.get_all_types(
             context, search_opts=filters).values()
         return list(limited_types)
-
-    @staticmethod
-    def _parse_is_public(is_public):
-        """Parse is_public into something usable.
-
-        * True: API should list public share types only
-        * False: API should list private share types only
-        * None: API should list both public and private share types
-        """
-        if is_public is None:
-            # preserve default value of showing only public types
-            return True
-        elif six.text_type(is_public).lower() == "all":
-            return None
-        else:
-            try:
-                return strutils.bool_from_string(is_public, strict=True)
-            except ValueError:
-                msg = _('Invalid is_public filter [%s]') % is_public
-                raise exc.HTTPBadRequest(explanation=msg)
 
     @wsgi.Controller.api_version("1.0", "2.23")
     @wsgi.action("create")

@@ -298,6 +298,19 @@ group_snapshot_status_query:
   in: query
   required: false
   type: string
+group_specs_query:
+  description: |
+    The group specifications as a set of one or more
+    key-value pairs. In each pair, the key is the name of the group
+    specification and the value is the share group type that was used to
+    filter search share group type list. The query must be a “percent-encoded” string,
+    for example, the following query parameters: {'group-specs':
+    {'consistent_snapshot_support': 'true'}} is encoded as
+    'group_specs=%7B%27consistent_snapshot_support%27%3A+%27True%27%7D'
+  in: query
+  required: false
+  type: string
+  min_version: 2.66
 host_query:
   description: |
     The host name of the resource to query with. Querying by hostname is a

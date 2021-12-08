@@ -430,16 +430,6 @@ class ShareTypesAPITest(test.TestCase):
             self.assertDictEqual(expected_share_type,
                                  output['share_types'][i])
 
-    @ddt.data(None, True, 'true', 'false', 'all')
-    def test_parse_is_public_valid(self, value):
-        result = self.controller._parse_is_public(value)
-        self.assertIn(result, (True, False, None))
-
-    def test_parse_is_public_invalid(self):
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller._parse_is_public,
-                          'fakefakefake')
-
     @ddt.data(
         ("new_name", "new_description", "wrong_bool"),
         (" ", "new_description", "true"),

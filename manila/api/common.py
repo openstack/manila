@@ -266,6 +266,27 @@ def check_share_network_is_active(share_network):
         raise webob.exc.HTTPBadRequest(explanation=msg)
 
 
+def parse_is_public(is_public):
+    """Parse is_public into something usable.
+
+    :returns:
+        - True: API should list public share group types only
+        - False: API should list private share group types only
+        - None: API should list both public and private share group types
+    """
+    if is_public is None:
+        # preserve default value of showing only public types
+        return True
+    elif six.text_type(is_public).lower() == "all":
+        return None
+    else:
+        try:
+            return strutils.bool_from_string(is_public, strict=True)
+        except ValueError:
+            msg = _('Invalid is_public filter [%s]') % is_public
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+
 class ViewBuilder(object):
     """Model API responses as dictionaries."""
 

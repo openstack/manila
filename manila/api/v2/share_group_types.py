@@ -11,14 +11,16 @@
 # under the License.
 
 """The group type API controller module."""
+import ast
 
-from oslo_utils import strutils
 from oslo_utils import uuidutils
 import six
 from six.moves import http_client
 import webob
 from webob import exc
 
+from manila.api import common
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.views import share_group_types as views
 from manila import exception
@@ -104,34 +106,26 @@ class ShareGroupTypesController(wsgi.Controller):
         context = req.environ['manila.context']
         if context.is_admin:
             # Only admin has query access to all group types
-            filters['is_public'] = self._parse_is_public(
+            filters['is_public'] = common.parse_is_public(
                 req.params.get('is_public'))
         else:
             filters['is_public'] = True
+
+        group_specs = req.params.get('group_specs', {})
+        group_specs_disallowed = (req.api_version_request <
+                                  api_version.APIVersionRequest("2.66"))
+
+        if group_specs and group_specs_disallowed:
+            msg = _("Filter by 'group_specs' is not supported by this "
+                    "microversion. Use 2.66 or greater microversion to "
+                    "be able to use filter search by 'group_specs.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        elif group_specs:
+            filters['group_specs'] = ast.literal_eval(group_specs)
+
         limited_types = share_group_types.get_all(
             context, search_opts=filters).values()
         return list(limited_types)
-
-    @staticmethod
-    def _parse_is_public(is_public):
-        """Parse is_public into something usable.
-
-        :returns:
-            - True: API should list public share group types only
-            - False: API should list private share group types only
-            - None: API should list both public and private share group types
-        """
-        if is_public is None:
-            # preserve default value of showing only public types
-            return True
-        elif six.text_type(is_public).lower() == "all":
-            return None
-        else:
-            try:
-                return strutils.bool_from_string(is_public, strict=True)
-            except ValueError:
-                msg = _('Invalid is_public filter [%s]') % is_public
-                raise exc.HTTPBadRequest(explanation=msg)
 
     @wsgi.Controller.authorize('create')
     def _create(self, req, body):
