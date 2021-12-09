@@ -21,7 +21,6 @@ from unittest import mock
 
 import ddt
 from oslo_log import log
-import six
 
 from manila import exception
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
@@ -2553,7 +2552,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.configure_ldap(sec_service)
 
-        config_name = hashlib.md5(six.b(sec_service['id'])).hexdigest()
+        config_name = hashlib.md5(
+            sec_service['id'].encode("latin-1")).hexdigest()
 
         ldap_client_create_args = {
             'ldap-client-config': config_name,
@@ -3807,7 +3807,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'attributes': {
                 'volume-attributes': {
                     'volume-snapshot-attributes': {
-                        'snapdir-access-enabled': six.text_type(
+                        'snapdir-access-enabled': str(
                             not hide_snapdir).lower(),
                     },
                 },
@@ -3851,7 +3851,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'attributes': {
                 'volume-attributes': {
                     'volume-space-attributes': {
-                        'is-filesys-size-fixed': six.text_type(
+                        'is-filesys-size-fixed': str(
                             filesys_size_fixed).lower(),
                     },
                 },
@@ -8063,7 +8063,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_modify_ldap(self, api_not_found):
         current_ldap_service = fake.LDAP_AD_SECURITY_SERVICE
         new_ldap_service = fake.LDAP_LINUX_SECURITY_SERVICE
-        config_name = hashlib.md5(six.b(new_ldap_service['id'])).hexdigest()
+        config_name = hashlib.md5(
+            new_ldap_service['id'].encode("latin-1")).hexdigest()
         api_result = (self._mock_api_error(code=netapp_api.EOBJECTNOTFOUND)
                       if api_not_found else mock.Mock())
         mock_create_client = self.mock_object(
@@ -8107,7 +8108,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_modify_ldap_current_config_delete_error(self):
         current_ldap_service = fake.LDAP_AD_SECURITY_SERVICE
         new_ldap_service = fake.LDAP_LINUX_SECURITY_SERVICE
-        config_name = hashlib.md5(six.b(new_ldap_service['id'])).hexdigest()
+        config_name = hashlib.md5(
+            new_ldap_service['id'].encode("latin-1")).hexdigest()
         mock_create_client = self.mock_object(
             self.client, '_create_ldap_client')
         mock_send_request = self.mock_object(

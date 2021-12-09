@@ -17,8 +17,10 @@ API for QNAP Storage.
 """
 import base64
 import functools
+from http import client as http_client
 import re
 import ssl
+from urllib import parse as urlparse
 
 try:
     import xml.etree.cElementTree as ET
@@ -26,9 +28,6 @@ except ImportError:
     import xml.etree.ElementTree as ET
 
 from oslo_log import log as logging
-import six
-from six.moves import http_client
-from six.moves import urllib
 
 from manila import exception
 from manila.i18n import _
@@ -50,7 +49,7 @@ def _connection_checker(func):
         try:
             return func(self, *args, **kwargs)
         except exception.ShareBackendException as e:
-            matches = pattern.match(six.text_type(e))
+            matches = pattern.match(str(e))
             if matches:
                 LOG.debug('Session might have expired.'
                           ' Trying to relogin')
@@ -155,7 +154,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/authLogin.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
@@ -178,9 +177,9 @@ class QnapAPIExecutor(object):
             value = params[key]
             if value is not None:
                 if isinstance(value, list):
-                    sanitized_params[key] = [six.text_type(v) for v in value]
+                    sanitized_params[key] = [str(v) for v in value]
                 else:
-                    sanitized_params[key] = six.text_type(value)
+                    sanitized_params[key] = str(value)
         return sanitized_params
 
     @_connection_checker
@@ -193,7 +192,7 @@ class QnapAPIExecutor(object):
             'wiz_func': 'share_create',
             'action': 'add_share',
             'vol_name': create_share_name,
-            'vol_size': six.text_type(share['size']) + 'GB',
+            'vol_size': str(share['size']) + 'GB',
             'threshold': '80',
             'dedup': ('sha512'
                       if kwargs['qnap_deduplication'] is True
@@ -222,7 +221,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/wizReq.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
@@ -259,7 +258,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/disk/disk_manage.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
@@ -283,7 +282,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/disk/disk_manage.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
@@ -318,7 +317,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/disk/disk_manage.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
@@ -355,7 +354,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/disk/disk_manage.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
@@ -383,7 +382,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/disk/snapshot.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
@@ -425,7 +424,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/disk/snapshot.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
@@ -447,7 +446,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/disk/snapshot.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
@@ -479,7 +478,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/disk/snapshot.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
@@ -516,10 +515,10 @@ class QnapAPIExecutor(object):
             'sid': self.sid,
         }
         if share_dict.get('new_size'):
-            params['vol_size'] = six.text_type(share_dict['new_size']) + 'GB'
+            params['vol_size'] = str(share_dict['new_size']) + 'GB'
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/priv/privWizard.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
@@ -541,7 +540,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/accessrights/accessrightsRequest.cgi?%s' %
                sanitized_params)
 
@@ -577,7 +576,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/accessrights/accessrightsRequest.cgi?%s' %
                sanitized_params)
 
@@ -601,7 +600,7 @@ class QnapAPIExecutor(object):
         sanitized_params = self._sanitize_params(params)
 
         # urlencode with True parameter to parse ipv4_list
-        sanitized_params = urllib.parse.urlencode(sanitized_params, True)
+        sanitized_params = urlparse.urlencode(sanitized_params, True)
         url = ('/cgi-bin/accessrights/accessrightsRequest.cgi?%s' %
                sanitized_params)
 
@@ -623,7 +622,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/accessrights/accessrightsRequest.cgi?%s' %
                sanitized_params)
 
@@ -647,7 +646,7 @@ class QnapAPIExecutor(object):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/priv/privWizard.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
@@ -678,7 +677,7 @@ class QnapAPIExecutorTS(QnapAPIExecutor):
         }
         sanitized_params = self._sanitize_params(params)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urlparse.urlencode(sanitized_params)
         url = ('/cgi-bin/disk/snapshot.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)

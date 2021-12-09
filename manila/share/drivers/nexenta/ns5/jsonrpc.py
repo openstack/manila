@@ -16,11 +16,11 @@
 import hashlib
 import json
 import posixpath
+from urllib import parse as urlparse
 
 from eventlet import greenthread
 from oslo_log import log as logging
 import requests
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -44,7 +44,7 @@ class NefException(exception.ManilaException):
                     kwargs[key] = data[key]
                 else:
                     kwargs[key] = defaults[key]
-        elif isinstance(data, six.string_types):
+        elif isinstance(data, str):
             if 'message' not in kwargs:
                 kwargs['message'] = data
         for key in defaults:
@@ -329,7 +329,7 @@ class NefCollections(object):
         self.proxy = proxy
 
     def path(self, name):
-        quoted_name = six.moves.urllib.parse.quote_plus(name)
+        quoted_name = urlparse.quote_plus(name)
         return posixpath.join(self.root, quoted_name)
 
     def get(self, name, payload=None):
@@ -549,14 +549,14 @@ class NefProxy(object):
         prop = self.settings.get('system.guid')
         guid = prop.get('value')
         path = '%s:%s' % (guid, self.path)
-        if isinstance(path, six.text_type):
+        if isinstance(path, str):
             path = path.encode('utf-8')
         self.lock = hashlib.md5(path).hexdigest()
 
     def url(self, path):
         netloc = '%s:%d' % (self.host, int(self.port))
         components = (self.scheme, netloc, str(path), None, None)
-        url = six.moves.urllib.parse.urlunsplit(components)
+        url = urlparse.urlunsplit(components)
         return url
 
     def delay(self, attempt):

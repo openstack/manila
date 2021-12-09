@@ -21,7 +21,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import units
 from requests.exceptions import HTTPError
-import six
 
 from manila.common import constants as const
 from manila import exception
@@ -315,7 +314,7 @@ class IsilonStorageConnection(base.StorageConnection):
             allowed_ips.remove(denied_ip)
             data = {share_access_group: list(allowed_ips)}
             url = ('{0}/platform/1/protocols/nfs/exports/{1}'
-                   .format(self._server_url, six.text_type(export_id)))
+                   .format(self._server_url, str(export_id)))
             r = self._isilon_api.request('PUT', url, data=data)
             r.raise_for_status()
 
@@ -371,7 +370,7 @@ class IsilonStorageConnection(base.StorageConnection):
             int(emc_share_driver.configuration.safe_get("emc_nas_server_port"))
         )
         self._server_url = ('https://' + self._server + ':' +
-                            six.text_type(self._port))
+                            str(self._port))
         self._username = emc_share_driver.configuration.safe_get(
             "emc_nas_login")
         self._password = emc_share_driver.configuration.safe_get(
@@ -440,7 +439,7 @@ class IsilonStorageConnection(base.StorageConnection):
             'read_only_clients': list(nfs_ro_ips)
         }
         url = ('{0}/platform/1/protocols/nfs/exports/{1}'
-               .format(self._server_url, six.text_type(export_id)))
+               .format(self._server_url, str(export_id)))
         r = self._isilon_api.request('PUT', url, data=data)
         try:
             r.raise_for_status()

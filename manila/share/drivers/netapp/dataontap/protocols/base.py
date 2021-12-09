@@ -15,8 +15,6 @@ Abstract base class for NetApp NAS protocol helper classes.
 
 import abc
 
-import six
-
 from manila.common import constants
 from manila import utils
 
@@ -38,8 +36,7 @@ def access_rules_synchronized(f):
     return wrapped_func
 
 
-@six.add_metaclass(abc.ABCMeta)
-class NetAppBaseHelper(object):
+class NetAppBaseHelper(metaclass=abc.ABCMeta):
     """Interface for protocol-specific NAS drivers."""
 
     def __init__(self):

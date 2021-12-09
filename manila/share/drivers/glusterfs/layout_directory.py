@@ -20,7 +20,6 @@ import os
 
 from oslo_config import cfg
 from oslo_log import log
-import six
 import xml.etree.cElementTree as etree
 
 from manila import exception
@@ -218,7 +217,7 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
         self._set_directory_quota(share, new_size)
 
     def _set_directory_quota(self, share, new_size):
-        sizestr = six.text_type(new_size) + 'GB'
+        sizestr = str(new_size) + 'GB'
         share_dir = '/' + share['name']
 
         args = ('volume', 'quota', self.gluster_manager.volume,

@@ -22,7 +22,6 @@ import socket
 
 from oslo_concurrency import processutils
 from oslo_log import log
-import six
 
 from manila.common import constants
 from manila import exception
@@ -79,7 +78,7 @@ class BaseDriverUtil(object):
                     msg = ('Error running SSH command. Trying another host')
                     LOG.error(msg)
                 else:
-                    raise exception.ProcessExecutionError(six.text_type(e))
+                    raise exception.ProcessExecutionError(str(e))
 
     def _run_ssh(self, host, cmd_list, check_exit_code=False):
         command = ' '.join(pipes.quote(cmd_arg) for cmd_arg in cmd_list)
@@ -137,7 +136,7 @@ class BaseDriverUtil(object):
         # delete size param as it is set separately
         if kwargs.get('quota'):
             del kwargs['quota']
-        sizestr = six.text_type(size) + 'G'
+        sizestr = str(size) + 'G'
         cmd = [self.maprcli_bin, 'volume', 'create', '-name',
                name, '-path', path, '-quota',
                sizestr, '-readAce', '', '-writeAce', '']
@@ -158,7 +157,7 @@ class BaseDriverUtil(object):
             raise exception.ProcessExecutionError(out)
 
     def set_volume_size(self, name, size):
-        sizestr = six.text_type(size) + 'G'
+        sizestr = str(size) + 'G'
         cmd = [self.maprcli_bin, 'volume', 'modify', '-name', name, '-quota',
                sizestr]
         self._execute(*cmd)

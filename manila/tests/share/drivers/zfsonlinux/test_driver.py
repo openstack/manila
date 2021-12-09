@@ -2337,7 +2337,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
                 'dataset_name': src_dataset_name,
             }
         )
-        with mock.patch("six.moves.builtins.open",
+        with mock.patch("builtins.open",
                         mock.mock_open(read_data="data")) as mock_file:
             self.driver.migration_start(
                 self._context, src_share, dst_share, None, None)

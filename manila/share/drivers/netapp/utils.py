@@ -23,7 +23,6 @@ import re
 from oslo_concurrency import processutils as putils
 from oslo_log import log
 from oslo_utils import timeutils
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -79,7 +78,7 @@ def round_down(value, precision='0.00'):
 
     Example: round_down(float(total_space_in_bytes) / units.Gi, '0.01')
     """
-    return float(decimal.Decimal(six.text_type(value)).quantize(
+    return float(decimal.Decimal(str(value)).quantize(
         decimal.Decimal(precision), rounding=decimal.ROUND_DOWN))
 
 
@@ -120,7 +119,7 @@ def convert_to_list(value):
 
     if value is None:
         return []
-    elif isinstance(value, six.string_types):
+    elif isinstance(value, str):
         return [value]
     elif isinstance(value, abc.Iterable):
         return list(value)

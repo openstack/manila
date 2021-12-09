@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import io
 import re
 
 from lxml import etree
-import six
 
 
 class XMLAPIParser(object):
@@ -56,7 +56,7 @@ class XMLAPIParser(object):
 
         events = ("start", "end")
 
-        context = etree.iterparse(six.BytesIO(xml),
+        context = etree.iterparse(io.BytesIO(xml),
                                   events=events)
         for action, elem in context:
             self.tag = self._remove_ns(elem.tag)

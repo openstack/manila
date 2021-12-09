@@ -19,7 +19,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
-import six
 
 from manila.common import constants
 from manila import exception
@@ -591,7 +590,7 @@ class HitachiHNASDriver(driver.ShareDriver):
         LOG.info("Share %(shr_id)s successfully extended to "
                  "%(shr_size)s.",
                  {'shr_id': share['id'],
-                  'shr_size': six.text_type(new_size)})
+                  'shr_size': str(new_size)})
 
     # TODO(alyson): Implement in DHSS = true mode
     def get_network_allocations_number(self):
@@ -633,7 +632,7 @@ class HitachiHNASDriver(driver.ShareDriver):
         }
 
         LOG.info("HNAS Capabilities: %(data)s.",
-                 {'data': six.text_type(data)})
+                 {'data': str(data)})
 
         super(HitachiHNASDriver, self)._update_share_stats(data)
 
@@ -797,7 +796,7 @@ class HitachiHNASDriver(driver.ShareDriver):
         LOG.info("Share %(shr_id)s successfully shrunk to "
                  "%(shr_size)sG.",
                  {'shr_id': share['id'],
-                  'shr_size': six.text_type(new_size)})
+                  'shr_size': str(new_size)})
 
     def revert_to_snapshot(self, context, snapshot, share_access_rules,
                            snapshot_access_rules, share_server=None):

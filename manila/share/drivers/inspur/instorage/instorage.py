@@ -18,7 +18,6 @@ Driver for Inspur InStorage
 
 import ipaddress
 import itertools
-import six
 
 from oslo_config import cfg
 from oslo_log import log
@@ -496,14 +495,14 @@ class InStorageAssistant(object):
             msg = _('only ip access type is supported when using NFS protocol')
             raise exception.ShareBackendException(msg=msg)
 
-        network = ipaddress.ip_network(six.text_type(access_rule['access_to']))
+        network = ipaddress.ip_network(str(access_rule['access_to']))
         if network.version != 4:
             msg = _('only IPV4 is accepted when using NFS protocol')
             raise exception.ShareBackendException(msg=msg)
 
         client_spec = self.NFS_CLIENT_SPEC_PATTERN % {
-            'ip': six.text_type(network.network_address),
-            'mask': six.text_type(network.netmask),
+            'ip': str(network.network_address),
+            'mask': str(network.netmask),
             'rights': access_rule['access_level'],
             'all_squash': 'all_squash',
             'root_squash': 'root_squash'

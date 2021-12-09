@@ -16,7 +16,6 @@
 
 import copy
 import random
-import six
 
 from oslo_config import cfg
 from oslo_log import log
@@ -736,7 +735,7 @@ class PowerMaxStorageConnection(driver.StorageConnection):
                 }
                 if ip_version == 6:
                     interface['ip_version'] = ip_version
-                    interface['net_mask'] = six.text_type(
+                    interface['net_mask'] = str(
                         utils.cidr_to_prefixlen(
                             network_info['cidr']))
                 else:

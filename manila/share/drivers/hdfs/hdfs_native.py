@@ -34,7 +34,6 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import units
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -99,7 +98,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self._hdfs_bin = 'hdfs'
         self._hdfs_base_path = (
             'hdfs://' + self.configuration.hdfs_namenode_ip + ':'
-            + six.text_type(self.configuration.hdfs_namenode_port))
+            + str(self.configuration.hdfs_namenode_port))
 
     def _hdfs_local_execute(self, *cmd, **kwargs):
         if 'run_as_root' not in kwargs:
@@ -151,7 +150,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except Exception as e:
             msg = (_('Error running SSH command: %(cmd)s. '
                      'Error: %(excmsg)s.') %
-                   {'cmd': command, 'excmsg': six.text_type(e)})
+                   {'cmd': command, 'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
@@ -159,9 +158,9 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         share_dir = '/' + share['name']
 
         if not size:
-            sizestr = six.text_type(share['size']) + 'g'
+            sizestr = str(share['size']) + 'g'
         else:
-            sizestr = six.text_type(size) + 'g'
+            sizestr = str(size) + 'g'
 
         try:
             self._hdfs_execute(self._hdfs_bin, 'dfsadmin',
@@ -170,7 +169,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             msg = (_('Failed to set space quota for the '
                      'share %(sharename)s. Error: %(excmsg)s.') %
                    {'sharename': share['name'],
-                    'excmsg': six.text_type(e)})
+                    'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
@@ -190,7 +189,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             msg = (_('Failed to create directory in hdfs for the '
                      'share %(sharename)s. Error: %(excmsg)s.') %
                    {'sharename': share['name'],
-                    'excmsg': six.text_type(e)})
+                    'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
@@ -204,7 +203,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             msg = (_('Failed to allow snapshot for the '
                      'share %(sharename)s. Error: %(excmsg)s.') %
                    {'sharename': share['name'],
-                    'excmsg': six.text_type(e)})
+                    'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
@@ -251,7 +250,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                      'snapshot %(snapshotname)s. Error: %(excmsg)s.') %
                    {'sharename': share['name'],
                     'snapshotname': snapshot['name'],
-                    'excmsg': six.text_type(e)})
+                    'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
@@ -271,7 +270,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                      'the share %(sharename)s. Error: %(excmsg)s.') %
                    {'snapshotname': snapshot_name,
                     'sharename': snapshot['share_name'],
-                    'excmsg': six.text_type(e)})
+                    'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
@@ -286,7 +285,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             msg = (_('Failed to delete share %(sharename)s. '
                      'Error: %(excmsg)s.') %
                    {'sharename': share['name'],
-                    'excmsg': six.text_type(e)})
+                    'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
@@ -302,7 +301,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             msg = (_('Failed to delete snapshot %(snapshotname)s. '
                      'Error: %(excmsg)s.') %
                    {'snapshotname': snapshot['name'],
-                    'excmsg': six.text_type(e)})
+                    'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
@@ -343,7 +342,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                      'Error: %(excmsg)s.') %
                    {'sharename': share['name'],
                     'username': access['access_to'],
-                    'excmsg': six.text_type(e)})
+                    'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
@@ -362,7 +361,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                      'Error: %(excmsg)s.') %
                    {'sharename': share['name'],
                     'username': access['access_to'],
-                    'excmsg': six.text_type(e)})
+                    'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
@@ -375,7 +374,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             (out, __) = self._hdfs_execute(self._hdfs_bin, 'fsck', '/')
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to check hdfs state. Error: %(excmsg)s.') %
-                   {'excmsg': six.text_type(e)})
+                   {'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
         if 'HEALTHY' in out:
@@ -405,7 +404,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to check available capacity for hdfs.'
                      'Error: %(excmsg)s.') %
-                   {'excmsg': six.text_type(e)})
+                   {'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
@@ -416,7 +415,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except (IndexError, ValueError) as e:
             msg = (_('Failed to get hdfs capacity info. '
                      'Error: %(excmsg)s.') %
-                   {'excmsg': six.text_type(e)})
+                   {'excmsg': str(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
         return total, free

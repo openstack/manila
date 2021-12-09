@@ -25,7 +25,6 @@ import xml.etree.cElementTree as etree
 
 from oslo_config import cfg
 from oslo_log import log
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -125,7 +124,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                 glusterfs_versions[srvaddr] = self._glustermanager(
                     srvaddr, False).get_gluster_version()
             except exception.GlusterfsException as exc:
-                exceptions[srvaddr] = six.text_type(exc)
+                exceptions[srvaddr] = str(exc)
         if exceptions:
             for srvaddr, excmsg in exceptions.items():
                 LOG.error("'gluster version' failed on server "
@@ -140,7 +139,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                 notsupp_servers.append(srvaddr)
         if notsupp_servers:
             gluster_version_min_str = '.'.join(
-                six.text_type(c) for c in self.driver.GLUSTERFS_VERSION_MIN)
+                str(c) for c in self.driver.GLUSTERFS_VERSION_MIN)
             for srvaddr in notsupp_servers:
                 LOG.error("GlusterFS version %(version)s on server "
                           "%(server)s is not supported, "
@@ -475,7 +474,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         vers = self.glusterfs_versions[old_gmgr.host_access]
         minvers = (3, 7)
         if common.numreduct(vers) < minvers:
-            minvers_str = '.'.join(six.text_type(c) for c in minvers)
+            minvers_str = '.'.join(str(c) for c in minvers)
             vers_str = '.'.join(vers)
             msg = (_("GlusterFS version %(version)s on server %(server)s does "
                      "not support creation of shares from snapshot. "

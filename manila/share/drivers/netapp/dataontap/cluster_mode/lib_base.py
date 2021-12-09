@@ -32,7 +32,6 @@ from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
 from oslo_utils import uuidutils
-import six
 
 from manila.common import constants
 from manila import coordination
@@ -1393,12 +1392,12 @@ class NetAppCmodeFileStorageLibrary(object):
         if 'maxiops' in qos_specs:
             return '%siops' % qos_specs['maxiops']
         elif 'maxiopspergib' in qos_specs:
-            return '%siops' % six.text_type(
+            return '%siops' % str(
                 int(qos_specs['maxiopspergib']) * int(share_size))
         elif 'maxbps' in qos_specs:
             return '%sB/s' % qos_specs['maxbps']
         elif 'maxbpspergib' in qos_specs:
-            return '%sB/s' % six.text_type(
+            return '%sB/s' % str(
                 int(qos_specs['maxbpspergib']) * int(share_size))
 
     @na_utils.trace
@@ -1926,7 +1925,7 @@ class NetAppCmodeFileStorageLibrary(object):
             self._check_aggregate_extra_specs_validity(pool_name, extra_specs)
         except exception.ManilaException as ex:
             raise exception.ManageExistingShareTypeMismatch(
-                reason=six.text_type(ex))
+                reason=str(ex))
 
         # Ensure volume is manageable.
         self._validate_volume_for_manage(volume, vserver_client)
@@ -2428,7 +2427,7 @@ class NetAppCmodeFileStorageLibrary(object):
         for aggregate_name in aggregate_names:
 
             aggregate = self._client.get_aggregate(aggregate_name)
-            hybrid = (six.text_type(aggregate.get('is-hybrid')).lower()
+            hybrid = (str(aggregate.get('is-hybrid')).lower()
                       if 'is-hybrid' in aggregate else None)
             disk_types = self._client.get_aggregate_disk_types(aggregate_name)
 

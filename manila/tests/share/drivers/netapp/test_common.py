@@ -14,8 +14,6 @@
 
 from unittest import mock
 
-import six
-
 from manila import exception
 from manila.share.drivers.netapp import common as na_common
 from manila.share.drivers.netapp.dataontap.cluster_mode import drv_multi_svm
@@ -113,7 +111,7 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
         registry = na_common.NETAPP_UNIFIED_DRIVER_REGISTRY
 
-        for family in six.iterkeys(registry):
+        for family in iter(registry.keys()):
             for mode, full_class_name in registry[family].items():
 
                 config = na_fakes.create_configuration()

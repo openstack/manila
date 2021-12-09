@@ -25,7 +25,6 @@ import math
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import units
-import six
 
 from manila.common import constants
 from manila import exception
@@ -404,12 +403,12 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
                                                             existing_rules)
                 for a_rule in missing_rules:
                     LOG.debug("Adding rule %s in recovery.",
-                              six.text_type(a_rule))
+                              str(a_rule))
                     self._allow_access(context, share, a_rule)
 
                 superfluous_rules = self._subtract_access_lists(existing_rules,
                                                                 access_rules)
                 for d_rule in superfluous_rules:
                     LOG.debug("Removing rule %s in recovery.",
-                              six.text_type(d_rule))
+                              str(d_rule))
                     self._deny_access(context, share, d_rule)

@@ -21,7 +21,6 @@ from unittest import mock
 import ddt
 from oslo_config import cfg
 import requests
-import six
 
 from manila.common import constants as const
 from manila import context
@@ -528,7 +527,7 @@ class TegileShareDriverTestCase(test.TestCase):
 
         extend_path = '%s/%s/%s/%s' % (
             'fake_pool', 'Local', 'fake_project', test_share['name'])
-        extend_params = (extend_path, six.text_type(12), 'GB')
+        extend_params = (extend_path, str(12), 'GB')
         mock_api.assert_called_once_with('resizeShare', extend_params)
         mock_params.assert_called_once_with(test_share)
 
@@ -545,7 +544,7 @@ class TegileShareDriverTestCase(test.TestCase):
 
         extend_path = '%s/%s/%s/%s' % (
             'fake_pool', 'Local', 'fake_project', test_share['name'])
-        extend_params = (extend_path, six.text_type(30), 'GB')
+        extend_params = (extend_path, str(30), 'GB')
         mock_api.assert_called_once_with('resizeShare', extend_params)
 
     def test_shrink_share(self):
@@ -559,7 +558,7 @@ class TegileShareDriverTestCase(test.TestCase):
 
         shrink_path = '%s/%s/%s/%s' % (
             'fake_pool', 'Local', 'fake_project', test_share['name'])
-        shrink_params = (shrink_path, six.text_type(15), 'GB')
+        shrink_params = (shrink_path, str(15), 'GB')
         mock_api.assert_called_once_with('resizeShare', shrink_params)
         mock_params.assert_called_once_with(test_share)
 
@@ -576,7 +575,7 @@ class TegileShareDriverTestCase(test.TestCase):
 
         shrink_path = '%s/%s/%s/%s' % (
             'fake_pool', 'Local', 'fake_project', test_share['name'])
-        shrink_params = (shrink_path, six.text_type(30), 'GB')
+        shrink_params = (shrink_path, str(30), 'GB')
         mock_api.assert_called_once_with('resizeShare', shrink_params)
 
     @ddt.data('ip', 'user')

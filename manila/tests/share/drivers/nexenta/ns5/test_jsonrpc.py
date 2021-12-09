@@ -21,10 +21,10 @@ import hashlib
 import json
 import posixpath
 from unittest import mock
+from urllib import parse as urlparse
 import uuid
 
 import requests
-import six
 
 from manila.share import configuration as conf
 from manila.share.drivers.nexenta.ns5 import jsonrpc
@@ -803,7 +803,7 @@ class TestNefCollections(test.TestCase):
     def test_path(self):
         path = 'path/to/item name + - & # $ = 0'
         result = self.instance.path(path)
-        quoted_path = six.moves.urllib.parse.quote_plus(path)
+        quoted_path = urlparse.quote_plus(path)
         expected = posixpath.join(self.instance.root, quoted_path)
         self.assertEqual(expected, result)
 
@@ -1155,7 +1155,7 @@ class TestNefProxy(test.TestCase):
         get_settings.return_value = settings
         self.assertIsNone(self.proxy.update_lock())
         path = '%s:%s' % (guid, self.proxy.path)
-        if isinstance(path, six.text_type):
+        if isinstance(path, str):
             path = path.encode('utf-8')
         expected = hashlib.md5(path).hexdigest()
         self.assertEqual(expected, self.proxy.lock)

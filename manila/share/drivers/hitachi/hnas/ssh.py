@@ -18,7 +18,6 @@ from oslo_log import log
 from oslo_utils import strutils
 from oslo_utils import units
 import paramiko
-import six
 
 import os
 import time
@@ -39,7 +38,7 @@ class HNASSSHBackend(object):
         self.password = hnas_password
         self.priv_key = ssh_private_key
         self.admin_ip0 = cluster_admin_ip0
-        self.evs_id = six.text_type(evs_id)
+        self.evs_id = str(evs_id)
         self.fs_name = fs_name
         self.evs_ip = evs_ip
         self.sshpool = None
@@ -154,10 +153,10 @@ class HNASSSHBackend(object):
         if len(host_list) == 0:
             command.append('127.0.0.1')
         else:
-            string_command = '"' + six.text_type(host_list[0])
+            string_command = '"' + str(host_list[0])
 
             for i in range(1, len(host_list)):
-                string_command += ',' + (six.text_type(host_list[i]))
+                string_command += ',' + (str(host_list[i]))
             string_command += '"'
             command.append(string_command)
 
@@ -456,7 +455,7 @@ class HNASSSHBackend(object):
                 raise exception.HNASBackendException(msg=msg)
 
     def quota_add(self, vvol_name, vvol_quota):
-        str_quota = six.text_type(vvol_quota) + 'G'
+        str_quota = str(vvol_quota) + 'G'
         command = ['quota', 'add', '--usage-limit',
                    str_quota, '--usage-hard-limit',
                    'yes', self.fs_name, vvol_name]
@@ -469,7 +468,7 @@ class HNASSSHBackend(object):
             raise exception.HNASBackendException(msg=msg)
 
     def modify_quota(self, vvol_name, new_size):
-        str_quota = six.text_type(new_size) + 'G'
+        str_quota = str(new_size) + 'G'
         command = ['quota', 'mod', '--usage-limit', str_quota,
                    self.fs_name, vvol_name]
         try:
@@ -585,7 +584,7 @@ class HNASSSHBackend(object):
             LOG.error(msg)
             raise exception.HNASItemNotFoundException(msg=msg)
         else:
-            bytes_usage = strutils.string_to_bytes(six.text_type(quota.usage) +
+            bytes_usage = strutils.string_to_bytes(str(quota.usage) +
                                                    quota.usage_unit)
             return bytes_usage / units.Gi
 

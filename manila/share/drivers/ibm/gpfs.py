@@ -32,6 +32,7 @@ import abc
 import math
 import os
 import re
+import shlex
 import socket
 
 from oslo_config import cfg
@@ -40,7 +41,6 @@ from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import strutils
 from oslo_utils import units
-import six
 
 from manila.common import constants
 from manila import exception
@@ -161,7 +161,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
     def _sanitize_command(self, cmd_list):
         # pylint: disable=too-many-function-args
-        return ' '.join(six.moves.shlex_quote(cmd_arg) for cmd_arg in cmd_list)
+        return ' '.join(shlex.quote(cmd_arg) for cmd_arg in cmd_list)
 
     def _run_ssh(self, host, cmd_list, ignore_exit_code=None,
                  check_exit_code=True):
@@ -782,8 +782,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                             snapshot["name"])
 
 
-@six.add_metaclass(abc.ABCMeta)
-class NASHelperBase(object):
+class NASHelperBase(metaclass=abc.ABCMeta):
     """Interface to work with share."""
 
     def __init__(self, execute, config_object):

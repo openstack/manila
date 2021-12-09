@@ -12,7 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import six
 
 from oslo_log import log
 from oslo_utils import excutils
@@ -206,7 +205,7 @@ class UnityClient(object):
                      'exists.', {'snap': name, 'fs': filesystem.name})
 
     def create_snap_of_snap(self, src_snap, dst_snap_name):
-        if isinstance(src_snap, six.string_types):
+        if isinstance(src_snap, str):
             snap = self.get_snapshot(name=src_snap)
         else:
             snap = src_snap

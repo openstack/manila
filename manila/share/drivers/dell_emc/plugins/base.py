@@ -16,11 +16,8 @@
 
 import abc
 
-import six
 
-
-@six.add_metaclass(abc.ABCMeta)
-class StorageConnection(object):
+class StorageConnection(metaclass=abc.ABCMeta):
     """Subclasses should implement storage backend specific functionality."""
 
     def __init__(self, *args, **kwargs):

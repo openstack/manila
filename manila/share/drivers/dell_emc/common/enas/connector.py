@@ -13,15 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import cookiejar as http_cookiejar
 import pipes
+from urllib import error as url_error
+from urllib import request as url_request
 
 from oslo_concurrency import processutils
 from oslo_log import log
 from oslo_utils import excutils
-import six
-from six.moves import http_cookiejar
-from six.moves.urllib import error as url_error
-from six.moves.urllib import request as url_request
 
 from manila import exception
 from manila.i18n import _
@@ -84,7 +83,7 @@ class XMLAPIConnector(object):
         if not self.debug:
             return
 
-        headers = six.text_type(resp.headers).replace('\n', '\\n')
+        headers = str(resp.headers).replace('\n', '\\n')
 
         LOG.debug(
             'RESP: [%(code)s] %(resp_hdrs)s\n'
@@ -107,12 +106,12 @@ class XMLAPIConnector(object):
             resp_body = resp.read()
             self._http_log_resp(resp, resp_body)
         except url_error.HTTPError as http_err:
-            if '403' == six.text_type(http_err.code):
+            if '403' == str(http_err.code):
                 raise exception.NotAuthorized()
             else:
                 err = {'errorCode': -1,
                        'httpStatusCode': http_err.code,
-                       'messages': six.text_type(http_err),
+                       'messages': str(http_err),
                        'request': req_body}
                 msg = (_("The request is invalid. Reason: %(reason)s") %
                        {'reason': err})

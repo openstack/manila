@@ -19,7 +19,6 @@ CLI helpers for Inspur InStorage
 
 import paramiko
 import re
-import six
 
 from eventlet import greenthread
 
@@ -150,7 +149,7 @@ class CLIParser(object):
                 else:
                     yield []
 
-        if isinstance(self.raw, six.string_types):
+        if isinstance(self.raw, str):
             stdout, stderr = self.raw, ''
         else:
             stdout, stderr = self.raw

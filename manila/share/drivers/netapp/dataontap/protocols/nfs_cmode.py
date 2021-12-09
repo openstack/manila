@@ -18,7 +18,6 @@ NetApp cDOT NFS protocol helper class.
 import uuid
 
 from oslo_log import log
-import six
 
 from manila.common import constants
 from manila import exception
@@ -180,7 +179,7 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
     @staticmethod
     def _get_temp_export_policy_name():
         """Builds export policy name for an NFS share."""
-        return 'temp_' + six.text_type(uuid.uuid1()).replace('-', '_')
+        return 'temp_' + str(uuid.uuid1()).replace('-', '_')
 
     @staticmethod
     def _get_export_policy_name(share):

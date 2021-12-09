@@ -18,13 +18,13 @@ TODO(diemtran): this module needs to be placed in a library common to OpenStack
     base and imported from the relevant library.
 """
 
+from http import client as http_client
+import io
 import time
+from urllib import error as urlerror
+from urllib import request as urlrequest
 
 from oslo_serialization import jsonutils
-import six
-from six.moves import http_client
-from six.moves.urllib import error as urlerror
-from six.moves.urllib import request as urlrequest
 
 
 def log_debug_msg(obj, message):
@@ -232,7 +232,7 @@ class RestClientURL(object):  # pylint: disable=R0902
         :cmd_params args: The path part.
         :cmd_params kwargs: The query part.
         """
-        buf = six.StringIO()
+        buf = io.StringIO()
         query = "?"
         for arg in args:
             buf.write("/")
@@ -263,7 +263,7 @@ class RestClientURL(object):  # pylint: disable=R0902
 
         if body:
             if isinstance(body, dict):
-                body = six.text_type(jsonutils.dumps(body))
+                body = str(jsonutils.dumps(body))
 
         if body and len(body):
             out_hdrs['content-length'] = len(body)

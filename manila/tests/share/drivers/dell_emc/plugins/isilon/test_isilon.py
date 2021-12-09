@@ -19,7 +19,6 @@ import ddt
 from oslo_log import log
 from oslo_utils import units
 from requests.exceptions import HTTPError
-import six
 
 from manila.common import constants as const
 from manila import exception
@@ -117,7 +116,7 @@ class IsilonTest(test.TestCase):
 
         # verify expected REST API call is executed
         expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        six.text_type(fake_export_id))
+                        str(fake_export_id))
         expected_data = {'read_only_clients': ['10.1.1.10']}
         self._mock_isilon_api.request.assert_called_once_with(
             'PUT', expected_url, data=expected_data)
@@ -138,7 +137,7 @@ class IsilonTest(test.TestCase):
 
         # verify expected REST API call is executed
         expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        six.text_type(fake_export_id))
+                        str(fake_export_id))
         expected_data = {'clients': ['10.1.1.10']}
         self._mock_isilon_api.request.assert_called_once_with(
             'PUT', expected_url, data=expected_data)
@@ -200,7 +199,7 @@ class IsilonTest(test.TestCase):
 
         # verify that a call is made to remove an existing IP from the list
         expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        six.text_type(fake_export_id))
+                        str(fake_export_id))
         expected_data = {'read_only_clients': []}
         self._mock_isilon_api.request.assert_called_once_with(
             'PUT', expected_url, data=expected_data
@@ -860,7 +859,7 @@ class IsilonTest(test.TestCase):
             self.mock_context, share, access_rules, [], delete_rules)
 
         expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        six.text_type(fake_export_id))
+                        str(fake_export_id))
         expected_data = {'clients': [], 'read_only_clients': []}
         self._mock_isilon_api.request.assert_called_once_with(
             'PUT', expected_url, data=expected_data)
@@ -1061,7 +1060,7 @@ class IsilonTest(test.TestCase):
             self.mock_context, share, access_rules, [], [])
 
         expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        six.text_type(fake_export_id))
+                        str(fake_export_id))
         expected_data = {
             'clients': ['10.1.1.10'],
             'read_only_clients': ['10.1.1.2']

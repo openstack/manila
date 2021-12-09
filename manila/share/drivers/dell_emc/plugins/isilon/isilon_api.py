@@ -16,7 +16,6 @@
 from enum import Enum
 from oslo_serialization import jsonutils
 import requests
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -35,7 +34,7 @@ class IsilonApi(object):
 
         headers = {"x-isi-ifs-target-type": "container"}
         url = (self.host_url + "/namespace" + container_path + '?recursive='
-               + six.text_type(recursive))
+               + str(recursive))
         r = self.request('PUT', url,
                          headers=headers)
         return r.status_code == 200
@@ -130,7 +129,7 @@ class IsilonApi(object):
         response = self.request('GET',
                                 self.host_url +
                                 '/platform/1/protocols/nfs/exports/' +
-                                six.text_type(export_id))
+                                str(export_id))
         if response.status_code == 200:
             return response.json()['exports'][0]
         else:
@@ -189,13 +188,13 @@ class IsilonApi(object):
 
         r = self.request('DELETE',
                          self.host_url + '/namespace' + fq_resource_path +
-                         '?recursive=' + six.text_type(recursive))
+                         '?recursive=' + str(recursive))
         r.raise_for_status()
 
     def delete_nfs_share(self, share_number):
         response = self.session.delete(
             self.host_url + '/platform/1/protocols/nfs/exports' + '/' +
-            six.text_type(share_number))
+            str(share_number))
         return response.status_code == 204
 
     def delete_smb_share(self, share_name):

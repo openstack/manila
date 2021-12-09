@@ -24,7 +24,6 @@ import errno
 
 from oslo_config import cfg
 from oslo_utils import importutils
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -202,8 +201,7 @@ class GlusterfsShareDriverBase(driver.ShareDriver):
         super(GlusterfsShareDriverBase, self)._update_share_stats(data)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class GlusterfsShareLayoutBase(object):
+class GlusterfsShareLayoutBase(metaclass=abc.ABCMeta):
     """Base class for share layouts."""
 
     def __init__(self, driver, *args, **kwargs):

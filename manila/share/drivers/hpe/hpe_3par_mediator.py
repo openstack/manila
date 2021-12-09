@@ -21,7 +21,6 @@ driver.
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import units
-import six
 
 from manila.data import utils as data_utils
 from manila import exception
@@ -130,8 +129,8 @@ class HPE3ParMediator(object):
                      'Version %(minimum)s or greater required. Run "pip'
                      ' install --upgrade python-3parclient" to upgrade'
                      ' the hpe3parclient.') %
-                   {'found': '.'.join(map(six.text_type, self.client_version)),
-                    'minimum': '.'.join(map(six.text_type,
+                   {'found': '.'.join(map(str, self.client_version)),
+                    'minimum': '.'.join(map(str,
                                             MIN_CLIENT_VERSION))})
             LOG.error(msg)
             raise exception.HPE3ParInvalidClient(message=msg)
@@ -141,7 +140,7 @@ class HPE3ParMediator(object):
                 self.hpe3par_api_url)
         except Exception as e:
             msg = (_('Failed to connect to HPE 3PAR File Persona Client: %s') %
-                   six.text_type(e))
+                   str(e))
             LOG.exception(msg)
             raise exception.ShareBackendException(message=msg)
 
@@ -163,7 +162,7 @@ class HPE3ParMediator(object):
 
         except Exception as e:
             msg = (_('Failed to set SSH options for HPE 3PAR File Persona '
-                     'Client: %s') % six.text_type(e))
+                     'Client: %s') % str(e))
             LOG.exception(msg)
             raise exception.ShareBackendException(message=msg)
 
@@ -177,7 +176,7 @@ class HPE3ParMediator(object):
             LOG.info("3PAR WSAPI %s", wsapi_version)
         except Exception as e:
             msg = (_('Failed to get 3PAR WSAPI version: %s') %
-                   six.text_type(e))
+                   str(e))
             LOG.exception(msg)
             raise exception.ShareBackendException(message=msg)
 
@@ -192,7 +191,7 @@ class HPE3ParMediator(object):
                      "because: %(err)s") %
                    {'url': self.hpe3par_api_url,
                     'user': self.hpe3par_username,
-                    'err': six.text_type(e)})
+                    'err': str(e)})
             LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
 
@@ -202,7 +201,7 @@ class HPE3ParMediator(object):
         except Exception as e:
             msg = ("Failed to Logout from 3PAR (%(url)s) because %(err)s")
             LOG.warning(msg, {'url': self.hpe3par_api_url,
-                              'err': six.text_type(e)})
+                              'err': str(e)})
             # don't raise exception on logout()
 
     @staticmethod
@@ -227,7 +226,7 @@ class HPE3ParMediator(object):
         try:
             result = self._client.getfsquota(fpg=fpg)
         except Exception as e:
-            result = {'message': six.text_type(e)}
+            result = {'message': str(e)}
 
         error_msg = result.get('message')
         if error_msg:
@@ -248,7 +247,7 @@ class HPE3ParMediator(object):
             result = self._client.getfpg(fpg)
         except Exception as e:
             msg = (_('Failed to get capacity for fpg %(fpg)s: %(e)s') %
-                   {'fpg': fpg, 'e': six.text_type(e)})
+                   {'fpg': fpg, 'e': str(e)})
             LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
 
@@ -441,7 +440,7 @@ class HPE3ParMediator(object):
             """Update 3PAR quotas and return setfsquota output."""
 
             if self.hpe3par_fstore_per_share:
-                hcapacity = six.text_type(new_size * units.Ki)
+                hcapacity = str(new_size * units.Ki)
                 scapacity = hcapacity
             else:
                 hard_size_mb = (new_size - old_size) * units.Ki
@@ -453,8 +452,8 @@ class HPE3ParMediator(object):
                 if len(quotas) == 1:
                     hard_size_mb += int(quotas[0].get('hardBlock', '0'))
                     soft_size_mb += int(quotas[0].get('softBlock', '0'))
-                hcapacity = six.text_type(hard_size_mb)
-                scapacity = six.text_type(soft_size_mb)
+                hcapacity = str(hard_size_mb)
+                scapacity = str(soft_size_mb)
 
             return self._client.setfsquota(vfs,
                                            fpg=fpg,
@@ -471,7 +470,7 @@ class HPE3ParMediator(object):
                      '%(size)s on %(fstore)s with exception: %(e)s') %
                    {'size': new_size - old_size,
                     'fstore': fstore,
-                    'e': six.text_type(e)})
+                    'e': str(e)})
             LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
 
@@ -522,7 +521,7 @@ class HPE3ParMediator(object):
                 LOG.debug("createfstore result=%s", result)
             except Exception as e:
                 msg = (_('Failed to create fstore %(fstore)s: %(e)s') %
-                       {'fstore': fstore, 'e': six.text_type(e)})
+                       {'fstore': fstore, 'e': str(e)})
                 LOG.exception(msg)
                 raise exception.ShareBackendException(msg=msg)
 
@@ -544,7 +543,7 @@ class HPE3ParMediator(object):
 
         except Exception as e:
             msg = (_('Failed to create share %(share_name)s: %(e)s') %
-                   {'share_name': share_name, 'e': six.text_type(e)})
+                   {'share_name': share_name, 'e': str(e)})
             LOG.exception(msg)
             raise exception.ShareBackendException(msg=msg)
 
@@ -557,7 +556,7 @@ class HPE3ParMediator(object):
         except Exception as e:
             msg = (_('Failed to get fshare %(share_name)s after creating it: '
                      '%(e)s') % {'share_name': share_name,
-                                 'e': six.text_type(e)})
+                                 'e': str(e)})
             LOG.exception(msg)
             raise exception.ShareBackendException(msg=msg)
 
@@ -790,7 +789,7 @@ class HPE3ParMediator(object):
                 err_data = progress
         except Exception as err:
             err_msg = _("Failed to copy data, reason: %s.")
-            err_data = six.text_type(err)
+            err_data = str(err)
 
         if err_msg:
             raise exception.ShareBackendException(msg=err_msg % err_data)
@@ -802,7 +801,7 @@ class HPE3ParMediator(object):
 
         except Exception as e:
             msg = (_('Failed to remove share %(share_name)s: %(e)s') %
-                   {'share_name': share_name, 'e': six.text_type(e)})
+                   {'share_name': share_name, 'e': str(e)})
             LOG.exception(msg)
             raise exception.ShareBackendException(msg=msg)
 
@@ -846,7 +845,7 @@ class HPE3ParMediator(object):
                 self._client.removefstore(vfs, fstore, fpg=fpg)
             except Exception as e:
                 msg = (_('Failed to remove fstore %(fstore)s: %(e)s') %
-                       {'fstore': fstore, 'e': six.text_type(e)})
+                       {'fstore': fstore, 'e': str(e)})
                 LOG.exception(msg)
                 raise exception.ShareBackendException(msg=msg)
 
@@ -867,7 +866,7 @@ class HPE3ParMediator(object):
                 data = {
                     'fstore': fstore,
                     'share': share_name,
-                    'e': six.text_type(e),
+                    'e': str(e),
                 }
                 LOG.warning(msg, data)
 
@@ -966,7 +965,7 @@ class HPE3ParMediator(object):
                       {'name': SUPER_SHARE, 'result': result})
         except Exception as e:
             msg = (_('Failed to create share %(share_name)s: %(e)s'),
-                   {'share_name': SUPER_SHARE, 'e': six.text_type(e)})
+                   {'share_name': SUPER_SHARE, 'e': str(e)})
             LOG.exception(msg)
             raise exception.ShareBackendException(msg=msg)
 
@@ -980,7 +979,7 @@ class HPE3ParMediator(object):
         except Exception as err:
             message = ("There was an error creating mount directory: "
                        "%s. The nested file tree will not be deleted.",
-                       six.text_type(err))
+                       str(err))
             LOG.warning(message)
 
     def _mount_share(self, protocol, export_location, mount_dir):
@@ -1006,7 +1005,7 @@ class HPE3ParMediator(object):
         except Exception as err:
             message = ("There was an error mounting the super share: "
                        "%s. The nested file tree will not be deleted.",
-                       six.text_type(err))
+                       str(err))
             LOG.warning(message)
 
     def _unmount_share(self, mount_location):
@@ -1017,7 +1016,7 @@ class HPE3ParMediator(object):
                        "%(mount_location)s: %(error)s")
             msg_data = {
                 'mount_location': mount_location,
-                'error': six.text_type(err),
+                'error': str(err),
             }
             LOG.warning(message, msg_data)
 
@@ -1027,7 +1026,7 @@ class HPE3ParMediator(object):
         except Exception as err:
             message = ("There was an error removing the share: "
                        "%s. The nested file tree will not be deleted.",
-                       six.text_type(err))
+                       str(err))
             LOG.warning(message)
 
     def _generate_mount_path(self, protocol, fpg, vfs, fstore, share_ip):
@@ -1051,7 +1050,7 @@ class HPE3ParMediator(object):
             result = self._client.getvfs(fpg=fpg, vfs=vfs)
         except Exception as e:
             msg = (_('Exception during getvfs %(vfs)s: %(e)s') %
-                   {'vfs': vfs, 'e': six.text_type(e)})
+                   {'vfs': vfs, 'e': str(e)})
             LOG.exception(msg)
             raise exception.ShareBackendException(msg=msg)
 
@@ -1138,7 +1137,7 @@ class HPE3ParMediator(object):
             msg = (_('Failed to create snapshot for FPG/VFS/fstore '
                      '%(fpg)s/%(vfs)s/%(fstore)s: %(e)s') %
                    {'fpg': fpg, 'vfs': vfs, 'fstore': fstore,
-                    'e': six.text_type(e)})
+                    'e': str(e)})
             LOG.exception(msg)
             raise exception.ShareBackendException(msg=msg)
 
@@ -1165,7 +1164,7 @@ class HPE3ParMediator(object):
             except Exception as e:
                 msg = (_('Unexpected exception while getting share list. '
                          'Cannot delete snapshot without checking for '
-                         'dependent shares first: %s') % six.text_type(e))
+                         'dependent shares first: %s') % str(e))
                 LOG.exception(msg)
                 raise exception.ShareBackendException(msg=msg)
 
@@ -1203,7 +1202,7 @@ class HPE3ParMediator(object):
                        'vfs': vfs,
                        'fstore': fstore,
                        'snapname': snapname,
-                       'e': six.text_type(e)})
+                       'e': str(e)})
             LOG.exception(msg)
             raise exception.ShareBackendException(msg=msg)
 
@@ -1377,7 +1376,7 @@ class HPE3ParMediator(object):
                     'type': access_type,
                     'to': access_to,
                     'level': access_level,
-                    'e': six.text_type(e),
+                    'e': str(e),
                 }
                 LOG.info(msg, msg_data)
                 return
@@ -1414,7 +1413,7 @@ class HPE3ParMediator(object):
                 plus_or_minus, access_type, access_to, result)
 
         except Exception as e:
-            result = six.text_type(e)
+            result = str(e)
 
         LOG.debug("setfshare result=%s", result)
         if result:
@@ -1485,7 +1484,7 @@ class HPE3ParMediator(object):
                     return shares[0]
         except Exception as e:
             msg = (_('Unexpected exception while getting share list: %s') %
-                   six.text_type(e))
+                   str(e))
             raise exception.ShareBackendException(msg=msg)
 
     def _find_fsnap(self, project_id, share_id, orig_proto, snapshot_tag,
@@ -1510,7 +1509,7 @@ class HPE3ParMediator(object):
                     return snapshots[0]
         except Exception as e:
             msg = (_('Unexpected exception while getting snapshots: %s') %
-                   six.text_type(e))
+                   str(e))
             raise exception.ShareBackendException(msg=msg)
 
     def update_access(self, project_id, share_id, share_proto, extra_specs,
@@ -1668,7 +1667,7 @@ class HPE3ParMediator(object):
 
     def create_fsip(self, ip, subnet, vlantag, fpg, vfs):
 
-        vlantag_str = six.text_type(vlantag) if vlantag else '0'
+        vlantag_str = str(vlantag) if vlantag else '0'
 
         # Try to create it. It's OK if it already exists.
         try:

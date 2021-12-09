@@ -92,7 +92,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
                                                 fake_template2]))
         self.mock_object(ganesha.ganesha_utils, 'patch',
                          mock.Mock(side_effect=fake_patch_run))
-        with mock.patch('six.moves.builtins.open',
+        with mock.patch('builtins.open',
                         mock.mock_open()) as mockopen:
             mockopen().read.side_effect = ['fakeconf0', 'fakeconf1']
             ret = self._helper._load_conf_dir(self.fake_conf_dir_path)
@@ -119,7 +119,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
         self.mock_object(ganesha.LOG, 'info')
         self.mock_object(ganesha.ganesha_manager, 'parseconf')
         self.mock_object(ganesha.ganesha_utils, 'patch')
-        with mock.patch('six.moves.builtins.open',
+        with mock.patch('builtins.open',
                         mock.mock_open(read_data='fakeconf')) as mockopen:
             ret = self._helper._load_conf_dir(self.fake_conf_dir_path,
                                               must_exist=False)

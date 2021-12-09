@@ -17,7 +17,6 @@ import ddt
 from oslo_serialization import jsonutils as json
 import requests
 import requests_mock
-import six
 
 from manila import exception
 from manila.share.drivers.dell_emc.plugins.isilon import isilon_api
@@ -407,7 +406,7 @@ class IsilonApiTest(test.TestCase):
             self.assertEqual(0, len(m.request_history))
             fq_path = '/ifs/home/admin/test'
             m.delete(self._mock_url + '/namespace' + fq_path + '?recursive='
-                     + six.text_type(is_recursive_delete), status_code=204)
+                     + str(is_recursive_delete), status_code=204)
 
             self.isilon_api.delete(fq_path, recursive=is_recursive_delete)
 
@@ -593,12 +592,12 @@ class IsilonApiTest(test.TestCase):
 
         # verify a call is made to create a quota
         expected_create_json = {
-            six.text_type('path'): quota_path,
-            six.text_type('type'): 'directory',
-            six.text_type('include_snapshots'): False,
-            six.text_type('thresholds_include_overhead'): False,
-            six.text_type('enforced'): True,
-            six.text_type('thresholds'): {six.text_type('hard'): quota_size},
+            str('path'): quota_path,
+            str('type'): 'directory',
+            str('include_snapshots'): False,
+            str('thresholds_include_overhead'): False,
+            str('enforced'): True,
+            str('thresholds'): {str('hard'): quota_size},
         }
         create_request_json = json.loads(m.request_history[1].body)
         self.assertEqual(expected_create_json, create_request_json)
@@ -827,7 +826,7 @@ class IsilonApiTest(test.TestCase):
 
     def _add_create_directory_response(self, m, path, is_recursive):
         url = '{0}/namespace{1}?recursive={2}'.format(
-            self._mock_url, path, six.text_type(is_recursive))
+            self._mock_url, path, str(is_recursive))
         m.put(url, status_code=200)
 
     def _add_file_clone_response(self, m, fq_dest_path, snapshot_name):
@@ -850,7 +849,7 @@ class IsilonApiTest(test.TestCase):
     def _verify_dir_creation_request(self, request, path, is_recursive):
         self.assertEqual('PUT', request.method)
         expected_url = '{0}/namespace{1}?recursive={2}'.format(
-            self._mock_url, path, six.text_type(is_recursive))
+            self._mock_url, path, str(is_recursive))
         self.assertEqual(expected_url, request.url)
         self.assertIn("x-isi-ifs-target-type", request.headers)
         self.assertEqual("container",

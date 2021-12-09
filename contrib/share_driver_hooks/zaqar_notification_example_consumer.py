@@ -25,7 +25,6 @@ import netaddr
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import timeutils
-import six
 
 opts = [
     cfg.IntOpt(
@@ -52,8 +51,8 @@ CONF = cfg.CONF
 
 
 def print_with_time(data):
-    time = six.text_type(timeutils.utcnow())
-    print(time + " " + six.text_type(data))
+    time = str(timeutils.utcnow())
+    print(time + " " + str(data))
 
 
 def print_pretty_dict(d):
@@ -69,7 +68,7 @@ def pop_zaqar_messages(client, queues_names):
         messages = []
         for queue_name in queues_names:
             queue = client.queue(queue_name)
-            messages.extend([six.text_type(m.body) for m in queue.pop()])
+            messages.extend([str(m.body) for m in queue.pop()])
             print_with_time(
                 "Received %(len)s message[s] from '%(q)s' "
                 "queue using '%(u)s' user and '%(p)s' project." % {
@@ -92,7 +91,7 @@ def signal_handler(signal, frame):
 
 
 def parse_str_to_dict(string):
-    if not isinstance(string, six.string_types):
+    if not isinstance(string, str):
         return string
     result = eval(string)
     return result
