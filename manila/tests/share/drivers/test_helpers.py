@@ -355,13 +355,16 @@ class NFSHelperTestCase(test.TestCase):
     @ddt.data(
         ('/shares/fake_share1\n\t\t1.1.1.10\n'
          '/shares/fake_share2\n\t\t1.1.1.16\n'
+         '/shares/fake_share3\n\t\t<world>\n'
          '/mnt/fake_share1 1.1.1.11', False),
         ('/shares/fake_share_name\n\t\t1.1.1.10\n'
          '/shares/fake_share_name\n\t\t1.1.1.16\n'
+         '/shares/fake_share_name\n\t\t<world>\n'
          '/mnt/fake_share1\n\t\t1.1.1.11', True),
         ('/mnt/fake_share_name\n\t\t1.1.1.11\n'
          '/shares/fake_share_name\n\t\t1.1.1.10\n'
-         '/shares/fake_share_name\n\t\t1.1.1.16\n', True))
+         '/shares/fake_share_name\n\t\t1.1.1.16\n'
+         '/shares/fake_share_name\n\t\t<world>\n', True))
     @ddt.unpack
     def test_disable_access_for_maintenance(self, output, hosts_match):
         fake_maintenance_path = "fake.path"
@@ -397,10 +400,15 @@ class NFSHelperTestCase(test.TestCase):
 
         if hosts_match:
             self._helper._ssh_exec.assert_has_calls([
-                mock.call(self.server, ['sudo', 'exportfs', '-u',
-                                        ':'.join(['1.1.1.10', local_path])]),
-                mock.call(self.server, ['sudo', 'exportfs', '-u',
-                                        ':'.join(['1.1.1.16', local_path])]),
+                mock.call(self.server,
+                          ['sudo', 'exportfs', '-u',
+                           '"{}"'.format(':'.join(['1.1.1.10', local_path]))]),
+                mock.call(self.server,
+                          ['sudo', 'exportfs', '-u',
+                           '"{}"'.format(':'.join(['1.1.1.16', local_path]))]),
+                mock.call(self.server,
+                          ['sudo', 'exportfs', '-u',
+                           '"{}"'.format(':'.join(['<world>', local_path]))]),
             ])
 
         self._helper._sync_nfs_temp_and_perm_files.assert_called_once_with(
