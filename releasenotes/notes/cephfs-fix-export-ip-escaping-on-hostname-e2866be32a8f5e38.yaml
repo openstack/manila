@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    When ``cephfs_ganesha_server_ip`` is not set, the current hostname is used
+    as a default for such config option. The driver was treating this value
+    as an IP address and trying to perform validations on it. The CEPH NFS
+    driver will no longer treat hostnames as ip addresses and try to validate
+    them as such.
