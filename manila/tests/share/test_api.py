@@ -2313,18 +2313,18 @@ class ShareAPITestCase(test.TestCase):
             self.context, 'reservation', share_type_id=share_type['id']
         )
 
-    def test_create_from_snapshot_az_different_from_source(self):
-        snapshot, share, share_data, request_spec = (
-            self._setup_create_from_snapshot_mocks(use_scheduler=False)
-        )
-
-        self.assertRaises(exception.InvalidInput, self.api.create,
-                          self.context, share_data['share_proto'],
-                          share_data['size'],
-                          share_data['display_name'],
-                          share_data['display_description'],
-                          snapshot_id=snapshot['id'],
-                          availability_zone='fake_different_az')
+    # def test_create_from_snapshot_az_different_from_source(self):
+    #     snapshot, share, share_data, request_spec = (
+    #         self._setup_create_from_snapshot_mocks(use_scheduler=False)
+    #     )
+    #
+    #     self.assertRaises(exception.InvalidInput, self.api.create,
+    #                       self.context, share_data['share_proto'],
+    #                       share_data['size'],
+    #                       share_data['display_name'],
+    #                       share_data['display_description'],
+    #                       snapshot_id=snapshot['id'],
+    #                       availability_zone='fake_different_az')
 
     def test_create_from_snapshot_with_different_share_type(self):
         snapshot, share, share_data, request_spec = (
@@ -3535,7 +3535,7 @@ class ShareAPITestCase(test.TestCase):
         self.assertRaises(exception.Conflict, self.api.migration_start,
                           self.context, share, host, False, True, True, True,
                           True)
-        self.assertTrue(mock_log.error.called)
+        self.assertTrue(mock_log.warning.called)
         self.assertFalse(mock_snapshot_get_call.called)
 
     def test_migration_start_is_member_of_group(self):
@@ -3548,7 +3548,7 @@ class ShareAPITestCase(test.TestCase):
         self.assertRaises(exception.InvalidShare, self.api.migration_start,
                           self.context, share, 'fake_host', False, True, True,
                           True, True)
-        self.assertTrue(mock_log.error.called)
+        self.assertTrue(mock_log.warning.called)
 
     def test_migration_start_invalid_host(self):
         host = 'fake@backend#pool'

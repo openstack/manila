@@ -62,6 +62,7 @@ class API(base.Base):
             'message_level': level,
             'expires_at': expires_at,
         }
+
         try:
             self.db.message_create(context, message_record)
         except Exception:

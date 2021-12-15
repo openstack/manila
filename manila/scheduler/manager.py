@@ -27,6 +27,7 @@ from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
+import six
 
 from manila.common import constants
 from manila import context
@@ -42,13 +43,21 @@ from manila.share import rpcapi as share_rpcapi
 
 LOG = log.getLogger(__name__)
 
-scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
-                                  default='manila.scheduler.drivers.'
-                                          'filter.FilterScheduler',
-                                  help='Default scheduler driver to use.')
+scheduler_driver_opts = [
+    cfg.StrOpt('scheduler_driver',
+               default='manila.scheduler.drivers.'
+                       'filter.FilterScheduler',
+               help='Default scheduler driver to use.'),
+    cfg.BoolOpt('migration_ignore_scheduler',
+                default=False,
+                help='Whether migration will '
+                     'filter target host through '
+                     'scheduler.'),
+]
 
 CONF = cfg.CONF
-CONF.register_opt(scheduler_driver_opt)
+CONF.register_opts(scheduler_driver_opts)
+
 
 # Drivers that need to change module paths or class names can add their
 # old/new path here to maintain backward compatibility.
@@ -87,8 +96,19 @@ class SchedulerManager(manager.Manager):
         super(SchedulerManager, self).__init__(*args, **kwargs)
 
     def init_host_with_rpc(self):
+        # mark service alive by creating a probe
+        try:
+            open('/etc/manila/probe', 'a')
+        except Exception as e:
+            LOG.error("Probe not created: %(e)s", {'e': six.text_type(e)})
         ctxt = context.get_admin_context()
         self.request_service_capabilities(ctxt)
+        # init done, mark service ready
+        try:
+            with open('/etc/manila/probe', 'w+') as f:
+                f.write('ready\n')
+        except Exception as e:
+            LOG.error("Probe not written: %(e)s", {'e': six.text_type(e)})
 
     def get_host_list(self, context):
         """Get a list of hosts from the HostManager."""
@@ -181,8 +201,12 @@ class SchedulerManager(manager.Manager):
                 context, ex, request_spec)
 
         try:
-            tgt_host = self.driver.host_passes_filters(
-                context, host, request_spec, filter_properties)
+            if CONF.migration_ignore_scheduler:
+                target_host = host
+            else:
+                tgt_host = self.driver.host_passes_filters(
+                    context, host, request_spec, filter_properties)
+                target_host = tgt_host.host
 
         except Exception as ex:
             with excutils.save_and_reraise_exception():
@@ -191,7 +215,7 @@ class SchedulerManager(manager.Manager):
 
             try:
                 share_rpcapi.ShareAPI().migration_start(
-                    context, share_ref, tgt_host.host,
+                    context, share_ref, target_host,
                     force_host_assisted_migration, preserve_metadata, writable,
                     nondisruptive, preserve_snapshots, new_share_network_id,
                     new_share_type_id)
@@ -202,8 +226,8 @@ class SchedulerManager(manager.Manager):
     def _set_share_state_and_notify(self, method, state, context, ex,
                                     request_spec, action=None):
 
-        LOG.error("Failed to schedule %(method)s: %(ex)s",
-                  {"method": method, "ex": ex})
+        LOG.warning("Failed to schedule %(method)s: %(ex)s",
+                    {"method": method, "ex": ex})
 
         properties = request_spec.get('share_properties', {})
 

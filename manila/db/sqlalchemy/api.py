@@ -68,6 +68,7 @@ LOG = log.getLogger(__name__)
 QUOTAS = quota.QUOTAS
 
 _DEFAULT_QUOTA_NAME = 'default'
+_DEFAULT_AFFINITY_METADATA = '__affinity_'
 PER_PROJECT_QUOTAS = []
 
 _FACADE = None
@@ -461,6 +462,7 @@ QUOTA_SYNC_FUNCTIONS = {
 ###################
 
 @require_admin_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_resources_host_update(context, current_host, new_host):
     """Updates the 'host' attribute of resources"""
 
@@ -496,7 +498,6 @@ def service_destroy(context, service_id):
         service_ref.soft_delete(session)
 
 
-@require_admin_context
 def service_get(context, service_id, session=None):
     result = (model_query(
         context,
@@ -510,7 +511,6 @@ def service_get(context, service_id, session=None):
     return result
 
 
-@require_admin_context
 def service_get_all(context, disabled=None):
     query = model_query(context, models.Service)
 
@@ -520,7 +520,6 @@ def service_get_all(context, disabled=None):
     return query.all()
 
 
-@require_admin_context
 def service_get_all_by_topic(context, topic):
     return (model_query(
         context, models.Service, read_deleted="no").
@@ -529,7 +528,6 @@ def service_get_all_by_topic(context, topic):
         all())
 
 
-@require_admin_context
 def service_get_by_host_and_topic(context, host, topic):
     result = (model_query(
         context, models.Service, read_deleted="no").
@@ -542,7 +540,6 @@ def service_get_by_host_and_topic(context, host, topic):
     return result
 
 
-@require_admin_context
 def _service_get_all_topic_subquery(context, session, topic, subq, label):
     sort_value = getattr(subq.c, label)
     return (model_query(context, models.Service,
@@ -555,7 +552,6 @@ def _service_get_all_topic_subquery(context, session, topic, subq, label):
             all())
 
 
-@require_admin_context
 def service_get_all_share_sorted(context):
     session = get_session()
     with session.begin():
@@ -575,7 +571,6 @@ def service_get_all_share_sorted(context):
                                                label)
 
 
-@require_admin_context
 def service_get_by_args(context, host, binary):
     result = (model_query(context, models.Service).
               filter_by(host=host).
@@ -1517,6 +1512,7 @@ def _share_instance_create(context, share_id, values, session):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_instance_update(context, share_instance_id, values,
                           with_share_data=False):
     session = get_session()
@@ -1625,7 +1621,6 @@ def share_instance_get(context, share_instance_id, session=None,
     return result
 
 
-@require_admin_context
 def share_instances_get_all(context, filters=None, session=None):
     session = session or get_session()
     query = model_query(
@@ -1763,7 +1758,6 @@ def _set_instances_share_data(context, instances, session):
     return instances_with_share_data
 
 
-@require_admin_context
 def share_instances_get_all_by_host(context, host, with_share_data=False,
                                     status=None, session=None):
     """Retrieves all share instances hosted on a host."""
@@ -1778,11 +1772,15 @@ def share_instances_get_all_by_host(context, host, with_share_data=False,
     )
     if status is not None:
         instances = instances.filter(models.ShareInstance.status == status)
-    # Returns list of all instances that satisfy filters.
-    instances = instances.all()
 
     if with_share_data:
-        instances = _set_instances_share_data(context, instances, session)
+        instances = instances.options(joinedload('share')).all()
+        instances = [s for s in instances if s.share]
+        for s in instances:
+            s.set_share_data(s.share)
+    else:
+        # Returns list of all instances that satisfy filters.
+        instances = instances.all()
     return instances
 
 
@@ -1850,6 +1848,12 @@ def _share_replica_get_with_filters(context, share_id=None, replica_id=None,
 
     query = model_query(context, models.ShareInstance, session=session,
                         read_deleted="no")
+
+    if not context.is_admin:
+        query = query.join(
+            models.Share,
+            models.ShareInstance.share_id == models.Share.id).filter(
+            models.Share.project_id == context.project_id)
 
     if share_id is not None:
         query = query.filter(models.ShareInstance.share_id == share_id)
@@ -2057,10 +2061,15 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
 
     if 'metadata' in filters:
         for k, v in filters['metadata'].items():
-            # pylint: disable=no-member
-            query = query.filter(
-                or_(models.Share.share_metadata.any(
-                    key=k, value=v)))
+            if v == "*":
+                # pylint: disable=no-member
+                query = query.filter(
+                    or_(models.Share.share_metadata.any(key=k)))
+            else:
+                # pylint: disable=no-member
+                query = query.filter(
+                    or_(models.Share.share_metadata.any(key=k, value=v)))
+
     if 'extra_specs' in filters:
         query = query.join(
             models.ShareTypeExtraSpecs,
@@ -2111,7 +2120,6 @@ def share_create(context, share_values, create_share_instance=True):
         return share_get(context, share_ref['id'], session=session)
 
 
-@require_admin_context
 def share_data_get_for_project(context, project_id, user_id,
                                share_type_id=None, session=None):
     query = (model_query(context, models.Share,
@@ -2215,10 +2223,6 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     if show_count:
         count = query.count()
 
-    if 'limit' in filters:
-        offset = filters.get('offset', 0)
-        query = query.limit(filters['limit']).offset(offset)
-
     # Returns list of shares that satisfy filters.
     query = query.all()
 
@@ -2228,7 +2232,6 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     return query
 
 
-@require_admin_context
 def share_get_all(context, filters=None, sort_key=None, sort_dir=None):
     project_id = filters.pop('project_id', None) if filters else None
     query = _share_get_all_with_filters(
@@ -2374,6 +2377,7 @@ def _share_access_metadata_get_query(context, access_id, session=None):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_access_metadata_update(context, access_id, metadata):
     session = get_session()
 
@@ -2711,6 +2715,7 @@ def share_snapshot_instance_create(context, snapshot_id, values, session=None):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_snapshot_instance_update(context, instance_id, values):
     session = get_session()
     instance_ref = share_snapshot_instance_get(context, instance_id,
@@ -2877,7 +2882,6 @@ def share_snapshot_create(context, create_values,
             context, snapshot_values['id'], session=session)
 
 
-@require_admin_context
 def snapshot_data_get_for_project(context, project_id, user_id,
                                   share_type_id=None, session=None):
     query = (model_query(context, models.ShareSnapshot,
@@ -3183,6 +3187,7 @@ def share_snapshot_access_get_all_for_snapshot_instance(
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_snapshot_instance_access_update(
         context, access_id, instance_id, updates):
 
@@ -3435,8 +3440,15 @@ def share_metadata_get_item(context, share_id, key, session=None):
 @require_context
 @require_share_exists
 def share_metadata_delete(context, share_id, key):
-    (_share_metadata_get_query(context, share_id).
-        filter_by(key=key).soft_delete())
+    if (context.is_admin or
+            not key.startswith(_DEFAULT_AFFINITY_METADATA)):
+        # admins can delete any metadata, but users cannot delete private one
+        (_share_metadata_get_query(context, share_id).
+            filter_by(key=key).soft_delete())
+    else:
+        # normal user should not be able to delete private admin metadata
+        raise exception.ShareMetadataNotFound(metadata_key=key,
+                                              share_id=share_id)
 
 
 @require_context
@@ -3448,7 +3460,10 @@ def share_metadata_update(context, share_id, metadata, delete):
 @require_context
 @require_share_exists
 def share_metadata_update_item(context, share_id, item, session=None):
-    return _share_metadata_update(context, share_id, item, delete=False)
+    # NOTE(galkindmitrii): we use force as an extra flag here because only
+    # admins can update affinity metadata values.
+    return _share_metadata_update(context, share_id, item, delete=False,
+                                  force=True)
 
 
 def _share_metadata_get_query(context, share_id, session=None):
@@ -3464,12 +3479,12 @@ def _share_metadata_get(context, share_id, session=None):
     result = {}
     for row in rows:
         result[row['key']] = row['value']
-
     return result
 
 
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def _share_metadata_update(context, share_id, metadata, delete, session=None):
+def _share_metadata_update(context, share_id, metadata, delete, session=None,
+                           force=False):
     if not session:
         session = get_session()
 
@@ -3480,10 +3495,13 @@ def _share_metadata_update(context, share_id, metadata, delete, session=None):
                                                     session=session)
             for meta_key, meta_value in original_metadata.items():
                 if meta_key not in metadata:
-                    meta_ref = _share_metadata_get_item(context, share_id,
-                                                        meta_key,
-                                                        session=session)
-                    meta_ref.soft_delete(session=session)
+                    # But do not delete affinity metadata unless forced:
+                    cond = meta_key.startswith(_DEFAULT_AFFINITY_METADATA)
+                    if (force or not cond):
+                        meta_ref = _share_metadata_get_item(context, share_id,
+                                                            meta_key,
+                                                            session=session)
+                        meta_ref.soft_delete(session=session)
 
         meta_ref = None
 
@@ -3491,19 +3509,24 @@ def _share_metadata_update(context, share_id, metadata, delete, session=None):
         # objects
         for meta_key, meta_value in metadata.items():
 
-            # update the value whether it exists or not
-            item = {"value": meta_value}
+            # Update any item if admin or forced
+            # otherwise filter out affinity metadata keys
+            if (force or context.is_admin or
+                    not meta_key.startswith(_DEFAULT_AFFINITY_METADATA)):
 
-            try:
-                meta_ref = _share_metadata_get_item(context, share_id,
-                                                    meta_key,
-                                                    session=session)
-            except exception.ShareMetadataNotFound:
-                meta_ref = models.ShareMetadata()
-                item.update({"key": meta_key, "share_id": share_id})
+                # update the value whether it exists or not
+                item = {"value": meta_value}
 
-            meta_ref.update(item)
-            meta_ref.save(session=session)
+                try:
+                    meta_ref = _share_metadata_get_item(context, share_id,
+                                                        meta_key,
+                                                        session=session)
+                except exception.ShareMetadataNotFound:
+                    meta_ref = models.ShareMetadata()
+                    item.update({"key": meta_key, "share_id": share_id})
+
+                meta_ref.update(item)
+                meta_ref.save(session=session)
 
         return metadata
 
@@ -3630,7 +3653,7 @@ def share_export_location_get_by_uuid(context, export_location_uuid,
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_export_locations_update(context, share_instance_id, export_locations,
-                                  delete):
+                                  delete, reexport=False):
     # NOTE(u_glide):
     # Backward compatibility code for drivers,
     # which return single export_location as string
@@ -3692,6 +3715,18 @@ def share_export_locations_update(context, share_instance_id, export_locations,
             if el['el_metadata']:
                 export_location_metadata_update(
                     context, el['uuid'], el['el_metadata'], session=session)
+            if reexport:
+                for update_el in export_locations:
+                    if not update_el.get('metadata'):
+                        continue
+                    if el['path'] != update_el['path']:
+                        continue
+                    LOG.debug("updating %(uuid)s metadata with %(meta)s",
+                              {'uuid': el['uuid'],
+                               'meta': update_el['metadata']})
+                    export_location_metadata_update(
+                        context, el['uuid'], update_el['metadata'],
+                        session=session)
 
     # Now add new export locations
     for el in export_locations:
@@ -3909,6 +3944,7 @@ def share_network_delete(context, id):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_network_update(context, id, values):
     session = get_session()
     with session.begin():
@@ -4224,6 +4260,7 @@ def share_server_delete(context, id):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_server_update(context, id, values):
     session = get_session()
     with session.begin():
@@ -4352,6 +4389,7 @@ def share_server_get_all_unused_deletable(context, host, updated_before):
         constants.STATUS_INACTIVE,
         constants.STATUS_ACTIVE,
         constants.STATUS_ERROR,
+        constants.STATUS_CREATING,
     )
     result = (_server_get_query(context)
               .filter_by(is_auto_deletable=True)
@@ -4442,6 +4480,7 @@ def driver_private_data_get(context, entity_id, key=None,
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def driver_private_data_update(context, entity_id, details,
                                delete_existing=False, session=None):
     # NOTE(u_glide): following code modifies details dict, that's why we should
@@ -4566,6 +4605,7 @@ def network_allocations_get_for_share_server(context, share_server_id,
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def network_allocation_update(context, id, values, read_deleted=None):
     session = get_session()
     with session.begin():
@@ -4827,7 +4867,7 @@ def share_type_destroy(context, id):
             msg_args = {'stype': id,
                         'shares': shares_count,
                         'gtypes': share_group_types_count}
-            LOG.error(msg, msg_args)
+            LOG.warning(msg, msg_args)
             raise exception.ShareTypeInUse(share_type_id=id)
 
         model_query(
@@ -4855,7 +4895,6 @@ def _share_type_access_query(context, session=None):
                        read_deleted="no")
 
 
-@require_admin_context
 def share_type_access_get_all(context, type_id):
     share_type_id = _share_type_get_id_from_share_type(context, type_id)
     return (_share_type_access_query(context).
@@ -5044,11 +5083,11 @@ def purge_deleted_records(context, age_in_days):
     metadata = MetaData()
     metadata.reflect(get_engine())
     session = get_session()
-    session.begin()
     deleted_age = timeutils.utcnow() - datetime.timedelta(days=age_in_days)
 
     for table in reversed(metadata.sorted_tables):
         if 'deleted' in table.columns.keys():
+            session.begin()
             try:
                 mds = [m for m in models.__dict__.values() if
                        (hasattr(m, '__tablename__') and
@@ -5078,7 +5117,7 @@ def purge_deleted_records(context, age_in_days):
             except db_exc.DBError:
                 LOG.warning("Querying table %s's soft-deleted records "
                             "failed, skipping.", table)
-    session.commit()
+            session.commit()
 
 
 ####################
@@ -5159,7 +5198,6 @@ def _share_group_get_all(context, project_id=None, share_server_id=None,
         return values
 
 
-@require_admin_context
 def share_group_get_all(context, detailed=True, filters=None, sort_key=None,
                         sort_dir=None):
     return _share_group_get_all(
@@ -5167,7 +5205,6 @@ def share_group_get_all(context, detailed=True, filters=None, sort_key=None,
         sort_key=sort_key, sort_dir=sort_dir)
 
 
-@require_admin_context
 def share_group_get_all_by_host(context, host, detailed=True):
     return _share_group_get_all(context, host=host, detailed=detailed)
 
@@ -5214,6 +5251,7 @@ def share_group_create(context, values):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_group_update(context, share_group_id, values):
     session = get_session()
     with session.begin():
@@ -5428,7 +5466,6 @@ def share_group_snapshot_get(context, share_group_snapshot_id, session=None):
         context, share_group_snapshot_id, session=session)
 
 
-@require_admin_context
 def share_group_snapshot_get_all(
         context, detailed=True, filters=None, sort_key=None, sort_dir=None):
     return _share_group_snapshot_get_all(
@@ -5463,6 +5500,7 @@ def share_group_snapshot_create(context, values):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_group_snapshot_update(context, share_group_snapshot_id, values):
     session = get_session()
     with session.begin():
@@ -5524,6 +5562,7 @@ def share_group_snapshot_member_create(context, values):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_group_snapshot_member_update(context, member_id, values):
     session = get_session()
     _change_size_to_instance_size(values)
@@ -5719,8 +5758,8 @@ def share_group_type_destroy(context, type_id):
             share_group_type_id=type_id,
         ).count()
         if results:
-            LOG.error('Share group type %s deletion failed, it in use.',
-                      type_id)
+            LOG.warning('Share group type %s deletion failed, it in use.',
+                        type_id)
             raise exception.ShareGroupTypeInUse(type_id=type_id)
         model_query(
             context, models.ShareGroupTypeSpecs, session=session,
@@ -5749,7 +5788,6 @@ def _share_group_type_access_query(context, session=None):
                        read_deleted="no")
 
 
-@require_admin_context
 def share_group_type_access_get_all(context, type_id):
     share_group_type_id = _share_group_type_get_id_from_share_group_type(
         context, type_id)
@@ -5975,6 +6013,7 @@ def backend_info_create(context, host, value):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def backend_info_update(context, host, value=None, delete_existing=False):
     """Remove backend info for host name."""
     session = get_session()

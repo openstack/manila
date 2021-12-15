@@ -148,8 +148,8 @@ class API(object):
             port = self.client.create_port(port_req_body).get('port', {})
             return port
         except neutron_client_exc.NeutronClientException as e:
-            LOG.exception('Neutron error creating port on network %s',
-                          network_id)
+            LOG.warning('Neutron error creating port on network %s',
+                        network_id)
             if e.status_code == 409:
                 raise exception.PortLimitExceeded()
             raise exception.NetworkException(code=e.status_code,

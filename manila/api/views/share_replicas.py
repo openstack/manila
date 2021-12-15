@@ -56,12 +56,12 @@ class ReplicationViewBuilder(common.ViewBuilder):
             'created_at': replica.get('created_at'),
             'status': replica.get('status'),
             'share_network_id': replica.get('share_network_id'),
+            'share_server_id': replica.get('share_server_id'),
             'replica_state': replica.get('replica_state'),
             'updated_at': replica.get('updated_at'),
         }
 
         if context.is_admin:
-            replica_dict['share_server_id'] = replica.get('share_server_id')
             replica_dict['host'] = replica.get('host')
 
         self.update_versioned_resource_dict(request, replica_dict, replica)

@@ -137,9 +137,18 @@ def _validate_integer(value, name, min_value=None, max_value=None):
         raise webob.exc.HTTPBadRequest(explanation=e)
 
 
-def _validate_pagination_query(request, max_limit=CONF.osapi_max_limit):
-    """Validate the given request query and return limit and offset."""
+def limited(items, request, max_limit=CONF.osapi_max_limit):
+    """Return a slice of items according to requested offset and limit.
 
+    :param items: A sliceable entity
+    :param request: ``wsgi.Request`` possibly containing 'offset' and 'limit'
+                    GET variables. 'offset' is where to start in the list,
+                    and 'limit' is the maximum number of items to return. If
+                    'limit' is not specified, 0, or > max_limit, we default
+                    to max_limit. Negative values for either offset or limit
+                    will cause exc.HTTPBadRequest() exceptions to be raised.
+    :kwarg max_limit: The maximum number of items to return from 'items'
+    """
     try:
         offset = int(request.GET.get('offset', 0))
     except ValueError:
@@ -159,23 +168,6 @@ def _validate_pagination_query(request, max_limit=CONF.osapi_max_limit):
     if offset < 0:
         msg = _('offset param must be positive')
         raise webob.exc.HTTPBadRequest(explanation=msg)
-
-    return limit, offset
-
-
-def limited(items, request, max_limit=CONF.osapi_max_limit):
-    """Return a slice of items according to requested offset and limit.
-
-    :param items: A sliceable entity
-    :param request: ``wsgi.Request`` possibly containing 'offset' and 'limit'
-                    GET variables. 'offset' is where to start in the list,
-                    and 'limit' is the maximum number of items to return. If
-                    'limit' is not specified, 0, or > max_limit, we default
-                    to max_limit. Negative values for either offset or limit
-                    will cause exc.HTTPBadRequest() exceptions to be raised.
-    :kwarg max_limit: The maximum number of items to return from 'items'
-    """
-    limit, offset = _validate_pagination_query(request, max_limit)
 
     limit = min(max_limit, limit or max_limit)
     range_end = offset + limit

@@ -1452,6 +1452,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         provisioning_options['hide_snapdir'] = hide_snapdir
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
             return_value=fake.SHARE_NAME))
+        self.mock_object(self.library, '_get_backend_share_comment', mock.Mock(
+            return_value=fake.VOLUME_COMMENT))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             return_value=fake.POOL_NAME))
         mock_get_provisioning_opts = self.mock_object(
@@ -1486,6 +1488,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock_get_aggr_flexgroup.assert_not_called()
             vserver_client.create_volume.assert_called_once_with(
                 fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
+                comment=fake.VOLUME_COMMENT,
                 snapshot_reserve=8, **provisioning_options)
 
         if hide_snapdir:
@@ -1512,6 +1515,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_allocate_container_as_replica(self):
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
             return_value=fake.SHARE_NAME))
+        self.mock_object(self.library, '_get_backend_share_comment', mock.Mock(
+            return_value=fake.VOLUME_COMMENT))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             return_value=fake.POOL_NAME))
         mock_get_provisioning_opts = self.mock_object(
@@ -1532,7 +1537,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             language='en-US', dedup_enabled=True, split=True,
             compression_enabled=False, max_files=5000, encrypt=False,
             snapshot_reserve=8, volume_type='dp',
-            adaptive_qos_policy_group=None)
+            adaptive_qos_policy_group=None, comment=fake.VOLUME_COMMENT,
+            provision_net_capacity=False)
 
     def test_allocate_container_no_pool_name(self):
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
@@ -1810,7 +1816,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'compression_enabled': False,
             'dedup_enabled': False,
             'split': False,
-            'encrypt': False,
             'hide_snapdir': False,
             'fpolicy_extensions_to_exclude': None,
             'fpolicy_extensions_to_include': None,
@@ -2035,7 +2040,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             **provisioning_options)
         if size > original_snapshot_size:
             vserver_client.set_volume_size.assert_called_once_with(
-                share_name, size)
+                share_name, size, snapshot_reserve_percent=8,
+                provision_net_capacity=False)
         else:
             vserver_client.set_volume_size.assert_not_called()
 
@@ -2922,72 +2928,72 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.VSERVER1,
                           vserver_client)
 
-    def test_validate_volume_for_manage(self):
-
-        vserver_client = mock.Mock()
-        vserver_client.volume_has_luns = mock.Mock(return_value=False)
-        vserver_client.volume_has_junctioned_volumes = mock.Mock(
-            return_value=False)
-        vserver_client.volume_has_snapmirror_relationships = mock.Mock(
-            return_value=False)
-
-        result = self.library._validate_volume_for_manage(
-            fake.FLEXVOL_TO_MANAGE, vserver_client)
-
-        self.assertIsNone(result)
-
-    @ddt.data({
-        'attribute': 'type',
-        'value': 'dp',
-    }, {
-        'attribute': 'style',
-        'value': 'infinitevol',
-    })
-    @ddt.unpack
-    def test_validate_volume_for_manage_invalid_volume(self, attribute, value):
-
-        flexvol_to_manage = copy.deepcopy(fake.FLEXVOL_TO_MANAGE)
-        flexvol_to_manage[attribute] = value
-
-        vserver_client = mock.Mock()
-        vserver_client.volume_has_luns = mock.Mock(return_value=False)
-        vserver_client.volume_has_junctioned_volumes = mock.Mock(
-            return_value=False)
-        vserver_client.volume_has_snapmirror_relationships = mock.Mock(
-            return_value=False)
-
-        self.assertRaises(exception.ManageInvalidShare,
-                          self.library._validate_volume_for_manage,
-                          flexvol_to_manage,
-                          vserver_client)
-
-    def test_validate_volume_for_manage_luns_present(self):
-
-        vserver_client = mock.Mock()
-        vserver_client.volume_has_luns = mock.Mock(return_value=True)
-        vserver_client.volume_has_junctioned_volumes = mock.Mock(
-            return_value=False)
-        vserver_client.volume_has_snapmirror_relationships = mock.Mock(
-            return_value=False)
-
-        self.assertRaises(exception.ManageInvalidShare,
-                          self.library._validate_volume_for_manage,
-                          fake.FLEXVOL_TO_MANAGE,
-                          vserver_client)
-
-    def test_validate_volume_for_manage_junctioned_volumes_present(self):
-
-        vserver_client = mock.Mock()
-        vserver_client.volume_has_luns = mock.Mock(return_value=False)
-        vserver_client.volume_has_junctioned_volumes = mock.Mock(
-            return_value=True)
-        vserver_client.volume_has_snapmirror_relationships = mock.Mock(
-            return_value=False)
-
-        self.assertRaises(exception.ManageInvalidShare,
-                          self.library._validate_volume_for_manage,
-                          fake.FLEXVOL_TO_MANAGE,
-                          vserver_client)
+    # def test_validate_volume_for_manage(self):
+    #
+    #     vserver_client = mock.Mock()
+    #     vserver_client.volume_has_luns = mock.Mock(return_value=False)
+    #     vserver_client.volume_has_junctioned_volumes = mock.Mock(
+    #         return_value=False)
+    #     vserver_client.volume_has_snapmirror_relationships = mock.Mock(
+    #         return_value=False)
+    #
+    #     result = self.library._validate_volume_for_manage(
+    #         fake.FLEXVOL_TO_MANAGE, vserver_client)
+    #
+    #     self.assertIsNone(result)
+    #
+    # @ddt.data({
+    #     'attribute': 'type',
+    #     'value': 'dp',
+    # }, {
+    #     'attribute': 'style',
+    #     'value': 'infinitevol',
+    # })
+    # @ddt.unpack
+    # def test_validate_volume_for_manage_invalid_volume(self, attribute, value):  # noqa: E501
+    #
+    #     flexvol_to_manage = copy.deepcopy(fake.FLEXVOL_TO_MANAGE)
+    #     flexvol_to_manage[attribute] = value
+    #
+    #     vserver_client = mock.Mock()
+    #     vserver_client.volume_has_luns = mock.Mock(return_value=False)
+    #     vserver_client.volume_has_junctioned_volumes = mock.Mock(
+    #         return_value=False)
+    #     vserver_client.volume_has_snapmirror_relationships = mock.Mock(
+    #         return_value=False)
+    #
+    #     self.assertRaises(exception.ManageInvalidShare,
+    #                       self.library._validate_volume_for_manage,
+    #                       flexvol_to_manage,
+    #                       vserver_client)
+    #
+    # def test_validate_volume_for_manage_luns_present(self):
+    #
+    #     vserver_client = mock.Mock()
+    #     vserver_client.volume_has_luns = mock.Mock(return_value=True)
+    #     vserver_client.volume_has_junctioned_volumes = mock.Mock(
+    #         return_value=False)
+    #     vserver_client.volume_has_snapmirror_relationships = mock.Mock(
+    #         return_value=False)
+    #
+    #     self.assertRaises(exception.ManageInvalidShare,
+    #                       self.library._validate_volume_for_manage,
+    #                       fake.FLEXVOL_TO_MANAGE,
+    #                       vserver_client)
+    #
+    # def test_validate_volume_for_manage_junctioned_volumes_present(self):
+    #
+    #     vserver_client = mock.Mock()
+    #     vserver_client.volume_has_luns = mock.Mock(return_value=False)
+    #     vserver_client.volume_has_junctioned_volumes = mock.Mock(
+    #         return_value=True)
+    #     vserver_client.volume_has_snapmirror_relationships = mock.Mock(
+    #         return_value=False)
+    #
+    #     self.assertRaises(exception.ManageInvalidShare,
+    #                       self.library._validate_volume_for_manage,
+    #                       fake.FLEXVOL_TO_MANAGE,
+    #                       vserver_client)
 
     @ddt.data(
         {'fake_vserver': None, 'is_flexgroup': False},
@@ -3123,17 +3129,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertIsNone(result)
 
-    def test_validate_volume_for_manage_snapmirror_relationships_present(self):
-
-        vserver_client = mock.Mock()
-        vserver_client.volume_has_luns.return_value = False
-        vserver_client.volume_has_junctioned_volumes.return_value = False
-        vserver_client.volume_has_snapmirror_relationships.return_value = True
-
-        self.assertRaises(exception.ManageInvalidShare,
-                          self.library._validate_volume_for_manage,
-                          fake.FLEXVOL_TO_MANAGE,
-                          vserver_client)
+    # def test_validate_volume_for_manage_snapmirror_relationships_present(self):  # noqa: E501
+    #
+    #     vserver_client = mock.Mock()
+    #     vserver_client.volume_has_luns.return_value = False
+    #     vserver_client.volume_has_junctioned_volumes.return_value = False
+    #     vserver_client.volume_has_snapmirror_relationships.return_value = True  # noqa: E501
+    #
+    #     self.assertRaises(exception.ManageInvalidShare,
+    #                       self.library._validate_volume_for_manage,
+    #                       fake.FLEXVOL_TO_MANAGE,
+    #                       vserver_client)
 
     def test_create_consistency_group_from_cgsnapshot(self):
 
@@ -3459,7 +3465,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.library.extend_share(fake.SHARE, new_size)
 
-        mock_set_volume_size.assert_called_once_with(fake.SHARE_NAME, new_size)
+        mock_set_volume_size.assert_called_once_with(
+            fake.SHARE_NAME, new_size, snapshot_reserve_percent=8,
+            provision_net_capacity=False)
         mock_adjust_qos_policy.assert_called_once_with(
             fake.SHARE, new_size, vserver_client)
 
@@ -3478,7 +3486,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.library.shrink_share(fake.SHARE, new_size)
 
-        mock_set_volume_size.assert_called_once_with(fake.SHARE_NAME, new_size)
+        mock_set_volume_size.assert_called_once_with(
+            fake.SHARE_NAME, new_size, snapshot_reserve_percent=8,
+            provision_net_capacity=False)
         mock_adjust_qos_policy.assert_called_once_with(
             fake.SHARE, new_size, vserver_client)
 
@@ -3503,7 +3513,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.SHARE, new_size)
 
         self.library._get_vserver.assert_called_once_with(share_server=None)
-        mock_set_volume_size.assert_called_once_with(fake.SHARE_NAME, new_size)
+        mock_set_volume_size.assert_called_once_with(
+            fake.SHARE_NAME, new_size, snapshot_reserve_percent=8,
+            provision_net_capacity=False)
 
     def test_update_access(self):
 
@@ -6759,14 +6771,26 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             share_obj, fake.VSERVER1, {'maxiops': '3000'},
             vserver_client=vserver_client)
 
-    @ddt.data(utils.annotated('volume_has_shared_qos_policy', (2, )),
-              utils.annotated('volume_has_nonshared_qos_policy', (1, )))
-    def test_modify_or_create_qos_for_existing_share(self, num_workloads):
+    @ddt.data(utils.annotated('volume_has_shared_qos_policy',
+                              (2, False, )),
+              utils.annotated('volume_has_shared_qos_policy_iops_change',
+                              (2, True, )),
+              utils.annotated('volume_has_nonshared_qos_policy',
+                              (1, False, )),
+              utils.annotated('volume_has_nonshared_qos_policy_iops_change',
+                              (1, True, )))
+    @ddt.unpack
+    def test_modify_or_create_qos_for_existing_share(self, num_workloads,
+                                                     qos_iops_change):
         vserver_client = mock.Mock()
-        num_workloads = num_workloads[0]
         qos_policy = copy.deepcopy(fake.QOS_POLICY_GROUP)
         qos_policy['num-workloads'] = num_workloads
-        extra_specs = fake.EXTRA_SPEC_WITH_QOS
+        extra_specs = copy.deepcopy(fake.EXTRA_SPEC_WITH_QOS)
+        expected_iops = '3000'
+        if qos_iops_change:
+            expected_iops = '4000'
+            extra_specs[fake.QOS_EXTRA_SPEC] = expected_iops
+
         self.mock_object(vserver_client, 'get_volume',
                          mock.Mock(return_value=fake.FLEXVOL_WITH_QOS))
         self.mock_object(self.library._client, 'qos_policy_group_get',
@@ -6786,8 +6810,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual(new_qos_policy_name, retval)
         if num_workloads == 1:
             mock_create_qos_policy.assert_not_called()
-            mock_qos_policy_modify.assert_called_once_with(
-                fake.QOS_POLICY_GROUP_NAME, '3000iops')
+            if qos_iops_change:
+                mock_qos_policy_modify.assert_called_once_with(
+                    fake.QOS_POLICY_GROUP_NAME, expected_iops + 'iops')
+            else:
+                mock_qos_policy_modify.assert_not_called()
+
             mock_qos_policy_rename.assert_called_once_with(
                 fake.QOS_POLICY_GROUP_NAME, new_qos_policy_name)
         else:
@@ -6796,7 +6824,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 'id': fake.SHARE['id'],
             }
             mock_create_qos_policy.assert_called_once_with(
-                share_obj, fake.VSERVER1, {'maxiops': '3000'},
+                share_obj, fake.VSERVER1, {'maxiops': expected_iops},
                 vserver_client=vserver_client)
             self.library._client.qos_policy_group_modify.assert_not_called()
             self.library._client.qos_policy_group_rename.assert_not_called()
@@ -6900,55 +6928,55 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                 snap_dict,
                                                 share_server=fake.SHARE_SERVER)
 
-    @ddt.data('default', 'hidden', 'visible')
-    def test_get_backend_info(self, snapdir):
-
-        self.library.configuration.netapp_reset_snapdir_visibility = snapdir
-        expected = {'snapdir_visibility': snapdir}
-
-        result = self.library.get_backend_info(self.context)
-        self.assertEqual(expected, result)
-
-    @ddt.data('default', 'hidden')
-    def test_ensure_shares(self, snapdir_cfg):
-        shares = [
-            fake_share.fake_share_instance(id='s-1',
-                                           share_server='fake_server_1'),
-            fake_share.fake_share_instance(id='s-2',
-                                           share_server='fake_server_2'),
-            fake_share.fake_share_instance(id='s-3',
-                                           share_server='fake_server_2')
-        ]
-
-        vserver_client = mock.Mock()
-        self.mock_object(
-            self.library, '_get_vserver',
-            mock.Mock(side_effect=[
-                (fake.VSERVER1, vserver_client),
-                (fake.VSERVER2, vserver_client),
-                (fake.VSERVER2, vserver_client)
-            ]))
-        (self.library.configuration.
-         netapp_reset_snapdir_visibility) = snapdir_cfg
-
-        self.library.ensure_shares(self.context, shares)
-
-        if snapdir_cfg == 'default':
-            self.library._get_vserver.assert_not_called()
-            vserver_client.set_volume_snapdir_access.assert_not_called()
-
-        else:
-            self.library._get_vserver.assert_has_calls([
-                mock.call(share_server='fake_server_1'),
-                mock.call(share_server='fake_server_2'),
-                mock.call(share_server='fake_server_2'),
-            ])
-
-            vserver_client.set_volume_snapdir_access.assert_has_calls([
-                mock.call('share_s_1', True),
-                mock.call('share_s_2', True),
-                mock.call('share_s_3', True),
-            ])
+    # @ddt.data('default', 'hidden', 'visible')
+    # def test_get_backend_info(self, snapdir):
+    #
+    #     self.library.configuration.netapp_reset_snapdir_visibility = snapdir
+    #     expected = {'snapdir_visibility': snapdir}
+    #
+    #     result = self.library.get_backend_info(self.context)
+    #     self.assertEqual(expected, result)
+    #
+    # @ddt.data('default', 'hidden')
+    # def test_ensure_shares(self, snapdir_cfg):
+    #     shares = [
+    #         fake_share.fake_share_instance(id='s-1',
+    #                                        share_server='fake_server_1'),
+    #         fake_share.fake_share_instance(id='s-2',
+    #                                        share_server='fake_server_2'),
+    #         fake_share.fake_share_instance(id='s-3',
+    #                                        share_server='fake_server_2')
+    #     ]
+    #
+    #     vserver_client = mock.Mock()
+    #     self.mock_object(
+    #         self.library, '_get_vserver',
+    #         mock.Mock(side_effect=[
+    #             (fake.VSERVER1, vserver_client),
+    #             (fake.VSERVER2, vserver_client),
+    #             (fake.VSERVER2, vserver_client)
+    #         ]))
+    #     (self.library.configuration.
+    #      netapp_reset_snapdir_visibility) = snapdir_cfg
+    #
+    #     self.library.ensure_shares(self.context, shares)
+    #
+    #     if snapdir_cfg == 'default':
+    #         self.library._get_vserver.assert_not_called()
+    #         vserver_client.set_volume_snapdir_access.assert_not_called()
+    #
+    #     else:
+    #         self.library._get_vserver.assert_has_calls([
+    #             mock.call(share_server='fake_server_1'),
+    #             mock.call(share_server='fake_server_2'),
+    #             mock.call(share_server='fake_server_2'),
+    #         ])
+    #
+    #         vserver_client.set_volume_snapdir_access.assert_has_calls([
+    #             mock.call('share_s_1', True),
+    #             mock.call('share_s_2', True),
+    #             mock.call('share_s_3', True),
+    #         ])
 
     def test__check_volume_clone_split_completed(self):
         vserver_client = mock.Mock()

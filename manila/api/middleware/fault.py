@@ -46,13 +46,17 @@ class FaultWrapper(base_wsgi.Middleware):
                     "request body contained characters that could not be "
                     "decoded by Manila.")
             return wsgi.Fault(webob.exc.HTTPBadRequest(explanation=msg))
-        LOG.exception("Caught error: %s", inner)
 
         safe = getattr(inner, 'safe', False)
         headers = getattr(inner, 'headers', None)
         status = getattr(inner, 'code', 500)
         if status is None:
             status = 500
+
+        if status == 500:
+            LOG.exception("Caught error: %s", inner)
+        else:
+            LOG.warning("Caught client error: %s", inner)
 
         msg_dict = dict(url=req.url, status=status)
         LOG.info("%(url)s returned with HTTP %(status)d", msg_dict)

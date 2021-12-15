@@ -229,13 +229,18 @@ class API(base.Base):
                 availability_zone = source_share_az
             elif (availability_zone != source_share_az
                   and not CONF.use_scheduler_creating_share_from_snapshot):
-                LOG.error("The specified availability zone must be the same "
-                          "as parent share when you have the configuration "
-                          "option 'use_scheduler_creating_share_from_snapshot'"
-                          " set to False.")
-                msg = _("The specified availability zone must be the same "
-                        "as the parent share when creating from snapshot.")
-                raise exception.InvalidInput(reason=msg)
+                error_msg = (_("az: %(az)s, source:  %(source_az)s."
+                               "The specified availability zone must be the "
+                               "same as parent share when you have the "
+                               "configuration option "
+                               "'use_scheduler_creating_share_from_snapshot' "
+                               "set to False.") % dict(
+                             az=availability_zone,
+                             source_az=source_share_az))
+                LOG.error(error_msg)
+                # msg = _("The specified availability zone must be the same "
+                #         "as the parent share when creating from snapshot.")
+                # raise exception.InvalidInput(reason=msg)
             if share_type is None:
                 # Grab the source share's share_type if no new share type
                 # has been provided.
@@ -595,7 +600,8 @@ class API(base.Base):
         return request_spec, share_instance
 
     def create_share_replica(self, context, share, availability_zone=None,
-                             share_network_id=None):
+                             share_network_id=None,
+                             scheduler_hints=None):
 
         if not share.get('replication_type'):
             msg = _("Replication not supported for share %s.")
@@ -726,7 +732,8 @@ class API(base.Base):
                 context, snapshot['id'], snapshot_instance)
 
         self.scheduler_rpcapi.create_share_replica(
-            context, request_spec=request_spec, filter_properties={})
+            context, request_spec=request_spec,
+            filter_properties={'scheduler_hints': scheduler_hints})
 
         return share_replica
 
@@ -1086,7 +1093,7 @@ class API(base.Base):
                 'd_quota': quotas['gigabytes'],
             }
             message = msg % msg_args
-            LOG.error(message)
+            LOG.warning(message)
             raise exception.ShareSizeExceedsAvailableQuota(message=message)
 
     def _revert_to_snapshot(self, context, share, snapshot, reservations):
@@ -1234,8 +1241,8 @@ class API(base.Base):
         share_groups = self.db.share_group_get_all_by_share_server(
             context, server['id'])
         if share_groups:
-            LOG.error("share server '%(ssid)s' in use by share groups.",
-                      {'ssid': server['id']})
+            LOG.warning("share server '%(ssid)s' in use by share groups.",
+                        {'ssid': server['id']})
             raise exception.ShareServerInUse(share_server_id=server['id'])
 
         # NOTE(vponomaryov): There is no share_server status update here,
@@ -1290,8 +1297,8 @@ class API(base.Base):
         share_groups = self.db.share_group_get_all_by_share_server(
             context, share_server['id'])
         if share_groups:
-            LOG.error("share server '%(ssid)s' in use by share groups.",
-                      {'ssid': share_server['id']})
+            LOG.warning("share server '%(ssid)s' in use by share groups.",
+                        {'ssid': share_server['id']})
             raise exception.ShareServerInUse(
                 share_server_id=share_server['id'])
 
@@ -1408,7 +1415,7 @@ class API(base.Base):
                     '"nondisruptive", "writable", "preserve_snapshots" or '
                     '"preserve_metadata" to True when enabling the '
                     '"force_host_assisted_migration" option.')
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.InvalidInput(reason=msg)
 
         share_instance = share.instance
@@ -1418,7 +1425,7 @@ class API(base.Base):
         if share.has_replicas:
             msg = _('Share %s has replicas. Remove the replicas before '
                     'attempting to migrate the share.') % share['id']
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.Conflict(err=msg)
 
         # TODO(ganso): We do not support migrating shares in or out of groups
@@ -1427,7 +1434,7 @@ class API(base.Base):
             msg = _('Share %s is a member of a group. This operation is not '
                     'currently supported for shares that are members of '
                     'groups.') % share['id']
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.InvalidShare(reason=msg)
 
         # We only handle "available" share for now
@@ -1571,7 +1578,7 @@ class API(base.Base):
             if msg is None:
                 msg = _("First migration phase of share %s not completed"
                         " yet.") % share['id']
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.InvalidShare(reason=msg)
 
         share_instance_id, new_share_instance_id = (
@@ -1665,7 +1672,7 @@ class API(base.Base):
             if msg is None:
                 msg = _("Migration progress of share %s cannot be obtained at "
                         "this moment.") % share['id']
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.InvalidShare(reason=msg)
 
         return result
@@ -1773,7 +1780,7 @@ class API(base.Base):
             if msg is None:
                 msg = _("Migration of share %s cannot be cancelled at this "
                         "moment.") % share['id']
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.InvalidShare(reason=msg)
 
     @policy.wrap_check_policy('share')
@@ -2076,7 +2083,8 @@ class API(base.Base):
                 raise exception.ShareNotFound(share_id=uuid)
 
     def _save_scheduler_hints(self, context, share, share_uuids, key):
-        share_uuids = share_uuids.split(",")
+        if not isinstance(share_uuids, list):
+            share_uuids = share_uuids.split(",")
 
         self._validate_scheduler_hints(context, share, share_uuids)
         val_uuids = None
@@ -2119,6 +2127,10 @@ class API(base.Base):
                                                      key)
         except exception.ShareMetadataNotFound:
             return
+
+        # elevate context as default user context won't be enough
+        # to delete the scheduler hints.
+        context = context.elevated()
 
         share_uuids = result.get(key, "").split(",")
         for uuid in share_uuids:
@@ -2606,7 +2618,7 @@ class API(base.Base):
                 msg = _('Share %s has replicas. Remove the replicas of all '
                         'shares in the share server before attempting to '
                         'migrate it.') % share['id']
-                LOG.error(msg)
+                LOG.warning(msg)
                 raise exception.InvalidShareServer(reason=msg)
 
             # NOTE(carloss): Not validating the flag preserve_snapshots at this
@@ -2628,14 +2640,14 @@ class API(base.Base):
                         'resource_id': share['id'],
                         'status': constants.STATUS_AVAILABLE,
                 }
-                LOG.error(msg)
+                LOG.warning(msg)
                 raise exception.InvalidShareServer(reason=msg)
 
             if share.get('share_group_id'):
                 msg = _('Share %s is a member of a group. This operation is '
                         'not currently supported for share servers that '
                         'contain shares members of  groups.') % share['id']
-                LOG.error(msg)
+                LOG.warning(msg)
                 raise exception.InvalidShareServer(reason=msg)
 
             share_instance = share['instance']
@@ -2749,14 +2761,14 @@ class API(base.Base):
         """Invokes 2nd phase of share server migration."""
         if share_server['status'] != constants.STATUS_SERVER_MIGRATING:
             msg = _("Share server %s is not migrating") % share_server['id']
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.InvalidShareServer(reason=msg)
         if (share_server['task_state'] !=
                 constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE):
             msg = _("The first phase of migration has to finish to "
                     "request the completion of server %s's "
                     "migration.") % share_server['id']
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.InvalidShareServer(reason=msg)
 
         dest_share_server = self.share_server_migration_get_destination(
@@ -2780,7 +2792,7 @@ class API(base.Base):
         if share_server['status'] != constants.STATUS_SERVER_MIGRATING:
             msg = _("Migration of share server %s cannot be cancelled because "
                     "the provided share server is not being migrated.")
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.InvalidShareServer(reason=msg)
 
         if share_server['task_state'] in (
@@ -2806,7 +2818,7 @@ class API(base.Base):
                         "after the driver already started the migration, or "
                         "when the first phase of the migration gets "
                         "completed.") % share_server['id']
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.InvalidShareServer(reason=msg)
 
     def share_server_migration_get_progress(self, context,
@@ -2834,7 +2846,7 @@ class API(base.Base):
             msg = _("Migration progress of share server %s cannot be "
                     "obtained. The provided share server is not being "
                     "migrated.") % share_server['id']
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.InvalidShareServer(reason=msg)
 
         dest_share_server = self.share_server_migration_get_destination(
@@ -2868,7 +2880,7 @@ class API(base.Base):
             if msg is None:
                 msg = _("Migration progress of share server %s cannot be "
                         "obtained at this moment.") % share_server['id']
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.InvalidShareServer(reason=msg)
 
         result.update({

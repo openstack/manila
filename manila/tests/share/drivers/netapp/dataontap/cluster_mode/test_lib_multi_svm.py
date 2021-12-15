@@ -622,7 +622,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 fake.NETWORK_INFO)
         self.library._client.create_vserver.assert_called_once_with(
             vserver_name, fake.ROOT_VOLUME_AGGREGATE, fake.ROOT_VOLUME,
-            set(fake.AGGREGATES), fake.IPSPACE)
+            set(fake.AGGREGATES), fake.IPSPACE, 12, False)
         self.library._get_api_client.assert_called_once_with(
             vserver=vserver_name)
         self.library._create_vserver_lifs.assert_called_once_with(
@@ -685,7 +685,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 fake.NETWORK_INFO)
         create_server_mock = self.library._client.create_vserver_dp_destination
         create_server_mock.assert_called_once_with(
-            vserver_name, fake.AGGREGATES, fake.IPSPACE)
+            vserver_name, fake.AGGREGATES, fake.IPSPACE, 12)
         self.library._create_port_and_broadcast_domain.assert_called_once_with(
             fake.IPSPACE, fake.NETWORK_INFO)
         self.library._get_flexgroup_aggr_set.assert_not_called()
@@ -779,7 +779,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             needs_lock=False,
             security_services=security_service)
         self.assertFalse(vserver_client.enable_nfs.called)
-        self.assertEqual(1, lib_multi_svm.LOG.error.call_count)
+        self.assertEqual(1, lib_multi_svm.LOG.warning.call_count)
 
     def test_get_valid_ipspace_name(self):
 

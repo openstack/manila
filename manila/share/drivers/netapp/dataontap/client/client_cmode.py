@@ -74,6 +74,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontapi_1_120 = ontapi_version >= (1, 120)
         ontapi_1_140 = ontapi_version >= (1, 140)
         ontapi_1_150 = ontapi_version >= (1, 150)
+        ontapi_1_170 = ontapi_version >= (1, 170)
         ontapi_1_180 = ontapi_version >= (1, 180)
         ontapi_1_191 = ontapi_version >= (1, 191)
         ontap_9_10 = self.get_system_version()['version-tuple'] >= (9, 10, 0)
@@ -101,6 +102,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.features.add_feature('FLEXGROUP', supported=ontapi_1_180)
         self.features.add_feature('FLEXGROUP_FAN_OUT', supported=ontapi_1_191)
         self.features.add_feature('SVM_MIGRATE', supported=ontap_9_10)
+        self.features.add_feature('CIFS_LARGE_MTU', supported=ontapi_1_170)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -175,28 +177,32 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def create_vserver(self, vserver_name, root_volume_aggregate_name,
-                       root_volume_name, aggregate_names, ipspace_name):
+                       root_volume_name, aggregate_names, ipspace_name,
+                       delete_retention_hours, logical_space_reporting):
         """Creates new vserver and assigns aggregates."""
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
-            root_volume_name=root_volume_name,
+            delete_retention_hours, root_volume_name=root_volume_name,
             root_volume_aggregate_name=root_volume_aggregate_name,
             root_volume_security_style='unix',
-            name_server_switch='file')
+            name_server_switch='file',
+            logical_space_reporting=logical_space_reporting)
 
     @na_utils.trace
     def create_vserver_dp_destination(self, vserver_name, aggregate_names,
-                                      ipspace_name):
+                                      ipspace_name, delete_retention_hours):
         """Creates new 'dp_destination' vserver and assigns aggregates."""
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
-            subtype='dp_destination')
+            delete_retention_hours, subtype='dp_destination')
 
     @na_utils.trace
     def _create_vserver(self, vserver_name, aggregate_names, ipspace_name,
-                        root_volume_name=None, root_volume_aggregate_name=None,
+                        delete_retention_hours, root_volume_name=None,
+                        root_volume_aggregate_name=None,
                         root_volume_security_style=None,
-                        name_server_switch=None, subtype=None):
+                        name_server_switch=None, subtype=None,
+                        logical_space_reporting=False):
         """Creates new vserver and assigns aggregates."""
         create_args = {
             'vserver-name': vserver_name,
@@ -221,11 +227,27 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             else:
                 create_args['ipspace'] = ipspace_name
 
+        if logical_space_reporting:
+            create_args['is-space-reporting-logical'] = True
+            create_args['is-space-enforcement-logical'] = True
+
+        LOG.debug('Creating Vserver %(vserver)s with create args '
+                  '%(args)s', {'vserver': vserver_name, 'args': create_args})
+
         self.send_request('vserver-create', create_args)
 
+        self.modify_vserver(
+            vserver_name=vserver_name,
+            aggregate_names=aggregate_names,
+            retention_hours=delete_retention_hours
+        )
+
+    @na_utils.trace
+    def modify_vserver(self, vserver_name, aggregate_names, retention_hours):
         aggr_list = [{'aggr-name': aggr_name} for aggr_name in aggregate_names]
         modify_args = {
             'aggr-list': aggr_list,
+            'volume-delete-retention-hours': retention_hours,
             'vserver-name': vserver_name,
         }
         self.send_request('vserver-modify', modify_args)
@@ -819,8 +841,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         # Port already in desired ipspace and broadcast domain.
         if (port_info['ipspace'] == ipspace
-                and port_info['broadcast-domain'] == domain):
-            self._modify_broadcast_domain(domain, ipspace, mtu)
+            and (port_info['broadcast-domain'] == domain
+                 or port_info['broadcast-domain'] == 'OpenStack')):
+            self._modify_broadcast_domain(
+                port_info['broadcast-domain'], ipspace, mtu)
             return
 
         # If in another broadcast domain, remove port from it.
@@ -1466,8 +1490,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                               timeout=timeout)
 
             elif security_service['type'].lower() == 'active_directory':
+                vserver_client.configure_cifs_encryption()
                 vserver_client.configure_active_directory(security_service,
                                                           vserver_name)
+                vserver_client.configure_cifs_options()
 
             elif security_service['type'].lower() == 'kerberos':
                 vserver_client.create_kerberos_realm(security_service)
@@ -1505,6 +1531,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'is-v3-ms-dos-client-enabled': 'true',
             'is-nfsv3-connection-drop-enabled': 'false',
             'enable-ejukebox': 'false',
+            'is-vstorage-enabled': 'true',
         }
         self.send_request('nfs-service-modify', nfs_service_modify_args)
 
@@ -1539,6 +1566,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ldap_schema = 'RFC-2307'
 
         if ad_domain:
+            for conf in ('user', 'ou'):
+                if not security_service.get(conf):
+                    msg = _('Missing option %s for LDAP configuration.')
+                    raise exception.NetAppException(msg % conf)
+
             if ldap_servers:
                 msg = _("LDAP client cannot be configured with both 'server' "
                         "and 'domain' parameters. Use 'server' for Linux/Unix "
@@ -1562,16 +1594,19 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             self.configure_dns(security_service)
 
         config_name = hashlib.md5(six.b(security_service['id'])).hexdigest()
+        LOG.debug("Configuring LDAP Security Service: %s",
+                  security_service['id'])
+
         api_args = {
             'ldap-client-config': config_name,
             'tcp-port': '389',
             'schema': ldap_schema,
-            'bind-dn': bind_dn,
+            'bind-dn': bind_dn.lower(),
             'bind-password': security_service.get('password'),
         }
 
         if security_service.get('ou'):
-            api_args['base-dn'] = security_service['ou']
+            api_args['base-dn'] = security_service['ou'].lower()
         if ad_domain:
             # Active Directory LDAP server
             api_args['ad-domain'] = ad_domain
@@ -1694,6 +1729,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def configure_active_directory(self, security_service, vserver_name):
         """Configures AD on Vserver."""
         self.configure_dns(security_service)
+        self.configure_cifs_encryption()
         self.set_preferred_dc(security_service)
 
         cifs_server = self._get_cifs_server_name(vserver_name)
@@ -1709,12 +1745,18 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if security_service['ou'] is not None:
             api_args['organizational-unit'] = security_service['ou']
 
-        try:
-            LOG.debug("Trying to setup CIFS server with data: %s", api_args)
-            self.send_request('cifs-server-create', api_args)
-        except netapp_api.NaApiError as e:
-            msg = _("Failed to create CIFS server entry. %s")
-            raise exception.NetAppException(msg % e.message)
+        for attempt in range(3):
+            try:
+                LOG.debug("Trying to setup CIFS server with args: %s",
+                          api_args)
+                self.send_request('cifs-server-create', api_args)
+                return
+            except netapp_api.NaApiError as e:
+                LOG.debug("Failed to create CIFS server entry. %s", e.message)
+                time.sleep(3)
+                continue
+        msg = _('Cannot setup CIFS server after 3 attempts.')
+        raise exception.NetAppException(msg)
 
     @na_utils.trace
     def modify_active_directory_security_service(
@@ -1998,6 +2040,32 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             raise exception.NetAppException(msg % e.message)
 
     @na_utils.trace
+    def configure_cifs_encryption(self):
+        api_args = {
+            'is-aes-encryption-enabled': 'true'
+        }
+
+        try:
+            self.send_request('cifs-security-modify', api_args)
+        except netapp_api.NaApiError as e:
+            msg = _("Failed to set aes encryption. %s")
+            raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def configure_cifs_options(self):
+        if not self.features.CIFS_LARGE_MTU:
+            api_args = {
+                'is-large-mtu-enabled': 'true'
+            }
+
+            try:
+                self.send_request('cifs-options-modify', api_args)
+            except netapp_api.NaApiError as e:
+                msg = _("Failed to set cifs options. %s")
+                # no raise to be non-blocking
+                LOG.warning(msg, e.message)
+
+    @na_utils.trace
     def set_preferred_dc(self, security_service):
         # server is optional
         if not security_service['server']:
@@ -2039,9 +2107,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       thin_provisioned=False, snapshot_policy=None,
                       language=None, dedup_enabled=False,
                       compression_enabled=False, max_files=None,
-                      snapshot_reserve=None, volume_type='rw',
+                      snapshot_reserve=None, volume_type='rw', comment='',
                       qos_policy_group=None, adaptive_qos_policy_group=None,
-                      encrypt=False, **options):
+                      encrypt=None, **options):
         """Creates a volume."""
         if adaptive_qos_policy_group and not self.features.ADAPTIVE_QOS:
             msg = 'Adaptive QoS not supported on this backend ONTAP version.'
@@ -2049,13 +2117,24 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         api_args = {
             'containing-aggr-name': aggregate_name,
-            'size': six.text_type(size_gb) + 'g',
             'volume': volume_name,
         }
         api_args.update(self._get_create_volume_api_args(
             volume_name, thin_provisioned, snapshot_policy, language,
-            snapshot_reserve, volume_type, qos_policy_group, encrypt,
+            snapshot_reserve, volume_type, comment, qos_policy_group, encrypt,
             adaptive_qos_policy_group))
+
+        if (options.get('provision_net_capacity') and
+                snapshot_reserve is not None):
+            size_b = size_gb * units.Gi * 100 / (100 - snapshot_reserve)
+        else:
+            size_b = size_gb * units.Gi
+        api_args['size'] = six.text_type(size_b)
+
+        if options.get('unix-permissions') is not None:
+            # special case for multi-protocol shares:
+            unix_perm = options.pop('unix-permissions')
+            api_args['unix-permissions'] = unix_perm
 
         self.send_request('volume-create', api_args)
 
@@ -2069,8 +2148,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def create_volume_async(self, aggregate_list, volume_name, size_gb,
                             thin_provisioned=False, snapshot_policy=None,
                             language=None, snapshot_reserve=None,
-                            volume_type='rw', qos_policy_group=None,
-                            encrypt=False, adaptive_qos_policy_group=None,
+                            volume_type='rw', comment=None,
+                            qos_policy_group=None, encrypt=False,
+                            adaptive_qos_policy_group=None,
                             auto_provisioned=False, **options):
         """Creates a volume asynchronously."""
 
@@ -2079,7 +2159,6 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             raise exception.NetAppException(msg)
 
         api_args = {
-            'size': size_gb * units.Gi,
             'volume-name': volume_name,
         }
         if auto_provisioned:
@@ -2089,8 +2168,20 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                      for aggr in aggregate_list]
         api_args.update(self._get_create_volume_api_args(
             volume_name, thin_provisioned, snapshot_policy, language,
-            snapshot_reserve, volume_type, qos_policy_group, encrypt,
+            snapshot_reserve, volume_type, comment, qos_policy_group, encrypt,
             adaptive_qos_policy_group))
+
+        if (options.get('provision_net_capacity') and
+                snapshot_reserve is not None):
+            size_b = size_gb * units.Gi * 100 / (100 - snapshot_reserve)
+        else:
+            size_b = size_gb * units.Gi
+        api_args['size'] = six.text_type(size_b)
+
+        if options.get('unix-permissions') is not None:
+            # special case for multi-protocol shares:
+            unix_perm = options.pop('unix-permissions')
+            api_args['unix-permissions'] = unix_perm
 
         result = self.send_request('volume-create-async', api_args)
         job_info = {
@@ -2104,12 +2195,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     def _get_create_volume_api_args(self, volume_name, thin_provisioned,
                                     snapshot_policy, language,
-                                    snapshot_reserve, volume_type,
+                                    snapshot_reserve, volume_type, comment,
                                     qos_policy_group, encrypt,
                                     adaptive_qos_policy_group):
         api_args = {
             'volume-type': volume_type,
+            'volume-comment': comment,
         }
+
         if volume_type != 'dp':
             api_args['junction-path'] = '/%s' % volume_name
         if thin_provisioned:
@@ -2120,18 +2213,21 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             api_args['language-code'] = language
         if snapshot_reserve is not None:
             api_args['percentage-snapshot-reserve'] = str(snapshot_reserve)
+
         if qos_policy_group is not None:
             api_args['qos-policy-group-name'] = qos_policy_group
         if adaptive_qos_policy_group is not None:
             api_args['qos-adaptive-policy-group-name'] = (
                 adaptive_qos_policy_group)
 
-        if encrypt is True:
-            if not self.features.FLEXVOL_ENCRYPTION:
+        if encrypt is not None:
+            if encrypt is True and not self.features.FLEXVOL_ENCRYPTION:
                 msg = 'Flexvol encryption is not supported on this backend.'
                 raise exception.NetAppException(msg)
-            else:
+            elif encrypt is True:
                 api_args['encrypt'] = 'true'
+            else:
+                api_args['encrypt'] = 'false'
 
         return api_args
 
@@ -2251,7 +2347,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('volume-modify-iter', api_args)
 
     @na_utils.trace
-    def set_volume_size(self, volume_name, size_gb):
+    def set_volume_size(self, volume_name, size_gb, **options):
+
+        snapshot_reserve_percent = options.get('snapshot_reserve_percent')
+        provision_net_capacity = options.get('provision_net_capacity')
+
+        if provision_net_capacity and snapshot_reserve_percent:
+            avail_percent = 100 - snapshot_reserve_percent
+            size_b = int(size_gb * units.Gi * 100 / avail_percent)
+        else:
+            size_b = int(size_gb * units.Gi)
         """Set volume size."""
         api_args = {
             'query': {
@@ -2264,7 +2369,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'attributes': {
                 'volume-attributes': {
                     'volume-space-attributes': {
-                        'size': int(size_gb) * units.Gi,
+                        'size': six.text_type(size_b),
+                        'percentage-snapshot-reserve': (
+                            six.text_type(snapshot_reserve_percent)),
                     },
                 },
             },
@@ -2397,7 +2504,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       language=None, dedup_enabled=False,
                       compression_enabled=False, max_files=None,
                       qos_policy_group=None, hide_snapdir=None,
-                      autosize_attributes=None,
+                      autosize_attributes=None, comment=None, replica=False,
                       adaptive_qos_policy_group=None, **options):
         """Update backend volume for a share as necessary.
 
@@ -2431,6 +2538,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             },
             'attributes': {
                 'volume-attributes': {
+                    'volume-id-attributes': {},
                     'volume-inode-attributes': {},
                     'volume-language-attributes': {},
                     'volume-snapshot-attributes': {},
@@ -2480,14 +2588,19 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'volume-snapshot-attributes'][
                 'snapdir-access-enabled'] = six.text_type(
                 not hide_snapdir).lower()
+        if comment:
+            api_args['attributes']['volume-attributes'][
+                'volume-id-attributes'][
+                    'comment'] = comment
 
         self.send_request('volume-modify-iter', api_args)
 
-        # Efficiency options must be handled separately
-        self.update_volume_efficiency_attributes(volume_name,
-                                                 dedup_enabled,
-                                                 compression_enabled,
-                                                 is_flexgroup=is_flexgroup)
+        if not replica:
+            # Efficiency options must be handled separately
+            self.update_volume_efficiency_attributes(volume_name,
+                                                     dedup_enabled,
+                                                     compression_enabled,
+                                                     is_flexgroup=is_flexgroup)
 
     @na_utils.trace
     def update_volume_efficiency_attributes(self, volume_name, dedup_enabled,
@@ -2693,6 +2806,47 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'maximum-size': result.get_child_content('maximum-size'),
             'minimum-size': result.get_child_content('minimum-size'),
         }
+
+    @na_utils.trace
+    def get_volume_snapshot_attributes(self, volume_name):
+        """Returns snapshot attributes"""
+        desired_snapshot_attributes = {
+            'snapshot-policy': None,
+            'snapdir-access-enabled': None,
+        }
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-snapshot-attributes': desired_snapshot_attributes,
+                },
+            },
+        }
+
+        result = self.send_request('volume-get-iter', api_args)
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        volume_attributes_list = attributes_list.get_children()
+
+        if not self._has_records(result):
+            raise exception.StorageResourceNotFound(name=volume_name)
+        elif len(volume_attributes_list) > 1:
+            msg = _('Could not find unique volume %(vol)s.')
+            msg_args = {'vol': volume_name}
+            raise exception.NetAppException(msg % msg_args)
+
+        vol_attr = volume_attributes_list[0]
+        vol_snapshot_attr = vol_attr.get_child_by_name(
+            "volume-snapshot-attributes") or netapp_api.NaElement('none')
+
+        return {key: vol_snapshot_attr.get_child_content(key)
+                for key in desired_snapshot_attributes.keys()}
 
     @na_utils.trace
     def get_volume(self, volume_name):
@@ -3388,7 +3542,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def create_cifs_share(self, share_name):
         share_path = '/%s' % share_name
         api_args = {'path': share_path, 'share-name': share_name}
-        self.send_request('cifs-share-create', api_args)
+        try:
+            self.send_request('cifs-share-create', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code != netapp_api.EDUPLICATEENTRY:
+                raise
 
     @na_utils.trace
     def cifs_share_exists(self, share_name):
@@ -4923,7 +5081,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         elif encrypt_destination:
             msg = 'Flexvol encryption is not supported on this backend.'
             raise exception.NetAppException(msg)
-        else:
+        elif encrypt_destination is False:
             api_args['encrypt-destination'] = 'false'
 
         if validation_only:

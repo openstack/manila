@@ -69,13 +69,19 @@ class AffinityBaseFilter(base_host.BaseHostFilter):
             if share_uuids is None:
                 raise SchedulerHintsNotSet
 
-        share_uuids = share_uuids.split(",")
+        if not isinstance(share_uuids, (tuple, list)):
+            share_uuids = share_uuids.split(",")
+            # raise InvalidUUIDListError(share_uuids)
 
         filter_properties['scheduler_hints'][self._filter_type] = []
 
         filtered_hosts = []
         for uuid in share_uuids:
             try:
+                # NOTE(ccloud):
+                # if we want to allow to specify uuid from another project,
+                # we need to change the policy as context.elevated() right now
+                # still hard tied to the current project:
                 share = self.share_api.get(context, uuid)
             except exception.NotFound:
                 raise exception.ShareNotFound(uuid)
@@ -94,23 +100,55 @@ class AffinityBaseFilter(base_host.BaseHostFilter):
 
         return filter_properties
 
+    def _get_host_name_from_state(self, host_state_host):
+        """Returns the actual host_name from the host_state"""
+        host_name = ""
+        if host_state_host:
+            full_name = host_state_host.split('@')
+            if len(full_name) == 2:
+                # we can relibly say that first is the hostname
+                host_name = full_name[0]
+
+        return host_name
+
 
 class AffinityFilter(AffinityBaseFilter):
-    _filter_type = AFFINITY_FILTER
+    _filter_type = api.AFFINITY_HINT
 
     def host_passes(self, host_state, filter_properties):
         allowed_hosts = \
             filter_properties['scheduler_hints'][self._filter_type]
-        return host_state.host in allowed_hosts
+        host_name = self._get_host_name_from_state(host_state.host)
+
+        allowed_host_names = set()
+        for allowed_host in allowed_hosts:
+            allowed_host_name = self._get_host_name_from_state(allowed_host)
+            allowed_host_names.add(allowed_host_name)
+
+        if len(allowed_host_names) > 1:
+            # The given share uuids are located on different filers.
+            # Affinity with both at the same time is not possible.
+            return None
+
+        if host_name in allowed_host_names:
+            # Valid, pass the host:
+            return host_state.host
 
 
 class AntiAffinityFilter(AffinityBaseFilter):
-    _filter_type = ANTI_AFFINITY_FILTER
+    _filter_type = api.ANTI_AFFINITY_HINT
 
     def host_passes(self, host_state, filter_properties):
         forbidden_hosts = \
             filter_properties['scheduler_hints'][self._filter_type]
-        return host_state.host not in forbidden_hosts
+        host_name = self._get_host_name_from_state(host_state.host)
+
+        for forbidden_host in forbidden_hosts:
+            if host_name in self._get_host_name_from_state(forbidden_host):
+                # do not pass the host if there is a host_name match:
+                return None
+
+        return host_state.host
 
 
 class SchedulerHintsNotSet(Exception):

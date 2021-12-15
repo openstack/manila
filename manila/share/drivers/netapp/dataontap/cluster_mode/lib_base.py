@@ -61,7 +61,7 @@ class NetAppCmodeFileStorageLibrary(object):
     SSC_UPDATE_INTERVAL_SECONDS = 3600  # hourly
     HOUSEKEEPING_INTERVAL_SECONDS = 600  # ten minutes
 
-    SUPPORTED_PROTOCOLS = ('nfs', 'cifs')
+    SUPPORTED_PROTOCOLS = ('nfs', 'cifs', 'multi')
 
     DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70'
     DEFAULT_GOODNESS_FUNCTION = '100 - capabilities.utilization'
@@ -165,6 +165,13 @@ class NetAppCmodeFileStorageLibrary(object):
         self._flexgroup_pools = {}
         self._is_flexgroup_auto = False
 
+        self._volume_size_options = {
+            'snapshot_reserve_percent': (
+                self.configuration.netapp_volume_snapshot_reserve_percent),
+            'provision_net_capacity': (
+                self.configuration.netapp_volume_provision_net_capacity)
+        }
+
         self._app_version = kwargs.get('app_version', 'unknown')
 
         na_utils.setup_tracing(self.configuration.netapp_trace_flags,
@@ -210,7 +217,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def check_for_setup_error(self):
         self._start_periodic_tasks()
 
-    def _get_vserver(self, share_server=None):
+    def _get_vserver(self, share_server=None, reexport=False):
         raise NotImplementedError()
 
     @na_utils.trace
@@ -287,6 +294,18 @@ class NetAppCmodeFileStorageLibrary(object):
         """Get share name according to share name template."""
         return self.configuration.netapp_volume_name_template % {
             'share_id': share_id.replace('-', '_')}
+
+    def _get_backend_share_comment(self, share):
+        """Get share comment."""
+        # caution: share_type is nullable
+        if share.get('share_type'):
+            type = share.get('share_type').get('name')
+        else:
+            type = share.get('share_type_name')
+
+        return 'share_id: {share_id}, share_name: {display_name}, ' \
+               'project: {project_id}, share_type: {type}'.format(
+                   type=type, **share)
 
     def _get_backend_snapshot_name(self, snapshot_id):
         """Get snapshot name according to snapshot name template."""
@@ -646,8 +665,21 @@ class NetAppCmodeFileStorageLibrary(object):
         return aggr
 
     @na_utils.trace
+    def _get_helpers(self, share):
+        """Returns drivers which implement one or multiple protocols."""
+        if self._is_multi_protocol_share(share):
+            # both NFS and CIFS licenses should be valid:
+            self._check_license_for_protocol('nfs')
+            self._check_license_for_protocol('cifs')
+
+            return [nfs_cmode.NetAppCmodeNFSHelper(),
+                    cifs_cmode.NetAppCmodeCIFSHelper()]
+        else:
+            return [self._get_helper(share)]
+
+    @na_utils.trace
     def _get_helper(self, share):
-        """Returns driver which implements share protocol."""
+        """Returns driver which implements NFS or CIFS protocol."""
         share_protocol = share['share_proto'].lower()
 
         if share_protocol not in self.SUPPORTED_PROTOCOLS:
@@ -1057,6 +1089,7 @@ class NetAppCmodeFileStorageLibrary(object):
                             set_qos=True):
         """Create new share on aggregate."""
         share_name = self._get_backend_share_name(share['id'])
+        share_comment = self._get_backend_share_comment(share)
 
         # Get Data ONTAP aggregate name as pool name.
         pool_name = share_utils.extract_host(share['host'], level='pool')
@@ -1074,6 +1107,9 @@ class NetAppCmodeFileStorageLibrary(object):
 
         hide_snapdir = provisioning_options.pop('hide_snapdir')
 
+        provisioning_options['provision_net_capacity'] = (
+            self._volume_size_options.get('provision_net_capacity'))
+
         LOG.debug('Creating share %(share)s on pool %(pool)s with '
                   'provisioning options %(options)s',
                   {'share': share_name, 'pool': pool_name,
@@ -1088,6 +1124,7 @@ class NetAppCmodeFileStorageLibrary(object):
         else:
             vserver_client.create_volume(
                 pool_name, share_name, share['size'],
+                comment=share_comment,
                 snapshot_reserve=self.configuration.
                 netapp_volume_snapshot_reserve_percent, **provisioning_options)
 
@@ -1434,6 +1471,12 @@ class NetAppCmodeFileStorageLibrary(object):
             qos_policy_group = self._create_qos_policy_group(
                 share, vserver, qos_specs, vserver_client)
             provisioning_options['qos_policy_group'] = qos_policy_group
+
+        # For multi-protocol share to work with CIFS we set unix-mode to 0777,
+        # CIFS-only shares come with 0777, NFS-only with 0755 by default.
+        if self._is_multi_protocol_share(share):
+            provisioning_options['unix-permissions'] = '0777'
+
         return provisioning_options
 
     @na_utils.trace
@@ -1447,7 +1490,9 @@ class NetAppCmodeFileStorageLibrary(object):
         result = boolean_args.copy()
         result.update(string_args)
 
-        result['encrypt'] = self._get_nve_option(specs)
+        nve_option = self._get_nve_option(specs)
+        if nve_option is not None:
+            result['encrypt'] = nve_option
 
         return result
 
@@ -1506,10 +1551,9 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.NetAppException(msg)
 
     def _get_nve_option(self, specs):
+        nve = None
         if 'netapp_flexvol_encryption' in specs:
             nve = specs['netapp_flexvol_encryption'].lower() == 'true'
-        else:
-            nve = False
 
         return nve
 
@@ -1538,6 +1582,8 @@ class NetAppCmodeFileStorageLibrary(object):
         """Clones existing share."""
         share_name = self._get_backend_share_name(share['id'])
         parent_share_name = self._get_backend_share_name(snapshot['share_id'])
+        aggregate_name = share_utils.extract_host(share['host'], level='pool')
+        share_comment = self._get_backend_share_comment(share)
         if snapshot.get('provider_location') is None:
             parent_snapshot_name = snapshot_name_func(self, snapshot['id'])
         else:
@@ -1555,8 +1601,14 @@ class NetAppCmodeFileStorageLibrary(object):
             share_name, parent_share_name, parent_snapshot_name,
             **provisioning_options)
 
+        # ccloud: set share comment
+        vserver_client.modify_volume(aggregate_name, share_name,
+                                     comment=share_comment,
+                                     **provisioning_options)
+
         if share['size'] > snapshot['size']:
-            vserver_client.set_volume_size(share_name, share['size'])
+            vserver_client.set_volume_size(share_name, share['size'],
+                                           **self._volume_size_options)
 
         if hide_snapdir:
             self._apply_snapdir_visibility(
@@ -1613,9 +1665,19 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _deallocate_container(self, share_name, vserver_client):
         """Free share space."""
-        vserver_client.unmount_volume(share_name, force=True)
+        try:
+            vserver_client.unmount_volume(share_name, force=True)
+        except exception.NetAppException:
+            # offline job can proceed without unmounted volume
+            pass
+
         vserver_client.offline_volume(share_name)
         vserver_client.delete_volume(share_name)
+
+    def _is_multi_protocol_share(self, share):
+        """Returns True if share should be available over both NFS and CIFS"""
+        if share['share_proto'].lower() == 'multi':
+            return True
 
     @na_utils.trace
     def _create_export(self, share, share_server, vserver, vserver_client,
@@ -1623,12 +1685,16 @@ class NetAppCmodeFileStorageLibrary(object):
                        ensure_share_already_exists=False, replica=False,
                        share_host=None):
         """Creates NAS storage."""
-        helper = self._get_helper(share)
-        helper.set_client(vserver_client)
         share_name = self._get_backend_share_name(share['id'])
 
+        if self._is_multi_protocol_share(share):
+            LOG.debug("Share %s is a multi-protocol share", share['id'])
+            protocols = ["nfs", "cifs"]
+        else:
+            protocols = [share['share_proto']]
+
         interfaces = vserver_client.get_network_interfaces(
-            protocols=[share['share_proto']])
+            protocols=protocols)
 
         if not interfaces:
             msg = _('Cannot find network interfaces for Vserver %(vserver)s '
@@ -1644,23 +1710,28 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # Create the share and get a callback for generating export locations
         pool = share_utils.extract_host(share['host'], level='pool')
-        callback = helper.create_share(
-            share, share_name,
-            clear_current_export_policy=clear_current_export_policy,
-            ensure_share_already_exists=ensure_share_already_exists,
-            replica=replica,
-            is_flexgroup=self._is_flexgroup_pool(pool))
+        export_locations = []
 
-        # Generate export locations using addresses, metadata and callback
-        export_locations = [
-            {
-                'path': callback(export_address),
-                'is_admin_only': metadata.pop('is_admin_only', False),
-                'metadata': metadata,
-            }
-            for export_address, metadata
-            in copy.deepcopy(export_addresses).items()
-        ]
+        for helper in self._get_helpers(share):
+            helper.set_client(vserver_client)
+
+            callback = helper.create_share(
+                share, share_name,
+                clear_current_export_policy=clear_current_export_policy,
+                ensure_share_already_exists=ensure_share_already_exists,
+                replica=replica,
+                is_flexgroup=self._is_flexgroup_pool(pool))
+
+            # Generate export locations using addresses, metadata and callback
+            export_locations = [
+                {
+                    'path': callback(export_address),
+                    'is_admin_only': metadata.pop('is_admin_only', False),
+                    'metadata': metadata,
+                }
+                for export_address, metadata
+                in copy.deepcopy(export_addresses).items()
+            ]
 
         # Sort the export locations to report preferred paths first
         export_locations = self._sort_export_locations_by_preferred_paths(
@@ -1730,13 +1801,13 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _remove_export(self, share, vserver_client):
         """Deletes NAS storage."""
-        helper = self._get_helper(share)
-        helper.set_client(vserver_client)
-        share_name = self._get_backend_share_name(share['id'])
-        target = helper.get_target(share)
-        # Share may be in error state, so there's no share and target.
-        if target:
-            helper.delete_share(share, share_name)
+        for helper in self._get_helpers(share):
+            helper.set_client(vserver_client)
+            share_name = self._get_backend_share_name(share['id'])
+            target = helper.get_target(share)
+            # Share may be in error state, so there's no share and target.
+            if target:
+                helper.delete_share(share, share_name)
 
     @na_utils.trace
     def create_snapshot(self, context, snapshot, share_server=None):
@@ -2007,6 +2078,9 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _validate_volume_for_manage(self, volume, vserver_client):
         """Ensure volume is a candidate for becoming a share."""
+        # we don't care, we validate ourselves
+        # FIXME: re-introduce some validation
+        return
 
         # Check volume info, extra specs validity
         if volume['type'] != 'rw' or volume['style'] != 'flex':
@@ -2285,9 +2359,12 @@ class NetAppCmodeFileStorageLibrary(object):
         share_name = self._get_backend_share_name(share['id'])
         vserver_client.set_volume_filesys_size_fixed(share_name,
                                                      filesys_size_fixed=False)
+
         LOG.debug('Extending share %(name)s to %(size)s GB.',
                   {'name': share_name, 'size': new_size})
-        vserver_client.set_volume_size(share_name, new_size)
+        vserver_client.set_volume_size(share_name, new_size,
+                                       **self._volume_size_options)
+
         self._adjust_qos_policy_with_volume_resize(share, new_size,
                                                    vserver_client)
 
@@ -2298,23 +2375,42 @@ class NetAppCmodeFileStorageLibrary(object):
         share_name = self._get_backend_share_name(share['id'])
         vserver_client.set_volume_filesys_size_fixed(share_name,
                                                      filesys_size_fixed=False)
+
         LOG.debug('Shrinking share %(name)s to %(size)s GB.',
                   {'name': share_name, 'size': new_size})
 
         try:
-            vserver_client.set_volume_size(share_name, new_size)
+            vserver_client.set_volume_size(share_name, new_size,
+                                           **self._volume_size_options)
         except netapp_api.NaApiError as e:
             if e.code == netapp_api.EVOLOPNOTSUPP:
                 msg = _('Failed to shrink share %(share_id)s. '
                         'The current used space is larger than the the size'
                         ' requested.')
                 msg_args = {'share_id': share['id']}
-                LOG.error(msg, msg_args)
+                LOG.warning(msg, msg_args)
                 raise exception.ShareShrinkingPossibleDataLoss(
                     share_id=share['id'])
 
         self._adjust_qos_policy_with_volume_resize(
             share, new_size, vserver_client)
+
+    @na_utils.trace
+    def _update_access(self, helper, share, share_name, access_rules):
+        validated_rules = []
+
+        for rule in access_rules:
+            try:
+                helper._validate_access_rule(rule)
+            except exception.InvalidShareAccess as exc:
+                if self._is_multi_protocol_share(share):
+                    continue  # multi-export shares are special case
+                else:
+                    raise(exc)
+            # append valid rules
+            validated_rules.append(rule)
+
+        helper.update_access(share, share_name, validated_rules)
 
     @na_utils.trace
     def update_access(self, context, share, access_rules, add_rules,
@@ -2342,13 +2438,73 @@ class NetAppCmodeFileStorageLibrary(object):
 
         share_name = self._get_backend_share_name(share['id'])
         if self._share_exists(share_name, vserver_client):
-            helper = self._get_helper(share)
-            helper.set_client(vserver_client)
-            helper.update_access(share, share_name, access_rules)
+            for helper in self._get_helpers(share):
+                helper.set_client(vserver_client)
+                self._update_access(helper, share, share_name, access_rules)
         else:
             raise exception.ShareResourceNotFound(share_id=share['id'])
 
+    @na_utils.trace
+    def update_share(self, share, share_comment=None, share_server=None):
+        """Update a share: comment, qos settings, dedup and compression.
+
+        Returns updated export locations info.
+        """
+        vserver, vserver_client = self._get_vserver(share_server=share_server,
+                                                    reexport=True)
+        share_name = self._get_backend_share_name(share['id'])
+        aggregate_name = share_utils.extract_host(share['host'], level='pool')
+        if share_comment is None:
+            share_comment = self._get_backend_share_comment(share)
+
+        extra_specs = share_types.get_extra_specs_from_share(share)
+        provisioning_options = self._get_provisioning_options_for_share(
+            share, vserver, replica=True)
+
+        qos_policy_group_name = self._modify_or_create_qos_for_existing_share(
+            share, extra_specs, vserver, vserver_client)
+        if qos_policy_group_name:
+            provisioning_options['qos_policy_group'] = qos_policy_group_name
+
+        snapshot_attributes = vserver_client.get_volume_snapshot_attributes(
+            share_name)
+        if snapshot_attributes['snapshot-policy'].lower() == 'ec2_backups':
+            provisioning_options['snapshot_policy'] = \
+                snapshot_attributes['snapshot-policy']
+            if snapshot_attributes['snapdir-access-enabled'].lower() == 'true':
+                provisioning_options['hide_snapdir'] = False
+            else:
+                provisioning_options['hide_snapdir'] = True
+
+        modify_args = {
+            'share': share_name,
+            'aggr': aggregate_name,
+            'options': provisioning_options
+        }
+
+        try:
+            vserver_client.modify_volume(aggregate_name, share_name,
+                                         comment=share_comment,
+                                         **provisioning_options)
+        except netapp_api.NaApiError:
+            LOG.warning('update share %(share)s on aggregate %(aggr)s with '
+                        'provisioning options %(options)s failed', modify_args)
+
+        # non-active replicas do not have export locations
+        replica_state = share.get('replica_state')
+        if (replica_state is not None and
+                replica_state != constants.REPLICA_STATE_ACTIVE):
+            return []
+
+        return self._create_export(share, share_server, vserver,
+                                   vserver_client,
+                                   clear_current_export_policy=False,
+                                   ensure_share_already_exists=True)
+
     def setup_server(self, network_info, metadata=None):
+        raise NotImplementedError()
+
+    def update_server(self, server_details, network_info):
         raise NotImplementedError()
 
     def teardown_server(self, server_details, security_services=None):
@@ -2852,10 +3008,11 @@ class NetAppCmodeFileStorageLibrary(object):
         new_active_replica['export_locations'] = self._create_export(
             new_active_replica, share_server, vserver, vserver_client)
 
-        helper = self._get_helper(replica)
-        helper.set_client(vserver_client)
+        helpers = self._get_helpers(replica)
         try:
-            helper.update_access(replica, share_name, access_rules)
+            for helper in helpers:
+                helper.set_client(vserver_client)
+                helper.update_access(replica, share_name, access_rules)
         except Exception:
             new_active_replica['access_rules_status'] = (
                 constants.SHARE_INSTANCE_RULES_SYNCING)
@@ -3356,8 +3513,10 @@ class NetAppCmodeFileStorageLibrary(object):
         dest_share_type_encrypted_val = share_types.get_share_type_extra_specs(
             destination_share['share_type_id'],
             'netapp_flexvol_encryption')
-        encrypt_destination = share_types.parse_boolean_extra_spec(
-            'netapp_flexvol_encryption', dest_share_type_encrypted_val)
+        encrypt_destination = None
+        if dest_share_type_encrypted_val:
+            encrypt_destination = share_types.parse_boolean_extra_spec(
+                'netapp_flexvol_encryption', dest_share_type_encrypted_val)
 
         return encrypt_destination
 
@@ -3628,8 +3787,11 @@ class NetAppCmodeFileStorageLibrary(object):
 
                 max_throughput = self._get_max_throughput(
                     backend_volume_size, qos_specs)
-                self._client.qos_policy_group_modify(
-                    backend_volume['qos-policy-group-name'], max_throughput)
+                if (existing_qos_policy_group['max-throughput']
+                        != max_throughput):
+                    self._client.qos_policy_group_modify(
+                        backend_volume['qos-policy-group-name'],
+                        max_throughput)
                 self._client.qos_policy_group_rename(
                     backend_volume['qos-policy-group-name'],
                     qos_policy_group_name)
@@ -3677,22 +3839,44 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.NetAppException(message=msg)
 
     def get_backend_info(self, context):
+        # ccloud wants to always run this
+        raise NotImplementedError()
         snapdir_visibility = self.configuration.netapp_reset_snapdir_visibility
         return {
             'snapdir_visibility': snapdir_visibility,
         }
 
     def ensure_shares(self, context, shares):
-        cfg_snapdir = self.configuration.netapp_reset_snapdir_visibility
-        hide_snapdir = self.HIDE_SNAPDIR_CFG_MAP[cfg_snapdir.lower()]
-        if hide_snapdir is not None:
-            for share in shares:
-                share_server = share.get('share_server')
-                vserver, vserver_client = self._get_vserver(
-                    share_server=share_server)
-                share_name = self._get_backend_share_name(share['id'])
-                self._apply_snapdir_visibility(
-                    hide_snapdir, share_name, vserver_client)
+        updates = {}
+
+        for share in shares:
+            share_server = share.get('share_server')
+            try:
+                updates[share['id']] = {
+                    'export_locations': self.update_share(
+                        share,
+                        share_server=share_server
+                    )
+                }
+            except (exception.NetAppException, netapp_api.NaApiError) as e:
+                err_msg = e.message
+                msg_args = {
+                    'share': share['id'],
+                    'exception': err_msg,
+                }
+                msg = _('Failed to ensure share %(share)s: '
+                        '%(exception)s. ') % msg_args
+
+                if err_msg.startswith('Could not find export policy'):
+                    LOG.debug(msg)
+                else:
+                    LOG.warning(msg)
+
+        return updates
+
+    def ensure_share_server(self, context, share_server, network_info):
+        server_details = share_server['backend_details']
+        return self.update_server(server_details, network_info)
 
     def get_share_status(self, share, share_server=None):
         if share['status'] == constants.STATUS_CREATING_FROM_SNAPSHOT:

@@ -111,6 +111,8 @@ def upgrade():
         Column('in_use', Integer(), nullable=False),
         Column('reserved', Integer(), nullable=False),
         Column('until_refresh', Integer(), nullable=True),
+        UniqueConstraint('project_id', 'user_id', 'resource', 'deleted',
+                         name='uniq_quota_usages_user'),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )

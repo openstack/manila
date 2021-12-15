@@ -762,6 +762,13 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
+    def ensure_share_server(self, context, share_server, network_info):
+        """Invoked to ensure that share server is exported.
+
+        :return: None or backend details
+        """
+        raise NotImplementedError()
+
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to the share."""
         raise NotImplementedError()

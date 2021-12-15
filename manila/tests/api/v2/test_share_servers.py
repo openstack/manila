@@ -204,30 +204,30 @@ class ShareServerControllerTest(test.TestCase):
             context, req_params['identifier'], req_params['host'],
             share_net_subnet, req_params['driver_options'])
 
-    def test_manage_forbidden(self):
-        """Tests share server manage without admin privileges"""
-        req = fakes.HTTPRequest.blank('/manage_share_server', version="2.49")
-        error = mock.Mock(side_effect=exception.PolicyNotAuthorized(action=''))
-        self.mock_object(share_api.API, 'manage_share_server', error)
-
-        share_network = db_utils.create_share_network()
-        share_net_subnet = db_utils.create_share_network_subnet(
-            share_network_id=share_network['id'])
-
-        self.mock_object(db_api, 'share_network_get', mock.Mock(
-            return_value=share_network))
-        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
-                         mock.Mock(return_value=share_net_subnet))
-        self.mock_object(utils, 'validate_service_host')
-
-        body = {
-            'share_server': self._setup_manage_test_request_body()
-        }
-
-        self.assertRaises(webob.exc.HTTPForbidden,
-                          self.controller.manage,
-                          req,
-                          body)
+    # def test_manage_forbidden(self):
+    #     """Tests share server manage without admin privileges"""
+    #     req = fakes.HTTPRequest.blank('/manage_share_server', version="2.49")
+    #     error = mock.Mock(side_effect=exception.PolicyNotAuthorized(action=''))  # noqa: E501
+    #     self.mock_object(share_api.API, 'manage_share_server', error)
+    #
+    #     share_network = db_utils.create_share_network()
+    #     share_net_subnet = db_utils.create_share_network_subnet(
+    #         share_network_id=share_network['id'])
+    #
+    #     self.mock_object(db_api, 'share_network_get', mock.Mock(
+    #         return_value=share_network))
+    #     self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+    #                      mock.Mock(return_value=share_net_subnet))
+    #     self.mock_object(utils, 'validate_service_host')
+    #
+    #     body = {
+    #         'share_server': self._setup_manage_test_request_body()
+    #     }
+    #
+    #     self.assertRaises(webob.exc.HTTPForbidden,
+    #                       self.controller.manage,
+    #                       req,
+    #                       body)
 
     def test__validate_manage_share_server_validate_no_body(self):
         """Tests share server manage"""

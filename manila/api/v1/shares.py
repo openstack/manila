@@ -121,12 +121,12 @@ class ShareMixin(object):
         """Returns a list of shares, transformed through view builder."""
         context = req.environ['manila.context']
 
-        common._validate_pagination_query(req)
-
         search_opts = {}
         search_opts.update(req.GET)
 
         # Remove keys that are not related to share attrs
+        search_opts.pop('limit', None)
+        search_opts.pop('offset', None)
         sort_key = search_opts.pop('sort_key', 'created_at')
         sort_dir = search_opts.pop('sort_dir', 'desc')
 
@@ -175,10 +175,14 @@ class ShareMixin(object):
                 context, search_opts=search_opts, sort_key=sort_key,
                 sort_dir=sort_dir)
 
+        limited_list = common.limited(shares, req)
+
         if is_detail:
-            shares = self._view_builder.detail_list(req, shares, total_count)
+            shares = self._view_builder.detail_list(req, limited_list,
+                                                    total_count)
         else:
-            shares = self._view_builder.summary_list(req, shares, total_count)
+            shares = self._view_builder.summary_list(req, limited_list,
+                                                     total_count)
         return shares
 
     def _get_share_search_options(self):
@@ -193,7 +197,8 @@ class ShareMixin(object):
             'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
             'share_group_id', 'share_group_snapshot_id', 'export_location_id',
             'export_location_path', 'display_name~', 'display_description~',
-            'display_description', 'limit', 'offset')
+            'display_description'
+        )
 
     @wsgi.Controller.authorize
     def update(self, req, id, body):
@@ -332,7 +337,7 @@ class ShareMixin(object):
                          "because the snapshot's parent share does not have "
                          "that capability.")
                        % snapshot_id)
-                LOG.error(msg)
+                LOG.warning(msg)
                 raise exc.HTTPBadRequest(explanation=msg)
 
         if share_network_id:

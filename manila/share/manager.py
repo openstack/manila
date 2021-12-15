@@ -26,6 +26,8 @@ import hashlib
 import json
 from operator import xor
 
+import os
+
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
@@ -33,6 +35,7 @@ from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
+
 import six
 
 from manila.common import constants
@@ -323,8 +326,14 @@ class ShareManager(manager.SchedulerDependentManager):
         return pool
 
     @add_hooks
-    def init_host(self):
+    def init_host(self, reexport=False):
         """Initialization for a standalone service."""
+
+        # mark service alive by creating a probe
+        try:
+            open('/etc/manila/probe', 'a')
+        except Exception as e:
+            LOG.error("Probe not created: %(e)s", {'e': six.text_type(e)})
 
         ctxt = context.get_admin_context()
         driver_host_pair = "{}@{}".format(
@@ -345,6 +354,13 @@ class ShareManager(manager.SchedulerDependentManager):
             except Exception:
                 LOG.exception("Error encountered during initialization of "
                               "driver %s", driver_host_pair)
+                # init failed, mark service dead by removing the probe
+                try:
+                    os.remove('/etc/manila/probe')
+                except Exception as e:
+                    LOG.error("Not removed: %(e)s", {'e': six.text_type(e)})
+                # we don't want to continue since we failed
+                # to initialize the driver correctly.
                 raise
             else:
                 self.driver.initialized = True
@@ -355,13 +371,21 @@ class ShareManager(manager.SchedulerDependentManager):
             (self.driver.service_instance_manager.network_helper.
              setup_connectivity_with_service_instances())
 
-        self.ensure_driver_resources(ctxt)
+        if reexport:
+            self.ensure_driver_resources(ctxt)
+        else:
+            self.publish_service_capabilities(ctxt)
 
-        self.publish_service_capabilities(ctxt)
         LOG.info("Finished initialization of driver: '%(driver)s"
                  "@%(host)s'",
                  {"driver": self.driver.__class__.__name__,
                   "host": self.host})
+        # init done, mark service ready
+        try:
+            with open('/etc/manila/probe', 'w+') as f:
+                f.write('ready\n')
+        except Exception as e:
+            LOG.error("Probe not written: %(e)s", {'e': six.text_type(e)})
 
     def is_service_ready(self):
         """Return if Manager is ready to accept requests.
@@ -407,12 +431,58 @@ class ShareManager(manager.SchedulerDependentManager):
                 {'host': self.host})
             return
 
+        share_servers = self.db.share_server_get_all_by_host(ctxt, self.host)
+        LOG.debug("Re-exporting %s share servers", len(share_servers))
+        for share_server in share_servers:
+            if share_server['status'] != constants.STATUS_ACTIVE:
+                LOG.info(
+                    "Share server %(id)s: skipping export, "
+                    "because it has '%(status)s' status.",
+                    {'id': share_server['id'],
+                     'status': share_server['status']},
+                )
+                continue
+
+            share_network_subnet = self.db.share_network_subnet_get(
+                ctxt, share_server['share_network_subnet_id'])
+            share_network = self.db.share_network_get(
+                ctxt, share_network_subnet['share_network_id'])
+            network_allocations = (
+                self.db.network_allocations_get_for_share_server(
+                    ctxt, share_server['id'], label='user'))
+            # add missing gateways to net_allocation
+            for net_allocation in network_allocations:
+                if not net_allocation['gateway']:
+                    LOG.debug(
+                        ("Adding gateway %(gateway)s to net allocation "
+                         "%(net_allocation)s"),
+                        {'gateway': share_network_subnet['gateway'],
+                         'net_allocation': net_allocation['id']})
+                    self.db.network_allocation_update(
+                        ctxt, net_allocation['id'],
+                        {'gateway': share_network_subnet['gateway']})
+            network_info = self._form_server_setup_info(
+                ctxt, share_server, share_network, share_network_subnet)
+            server_info = self.driver.ensure_share_server(
+                ctxt, share_server, network_info)
+            if server_info:
+                LOG.debug(
+                    ("Adding server_info %(server_info)s to share server "
+                     "%(share_server)s"),
+                    {'server_info': server_info,
+                     'share_server': share_server['id']})
+                self.db.share_server_backend_details_set(
+                    ctxt, share_server['id'], server_info)
+
         share_instances = self.db.share_instances_get_all_by_host(
             ctxt, self.host)
         LOG.debug("Re-exporting %s shares", len(share_instances))
 
         for share_instance in share_instances:
-            share_ref = self.db.share_get(ctxt, share_instance['share_id'])
+            try:
+                share_ref = self.db.share_get(ctxt, share_instance['share_id'])
+            except exception.NotFound:
+                continue
 
             if share_ref.is_busy:
                 LOG.info(
@@ -431,6 +501,17 @@ class ShareManager(manager.SchedulerDependentManager):
                      'status': share_instance['status']},
                 )
                 continue
+
+            metadata = share_ref.get('share_metadata')
+            if metadata:
+                metadata = {item['key']: item['value'] for item in metadata}
+                if 'snapmirror' in metadata and metadata['snapmirror'] == '1':
+                    LOG.info(
+                        "Share instance %(id)s: skipping export, "
+                        "because it has snapmirror flag.",
+                        {'id': share_instance['id']},
+                    )
+                    continue
 
             self._ensure_share_instance_has_pool(ctxt, share_instance)
             share_instance = self.db.share_instance_get(
@@ -475,8 +556,15 @@ class ShareManager(manager.SchedulerDependentManager):
                 update_share_instances[share_instance['id']]
                 .get('export_locations'))
             if update_export_location:
+                LOG.debug(
+                    "Share instance %(id)s: updating export "
+                    "location '%(export_location)s'.",
+                    {'id': share_instance['id'],
+                     'export_location': update_export_location},
+                )
                 self.db.share_export_locations_update(
-                    ctxt, share_instance['id'], update_export_location)
+                    ctxt, share_instance['id'], update_export_location,
+                    reexport=True)
 
             share_server = self._get_share_server(ctxt, share_instance)
 
@@ -2000,7 +2088,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 with excutils.save_and_reraise_exception():
                     error = ("Creation of share instance %s failed: "
                              "failed to get share server.")
-                    LOG.error(error, share_instance_id)
+                    LOG.warning(error, share_instance_id)
                     self.db.share_instance_update(
                         context, share_instance_id,
                         {'status': constants.STATUS_ERROR}
@@ -2087,8 +2175,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error("Share instance %s failed on creation.",
-                          share_instance_id)
+                LOG.warning("Share instance %s failed on creation.",
+                            share_instance_id)
                 detail_data = getattr(e, 'detail_data', {})
 
                 def get_export_location(details):
@@ -2241,8 +2329,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 )
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error("Failed to get share server "
-                              "for share replica creation.")
+                    LOG.warning("Failed to get share server "
+                                "for share replica creation.")
                     self.db.share_replica_update(
                         context, share_replica['id'],
                         {'status': constants.STATUS_ERROR,
@@ -2291,8 +2379,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
         except Exception as excep:
             with excutils.save_and_reraise_exception():
-                LOG.error("Share replica %s failed on creation.",
-                          share_replica['id'])
+                LOG.warning("Share replica %s failed on creation.",
+                            share_replica['id'])
                 self.db.share_replica_update(
                     context, share_replica['id'],
                     {'status': constants.STATUS_ERROR,
@@ -3347,6 +3435,10 @@ class ShareManager(manager.SchedulerDependentManager):
         """Delete a share instance."""
         context = context.elevated()
         share_instance = self._get_share_instance(context, share_instance_id)
+        # explicitly load export location to prevent DetachedInstanceError
+        # see https://bugs.launchpad.net/manila/+bug/1700660
+        # on other possible workaround
+        share_instance.get('export_location')
         share_id = share_instance.get('share_id')
         share_server = self._get_share_server(context, share_instance)
         share = self.db.share_get(context, share_id)
@@ -3406,13 +3498,27 @@ class ShareManager(manager.SchedulerDependentManager):
                         context,
                         share_instance_id,
                         {'status': constants.STATUS_ERROR_DELETING})
-                self.message_api.create(
-                    context,
-                    message_field.Action.DELETE,
-                    share_instance['project_id'],
-                    resource_type=message_field.Resource.SHARE,
-                    resource_id=share_instance_id,
-                    exception=excep)
+
+                # NOTE: workaround to filter NetApp snapmirror error:
+                exc_msg = getattr(excep, 'message', '')
+                exc_code = getattr(excep, 'code', '')
+                if ('18436' in str(exc_code) and 'SnapMirror' in exc_msg):
+                    self.message_api.create(
+                        context,
+                        message_field.Action.DELETE,
+                        share_instance['project_id'],
+                        resource_type=message_field.Resource.SHARE,
+                        resource_id=share_id,
+                        detail=(message_field.Detail.
+                                DRIVER_FAILED_DELETE_SHARE_SNAPMIRROR))
+                else:
+                    self.message_api.create(
+                        context,
+                        message_field.Action.DELETE,
+                        share_instance['project_id'],
+                        resource_type=message_field.Resource.SHARE,
+                        resource_id=share_instance_id,
+                        exception=excep)
 
         self.db.share_instance_delete(
             context, share_instance_id, need_to_update_usages=True)
@@ -3961,10 +4067,10 @@ class ShareManager(manager.SchedulerDependentManager):
         if not share_stats:
             return
 
-        if self.driver.driver_handles_share_servers:
-            share_stats['server_pools_mapping'] = (
-                self._get_servers_pool_mapping(context)
-            )
+        # if self.driver.driver_handles_share_servers:
+        #     share_stats['server_pools_mapping'] = (
+        #         self._get_servers_pool_mapping(context)
+        #     )
 
         self.update_service_capabilities(share_stats)
 
@@ -4192,7 +4298,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     security_services=security_services)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(
+                    LOG.warning(
                         "Share server '%s' failed on deletion.",
                         server_id)
                     self.db.share_server_update(
@@ -4294,7 +4400,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     resource_type=message_field.Resource.SHARE,
                     resource_id=share['id'],
                     detail=message_field.Detail.DRIVER_FAILED_SHRINK)
-            LOG.exception(msg, resource=share)
+            LOG.warning(msg, resource=share)
             self.db.share_update(context, share['id'], {'status': status})
 
             raise exception.ShareShrinkingError(
@@ -4428,8 +4534,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 )
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error("Failed to get share server"
-                              " for share group creation.")
+                    LOG.warning("Failed to get share server"
+                                " for share group creation.")
                     self.db.share_group_update(
                         context, share_group_id,
                         {'status': constants.STATUS_ERROR})
@@ -4500,7 +4606,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     self.db.share_instance_update(
                         context, share['id'],
                         {'status': constants.STATUS_ERROR})
-                LOG.error("Share group %s: create failed", share_group_id)
+                LOG.warning("Share group %s: create failed", share_group_id)
 
         now = timeutils.utcnow()
         for share in shares:
@@ -4557,8 +4663,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     context,
                     share_group_ref['id'],
                     {'status': constants.STATUS_ERROR})
-                LOG.error("Share group %s: delete failed",
-                          share_group_ref['id'])
+                LOG.warning("Share group %s: delete failed",
+                            share_group_ref['id'])
 
         self.db.share_group_destroy(context, share_group_id)
         LOG.info("Share group %s: deleted successfully", share_group_id)
@@ -4645,8 +4751,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     context,
                     snap_ref['id'],
                     {'status': constants.STATUS_ERROR})
-                LOG.error("Share group snapshot %s: create failed",
-                          share_group_snapshot_id)
+                LOG.warning("Share group snapshot %s: create failed",
+                            share_group_snapshot_id)
 
         for member in (snap_ref.get('share_group_snapshot_members') or []):
             if member['id'] in updated_members_ids:
@@ -4703,8 +4809,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     context,
                     snap_ref['id'],
                     {'status': constants.STATUS_ERROR})
-                LOG.error("Share group snapshot %s: delete failed",
-                          snap_ref['name'])
+                LOG.warning("Share group snapshot %s: delete failed",
+                            snap_ref['name'])
 
         self.db.share_group_snapshot_destroy(context, share_group_snapshot_id)
 
@@ -4779,6 +4885,10 @@ class ShareManager(manager.SchedulerDependentManager):
                 'source_share_group_snapshot_member_id'),
             'availability_zone': share_instance.get('availability_zone'),
         }
+        # share type is nullable
+        if share_instance_ref.get('share_type'):
+            share_instance_ref['share_type_name'] = share_instance_ref.get(
+                'share_type').get('name')
         if share_instance_ref['share_server']:
             share_instance_ref['share_server'] = self._get_share_server_dict(
                 context, share_instance_ref['share_server']

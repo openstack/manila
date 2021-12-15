@@ -21,6 +21,8 @@ SQLAlchemy models for Manila data.
 
 from oslo_config import cfg
 from oslo_db.sqlalchemy import models
+from oslo_log import log
+from oslo_utils import strutils
 from sqlalchemy import Column, Integer, String, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import orm
@@ -30,6 +32,7 @@ from manila.common import constants
 
 CONF = cfg.CONF
 BASE = declarative_base()
+LOG = log.getLogger(__name__)
 
 
 class ManilaBase(models.ModelBase,
@@ -351,6 +354,17 @@ class ShareInstance(BASE, ManilaBase):
     @property
     def export_location(self):
         if len(self.export_locations) > 0:
+            try:
+                for export_location in self.export_locations:
+                    is_preferred = strutils.bool_from_string(
+                        export_location['el_metadata'].get('preferred')
+                    )
+                    if is_preferred:
+                        return export_location['path']
+            except Exception as e:
+                # not fatal, if preferred does not work, take the first
+                LOG.warning("Failed to get preferred export location: %s.", e)
+
             return self.export_locations[0]['path']
 
     @property
@@ -420,6 +434,11 @@ class ShareInstance(BASE, ManilaBase):
         primaryjoin='and_('
                     'ShareInstance.share_type_id == ShareTypes.id, '
                     'ShareTypes.deleted == "False")')
+    share = orm.relationship(
+        'Share',
+        foreign_keys=share_id,
+        primaryjoin='ShareInstance.share_id == Share.id'
+    )
 
 
 class ShareInstanceExportLocations(BASE, ManilaBase):
@@ -563,7 +582,7 @@ class ShareAccessMapping(BASE, ManilaBase):
 
     instance_mappings = orm.relationship(
         "ShareInstanceAccessMapping",
-        lazy='immediate',
+        lazy='subquery',
         primaryjoin=(
             'and_('
             'ShareAccessMapping.id == '
@@ -585,7 +604,7 @@ class ShareAccessRulesMetadata(BASE, ManilaBase):
     access = orm.relationship(
         ShareAccessMapping, backref="share_access_rules_metadata",
         foreign_keys=access_id,
-        lazy='immediate',
+        lazy='subquery',
         primaryjoin='and_('
         'ShareAccessRulesMetadata.access_id == ShareAccessMapping.id,'
         'ShareAccessRulesMetadata.deleted == "False")')
@@ -610,7 +629,7 @@ class ShareInstanceAccessMapping(BASE, ManilaBase):
 
     instance = orm.relationship(
         "ShareInstance",
-        lazy='immediate',
+        lazy='subquery',
         primaryjoin=(
             'and_('
             'ShareInstanceAccessMapping.share_instance_id == '
@@ -666,16 +685,21 @@ class ShareSnapshot(BASE, ManilaBase):
         result = None
         if len(self.instances) > 0:
             def qualified_replica(x):
-                preferred_statuses = (constants.REPLICA_STATE_ACTIVE,)
-                return x['replica_state'] in preferred_statuses
+                if x is None:
+                    return False
+                else:
+                    preferred_statuses = (constants.REPLICA_STATE_ACTIVE,)
+                    return x['replica_state'] in preferred_statuses
 
             replica_snapshots = list(filter(
                 lambda x: qualified_replica(x.share_instance), self.instances))
 
             migrating_snapshots = list(filter(
-                lambda x: x.share_instance['status'] in (
-                    constants.STATUS_MIGRATING,
-                    constants.STATUS_SERVER_MIGRATING), self.instances))
+                lambda x: (x.share_instance is not None and
+                           x.share_instance['status'] in (
+                               constants.STATUS_MIGRATING,
+                               constants.STATUS_SERVER_MIGRATING)
+                           ), self.instances))
 
             snapshot_instances = (replica_snapshots or migrating_snapshots
                                   or self.instances)
@@ -695,9 +719,12 @@ class ShareSnapshot(BASE, ManilaBase):
         """
 
         def qualified_replica(x):
-            preferred_statuses = (constants.REPLICA_STATE_ACTIVE,
-                                  constants.REPLICA_STATE_IN_SYNC)
-            return x['replica_state'] in preferred_statuses
+            if x is None:
+                return False
+            else:
+                preferred_statuses = (constants.REPLICA_STATE_ACTIVE,
+                                      constants.REPLICA_STATE_IN_SYNC)
+                return x['replica_state'] in preferred_statuses
 
         replica_snapshots = list(filter(
             lambda x: qualified_replica(x['share_instance']), self.instances))
@@ -777,7 +804,7 @@ class ShareSnapshotInstance(BASE, ManilaBase):
 
     export_locations = orm.relationship(
         "ShareSnapshotInstanceExportLocation",
-        lazy='immediate',
+        lazy='subquery',
         primaryjoin=(
             'and_('
             'ShareSnapshotInstance.id == '
@@ -787,7 +814,7 @@ class ShareSnapshotInstance(BASE, ManilaBase):
     )
     share_instance = orm.relationship(
         ShareInstance, backref="snapshot_instances",
-        lazy='immediate',
+        lazy='subquery',
         primaryjoin=(
             'and_('
             'ShareSnapshotInstance.share_instance_id == ShareInstance.id,'
@@ -795,7 +822,7 @@ class ShareSnapshotInstance(BASE, ManilaBase):
     )
     snapshot = orm.relationship(
         "ShareSnapshot",
-        lazy="immediate",
+        lazy="subquery",
         foreign_keys=snapshot_id,
         backref="instances",
         primaryjoin=(
@@ -809,7 +836,7 @@ class ShareSnapshotInstance(BASE, ManilaBase):
     )
     share_group_snapshot = orm.relationship(
         "ShareGroupSnapshot",
-        lazy="immediate",
+        lazy="subquery",
         foreign_keys=share_group_snapshot_id,
         backref="share_group_snapshot_members",
         primaryjoin=('ShareGroupSnapshot.id == '
@@ -842,7 +869,7 @@ class ShareSnapshotAccessMapping(BASE, ManilaBase):
 
     instance_mappings = orm.relationship(
         "ShareSnapshotInstanceAccessMapping",
-        lazy='immediate',
+        lazy='subquery',
         primaryjoin=(
             'and_('
             'ShareSnapshotAccessMapping.id == '
@@ -873,7 +900,7 @@ class ShareSnapshotInstanceAccessMapping(BASE, ManilaBase):
 
     instance = orm.relationship(
         "ShareSnapshotInstance",
-        lazy='immediate',
+        lazy='subquery',
         primaryjoin=(
             'and_('
             'ShareSnapshotInstanceAccessMapping.share_snapshot_instance_id == '

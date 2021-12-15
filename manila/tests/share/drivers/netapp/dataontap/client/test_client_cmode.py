@@ -431,6 +431,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         vserver_modify_args = {
             'aggr-list': [{'aggr-name': aggr_name} for aggr_name
                           in fake.SHARE_AGGREGATE_NAMES],
+            'volume-delete-retention-hours': 16,
             'vserver-name': fake.VSERVER_NAME
         }
 
@@ -438,7 +439,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                    fake.ROOT_VOLUME_AGGREGATE_NAME,
                                    fake.ROOT_VOLUME_NAME,
                                    fake.SHARE_AGGREGATE_NAMES,
-                                   None)
+                                   None,
+                                   16,
+                                   False)
 
         self.client.send_request.assert_has_calls([
             mock.call('vserver-create', vserver_create_args),
@@ -460,6 +463,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         vserver_modify_args = {
             'aggr-list': [{'aggr-name': aggr_name} for aggr_name
                           in fake.SHARE_AGGREGATE_NAMES],
+            'volume-delete-retention-hours': 24,
             'vserver-name': fake.VSERVER_NAME
         }
 
@@ -467,7 +471,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                    fake.ROOT_VOLUME_AGGREGATE_NAME,
                                    fake.ROOT_VOLUME_NAME,
                                    fake.SHARE_AGGREGATE_NAMES,
-                                   fake.IPSPACE_NAME)
+                                   fake.IPSPACE_NAME,
+                                   24,
+                                   False)
 
         self.client.send_request.assert_has_calls([
             mock.call('vserver-create', vserver_create_args),
@@ -486,13 +492,15 @@ class NetAppClientCmodeTestCase(test.TestCase):
         vserver_modify_args = {
             'aggr-list': [{'aggr-name': aggr_name} for aggr_name
                           in fake.SHARE_AGGREGATE_NAMES],
+            'volume-delete-retention-hours': 18,
             'vserver-name': fake.VSERVER_NAME
         }
 
         self.client.create_vserver_dp_destination(
             fake.VSERVER_NAME,
             fake.SHARE_AGGREGATE_NAMES,
-            fake.IPSPACE_NAME)
+            fake.IPSPACE_NAME,
+            18)
 
         self.client.send_request.assert_has_calls([
             mock.call('vserver-create', vserver_create_args),
@@ -506,7 +514,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.ROOT_VOLUME_AGGREGATE_NAME,
                           fake.ROOT_VOLUME_NAME,
                           fake.SHARE_AGGREGATE_NAMES,
-                          fake.IPSPACE_NAME)
+                          fake.IPSPACE_NAME,
+                          17,
+                          False)
 
     def test_get_vserver_root_volume_name(self):
 
@@ -2501,6 +2511,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'is-v3-ms-dos-client-enabled': 'true',
             'is-nfsv3-connection-drop-enabled': 'false',
             'enable-ejukebox': 'false',
+            'is-vstorage-enabled': 'true',
         }
         self.client.send_request.assert_called_once_with(
             'nfs-service-modify', nfs_service_modify_args)
@@ -3103,12 +3114,13 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         volume_create_args = {
             'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
-            'size': '100g',
+            'size': '107374182400',
             'volume': fake.SHARE_NAME,
         }
 
         self.client._get_create_volume_api_args.assert_called_once_with(
-            fake.SHARE_NAME, False, None, None, None, 'rw', None, False, None)
+            fake.SHARE_NAME, False, None, None, None,
+            'rw', '', None, None, None)
         self.client.send_request.assert_called_with('volume-create',
                                                     volume_create_args)
         (self.client.update_volume_efficiency_attributes.
@@ -3145,8 +3157,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             auto_provisioned=auto_provisioned)
 
         volume_create_args = {
-            'size': 1073741824,
             'volume-name': fake.SHARE_NAME,
+            'size': '1073741824'
         }
         if auto_provisioned:
             volume_create_args['auto-provision-as'] = 'flexgroup'
@@ -3162,7 +3174,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
 
         self.client._get_create_volume_api_args.assert_called_once_with(
-            fake.SHARE_NAME, False, None, None, None, 'rw', None, False, None)
+            fake.SHARE_NAME, False, None, None, None, 'rw', None, None,
+            False, None)
         self.client.send_request.assert_called_with('volume-create-async',
                                                     volume_create_args)
         self.assertEqual(expected_result, result)
@@ -3193,10 +3206,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         result_api_args = self.client._get_create_volume_api_args(
             fake.SHARE_NAME, thin_provisioned, snapshot_policy, language,
-            reserve, volume_type, qos_name, encrypt, qos_adaptive_name)
+            reserve, volume_type, fake.VOLUME_COMMENT, qos_name, encrypt,
+            qos_adaptive_name)
 
         expected_api_args = {
             'volume-type': volume_type,
+            'volume-comment': fake.VOLUME_COMMENT,
             'junction-path': '/fake_share',
             'space-reserve': thin_provisioned,
             'snapshot-policy': snapshot_policy,
@@ -3219,13 +3234,17 @@ class NetAppClientCmodeTestCase(test.TestCase):
         qos_name = None
         encrypt = False
         qos_adaptive_name = None
+        volume_comment = None
 
         result_api_args = self.client._get_create_volume_api_args(
             fake.SHARE_NAME, thin_provisioned, snapshot_policy, language,
-            reserve, volume_type, qos_name, encrypt, qos_adaptive_name)
+            reserve, volume_type, volume_comment, qos_name, encrypt,
+            qos_adaptive_name)
 
         expected_api_args = {
+            'encrypt': 'false',
             'volume-type': volume_type,
+            'volume-comment': volume_comment,
         }
         self.assertEqual(expected_api_args, result_api_args)
 
@@ -3235,7 +3254,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertRaises(exception.NetAppException,
                           self.client._get_create_volume_api_args,
                           fake.SHARE_NAME, True, 'default', 'en-US',
-                          15, 'rw', 'fake_qos', encrypt, 'fake_qos_adaptive')
+                          15, 'rw', 'fake_comment', 'fake_qos',
+                          encrypt, 'fake_qos_adaptive')
 
     def test_is_flexvol_encrypted_unsupported(self):
 
@@ -3540,6 +3560,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             },
             'attributes': {
                 'volume-attributes': {
+                    'volume-id-attributes': {},
                     'volume-inode-attributes': {},
                     'volume-language-attributes': {},
                     'volume-snapshot-attributes': {},
@@ -3584,6 +3605,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             dedup_enabled=True,
             compression_enabled=False,
             max_files=fake.MAX_FILES,
+            comment=fake.VOLUME_COMMENT,
             qos_policy_group=qos_group,
             adaptive_qos_policy_group=adaptive_qos_group,
             autosize_attributes=fake.VOLUME_AUTOSIZE_ATTRS,
@@ -3600,6 +3622,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
             },
             'attributes': {
                 'volume-attributes': {
+                    'volume-id-attributes': {
+                        'comment': fake.VOLUME_COMMENT,
+                    },
                     'volume-inode-attributes': {
                         'files-total': fake.MAX_FILES,
                     },
@@ -3755,7 +3780,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'attributes': {
                 'volume-attributes': {
                     'volume-space-attributes': {
-                        'size': 10737418240,
+                        'size': '10737418240',
+                        'percentage-snapshot-reserve': 'None'
                     },
                 },
             },
@@ -7176,7 +7202,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'vserver': fake.VSERVER_NAME,
             'dest-aggr': fake.SHARE_AGGREGATE_NAME,
             'cutover-action': 'wait',
-            'encrypt-destination': 'false'
         }
         if method_name.startswith('check'):
             expected_api_args['perform-validation-only'] = 'true'

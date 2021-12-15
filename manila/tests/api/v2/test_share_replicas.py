@@ -109,11 +109,11 @@ class ShareReplicasApiTest(test.TestCase):
                 'availability_zone': None,
                 'created_at': None,
                 'share_network_id': replica['share_network_id'],
+                'share_server_id': replica['share_server_id'],
                 'updated_at': replica['updated_at'],
             })
 
         if admin:
-            expected_replica['share_server_id'] = replica['share_server_id']
             expected_replica['host'] = replica['host']
 
         if (api_version.APIVersionRequest(microversion) >=

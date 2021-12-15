@@ -22,10 +22,11 @@ from manila import test
 from manila.tests.scheduler import fakes
 
 
+# NOTE:(ccloud) we distinguish by hosts and not aggregates:
 fake_hosts = [
-    fakes.FakeHostState('host1', {}),
-    fakes.FakeHostState('host2', {}),
-    fakes.FakeHostState('host3', {}),
+    fakes.FakeHostState('aggregate1@host1', {}),
+    fakes.FakeHostState('aggregate2@host2', {}),
+    fakes.FakeHostState('aggregate3@host3', {}),
     ]
 
 fake_shares_1 = {
@@ -105,7 +106,7 @@ class AffinityFilterTestCase(test.TestCase):
         self.assertRaises(affinity.SchedulerHintsNotSet,
                           self.filter._validate, hints)
 
-    @ mock.patch('manila.share.api.API.get')
+    @mock.patch('manila.share.api.API.get')
     def test_affinity_filter(self, mock_share_get):
         mock_share_get.side_effect = self._fake_get
 
@@ -114,11 +115,11 @@ class AffinityFilterTestCase(test.TestCase):
         valid_hosts = self.filter.filter_all(fake_hosts, hints)
         valid_hosts = [h.host for h in valid_hosts]
 
-        self.assertIn('host1', valid_hosts)
-        self.assertNotIn('host2', valid_hosts)
-        self.assertNotIn('host3', valid_hosts)
+        self.assertIn('aggregate1@host1', valid_hosts)
+        self.assertNotIn('aggregate2@host2', valid_hosts)
+        self.assertNotIn('aggregate3@host3', valid_hosts)
 
-    @ mock.patch('manila.share.api.API.get')
+    @mock.patch('manila.share.api.API.get')
     def test_anti_affinity_filter(self, mock_share_get):
         mock_share_get.side_effect = self._fake_get
 
@@ -127,6 +128,6 @@ class AffinityFilterTestCase(test.TestCase):
         valid_hosts = self.anti_filter.filter_all(fake_hosts, hints)
         valid_hosts = [h.host for h in valid_hosts]
 
-        self.assertIn('host1', valid_hosts)
-        self.assertIn('host3', valid_hosts)
-        self.assertNotIn('host2', valid_hosts)
+        self.assertIn('aggregate1@host1', valid_hosts)
+        self.assertIn('aggregate3@host3', valid_hosts)
+        self.assertNotIn('aggregate2@host2', valid_hosts)

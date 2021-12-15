@@ -22,6 +22,7 @@ as needed to provision shares.
 
 import re
 
+from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
@@ -39,6 +40,15 @@ from manila.share import share_types
 from manila.share import utils as share_utils
 from manila import utils
 
+lib_multi_svm_opts = [
+    cfg.BoolOpt('keep_share_server_on_failure',
+                default=False,
+                help='Whether share servers will '
+                     'be deleted on failures.'),
+]
+
+CONF = cfg.CONF
+CONF.register_opts(lib_multi_svm_opts)
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
 SEGMENTED_NETWORK_TYPES = ('vlan',)
@@ -82,7 +92,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
     @na_utils.trace
     def _get_vserver(self, share_server=None, vserver_name=None,
-                     backend_name=None):
+                     backend_name=None, reexport=False):
         if share_server:
             backend_details = share_server.get('backend_details')
             vserver = backend_details.get(
@@ -105,8 +115,9 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         else:
             vserver_client = self._get_api_client(vserver)
 
-        if not vserver_client.vserver_exists(vserver):
-            raise exception.VserverNotFound(vserver=vserver)
+        if not reexport:
+            if not vserver_client.vserver_exists(vserver):
+                raise exception.VserverNotFound(vserver=vserver)
 
         return vserver, vserver_client
 
@@ -262,7 +273,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             self._client.create_vserver_dp_destination(
                 vserver_name,
                 aggregate_names,
-                ipspace_name)
+                ipspace_name,
+                self.configuration.netapp_delete_retention_hours)
             # Set up port and broadcast domain for the current ipspace
             self._create_port_and_broadcast_domain(ipspace_name, network_info)
         else:
@@ -274,7 +286,9 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 self.configuration.netapp_root_volume_aggregate,
                 self.configuration.netapp_root_volume,
                 aggr_set,
-                ipspace_name)
+                ipspace_name,
+                self.configuration.netapp_delete_retention_hours,
+                self.configuration.netapp_enable_logical_space_reporting)
 
             vserver_client = self._get_api_client(vserver=vserver_name)
 
@@ -285,12 +299,14 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     security_services=security_services, nfs_config=nfs_config)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error("Failed to configure Vserver.")
+                    LOG.warning("Failed to configure Vserver.")
                     # NOTE(dviroel): At this point, the lock was already
                     # acquired by the caller of _create_vserver.
-                    self._delete_vserver(vserver_name,
-                                         security_services=security_services,
-                                         needs_lock=False)
+                    # NOTE(carthaca): keep debris for analysis in debug
+                    if not CONF.keep_share_server_on_failure:
+                        self._delete_vserver(vserver_name,
+                                             security_services=security_services,  # noqa: E501
+                                             needs_lock=False)
 
     def _setup_network_for_vserver(self, vserver_name, vserver_client,
                                    network_info, ipspace_name,
@@ -454,6 +470,66 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     def get_admin_network_allocations_number(self, admin_network_api):
         """Get number of network allocations for creating admin LIFs."""
         return 1 if admin_network_api else 0
+
+    @na_utils.trace
+    def update_server(self, server_details, network_info):
+        """Update share server."""
+        vserver = server_details.get(
+            'vserver_name') if server_details else None
+
+        if not vserver:
+            LOG.warning("Vserver not specified for share server being "
+                        "updated.")
+            return
+
+        elif not self._client.vserver_exists(vserver):
+            LOG.warning("Could not find Vserver for share server being "
+                        "updated: %s.", vserver)
+            return
+
+        # TODO(carthaca): think of comparing existing nfs_config with config of
+        # default share type (or better: mainly used share type)
+        # and set this (instead of just setting the backend details)
+        missing_nfs_config = server_details.get('nfs_config') is None
+        if missing_nfs_config:
+            nfs_config = self._default_nfs_config
+            if self.is_nfs_config_supported:
+                share_type = share_types.get_default_share_type()
+                extra_specs = share_type.get('extra_specs')
+                self._check_nfs_config_extra_specs_validity(extra_specs)
+                nfs_config = self._get_nfs_config_provisioning_options(
+                    extra_specs)
+            server_details['nfs_config'] = jsonutils.dumps(nfs_config)
+
+        self._update_vserver(vserver, network_info)
+
+        if missing_nfs_config:
+            return server_details
+        else:
+            return None
+
+    @na_utils.trace
+    def _update_vserver(self, vserver, network_info):
+        """Update a Vserver as needed."""
+        self._client.modify_vserver(
+            vserver_name=vserver,
+            aggregate_names=self._find_matching_aggregates(),
+            retention_hours=self.configuration.netapp_delete_retention_hours
+            )
+
+        vserver_client = self._get_api_client(vserver=vserver)
+        self._create_vserver_routes(vserver_client, network_info)
+        vserver_client.enable_nfs(
+            self.configuration.netapp_enabled_share_protocols)
+        security_services = network_info.get('security_services')
+        if security_services:
+            for security_service in security_services:
+                if security_service['type'].lower() == 'active_directory':
+                    try:
+                        vserver_client.configure_cifs_encryption()
+                        vserver_client.configure_cifs_options()
+                    except exception.NetAppException as e:
+                        LOG.warning(e.message)
 
     @na_utils.trace
     def teardown_server(self, server_details, security_services=None):
@@ -1924,6 +2000,13 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             msg = _("The extra spec 'adaptive_qos_policy_group' is not "
                     "supported by backends configured with "
                     "'driver_handles_share_server' == True mode.")
+            raise exception.NetAppException(msg)
+
+        if (self.configuration.netapp_enable_logical_space_reporting and
+                not provisioning_options.get('thin_provisioned')):
+            msg = _("Logical space reporting is only available if thin "
+                    "provisioning is enabled. Set 'thin_provisioning=True' "
+                    "in your provisioning options")
             raise exception.NetAppException(msg)
 
         (super(NetAppCmodeMultiSVMFileStorageLibrary, self)

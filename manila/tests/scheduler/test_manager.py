@@ -147,7 +147,7 @@ class SchedulerManagerTestCase(test.TestCase):
         with mock.patch.object(
                 self.manager.driver, 'schedule_create_share',
                 mock.Mock(side_effect=ex)):
-            self.mock_object(manager.LOG, 'error')
+            self.mock_object(manager.LOG, 'warning')
 
             self.manager.create_share_instance(
                 self.context, request_spec=request_spec, filter_properties={})
@@ -156,7 +156,7 @@ class SchedulerManagerTestCase(test.TestCase):
                 self.context, fake_share_id, {'status': 'error'})
             (self.manager.driver.schedule_create_share.
                 assert_called_once_with(self.context, request_spec, {}))
-            manager.LOG.error.assert_called_once_with(mock.ANY, mock.ANY)
+            manager.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
 
             _mock_message_create.assert_called_once_with(
                 self.context,
@@ -176,7 +176,7 @@ class SchedulerManagerTestCase(test.TestCase):
         with mock.patch.object(self.manager.driver,
                                'schedule_create_share',
                                mock.Mock(side_effect=exception.QuotaError)):
-            self.mock_object(manager.LOG, 'error')
+            self.mock_object(manager.LOG, 'warning')
 
             self.assertRaises(exception.QuotaError,
                               self.manager.create_share_instance,
@@ -188,7 +188,7 @@ class SchedulerManagerTestCase(test.TestCase):
                 self.context, fake_share_id, {'status': 'error'})
             (self.manager.driver.schedule_create_share.
                 assert_called_once_with(self.context, request_spec, {}))
-            manager.LOG.error.assert_called_once_with(mock.ANY, mock.ANY)
+            manager.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
 
     @mock.patch.object(quota.QUOTAS, 'expire')
     def test__expire_reservations(self, mock_expire):

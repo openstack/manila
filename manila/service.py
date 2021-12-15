@@ -293,7 +293,7 @@ class Service(service.Service):
             # TODO(termie): make this pattern be more elegant.
             if getattr(self, 'model_disconnected', False):
                 self.model_disconnected = False
-                LOG.error('Recovered model server connection!')
+                LOG.warning('Recovered model server connection!')
 
         # TODO(vish): this should probably only catch connection errors
         except Exception:  # pylint: disable=W0702

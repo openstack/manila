@@ -149,6 +149,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         share_id = body.get('share_replica').get('share_id')
         availability_zone = body.get('share_replica').get('availability_zone')
+        scheduler_hints = body.get('share_replica').get('scheduler_hints')
 
         if not share_id:
             msg = _("Must provide Share ID to add replica.")
@@ -169,7 +170,8 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         try:
             new_replica = self.share_api.create_share_replica(
                 context, share_ref, availability_zone=availability_zone,
-                share_network_id=share_network_id)
+                share_network_id=share_network_id,
+                scheduler_hints=scheduler_hints)
         except exception.AvailabilityZoneNotFound as e:
             raise exc.HTTPBadRequest(explanation=six.text_type(e))
         except exception.ReplicationException as e:

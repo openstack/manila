@@ -99,6 +99,11 @@ netapp_provisioning_opts = [
     cfg.StrOpt('netapp_root_volume',
                default='root',
                help='Root volume name.'),
+    cfg.IntOpt('netapp_delete_retention_hours',
+               min=0,
+               default=12,
+               help='The number of hours that a deleted volume should be '
+                    'retained before the delete is completed.'),
     cfg.IntOpt('netapp_volume_snapshot_reserve_percent',
                min=0,
                max=90,
@@ -176,7 +181,19 @@ netapp_provisioning_opts = [
                min=60,
                default=360,  # Default to six minutes
                help='Sets time in seconds to wait for a FlexGroup snapshot '
-                    'to not be busy with clones after splitting them.'), ]
+                    'to not be busy with clones after splitting them.'),
+    cfg.BoolOpt('netapp_volume_provision_net_capacity',
+                help='This option provisions a volume with the specified size '
+                     'available as net capacity to the end user. The size of '
+                     'snapshot reserve is then added on top of net capacity. '
+                     'The total size is calculated as (size * 100) divided by '
+                     '(100 - netapp_volume_snapshot_reserve_percent)',
+                default=False),
+    cfg.BoolOpt('netapp_enable_logical_space_reporting',
+                help='This option enables the logical space reporting on a '
+                     'newly created vserver and locical space accounting '
+                     'on newly created volumes on this vserver. ',
+                default=False), ]
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',

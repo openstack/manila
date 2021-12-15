@@ -256,7 +256,6 @@ class ShareAPITest(test.TestCase):
         common.check_share_network_is_active.assert_called_once_with(
             fake_network)
         self.assertEqual(expected, res_dict)
-        # pylint: disable=unsubscriptable-object
         self.assertEqual("fakenetid",
                          create_mock.call_args[1]['share_network_id'])
 
@@ -375,7 +374,6 @@ class ShareAPITest(test.TestCase):
         common.check_share_network_is_active.assert_called_once_with(
             fake_share_net)
         self.assertEqual(expected, res_dict)
-        # pylint: disable=unsubscriptable-object
         self.assertEqual(parent_share_net,
                          create_mock.call_args[1]['share_network_id'])
 
@@ -427,7 +425,6 @@ class ShareAPITest(test.TestCase):
         common.check_share_network_is_active.assert_called_once_with(
             fake_share_net)
         self.assertEqual(expected, res_dict)
-        # pylint: disable=unsubscriptable-object
         self.assertEqual(parent_share_net,
                          create_mock.call_args[1]['share_network_id'])
 
@@ -504,7 +501,6 @@ class ShareAPITest(test.TestCase):
         common.check_share_network_is_active.assert_called_once_with(
             fake_share_net)
         self.assertDictEqual(expected, res_dict)
-        # pylint: disable=unsubscriptable-object
         self.assertEqual(parent_share_net,
                          create_mock.call_args[1]['share_network_id'])
 
@@ -673,7 +669,7 @@ class ShareAPITest(test.TestCase):
             {'id': 'id3', 'display_name': 'n3'},
         ]
         self.mock_object(share_api.API, 'get_all',
-                         mock.Mock(return_value=[shares[1]]))
+                         mock.Mock(return_value=shares))
 
         result = self.controller.index(req)
 
@@ -687,10 +683,7 @@ class ShareAPITest(test.TestCase):
             'metadata': {'k1': 'v1'},
             'extra_specs': {'k2': 'v2'},
             'is_public': 'False',
-            'limit': '1',
-            'offset': '1'
         }
-
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
             search_opts_expected['host'] = search_opts['host']
@@ -774,7 +767,7 @@ class ShareAPITest(test.TestCase):
             {'id': 'id3', 'display_name': 'n3'},
         ]
         self.mock_object(share_api.API, 'get_all',
-                         mock.Mock(return_value=[shares[1]]))
+                         mock.Mock(return_value=shares))
 
         result = self.controller.detail(req)
 
@@ -788,8 +781,6 @@ class ShareAPITest(test.TestCase):
             'metadata': {'k1': 'v1'},
             'extra_specs': {'k2': 'v2'},
             'is_public': 'False',
-            'limit': '1',
-            'offset': '1'
         }
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})

@@ -67,6 +67,8 @@ class PerformanceLibrary(object):
     def update_performance_cache(self, flexvol_pools, aggregate_pools):
         """Called periodically to update per-pool node utilization metrics."""
 
+        # not working for us
+        return
         # Nothing to do on older systems
         if not (self.zapi_client.features.SYSTEM_METRICS or
                 self.zapi_client.features.SYSTEM_CONSTITUENT_METRICS):

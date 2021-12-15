@@ -227,7 +227,7 @@ class NeutronApiTest(test.TestCase):
         self.assertRaises(exception.NetworkException,
                           self.neutron_api.create_port, **port_args)
 
-    @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
+    @mock.patch.object(neutron_api.LOG, 'warning', mock.Mock())
     def test_create_port_exception(self):
         self.mock_object(
             self.neutron_api.client, 'create_port',
@@ -240,11 +240,11 @@ class NeutronApiTest(test.TestCase):
                           **port_args)
 
         # Verify results
-        self.assertTrue(neutron_api.LOG.exception.called)
+        self.assertTrue(neutron_api.LOG.warning.called)
         self.assertTrue(clientv20.Client.called)
         self.assertTrue(self.neutron_api.client.create_port.called)
 
-    @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
+    @mock.patch.object(neutron_api.LOG, 'warning', mock.Mock())
     def test_create_port_exception_status_409(self):
         # Set up test data
         self.mock_object(
@@ -259,7 +259,7 @@ class NeutronApiTest(test.TestCase):
                           **port_args)
 
         # Verify results
-        self.assertTrue(neutron_api.LOG.exception.called)
+        self.assertTrue(neutron_api.LOG.warning.called)
         self.assertTrue(clientv20.Client.called)
         self.assertTrue(self.neutron_api.client.create_port.called)
 
