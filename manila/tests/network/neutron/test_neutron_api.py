@@ -90,6 +90,7 @@ class NeutronclientTestCase(test.TestCase):
         fake_context = 'fake_context'
         data = {
             'neutron': {
+                'url': 'http://localhost:9696',
                 'endpoint_type': 'foo_endpoint_type',
                 'region_name': 'foo_region_name',
             }
@@ -109,12 +110,14 @@ class NeutronclientTestCase(test.TestCase):
             fake_context,
             endpoint_type=data['neutron']['endpoint_type'],
             region_name=data['neutron']['region_name'],
+            endpoint_override=data['neutron']['url'],
         )
 
     def test_with_auth_obj(self):
         fake_context = 'fake_context'
         data = {
             'neutron': {
+                'url': 'http://localhost:9696',
                 'endpoint_type': 'foo_endpoint_type',
                 'region_name': 'foo_region_name',
             }
@@ -132,6 +135,7 @@ class NeutronclientTestCase(test.TestCase):
             fake_context,
             endpoint_type=data['neutron']['endpoint_type'],
             region_name=data['neutron']['region_name'],
+            endpoint_override=data['neutron']['url'],
         )
 
 

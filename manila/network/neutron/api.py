@@ -31,14 +31,22 @@ NEUTRON_GROUP = 'neutron'
 neutron_opts = [
     cfg.StrOpt(
         'url',
-        default='http://127.0.0.1:9696',
         help='URL for connecting to neutron.'),
     cfg.IntOpt(
         'url_timeout',
+        deprecated_for_removal=True,
+        deprecated_reason='This parameter has had no effect since 2.0.0. '
+                          'The timeout parameter should be used instead.',
+        deprecated_since='Yoga',
         default=30,
         help='Timeout value for connecting to neutron in seconds.'),
     cfg.StrOpt(
         'auth_strategy',
+        deprecated_for_removal=True,
+        deprecated_reason='This parameter has had no effect since 2.0.0. '
+                          'Use the auth_type parameter to select '
+                          'authentication type',
+        deprecated_since='Yoga',
         default='keystone',
         help='Auth strategy for connecting to neutron in admin context.'),
     cfg.StrOpt(
@@ -92,6 +100,7 @@ class API(object):
             context,
             endpoint_type=CONF[NEUTRON_GROUP].endpoint_type,
             region_name=CONF[NEUTRON_GROUP].region_name,
+            endpoint_override=CONF[NEUTRON_GROUP].url,
         )
 
     @property
