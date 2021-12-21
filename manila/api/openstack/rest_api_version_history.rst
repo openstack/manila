@@ -363,3 +363,7 @@ user documentation.
   Added ability to specify "scheduler_hints" in the request body of the POST
   /shares request. These hints will invoke Affinity/Anti-Affinity scheduler
   filters during share creation and share migration.
+
+2.66
+----
+  Added filter search by group spec for share group type list.

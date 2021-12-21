@@ -344,6 +344,16 @@ class MiscFunctionsTest(test.TestCase):
             result = common.check_net_id_and_subnet_id(body)
             self.assertIsNone(result)
 
+    @ddt.data(None, True, 'true', 'false', 'all')
+    def test_parse_is_public_valid(self, value):
+        result = common.parse_is_public(value)
+        self.assertIn(result, (True, False, None))
+
+    def test_parse_is_public_invalid(self):
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          common.parse_is_public,
+                          'fakefakefake')
+
 
 @ddt.ddt
 class ViewBuilderTest(test.TestCase):

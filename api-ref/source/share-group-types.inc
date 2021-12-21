@@ -58,6 +58,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
+   - is_public: is_public_query
+   - group_specs: group_specs_query
 
 Response parameters
 -------------------
