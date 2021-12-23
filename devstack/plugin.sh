@@ -958,6 +958,22 @@ function update_tempest {
         iniset $TEMPEST_CONFIG identity alt_password $ADMIN_PASSWORD
         iniset $TEMPEST_CONFIG identity alt_tenant_name ${ALT_TENANT_NAME:-"alt_demo"}
         iniset $TEMPEST_CONFIG identity alt_domain_name $ADMIN_DOMAIN_NAME
+
+        # If testing a stable branch, we need to ensure we're testing with supported
+        # API micro-versions; so set the versions from code if we're not testing the
+        # master branch. If we're testing master, we'll allow manila-tempest-plugin
+        # (which is branchless) tell us what versions it wants to test.
+        if [[ "$TARGET_BRANCH" != "master" ]]; then
+            # Grab the supported API micro-versions from the code
+            _DEFAULT_MIN_VERSION=$(openstack --os-cloud devstack versions show --service sharev2 -c 'Min Microversion' --status CURRENT -f value)
+            _DEFAULT_MAX_VERSION=$(openstack --os-cloud devstack versions show --service sharev2 -c 'Max Microversion' --status CURRENT -f value)
+            # Override the *_api_microversion tempest options if present
+            MANILA_TEMPEST_MIN_API_MICROVERSION=${MANILA_TEMPEST_MIN_API_MICROVERSION:-$_DEFAULT_MIN_VERSION}
+            MANILA_TEMPEST_MAX_API_MICROVERSION=${MANILA_TEMPEST_MAX_API_MICROVERSION:-$_DEFAULT_MAX_VERSION}
+            # Set these options in tempest.conf
+            iniset $TEMPEST_CONFIG share min_api_microversion $MANILA_TEMPEST_MIN_API_MICROVERSION
+            iniset $TEMPEST_CONFIG share max_api_microversion $MANILA_TEMPEST_MAX_API_MICROVERSION
+        fi
     fi
 }
 
