@@ -688,17 +688,6 @@ def if_notifications_enabled(function):
     return wrapped
 
 
-def write_local_file(filename, contents, as_root=False):
-    tmp_filename = "%s.tmp" % filename
-    if as_root:
-        execute('tee', tmp_filename, run_as_root=True, process_input=contents)
-        execute('mv', '-f', tmp_filename, filename, run_as_root=True)
-    else:
-        with open(tmp_filename, 'w') as f:
-            f.write(contents)
-        os.rename(tmp_filename, filename)
-
-
 def write_remote_file(ssh, filename, contents, as_root=False):
     tmp_filename = "%s.tmp" % filename
     if as_root:
