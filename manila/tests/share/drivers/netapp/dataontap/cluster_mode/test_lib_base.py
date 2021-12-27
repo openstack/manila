@@ -472,7 +472,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'vendor_name': 'NetApp',
             'driver_version': '1.0',
             'netapp_storage_family': 'ontap_cluster',
-            'storage_protocol': 'NFS_CIFS',
+            'storage_protocol': 'NFS_CIFS_MULTI',
             'pools': fake.POOLS,
             'share_group_stats': {'consistent_snapshot_support': 'host'},
         }
@@ -1154,7 +1154,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_share_exits.assert_called_once_with(fake.SHARE_NAME,
                                                  src_vserver_client)
         mock_deallocate_container.assert_called_once_with(fake.SHARE_NAME,
-                                                          src_vserver_client)
+                                                          src_vserver_client,
+                                                          False)
         mock_pvt_storage_delete.assert_called_once_with(fake.SHARE['id'])
         mock_delete_policy.assert_called_once_with(fake_src_share,
                                                    fake.VSERVER1,
@@ -2102,7 +2103,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_share_exists.assert_called_once_with(share_name, vserver_client)
         mock_remove_export.assert_called_once_with(fake.SHARE, vserver_client)
         mock_deallocate_container.assert_called_once_with(share_name,
-                                                          vserver_client)
+                                                          vserver_client,
+                                                          False)
         mock_delete_policy.assert_called_once_with(fake.SHARE, fake.VSERVER1,
                                                    vserver_client)
         (vserver_client.mark_qos_policy_group_for_deletion
@@ -2139,7 +2141,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                   vserver_client)
 
         mock_deallocate_container.assert_called_once_with(fake.SHARE_NAME,
-                                                          vserver_client)
+                                                          vserver_client,
+                                                          False)
         mock_remove_export.assert_not_called()
         mock_get_backend_qos.assert_not_called()
         vserver_client.mark_qos_policy_group_for_deletion.assert_not_called()
@@ -2204,12 +2207,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         vserver_client = mock.Mock()
 
-        self.library._deallocate_container(fake.SHARE_NAME, vserver_client)
+        self.library._deallocate_container(fake.SHARE_NAME, vserver_client,
+                                           False)
 
         vserver_client.unmount_volume.assert_called_with(fake.SHARE_NAME,
                                                          force=True)
         vserver_client.offline_volume.assert_called_with(fake.SHARE_NAME)
-        vserver_client.delete_volume.assert_called_with(fake.SHARE_NAME)
+        vserver_client.delete_volume.assert_called_with(fake.SHARE_NAME, False)
 
     @ddt.data(None, fake.MANILA_HOST_NAME_2)
     def test_create_export(self, share_host):
