@@ -53,8 +53,8 @@ you edit the ``etc/manila/api-paste.ini`` file.
    paste.filter_factory = manila.api.v1.limits:RateLimitingMiddleware.factory
    limits = (POST, "*/shares", ^/shares, 120, MINUTE);(PUT, "*/shares", .*, 120, MINUTE);(DELETE, "*", .*, 120, MINUTE)
 
-Also, add the ``ratelimit`` to ``noauth``, ``keystone``, ``keystone_nolimit``
-parameters in the ``[composite:openstack_share_api]`` and
+Also, add the ``ratelimit`` to ``noauth`` and ``keystone`` parameters in
+the ``[composite:openstack_share_api]`` and
 ``[composite:openstack_share_api_v2]`` groups.
 
 .. code-block:: ini
@@ -63,13 +63,20 @@ parameters in the ``[composite:openstack_share_api]`` and
    use = call:manila.api.middleware.auth:pipeline_factory
    noauth = cors faultwrap ssl ratelimit sizelimit noauth api
    keystone = cors faultwrap ssl ratelimit sizelimit authtoken keystonecontext api
-   keystone_nolimit = cors faultwrap ssl ratelimit sizelimit authtoken keystonecontext api
+   keystone_nolimit = cors faultwrap ssl sizelimit authtoken keystonecontext api
 
    [composite:openstack_share_api_v2]
    use = call:manila.api.middleware.auth:pipeline_factory
    noauth = cors faultwrap ssl ratelimit sizelimit noauth apiv2
    keystone = cors faultwrap ssl ratelimit sizelimit authtoken keystonecontext apiv2
-   keystone_nolimit = cors faultwrap ssl ratelimit sizelimit authtoken keystonecontext apiv2
+   keystone_nolimit = cors faultwrap ssl sizelimit authtoken keystonecontext apiv2
+
+Finally, set the ``[DEFAULT] api_rate_limit`` parameter to ``True``.
+
+.. code-block:: ini
+
+   [DEFAULT]
+   api_rate_limit=True
 
 To see the rate limits, run:
 
