@@ -21,6 +21,7 @@ from oslo_config import cfg
 
 from manila import context
 from manila import exception
+from manila.privsep import os as privsep_os
 from manila.share import configuration as config
 from manila.share.drivers.glusterfs import common
 from manila.share.drivers.glusterfs import layout_directory
@@ -234,8 +235,6 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
 
     @ddt.data((), (None,))
     def test_create_share(self, extra_args):
-        exec_cmd1 = 'mkdir %s' % fake_local_share_path
-        expected_exec = [exec_cmd1, ]
         expected_ret = 'testuser@127.0.0.1:/testvol/fakename'
         self.mock_object(
             self._layout, '_get_local_share_path',
@@ -246,13 +245,14 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
         self.mock_object(
             self._layout.driver, '_setup_via_manager',
             mock.Mock(return_value=expected_ret))
+        self.mock_object(privsep_os, 'mkdir')
 
         ret = self._layout.create_share(self._context, self.share, *extra_args)
 
         self._layout._get_local_share_path.called_once_with(self.share)
         self._layout.gluster_manager.gluster_call.assert_called_once_with(
             'volume', 'quota', 'testvol', 'limit-usage', '/fakename', '1GB')
-        self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
+        privsep_os.mkdir.assert_called_once_with(fake_local_share_path)
         self._layout._glustermanager.assert_called_once_with(
             {'user': 'testuser', 'host': '127.0.0.1',
              'volume': 'testvol', 'path': '/fakename'})
@@ -262,23 +262,20 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
 
     @ddt.data(exception.ProcessExecutionError, exception.GlusterfsException)
     def test_create_share_unable_to_create_share(self, trouble):
-        def exec_runner(*ignore_args, **ignore_kw):
-            raise trouble
 
         self.mock_object(
             self._layout, '_get_local_share_path',
             mock.Mock(return_value=fake_local_share_path))
+        self.mock_object(privsep_os, 'mkdir', mock.Mock(side_effect=trouble))
         self.mock_object(self._layout, '_cleanup_create_share')
         self.mock_object(layout_directory.LOG, 'error')
-        expected_exec = ['mkdir %s' % fake_local_share_path]
-        fake_utils.fake_execute_set_repliers([(expected_exec[0],
-                                               exec_runner)])
 
         self.assertRaises(
             exception.GlusterfsException, self._layout.create_share,
             self._context, self.share)
 
         self._layout._get_local_share_path.called_once_with(self.share)
+        privsep_os.mkdir.assert_called_once_with(fake_local_share_path)
         self._layout._cleanup_create_share.assert_called_once_with(
             fake_local_share_path, self.share['name'])
         layout_directory.LOG.error.assert_called_once_with(
@@ -292,6 +289,8 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
             self._layout, '_get_local_share_path',
             mock.Mock(return_value=fake_local_share_path))
         self.mock_object(self._layout, '_cleanup_create_share')
+        self.mock_object(
+            privsep_os, 'mkdir', mock.Mock(side_effect=exec_runner))
         self.mock_object(layout_directory.LOG, 'error')
         expected_exec = ['mkdir %s' % fake_local_share_path]
         fake_utils.fake_execute_set_repliers([(expected_exec[0],
@@ -302,26 +301,26 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
             self._context, self.share)
 
         self._layout._get_local_share_path.called_once_with(self.share)
+        privsep_os.mkdir.assert_called_once_with(fake_local_share_path)
         self.assertFalse(self._layout._cleanup_create_share.called)
 
     def test_cleanup_create_share_local_share_path_exists(self):
-        expected_exec = ['rm -rf %s' % fake_local_share_path]
+        self.mock_object(privsep_os, 'recursive_forced_rm')
         self.mock_object(os.path, 'exists', mock.Mock(return_value=True))
 
         ret = self._layout._cleanup_create_share(fake_local_share_path,
                                                  self.share['name'])
 
         os.path.exists.assert_called_once_with(fake_local_share_path)
-        self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
+        privsep_os.recursive_forced_rm.assert_called_once_with(
+            fake_local_share_path)
         self.assertIsNone(ret)
 
     def test_cleanup_create_share_cannot_cleanup_unusable_share(self):
         def exec_runner(*ignore_args, **ignore_kw):
             raise exception.ProcessExecutionError
-
-        expected_exec = ['rm -rf %s' % fake_local_share_path]
-        fake_utils.fake_execute_set_repliers([(expected_exec[0],
-                                               exec_runner)])
+        self.mock_object(privsep_os, 'recursive_forced_rm',
+                         mock.Mock(side_effect=exec_runner))
         self.mock_object(layout_directory.LOG, 'error')
         self.mock_object(os.path, 'exists', mock.Mock(return_value=True))
 
@@ -342,31 +341,34 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
         self.assertIsNone(ret)
 
     def test_delete_share(self):
+        local_share_path = '/mnt/nfs/testvol/fakename'
         self._layout._get_local_share_path = (
-            mock.Mock(return_value='/mnt/nfs/testvol/fakename'))
+            mock.Mock(return_value=local_share_path))
+        mock_force_rm = self.mock_object(privsep_os, 'recursive_forced_rm')
 
         self._layout.delete_share(self._context, self.share)
 
-        self.assertEqual(['rm -rf /mnt/nfs/testvol/fakename'],
-                         fake_utils.fake_execute_get_log())
+        mock_force_rm.assert_called_once_with(
+            local_share_path)
 
     def test_cannot_delete_share(self):
+        local_share_path = '/mnt/nfs/testvol/fakename'
         self._layout._get_local_share_path = (
-            mock.Mock(return_value='/mnt/nfs/testvol/fakename'))
-
-        def exec_runner(*ignore_args, **ignore_kw):
-            raise exception.ProcessExecutionError
-
-        expected_exec = ['rm -rf %s' % (self._layout._get_local_share_path())]
-        fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
+            mock.Mock(return_value=local_share_path))
+        self.mock_object(
+            privsep_os, 'recursive_forced_rm', mock.Mock(
+                side_effect=exception.ProcessExecutionError))
 
         self.assertRaises(exception.ProcessExecutionError,
                           self._layout.delete_share, self._context, self.share)
 
-        self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
+        privsep_os.mkdir.assert_called_once_with = local_share_path
 
     def test_delete_share_can_be_called_with_extra_arg_share_server(self):
-        self._layout._get_local_share_path = mock.Mock()
+        local_share_path = '/mnt/nfs/testvol/fakename'
+        self._layout._get_local_share_path = mock.Mock(
+            return_value=local_share_path)
+        mock_force_rm = self.mock_object(privsep_os, 'recursive_forced_rm')
 
         share_server = None
         ret = self._layout.delete_share(self._context, self.share,
@@ -374,6 +376,7 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
 
         self.assertIsNone(ret)
         self._layout._get_local_share_path.assert_called_once_with(self.share)
+        mock_force_rm.assert_called_once_with(local_share_path)
 
     def test_ensure_share(self):
         self.assertIsNone(self._layout.ensure_share(self._context, self.share))

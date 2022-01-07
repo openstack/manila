@@ -28,6 +28,7 @@ from oslo_log import log
 
 from manila import exception
 from manila.i18n import _
+from manila.privsep import os as privsep_os
 from manila.share.drivers.glusterfs import common
 from manila.share.drivers.glusterfs import layout
 from manila import utils
@@ -352,17 +353,16 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         # delete the paths of the two directories, but delete their contents
         # along with the rest of the contents of the volume.
         srvaddr = gluster_mgr.host_access
-        if common.numreduct(self.glusterfs_versions[srvaddr]) < (3, 7):
-            cmd = ['find', tmpdir, '-mindepth', '1', '-delete']
-        else:
+        ignored_dirs = []
+        if common.numreduct(self.glusterfs_versions[srvaddr]) > (3, 6):
             ignored_dirs = map(lambda x: os.path.join(tmpdir, *x),
                                [('.trashcan', ), ('.trashcan', 'internal_op')])
             ignored_dirs = list(ignored_dirs)
-            cmd = ['find', tmpdir, '-mindepth', '1', '!', '-path',
-                   ignored_dirs[0], '!', '-path', ignored_dirs[1], '-delete']
+            ignored_dirs = [ignored_dirs[0], ignored_dirs[1]]
 
         try:
-            self.driver._execute(*cmd, run_as_root=True)
+            privsep_os.find(
+                tmpdir, dirs_to_ignore=ignored_dirs, delete=True)
         except exception.ProcessExecutionError as exc:
             msg = (_("Error trying to wipe gluster volume. "
                      "gluster_export: %(export)s, Error: %(error)s") %
@@ -371,7 +371,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
             raise exception.GlusterfsException(msg)
         finally:
             # Unmount.
-            common._umount_gluster_vol(self.driver._execute, tmpdir)
+            common._umount_gluster_vol(tmpdir)
             shutil.rmtree(tmpdir, ignore_errors=True)
 
     def create_share(self, context, share, share_server=None):
