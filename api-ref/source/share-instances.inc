@@ -4,9 +4,14 @@
 Share instances (since API v2.3)
 ================================
 
-Administrators can list, show information for, explicitly set the
-state of, and force-delete share instances. Use the ``policy.json``
-file to grant permissions for these actions to other roles.
+A share instance is an internal representation for a share. A share that is
+replicated or is in the process of being migrated is physically stored in
+multiple locations. Each of these individual locations is called an "instance"
+within the Shared File Systems service. End users need not be concerned with
+this internal representation. As an administrator, you can list, show
+information for, explicitly set the state of, and force-delete share instances.
+Use the ``policy.json`` file to grant permissions for these actions to other
+roles.
 
 
 List share instances
@@ -58,6 +63,8 @@ Response parameters
    - share_network_id: share_network_id
    - share_server_id: share_server_id
    - host: host_resource_response
+   - access_rules_status: access_rules_status
+   - share_type_id: share_type_id
    - id: id_13
 
 Response example

@@ -11,6 +11,8 @@
             "cast_rules_to_readonly": false,
             "share_server_id": "ba11930a-bf1a-4aa7-bae4-a8dfbaa3cc73",
             "host": "manila2@generic1#GENERIC1",
+            "access_rules_status": "active",
+            "share_type_id": "78dee8a9-1ee6-4a29-9081-14e6596fbb96",
             "id": "081f7030-c54f-42f5-98ee-93a37393e0f2"
         },
         {
@@ -24,6 +26,8 @@
             "cast_rules_to_readonly": false,
             "share_server_id": "ba11930a-bf1a-4aa7-bae4-a8dfbaa3cc73",
             "host": "manila2@generic1#GENERIC1",
+            "access_rules_status": "active",
+            "share_type_id": "78dee8a9-1ee6-4a29-9081-14e6596fbb96",
             "id": "75559a8b-c90c-42a7-bda2-edbe86acfb7b"
         },
         {
@@ -37,6 +41,8 @@
             "cast_rules_to_readonly": false,
             "share_server_id": "ba11930a-bf1a-4aa7-bae4-a8dfbaa3cc73",
             "host": "manila2@generic1#GENERIC1",
+            "access_rules_status": "active",
+            "share_type_id": "78dee8a9-1ee6-4a29-9081-14e6596fbb96",
             "id": "48155648-2fd3-480d-b02b-44b995c24bab"
         }
     ]

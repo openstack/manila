@@ -328,6 +328,73 @@ Response example
    :language: javascript
 
 
+List share instances
+====================
+
+.. rest_method::  GET /v2/shares/{share_id}/instances
+
+.. versionadded:: 2.3
+
+Lists instances of a share.
+
+A share instance is an internal representation for a share. A share that is
+replicated or is in the process of being migrated is physically stored in
+multiple locations. Each of these individual locations is called an "instance"
+within the Shared File Systems service. End users need not be concerned with
+this internal representation. As an administrator, you can list all instances
+of a share through this endpoint resource. Use the ``policy.json`` file to
+grant permissions for this action to other roles.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - share_id: share_id
+
+Response parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - status: share_status_response
+   - access_rules_status: access_rules_status
+   - share_id: share_id_share_instances_response
+   - progress: progress_share_instance
+   - availability_zone: availability_zone
+   - created_at: created_at
+   - replica_state: replica_state
+   - export_location: export_location
+   - export_locations: export_locations
+   - cast_rules_to_readonly: share_instance_cast_rules_to_readonly
+   - share_network_id: share_network_id
+   - share_server_id: share_server_id
+   - host: host_resource_response
+   - access_rules_status: access_rules_status
+   - share_type_id: share_type_id
+   - id: id_13
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-instances-list-response.json
+   :language: javascript
+
 Create share
 ============
 
