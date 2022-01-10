@@ -89,14 +89,14 @@ class SchedulerManagerTestCase(test.TestCase):
 
         self.assertIsInstance(test_manager.driver, filter.FilterScheduler)
 
-    def test_init_host(self):
+    def test_init_host_with_rpc(self):
 
         self.mock_object(context,
                          'get_admin_context',
                          mock.Mock(return_value='fake_admin_context'))
         self.mock_object(self.manager, 'request_service_capabilities')
 
-        self.manager.init_host()
+        self.manager.init_host_with_rpc()
 
         self.manager.request_service_capabilities.assert_called_once_with(
             'fake_admin_context')
