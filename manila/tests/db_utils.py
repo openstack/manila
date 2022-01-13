@@ -88,7 +88,7 @@ def create_share(**kwargs):
         'share_server_id': None,
         'user_id': 'fake',
         'project_id': 'fake',
-        'metadata': {'fake_key': 'fake_value'},
+        'metadata': {},
         'availability_zone': 'fake_availability_zone',
         'status': constants.STATUS_CREATING,
         'host': 'fake_host',

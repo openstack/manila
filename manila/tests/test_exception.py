@@ -444,9 +444,9 @@ class ManilaExceptionResponseCode404(test.TestCase):
         self.assertEqual(404, e.code)
         self.assertIn(snapshot_id, e.msg)
 
-    def test_share_metadata_not_found(self):
-        # verify response code for exception.ShareMetadataNotFound
-        e = exception.ShareMetadataNotFound()
+    def test_metadata_item_not_found(self):
+        # verify response code for exception.MetadataItemNotFound
+        e = exception.MetadataItemNotFound()
         self.assertEqual(404, e.code)
 
     def test_security_service_not_found(self):

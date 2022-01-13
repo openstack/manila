@@ -1119,6 +1119,75 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual(share['is_soft_deleted'], False)
 
+    def test_share_metadata_get(self):
+        metadata = {'a': 'b', 'c': 'd'}
+
+        self.share_1 = db_utils.create_share(size=1)
+        db_api.share_metadata_update(
+            self.ctxt, share_id=self.share_1['id'],
+            metadata=metadata, delete=False)
+        self.assertEqual(
+            metadata, db_api.share_metadata_get(
+                self.ctxt, share_id=self.share_1['id']))
+
+    def test_share_metadata_get_item(self):
+        metadata = {'a': 'b', 'c': 'd'}
+        key = 'a'
+        shouldbe = {'a': 'b'}
+        self.share_1 = db_utils.create_share(size=1)
+        db_api.share_metadata_update(
+            self.ctxt, share_id=self.share_1['id'],
+            metadata=metadata, delete=False)
+        self.assertEqual(
+            shouldbe, db_api.share_metadata_get_item(
+                self.ctxt, share_id=self.share_1['id'],
+                key=key))
+
+    def test_share_metadata_update(self):
+        metadata1 = {'a': '1', 'c': '2'}
+        metadata2 = {'a': '3', 'd': '5'}
+        should_be = {'a': '3', 'c': '2', 'd': '5'}
+        self.share_1 = db_utils.create_share(size=1)
+        db_api.share_metadata_update(
+            self.ctxt, share_id=self.share_1['id'],
+            metadata=metadata1, delete=False)
+        db_api.share_metadata_update(
+            self.ctxt, share_id=self.share_1['id'],
+            metadata=metadata2, delete=False)
+        self.assertEqual(
+            should_be, db_api.share_metadata_get(
+                self.ctxt, share_id=self.share_1['id']))
+
+    def test_share_metadata_update_item(self):
+        metadata1 = {'a': '1', 'c': '2'}
+        metadata2 = {'a': '3'}
+        should_be = {'a': '3', 'c': '2'}
+        self.share_1 = db_utils.create_share(size=1)
+        db_api.share_metadata_update(
+            self.ctxt, share_id=self.share_1['id'],
+            metadata=metadata1, delete=False)
+        db_api.share_metadata_update_item(
+            self.ctxt, share_id=self.share_1['id'],
+            item=metadata2)
+        self.assertEqual(
+            should_be, db_api.share_metadata_get(
+                self.ctxt, share_id=self.share_1['id']))
+
+    def test_share_metadata_delete(self):
+        key = 'a'
+        metadata = {'a': '1', 'c': '2'}
+        should_be = {'c': '2'}
+        self.share_1 = db_utils.create_share(size=1)
+        db_api.share_metadata_update(
+            self.ctxt, share_id=self.share_1['id'],
+            metadata=metadata, delete=False)
+        db_api.share_metadata_delete(
+            self.ctxt, share_id=self.share_1['id'],
+            key=key)
+        self.assertEqual(
+            should_be, db_api.share_metadata_get(
+                self.ctxt, share_id=self.share_1['id']))
+
 
 @ddt.ddt
 class ShareGroupDatabaseAPITestCase(test.TestCase):

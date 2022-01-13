@@ -25,6 +25,7 @@ from manila.api.openstack import wsgi
 from manila.api.v1 import share_manage
 from manila.api.v1 import share_unmanage
 from manila.api.v1 import shares
+from manila.api.v2 import metadata
 from manila.api.views import share_accesses as share_access_views
 from manila.api.views import share_migration as share_migration_views
 from manila.api.views import shares as share_views
@@ -32,16 +33,18 @@ from manila.common import constants
 from manila import db
 from manila import exception
 from manila.i18n import _
+from manila import policy
 from manila import share
 from manila import utils
 
 LOG = log.getLogger(__name__)
 
 
-class ShareController(shares.ShareMixin,
+class ShareController(wsgi.Controller,
+                      shares.ShareMixin,
                       share_manage.ShareManageMixin,
                       share_unmanage.ShareUnmanageMixin,
-                      wsgi.Controller,
+                      metadata.MetadataController,
                       wsgi.AdminActionsMixin):
     """The Shares API v2 controller for the OpenStack API."""
     resource_name = 'share'
@@ -595,6 +598,93 @@ class ShareController(shares.ShareMixin,
             req.GET.pop('is_soft_deleted', None)
 
         return self._get_shares(req, is_detail=True)
+
+    def _validate_metadata_for_update(self, req, share_id, metadata,
+                                      delete=True):
+        admin_metadata_ignore_keys = (
+            constants.AdminOnlyMetadata.SCHEDULER_FILTERS
+        )
+        context = req.environ['manila.context']
+        if set(metadata).intersection(set(admin_metadata_ignore_keys)):
+            try:
+                policy.check_policy(
+                    context, 'share', 'update_admin_only_metadata')
+            except exception.PolicyNotAuthorized:
+                msg = _("Cannot set or update admin only metadata.")
+                LOG.exception(msg)
+                raise exc.HTTPForbidden(explanation=msg)
+            admin_metadata_ignore_keys = []
+
+        current_share_metadata = db.share_metadata_get(context, share_id)
+        if delete:
+            _metadata = metadata
+            for key in admin_metadata_ignore_keys:
+                if key in current_share_metadata:
+                    _metadata[key] = current_share_metadata[key]
+        else:
+            metadata_copy = metadata.copy()
+            for key in admin_metadata_ignore_keys:
+                metadata_copy.pop(key, None)
+            _metadata = current_share_metadata.copy()
+            _metadata.update(metadata_copy)
+
+        return _metadata
+
+    # NOTE: (ashrod98) original metadata method and policy overrides
+    @wsgi.Controller.api_version("2.0")
+    @wsgi.Controller.authorize("get_share_metadata")
+    def index_metadata(self, req, resource_id):
+        """Returns the list of metadata for a given share."""
+        return self._index_metadata(req, resource_id)
+
+    @wsgi.Controller.api_version("2.0")
+    @wsgi.Controller.authorize("update_share_metadata")
+    def create_metadata(self, req, resource_id, body):
+        if not self.is_valid_body(body, 'metadata'):
+            expl = _('Malformed request body')
+            raise exc.HTTPBadRequest(explanation=expl)
+        _metadata = self._validate_metadata_for_update(req, resource_id,
+                                                       body['metadata'],
+                                                       delete=False)
+        body['metadata'] = _metadata
+        return self._create_metadata(req, resource_id, body)
+
+    @wsgi.Controller.api_version("2.0")
+    @wsgi.Controller.authorize("update_share_metadata")
+    def update_all_metadata(self, req, resource_id, body):
+        if not self.is_valid_body(body, 'metadata'):
+            expl = _('Malformed request body')
+            raise exc.HTTPBadRequest(explanation=expl)
+        _metadata = self._validate_metadata_for_update(req, resource_id,
+                                                       body['metadata'])
+        body['metadata'] = _metadata
+        return self._update_all_metadata(req, resource_id, body)
+
+    @wsgi.Controller.api_version("2.0")
+    @wsgi.Controller.authorize("update_share_metadata")
+    def update_metadata_item(self, req, resource_id, body, key):
+        if not self.is_valid_body(body, 'meta'):
+            expl = _('Malformed request body')
+            raise exc.HTTPBadRequest(explanation=expl)
+        _metadata = self._validate_metadata_for_update(req, resource_id,
+                                                       body['metadata'],
+                                                       delete=False)
+        body['metadata'] = _metadata
+        return self._update_metadata_item(req, resource_id, body, key)
+
+    @wsgi.Controller.api_version("2.0")
+    @wsgi.Controller.authorize("get_share_metadata")
+    def show_metadata(self, req, resource_id, key):
+        return self._show_metadata(req, resource_id, key)
+
+    @wsgi.Controller.api_version("2.0")
+    @wsgi.Controller.authorize("delete_share_metadata")
+    def delete_metadata(self, req, resource_id, key):
+        context = req.environ['manila.context']
+        if key in constants.AdminOnlyMetadata.SCHEDULER_FILTERS:
+            policy.check_policy(context, 'share',
+                                'update_admin_only_metadata')
+        return self._delete_metadata(req, resource_id, key)
 
 
 def create_resource():

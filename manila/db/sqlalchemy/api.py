@@ -3518,8 +3518,8 @@ def share_metadata_get_item(context, share_id, key, session=None):
     try:
         row = _share_metadata_get_item(context, share_id, key,
                                        session=session)
-    except exception.ShareMetadataNotFound:
-        raise exception.ShareMetadataNotFound()
+    except exception.MetadataItemNotFound:
+        raise exception.MetadataItemNotFound()
 
     result = {}
     result[row['key']] = row['value']
@@ -3593,7 +3593,7 @@ def _share_metadata_update(context, share_id, metadata, delete, session=None):
                 meta_ref = _share_metadata_get_item(context, share_id,
                                                     meta_key,
                                                     session=session)
-            except exception.ShareMetadataNotFound:
+            except exception.MetadataItemNotFound:
                 meta_ref = models.ShareMetadata()
                 item.update({"key": meta_key, "share_id": share_id})
 
@@ -3609,8 +3609,7 @@ def _share_metadata_get_item(context, share_id, key, session=None):
               first())
 
     if not result:
-        raise exception.ShareMetadataNotFound(metadata_key=key,
-                                              share_id=share_id)
+        raise exception.MetadataItemNotFound()
     return result
 
 

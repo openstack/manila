@@ -221,7 +221,10 @@ class API(base.Base):
                az_request_multiple_subnet_support_map=None):
         """Create new share."""
 
-        self._check_metadata_properties(metadata)
+        try:
+            api_common._check_metadata_properties(metadata)
+        except (exception.InvalidMetadata, exception.InvalidMetadataSize):
+            raise
 
         if snapshot_id is not None:
             snapshot = self.get_snapshot(context, snapshot_id)
@@ -2088,7 +2091,10 @@ class API(base.Base):
             msg = _("Invalid share access level: %s.") % access_level
             raise exception.InvalidShareAccess(reason=msg)
 
-        self._check_metadata_properties(metadata)
+        try:
+            api_common._check_metadata_properties(metadata)
+        except (exception.InvalidMetadata, exception.InvalidMetadataSize):
+            raise
         access_exists = self.db.share_access_check_for_existing_access(
             ctx, share['id'], access_type, access_to)
 
@@ -2173,17 +2179,6 @@ class API(base.Base):
 
         return rule
 
-    @policy.wrap_check_policy('share')
-    def get_share_metadata(self, context, share):
-        """Get all metadata associated with a share."""
-        rv = self.db.share_metadata_get(context, share['id'])
-        return dict(rv.items())
-
-    @policy.wrap_check_policy('share')
-    def delete_share_metadata(self, context, share, key):
-        """Delete the given metadata item from a share."""
-        self.db.share_metadata_delete(context, share['id'], key)
-
     def _validate_scheduler_hints(self, context, share, share_uuids):
         for uuid in share_uuids:
             if not uuidutils.is_uuid_like(uuid):
@@ -2201,7 +2196,7 @@ class API(base.Base):
         for uuid in share_uuids:
             try:
                 result = self.db.share_metadata_get_item(context, uuid, key)
-            except exception.ShareMetadataNotFound:
+            except exception.MetadataItemNotFound:
                 item = {key: share['id']}
             else:
                 existing_uuids = result.get(key, "")
@@ -2235,14 +2230,14 @@ class API(base.Base):
         try:
             result = self.db.share_metadata_get_item(context, share['id'],
                                                      key)
-        except exception.ShareMetadataNotFound:
+        except exception.MetadataItemNotFound:
             return
 
         share_uuids = result.get(key, "").split(",")
         for uuid in share_uuids:
             try:
                 result = self.db.share_metadata_get_item(context, uuid, key)
-            except exception.ShareMetadataNotFound:
+            except exception.MetadataItemNotFound:
                 continue
 
             new_val_uuids = [val_uuid for val_uuid
@@ -2280,71 +2275,16 @@ class API(base.Base):
             raise exception.ShareSizeExceedsLimit(
                 size=size, limit=quotas['per_share_gigabytes'])
 
-    def _check_metadata_properties(self, metadata=None):
-        if not metadata:
-            metadata = {}
-
-        for k, v in metadata.items():
-            if not k:
-                msg = _("Metadata property key is blank.")
-                LOG.warning(msg)
-                raise exception.InvalidMetadata(message=msg)
-            if len(k) > 255:
-                msg = _("Metadata property key is "
-                        "greater than 255 characters.")
-                LOG.warning(msg)
-                raise exception.InvalidMetadataSize(message=msg)
-            if not v:
-                msg = _("Metadata property value is blank.")
-                LOG.warning(msg)
-                raise exception.InvalidMetadata(message=msg)
-            if len(v) > 1023:
-                msg = _("Metadata property value is "
-                        "greater than 1023 characters.")
-                LOG.warning(msg)
-                raise exception.InvalidMetadataSize(message=msg)
-
     def update_share_access_metadata(self, context, access_id, metadata):
         """Updates share access metadata."""
-        self._check_metadata_properties(metadata)
+        try:
+            api_common._check_metadata_properties(metadata)
+        except exception.InvalidMetadata:
+            raise exception.InvalidMetadata()
+        except exception.InvalidMetadataSize:
+            raise exception.InvalidMetadataSize()
         return self.db.share_access_metadata_update(
             context, access_id, metadata)
-
-    @policy.wrap_check_policy('share')
-    def update_share_metadata(self,
-                              context, share,
-                              metadata, ignore_keys=None,
-                              delete=False):
-        """Updates or creates share metadata.
-
-        If delete is True, metadata items that are not specified in the
-        `metadata` argument will be deleted.
-
-        Non-admin user may not attempt to create or update admin-only keys.
-        For example: "__affinity_same_host" or "__affinity_different_host".
-        These keys will be ignored in update-all method, preserving their
-        values, unless RBAC policy allows manipluation of this data.
-
-        """
-        ignore_keys = ignore_keys or []
-        orig_meta = self.get_share_metadata(context, share)
-        if delete:
-            _metadata = metadata
-            for key in ignore_keys:
-                if key in orig_meta:
-                    _metadata[key] = orig_meta[key]
-        else:
-            metadata_copy = metadata.copy()
-            for key in ignore_keys:
-                metadata_copy.pop(key, None)
-            _metadata = orig_meta.copy()
-            _metadata.update(metadata_copy)
-
-        self._check_metadata_properties(_metadata)
-        self.db.share_metadata_update(context, share['id'],
-                                      _metadata, delete)
-
-        return _metadata
 
     def get_share_network(self, context, share_net_id):
         return self.db.share_network_get(context, share_net_id)

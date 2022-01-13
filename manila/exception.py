@@ -598,7 +598,7 @@ class UnmanageInvalidShareSnapshot(InvalidShareSnapshot):
                 "invalid share snapshot: %(reason)s.")
 
 
-class ShareMetadataNotFound(NotFound):
+class MetadataItemNotFound(NotFound):
     message = _("Metadata item is not found.")
 
 

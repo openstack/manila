@@ -26,7 +26,6 @@ from manila.api.v1 import limits
 from manila.api.v1 import scheduler_stats
 from manila.api.v1 import security_service
 from manila.api.v1 import share_manage
-from manila.api.v1 import share_metadata
 from manila.api.v1 import share_types_extra_specs
 from manila.api.v1 import share_unmanage
 from manila.api.v2 import availability_zones
@@ -163,6 +162,45 @@ class APIRouter(manila.api.openstack.APIRouter):
                            action="manage",
                            conditions={"method": ["POST"]})
 
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("share_metadata",
+                           "%s/shares/{resource_id}/metadata"
+                           % path_prefix,
+                           controller=self.resources["shares"],
+                           action="create_metadata",
+                           conditions={"method": ["POST"]})
+            mapper.connect("share_metadata",
+                           "%s/shares/{resource_id}/metadata"
+                           % path_prefix,
+                           controller=self.resources["shares"],
+                           action="update_all_metadata",
+                           conditions={"method": ["PUT"]})
+            mapper.connect("share_metadata",
+                           "%s/shares/{resource_id}/metadata/{key}"
+                           % path_prefix,
+                           controller=self.resources["shares"],
+                           action="update_metadata_item",
+                           conditions={"method": ["POST"]})
+            mapper.connect("share_metadata",
+                           "%s/shares/{resource_id}/metadata"
+                           % path_prefix,
+                           controller=self.resources["shares"],
+                           action="index_metadata",
+                           conditions={"method": ["GET"]})
+            mapper.connect("share_metadata",
+                           "%s/shares/{resource_id}/metadata/{key}"
+                           % path_prefix,
+                           controller=self.resources["shares"],
+                           action="show_metadata",
+                           conditions={"method": ["GET"]})
+            mapper.connect("share_metadata",
+                           "%s/shares/{resource_id}/metadata/{key}"
+                           % path_prefix,
+                           controller=self.resources["shares"],
+                           action="delete_metadata",
+                           conditions={"method": ["DELETE"]})
+
         self.resources["share_instances"] = share_instances.create_resource()
         mapper.resource("share_instance", "share_instances",
                         controller=self.resources["share_instances"],
@@ -279,22 +317,6 @@ class APIRouter(manila.api.openstack.APIRouter):
                                "share_snapshot_instance_export_locations"],
                            action="show",
                            conditions={"method": ["GET"]})
-
-        self.resources["share_metadata"] = share_metadata.create_resource()
-        share_metadata_controller = self.resources["share_metadata"]
-
-        mapper.resource("share_metadata", "metadata",
-                        controller=share_metadata_controller,
-                        parent_resource=dict(member_name="share",
-                                             collection_name="shares"))
-
-        for path_prefix in ['/{project_id}', '']:
-            # project_id is optional
-            mapper.connect("metadata",
-                           "%s/shares/{share_id}/metadata" % path_prefix,
-                           controller=share_metadata_controller,
-                           action="update_all",
-                           conditions={"method": ["PUT"]})
 
         self.resources["limits"] = limits.create_resource()
         mapper.resource("limit", "limits",
