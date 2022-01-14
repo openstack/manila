@@ -2323,9 +2323,10 @@ revert_to_snapshot_support_share_capability:
   min_version: 2.27
 scheduler_hints:
   description: |
-    One or more scheduler_hints key and value pairs as a dictionary
-    of strings. e.g. keys are same_host, different_host and values must be
-    a comma separated list of Share IDs.
+    One or more scheduler_hints key and value pairs as a dictionary of
+    strings. Accepted hints are:
+    - ``same_host`` or ``different_host``: values must be a comma separated list of Share IDs
+    - ``only_host``: value must be a manage-share service host in ``host@backend#POOL`` format (admin only)
   in: body
   required: false
   type: object

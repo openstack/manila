@@ -23,7 +23,6 @@ filters and weighing functions.
 from oslo_config import cfg
 from oslo_log import log
 
-from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
 from manila.message import api as message_api
@@ -322,15 +321,29 @@ class FilterScheduler(base.Scheduler):
                       "exc": "exc"
                       })
 
-    def populate_filter_properties_share_scheduler_hint(self, context,
-                                                        share_id, hints,
-                                                        key, hint):
-        try:
-            result = db_api.share_metadata_get_item(context, share_id, key)
-        except exception.ShareMetadataNotFound:
-            pass
+    def _populate_scheduler_hint(self, request_spec, hints, key, hint):
+        share_properties = request_spec.get('share_properties', {})
+        value = share_properties.get('metadata', {}).get(key, None)
+        if value:
+            hints.update({hint: value})
+
+    def populate_filter_properties_scheduler_hints(self, context, request_spec,
+                                                   filter_properties):
+        share_id = request_spec.get('share_id', None)
+        if not share_id:
+            filter_properties['scheduler_hints'] = {}
+            return
         else:
-            hints.update({hint: result.get(key)})
+            if filter_properties.get('scheduler_hints', None):
+                return
+            hints = {}
+            self._populate_scheduler_hint(request_spec, hints,
+                                          AFFINITY_KEY,
+                                          AFFINITY_HINT)
+            self._populate_scheduler_hint(request_spec, hints,
+                                          ANTI_AFFINITY_KEY,
+                                          ANTI_AFFINITY_HINT)
+            filter_properties['scheduler_hints'] = hints
 
     def populate_filter_properties_share(self, context, request_spec,
                                          filter_properties):
@@ -347,25 +360,8 @@ class FilterScheduler(base.Scheduler):
         filter_properties['user_id'] = shr.get('user_id')
         filter_properties['metadata'] = shr.get('metadata')
         filter_properties['snapshot_id'] = shr.get('snapshot_id')
-
-        share_id = request_spec.get('share_id', None)
-        if not share_id:
-            filter_properties['scheduler_hints'] = {}
-            return
-
-        try:
-            db_api.share_get(context, share_id)
-        except exception.NotFound:
-            filter_properties['scheduler_hints'] = {}
-        else:
-            hints = {}
-            self.populate_filter_properties_share_scheduler_hint(
-                context, share_id, hints,
-                AFFINITY_KEY, AFFINITY_HINT)
-            self.populate_filter_properties_share_scheduler_hint(
-                context, share_id, hints,
-                ANTI_AFFINITY_KEY, ANTI_AFFINITY_HINT)
-            filter_properties['scheduler_hints'] = hints
+        self.populate_filter_properties_scheduler_hints(context, request_spec,
+                                                        filter_properties)
 
     def schedule_create_share_group(self, context, share_group_id,
                                     request_spec, filter_properties):

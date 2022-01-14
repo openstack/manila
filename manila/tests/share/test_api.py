@@ -1170,7 +1170,8 @@ class ShareAPITestCase(test.TestCase):
         })
 
         expected_request_spec = self._get_request_spec_dict(
-            share, fake_type, size=0, share_proto=share_data['share_proto'],
+            share, fake_type, self.context, size=0,
+            share_proto=share_data['share_proto'],
             host=share_data['host'])
 
         if dhss:
@@ -1378,7 +1379,7 @@ class ShareAPITestCase(test.TestCase):
         self.assertRaises(exception.InvalidShare, self.api.manage,
                           self.context, share_data, driver_options)
 
-    def _get_request_spec_dict(self, share, share_type, **kwargs):
+    def _get_request_spec_dict(self, share, share_type, context, **kwargs):
 
         if share is None:
             share = {'instance': {}}
@@ -1389,6 +1390,7 @@ class ShareAPITestCase(test.TestCase):
             'size': kwargs.get('size', share.get('size')),
             'user_id': kwargs.get('user_id', share.get('user_id')),
             'project_id': kwargs.get('project_id', share.get('project_id')),
+            'metadata': db_api.share_metadata_get(context, share['id']),
             'snapshot_support': kwargs.get(
                 'snapshot_support',
                 share_type['extra_specs']['snapshot_support']),
@@ -3314,7 +3316,8 @@ class ShareAPITestCase(test.TestCase):
             share_network_id=share_network_id)
 
         request_spec = self._get_request_spec_dict(
-            share, fake_type_2, size=0, availability_zone_id='fake_az_id',
+            share, fake_type_2, self.context, size=0,
+            availability_zone_id='fake_az_id',
             share_network_id=share_network_id)
 
         self.mock_object(self.scheduler_rpcapi, 'migrate_share_to_host')
@@ -3551,7 +3554,7 @@ class ShareAPITestCase(test.TestCase):
             share_type_id=fake_type['id'])
 
         request_spec = self._get_request_spec_dict(
-            share, fake_type, availability_zone_id='fake_az_id')
+            share, fake_type, self.context, availability_zone_id='fake_az_id')
 
         self.api.migration_start(self.context, share, host, False, True, True,
                                  True, True)
@@ -5093,7 +5096,7 @@ class ShareAPITestCase(test.TestCase):
             get_type_calls.append(
                 mock.call(self.context, instance['share_type_id']))
             get_request_spec_calls.append(
-                mock.call(instance, fake_share_type))
+                mock.call(instance, fake_share_type, self.context))
 
         mock_get_type = self.mock_object(
             share_types, 'get_share_type',

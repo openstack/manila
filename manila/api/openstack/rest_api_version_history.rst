@@ -367,3 +367,9 @@ user documentation.
 2.66
 ----
   Added filter search by group spec for share group type list.
+
+2.67
+____
+  Added supprot for 'only_host' key in "scheduler_hints" in the request body
+  of the POST/shares request. This hint will invoke OnlyHost scheduler
+  filter during share creation.
