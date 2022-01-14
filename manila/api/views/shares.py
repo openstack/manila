@@ -15,6 +15,7 @@
 
 from manila.api import common
 from manila.common import constants
+from manila import policy
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -98,7 +99,7 @@ class ViewBuilder(common.ViewBuilder):
 
         self.update_versioned_resource_dict(request, share_dict, share)
 
-        if context.is_admin:
+        if policy.check_is_host_admin(context):
             share_dict['share_server_id'] = share_instance.get(
                 'share_server_id')
             share_dict['host'] = share_instance.get('host')

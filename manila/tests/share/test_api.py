@@ -5305,7 +5305,7 @@ class ShareAPITestCase(test.TestCase):
             get_type_calls.append(
                 mock.call(self.context, instance['share_type_id']))
             get_request_spec_calls.append(
-                mock.call(instance, fake_share_type, self.context))
+                mock.call(self.context, instance, fake_share_type))
 
         mock_get_type = self.mock_object(
             share_types, 'get_share_type',
