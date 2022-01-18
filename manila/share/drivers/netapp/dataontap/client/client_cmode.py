@@ -690,15 +690,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return home_port_name
 
     @na_utils.trace
-    def create_network_interface(self, ip, netmask, vlan, node, port,
-                                 vserver_name, lif_name, ipspace_name, mtu):
+    def create_network_interface(self, ip, netmask, node, port,
+                                 vserver_name, lif_name):
         """Creates LIF on VLAN port."""
-
-        home_port_name = self.create_port_and_broadcast_domain(
-            node, port, vlan, mtu, ipspace_name)
-
-        LOG.debug('Creating LIF %(lif)s for Vserver %(vserver)s ',
-                  {'lif': lif_name, 'vserver': vserver_name})
+        LOG.debug('Creating LIF %(lif)s for Vserver %(vserver)s '
+                  'node/port %(node)s:%(port)s.',
+                  {'lif': lif_name, 'vserver': vserver_name, 'node': node,
+                   'port': port})
 
         api_args = {
             'address': ip,
@@ -708,7 +706,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 {'data-protocol': 'cifs'},
             ],
             'home-node': node,
-            'home-port': home_port_name,
+            'home-port': port,
             'netmask': netmask,
             'interface-name': lif_name,
             'role': 'data',
@@ -972,18 +970,17 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def network_interface_exists(self, vserver_name, node, port, ip, netmask,
-                                 vlan):
+                                 vlan=None, home_port=None):
         """Checks if LIF exists."""
-
-        home_port_name = (port if not vlan else
-                          '%(port)s-%(tag)s' % {'port': port, 'tag': vlan})
+        if not home_port:
+            home_port = port if not vlan else f'{port}-{vlan}'
 
         api_args = {
             'query': {
                 'net-interface-info': {
                     'address': ip,
                     'home-node': node,
-                    'home-port': home_port_name,
+                    'home-port': home_port,
                     'netmask': netmask,
                     'vserver': vserver_name,
                 },

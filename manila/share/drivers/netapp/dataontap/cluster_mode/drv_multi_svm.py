@@ -42,6 +42,9 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
             'nfs': None,
             'cifs': ['active_directory', ]
         }
+        # NetApp driver supports multiple subnets including update existing
+        # share servers.
+        self.network_allocation_update_support = True
 
     def do_setup(self, context):
         self.library.do_setup(context)
@@ -135,8 +138,6 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
             self.admin_network_api)
 
     def _setup_server(self, network_info, metadata=None):
-        # NOTE(felipe_rodrigues): keep legacy network_info support as a dict.
-        network_info = network_info[0]
         return self.library.setup_server(network_info, metadata)
 
     def _teardown_server(self, server_details, **kwargs):
@@ -361,3 +362,19 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
         return self.library.check_update_share_server_security_service(
             context, share_server, network_info, new_security_service,
             current_security_service=current_security_service)
+
+    def check_update_share_server_network_allocations(
+            self, context, share_server, current_network_allocations,
+            new_share_network_subnet, security_services, share_instances,
+            share_instances_rules):
+        return self.library.check_update_share_server_network_allocations(
+            context, share_server, current_network_allocations,
+            new_share_network_subnet, security_services, share_instances,
+            share_instances_rules)
+
+    def update_share_server_network_allocations(
+            self, context, share_server, current_network_allocations,
+            new_network_allocations, security_services, shares, snapshots):
+        return self.library.update_share_server_network_allocations(
+            context, share_server, current_network_allocations,
+            new_network_allocations, security_services, shares, snapshots)

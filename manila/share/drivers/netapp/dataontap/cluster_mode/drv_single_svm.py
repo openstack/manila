@@ -332,3 +332,14 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
             share_instance_rules, new_security_service,
             current_security_service=None):
         raise NotImplementedError
+
+    def check_update_share_server_network_allocations(
+            self, context, share_server, current_network_allocations,
+            new_share_network_subnet, security_services, share_instances,
+            share_instances_rules):
+        raise NotImplementedError
+
+    def update_share_server_network_allocations(
+            self, context, share_server, current_network_allocations,
+            new_network_allocations, security_services, shares, snapshots):
+        raise NotImplementedError

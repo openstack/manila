@@ -516,6 +516,7 @@ NETWORK_INFO = {
     'neutron_subnet_id': '62bf1c2c-18eb-421b-8983-48a6d39aafe0',
     'segmentation_id': '1000',
 }
+NETWORK_INFO_LIST = [NETWORK_INFO]
 NETWORK_INFO_NETMASK = '255.255.255.0'
 
 SHARE_SERVER = {
@@ -985,6 +986,7 @@ POOLS = [
         'revert_to_snapshot_support': True,
         'qos': True,
         'security_service_update_support': True,
+        'share_server_multiple_subnet_support': True,
         'netapp_flexgroup': False,
     },
     {
@@ -1011,6 +1013,7 @@ POOLS = [
         'revert_to_snapshot_support': True,
         'qos': True,
         'security_service_update_support': True,
+        'share_server_multiple_subnet_support': True,
         'netapp_flexgroup': False,
     },
 ]
@@ -1037,6 +1040,7 @@ POOLS_VSERVER_CREDS = [
         'revert_to_snapshot_support': True,
         'qos': False,
         'security_service_update_support': True,
+        'share_server_multiple_subnet_support': True,
         'netapp_flexgroup': False,
     },
     {
@@ -1058,6 +1062,7 @@ POOLS_VSERVER_CREDS = [
         'revert_to_snapshot_support': True,
         'qos': False,
         'security_service_update_support': True,
+        'share_server_multiple_subnet_support': True,
         'netapp_flexgroup': False,
     },
 ]
@@ -1764,6 +1769,38 @@ CLIENT_GET_VOLUME_RESPONSE = {
     'size': SHARE_SIZE,
     'owning-vserver-name': VSERVER1,
     'qos-policy-group-name': QOS_POLICY_GROUP_NAME,
+}
+
+SHARE_INSTANCE_LIST = [SHARE_INSTANCE]
+
+CURRENT_NETWORK_ALLOCATIONS = {
+    'admin_network_allocations': ADMIN_NETWORK_ALLOCATIONS,
+    'subnets': [
+        {
+            'share_network_subnet_id': '0bdeaa8c6db3-3bc10d67',
+            'neutron_net_id': '2598-4122-bb62-0bdeaa8c6db3',
+            'neutron_subnet_id': '3bc10d67-2598-4122-bb62',
+            'network_allocations': USER_NETWORK_ALLOCATIONS
+        }
+    ]
+}
+
+NEW_NETWORK_ALLOCATIONS = {
+    'share_network_subnet_id': '0bdeaa8c6db3-3bc10d67',
+    'neutron_net_id': '2598-4122-bb62-0bdeaa8c6db3',
+    'neutron_subnet_id': '3bc10d67-2598-4122-bb62',
+    'network_allocations': USER_NETWORK_ALLOCATIONS
+}
+
+SERVER_MODEL_UPDATE = {
+    'server_details': {
+        'ports': '{"%s": "%s", "%s": "%s"}' % (
+            USER_NETWORK_ALLOCATIONS[0]['id'],
+            USER_NETWORK_ALLOCATIONS[0]['ip_address'],
+            USER_NETWORK_ALLOCATIONS[1]['id'],
+            USER_NETWORK_ALLOCATIONS[1]['ip_address'])
+    },
+    'share_updates': {SHARE_INSTANCE['id']: NFS_EXPORTS[0]},
 }
 
 

@@ -1079,15 +1079,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertListEqual([], result)
 
-    @ddt.data((True, True), (True, False), (False, True), (False, False))
-    @ddt.unpack
-    def test_create_network_interface(self, broadcast_domains_supported,
-                                      use_vlans):
+    def test_create_network_interface(self):
 
-        self.client.features.add_feature('BROADCAST_DOMAINS',
-                                         broadcast_domains_supported)
-        self.mock_object(self.client, '_ensure_broadcast_domain_for_port')
-        self.mock_object(self.client, '_create_vlan')
         self.mock_object(self.client, 'send_request')
 
         lif_create_args = {
@@ -1098,7 +1091,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 {'data-protocol': 'cifs'}
             ],
             'home-node': fake.NODE_NAME,
-            'home-port': fake.VLAN_PORT if use_vlans else fake.PORT,
+            'home-port': fake.VLAN_PORT,
             'netmask': fake.NETMASK,
             'interface-name': fake.LIF_NAME,
             'role': 'data',
@@ -1106,30 +1099,43 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
         self.client.create_network_interface(fake.IP_ADDRESS,
                                              fake.NETMASK,
-                                             fake.VLAN if use_vlans else None,
                                              fake.NODE_NAME,
-                                             fake.PORT,
+                                             fake.VLAN_PORT,
                                              fake.VSERVER_NAME,
-                                             fake.LIF_NAME,
-                                             fake.IPSPACE_NAME,
-                                             fake.MTU)
+                                             fake.LIF_NAME)
 
-        if use_vlans:
-            self.client._create_vlan.assert_called_with(
-                fake.NODE_NAME, fake.PORT, fake.VLAN)
-        else:
-            self.assertFalse(self.client._create_vlan.called)
+        self.client.send_request.assert_called_once_with(
+            'net-interface-create', lif_create_args)
 
+    @ddt.data((None, True), (fake.VLAN, True), (None, False),
+              (fake.VLAN, False))
+    @ddt.unpack
+    def test_create_port_and_broadcast_domain(self, fake_vlan,
+                                              broadcast_domains_supported):
+
+        self.client.features.add_feature(
+            'BROADCAST_DOMAINS', broadcast_domains_supported)
+
+        mock_create_vlan = self.mock_object(
+            self.client, '_create_vlan')
+        mock_ensure_broadcast = self.mock_object(
+            self.client, '_ensure_broadcast_domain_for_port')
+
+        result = self.client.create_port_and_broadcast_domain(
+            fake.NODE_NAME, fake.PORT, fake_vlan, fake.MTU, fake.IPSPACE_NAME)
+
+        if fake_vlan:
+            mock_create_vlan.assert_called_once_with(
+                fake.NODE_NAME, fake.PORT, fake_vlan)
+
+        fake_home_port_name = (
+            f'{fake.PORT}-{fake_vlan}' if fake_vlan else fake.PORT)
         if broadcast_domains_supported:
-            self.client._ensure_broadcast_domain_for_port.assert_called_with(
-                fake.NODE_NAME, fake.VLAN_PORT if use_vlans else fake.PORT,
-                fake.MTU, ipspace=fake.IPSPACE_NAME)
-        else:
-            self.assertFalse(
-                self.client._ensure_broadcast_domain_for_port.called)
+            mock_ensure_broadcast.assert_called_once_with(
+                fake.NODE_NAME, fake_home_port_name, fake.MTU,
+                ipspace=fake.IPSPACE_NAME)
 
-        self.client.send_request.assert_has_calls([
-            mock.call('net-interface-create', lif_create_args)])
+        self.assertEqual(fake_home_port_name, result)
 
     def test_create_vlan(self):
 

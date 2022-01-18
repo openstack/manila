@@ -19,7 +19,6 @@ functionality needed by the cDOT multi-SVM Manila driver.  This library
 variant creates Data ONTAP storage virtual machines (i.e. 'vservers')
 as needed to provision shares.
 """
-
 import re
 
 from oslo_log import log
@@ -27,6 +26,7 @@ from oslo_serialization import jsonutils
 from oslo_utils import excutils
 from oslo_utils import units
 
+from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila.message import message_field
@@ -146,10 +146,13 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     @na_utils.trace
     def setup_server(self, network_info, metadata=None):
         """Creates and configures new Vserver."""
-        vlan = network_info['segmentation_id']
         ports = {}
-        for network_allocation in network_info['network_allocations']:
-            ports[network_allocation['id']] = network_allocation['ip_address']
+        server_id = network_info[0]['server_id']
+        LOG.debug("Setting up server %s.", server_id)
+        for network in network_info:
+            for network_allocation in network['network_allocations']:
+                ports[network_allocation['id']] = (
+                    network_allocation['ip_address'])
 
         nfs_config = self._default_nfs_config
         if (self.is_nfs_config_supported and metadata and
@@ -159,12 +162,16 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             self._check_nfs_config_extra_specs_validity(extra_specs)
             nfs_config = self._get_nfs_config_provisioning_options(extra_specs)
 
+        vlan = network_info[0]['segmentation_id']
+
         @utils.synchronized('netapp-VLAN-%s' % vlan, external=True)
         def setup_server_with_lock():
-            LOG.debug('Creating server %s', network_info['server_id'])
             self._validate_network_type(network_info)
 
-            vserver_name = self._get_vserver_name(network_info['server_id'])
+            # Before proceeding, make sure subnet configuration is valid
+            self._validate_share_network_subnets(network_info)
+
+            vserver_name = self._get_vserver_name(server_id)
             server_details = {
                 'vserver_name': vserver_name,
                 'ports': jsonutils.dumps(ports),
@@ -219,15 +226,31 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     @na_utils.trace
     def _validate_network_type(self, network_info):
         """Raises exception if the segmentation type is incorrect."""
-        if network_info['network_type'] not in SUPPORTED_NETWORK_TYPES:
+        unsupported_nets = [network for network in network_info
+                            if network['network_type']
+                            not in SUPPORTED_NETWORK_TYPES]
+
+        if unsupported_nets:
             msg = _('The specified network type %s is unsupported by the '
                     'NetApp clustered Data ONTAP driver')
             raise exception.NetworkBadConfigurationException(
-                reason=msg % network_info['network_type'])
+                reason=msg % unsupported_nets[0]['network_type'])
 
     @na_utils.trace
     def _get_vserver_name(self, server_id):
         return self.configuration.netapp_vserver_name_template % server_id
+
+    @na_utils.trace
+    def _validate_share_network_subnets(self, network_info):
+        """Raises exception if subnet configuration isn't valid."""
+        # Driver supports multiple subnets only if in the same network segment
+        ref_vlan = network_info[0]['segmentation_id']
+        if not all([network['segmentation_id'] == ref_vlan
+                    for network in network_info]):
+            msg = _("The specified network configuration isn't supported by "
+                    "the NetApp clustered Data ONTAP driver. All subnets must "
+                    "reside in the same network segment.")
+            raise exception.NetworkBadConfigurationException(reason=msg)
 
     @na_utils.trace
     def _create_vserver(self, vserver_name, network_info, metadata=None,
@@ -250,9 +273,12 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         # server's neutron subnet id.
         node_name = self._client.list_cluster_nodes()[0]
         port = self._get_node_data_port(node_name)
-        vlan = network_info['segmentation_id']
+        # NOTE(sfernand): ONTAP driver currently supports multiple subnets
+        # only in a same network segment. A validation is performed in a
+        # earlier step to make sure all subnets have the same segmentation_id.
+        vlan = network_info[0]['segmentation_id']
         ipspace_name = self._client.get_ipspace_name_for_vlan_port(
-            node_name, port, vlan) or self._create_ipspace(network_info)
+            node_name, port, vlan) or self._create_ipspace(network_info[0])
 
         aggregate_names = self._find_matching_aggregates()
         if is_dp_destination:
@@ -264,7 +290,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 aggregate_names,
                 ipspace_name)
             # Set up port and broadcast domain for the current ipspace
-            self._create_port_and_broadcast_domain(ipspace_name, network_info)
+            self._create_port_and_broadcast_domain(
+                ipspace_name, network_info[0])
         else:
             LOG.debug('Vserver %s does not exist, creating.', vserver_name)
             aggr_set = set(aggregate_names).union(
@@ -278,7 +305,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
             vserver_client = self._get_api_client(vserver=vserver_name)
 
-            security_services = network_info.get('security_services')
+            security_services = network_info[0].get('security_services')
             try:
                 self._setup_network_for_vserver(
                     vserver_name, vserver_client, network_info, ipspace_name,
@@ -296,18 +323,38 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                    network_info, ipspace_name,
                                    enable_nfs=True, security_services=None,
                                    nfs_config=None):
-        self._create_vserver_lifs(vserver_name,
-                                  vserver_client,
-                                  network_info,
-                                  ipspace_name)
+        """Setup Vserver network configuration"""
+        # segmentation_id and mtu are the same for all allocations and can be
+        # extracted from the first index, as subnets were previously checked
+        # at this point to ensure they are all in the same network segment and
+        # consequently belongs to the same Neutron network (which holds L2
+        # information).
+        ref_subnet_allocation = network_info[0]['network_allocations'][0]
+        vlan = ref_subnet_allocation['segmentation_id']
+        mtu = ref_subnet_allocation['mtu'] or DEFAULT_MTU
+
+        home_ports = {}
+        nodes = self._client.list_cluster_nodes()
+        for node in nodes:
+            port = self._get_node_data_port(node)
+            vlan_port_name = self._client.create_port_and_broadcast_domain(
+                node, port, vlan, mtu, ipspace_name)
+            home_ports[node] = vlan_port_name
+
+        for network in network_info:
+            self._create_vserver_lifs(vserver_name,
+                                      vserver_client,
+                                      network,
+                                      ipspace_name,
+                                      lif_home_ports=home_ports)
+
+            self._create_vserver_routes(vserver_client, network)
 
         self._create_vserver_admin_lif(vserver_name,
                                        vserver_client,
-                                       network_info,
-                                       ipspace_name)
-
-        self._create_vserver_routes(vserver_client,
-                                    network_info)
+                                       network_info[0],
+                                       ipspace_name,
+                                       lif_home_ports=home_ports)
         if enable_nfs:
             vserver_client.enable_nfs(
                 self.configuration.netapp_enabled_share_protocols,
@@ -349,34 +396,48 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
     @na_utils.trace
     def _create_vserver_lifs(self, vserver_name, vserver_client, network_info,
-                             ipspace_name):
+                             ipspace_name, lif_home_ports=None):
         """Create Vserver data logical interfaces (LIFs)."""
+        # We can get node names directly from lif_home_ports in case
+        # it was passed as parameter, otherwise a request to the cluster is
+        nodes = (list(lif_home_ports.keys()) if lif_home_ports
+                 else self._client.list_cluster_nodes())
+        # required
 
-        nodes = self._client.list_cluster_nodes()
         node_network_info = zip(nodes, network_info['network_allocations'])
-
+        # Creating LIF per node
         for node_name, network_allocation in node_network_info:
+            lif_home_port = (lif_home_ports[node_name] if
+                             lif_home_ports else None)
             lif_name = self._get_lif_name(node_name, network_allocation)
+
             self._create_lif(vserver_client, vserver_name, ipspace_name,
-                             node_name, lif_name, network_allocation)
+                             node_name, lif_name, network_allocation,
+                             lif_home_port=lif_home_port)
 
     @na_utils.trace
     def _create_vserver_admin_lif(self, vserver_name, vserver_client,
-                                  network_info, ipspace_name):
+                                  network_info, ipspace_name,
+                                  lif_home_ports=None):
         """Create Vserver admin LIF, if defined."""
-
         network_allocations = network_info.get('admin_network_allocations')
         if not network_allocations:
-            LOG.info('No admin network defined for Vserver %s.',
-                     vserver_name)
             return
+        LOG.info('Admin network defined for Vserver %s.', vserver_name)
 
-        node_name = self._client.list_cluster_nodes()[0]
+        home_port = None
+        if lif_home_ports:
+            node_name, home_port = list(lif_home_ports.items())[0]
+        else:
+            nodes = self._client.list_cluster_nodes()
+            node_name = nodes[0]
+
         network_allocation = network_allocations[0]
         lif_name = self._get_lif_name(node_name, network_allocation)
 
         self._create_lif(vserver_client, vserver_name, ipspace_name,
-                         node_name, lif_name, network_allocation)
+                         node_name, lif_name, network_allocation,
+                         lif_home_port=home_port)
 
     @na_utils.trace
     def _create_vserver_routes(self, vserver_client, network_info):
@@ -414,21 +475,39 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
     @na_utils.trace
     def _create_lif(self, vserver_client, vserver_name, ipspace_name,
-                    node_name, lif_name, network_allocation):
+                    node_name, lif_name, network_allocation,
+                    lif_home_port=None):
         """Creates LIF for Vserver."""
-
-        port = self._get_node_data_port(node_name)
+        port = lif_home_port or self._get_node_data_port(node_name)
+        vlan = network_allocation['segmentation_id']
         ip_address = network_allocation['ip_address']
         netmask = utils.cidr_to_netmask(network_allocation['cidr'])
-        vlan = network_allocation['segmentation_id']
-        network_mtu = network_allocation.get('mtu')
-        mtu = network_mtu or DEFAULT_MTU
 
-        if not vserver_client.network_interface_exists(
-                vserver_name, node_name, port, ip_address, netmask, vlan):
-            self._client.create_network_interface(
-                ip_address, netmask, vlan, node_name, port, vserver_name,
-                lif_name, ipspace_name, mtu)
+        # We can skip the operation if an lif already exists with the same
+        # configuration
+        if vserver_client.network_interface_exists(
+                vserver_name, node_name, port, ip_address, netmask, vlan,
+                home_port=lif_home_port):
+            msg = ('LIF %(ip)s netmask %(mask)s already exists for '
+                   'node %(node)s port %(port)s in vserver %(vserver)s.' % {
+                       'ip': ip_address,
+                       'mask': netmask,
+                       'node': node_name,
+                       'vserver': vserver_name,
+                       'port': '%(port)s-%(vlan)s' % {'port': port,
+                                                      'vlan': vlan}})
+            LOG.debug(msg)
+            return
+
+        if not lif_home_port:
+            mtu = network_allocation.get('mtu') or DEFAULT_MTU
+            lif_home_port = (
+                self._client.create_port_and_broadcast_domain(
+                    node_name, port, vlan, mtu, ipspace_name))
+
+        self._client.create_network_interface(
+            ip_address, netmask, node_name, lif_home_port,
+            vserver_name, lif_name)
 
     @na_utils.trace
     def _create_port_and_broadcast_domain(self, ipspace_name, network_info):
@@ -1526,7 +1605,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         # NOTE(dviroel): Security service and NFS configuration should be
         # handled by SVM DR, so no changes will be made here.
-        vlan = new_net_allocations['segmentation_id']
+        vlan = new_net_allocations[0]['segmentation_id']
 
         @utils.synchronized('netapp-VLAN-%s' % vlan, external=True)
         def setup_network_for_destination_vserver():
@@ -1658,7 +1737,6 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         2. Build the list of export_locations for each share
         3. Release all resources from the source share server
         """
-        new_network_alloc = new_network_alloc[0]
         src_backend_name = share_utils.extract_host(
             source_share_server['host'], level='backend_name')
         src_vserver, src_client = self._get_vserver(
@@ -2085,3 +2163,85 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     LOG.info(msg)
                     return False
         return True
+
+    def check_update_share_server_network_allocations(
+            self, context, share_server, current_network_allocations,
+            new_share_network_subnet, security_services, share_instances,
+            share_instances_rules):
+        """Check if new network configuration is valid."""
+        LOG.debug('Checking if network configuration is valid to update share'
+                  'server %s.', share_server['id'])
+        # Get segmentation_id from current allocations to check if added
+        # subnet is in the same network segment as the others.
+        ref_subnet = current_network_allocations['subnets'][0]
+        ref_subnet_allocation = ref_subnet['network_allocations'][0]
+        seg_id = ref_subnet_allocation['segmentation_id']
+        new_subnet_seg_id = new_share_network_subnet['segmentation_id']
+        network_info = [dict(segmentation_id=seg_id),
+                        dict(segmentation_id=new_subnet_seg_id)]
+        is_valid_configuration = True
+        try:
+            self._validate_network_type([new_share_network_subnet])
+            self._validate_share_network_subnets(network_info)
+        except exception.NetworkBadConfigurationException as e:
+            LOG.error('Invalid share server network allocation. %s', e)
+            is_valid_configuration = False
+
+        return is_valid_configuration
+
+    def _build_model_update(self, current_network_allocations,
+                            new_network_allocations, export_locations=None):
+        """Updates server details for a new set of network allocations"""
+        ports = {}
+        for subnet in current_network_allocations['subnets']:
+            for alloc in subnet['network_allocations']:
+                ports[alloc['id']] = alloc['ip_address']
+
+        for alloc in new_network_allocations['network_allocations']:
+            ports[alloc['id']] = alloc['ip_address']
+
+        model_update = {'server_details': {'ports': jsonutils.dumps(ports)}}
+        if export_locations:
+            model_update.update({'share_updates': export_locations})
+
+        return model_update
+
+    def update_share_server_network_allocations(
+            self, context, share_server, current_network_allocations,
+            new_network_allocations, security_services, shares, snapshots):
+        """Update network allocations for the share server."""
+        vserver_name = self._get_vserver_name(share_server['id'])
+        vserver_client = self._get_api_client(vserver=vserver_name)
+        ipspace_name = self._client.get_vserver_ipspace(vserver_name)
+        network_info = [new_network_allocations]
+
+        LOG.debug('Adding new subnet allocations to share server %s',
+                  share_server['id'])
+        try:
+            self._setup_network_for_vserver(
+                vserver_name, vserver_client, network_info, ipspace_name,
+                enable_nfs=False, security_services=None, nfs_config=None)
+        except Exception as e:
+            with excutils.save_and_reraise_exception():
+                LOG.error("Failed to update vserver network configuration.")
+                updates = self._build_model_update(
+                    current_network_allocations, new_network_allocations,
+                    export_locations=None)
+                e.detail_data = updates
+
+        updated_export_locations = {}
+        for share in shares:
+            if share['replica_state'] == constants.REPLICA_STATE_ACTIVE:
+                host = share['host']
+                export_locations = self._create_export(
+                    share, share_server, vserver_name, vserver_client,
+                    clear_current_export_policy=False,
+                    ensure_share_already_exists=True,
+                    share_host=host)
+                updated_export_locations.update(
+                    {share['id']: export_locations})
+
+        updates = self._build_model_update(
+            current_network_allocations, new_network_allocations,
+            updated_export_locations)
+        return updates

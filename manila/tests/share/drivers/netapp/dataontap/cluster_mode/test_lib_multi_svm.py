@@ -457,6 +457,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_validate_network_type = self.mock_object(
             self.library,
             '_validate_network_type')
+        mock_validate_share_network_subnets = self.mock_object(
+            self.library,
+            '_validate_share_network_subnets')
         self.library.is_nfs_config_supported = nfs_config_support
         mock_get_extra_spec = self.mock_object(
             share_types, "get_share_type_extra_specs",
@@ -470,7 +473,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             "_get_nfs_config_provisioning_options",
             mock.Mock(return_value=nfs_config))
 
-        result = self.library.setup_server(fake.NETWORK_INFO,
+        result = self.library.setup_server(fake.NETWORK_INFO_LIST,
                                            fake.SERVER_METADATA)
 
         ports = {}
@@ -478,6 +481,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             ports[network_allocation['id']] = network_allocation['ip_address']
 
         self.assertTrue(mock_validate_network_type.called)
+        self.assertTrue(mock_validate_share_network_subnets.called)
         self.assertTrue(mock_get_vserver_name.called)
         self.assertTrue(mock_create_vserver.called)
         if nfs_config_support:
@@ -517,10 +521,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library,
             '_validate_network_type')
 
+        mock_validate_share_network_subnets = self.mock_object(
+            self.library,
+            '_validate_share_network_subnets')
+
         self.assertRaises(
             exception.ManilaException,
             self.library.setup_server,
-            fake.NETWORK_INFO,
+            fake.NETWORK_INFO_LIST,
             fake.SERVER_METADATA)
 
         ports = {}
@@ -528,6 +536,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             ports[network_allocation['id']] = network_allocation['ip_address']
 
         self.assertTrue(mock_validate_network_type.called)
+        self.assertTrue(mock_validate_share_network_subnets.called)
         self.assertTrue(mock_get_vserver_name.called)
         self.assertTrue(mock_create_vserver.called)
 
@@ -538,18 +547,61 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             }},
             fake_exception.detail_data)
 
+    def test_setup_server_invalid_subnet(self):
+        invalid_subnet_exception = exception.NetworkBadConfigurationException(
+            reason='This is a fake message')
+        self.mock_object(self.library, '_get_vserver_name',
+                         mock.Mock(return_value=fake.VSERVER1))
+        self.mock_object(self.library, '_validate_network_type')
+        self.mock_object(self.library, '_validate_share_network_subnets',
+                         mock.Mock(side_effect=invalid_subnet_exception))
+
+        self.assertRaises(
+            exception.NetworkBadConfigurationException,
+            self.library.setup_server,
+            fake.NETWORK_INFO_LIST)
+
+        self.library._validate_share_network_subnets.assert_called_once_with(
+            fake.NETWORK_INFO_LIST)
+
+    def test_validate_share_network_subnets(self):
+        fake_vlan = fake.NETWORK_INFO['segmentation_id']
+        network_info_different_seg_id = copy.deepcopy(fake.NETWORK_INFO)
+        network_info_different_seg_id['segmentation_id'] = fake_vlan
+        allocations = network_info_different_seg_id['network_allocations']
+        allocations[0]['segmentation_id'] = fake_vlan
+        fake.NETWORK_INFO_LIST.append(network_info_different_seg_id)
+
+        result = self.library._validate_share_network_subnets(
+            fake.NETWORK_INFO_LIST)
+
+        self.assertIsNone(result)
+
+    def test_validate_share_network_subnets_invalid_vlan_config(self):
+        network_info_different_seg_id = copy.deepcopy(fake.NETWORK_INFO)
+        network_info_different_seg_id['segmentation_id'] = 4004
+        allocations = network_info_different_seg_id['network_allocations']
+        allocations[0]['segmentation_id'] = 4004
+        fake.NETWORK_INFO_LIST.append(network_info_different_seg_id)
+
+        self.assertRaises(
+            exception.NetworkBadConfigurationException,
+            self.library._validate_share_network_subnets,
+            fake.NETWORK_INFO_LIST)
+
     @ddt.data(
-        {'network_info': {'network_type': 'vlan', 'segmentation_id': 1000}},
-        {'network_info': {'network_type': None, 'segmentation_id': None}},
-        {'network_info': {'network_type': 'flat', 'segmentation_id': None}})
+        {'network_info': [{'network_type': 'vlan', 'segmentation_id': 1000}]},
+        {'network_info': [{'network_type': None, 'segmentation_id': None}]},
+        {'network_info': [{'network_type': 'flat', 'segmentation_id': None}]})
     @ddt.unpack
     def test_validate_network_type_with_valid_network_types(self,
                                                             network_info):
-        self.library._validate_network_type(network_info)
+        result = self.library._validate_network_type(network_info)
+        self.assertIsNone(result)
 
     @ddt.data(
-        {'network_info': {'network_type': 'vxlan', 'segmentation_id': 1000}},
-        {'network_info': {'network_type': 'gre', 'segmentation_id': 100}})
+        {'network_info': [{'network_type': 'vxlan', 'segmentation_id': 1000}]},
+        {'network_info': [{'network_type': 'gre', 'segmentation_id': 100}]})
     @ddt.unpack
     def test_validate_network_type_with_invalid_network_types(self,
                                                               network_info):
@@ -575,8 +627,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library.configuration.netapp_enabled_share_protocols = versions
         vserver_id = fake.NETWORK_INFO['server_id']
         vserver_name = fake.VSERVER_NAME_TEMPLATE % vserver_id
-        vserver_client = mock.Mock()
+        fake_lif_home_ports = {fake.CLUSTER_NODES[0]: 'fake_port',
+                               fake.CLUSTER_NODES[1]: 'another_fake_port'}
 
+        vserver_client = mock.Mock()
         self.mock_object(self.library._client,
                          'list_cluster_nodes',
                          mock.Mock(return_value=fake.CLUSTER_NODES))
@@ -601,15 +655,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_create_ipspace',
                          mock.Mock(return_value=fake.IPSPACE))
+        self.mock_object(self.library,
+                         '_create_vserver_lifs')
+        self.mock_object(self.library,
+                         '_create_vserver_routes')
+        self.mock_object(self.library,
+                         '_create_vserver_admin_lif')
+        self.mock_object(self.library._client,
+                         'create_port_and_broadcast_domain',
+                         mock.Mock(side_effect=['fake_port',
+                                                'another_fake_port']))
         get_ipspace_name_for_vlan_port = self.mock_object(
             self.library._client,
             'get_ipspace_name_for_vlan_port',
             mock.Mock(return_value=existing_ipspace))
-        self.mock_object(self.library, '_create_vserver_lifs')
-        self.mock_object(self.library, '_create_vserver_admin_lif')
-        self.mock_object(self.library, '_create_vserver_routes')
 
-        self.library._create_vserver(vserver_name, fake.NETWORK_INFO,
+        self.library._create_vserver(vserver_name, fake.NETWORK_INFO_LIST,
                                      fake.NFS_CONFIG_TCP_UDP_MAX,
                                      nfs_config=nfs_config)
 
@@ -626,11 +687,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._get_api_client.assert_called_once_with(
             vserver=vserver_name)
         self.library._create_vserver_lifs.assert_called_once_with(
-            vserver_name, vserver_client, fake.NETWORK_INFO, fake.IPSPACE)
-        self.library._create_vserver_admin_lif.assert_called_once_with(
-            vserver_name, vserver_client, fake.NETWORK_INFO, fake.IPSPACE)
+            vserver_name, vserver_client, fake.NETWORK_INFO, fake.IPSPACE,
+            lif_home_ports=fake_lif_home_ports)
         self.library._create_vserver_routes.assert_called_once_with(
             vserver_client, fake.NETWORK_INFO)
+        self.library._create_vserver_admin_lif.assert_called_once_with(
+            vserver_name, vserver_client, fake.NETWORK_INFO, fake.IPSPACE,
+            lif_home_ports=fake_lif_home_ports)
         vserver_client.enable_nfs.assert_called_once_with(
             versions, nfs_config=nfs_config)
         self.library._client.setup_security_services.assert_called_once_with(
@@ -673,7 +736,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=existing_ipspace))
         self.mock_object(self.library, '_create_port_and_broadcast_domain')
 
-        self.library._create_vserver(vserver_name, fake.NETWORK_INFO,
+        self.library._create_vserver(vserver_name, fake.NETWORK_INFO_LIST,
                                      metadata={'migration_destination': True})
 
         get_ipspace_name_for_vlan_port.assert_called_once_with(
@@ -762,7 +825,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(network_exception,
                           self.library._create_vserver,
                           vserver_name,
-                          fake.NETWORK_INFO,
+                          fake.NETWORK_INFO_LIST,
                           fake.NFS_CONFIG_TCP_UDP_MAX)
 
         self.library._get_api_client.assert_called_with(vserver=vserver_name)
@@ -770,7 +833,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._setup_network_for_vserver.assert_called_with(
             vserver_name,
             vserver_client,
-            fake.NETWORK_INFO,
+            fake.NETWORK_INFO_LIST,
             fake.IPSPACE,
             security_services=security_service,
             nfs_config=None)
@@ -840,10 +903,43 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._create_lif.assert_has_calls([
             mock.call('fake_vserver_client', fake.VSERVER1, fake.IPSPACE,
                       fake.CLUSTER_NODES[0], 'fake_lif1',
-                      fake.NETWORK_INFO['network_allocations'][0]),
+                      fake.NETWORK_INFO['network_allocations'][0],
+                      lif_home_port=None),
             mock.call('fake_vserver_client', fake.VSERVER1, fake.IPSPACE,
                       fake.CLUSTER_NODES[1], 'fake_lif2',
-                      fake.NETWORK_INFO['network_allocations'][1])])
+                      fake.NETWORK_INFO['network_allocations'][1],
+                      lif_home_port=None)])
+
+    def test_create_vserver_lifs_pre_configured_home_ports(self):
+
+        self.mock_object(self.library._client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
+        self.mock_object(self.library,
+                         '_get_lif_name',
+                         mock.Mock(side_effect=['fake_lif1', 'fake_lif2']))
+        self.mock_object(self.library, '_create_lif')
+
+        lif_home_ports = {
+            fake.CLUSTER_NODES[0]: 'fake_port1',
+            fake.CLUSTER_NODES[1]: 'fake_port2'
+        }
+
+        self.library._create_vserver_lifs(fake.VSERVER1,
+                                          'fake_vserver_client',
+                                          fake.NETWORK_INFO,
+                                          fake.IPSPACE,
+                                          lif_home_ports=lif_home_ports)
+
+        self.library._create_lif.assert_has_calls([
+            mock.call('fake_vserver_client', fake.VSERVER1, fake.IPSPACE,
+                      fake.CLUSTER_NODES[0], 'fake_lif1',
+                      fake.NETWORK_INFO['network_allocations'][0],
+                      lif_home_port=lif_home_ports[fake.CLUSTER_NODES[0]]),
+            mock.call('fake_vserver_client', fake.VSERVER1, fake.IPSPACE,
+                      fake.CLUSTER_NODES[1], 'fake_lif2',
+                      fake.NETWORK_INFO['network_allocations'][1],
+                      lif_home_port=lif_home_ports[fake.CLUSTER_NODES[1]])])
 
     def test_create_vserver_admin_lif(self):
 
@@ -863,7 +959,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._create_lif.assert_has_calls([
             mock.call('fake_vserver_client', fake.VSERVER1, fake.IPSPACE,
                       fake.CLUSTER_NODES[0], 'fake_admin_lif',
-                      fake.NETWORK_INFO['admin_network_allocations'][0])])
+                      fake.NETWORK_INFO['admin_network_allocations'][0],
+                      lif_home_port=None)])
 
     def test_create_vserver_admin_lif_no_admin_network(self):
 
@@ -947,23 +1044,78 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             network_allocations.pop('mtu')
 
         vserver_client = mock.Mock()
+
+        self.mock_object(self.library, '_get_node_data_port',
+                         mock.Mock(return_value='fake_port'))
+
         vserver_client.network_interface_exists = mock.Mock(
             return_value=False)
-        self.mock_object(self.library,
-                         '_get_node_data_port',
-                         mock.Mock(return_value='fake_port'))
+
+        self.library._client.create_port_and_broadcast_domain = (
+            mock.Mock(return_value='fake_port'))
 
         self.library._create_lif(vserver_client,
                                  'fake_vserver',
                                  'fake_ipspace',
                                  'fake_node',
                                  'fake_lif',
-                                 network_allocations)
+                                 network_allocations,
+                                 lif_home_port=None)
 
-        self.library._client.create_network_interface.assert_has_calls([
-            mock.call('10.10.10.10', '255.255.255.0', '1000', 'fake_node',
-                      'fake_port', 'fake_vserver', 'fake_lif',
-                      'fake_ipspace', expected_mtu)])
+        self.library._get_node_data_port.assert_called_once_with(
+            'fake_node')
+
+        (vserver_client.network_interface_exists
+         .assert_called_once_with('fake_vserver', 'fake_node', 'fake_port',
+                                  '10.10.10.10', '255.255.255.0', '1000',
+                                  home_port=None))
+
+        (self.library._client.create_port_and_broadcast_domain
+         .assert_called_once_with('fake_node', 'fake_port', '1000',
+                                  expected_mtu, 'fake_ipspace'))
+
+        (self.library._client.create_network_interface
+         .assert_called_once_with('10.10.10.10', '255.255.255.0',
+                                  'fake_node', 'fake_port',
+                                  'fake_vserver', 'fake_lif'))
+
+    def test_create_lif_existent_home_port(self):
+        """Tests case where a existent port is passed to the function"""
+
+        network_allocations = copy.deepcopy(
+            fake.NETWORK_INFO['network_allocations'][0])
+
+        vserver_client = mock.Mock()
+        mock_get_node_data_port = self.mock_object(
+            self.library, '_get_node_data_port')
+
+        vserver_client.network_interface_exists = mock.Mock(
+            return_value=False)
+
+        mock_create_port_and_broadcast_domain = (
+            self.library._client.create_port_and_broadcast_domain)
+
+        self.library._create_lif(vserver_client,
+                                 'fake_vserver',
+                                 'fake_ipspace',
+                                 'fake_node',
+                                 'fake_lif',
+                                 network_allocations,
+                                 lif_home_port='fake_port_from_param')
+
+        (vserver_client.network_interface_exists
+         .assert_called_once_with('fake_vserver', 'fake_node',
+                                  'fake_port_from_param',
+                                  '10.10.10.10', '255.255.255.0', '1000',
+                                  home_port='fake_port_from_param'))
+
+        mock_get_node_data_port.assert_not_called()
+        mock_create_port_and_broadcast_domain.assert_not_called()
+
+        (self.library._client.create_network_interface
+         .assert_called_once_with('10.10.10.10', '255.255.255.0',
+                                  'fake_node', 'fake_port_from_param',
+                                  'fake_vserver', 'fake_lif'))
 
     def test_create_lif_if_nonexistent_already_present(self):
 
@@ -979,7 +1131,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                  fake.IPSPACE,
                                  'fake_node',
                                  'fake_lif',
-                                 fake.NETWORK_INFO['network_allocations'][0])
+                                 fake.NETWORK_INFO['network_allocations'][0],
+                                 lif_home_port=None)
 
         self.assertFalse(self.library._client.create_network_interface.called)
 
@@ -2737,12 +2890,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.library._setup_networking_for_destination_vserver(
             self.mock_dest_client, self.fake_vserver,
-            fake.NETWORK_INFO)
+            fake.NETWORK_INFO_LIST)
 
         self.mock_dest_client.get_vserver_ipspace.assert_called_once_with(
             self.fake_vserver)
         self.library._setup_network_for_vserver.assert_called_once_with(
-            self.fake_vserver, self.mock_dest_client, fake.NETWORK_INFO,
+            self.fake_vserver, self.mock_dest_client, fake.NETWORK_INFO_LIST,
             fake.IPSPACE, enable_nfs=False, security_services=None)
 
     def test__migration_complete_svm_dr(self):
@@ -2758,7 +2911,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._share_server_migration_complete_svm_dr(
             self.fake_src_share_server, self.fake_dest_share_server,
             self.fake_src_vserver, self.mock_src_client,
-            [fake.SHARE_INSTANCE], fake.NETWORK_INFO
+            [fake.SHARE_INSTANCE], fake.NETWORK_INFO_LIST
         )
 
         self.library._get_vserver.assert_called_once_with(
@@ -2784,7 +2937,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         (self.library._setup_networking_for_destination_vserver
             .assert_called_once_with(
                 self.mock_dest_client, self.fake_dest_vserver,
-                fake.NETWORK_INFO))
+                fake.NETWORK_INFO_LIST))
         self.mock_dest_client.start_vserver.assert_called_once_with(
             self.fake_dest_vserver
         )
@@ -2852,7 +3005,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.fake_src_share_server,
             self.fake_dest_share_server,
             share_instances, [],
-            [fake.NETWORK_INFO]
+            fake.NETWORK_INFO_LIST
         )
 
         expected_share_updates = {
@@ -2879,7 +3032,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock_complete_svm_dr.assert_called_once_with(
                 self.fake_src_share_server, self.fake_dest_share_server,
                 self.fake_src_vserver, self.mock_src_client,
-                share_instances, fake.NETWORK_INFO
+                share_instances, fake.NETWORK_INFO_LIST
             )
             self.library._delete_share.assert_called_once_with(
                 fake.SHARE_INSTANCE, self.fake_src_vserver,
@@ -2899,7 +3052,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             (self.library._setup_networking_for_destination_vserver.
                 assert_called_once_with(self.mock_dest_client,
                                         self.fake_src_vserver,
-                                        fake.NETWORK_INFO))
+                                        fake.NETWORK_INFO_LIST))
         if should_recreate_export:
             create_export_calls = [
                 mock.call(
@@ -2977,7 +3130,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           self.fake_src_share_server,
                           self.fake_dest_share_server,
                           [fake.SHARE_INSTANCE], [],
-                          [fake.NETWORK_INFO])
+                          fake.NETWORK_INFO_LIST)
 
         self.library._get_vserver.assert_has_calls([
             mock.call(share_server=self.fake_src_share_server,
@@ -3477,11 +3630,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_update_share_server_security_service(self, current, new,
                                                   existing):
         fake_context = mock.Mock()
-        fake_net_info = copy.deepcopy(fake.NETWORK_INFO)
+        fake_net_info = copy.deepcopy(fake.NETWORK_INFO_LIST)
         new_sec_service = copy.deepcopy(new)
         curr_sec_service = copy.deepcopy(current) if current else None
         new_type = new_sec_service['type'].lower()
-        fake_net_info['security_services'] = existing
+        fake_net_info[0]['security_services'] = existing
 
         if curr_sec_service:
             # domain modification aren't support
@@ -3513,7 +3666,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake_vserver_client, 'modify_active_directory_security_service')
 
         self.library.update_share_server_security_service(
-            fake_context, fake.SHARE_SERVER, [fake_net_info],
+            fake_context, fake.SHARE_SERVER, fake_net_info,
             new_sec_service, current_security_service=curr_sec_service)
 
         dns_ips = set()
@@ -3530,7 +3683,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_vserver.assert_called_once_with(
             share_server=fake.SHARE_SERVER)
         mock_check_update.assert_called_once_with(
-            fake_context, fake.SHARE_SERVER, [fake_net_info], new_sec_service,
+            fake_context, fake.SHARE_SERVER, fake_net_info, new_sec_service,
             current_security_service=curr_sec_service)
 
         if curr_sec_service is None:
@@ -3565,13 +3718,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(
             exception.NetAppException,
             self.library.update_share_server_security_service,
-            fake_context, fake.SHARE_SERVER, [fake_net_info],
+            fake_context, fake.SHARE_SERVER, fake_net_info,
             new_sec_service, current_security_service=curr_sec_service)
 
         mock_get_vserver.assert_called_once_with(
             share_server=fake.SHARE_SERVER)
         mock_check_update.assert_called_once_with(
-            fake_context, fake.SHARE_SERVER, [fake_net_info],
+            fake_context, fake.SHARE_SERVER, fake_net_info,
             new_sec_service, current_security_service=curr_sec_service)
 
     @ddt.data(
@@ -3602,3 +3755,173 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             None, None, None, new, current_security_service=current)
 
         self.assertEqual(expected, result)
+
+    def test_check_update_share_server_network_allocations(self):
+        net_alloc_seg_id = fake.USER_NETWORK_ALLOCATIONS[0]['segmentation_id']
+        network_segments = [
+            {'segmentation_id': net_alloc_seg_id},
+            {'segmentation_id': fake.SHARE_NETWORK_SUBNET['segmentation_id']}
+        ]
+
+        mock__validate_network_type = self.mock_object(
+            self.library, '_validate_network_type')
+        mock__validate_share_network_subnets = self.mock_object(
+            self.library, '_validate_share_network_subnets')
+
+        result = self.library.check_update_share_server_network_allocations(
+            None, fake.SHARE_SERVER, fake.CURRENT_NETWORK_ALLOCATIONS,
+            fake.SHARE_NETWORK_SUBNET, None, None,
+            None)
+
+        self.assertTrue(result)
+        mock__validate_network_type.assert_called_once_with(
+            [fake.SHARE_NETWORK_SUBNET])
+        mock__validate_share_network_subnets.assert_called_once_with(
+            network_segments)
+
+    def test_check_update_share_server_network_allocations_fail_on_type(self):
+        network_exception = exception.NetworkBadConfigurationException(
+            reason='fake exception message')
+
+        mock_validate_network_type = self.mock_object(
+            self.library, '_validate_network_type',
+            mock.Mock(side_effect=network_exception))
+
+        mock_validate_share_network_subnets = self.mock_object(
+            self.library, '_validate_share_network_subnets')
+
+        result = self.library.check_update_share_server_network_allocations(
+            None, fake.SHARE_SERVER, fake.CURRENT_NETWORK_ALLOCATIONS,
+            fake.SHARE_NETWORK_SUBNET, None, None, None)
+
+        self.assertFalse(result)
+        mock_validate_network_type.assert_called_once_with(
+            [fake.SHARE_NETWORK_SUBNET])
+        mock_validate_share_network_subnets.assert_not_called()
+
+    def test_check_update_share_server_network_allocations_subnets_error(self):
+        net_alloc_seg_id = fake.USER_NETWORK_ALLOCATIONS[0]['segmentation_id']
+        network_segments = [
+            {'segmentation_id': net_alloc_seg_id},
+            {'segmentation_id': fake.SHARE_NETWORK_SUBNET['segmentation_id']}
+        ]
+        network_exception = exception.NetworkBadConfigurationException(
+            reason='fake exception message')
+
+        mock__validate_network_type = self.mock_object(
+            self.library, '_validate_network_type')
+        mock__validate_share_network_subnets = self.mock_object(
+            self.library, '_validate_share_network_subnets',
+            mock.Mock(side_effect=network_exception))
+
+        result = self.library.check_update_share_server_network_allocations(
+            None, fake.SHARE_SERVER, fake.CURRENT_NETWORK_ALLOCATIONS,
+            fake.SHARE_NETWORK_SUBNET, None, None,
+            None)
+
+        self.assertFalse(result)
+        mock__validate_network_type.assert_called_once_with(
+            [fake.SHARE_NETWORK_SUBNET])
+        mock__validate_share_network_subnets.assert_called_once_with(
+            network_segments)
+
+    @ddt.data(True, False)
+    def test_build_model_update(self, has_export_locations):
+        server_model_update = copy.deepcopy(fake.SERVER_MODEL_UPDATE)
+
+        export_locations = server_model_update['share_updates']
+        if not has_export_locations:
+            export_locations = None
+            del server_model_update['share_updates']
+
+        result = self.library._build_model_update(
+            fake.CURRENT_NETWORK_ALLOCATIONS, fake.NEW_NETWORK_ALLOCATIONS,
+            export_locations=export_locations)
+
+        self.assertEqual(server_model_update, result)
+
+    @ddt.data('active', 'dr')
+    def test_update_share_server_network_allocations(self, replica_state):
+        fake_context = mock.Mock()
+        fake_share_server = fake.SHARE_SERVER
+        fake_current_network_allocations = fake.USER_NETWORK_ALLOCATIONS
+        fake_new_network_allocations = fake.USER_NETWORK_ALLOCATIONS
+        fake_share_instances = [copy.deepcopy(fake.SHARE_INSTANCE)]
+        fake_share_instances[0]['replica_state'] = replica_state
+        fake_vserver_name = fake.VSERVER1
+        fake_vserver_client = mock.Mock()
+        fake_ipspace_name = fake.IPSPACE
+        fake_export_locations = fake.NFS_EXPORTS[0]
+        fake_updates = fake.SERVER_MODEL_UPDATE
+        fake_updated_export_locations = {
+            fake_share_instances[0]['id']: fake_export_locations,
+        }
+
+        self.mock_object(self.library, '_get_vserver_name',
+                         mock.Mock(return_value=fake_vserver_name))
+        self.mock_object(self.library, '_get_api_client',
+                         mock.Mock(return_value=fake_vserver_client))
+        self.mock_object(self.library._client, 'get_vserver_ipspace',
+                         mock.Mock(return_value=fake_ipspace_name))
+        self.mock_object(self.library, '_setup_network_for_vserver')
+        self.mock_object(self.library, '_create_export',
+                         mock.Mock(return_value=fake_export_locations))
+        self.mock_object(self.library, '_build_model_update',
+                         mock.Mock(return_value=fake_updates))
+
+        self.assertEqual(
+            fake_updates,
+            self.library.update_share_server_network_allocations(
+                fake_context, fake_share_server,
+                fake_current_network_allocations, fake_new_network_allocations,
+                None, fake_share_instances, None))
+        self.library._get_vserver_name.assert_called_once_with(
+            fake_share_server['id'])
+        self.library._get_api_client.assert_called_once_with(
+            vserver=fake_vserver_name)
+        self.library._client.get_vserver_ipspace.assert_called_once_with(
+            fake_vserver_name)
+        self.library._setup_network_for_vserver.assert_called_once_with(
+            fake_vserver_name, fake_vserver_client,
+            [fake_new_network_allocations], fake_ipspace_name,
+            enable_nfs=False, security_services=None, nfs_config=None)
+        if replica_state == 'active':
+            self.library._create_export.assert_called_once_with(
+                fake_share_instances[0], fake_share_server,
+                fake_vserver_name, fake_vserver_client,
+                clear_current_export_policy=False,
+                ensure_share_already_exists=True,
+                share_host=fake_share_instances[0]['host'])
+        else:
+            self.library._create_export.assert_not_called()
+            fake_updated_export_locations = {}
+
+        self.library._build_model_update.assert_called_once_with(
+            fake_current_network_allocations, fake_new_network_allocations,
+            fake_updated_export_locations)
+
+    def test_update_share_server_network_allocations_setup_network_fail(self):
+        fake_context = mock.Mock()
+        fake_share_server = fake.SHARE_SERVER
+        fake_current_network_allocations = fake.USER_NETWORK_ALLOCATIONS
+        fake_new_network_allocations = fake.USER_NETWORK_ALLOCATIONS
+        fake_share_instances = [fake.SHARE_INSTANCE]
+        fake_updates = fake.SERVER_MODEL_UPDATE
+
+        self.mock_object(self.library, '_get_vserver_name')
+        self.mock_object(self.library, '_get_api_client')
+        self.mock_object(self.library._client, 'get_vserver_ipspace')
+        self.mock_object(self.library, '_setup_network_for_vserver',
+                         mock.Mock(side_effect=netapp_api.NaApiError))
+        self.mock_object(self.library, '_build_model_update',
+                         mock.Mock(return_value=fake_updates))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.library.update_share_server_network_allocations,
+                          fake_context, fake_share_server,
+                          fake_current_network_allocations,
+                          fake_new_network_allocations, None,
+                          fake_share_instances, None)
+        self.library._build_model_update.assert_called_once_with(
+            fake_current_network_allocations, fake_new_network_allocations,
+            export_locations=None)

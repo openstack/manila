@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    NetApp ONTAP: Add support for multiple subnets per availability zone
+    when in the same network segment. In addition, new share network
+    subnets can now be added to share networks with in-use share
+    servers (that has one or more shares in place).
