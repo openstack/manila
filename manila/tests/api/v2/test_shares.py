@@ -715,6 +715,8 @@ class ShareAPITest(test.TestCase):
             "share_network_id": "fakenetid"
         }
         fake_network = {'id': 'fakenetid'}
+        share_net_subnets = [db_utils.create_share_network_subnet(
+            id='fake_subnet_id', share_network_id=fake_network['id'])]
         create_mock = mock.Mock(return_value=stubs.stub_share('1',
                                 display_name=shr['name'],
                                 display_description=shr['description'],
@@ -728,7 +730,8 @@ class ShareAPITest(test.TestCase):
         self.mock_object(common, 'check_share_network_is_active',
                          mock.Mock(return_value=True))
         self.mock_object(
-            db, 'share_network_subnet_get_by_availability_zone_id')
+            db, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=share_net_subnets))
 
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/v2/fake/shares', version='2.7')
@@ -1342,6 +1345,8 @@ class ShareAPITest(test.TestCase):
         }
         parent_share_net = 444
         fake_network = {'id': parent_share_net}
+        share_net_subnets = [db_utils.create_share_network_subnet(
+            id='fake_subnet_id', share_network_id=fake_network['id'])]
         create_mock = mock.Mock(return_value=stubs.stub_share('1',
                                 display_name=shr['name'],
                                 display_description=shr['description'],
@@ -1364,7 +1369,8 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value=fake_network))
         self.mock_object(
-            db, 'share_network_subnet_get_by_availability_zone_id')
+            db, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=share_net_subnets))
 
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/v2/fake/shares', version='2.7')
@@ -1391,6 +1397,8 @@ class ShareAPITest(test.TestCase):
             "snapshot_id": 333,
             "share_network_id": parent_share_net,
         }
+        share_net_subnets = [db_utils.create_share_network_subnet(
+            id='fake_subnet_id', share_network_id=parent_share_net)]
         create_mock = mock.Mock(return_value=stubs.stub_share('1',
                                 display_name=shr['name'],
                                 display_description=shr['description'],
@@ -1413,7 +1421,8 @@ class ShareAPITest(test.TestCase):
         self.mock_object(common, 'check_share_network_is_active',
                          mock.Mock(return_value=True))
         self.mock_object(
-            db, 'share_network_subnet_get_by_availability_zone_id')
+            db, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=share_net_subnets))
 
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/v2/fake/shares', version='2.7')

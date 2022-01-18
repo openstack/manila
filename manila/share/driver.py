@@ -277,6 +277,10 @@ class ShareDriver(object):
         # in-use share networks. This property will be saved in every new share
         # server.
         self.security_service_update_support = False
+        # Indicates whether a driver supports adding subnet with its
+        # allocations to an in-use share network availability zone. This
+        # property will be saved in every new share server.
+        self.network_allocation_update_support = False
         self.dhss_mandatory_security_service_association = {}
 
         self.pools = []
@@ -1323,6 +1327,9 @@ class ShareDriver(object):
             goodness_function=self.get_goodness_function(),
             security_service_update_support=(
                 self.security_service_update_support),
+            network_allocation_update_support=(
+                self.network_allocation_update_support),
+            share_server_multiple_subnet_support=False,
         )
         if isinstance(data, dict):
             common.update(data)
@@ -3339,5 +3346,267 @@ class ShareDriver(object):
 
         :return: 'True' if the driver support the requested update, 'False'
             otherwise.
+        """
+        raise NotImplementedError()
+
+    def check_update_share_server_network_allocations(
+            self, context, share_server, current_network_allocations,
+            new_share_network_subnet, security_services, share_instances,
+            share_instances_rules):
+        """"Check if the share server network allocation update is supported.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param share_server: Reference to the share server object that will be
+            updated.
+        :param current_network_allocations: All network allocations associated
+            with the share server that will be updated:
+
+        Example::
+
+            {
+                'admin_network_allocations':
+                    [
+                        {
+                            'ip_address': '10.193.154.11',
+                            'ip_version': 4,
+                            'cidr': '10.193.154.0/28',
+                            'gateway': '10.193.154.1',
+                            'mtu': 1500,
+                            'network_type': 'vlan',
+                            'segmentation_id': 3000,
+                            'mac_address': ' AA:AA:AA:AA:AA:AA',
+                            ...
+                        },
+                    ],
+                'subnets':
+                    [
+                       {
+                        'share_network_subnet_id': '0bdeaa8c6db3-3bc10d67',
+                        'neutron_net_id': '2598-4122-bb62-0bdeaa8c6db3',
+                        'neutron_subnet_id': '3bc10d67-2598-4122-bb62',
+                        'network_allocations':
+                            [
+                                {
+                                    'ip_address': '10.193.154.10',
+                                    'ip_version': 4,
+                                    'cidr': '10.193.154.0/28',
+                                    'gateway': '10.193.154.1',
+                                    'mtu': 1500,
+                                    'network_type': 'vlan',
+                                    'segmentation_id': 3000,
+                                    'mac_address': ' AA:AA:AA:AA:AA:AA',
+                                    ...
+                                },
+                            ],
+                        },
+                    ],
+            }
+
+        :param new_share_network_subnet: dict containing the subnet data that
+            has to be checked if it can be added to the share server:
+
+        Example::
+
+            {
+                'availability_zone_id': '0bdeaa8c6db3-3bc10d67',
+                'neutron_net_id': '2598-4122-bb62-0bdeaa8c6db3',
+                'neutron_subnet_id': '3bc10d67-2598-4122-bb62',
+                'ip_version': 4,
+                'cidr': '10.193.154.0/28',
+                'gateway': '10.193.154.1',
+                'mtu': 1500,
+                'network_type': 'vlan',
+                'segmentation_id': 3000,
+            }
+
+        :param security_services: list of security services configured with
+            this share server.
+        :param share_instances: A list of share instances that belong to the
+            share server that is affected by the update.
+        :param share_instances_rules: A list of access rules, grouped by share
+            instance, in the following format.
+
+        Example::
+
+            [
+               {
+                'share_instance_id': '3bc10d67-2598-4122-bb62-0bdeaa8c6db3',
+                'access_rules':
+                [
+                    {
+                    'access_id':'906d0094-3e34-4d6c-a184-d08a908033e3',
+                    'access_type':'ip',
+                    'access_key':None,
+                    'access_to':'10.0.0.1',
+                    'access_level':'rw'
+                     ...
+                    },
+                ],
+                },
+            ]
+
+        :return Boolean indicating whether the update is possible or not. It is
+            the driver responsibility to log the reason why not accepting the
+            update.
+        """
+        raise NotImplementedError()
+
+    def update_share_server_network_allocations(
+            self, context, share_server, current_network_allocations,
+            new_network_allocations, security_services, shares, snapshots):
+        """Updates a share server's network allocations.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param share_server: reference to the share server that have to update
+            network allocations.
+        :param current_network_allocations: all network allocations associated
+            with the share server that will be updated
+
+        Example::
+
+            {
+                'admin_network_allocations':
+                    [
+                        {
+                            'ip_address': '10.193.154.11',
+                            'ip_version': 4,
+                            'cidr': '10.193.154.0/28',
+                            'gateway': '10.193.154.1',
+                            'mtu': 1500,
+                            'network_type': 'vlan',
+                            'segmentation_id': 3000,
+                            'mac_address': ' AA:AA:AA:AA:AA:AA',
+                        },
+                        ...
+                    ],
+                'subnets':
+                    [
+                       {
+                        'share_network_subnet_id': '0bdeaa8c6db3-3bc10d67',
+                        'neutron_net_id': '2598-4122-bb62-0bdeaa8c6db3',
+                        'neutron_subnet_id': '3bc10d67-2598-4122-bb62',
+                        'network_allocations':
+                            [
+                                {
+                                    'ip_address': '10.193.154.10',
+                                    'ip_version': 4,
+                                    'cidr': '10.193.154.0/28',
+                                    'gateway': '10.193.154.1',
+                                    'mtu': 1500,
+                                    'network_type': 'vlan',
+                                    'segmentation_id': 3000,
+                                    'mac_address': ' AA:AA:AA:AA:AA:AA',
+                                },
+                                ...
+                            ],
+                        },
+                    ],
+            }
+
+        :param new_network_allocations: allocations that must be configured in
+            the share server.
+
+        Example::
+
+            {
+                'share_network_subnet_id': '0bdeaa8c6db3-3bc10d67',
+                'neutron_net_id': '2598-4122-bb62-0bdeaa8c6db3',
+                'neutron_subnet_id': '3bc10d67-2598-4122-bb62',
+                'network_allocations':
+                    [
+                        {
+                            'ip_address': '10.193.154.10',
+                            'ip_version': 4,
+                            'cidr': '10.193.154.0/28',
+                            'gateway': '10.193.154.1',
+                            'mtu': 1500,
+                            'network_type': 'vlan',
+                            'segmentation_id': 3000,
+                            'mac_address': 'AA:AA:AA:AA:AA:AA',
+                            ...
+                        },
+                    ],
+            },
+
+        :param security_services: list of security services configured with
+            this share server.
+        :param shares: All shares in the share server.
+        :param snapshots: All snapshots in the share server.
+
+        :raises: Exception.
+            By raising an exception, the share server and all its shares and
+            snapshots instances will be set to 'error'. The error can contain
+            the field 'details_data' as a dict with the key 'server_details'
+            containing the backend details dict that will be saved to share
+            server.
+
+        :return If the update changes the shares export locations or snapshots
+                export locations, this method should return a dictionary
+                containing a list of share instances and snapshot instances
+                indexed by their id's, where each instance should provide a
+                dict with the relevant information that need to be updated.
+                Also, the returned dict can contain the updated back end
+                details to be saved in the database.
+
+                Example::
+
+                    {
+                        'share_updates':
+                        {
+                            '4363eb92-23ca-4888-9e24-502387816e2a':
+                            [
+                                {
+                                'path': '1.2.3.4:/foo',
+                                'metadata': {},
+                                'is_admin_only': False
+                                },
+                                {
+                                'path': '5.6.7.8:/foo',
+                                'metadata': {},
+                                'is_admin_only': True
+                                },
+                            ],
+                            ...
+                        },
+                        'snapshot_updates':
+                        {
+                            'bc4e3b28-0832-4168-b688-67fdc3e9d408':
+                            {
+                            'provider_location': '/snapshots/foo/bar_1',
+                            'export_locations':
+                            [
+                                {
+                                'path': '1.2.3.4:/snapshots/foo/bar_1',
+                                'is_admin_only': False,
+                                },
+                                {
+                                'path': '5.6.7.8:/snapshots/foo/bar_1',
+                                'is_admin_only': True,
+                                },
+                            ],
+                            },
+                            '2e62b7ea-4e30-445f-bc05-fd523ca62941':
+                            {
+                            'provider_location': '/snapshots/foo/bar_2',
+                            'export_locations':
+                            [
+                                {
+                                'path': '1.2.3.4:/snapshots/foo/bar_2',
+                                'is_admin_only': False,
+                                },
+                                {
+                                'path': '5.6.7.8:/snapshots/foo/bar_2',
+                                'is_admin_only': True,
+                                },
+                            ],
+                            },
+                        }
+                        'server_details':
+                        {
+                            'new_share_server_info_key':
+                                'new_share_server_info_value',
+                        },
+                    }
+
         """
         raise NotImplementedError()

@@ -89,6 +89,7 @@ class ServiceFlagsTestCase(test.TestCase):
         app = service.Service.create(host=host, binary=binary)
         app.start()
         app.stop()
+        app.wait()
         ref = db.service_get(context.get_admin_context(), app.service_id)
         db.service_destroy(context.get_admin_context(), app.service_id)
         self.assertFalse(ref['disabled'])
@@ -122,6 +123,13 @@ service_create = {
     'topic': topic,
     'report_count': 0,
     'availability_zone': 'nova',
+}
+service_create_other_az = {
+    'host': host,
+    'binary': binary,
+    'topic': topic,
+    'report_count': 0,
+    'availability_zone': 'other-zone',
 }
 service_ref = {
     'host': host,
@@ -197,6 +205,58 @@ class ServiceTestCase(test.TestCase):
             mock.ANY, service_create)
         service.db.service_get.assert_called_once_with(
             mock.ANY, service_ref['id'])
+        service.db.service_update.assert_called_once_with(
+            mock.ANY, service_ref['id'], mock.ANY)
+
+    @mock.patch.object(service.db, 'service_get_by_args',
+                       mock.Mock(side_effect=fake_service_get_by_args))
+    @mock.patch.object(service.db, 'service_create',
+                       mock.Mock(return_value=service_ref))
+    @mock.patch.object(service.db, 'service_get',
+                       mock.Mock(return_value=service_ref))
+    @mock.patch.object(service.db, 'service_update',
+                       mock.Mock(return_value=service_ref.
+                                 update({'report_count': 1})))
+    def test_report_state_newly_connected_different_az(self):
+        serv = service.Service(host, binary, topic, CONF.fake_manager)
+        serv.availability_zone = 'other-zone'
+        serv.start()
+        serv.model_disconnected = True
+        serv.report_state()
+        self.assertFalse(serv.model_disconnected)
+        service.db.service_get_by_args.assert_called_once_with(
+            mock.ANY, host, binary)
+        service.db.service_create.assert_called_once_with(
+            mock.ANY, service_create_other_az)
+        service.db.service_get.assert_called_once_with(
+            mock.ANY, service_ref['id'])
+        service.db.service_update.assert_called_once_with(
+            mock.ANY, service_ref['id'], mock.ANY)
+
+    @mock.patch.object(service.db, 'service_get_by_args',
+                       mock.Mock(side_effect=fake_service_get_by_args))
+    @mock.patch.object(service.db, 'service_create',
+                       mock.Mock(return_value=service_ref))
+    @mock.patch.object(service.db, 'service_get',
+                       mock.Mock(side_effect=[exception.NotFound,
+                                              service_ref]))
+    @mock.patch.object(service.db, 'service_update',
+                       mock.Mock(return_value=service_ref.
+                                 update({'report_count': 1})))
+    def test_report_state_newly_connected_not_found(self):
+        serv = service.Service(host, binary, topic, CONF.fake_manager)
+        serv.start()
+        serv.model_disconnected = True
+        serv.report_state()
+        self.assertFalse(serv.model_disconnected)
+        service.db.service_get_by_args.assert_called_once_with(
+            mock.ANY, host, binary)
+        service.db.service_create.assert_has_calls([
+            mock.call(mock.ANY, service_create),
+            mock.call(mock.ANY, service_create)])
+        service.db.service_get.assert_has_calls([
+            mock.call(mock.ANY, service_ref['id']),
+            mock.call(mock.ANY, service_ref['id'])])
         service.db.service_update.assert_called_once_with(
             mock.ANY, service_ref['id'], mock.ANY)
 

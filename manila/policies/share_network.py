@@ -99,6 +99,11 @@ deprecated_share_network_reset_status = policy.DeprecatedRule(
     deprecated_reason=DEPRECATED_REASON,
     deprecated_since=versionutils.deprecated.WALLABY
 )
+deprecated_share_network_subnet_create_check = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'subnet_create_check',
+    check_str=base.RULE_DEFAULT
+)
+
 
 share_network_policies = [
     policy.DocumentedRuleDefault(
@@ -283,6 +288,20 @@ share_network_policies = [
             }
         ],
         deprecated_rule=deprecated_share_network_get_all
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'subnet_create_check',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Check the feasibility of create a new share network "
+                    "subnet for share network.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-networks/{share_network_id}/action'
+            }
+        ],
+        deprecated_rule=deprecated_share_network_subnet_create_check
     ),
 ]
 

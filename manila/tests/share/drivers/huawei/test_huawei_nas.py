@@ -1181,7 +1181,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'id': 'fake_network_allocation_id',
             'ip_address': '111.111.111.109',
         }]
-        self.fake_network_info = {
+        self.fake_network_info = [{
             'server_id': '0',
             'segmentation_id': '2',
             'cidr': '111.111.111.0/24',
@@ -1190,7 +1190,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'security_services': '',
             'network_allocations': self.fake_network_allocations,
             'network_type': 'vlan',
-        }
+        }]
         self.fake_active_directory = {
             'type': 'active_directory',
             'dns_ip': '100.97.5.5',
@@ -2435,6 +2435,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
             "ipv4_support": True,
             "ipv6_support": False,
             "security_service_update_support": False,
+            "share_server_multiple_subnet_support": False,
+            "network_allocation_update_support": False,
         }
 
         if replication_support:
@@ -3323,7 +3325,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
 
     def test_setup_server_invalid_ipv4(self):
         netwot_info_invali_ipv4 = self.fake_network_info
-        netwot_info_invali_ipv4['network_allocations'][0]['ip_address'] = (
+        netwot_info_invali_ipv4[0]['network_allocations'][0]['ip_address'] = (
             "::1/128")
         self.assertRaises(exception.InvalidInput,
                           self.driver._setup_server,
@@ -3332,7 +3334,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
     @dec_driver_handles_share_servers
     def test_setup_server_network_type_error(self):
         vxlan_netwotk_info = self.fake_network_info
-        vxlan_netwotk_info['network_type'] = 'vxlan'
+        vxlan_netwotk_info[0]['network_type'] = 'vxlan'
         self.assertRaises(exception.NetworkBadConfigurationException,
                           self.driver.setup_server,
                           vxlan_netwotk_info)
@@ -3412,13 +3414,13 @@ class HuaweiShareDriverTestCase(test.TestCase):
             logical_port='CTE0.A.H0;CTE0.A.H2;CTE0.B.H0;BOND0')
         self.driver.plugin.configuration.manila_huawei_conf_file = (
             self.fake_conf_file)
-        fake_network_info = {
+        fake_network_info = [{
             'server_id': '0',
             'segmentation_id': None,
             'cidr': '111.111.111.0/24',
             'network_allocations': self.fake_network_allocations,
             'network_type': None,
-        }
+        }]
         self.mock_object(self.driver.plugin, '_get_online_port',
                          mock.Mock(return_value=(['CTE0.A.H0', 'CTE0.A.H2',
                                                   'CTE0.B.H0'], ['BOND0'])))
@@ -3476,7 +3478,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
                 return self.driver.plugin.helper.do_call(*args, **kwargs)
 
         fake_network_info = self.fake_network_info
-        fake_network_info['security_services'] = [
+        fake_network_info[0]['security_services'] = [
             self.fake_active_directory, self.fake_ldap]
         self.mock_object(self.driver.plugin.helper, "delete_vlan")
         self.mock_object(self.driver.plugin.helper, "delete_AD_config")
@@ -3509,7 +3511,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
     @dec_driver_handles_share_servers
     def test_setup_server_with_ad_domain_success(self):
         fake_network_info = self.fake_network_info
-        fake_network_info['security_services'] = [self.fake_active_directory]
+        fake_network_info[0]['security_services'] = (
+            [self.fake_active_directory])
         self.mock_object(self.driver.plugin.helper,
                          "get_AD_config",
                          mock.Mock(
@@ -3531,8 +3534,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
     @dec_driver_handles_share_servers
     def test_setup_server_with_ldap_domain_success(self, server_ips):
         fake_network_info = self.fake_network_info
-        fake_network_info['security_services'] = [self.fake_ldap]
-        fake_network_info['security_services'][0]['server'] = server_ips
+        fake_network_info[0]['security_services'] = [self.fake_ldap]
+        fake_network_info[0]['security_services'][0]['server'] = server_ips
         self.mock_object(
             self.driver.plugin.helper,
             "get_LDAP_config",
@@ -3547,8 +3550,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
     def test_setup_server_with_ldap_domain_fail(self):
         server_ips = "100.97.5.87,100.97.5.88,100.97.5.89,100.97.5.86"
         fake_network_info = self.fake_network_info
-        fake_network_info['security_services'] = [self.fake_ldap]
-        fake_network_info['security_services'][0]['server'] = server_ips
+        fake_network_info[0]['security_services'] = [self.fake_ldap]
+        fake_network_info[0]['security_services'][0]['server'] = server_ips
         self.mock_object(
             self.driver.plugin.helper,
             "get_LDAP_config",
@@ -3573,7 +3576,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
     @dec_driver_handles_share_servers
     def test_setup_server_with_security_service_invalid(self, data):
         fake_network_info = self.fake_network_info
-        fake_network_info['security_services'] = [data]
+        fake_network_info[0]['security_services'] = [data]
         self.assertRaises(exception.InvalidInput,
                           self.driver.setup_server,
                           fake_network_info)
@@ -3592,7 +3595,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
              'server': '',
              'domain': ''},
         ]
-        fake_network_info['security_services'] = ss
+        fake_network_info[0]['security_services'] = ss
         self.assertRaises(exception.InvalidInput,
                           self.driver.setup_server,
                           fake_network_info)
@@ -3600,7 +3603,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
     @dec_driver_handles_share_servers
     def test_setup_server_dns_exist_error(self):
         fake_network_info = self.fake_network_info
-        fake_network_info['security_services'] = [self.fake_active_directory]
+        fake_network_info[0]['security_services'] = (
+            [self.fake_active_directory])
         self.mock_object(self.driver.plugin.helper,
                          "get_DNS_ip_address",
                          mock.Mock(return_value=['100.97.5.85']))
@@ -3612,7 +3616,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
     @dec_driver_handles_share_servers
     def test_setup_server_ad_exist_error(self):
         fake_network_info = self.fake_network_info
-        fake_network_info['security_services'] = [self.fake_active_directory]
+        fake_network_info[0]['security_services'] = (
+            [self.fake_active_directory])
         self.mock_object(self.driver.plugin.helper,
                          "get_AD_config",
                          mock.Mock(
@@ -3626,7 +3631,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
     @dec_driver_handles_share_servers
     def test_setup_server_ldap_exist_error(self):
         fake_network_info = self.fake_network_info
-        fake_network_info['security_services'] = [self.fake_ldap]
+        fake_network_info[0]['security_services'] = [self.fake_ldap]
         self.mock_object(self.driver.plugin.helper,
                          "get_LDAP_config",
                          mock.Mock(
@@ -3642,7 +3647,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         fake_active_directory = self.fake_active_directory
         ip_list = "100.97.5.5,100.97.5.6,100.97.5.7,100.97.5.8"
         fake_active_directory['dns_ip'] = ip_list
-        fake_network_info['security_services'] = [fake_active_directory]
+        fake_network_info[0]['security_services'] = [fake_active_directory]
         self.mock_object(
             self.driver.plugin.helper,
             "get_AD_config",
@@ -3655,7 +3660,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
     @dec_driver_handles_share_servers
     def test_setup_server_with_ad_domain_fail(self):
         fake_network_info = self.fake_network_info
-        fake_network_info['security_services'] = [self.fake_active_directory]
+        fake_network_info[0]['security_services'] = (
+            [self.fake_active_directory])
         self.mock_object(self.driver.plugin,
                          '_get_wait_interval',
                          mock.Mock(return_value=1))

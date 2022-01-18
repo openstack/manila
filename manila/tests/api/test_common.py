@@ -24,6 +24,7 @@ import webob
 import webob.exc
 
 from manila.api import common
+from manila.db import api as db_api
 from manila import exception
 from manila import policy
 from manila import test
@@ -353,6 +354,108 @@ class MiscFunctionsTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           common.parse_is_public,
                           'fakefakefake')
+
+    @ddt.data(None, 'fake_az')
+    def test__get_existing_subnets(self, az):
+        default_subnets = 'fake_default_subnets'
+        mock_get_default_subnets = self.mock_object(
+            db_api, 'share_network_subnet_get_default_subnets',
+            mock.Mock(return_value=default_subnets))
+        subnets = 'fake_subnets'
+        mock_get_subnets = self.mock_object(
+            db_api, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=subnets))
+
+        net_id = 'fake_net'
+        context = 'fake_context'
+        res_subnets = common._get_existing_subnets(context, net_id, az)
+
+        if az:
+            self.assertEqual(subnets, res_subnets)
+            mock_get_subnets.assert_called_once_with(context, net_id, az,
+                                                     fallback_to_default=False)
+            mock_get_default_subnets.assert_not_called()
+        else:
+            self.assertEqual(default_subnets, res_subnets)
+            mock_get_subnets.assert_not_called()
+            mock_get_default_subnets.assert_called_once_with(context, net_id)
+
+    def test_validate_subnet_create(self):
+        mock_check_net = self.mock_object(common, 'check_net_id_and_subnet_id')
+        net = 'fake_net'
+        mock_get_net = self.mock_object(db_api, 'share_network_get',
+                                        mock.Mock(return_value=net))
+        az_id = 'fake_az_id'
+        az = {'id': az_id}
+        mock_get_az = self.mock_object(db_api, 'availability_zone_get',
+                                       mock.Mock(return_value=az))
+        subnets = 'fake_subnets'
+        mock_get_subnets = self.mock_object(common, '_get_existing_subnets',
+                                            mock.Mock(return_value=subnets))
+
+        net_id = 'fake_net_id'
+        context = 'fake_context'
+        az_name = 'fake_az'
+        data = {'availability_zone': az_name}
+        res_net, res_subnets = common.validate_subnet_create(
+            context, net_id, data, True)
+
+        self.assertEqual(net, res_net)
+        self.assertEqual(subnets, res_subnets)
+        self.assertEqual(data['availability_zone_id'], az_id)
+        mock_check_net.assert_called_once_with(data)
+        mock_get_net.assert_called_once_with(context, net_id)
+        mock_get_az.assert_called_once_with(context, az_name)
+        mock_get_subnets.assert_called_once_with(context, net_id, az_id)
+
+    def test_validate_subnet_create_net_not_found(self):
+
+        self.mock_object(common, 'check_net_id_and_subnet_id')
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(side_effect=exception.ShareNetworkNotFound(
+                             share_network_id="fake_id")))
+
+        net_id = 'fake_net_id'
+        context = 'fake_context'
+        az_name = 'fake_az'
+        data = {'availability_zone': az_name}
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          common.validate_subnet_create,
+                          context, net_id, data, True)
+
+    def test_validate_subnet_create_az_not_found(self):
+        self.mock_object(common, 'check_net_id_and_subnet_id')
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value='fake_net'))
+        self.mock_object(
+            db_api, 'availability_zone_get',
+            mock.Mock(side_effect=exception.AvailabilityZoneNotFound(
+                id='fake_id')))
+
+        net_id = 'fake_net_id'
+        context = 'fake_context'
+        az_name = 'fake_az'
+        data = {'availability_zone': az_name}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          common.validate_subnet_create,
+                          context, net_id, data, True)
+
+    def test_validate_subnet_create_multiple_subnet_not_support(self):
+        self.mock_object(common, 'check_net_id_and_subnet_id')
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value='fake_net'))
+        self.mock_object(db_api, 'availability_zone_get',
+                         mock.Mock(return_value={'id': 'fake_az_id'}))
+        self.mock_object(common, '_get_existing_subnets',
+                         mock.Mock(return_value='fake_subnets'))
+
+        net_id = 'fake_net_id'
+        context = 'fake_context'
+        az_name = 'fake_az'
+        data = {'availability_zone': az_name}
+        self.assertRaises(webob.exc.HTTPConflict,
+                          common.validate_subnet_create,
+                          context, net_id, data, False)
 
 
 @ddt.ddt

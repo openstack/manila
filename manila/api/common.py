@@ -25,10 +25,12 @@ from oslo_log import log
 from oslo_utils import encodeutils
 from oslo_utils import strutils
 import webob
+from webob import exc
 
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import versioned_method
 from manila.common import constants
+from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
 from manila import policy
@@ -560,3 +562,53 @@ def validate_public_share_policy(context, api_params, api='create'):
         raise exception.NotAuthorized(message=message)
 
     return api_params
+
+
+def _get_existing_subnets(context, share_network_id, az):
+    """Return any existing subnets in the requested AZ.
+
+    If az is None, the method will search for an existent default subnet.
+    """
+    if az is None:
+        return db_api.share_network_subnet_get_default_subnets(
+            context, share_network_id)
+
+    return (
+        db_api.share_network_subnets_get_all_by_availability_zone_id(
+            context, share_network_id, az,
+            fallback_to_default=False)
+    )
+
+
+def validate_subnet_create(context, share_network_id, data,
+                           multiple_subnet_support):
+
+    check_net_id_and_subnet_id(data)
+    try:
+        share_network = db_api.share_network_get(
+            context, share_network_id)
+    except exception.ShareNetworkNotFound as e:
+        raise exc.HTTPNotFound(explanation=e.msg)
+
+    availability_zone = data.pop('availability_zone', None)
+    subnet_az = {}
+    if availability_zone:
+        try:
+            subnet_az = db_api.availability_zone_get(context,
+                                                     availability_zone)
+        except exception.AvailabilityZoneNotFound:
+            msg = _("The provided availability zone %s does not "
+                    "exist.") % availability_zone
+            raise exc.HTTPBadRequest(explanation=msg)
+    data['availability_zone_id'] = subnet_az.get('id')
+
+    existing_subnets = _get_existing_subnets(
+        context, share_network_id, data['availability_zone_id'])
+    if existing_subnets and not multiple_subnet_support:
+        msg = ("Another share network subnet was found in the "
+               "specified availability zone. Only one share network "
+               "subnet is allowed per availability zone for share "
+               "network %s." % share_network_id)
+        raise exc.HTTPConflict(explanation=msg)
+
+    return share_network, existing_subnets

@@ -73,7 +73,6 @@ class ShareServerController(share_servers.ShareServerController,
             raise exc.HTTPForbidden(explanation=e.msg)
 
         result.project_id = share_network["project_id"]
-        result.share_network_id = share_network["id"]
         if share_network['name']:
             result.share_network_name = share_network['name']
         else:
@@ -107,14 +106,12 @@ class ShareServerController(share_servers.ShareServerController,
         except exception.ShareServerNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
 
-        network_subnet_id = share_server.get('share_network_subnet_id', None)
-        if network_subnet_id:
-            subnet = db_api.share_network_subnet_get(context,
-                                                     network_subnet_id)
-            share_network_id = subnet['share_network_id']
-        else:
-            share_network_id = share_server.get('share_network_id')
+        if len(share_server['share_network_subnets']) > 1:
+            msg = _("Cannot unmanage the share server containing multiple "
+                    "subnets.")
+            raise exc.HTTPBadRequest(explanation=msg)
 
+        share_network_id = share_server['share_network_id']
         share_network = db_api.share_network_get(context, share_network_id)
         common.check_share_network_is_active(share_network)
 
@@ -169,22 +166,30 @@ class ShareServerController(share_servers.ShareServerController,
         network_subnet_id = data.get('share_network_subnet_id')
         if network_subnet_id:
             try:
-                network_subnet = db_api.share_network_subnet_get(
-                    context, network_subnet_id)
+                network_subnets = (
+                    db_api.share_network_subnet_get_all_with_same_az(
+                        context, network_subnet_id))
             except exception.ShareNetworkSubnetNotFound:
                 msg = _("The share network subnet %s does not "
                         "exist.") % network_subnet_id
                 raise exc.HTTPBadRequest(explanation=msg)
         else:
-            network_subnet = db_api.share_network_subnet_get_default_subnet(
+            network_subnets = db_api.share_network_subnet_get_default_subnets(
                 context, share_network_id)
 
-        if network_subnet is None:
+        if not network_subnets:
             msg = _("The share network %s does have a default subnet. Create "
                     "one or use a specific subnet to manage this share server "
                     "with API version >= 2.51.") % share_network_id
             raise exc.HTTPBadRequest(explanation=msg)
 
+        if len(network_subnets) > 1:
+            msg = _("Cannot manage the share server, since the share network "
+                    "subnet %s has more subnets in its availability "
+                    "zone and share network.") % network_subnet_id
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        network_subnet = network_subnets[0]
         common.check_share_network_is_active(network_subnet['share_network'])
 
         if share_utils.extract_host(host, 'pool'):
@@ -260,7 +265,7 @@ class ShareServerController(share_servers.ShareServerController,
             common.check_share_network_is_active(new_share_network)
         else:
             share_network_id = (
-                share_server['share_network_subnet']['share_network_id'])
+                share_server['share_network_id'])
             current_share_network = db_api.share_network_get(
                 context, share_network_id)
             common.check_share_network_is_active(current_share_network)
@@ -387,7 +392,7 @@ class ShareServerController(share_servers.ShareServerController,
             common.check_share_network_is_active(new_share_network)
         else:
             share_network_id = (
-                share_server['share_network_subnet']['share_network_id'])
+                share_server['share_network_id'])
             current_share_network = db_api.share_network_get(
                 context, share_network_id)
             common.check_share_network_is_active(current_share_network)

@@ -372,7 +372,7 @@ class ContainerShareDriverTestCase(test.TestCase):
                           before, after)
 
     def test__setup_server_container_fails(self):
-        network_info = cont_fakes.fake_network()
+        network_info = [cont_fakes.fake_network()]
         self.mock_object(self._driver.container, 'start_container')
         self._driver.container.start_container.side_effect = KeyError()
 
@@ -380,21 +380,21 @@ class ContainerShareDriverTestCase(test.TestCase):
                           self._driver._setup_server, network_info)
 
     def test__setup_server_ok(self):
-        network_info = cont_fakes.fake_network()
-        server_id = self._driver._get_container_name(network_info["server_id"])
+        network_info = [cont_fakes.fake_network()]
+        server_id = self._driver._get_container_name(
+            network_info[0]["server_id"])
         self.mock_object(self._driver.container, 'start_container')
         self.mock_object(self._driver, '_get_veth_state')
         self.mock_object(self._driver, '_get_corresponding_veth',
                          mock.Mock(return_value='veth0'))
         self.mock_object(self._driver, '_connect_to_network')
 
-        self.assertEqual(network_info['server_id'],
+        self.assertEqual(network_info[0]['server_id'],
                          self._driver._setup_server(network_info)['id'])
         self._driver.container.start_container.assert_called_once_with(
             server_id)
-        self._driver._connect_to_network.assert_called_once_with(server_id,
-                                                                 network_info,
-                                                                 'veth0')
+        self._driver._connect_to_network.assert_called_once_with(
+            server_id, network_info[0], 'veth0')
 
     def test_manage_existing(self):
 

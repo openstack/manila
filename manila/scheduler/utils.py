@@ -60,7 +60,11 @@ def generate_stats(host_state, properties):
         'ipv4_support': host_state.ipv4_support,
         'ipv6_support': host_state.ipv6_support,
         'security_service_update_support': (
-            host_state.security_service_update_support)
+            host_state.security_service_update_support),
+        'network_allocation_update_support': (
+            host_state.network_allocation_update_support),
+        'share_server_multiple_subnet_support': (
+            host_state.share_server_multiple_subnet_support)
     }
 
     host_caps = host_state.capabilities

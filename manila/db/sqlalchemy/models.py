@@ -967,6 +967,17 @@ class ShareNetwork(BASE, ManilaBase):
         # set to True.
         return all(share_servers_support_updating)
 
+    @property
+    def network_allocation_update_support(self):
+        share_servers_support_updating = []
+        for network_subnet in self.share_network_subnets:
+            for server in network_subnet['share_servers']:
+                share_servers_support_updating.append(
+                    server['network_allocation_update_support'])
+        # NOTE(felipe_rodrigues): all share servers within this share network
+        # must support updating in order to have this property set to True.
+        return all(share_servers_support_updating)
+
 
 class ShareNetworkSubnet(BASE, ManilaBase):
     """Represents a share network subnet used by some resources."""
@@ -990,11 +1001,19 @@ class ShareNetworkSubnet(BASE, ManilaBase):
         String(36), ForeignKey('availability_zones.id'), nullable=True)
 
     share_servers = orm.relationship(
-        "ShareServer", backref='share_network_subnet',
+        "ShareServer",
+        secondary="share_server_share_network_subnet_mappings",
+        backref="share_network_subnets",
         lazy='immediate',
-        primaryjoin='and_(ShareNetworkSubnet.id '
-                    '== ShareServer.share_network_subnet_id,'
-                    'ShareServer.deleted == "False")')
+        primaryjoin="and_(ShareNetworkSubnet.id == "
+                    "%(cls_name)s.share_network_subnet_id, "
+                    "%(cls_name)s.deleted == 0)" % {
+                        "cls_name": "ShareServerShareNetworkSubnetMapping"},
+        secondaryjoin='and_('
+                      'ShareServer.id == '
+                      'ShareServerShareNetworkSubnetMapping.share_server_id,'
+                      'ShareServerShareNetworkSubnetMapping.deleted == 0)'
+    )
 
     _availability_zone = orm.relationship(
         "AvailabilityZone",
@@ -1024,9 +1043,6 @@ class ShareServer(BASE, ManilaBase):
     __tablename__ = 'share_servers'
     id = Column(String(36), primary_key=True, nullable=False)
     deleted = Column(String(36), default='False')
-    share_network_subnet_id = Column(
-        String(36), ForeignKey('share_network_subnets.id'),
-        nullable=True)
     host = Column(String(255), nullable=False)
     is_auto_deletable = Column(Boolean, default=True)
     identifier = Column(String(255), nullable=True)
@@ -1034,6 +1050,8 @@ class ShareServer(BASE, ManilaBase):
     source_share_server_id = Column(String(36), ForeignKey('share_servers.id'),
                                     nullable=True)
     security_service_update_support = Column(
+        Boolean, nullable=False, default=False)
+    network_allocation_update_support = Column(
         Boolean, nullable=False, default=False)
     status = Column(Enum(
         constants.STATUS_INACTIVE, constants.STATUS_ACTIVE,
@@ -1071,12 +1089,31 @@ class ShareServer(BASE, ManilaBase):
                     'ShareServerBackendDetails.share_server_id, '
                     'ShareServerBackendDetails.deleted == "False")')
 
+    _share_network_subnet_ids = orm.relationship(
+        "ShareServerShareNetworkSubnetMapping",
+        lazy='immediate',
+        viewonly=True,
+        primaryjoin='and_('
+                    'ShareServer.id == '
+                    'ShareServerShareNetworkSubnetMapping.share_server_id,'
+                    'ShareServerShareNetworkSubnetMapping.deleted == 0)')
+
     @property
     def backend_details(self):
         return {model['key']: model['value']
                 for model in self._backend_details}
 
-    _extra_keys = ['backend_details']
+    @property
+    def share_network_subnet_ids(self):
+        return [model['share_network_subnet_id']
+                for model in self._share_network_subnet_ids]
+
+    @property
+    def share_network_id(self):
+        return (self.share_network_subnets[0]['share_network_id']
+                if self.share_network_subnets else None)
+
+    _extra_keys = ['backend_details', 'share_network_subnet_ids']
 
 
 class ShareServerBackendDetails(BASE, ManilaBase):
@@ -1088,6 +1125,16 @@ class ShareServerBackendDetails(BASE, ManilaBase):
     value = Column(String(1023), nullable=False)
     share_server_id = Column(String(36), ForeignKey('share_servers.id'),
                              nullable=False)
+
+
+class ShareServerShareNetworkSubnetMapping(BASE, ManilaBase):
+    """Represents the Share Server and Share Network Subnet mapping."""
+    __tablename__ = 'share_server_share_network_subnet_mappings'
+    id = Column(Integer, primary_key=True)
+    share_server_id = Column(
+        String(36), ForeignKey('share_servers.id'), nullable=False)
+    share_network_subnet_id = Column(
+        String(36), ForeignKey('share_network_subnets.id'), nullable=False)
 
 
 class ShareNetworkSecurityServiceAssociation(BASE, ManilaBase):
@@ -1120,6 +1167,10 @@ class NetworkAllocation(BASE, ManilaBase):
     mac_address = Column(String(32), nullable=True)
     share_server_id = Column(String(36), ForeignKey('share_servers.id'),
                              nullable=False)
+
+    # NOTE(felipe_rodrigues): admin allocation does not have subnet.
+    share_network_subnet_id = Column(
+        String(36), ForeignKey('share_network_subnets.id'), nullable=True)
 
 
 class DriverPrivateData(BASE, ManilaBase):

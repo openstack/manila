@@ -3084,3 +3084,94 @@ class ShareIsSoftDeleted(BaseMigrationChecks):
             self.test_case.assertFalse(hasattr(s, 'is_soft_deleted'))
             self.test_case.assertFalse(hasattr(s,
                                                'scheduled_to_be_deleted_at'))
+
+
+@map_to_migration('a87e0fb17dee')
+class ShareServerMultipleSubnets(BaseMigrationChecks):
+
+    def setup_upgrade_data(self, engine):
+        user_id = 'user_id_multiple_subnets'
+        project_id = 'project_id_multiple_subnets'
+
+        # Create share network
+        share_network_data = {
+            'id': uuidutils.generate_uuid(),
+            'user_id': user_id,
+            'project_id': project_id,
+        }
+        sn_table = utils.load_table('share_networks', engine)
+        engine.execute(sn_table.insert(share_network_data))
+
+        # Create share network subnets
+        share_network_subnet_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_network_id': share_network_data['id']
+        }
+        sns_table = utils.load_table('share_network_subnets', engine)
+        engine.execute(sns_table.insert(share_network_subnet_data))
+
+        # Create share server
+        share_server_data = {
+            'id': uuidutils.generate_uuid(),
+            'host': 'fake_host',
+            'status': 'active',
+            'share_network_subnet_id': share_network_subnet_data['id'],
+        }
+        ss_table = utils.load_table('share_servers', engine)
+        engine.execute(ss_table.insert(share_server_data))
+
+    def check_upgrade(self, engine, data):
+        ss_sns_map_table = utils.load_table(
+            'share_server_share_network_subnet_mappings', engine)
+        ss_table = utils.load_table('share_servers', engine)
+        sns_table = utils.load_table('share_network_subnets', engine)
+        na_table = utils.load_table('network_allocations', engine)
+
+        na_record = engine.execute(na_table.select()).first()
+        self.test_case.assertFalse(na_record is None)
+        self.test_case.assertTrue(
+            hasattr(na_record, 'share_network_subnet_id'))
+
+        for map_record in engine.execute(ss_sns_map_table.select()):
+            self.test_case.assertTrue(
+                hasattr(map_record, 'share_network_subnet_id'))
+            self.test_case.assertTrue(
+                hasattr(map_record, 'share_server_id'))
+
+            ss_record = engine.execute(
+                ss_table
+                .select()
+                .where(ss_table.c.id == map_record['share_server_id'])
+            ).first()
+            self.test_case.assertFalse(ss_record is None)
+            self.test_case.assertFalse(
+                hasattr(ss_record, 'share_network_subnet_id'))
+            self.test_case.assertTrue(
+                hasattr(ss_record, 'network_allocation_update_support'))
+
+            sns_record = engine.execute(
+                sns_table
+                .select()
+                .where(sns_table.c.id == map_record['share_network_subnet_id'])
+            ).first()
+            self.test_case.assertFalse(sns_record is None)
+
+    def check_downgrade(self, engine):
+        ss_table = utils.load_table('share_servers', engine)
+        na_table = utils.load_table('network_allocations', engine)
+        self.test_case.assertRaises(
+            sa_exc.NoSuchTableError, utils.load_table,
+            'share_server_share_network_subnet_mappings', engine)
+
+        for ss_record in engine.execute(ss_table.select()):
+            self.test_case.assertTrue(
+                hasattr(ss_record, 'share_network_subnet_id'))
+            self.test_case.assertFalse(
+                hasattr(ss_record, 'network_allocation_update_support'))
+
+        na_record = engine.execute(
+            na_table
+            .select()
+        ).first()
+        self.test_case.assertFalse(
+            hasattr(na_record, 'share_network_subnet_id'))

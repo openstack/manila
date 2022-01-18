@@ -88,6 +88,9 @@ class NetworkBaseAPITestCase(test.TestCase):
             def unmanage_network_allocations(self, context, share_server_id):
                 pass
 
+            def include_network_info(self, share_network_subnet):
+                pass
+
         self.assertRaises(TypeError, FakeNetworkAPI)
 
     def test_inherit_network_base_api_allocate_not_redefined(self):
@@ -101,6 +104,9 @@ class NetworkBaseAPITestCase(test.TestCase):
                 pass
 
             def unmanage_network_allocations(self, context, share_server_id):
+                pass
+
+            def include_network_info(self, share_network_subnet):
                 pass
 
         self.assertRaises(TypeError, FakeNetworkAPI)
@@ -119,6 +125,9 @@ class NetworkBaseAPITestCase(test.TestCase):
                 pass
 
             def unmanage_network_allocations(self, context, share_server_id):
+                pass
+
+            def include_network_info(self, share_network_subnet):
                 pass
 
         result = FakeNetworkAPI()
@@ -143,6 +152,9 @@ class NetworkBaseAPITestCase(test.TestCase):
             def unmanage_network_allocations(self, context, share_server_id):
                 pass
 
+            def include_network_info(self, share_network_subnet):
+                pass
+
         result = FakeNetworkAPI()
 
         result._verify_share_network('foo_id', {'id': 'bar_id'})
@@ -161,6 +173,9 @@ class NetworkBaseAPITestCase(test.TestCase):
                 pass
 
             def unmanage_network_allocations(self, context, share_server_id):
+                pass
+
+            def include_network_info(self, share_network_subnet):
                 pass
 
         result = FakeNetworkAPI()
@@ -190,10 +205,13 @@ class NetworkBaseAPITestCase(test.TestCase):
             def unmanage_network_allocations(self, context, share_server_id):
                 pass
 
-        network.CONF.set_default('network_plugin_ipv6_enabled',
-                                 network_plugin_ipv6_enabled)
-        network.CONF.set_default('network_plugin_ipv4_enabled',
-                                 network_plugin_ipv4_enabled)
+            def include_network_info(self, share_network_subnet):
+                pass
+
+        network.CONF.set_default(
+            'network_plugin_ipv6_enabled', network_plugin_ipv6_enabled)
+        network.CONF.set_default(
+            'network_plugin_ipv4_enabled', network_plugin_ipv4_enabled)
 
         result = FakeNetworkAPI()
 

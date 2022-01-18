@@ -65,6 +65,9 @@ class ViewBuilderTestCase(test.TestCase):
         status_and_sec_serv_update = (
             api_version.APIVersionRequest(microversion) >=
             api_version.APIVersionRequest('2.63'))
+        network_allocation_update_support = (
+            api_version.APIVersionRequest(microversion) >=
+            api_version.APIVersionRequest('2.69'))
         req = fakes.HTTPRequest.blank('/share-networks', version=microversion)
         expected_keys = {
             'id', 'name', 'project_id', 'created_at', 'updated_at',
@@ -85,6 +88,8 @@ class ViewBuilderTestCase(test.TestCase):
                 expected_keys.add('nova_net_id')
         if status_and_sec_serv_update:
             expected_keys.update({'status', 'security_service_update_support'})
+        if network_allocation_update_support:
+            expected_keys.add('network_allocation_update_support')
 
         result = self.builder.build_share_network(req, share_network_data)
         self.assertEqual(1, len(result))
@@ -137,6 +142,10 @@ class ViewBuilderTestCase(test.TestCase):
         status_and_sec_serv_update = (
             api_version.APIVersionRequest(microversion) >=
             api_version.APIVersionRequest('2.63'))
+        network_allocation_update_support = (
+            api_version.APIVersionRequest(microversion) >=
+            api_version.APIVersionRequest('2.69'))
+
         req = fakes.HTTPRequest.blank('/share-networks', version=microversion)
         expected_networks_list = []
         for share_network in share_networks:
@@ -181,7 +190,13 @@ class ViewBuilderTestCase(test.TestCase):
                 expected_data.update(
                     {'status': 'active',
                      'security_service_update_support': False})
+            if network_allocation_update_support:
+                share_network.update(
+                    {'network_allocation_update_support': None})
+                expected_data.update(
+                    {'network_allocation_update_support': None})
             expected_networks_list.append(expected_data)
+
         expected = {'share_networks': expected_networks_list}
 
         result = self.builder.build_share_networks(req, share_networks,
@@ -246,5 +261,22 @@ class ViewBuilderTestCase(test.TestCase):
         result = self.builder.build_security_service_update_check(req,
                                                                   params,
                                                                   hosts_result)
+
+        self.assertEqual(expected, result)
+
+    @ddt.data(True, False)
+    def test_build_share_network_subnet_create_check(self, is_admin):
+        req = fakes.HTTPRequest.blank('/share-networks',
+                                      use_admin_context=is_admin)
+        hosts_result = {
+            'compatible': True,
+            'hosts_check_result': {'hostA': True}
+        }
+        expected = {'compatible': True}
+        if is_admin:
+            expected['hosts_check_result'] = hosts_result['hosts_check_result']
+
+        result = self.builder.build_share_network_subnet_create_check(
+            req, hosts_result)
 
         self.assertEqual(expected, result)

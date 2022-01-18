@@ -20,6 +20,7 @@ import ddt
 from oslo_db import exception as db_exception
 
 from manila.api import common
+from manila.api.openstack import api_version_request as api_version
 from manila.api.v2 import share_network_subnets
 from manila.db import api as db_api
 from manila import exception
@@ -61,16 +62,17 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
                                             mock.Mock(return_value=fake_az))
         self.share_network = db_utils.create_share_network(
             name='fake_network', id='fake_sn_id')
-        self.share_server = db_utils.create_share_server(
-            share_network_subnet_id='fake_sns_id')
         self.subnet = db_utils.create_share_network_subnet(
             share_network_id=self.share_network['id'])
+        self.share_server = db_utils.create_share_server(
+            share_network_subnets=[self.subnet])
         self.share = db_utils.create_share()
 
     def test_share_network_subnet_delete(self):
         req = fakes.HTTPRequest.blank('/subnets/%s' % self.subnet['id'],
                                       version="2.51")
         context = req.environ['manila.context']
+        self.subnet['share_servers'] = [self.share_server]
 
         mock_sns_get = self.mock_object(
             db_api, 'share_network_subnet_get',
@@ -150,6 +152,7 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/subnets/%s' % self.subnet['id'],
                                       version="2.51")
         context = req.environ['manila.context']
+        self.subnet['share_servers'] = [self.share_server]
 
         mock_sns_get = self.mock_object(
             db_api, 'share_network_subnet_get',
@@ -182,7 +185,10 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/subnets/%s' % self.subnet['id'],
                                       version="2.51")
         context = req.environ['manila.context']
+        self.subnet['share_servers'] = [self.share_server]
 
+        mock_network_get = self.mock_object(
+            db_api, 'share_network_get')
         mock_sns_get = self.mock_object(
             db_api, 'share_network_subnet_get',
             mock.Mock(return_value=self.subnet))
@@ -196,6 +202,8 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
                           self.share_network['id'],
                           self.subnet['id'])
 
+        mock_network_get.assert_called_once_with(
+            context, self.share_network['id'])
         mock_sns_get.assert_called_once_with(
             context, self.subnet['id'])
         mock_all_get_all_shares_by_ss.assert_called_once_with(
@@ -203,34 +211,6 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
         )
         self.mock_policy_check.assert_called_once_with(
             context, self.resource_name, 'delete')
-
-    @ddt.data((None, fake_default_subnet, None),
-              (fake_az, None, fake_subnet_with_az))
-    @ddt.unpack
-    def test__validate_subnet(self, az, default_subnet, subnet_az):
-        req = fakes.HTTPRequest.blank('/subnets', version='2.51')
-        context = req.environ['manila.context']
-
-        mock_get_default_sns = self.mock_object(
-            db_api, 'share_network_subnet_get_default_subnet',
-            mock.Mock(return_value=default_subnet))
-        mock_get_subnet_by_az = self.mock_object(
-            db_api, 'share_network_subnet_get_by_availability_zone_id',
-            mock.Mock(return_value=subnet_az))
-
-        self.assertRaises(exc.HTTPConflict,
-                          self.controller._validate_subnet,
-                          context,
-                          self.share_network['id'],
-                          az)
-        if az:
-            mock_get_subnet_by_az.assert_called_once_with(
-                context, self.share_network['id'], az['id'])
-            mock_get_default_sns.assert_not_called()
-        else:
-            mock_get_default_sns.assert_called_once_with(
-                context, self.share_network['id'])
-            mock_get_subnet_by_az.assert_not_called()
 
     def _setup_create_test_request_body(self):
         body = {
@@ -241,130 +221,144 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
         }
         return body
 
-    def test_subnet_create(self):
-        req = fakes.HTTPRequest.blank('/subnets', version="2.51")
+    @ddt.data({'version': "2.51", 'has_share_servers': False},
+              {'version': "2.70", 'has_share_servers': False},
+              {'version': "2.70", 'has_share_servers': True})
+    @ddt.unpack
+    def test_subnet_create(self, version, has_share_servers):
+        req = fakes.HTTPRequest.blank('/subnets', version=version)
+        multiple_subnet_support = (req.api_version_request >=
+                                   api_version.APIVersionRequest("2.70"))
+        context = req.environ['manila.context']
+        body = {
+            'share-network-subnet': self._setup_create_test_request_body()
+        }
+        sn_id = body['share-network-subnet']['share_network_id']
+        expected_subnet = copy.deepcopy(self.subnet)
+        if has_share_servers:
+            expected_subnet['share_servers'] = [self.share_server]
+
+        mock_validate_subnet_create = self.mock_object(
+            common, 'validate_subnet_create',
+            mock.Mock(return_value=(self.share_network, [expected_subnet])))
+        mock_subnet_create = self.mock_object(
+            db_api, 'share_network_subnet_create',
+            mock.Mock(return_value=expected_subnet))
+        mock_update_net_allocations = self.mock_object(
+            self.controller.share_api,
+            'update_share_server_network_allocations',
+            mock.Mock(return_value=expected_subnet))
+        mock_share_network_subnet_get = self.mock_object(
+            db_api, 'share_network_subnet_get',
+            mock.Mock(return_value=expected_subnet))
+
+        fake_data = body['share-network-subnet']
+        fake_data['share_network_id'] = self.share_network['id']
+        res = self.controller.create(
+            req, body['share-network-subnet']['share_network_id'], body)
+
+        view_subnet = {
+            'id': expected_subnet.get('id'),
+            'availability_zone': expected_subnet.get('availability_zone'),
+            'share_network_id': expected_subnet.get('share_network_id'),
+            'share_network_name': expected_subnet['share_network_name'],
+            'created_at': expected_subnet.get('created_at'),
+            'segmentation_id': expected_subnet.get('segmentation_id'),
+            'neutron_subnet_id': expected_subnet.get('neutron_subnet_id'),
+            'updated_at': expected_subnet.get('updated_at'),
+            'neutron_net_id': expected_subnet.get('neutron_net_id'),
+            'ip_version': expected_subnet.get('ip_version'),
+            'cidr': expected_subnet.get('cidr'),
+            'network_type': expected_subnet.get('network_type'),
+            'mtu': expected_subnet.get('mtu'),
+            'gateway': expected_subnet.get('gateway')
+        }
+        self.assertEqual(view_subnet, res['share_network_subnet'])
+        mock_share_network_subnet_get.assert_called_once_with(
+            context, expected_subnet['id'])
+        mock_validate_subnet_create.assert_called_once_with(
+            context, sn_id, fake_data, multiple_subnet_support)
+        if has_share_servers:
+            fake_data['share_servers'] = [self.share_server]
+            mock_update_net_allocations.assert_called_once_with(
+                context, self.share_network, fake_data)
+        else:
+            mock_subnet_create.assert_called_once_with(
+                context, fake_data)
+
+    @ddt.data({'exception1': exception.ServiceIsDown(),
+               'exc_raise': exc.HTTPInternalServerError},
+              {'exception1': exception.InvalidShareNetwork(),
+               'exc_raise': exc.HTTPBadRequest},
+              {'exception1': db_exception.DBError(),
+               'exc_raise': exc.HTTPInternalServerError})
+    @ddt.unpack
+    def test_subnet_create_fail_update_network_allocation(self, exception1,
+                                                          exc_raise):
+        req = fakes.HTTPRequest.blank('/subnets', version="2.70")
+        multiple_subnet_support = (req.api_version_request >=
+                                   api_version.APIVersionRequest("2.70"))
         context = req.environ['manila.context']
         body = {
             'share-network-subnet': self._setup_create_test_request_body()
         }
         sn_id = body['share-network-subnet']['share_network_id']
 
-        expected_result = copy.deepcopy(body)
-        expected_result['share-network-subnet']['id'] = self.subnet['id']
-        mock_check_net_and_subnet_id = self.mock_object(
-            common, 'check_net_id_and_subnet_id')
-        mock_validate_subnet = self.mock_object(
-            self.controller, '_validate_subnet')
-        mock_subnet_create = self.mock_object(
-            db_api, 'share_network_subnet_create',
-            mock.Mock(return_value=self.subnet))
+        expected_subnet = copy.deepcopy(self.subnet)
+        expected_subnet['share_servers'] = [self.share_server]
 
-        self.controller.create(
-            req, body['share-network-subnet']['share_network_id'], body)
+        mock_validate_subnet_create = self.mock_object(
+            common, 'validate_subnet_create',
+            mock.Mock(return_value=(self.share_network, [expected_subnet])))
+        mock_update_net_allocations = self.mock_object(
+            self.controller.share_api,
+            'update_share_server_network_allocations',
+            mock.Mock(side_effect=exception1))
 
-        mock_check_net_and_subnet_id.assert_called_once_with(
-            body['share-network-subnet'])
-        mock_validate_subnet.assert_called_once_with(
-            context, sn_id, az=fake_az)
-        mock_subnet_create.assert_called_once_with(
-            context, body['share-network-subnet'])
+        fake_data = body['share-network-subnet']
+        fake_data['share_network_id'] = self.share_network['id']
+        fake_data['share_servers'] = [self.share_server]
 
-    def test_subnet_create_share_network_not_found(self):
-        fake_sn_id = 'fake_id'
-        req = fakes.HTTPRequest.blank('/subnets', version="2.51")
-        context = req.environ['manila.context']
-        body = {
-            'share-network-subnet': self._setup_create_test_request_body()
-        }
-        mock_sn_get = self.mock_object(
-            db_api, 'share_network_get',
-            mock.Mock(side_effect=exception.ShareNetworkNotFound(
-                share_network_id=fake_sn_id)))
-
-        self.assertRaises(exc.HTTPNotFound,
+        self.assertRaises(exc_raise,
                           self.controller.create,
                           req,
-                          fake_sn_id,
+                          body['share-network-subnet']['share_network_id'],
                           body)
-        mock_sn_get.assert_called_once_with(context, fake_sn_id)
 
-    def test_subnet_create_az_not_found(self):
+        mock_validate_subnet_create.assert_called_once_with(
+            context, sn_id, fake_data, multiple_subnet_support)
+        mock_update_net_allocations.assert_called_once_with(
+            context, self.share_network, fake_data)
+
+    def test_subnet_create_invalid_body(self):
         fake_sn_id = 'fake_id'
         req = fakes.HTTPRequest.blank('/subnets', version="2.51")
-        context = req.environ['manila.context']
-        body = {
-            'share-network-subnet': self._setup_create_test_request_body()
-        }
-        mock_sn_get = self.mock_object(db_api, 'share_network_get')
-        mock_az_get = self.mock_object(
-            db_api, 'availability_zone_get',
-            mock.Mock(side_effect=exception.AvailabilityZoneNotFound(id='')))
-
-        expected_az = body['share-network-subnet']['availability_zone']
-
+        body = {}
         self.assertRaises(exc.HTTPBadRequest,
                           self.controller.create,
                           req,
                           fake_sn_id,
                           body)
-        mock_sn_get.assert_called_once_with(context, fake_sn_id)
-        mock_az_get.assert_called_once_with(
-            context, expected_az)
 
-    def test_subnet_create_subnet_default_or_same_az_exists(self):
-        fake_sn_id = 'fake_id'
-        req = fakes.HTTPRequest.blank('/subnets', version="2.51")
-        context = req.environ['manila.context']
+    @ddt.data("2.51", "2.70")
+    def test_subnet_create_subnet_db_error(self, version):
+        req = fakes.HTTPRequest.blank('/subnets', version=version)
         body = {
             'share-network-subnet': self._setup_create_test_request_body()
         }
-        mock_sn_get = self.mock_object(db_api, 'share_network_get')
-        mock__validate_subnet = self.mock_object(
-            self.controller, '_validate_subnet',
-            mock.Mock(side_effect=exc.HTTPConflict(''))
-        )
-        expected_az = body['share-network-subnet']['availability_zone']
-
-        self.assertRaises(exc.HTTPConflict,
-                          self.controller.create,
-                          req,
-                          fake_sn_id,
-                          body)
-        mock_sn_get.assert_called_once_with(context, fake_sn_id)
-        self.mock_az_get.assert_called_once_with(context, expected_az)
-        mock__validate_subnet.assert_called_once_with(
-            context, fake_sn_id, az=fake_az)
-
-    def test_subnet_create_subnet_db_error(self):
-        fake_sn_id = 'fake_sn_id'
-        req = fakes.HTTPRequest.blank('/subnets', version="2.51")
-        context = req.environ['manila.context']
-        body = {
-            'share-network-subnet': self._setup_create_test_request_body()
-        }
-        mock_sn_get = self.mock_object(db_api, 'share_network_get')
-        mock__validate_subnet = self.mock_object(
-            self.controller, '_validate_subnet')
-        mock_db_subnet_create = self.mock_object(
+        expected_subnet = copy.deepcopy(self.subnet)
+        self.mock_object(
+            common, 'validate_subnet_create',
+            mock.Mock(return_value=(self.share_network, [expected_subnet])))
+        self.mock_object(
             db_api, 'share_network_subnet_create',
             mock.Mock(side_effect=db_exception.DBError()))
-        expected_data = copy.deepcopy(body['share-network-subnet'])
-        expected_data['availability_zone_id'] = fake_az['id']
-        expected_data.pop('availability_zone')
 
         self.assertRaises(exc.HTTPInternalServerError,
                           self.controller.create,
                           req,
-                          fake_sn_id,
+                          'fake_sn_id',
                           body)
-
-        mock_sn_get.assert_called_once_with(context, fake_sn_id)
-        self.mock_az_get.assert_called_once_with(context, fake_az['name'])
-        mock__validate_subnet.assert_called_once_with(
-            context, fake_sn_id, az=fake_az)
-        mock_db_subnet_create.assert_called_once_with(
-            context, expected_data
-        )
 
     def test_show_subnet(self):
         subnet = db_utils.create_share_network_subnet(

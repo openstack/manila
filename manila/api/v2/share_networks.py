@@ -279,15 +279,23 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
         try:
             if ('neutron_net_id' in update_values or
                     'neutron_subnet_id' in update_values):
-                subnet = db_api.share_network_subnet_get_default_subnet(
+                subnets = db_api.share_network_subnet_get_default_subnets(
                     context, id)
-                if not subnet:
+                if not subnets:
                     msg = _("The share network %(id)s does not have a "
                             "'default' subnet that serves all availability "
                             "zones, so subnet details "
                             "('neutron_net_id', 'neutron_subnet_id') cannot "
                             "be updated.") % {'id': id}
                     raise exc.HTTPBadRequest(explanation=msg)
+                if len(subnets) > 1:
+                    msg = _("The share network %(id)s does not have an unique "
+                            "'default' subnet that serves all availability "
+                            "zones, so subnet details "
+                            "('neutron_net_id', 'neutron_subnet_id') cannot "
+                            "be updated.") % {'id': id}
+                    raise exc.HTTPBadRequest(explanation=msg)
+                subnet = subnets[0]
 
                 # NOTE(silvacarlose): If the default share network subnet have
                 # the fields neutron_net_id and neutron_subnet_id set as None,
@@ -615,6 +623,54 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         return self._view_builder.build_security_service_update_check(
             req, data, result)
+
+    @wsgi.Controller.api_version('2.70')
+    @wsgi.action('share_network_subnet_create_check')
+    @wsgi.response(202)
+    def share_network_subnet_create_check(self, req, id, body):
+        """Check the feasibility of creating a share network subnet."""
+        context = req.environ['manila.context']
+        if not self.is_valid_body(body, 'share_network_subnet_create_check'):
+            msg = _("Share Network Subnet Create Check is missing from "
+                    "the request body.")
+            raise exc.HTTPBadRequest(explanation=msg)
+        data = body['share_network_subnet_create_check']
+        share_network, existing_subnets = common.validate_subnet_create(
+            context, id, data, True)
+
+        reset_check = utils.get_bool_from_api_params('reset_operation', data)
+
+        # create subnet operation alongside subnets with share servers means
+        # that an allocation update is requested.
+        if existing_subnets and existing_subnets[0]['share_servers']:
+
+            # NOTE(felipe_rodrigues): all subnets within the same az have the
+            # same set of share servers, so we can just get the servers from
+            # one of them. Not necessarily all share servers from the specified
+            # AZ will be updated, only the ones created with subnets in the AZ.
+            # Others created with default AZ will only have its allocations
+            # updated when default subnet set is updated.
+            data['share_servers'] = existing_subnets[0]['share_servers']
+            try:
+                check_result = (
+                    self.share_api.
+                    check_update_share_server_network_allocations(
+                        context, share_network, data, reset_check))
+            except exception.ServiceIsDown as e:
+                msg = _("A share network subnet update check cannot be "
+                        "performed at this time.")
+                LOG.error(e)
+                raise exc.HTTPInternalServerError(explanation=msg)
+            except exception.InvalidShareNetwork as e:
+                raise exc.HTTPBadRequest(explanation=e.msg)
+        else:
+            check_result = {
+                'compatible': True,
+                'hosts_check_result': {}
+            }
+
+        return self._view_builder.build_share_network_subnet_create_check(
+            req, check_result)
 
     @wsgi.Controller.api_version('2.63')
     @wsgi.action('reset_status')

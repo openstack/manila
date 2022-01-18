@@ -121,9 +121,16 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
                                                 **self._neutron_api_kwargs)
         return self._neutron_api
 
-    def _store_neutron_net_info(self, context, share_network_subnet):
-        self._save_neutron_network_data(context, share_network_subnet)
-        self._save_neutron_subnet_data(context, share_network_subnet)
+    def include_network_info(self, share_network_subnet):
+        """Includes share-network-subnet with plugin specific data."""
+        self._store_neutron_net_info(None, share_network_subnet, save_db=False)
+
+    def _store_neutron_net_info(self, context, share_network_subnet,
+                                save_db=True):
+        self._save_neutron_network_data(context, share_network_subnet,
+                                        save_db=save_db)
+        self._save_neutron_subnet_data(context, share_network_subnet,
+                                       save_db=save_db)
 
     def allocate_network(self, context, share_server, share_network=None,
                          share_network_subnet=None, **kwargs):
@@ -202,6 +209,11 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
                 'cidr': share_network_subnet['cidr'],
                 'mtu': share_network_subnet['mtu'],
             }
+            # NOTE(felipe_rodrigues): admin plugin does not have any Manila
+            # share net subnet, its data is from manila configuration file.
+            if self.label != 'admin':
+                port_dict['share_network_subnet_id'] = (
+                    share_network_subnet['id'])
 
             # There should not be existing allocations with the same port_id.
             try:
@@ -332,6 +344,12 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
             'cidr': share_network_subnet['cidr'],
             'mtu': share_network_subnet['mtu'],
         }
+        # NOTE(felipe_rodrigues): admin plugin does not have any Manila
+        # share net subnet, its data is from manila configuration file.
+        if self.label != 'admin':
+            port_dict['share_network_subnet_id'] = (
+                share_network_subnet['id'])
+
         return self.db.network_allocation_create(context, port_dict)
 
     def _delete_port(self, context, port):
@@ -354,7 +372,8 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
                 share_network_subnet['neutron_net_id'])
         return 'segments' in net_info
 
-    def _save_neutron_network_data(self, context, share_network_subnet):
+    def _save_neutron_network_data(self, context, share_network_subnet,
+                                   save_db=True):
         net_info = self.neutron_api.get_network(
             share_network_subnet['neutron_net_id'])
         segmentation_id = None
@@ -389,11 +408,12 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         }
         share_network_subnet.update(provider_nw_dict)
 
-        if self.label != 'admin':
+        if self.label != 'admin' and save_db:
             self.db.share_network_subnet_update(
                 context, share_network_subnet['id'], provider_nw_dict)
 
-    def _save_neutron_subnet_data(self, context, share_network_subnet):
+    def _save_neutron_subnet_data(self, context, share_network_subnet,
+                                  save_db=True):
         subnet_info = self.neutron_api.get_subnet(
             share_network_subnet['neutron_subnet_id'])
 
@@ -404,7 +424,7 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         }
         share_network_subnet.update(subnet_values)
 
-        if self.label != 'admin':
+        if self.label != 'admin' and save_db:
             self.db.share_network_subnet_update(
                 context, share_network_subnet['id'], subnet_values)
 
@@ -576,7 +596,8 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                 "local_link_information": local_links}
         return arguments
 
-    def _save_neutron_network_data(self, context, share_network_subnet):
+    def _save_neutron_network_data(self, context, share_network_subnet,
+                                   save_db=True):
         """Store the Neutron network info.
 
         In case of dynamic multi segments the segment is determined while
@@ -589,12 +610,14 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
         if self._is_neutron_multi_segment(share_network_subnet):
             # In case of dynamic multi segment the segment is determined while
             # binding the port, only mtu is known and already needed
-            self._save_neutron_network_mtu(context, share_network_subnet)
+            self._save_neutron_network_mtu(context, share_network_subnet,
+                                           save_db=save_db)
             return
         super(NeutronBindNetworkPlugin, self)._save_neutron_network_data(
-            context, share_network_subnet)
+            context, share_network_subnet, save_db=save_db)
 
-    def _save_neutron_network_mtu(self, context, share_network_subnet):
+    def _save_neutron_network_mtu(self, context, share_network_subnet,
+                                  save_db=True):
         """Store the Neutron network mtu.
 
         In case of dynamic multi segments only the mtu needs storing before
@@ -608,7 +631,7 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
         }
         share_network_subnet.update(mtu_dict)
 
-        if self.label != 'admin':
+        if self.label != 'admin' and save_db:
             self.db.share_network_subnet_update(
                 context, share_network_subnet['id'], mtu_dict)
 

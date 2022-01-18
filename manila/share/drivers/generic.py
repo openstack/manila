@@ -892,6 +892,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         return 0
 
     def _setup_server(self, network_info, metadata=None):
+        # NOTE(felipe_rodrigues): keep legacy network_info support as a dict.
+        network_info = network_info[0]
+
         msg = "Creating share server '%s'."
         LOG.debug(msg, network_info['server_id'])
         server = self.service_instance_manager.set_up_service_instance(

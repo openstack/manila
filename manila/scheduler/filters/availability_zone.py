@@ -27,9 +27,13 @@ class AvailabilityZoneFilter(base_host.BaseHostFilter):
         props = spec.get('resource_properties', {})
         request_az_id = props.get('availability_zone_id',
                                   spec.get('availability_zone_id'))
+        az_request_multiple_subnet_support_map = spec.get(
+            'az_request_multiple_subnet_support_map', {})
         request_azs = spec.get('availability_zones')
         host_az_id = host_state.service['availability_zone_id']
         host_az = host_state.service['availability_zone']['name']
+        host_single_subnet_only = (
+            not host_state.share_server_multiple_subnet_support)
 
         host_satisfied = True
         if request_az_id is not None:
@@ -37,5 +41,16 @@ class AvailabilityZoneFilter(base_host.BaseHostFilter):
 
         if request_azs:
             host_satisfied = host_satisfied and host_az in request_azs
+
+        # Only validates the multiple subnet support in case it can deny the
+        # host:
+        #   1. host is satisfying the AZ
+        #   2. There is a map to be checked
+        #   3. The host does not support a multiple subnet
+        if (host_satisfied and az_request_multiple_subnet_support_map and
+                host_single_subnet_only):
+            host_satisfied = (
+                not az_request_multiple_subnet_support_map.get(host_az_id,
+                                                               False))
 
         return host_satisfied

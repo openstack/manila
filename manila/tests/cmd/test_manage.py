@@ -446,26 +446,28 @@ class ManilaCmdManageTestCase(test.TestCase):
         share_servers = 'server_id_a,server_id_b'
         share_server_list = [server.strip()
                              for server in share_servers.split(",")]
-        capability = 'security_service_update_support'
-        values_to_update = {
-            capability: True
-        }
+        capabilities = "security_service_update_support" \
+                       ",network_allocation_update_support"
+        capabilities_list = capabilities.split(",")
+        values_to_update = [
+            {capabilities_list[0]: True,
+             capabilities_list[1]: True}]
 
         with mock.patch('sys.stdout', new=io.StringIO()) as output:
             self.server_cmds.update_share_server_capabilities(
-                share_servers, capability, True)
+                share_servers, capabilities, True)
 
         expected_op = ("The capability(ies) %(cap)s of the following share "
                        "server(s) %(servers)s was(were) updated to "
                        "%(value)s.") % {
-            'cap': [capability],
+            'cap': capabilities_list,
             'servers': share_server_list,
             'value': True,
         }
 
         self.assertEqual(expected_op, output.getvalue().strip())
         db.share_servers_update.assert_called_once_with(
-            'admin_ctxt', share_server_list, values_to_update)
+            'admin_ctxt', share_server_list, values_to_update[0])
 
     def test_share_server_update_capability_not_supported(self):
         share_servers = 'server_id_a'

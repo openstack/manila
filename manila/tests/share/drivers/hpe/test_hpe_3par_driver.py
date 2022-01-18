@@ -750,6 +750,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'max_share_server_size': -1,
             'max_shares_per_share_server': -1,
             'security_service_update_support': False,
+            'share_server_multiple_subnet_support': False,
+            'network_allocation_update_support': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -824,6 +826,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': False,
             'security_service_update_support': False,
+            'share_server_multiple_subnet_support': False,
+            'network_allocation_update_support': False,
             'mount_snapshot_support': False,
             'share_group_stats': {
                 'consistent_snapshot_support': None,
@@ -872,6 +876,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': False,
             'security_service_update_support': False,
+            'share_server_multiple_subnet_support': False,
+            'network_allocation_update_support': False,
             'mount_snapshot_support': False,
             'share_group_stats': {
                 'consistent_snapshot_support': None,
@@ -926,7 +932,7 @@ class HPE3ParDriverTestCase(test.TestCase):
 
         self.init_driver()
 
-        network_info = {
+        network_info = [{
             'network_allocations': [
                 {'ip_address': constants.EXPECTED_IP_1234}],
             'cidr': '/'.join((constants.EXPECTED_IP_1234,
@@ -934,7 +940,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'network_type': constants.EXPECTED_VLAN_TYPE,
             'segmentation_id': constants.EXPECTED_VLAN_TAG,
             'server_id': constants.EXPECTED_SERVER_ID,
-        }
+        }]
 
         expected_result = {
             'share_server_name': constants.EXPECTED_SERVER_ID,
@@ -964,7 +970,7 @@ class HPE3ParDriverTestCase(test.TestCase):
 
         self.init_driver()
 
-        network_info = {
+        network_info = [{
             'network_allocations': [
                 {'ip_address': constants.EXPECTED_IP_1234}],
             'cidr': '/'.join((constants.EXPECTED_IP_1234,
@@ -972,7 +978,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'network_type': constants.EXPECTED_VXLAN_TYPE,
             'segmentation_id': constants.EXPECTED_VLAN_TAG,
             'server_id': constants.EXPECTED_SERVER_ID,
-        }
+        }]
         metadata = {'request_host': constants.EXPECTED_HOST}
 
         self.assertRaises(exception.NetworkBadConfigurationException,
@@ -984,7 +990,7 @@ class HPE3ParDriverTestCase(test.TestCase):
 
         self.init_driver()
 
-        network_info = {
+        network_info = [{
             'network_allocations': [
                 {'ip_address': constants.EXPECTED_IP_1234}],
             'cidr': '/'.join((constants.EXPECTED_IP_1234,
@@ -992,7 +998,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'network_type': constants.EXPECTED_VLAN_TYPE,
             'segmentation_id': constants.EXPECTED_VLAN_TAG,
             'server_id': constants.EXPECTED_SERVER_ID,
-        }
+        }]
         metadata = {'request_host': constants.EXPECTED_HOST}
 
         expected_vfs = self.driver.fpgs[

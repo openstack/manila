@@ -134,3 +134,8 @@ class NetworkBaseAPI(db_base.Base, metaclass=abc.ABCMeta):
                         "should be configured to 'True'.")
                 raise exception.NetworkBadConfigurationException(reason=msg)
         return self._enabled_ip_versions
+
+    @abc.abstractmethod
+    def include_network_info(self, share_network_subnet):
+        """Includes share-network-subnet with plugin specific data."""
+        pass

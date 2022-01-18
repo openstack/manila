@@ -15,6 +15,7 @@
 
 from unittest import mock
 
+import copy
 import ddt
 from webob import exc
 
@@ -36,14 +37,15 @@ fake_share_server_list = {
             'host': 'fake_host',
             'share_network_name': 'fake_sn_name',
             'share_network_id': 'fake_sn_id',
-            'share_network_subnet_id': 'fake_sns_id',
+            'share_network_subnet_ids': ['fake_sns_id'],
             'project_id': 'fake_project_id',
             'id': 'fake_server_id',
             'is_auto_deletable': False,
             'task_state': None,
             'source_share_server_id': None,
             'identifier': 'fake_id',
-            'security_service_update_support': False
+            'security_service_update_support': False,
+            'network_allocation_update_support': False
         },
         {
             'status': constants.STATUS_ERROR,
@@ -51,14 +53,15 @@ fake_share_server_list = {
             'host': 'fake_host_2',
             'share_network_name': 'fake_sn_id_2',
             'share_network_id': 'fake_sn_id_2',
-            'share_network_subnet_id': 'fake_sns_id_2',
+            'share_network_subnet_ids': ['fake_sns_id_2'],
             'project_id': 'fake_project_id_2',
             'id': 'fake_server_id_2',
             'is_auto_deletable': True,
             'task_state': None,
             'source_share_server_id': None,
             'identifier': 'fake_id_2',
-            'security_service_update_support': False
+            'security_service_update_support': False,
+            'network_allocation_update_support': False
 
         },
     ]
@@ -87,7 +90,7 @@ fake_share_server_get_result = {
         'host': 'fake_host',
         'share_network_name': 'fake_sn_name',
         'share_network_id': 'fake_sn_id',
-        'share_network_subnet_id': 'fake_sns_id',
+        'share_network_subnet_ids': ['fake_sns_id'],
         'project_id': 'fake_project_id',
         'id': 'fake_server_id',
         'backend_details': {
@@ -98,7 +101,8 @@ fake_share_server_get_result = {
         'task_state': None,
         'source_share_server_id': None,
         'identifier': 'fake_id',
-        'security_service_update_support': False
+        'security_service_update_support': False,
+        'network_allocation_update_support': False
     }
 }
 
@@ -124,10 +128,11 @@ class FakeShareServer(object):
             self.created_at = kwargs.get('created_at', None)
         self.updated_at = kwargs.get('updated_at', None)
         self.host = kwargs.get('host', 'fake_host')
-        self.share_network_subnet = kwargs.get('share_network_subnet', {
-            'id': 'fake_sns_id', 'share_network_id': 'fake_sn_id'})
-        self.share_network_subnet_id = kwargs.get(
-            'share_network_subnet_id', self.share_network_subnet['id'])
+        self.share_network_subnets = kwargs.get('share_network_subnets', [{
+            'id': 'fake_sns_id', 'share_network_id': 'fake_sn_id'}])
+        self.share_network_subnet_ids = kwargs.get(
+            'share_network_subnet_ids',
+            [sn['id'] for sn in self.share_network_subnets])
         self.status = kwargs.get('status', constants.STATUS_ACTIVE)
         self.project_id = 'fake_project_id'
         self.identifier = kwargs.get('identifier', 'fake_id')
@@ -137,6 +142,9 @@ class FakeShareServer(object):
         self.backend_details = share_server_backend_details
         self.security_service_update_support = kwargs.get(
             'security_service_update_support', False)
+        self.network_allocation_update_support = kwargs.get(
+            'network_allocation_update_support', False)
+        self.share_network_id = kwargs.get('share_network_id', 'fake_sn_id')
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -147,15 +155,17 @@ def fake_share_server_get_all():
         FakeShareServer(),
         FakeShareServer(id='fake_server_id_2',
                         host='fake_host_2',
-                        share_network_subnet={
+                        share_network_subnets=[{
                             'id': 'fake_sns_id_2',
                             'share_network_id': 'fake_sn_id_2',
-                            },
+                            }],
+                        share_network_id='fake_sn_id_2',
                         identifier='fake_id_2',
                         task_state=None,
                         is_auto_deletable=True,
                         status=constants.STATUS_ERROR,
-                        security_service_update_support=False)
+                        security_service_update_support=False,
+                        network_allocation_update_support=False),
     ]
     return fake_share_servers
 
@@ -184,7 +194,7 @@ class FakeRequestWithProjectId(FakeRequestAdmin):
 class FakeRequestWithShareNetworkSubnetId(FakeRequestAdmin):
     GET = {
         'share_network_subnet_id':
-            fake_share_server_get_all()[0].share_network_subnet_id,
+            fake_share_server_get_all()[0].share_network_subnet_ids,
     }
 
 
@@ -347,20 +357,43 @@ class ShareServerAPITest(test.TestCase):
             ctxt, self.resource_name, 'index')
         self.assertEqual(0, len(result['share_servers']))
 
-    def test_show(self):
+    @ddt.data({'version': '2.70', 'share_network_name': ''},
+              {'version': '2.70', 'share_network_name': 'fake_sn_name'},
+              {'version': '2.68', 'share_network_name': 'fake_sn_name'})
+    @ddt.unpack
+    def test_show(self, version, share_network_name):
         self.mock_object(db_api, 'share_server_get',
                          mock.Mock(return_value=fake_share_server_get()))
-        request, ctxt = self._prepare_request('/show', use_admin_context=True)
+        request, ctxt = self._prepare_request('/show', use_admin_context=True,
+                                              version=version)
+
+        share_network = copy.deepcopy(
+            fake_share_network_get_list['share_networks'][0])
+        share_server = copy.deepcopy(
+            fake_share_server_get_result['share_server'])
+
+        if version == '2.68':
+            share_server['share_network_subnet_id'] = \
+                share_server['share_network_subnet_ids'][0]
+            share_server.pop('share_network_subnet_ids')
+            share_server.pop('network_allocation_update_support')
+
+        share_network['name'] = share_network_name
+        if share_network['name']:
+            share_server['share_network_name'] = share_network['name']
+        else:
+            share_server['share_network_name'] = share_network['id']
+
         self.mock_object(db_api, 'share_network_get', mock.Mock(
-            return_value=fake_share_network_get_list['share_networks'][0]))
+            return_value=share_network))
         result = self.controller.show(
             request,
-            fake_share_server_get_result['share_server']['id'])
+            share_server['id'])
         policy.check_policy.assert_called_once_with(
             ctxt, self.resource_name, 'show')
         db_api.share_server_get.assert_called_once_with(
-            ctxt, fake_share_server_get_result['share_server']['id'])
-        self.assertEqual(fake_share_server_get_result['share_server'],
+            ctxt, share_server['id'])
+        self.assertEqual(share_server,
                          result['share_server'])
 
     @ddt.data(
@@ -389,7 +422,7 @@ class ShareServerAPITest(test.TestCase):
             ctxt, fake_share_server_get_result['share_server']['id'])
         if isinstance(share_net_side_effect, exception.ShareNetworkNotFound):
             exp_share_net_id = (fake_share_server_get()
-                                .share_network_subnet['share_network_id'])
+                                .share_network_subnets[0]['share_network_id'])
             db_api.share_network_get.assert_called_once_with(
                 ctxt, exp_share_net_id)
 

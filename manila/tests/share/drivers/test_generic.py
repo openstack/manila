@@ -1182,23 +1182,23 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test__setup_server(self):
         sim = self._driver.instance_manager
-        net_info = {
+        net_info = [{
             'server_id': 'fake',
             'neutron_net_id': 'fake-net-id',
             'neutron_subnet_id': 'fake-subnet-id',
-        }
+        }]
         self._driver.setup_server(net_info)
         sim.set_up_service_instance.assert_called_once_with(
-            self._context, net_info)
+            self._context, net_info[0])
 
     def test__setup_server_revert(self):
 
         def raise_exception(*args, **kwargs):
             raise exception.ServiceInstanceException
 
-        net_info = {'server_id': 'fake',
-                    'neutron_net_id': 'fake-net-id',
-                    'neutron_subnet_id': 'fake-subnet-id'}
+        net_info = [{'server_id': 'fake',
+                     'neutron_net_id': 'fake-net-id',
+                     'neutron_subnet_id': 'fake-subnet-id'}]
         self.mock_object(self._driver.service_instance_manager,
                          'set_up_service_instance',
                          mock.Mock(side_effect=raise_exception))

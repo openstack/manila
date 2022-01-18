@@ -48,6 +48,17 @@ class ShareRpcAPITestCase(test.TestCase):
         share_group_snapshot = {'id': 'fake_share_group_id'}
         host = 'fake_host'
         share_server = db_utils.create_share_server(host=host)
+        share_network_subnet = {
+            'availability_zone_id': 'fake_az_id',
+            'neutron_net_id': 'fake_neutron_net_id',
+            'neutron_subnet_id': 'fake_neutron_subnet_id',
+            'ip_version': 4,
+            'cidr': '127.0.0.0/28',
+            'gateway': '127.0.0.1',
+            'mtu': 1500,
+            'network_type': 'vlan',
+            'segmentation_id': 3000,
+        }
         self.fake_share = jsonutils.to_primitive(share)
         # mock out the getattr on the share db model object since jsonutils
         # doesn't know about those extra attributes to pull in
@@ -61,6 +72,8 @@ class ShareRpcAPITestCase(test.TestCase):
         self.fake_share_group_snapshot = jsonutils.to_primitive(
             share_group_snapshot)
         self.fake_host = jsonutils.to_primitive(host)
+        self.fake_share_network_subnet = jsonutils.to_primitive(
+            share_network_subnet)
         self.ctxt = context.RequestContext('fake_user', 'fake_project')
         self.rpcapi = share_rpcapi.ShareAPI()
 
@@ -476,3 +489,21 @@ class ShareRpcAPITestCase(test.TestCase):
                              share_network_id='fake_net_id',
                              new_security_service_id='fake_sec_service_id',
                              current_security_service_id='fake_sec_service_id')
+
+    def test_check_update_share_server_network_allocations(self):
+        self._test_share_api(
+            'check_update_share_server_network_allocations',
+            rpc_method='cast',
+            version='1.23',
+            dest_host=self.fake_host,
+            share_network_id='fake_net_id',
+            new_share_network_subnet=self.fake_share_network_subnet)
+
+    def test_update_share_server_network_allocations(self):
+        self._test_share_api(
+            'update_share_server_network_allocations',
+            rpc_method='cast',
+            version='1.23',
+            dest_host=self.fake_host,
+            share_network_id='fake_net_id',
+            new_share_network_subnet_id='new_share_network_subnet_id')

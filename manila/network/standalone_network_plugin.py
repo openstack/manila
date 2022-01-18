@@ -257,7 +257,11 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                     'available': len(ips)}
         raise exception.NetworkBadConfigurationException(reason=msg)
 
-    def _save_network_info(self, context, share_network_subnet):
+    def include_network_info(self, share_network_subnet):
+        """Includes share-network-subnet with plugin specific data."""
+        self._save_network_info(None, share_network_subnet, save_db=False)
+
+    def _save_network_info(self, context, share_network_subnet, save_db=True):
         """Update share-network-subnet with plugin specific data."""
         data = {
             'network_type': self.network_type,
@@ -268,7 +272,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
             'mtu': self.mtu,
         }
         share_network_subnet.update(data)
-        if self.label != 'admin':
+        if self.label != 'admin' and save_db:
             self.db.share_network_subnet_update(
                 context, share_network_subnet['id'], data)
 
@@ -303,6 +307,9 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                 'ip_version': share_network_subnet['ip_version'],
                 'mtu': share_network_subnet['mtu'],
             }
+            if self.label != 'admin':
+                data['share_network_subnet_id'] = (
+                    share_network_subnet['id'])
             allocations.append(
                 self.db.network_allocation_create(context, data))
         return allocations
@@ -354,6 +361,9 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                 'ip_version': share_network_subnet['ip_version'],
                 'mtu': share_network_subnet['mtu'],
             }
+            if self.label != 'admin':
+                data['share_network_subnet_id'] = (
+                    share_network_subnet['id'])
             self.db.network_allocation_create(context, data)
             remaining_allocations.remove(allocation)
 

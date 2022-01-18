@@ -101,6 +101,8 @@ class HostFiltersTestCase(test.TestCase):
         }
         request = self._make_zone_request(None)
         request['request_spec']['availability_zones'] = supported_azs
+        request['request_spec']['az_request_multiple_subnet_support_map'] = \
+            {'zone2': 2}
         host = fakes.FakeHostState('host1', {'service': service})
 
         self.assertEqual(host_passes, self.filter.host_passes(host, request))

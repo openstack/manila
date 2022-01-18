@@ -152,3 +152,22 @@ def _usage_from_share(share_ref, share_instance_ref, **extra_usage_info):
 
 def get_recent_db_migration_id():
     return migration.version()
+
+
+def is_az_subnets_compatible(subnet_list, new_subnet_list):
+    if len(subnet_list) != len(new_subnet_list):
+        return False
+
+    for subnet in subnet_list:
+        found_compatible = False
+        for new_subnet in new_subnet_list:
+            if (subnet.get('neutron_net_id') ==
+                    new_subnet.get('neutron_net_id') and
+                    subnet.get('neutron_subnet_id') ==
+                    new_subnet.get('neutron_subnet_id')):
+                found_compatible = True
+                break
+        if not found_compatible:
+            return False
+
+    return True

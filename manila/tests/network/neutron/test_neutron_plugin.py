@@ -122,6 +122,7 @@ fake_network_allocation = {
     'cidr': fake_share_network_subnet['cidr'],
     'gateway': fake_share_network_subnet['gateway'],
     'mtu': 1509,
+    'share_network_subnet_id': fake_share_network_subnet['id'],
 }
 
 fake_nw_info = {
@@ -187,6 +188,7 @@ fake_network_allocation_multi = {
     'cidr': fake_neutron_subnet['cidr'],
     'gateway': fake_neutron_subnet['gateway_ip'],
     'mtu': fake_neutron_network_multi['mtu'],
+    'share_network_subnet_id': fake_share_network['id'],
 }
 
 fake_binding_profile = {
@@ -240,9 +242,11 @@ class NeutronNetworkPluginTest(test.TestCase):
 
             has_provider_nw_ext.assert_any_call()
             save_nw_data.assert_called_once_with(self.fake_context,
-                                                 fake_share_network_subnet)
+                                                 fake_share_network_subnet,
+                                                 save_db=True)
             save_subnet_data.assert_called_once_with(self.fake_context,
-                                                     fake_share_network_subnet)
+                                                     fake_share_network_subnet,
+                                                     save_db=True)
             self.plugin.neutron_api.create_port.assert_called_once_with(
                 fake_share_network['project_id'],
                 network_id=fake_share_network_subnet['neutron_net_id'],
@@ -401,6 +405,7 @@ class NeutronNetworkPluginTest(test.TestCase):
             'ip_version': fake_share_network_subnet['ip_version'],
             'cidr': fake_share_network_subnet['cidr'],
             'mtu': fake_share_network_subnet['mtu'],
+            'share_network_subnet_id': fake_share_network_subnet['id'],
         } for x in ['192.168.0.11', '192.168.0.12']]
 
         if side_effect:
@@ -961,9 +966,11 @@ class NeutronBindNetworkPluginTest(test.TestCase):
 
             self.bind_plugin._has_provider_network_extension.assert_any_call()
             save_nw_data.assert_called_once_with(self.fake_context,
-                                                 fake_share_network_subnet)
+                                                 fake_share_network_subnet,
+                                                 save_db=True)
             save_subnet_data.assert_called_once_with(self.fake_context,
-                                                     fake_share_network_subnet)
+                                                     fake_share_network_subnet,
+                                                     save_db=True)
             expected_kwargs = {
                 'binding:vnic_type': 'baremetal',
                 'host_id': 'foohost1',
@@ -1486,9 +1493,11 @@ class NeutronBindSingleNetworkPluginTest(test.TestCase):
 
             self.bind_plugin._has_provider_network_extension.assert_any_call()
             save_nw_data.assert_called_once_with(self.fake_context,
-                                                 fake_share_network_subnet)
+                                                 fake_share_network_subnet,
+                                                 save_db=True)
             save_subnet_data.assert_called_once_with(self.fake_context,
-                                                     fake_share_network_subnet)
+                                                     fake_share_network_subnet,
+                                                     save_db=True)
             expected_kwargs = {
                 'binding:vnic_type': 'baremetal',
                 'host_id': 'foohost1',
@@ -1713,9 +1722,11 @@ class NeutronBindNetworkPluginWithNormalTypeTest(test.TestCase):
 
             self.bind_plugin._has_provider_network_extension.assert_any_call()
             save_nw_data.assert_called_once_with(self.fake_context,
-                                                 fake_share_network_subnet)
+                                                 fake_share_network_subnet,
+                                                 save_db=True)
             save_subnet_data.assert_called_once_with(self.fake_context,
-                                                     fake_share_network_subnet)
+                                                     fake_share_network_subnet,
+                                                     save_db=True)
             expected_kwargs = {
                 'binding:vnic_type': 'normal',
                 'host_id': 'foohost1',
@@ -1800,9 +1811,11 @@ class NeutronBindSingleNetworkPluginWithNormalTypeTest(test.TestCase):
 
             self.bind_plugin._has_provider_network_extension.assert_any_call()
             save_nw_data.assert_called_once_with(self.fake_context,
-                                                 fake_share_network_subnet)
+                                                 fake_share_network_subnet,
+                                                 save_db=True)
             save_subnet_data.assert_called_once_with(self.fake_context,
-                                                     fake_share_network_subnet)
+                                                     fake_share_network_subnet,
+                                                     save_db=True)
             expected_kwargs = {
                 'binding:vnic_type': 'normal',
                 'host_id': 'foohost1',
@@ -1866,3 +1879,23 @@ class NeutronBindSingleNetworkPluginWithNormalTypeTest(test.TestCase):
             self.assertRaises(exception.NetworkBadConfigurationException,
                               self.bind_plugin._get_matched_ip_address,
                               fix_ips, version)
+
+    def _setup_include_network_info(self):
+        data = {
+            'DEFAULT': {
+                'neutron_net_id': 'fake net id',
+                'neutron_subnet_id': 'fake subnet id',
+                'neutron_physical_net_name': 'net1',
+            }
+        }
+        with test_utils.create_temp_config_with_opts(data):
+            instance = plugin.NeutronNetworkPlugin()
+
+        return instance
+
+    def test_include_network_info(self):
+        instance = self._setup_include_network_info()
+        self.mock_object(instance, '_store_neutron_net_info')
+        instance.include_network_info(fake_share_network)
+        instance._store_neutron_net_info.assert_called_once_with(
+            None, fake_share_network, save_db=False)

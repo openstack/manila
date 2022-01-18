@@ -2852,7 +2852,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.fake_src_share_server,
             self.fake_dest_share_server,
             share_instances, [],
-            fake.NETWORK_INFO
+            [fake.NETWORK_INFO]
         )
 
         expected_share_updates = {
@@ -2932,7 +2932,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           self.fake_dest_share_server,
                           self.fake_src_vserver,
                           self.mock_src_client, [fake.SHARE_INSTANCE],
-                          fake.NETWORK_INFO)
+                          [fake.NETWORK_INFO])
 
         dm_session_mock.update_snapmirror_svm.assert_called_once_with(
             self.fake_src_share_server, self.fake_dest_share_server
@@ -2977,7 +2977,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           self.fake_src_share_server,
                           self.fake_dest_share_server,
                           [fake.SHARE_INSTANCE], [],
-                          fake.NETWORK_INFO)
+                          [fake.NETWORK_INFO])
 
         self.library._get_vserver.assert_has_calls([
             mock.call(share_server=self.fake_src_share_server,
@@ -3513,7 +3513,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake_vserver_client, 'modify_active_directory_security_service')
 
         self.library.update_share_server_security_service(
-            fake_context, fake.SHARE_SERVER, fake_net_info,
+            fake_context, fake.SHARE_SERVER, [fake_net_info],
             new_sec_service, current_security_service=curr_sec_service)
 
         dns_ips = set()
@@ -3530,7 +3530,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_vserver.assert_called_once_with(
             share_server=fake.SHARE_SERVER)
         mock_check_update.assert_called_once_with(
-            fake_context, fake.SHARE_SERVER, fake_net_info, new_sec_service,
+            fake_context, fake.SHARE_SERVER, [fake_net_info], new_sec_service,
             current_security_service=curr_sec_service)
 
         if curr_sec_service is None:
@@ -3565,13 +3565,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(
             exception.NetAppException,
             self.library.update_share_server_security_service,
-            fake_context, fake.SHARE_SERVER, fake_net_info,
+            fake_context, fake.SHARE_SERVER, [fake_net_info],
             new_sec_service, current_security_service=curr_sec_service)
 
         mock_get_vserver.assert_called_once_with(
             share_server=fake.SHARE_SERVER)
         mock_check_update.assert_called_once_with(
-            fake_context, fake.SHARE_SERVER, fake_net_info,
+            fake_context, fake.SHARE_SERVER, [fake_net_info],
             new_sec_service, current_security_service=curr_sec_service)
 
     @ddt.data(

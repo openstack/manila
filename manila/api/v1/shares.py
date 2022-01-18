@@ -355,12 +355,17 @@ class ShareMixin(object):
             common.check_share_network_is_active(share_network)
 
             if availability_zone_id:
-                if not db.share_network_subnet_get_by_availability_zone_id(
+                subnets = (
+                    db.share_network_subnets_get_all_by_availability_zone_id(
                         context, share_network_id,
-                        availability_zone_id=availability_zone_id):
+                        availability_zone_id=availability_zone_id))
+                if not subnets:
                     msg = _("A share network subnet was not found for the "
                             "requested availability zone.")
                     raise exc.HTTPBadRequest(explanation=msg)
+                kwargs['az_request_multiple_subnet_support_map'] = {
+                    availability_zone_id: len(subnets) > 1,
+                }
 
         display_name = share.get('display_name')
         display_description = share.get('display_description')

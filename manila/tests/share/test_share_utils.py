@@ -165,6 +165,33 @@ class ShareUtilsTestCase(test.TestCase):
         replica = share_utils.get_active_replica(replica_list)
         self.assertIsNone(replica)
 
+    @ddt.data(
+        {'fake_subnet': [{'neutron_net_id': 'fake_nn_id',
+                          'neutron_subnet_id': 'fake_nsb_id'}],
+         'fake_new_subnet': [{'neutron_net_id': 'fake_nn_id',
+                             'neutron_subnet_id': 'fake_nsb_id'}],
+         'is_compatible': True},
+        {'fake_subnet': [{'neutron_net_id': 'fake_nn_id',
+                         'neutron_subnet_id': 'fake_nsb_id'}],
+         'fake_new_subnet': [{'neutron_net_id': 'fake_nn_id',
+                             'neutron_subnet_id': 'fake_nsb_id2'}],
+         'is_compatible': False},
+        {'fake_subnet': [{'neutron_net_id': 'fake_nn_id',
+                          'neutron_subnet_id': 'fake_nsb_id'},
+                         {'neutron_net_id': 'fake_nn_id2',
+                          'neutron_subnet_id': 'fake_nsb_id2'}],
+         'fake_new_subnet': [{'neutron_net_id': 'fake_nn_id',
+                              'neutron_subnet_id': 'fake_nsb_id'}],
+         'is_compatible': False}
+    )
+    @ddt.unpack
+    def test_is_az_subnets_compatible(self, fake_subnet, fake_new_subnet,
+                                      is_compatible):
+        expected_result = is_compatible
+        result = share_utils.is_az_subnets_compatible(fake_subnet,
+                                                      fake_new_subnet)
+        self.assertEqual(expected_result, result)
+
 
 class NotifyUsageTestCase(test.TestCase):
     @mock.patch('manila.share.utils._usage_from_share')

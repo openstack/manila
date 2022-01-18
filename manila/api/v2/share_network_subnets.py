@@ -21,11 +21,13 @@ from oslo_log import log
 import webob
 from webob import exc
 
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.views import share_network_subnets as subnet_views
 from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
+from manila import share
 from manila.share import rpcapi as share_rpcapi
 
 LOG = log.getLogger(__name__)
@@ -40,6 +42,7 @@ class ShareNetworkSubnetController(wsgi.Controller):
     def __init__(self):
         super(ShareNetworkSubnetController, self).__init__()
         self.share_rpcapi = share_rpcapi.ShareAPI()
+        self.share_api = share.API()
 
     @wsgi.Controller.api_version("2.51")
     @wsgi.Controller.authorize
@@ -104,74 +107,55 @@ class ShareNetworkSubnetController(wsgi.Controller):
         db_api.share_network_subnet_delete(context, share_network_subnet_id)
         return webob.Response(status_int=http_client.ACCEPTED)
 
-    def _validate_subnet(self, context, share_network_id, az=None):
-        """Validate the az for the given subnet.
-
-        If az is None, the method will search for an existent default subnet.
-        In case of a given AZ, validates if there's an existent subnet for it.
-        """
-        msg = ("Another share network subnet was found in the "
-               "specified availability zone. Only one share network "
-               "subnet is allowed per availability zone for share "
-               "network %s." % share_network_id)
-        if az is None:
-            default_subnet = db_api.share_network_subnet_get_default_subnet(
-                context, share_network_id)
-            if default_subnet is not None:
-                raise exc.HTTPConflict(explanation=msg)
-        else:
-            az_subnet = (
-                db_api.share_network_subnet_get_by_availability_zone_id(
-                    context, share_network_id, az['id'])
-            )
-            # If the 'availability_zone_id' is not None, we found a conflict,
-            # otherwise we just have found the default subnet
-            if az_subnet and az_subnet['availability_zone_id']:
-                raise exc.HTTPConflict(explanation=msg)
-
     @wsgi.Controller.api_version("2.51")
     @wsgi.Controller.authorize
     def create(self, req, share_network_id, body):
         """Add a new share network subnet into the share network."""
         context = req.environ['manila.context']
-
         if not self.is_valid_body(body, 'share-network-subnet'):
             msg = _("Share Network Subnet is missing from the request body.")
             raise exc.HTTPBadRequest(explanation=msg)
-
         data = body['share-network-subnet']
         data['share_network_id'] = share_network_id
+        multiple_subnet_support = (req.api_version_request >=
+                                   api_version.APIVersionRequest("2.70"))
+        share_network, existing_subnets = common.validate_subnet_create(
+            context, share_network_id, data, multiple_subnet_support)
 
-        common.check_net_id_and_subnet_id(data)
+        # create subnet operation on subnets with share servers means that an
+        # allocation update is requested.
+        if existing_subnets and existing_subnets[0]['share_servers']:
 
-        try:
-            db_api.share_network_get(context, share_network_id)
-        except exception.ShareNetworkNotFound as e:
-            raise exc.HTTPNotFound(explanation=e.msg)
-
-        availability_zone = data.pop('availability_zone', None)
-        subnet_az = None
-
-        if availability_zone:
+            # NOTE(felipe_rodrigues): all subnets have the same set of share
+            # servers, so we can just get the servers from one of them. Not
+            # necessarily all share servers from the specified AZ will be
+            # updated, only the ones created with subnets in the AZ. Others
+            # created with default AZ will only have its allocations updated
+            # when default subnet set is updated.
+            data['share_servers'] = existing_subnets[0]['share_servers']
             try:
-                subnet_az = db_api.availability_zone_get(context,
-                                                         availability_zone)
-            except exception.AvailabilityZoneNotFound:
-                msg = _("The provided availability zone %s does not "
-                        "exist.") % availability_zone
-                raise exc.HTTPBadRequest(explanation=msg)
+                share_network_subnet = (
+                    self.share_api.update_share_server_network_allocations(
+                        context, share_network, data))
+            except exception.ServiceIsDown as e:
+                msg = _('Could not add the share network subnet.')
+                LOG.error(e)
+                raise exc.HTTPInternalServerError(explanation=msg)
+            except exception.InvalidShareNetwork as e:
+                raise exc.HTTPBadRequest(explanation=e.msg)
+            except db_exception.DBError as e:
+                msg = _('Could not add the share network subnet.')
+                LOG.error(e)
+                raise exc.HTTPInternalServerError(explanation=msg)
+        else:
+            try:
+                share_network_subnet = db_api.share_network_subnet_create(
+                    context, data)
+            except db_exception.DBError as e:
+                msg = _('Could not create the share network subnet.')
+                LOG.error(e)
+                raise exc.HTTPInternalServerError(explanation=msg)
 
-        self._validate_subnet(context, share_network_id, az=subnet_az)
-
-        try:
-            data['availability_zone_id'] = (
-                subnet_az['id'] if subnet_az is not None else None)
-            share_network_subnet = db_api.share_network_subnet_create(
-                context, data)
-        except db_exception.DBError as e:
-            msg = _('Could not create the share network subnet.')
-            LOG.error(e)
-            raise exc.HTTPInternalServerError(explanation=msg)
         share_network_subnet = db_api.share_network_subnet_get(
             context, share_network_subnet['id'])
         return self._view_builder.build_share_network_subnet(

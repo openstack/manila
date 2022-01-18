@@ -737,17 +737,17 @@ class ShareAPITestCase(test.TestCase):
         fake_share_network_id = 'fake_sn_id'
         self.mock_object(db_api, 'availability_zone_get_all',
                          mock.Mock(return_value=get_all_azs_return))
-        self.mock_object(db_api,
-                         'share_network_subnet_get_by_availability_zone_id',
-                         mock.Mock(side_effect=subnet_by_az_side_effect))
-        expected_az_names = []
+        self.mock_object(
+            db_api, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(side_effect=subnet_by_az_side_effect))
+        expected_az_names = ([], {})
         expected_get_az_calls = []
         for index, value in enumerate(get_all_azs_return):
             expected_get_az_calls.append(mock.call(
                 self.context, share_network_id=fake_share_network_id,
                 availability_zone_id=value['id']))
             if subnet_by_az_side_effect[index] is not None:
-                expected_az_names.append(value['name'])
+                expected_az_names = ([value['name']], {value['id']: True})
 
         get_all_subnets = self.api._get_all_availability_zones_with_subnets
         compatible_azs = get_all_subnets(self.context, fake_share_network_id)
@@ -755,7 +755,7 @@ class ShareAPITestCase(test.TestCase):
         db_api.availability_zone_get_all.assert_called_once_with(
             self.context)
         db_get_azs_with_subnet = (
-            db_api.share_network_subnet_get_by_availability_zone_id)
+            db_api.share_network_subnets_get_all_by_availability_zone_id)
         db_get_azs_with_subnet.assert_has_calls(expected_get_az_calls)
 
         self.assertEqual(expected_az_names, compatible_azs)
@@ -779,21 +779,25 @@ class ShareAPITestCase(test.TestCase):
                           share_type=self.sized_sha_type)
 
     @ddt.data(
-        {'availability_zones': None, 'azs_with_subnet': ['fake_az_1']},
+        {'availability_zones': None, 'compatible_azs_name': ['fake_az_1'],
+         'compatible_azs_multiple': {}},
         {'availability_zones': ['fake_az_2'],
-         'azs_with_subnet': ['fake_az_2']},
+         'compatible_azs_name': ['fake_az_2'], 'compatible_azs_multiple': {}},
         {'availability_zones': ['fake_az_1', 'faze_az_2', 'fake_az_3'],
-         'azs_with_subnet': ['fake_az_3']}
+         'compatible_azs_name': ['fake_az_3'],
+         'compatible_azs_multiple': {'fake_az_3': 1}}
     )
     @ddt.unpack
     def test_create_share_with_subnets(self, availability_zones,
-                                       azs_with_subnet):
+                                       compatible_azs_name,
+                                       compatible_azs_multiple):
         share, share_data = self._setup_create_mocks()
         reservation = 'fake'
         self.mock_object(quota.QUOTAS, 'reserve',
                          mock.Mock(return_value=reservation))
         self.mock_object(self.api, '_get_all_availability_zones_with_subnets',
-                         mock.Mock(return_value=azs_with_subnet))
+                         mock.Mock(return_value=[compatible_azs_name,
+                                                 compatible_azs_multiple]))
         self.mock_object(quota.QUOTAS, 'commit')
         self.mock_object(self.api, 'create_instance')
         self.mock_object(db_api, 'share_get')
@@ -801,9 +805,13 @@ class ShareAPITestCase(test.TestCase):
 
         if availability_zones:
             expected_azs = (
-                [az for az in availability_zones if az in azs_with_subnet])
+                [az for az in availability_zones if az in compatible_azs_name])
         else:
-            expected_azs = azs_with_subnet
+            expected_azs = compatible_azs_name
+
+        az_multiple_sn_support_map = None
+        if compatible_azs_multiple != {}:
+            az_multiple_sn_support_map = compatible_azs_multiple
 
         self.api.create(
             self.context,
@@ -812,7 +820,8 @@ class ShareAPITestCase(test.TestCase):
             share_data['display_name'],
             share_data['display_description'],
             share_network_id=fake_share_network_id,
-            availability_zones=availability_zones)
+            availability_zones=availability_zones,
+            az_request_multiple_subnet_support_map=az_multiple_sn_support_map)
         share['status'] = constants.STATUS_CREATING
         share['host'] = None
 
@@ -825,25 +834,30 @@ class ShareAPITestCase(test.TestCase):
             self.context, share, share_network_id=fake_share_network_id,
             host=None, availability_zone=None, share_group=None,
             share_group_snapshot_member=None, share_type_id=None,
-            availability_zones=expected_azs, snapshot_host=None,
+            availability_zones=expected_azs,
+            az_request_multiple_subnet_support_map=compatible_azs_multiple,
+            snapshot_host=None,
             scheduler_hints=None
         )
         db_api.share_get.assert_called_once()
 
     @ddt.data(
-        {'availability_zones': None, 'azs_with_subnet': []},
+        {'availability_zones': None, 'compatible_azs_name': [],
+         'compatible_azs_multiple': []},
         {'availability_zones': ['fake_az_1'],
-         'azs_with_subnet': ['fake_az_2']}
+         'compatible_azs_name': ['fake_az_2'], 'compatible_azs_multiple': []}
     )
     @ddt.unpack
     def test_create_share_with_subnets_invalid_azs(self, availability_zones,
-                                                   azs_with_subnet):
+                                                   compatible_azs_name,
+                                                   compatible_azs_multiple):
         share, share_data = self._setup_create_mocks()
         reservation = 'fake'
         self.mock_object(quota.QUOTAS, 'reserve',
                          mock.Mock(return_value=reservation))
         self.mock_object(self.api, '_get_all_availability_zones_with_subnets',
-                         mock.Mock(return_value=azs_with_subnet))
+                         mock.Mock(return_value=[compatible_azs_name,
+                                                 compatible_azs_multiple]))
         self.mock_object(quota.QUOTAS, 'commit')
         self.mock_object(self.api, 'create_instance')
         self.mock_object(db_api, 'share_get')
@@ -879,18 +893,44 @@ class ShareAPITestCase(test.TestCase):
                 share_data['display_description'])
 
     @ddt.data({'overs': {'gigabytes': 'fake'},
-               'expected_exception': exception.ShareSizeExceedsAvailableQuota},
+               'expected_exception': exception.ShareSizeExceedsAvailableQuota,
+               'replication_type': None},
               {'overs': {'shares': 'fake'},
-               'expected_exception': exception.ShareLimitExceeded})
+               'expected_exception': exception.ShareLimitExceeded,
+               'replication_type': None},
+              {'overs': {'replica_gigabytes': 'fake'},
+               'expected_exception':
+                   exception.ShareReplicaSizeExceedsAvailableQuota,
+               'replication_type': constants.REPLICATION_TYPE_READABLE},
+              {'overs': {'share_replicas': 'fake'},
+               'expected_exception': exception.ShareReplicasLimitExceeded,
+               'replication_type': constants.REPLICATION_TYPE_READABLE})
     @ddt.unpack
-    def test_create_share_over_quota(self, overs, expected_exception):
-        share, share_data = self._setup_create_mocks()
+    def test_create_share_over_quota(self, overs, expected_exception,
+                                     replication_type):
+        extra_specs = {'replication_type': replication_type}
+        share_type = db_utils.create_share_type(extra_specs=extra_specs)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        share, share_data = self._setup_create_mocks(
+            share_type_id=share_type['id'])
+
+        az = share_data.pop('availability_zone')
 
         usages = {'gigabytes': {'reserved': 5, 'in_use': 5},
-                  'shares': {'reserved': 10, 'in_use': 10}}
-        quotas = {'gigabytes': 5, 'shares': 10}
+                  'shares': {'reserved': 10, 'in_use': 10},
+                  'replica_gigabytes': {'reserved': 5, 'in_use': 5},
+                  'share_replicas': {'reserved': 10, 'in_use': 10}}
+
+        quotas = {'gigabytes': 5, 'shares': 10,
+                  'replica_gigabytes': 5, 'share_replicas': 10}
+
         exc = exception.OverQuota(overs=overs, usages=usages, quotas=quotas)
         self.mock_object(quota.QUOTAS, 'reserve', mock.Mock(side_effect=exc))
+
+        if replication_type:
+            # Prevent the raising of an exception, to force the call to the
+            # function _check_if_replica_quotas_exceeded
+            self.mock_object(self.api, '_check_if_share_quotas_exceeded')
 
         self.assertRaises(
             expected_exception,
@@ -899,11 +939,19 @@ class ShareAPITestCase(test.TestCase):
             share_data['share_proto'],
             share_data['size'],
             share_data['display_name'],
-            share_data['display_description']
+            share_data['display_description'],
+            availability_zone=az,
+            share_type=share_type
         )
-        quota.QUOTAS.reserve.assert_called_once_with(
-            self.context, share_type_id=None,
-            shares=1, gigabytes=share_data['size'])
+
+        if replication_type:
+            quota.QUOTAS.reserve.assert_called_once_with(
+                self.context, share_type_id=share_type['id'],
+                gigabytes=1, shares=1, share_replicas=1, replica_gigabytes=1)
+        else:
+            quota.QUOTAS.reserve.assert_called_once_with(
+                self.context, share_type_id=share_type['id'],
+                shares=1, gigabytes=share_data['size'])
 
     @ddt.data({'overs': {'per_share_gigabytes': 'fake'},
                'expected_exception': exception.ShareSizeExceedsLimit})
@@ -1114,7 +1162,7 @@ class ShareAPITestCase(test.TestCase):
             share_network_id='fake')
         share_server = db_utils.create_share_server(
             status=constants.STATUS_ACTIVE, id=share_server_id,
-            share_network_subnet_id=fake_subnet['id'])
+            share_network_subnets=[fake_subnet])
         share_network = db_utils.create_share_network(id='fake')
         fake_share_data = {
             'id': 'fakeid',
@@ -1144,8 +1192,6 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(return_value=fake_type))
         self.mock_object(db_api, 'share_server_get',
                          mock.Mock(return_value=share_server))
-        self.mock_object(db_api, 'share_network_subnet_get',
-                         mock.Mock(return_value=fake_subnet))
         self.mock_object(db_api, 'share_instances_get_all',
                          mock.Mock(return_value=[]))
         self.mock_object(db_api, 'share_network_get',
@@ -1194,8 +1240,6 @@ class ShareAPITestCase(test.TestCase):
         if dhss:
             db_api.share_server_get.assert_called_once_with(
                 self.context, share_data['share_server_id'])
-            db_api.share_network_subnet_get.assert_called_once_with(
-                self.context, share_server['share_network_subnet_id'])
 
     @ddt.data((True, exception.InvalidInput, True),
               (True, exception.InvalidInput, False),
@@ -1646,14 +1690,14 @@ class ShareAPITestCase(test.TestCase):
         fake_share_network = {
             'id': 'fake_net_id'
         }
-        fake_share_net_subnet = {
+        fake_share_net_subnet = [{
             'id': 'fake_subnet_id',
             'share_network_id': fake_share_network['id']
-        }
+        }]
         identifier = 'fake_identifier'
         values = {
             'host': host,
-            'share_network_subnet_id': fake_share_net_subnet['id'],
+            'share_network_subnets': [fake_share_net_subnet],
             'status': constants.STATUS_MANAGING,
             'is_auto_deletable': False,
             'identifier': identifier,
@@ -1663,7 +1707,7 @@ class ShareAPITestCase(test.TestCase):
             'id': 'fake_server_id',
             'status': constants.STATUS_MANAGING,
             'host': host,
-            'share_network_subnet_id': fake_share_net_subnet['id'],
+            'share_network_subnets': [fake_share_net_subnet],
             'is_auto_deletable': False,
             'identifier': identifier,
         }
@@ -1697,7 +1741,7 @@ class ShareAPITestCase(test.TestCase):
 
         result_dict = {
             'host': result['host'],
-            'share_network_subnet_id': result['share_network_subnet_id'],
+            'share_network_subnets': result['share_network_subnets'],
             'status': result['status'],
             'is_auto_deletable': result['is_auto_deletable'],
             'identifier': result['identifier'],
@@ -2298,7 +2342,6 @@ class ShareAPITestCase(test.TestCase):
         mock_get_share_type_call = self.mock_object(
             share_types, 'get_share_type', mock.Mock(return_value=share_type))
 
-        az = snapshot['share']['availability_zone'] if not az else az
         self.api.create(
             self.context,
             share_data['share_proto'],
@@ -2309,6 +2352,7 @@ class ShareAPITestCase(test.TestCase):
             availability_zone=az,
         )
 
+        expected_az = snapshot['share']['availability_zone'] if not az else az
         share_data.pop('availability_zone')
 
         mock_get_share_type_call.assert_called_once_with(
@@ -2318,9 +2362,10 @@ class ShareAPITestCase(test.TestCase):
         self.api.create_instance.assert_called_once_with(
             self.context, share, share_network_id=share['share_network_id'],
             host=valid_host, share_type_id=share_type['id'],
-            availability_zone=az,
+            availability_zone=expected_az,
             share_group=None, share_group_snapshot_member=None,
             availability_zones=None,
+            az_request_multiple_subnet_support_map=None,
             snapshot_host=snapshot['share']['instance']['host'],
             scheduler_hints=None)
         share_api.policy.check_policy.assert_called_once_with(
@@ -2330,6 +2375,48 @@ class ShareAPITestCase(test.TestCase):
             gigabytes=1, shares=1)
         quota.QUOTAS.commit.assert_called_once_with(
             self.context, 'reservation', share_type_id=share_type['id'])
+
+    def test_create_share_with_share_group(self):
+        extra_specs = {'replication_type': constants.REPLICATION_TYPE_READABLE}
+        share_type = db_utils.create_share_type(extra_specs=extra_specs)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        group = db_utils.create_share_group(
+            status=constants.STATUS_AVAILABLE,
+            share_types=[share_type['id']])
+        share, share_data = self._setup_create_mocks(
+            share_type_id=share_type['id'],
+            share_group_id=group['id'])
+
+        share_instance = db_utils.create_share_instance(
+            share_id=share['id'])
+        sg_snap_member = {
+            'id': 'fake_sg_snap_member_id',
+            'share_instance': share_instance
+        }
+
+        az = share_data.pop('availability_zone')
+
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(return_value='reservation'))
+        self.mock_object(quota.QUOTAS, 'commit')
+
+        self.api.create(
+            self.context,
+            share_data['share_proto'],
+            share_data['size'],
+            share_data['display_name'],
+            share_data['display_description'],
+            availability_zone=az,
+            share_type=share_type,
+            share_group_id=group['id'],
+            share_group_snapshot_member=sg_snap_member,
+        )
+        quota.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_type_id=share_type['id'],
+            gigabytes=1, shares=1, share_replicas=1, replica_gigabytes=1)
+        quota.QUOTAS.commit.assert_called_once_with(
+            self.context, 'reservation', share_type_id=share_type['id']
+        )
 
     def test_create_share_share_type_contains_replication_type(self):
         extra_specs = {'replication_type': constants.REPLICATION_TYPE_READABLE}
@@ -3768,9 +3855,9 @@ class ShareAPITestCase(test.TestCase):
         self.mock_object(share_types, 'get_share_type',
                          mock.Mock(return_value=share_type))
         self.mock_object(db_api, 'availability_zone_get')
-        self.mock_object(db_api,
-                         'share_network_subnet_get_by_availability_zone_id',
-                         mock.Mock(return_value=None))
+        self.mock_object(
+            db_api, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=None))
 
         self.assertRaises(exception.InvalidShare,
                           self.api.create_share_replica,
@@ -3784,7 +3871,8 @@ class ShareAPITestCase(test.TestCase):
         db_api.availability_zone_get.assert_called_once_with(
             self.context, az_name)
         self.assertTrue(
-            db_api.share_network_subnet_get_by_availability_zone_id.called)
+            (db_api.share_network_subnets_get_all_by_availability_zone_id.
+             called))
 
     def test_create_share_replica_az_not_found(self):
         request_spec = fakes.fake_replica_request_spec()
@@ -3820,13 +3908,15 @@ class ShareAPITestCase(test.TestCase):
             self.context, az_name)
 
     @ddt.data(
-        {'availability_zones': '', 'azs_with_subnet': ['fake_az_1']},
+        {'availability_zones': '', 'compatible_azs_name': ['fake_az_1'],
+         'compatible_azs_multiple': []},
         {'availability_zones': 'fake_az_1,fake_az_2',
-         'azs_with_subnet': ['fake_az_2']}
+         'compatible_azs_name': ['fake_az_2'], 'compatible_azs_multiple': []}
     )
     @ddt.unpack
     def test_create_share_replica_azs_with_subnets(self, availability_zones,
-                                                   azs_with_subnet):
+                                                   compatible_azs_name,
+                                                   compatible_azs_multiple):
         request_spec = fakes.fake_replica_request_spec()
         replica = request_spec['share_instance_properties']
         share_network_id = 'fake_share_network_id'
@@ -3850,15 +3940,16 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(return_value=share_type))
         mock_get_all_az_subnet = self.mock_object(
             self.api, '_get_all_availability_zones_with_subnets',
-            mock.Mock(return_value=azs_with_subnet))
+            mock.Mock(return_value=[compatible_azs_name,
+                                    compatible_azs_multiple]))
 
         if availability_zones == '':
-            expected_azs = azs_with_subnet
+            expected_azs = compatible_azs_name
         else:
             availability_zones = [
                 t for t in availability_zones.split(',') if availability_zones]
             expected_azs = (
-                [az for az in availability_zones if az in azs_with_subnet])
+                [az for az in availability_zones if az in compatible_azs_name])
 
         self.mock_object(
             self.api, 'create_share_instance_and_get_request_spec',
@@ -3884,19 +3975,22 @@ class ShareAPITestCase(test.TestCase):
              self.context, share, availability_zone=None,
              share_network_id=share_network_id, share_type_id=share_type['id'],
              availability_zones=expected_azs,
+             az_request_multiple_subnet_support_map={},
              cast_rules_to_readonly=cast_rules_to_readonly))
         db_api.share_replica_update.assert_called_once()
         mock_snapshot_get_all_call.assert_called_once()
         mock_sched_rpcapi_call.assert_called_once()
 
     @ddt.data(
-        {'availability_zones': '', 'azs_with_subnet': []},
+        {'availability_zones': '', 'compatible_azs_name': [],
+         'compatible_azs_multiple': []},
         {'availability_zones': 'fake_az_1,fake_az_2',
-         'azs_with_subnet': ['fake_az_3']}
+         'compatible_azs_name': ['fake_az_3'], 'compatible_azs_multiple': []}
     )
     @ddt.unpack
     def test_create_share_replica_azs_with_subnets_invalid_input(
-            self, availability_zones, azs_with_subnet):
+            self, availability_zones,
+            compatible_azs_name, compatible_azs_multiple):
         request_spec = fakes.fake_replica_request_spec()
         replica = request_spec['share_instance_properties']
         share_network_id = 'fake_share_network_id'
@@ -3916,7 +4010,8 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(return_value=share_type))
         mock_get_all_az_subnet = self.mock_object(
             self.api, '_get_all_availability_zones_with_subnets',
-            mock.Mock(return_value=azs_with_subnet))
+            mock.Mock(return_value=[compatible_azs_name,
+                                    compatible_azs_multiple]))
 
         self.assertRaises(
             exception.InvalidInput,
@@ -3931,30 +4026,37 @@ class ShareAPITestCase(test.TestCase):
         )
 
     @ddt.data({'has_snapshots': True,
+               'az_id': {},
                'extra_specs': {
                    'replication_type': constants.REPLICATION_TYPE_DR,
                },
                'share_network_id': None},
               {'has_snapshots': False,
+               'az_id': {},
                'extra_specs': {
                    'availability_zones': 'FAKE_AZ,FAKE_AZ2',
                    'replication_type': constants.REPLICATION_TYPE_DR,
                },
                'share_network_id': None},
               {'has_snapshots': True,
+               'az_id': {},
                'extra_specs': {
                    'availability_zones': 'FAKE_AZ,FAKE_AZ2',
                    'replication_type': constants.REPLICATION_TYPE_READABLE,
                },
                'share_network_id': None},
               {'has_snapshots': False,
+               'az_id': {'fake_zone_id': False},
                'extra_specs': {
                    'replication_type': constants.REPLICATION_TYPE_READABLE,
                },
                'share_network_id': 'fake_sn_id'})
     @ddt.unpack
     def test_create_share_replica(self, has_snapshots, extra_specs,
-                                  share_network_id):
+                                  share_network_id, az_id):
+        subnets = db_utils.create_share_network_subnet(
+            id='fakeid', share_network_id='fake_network_id')
+        az = {'id': 'fake_zone_id'}
         request_spec = fakes.fake_replica_request_spec()
         replication_type = extra_specs['replication_type']
         replica = request_spec['share_instance_properties']
@@ -3976,9 +4078,11 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(return_value={'host': 'fake_ar_host'}))
         self.mock_object(share_types, 'get_share_type',
                          mock.Mock(return_value=share_type))
-        self.mock_object(db_api, 'availability_zone_get')
-        self.mock_object(db_api,
-                         'share_network_subnet_get_by_availability_zone_id')
+        self.mock_object(db_api, 'availability_zone_get',
+                         mock.Mock(return_value=az))
+        self.mock_object(
+            db_api, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=[subnets]))
         self.mock_object(
             share_api.API, 'create_share_instance_and_get_request_spec',
             mock.Mock(return_value=(fake_request_spec, fake_replica)))
@@ -4011,6 +4115,7 @@ class ShareAPITestCase(test.TestCase):
              self.context, share, availability_zone='FAKE_AZ',
              share_network_id=share_network_id, share_type_id=share_type['id'],
              availability_zones=expected_azs,
+             az_request_multiple_subnet_support_map=az_id,
              cast_rules_to_readonly=cast_rules_to_readonly))
 
     def test_delete_last_active_replica(self):
@@ -4248,6 +4353,7 @@ class ShareAPITestCase(test.TestCase):
                                  share_network_id=share_network_id,
                                  share_type_id=share_type['id'],
                                  availability_zones=expected_azs,
+                                 az_request_multiple_subnet_support_map={},
                                  cast_rules_to_readonly=False))
 
     def test_migration_complete(self):
@@ -4641,13 +4747,6 @@ class ShareAPITestCase(test.TestCase):
         }
         fake_share_network = (
             db_utils.create_share_network() if create_share_network else None)
-        current_subnet_data = {
-            'id': 'current_subnet_id',
-            'neutron_net_id': 'current_neutron_net_id',
-            'neutron_subnet_id': 'current_neutron_subnet_id',
-        }
-        fake_network_subnet = db_utils.create_share_network_subnet(
-            **current_subnet_data)
         expected_network_change = create_share_network is True
 
         fake_share_network_id = (
@@ -4675,11 +4774,8 @@ class ShareAPITestCase(test.TestCase):
         mock_az_get = self.mock_object(
             db_api, 'availability_zone_get', mock.Mock(return_value=fake_az))
         mock_get_subnet = self.mock_object(
-            db_api, 'share_network_subnet_get_by_availability_zone_id',
-            mock.Mock(return_value=fake_subnet))
-        mock_get_current_subnet = self.mock_object(
-            db_api, 'share_network_subnet_get',
-            mock.Mock(return_value=fake_network_subnet))
+            db_api, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=[fake_subnet]))
 
         exp_shares, exp_types, exp_service, exp_network_id, net_change = (
             self.api._migration_initial_checks(
@@ -4705,9 +4801,6 @@ class ShareAPITestCase(test.TestCase):
         mock_az_get.assert_called_once_with(
             self.context, service['availability_zone']['name']
         )
-        if create_share_network:
-            mock_get_current_subnet.assert_called_once_with(
-                self.context, fake_share_server['share_network_subnet_id'])
 
     def test_share_server_migration_get_destination(self):
         fake_source_server_id = 'fake_source_id'
@@ -4858,7 +4951,7 @@ class ShareAPITestCase(test.TestCase):
         self.mock_object(
             db_api, 'availability_zone_get', mock.Mock(return_value=fake_az))
         self.mock_object(
-            db_api, 'share_network_subnet_get_by_availability_zone_id',
+            db_api, 'share_network_subnets_get_all_by_availability_zone_id',
             mock.Mock(return_value=fake_subnet))
 
     def test__migration_initial_checks_share_not_available(self):
@@ -4907,7 +5000,7 @@ class ShareAPITestCase(test.TestCase):
         db_api.availability_zone_get.assert_called_once_with(
             self.context, service['availability_zone']['name']
         )
-        (db_api.share_network_subnet_get_by_availability_zone_id.
+        (db_api.share_network_subnets_get_all_by_availability_zone_id.
             assert_called_once_with(
                 self.context, fake_share_network_id, fake_az['id']))
         db_api.share_group_get_all_by_share_server.assert_called_once_with(
@@ -4963,7 +5056,7 @@ class ShareAPITestCase(test.TestCase):
         db_api.availability_zone_get.assert_called_once_with(
             self.context, service['availability_zone']['name']
         )
-        (db_api.share_network_subnet_get_by_availability_zone_id.
+        (db_api.share_network_subnets_get_all_by_availability_zone_id.
             assert_called_once_with(
                 self.context, fake_share_network_id, fake_az['id']))
         db_api.share_group_get_all_by_share_server.assert_called_once_with(
@@ -5018,7 +5111,7 @@ class ShareAPITestCase(test.TestCase):
         db_api.availability_zone_get.assert_called_once_with(
             self.context, service['availability_zone']['name']
         )
-        (db_api.share_network_subnet_get_by_availability_zone_id.
+        (db_api.share_network_subnets_get_all_by_availability_zone_id.
             assert_called_once_with(
                 self.context, fake_share_network_id, fake_az['id']))
         mock_snapshots_get.assert_called_once_with(
@@ -5168,7 +5261,7 @@ class ShareAPITestCase(test.TestCase):
         db_api.availability_zone_get.assert_called_once_with(
             self.context, service['availability_zone']['name']
         )
-        (db_api.share_network_subnet_get_by_availability_zone_id.
+        (db_api.share_network_subnets_get_all_by_availability_zone_id.
             assert_called_once_with(
                 self.context, fake_share_network_id, fake_az['id']))
         mock_snapshots_get.assert_called_once_with(
@@ -5256,7 +5349,7 @@ class ShareAPITestCase(test.TestCase):
         mock_az_get = self.mock_object(
             db_api, 'availability_zone_get', mock.Mock(return_value=fake_az))
         mock_get_subnet = self.mock_object(
-            db_api, 'share_network_subnet_get_by_availability_zone_id',
+            db_api, 'share_network_subnets_get_all_by_availability_zone_id',
             mock.Mock(return_value=None))
 
         self.assertRaises(
@@ -5858,11 +5951,12 @@ class ShareAPITestCase(test.TestCase):
         )
 
     def test__share_network_update_initial_checks_server_not_active(self):
-        db_utils.create_share_server(
-            share_network_subnet_id='fakeid', status=constants.STATUS_ERROR,
-            security_service_update_support=True)
-        db_utils.create_share_network_subnet(
+        share_subnet = db_utils.create_share_network_subnet(
             id='fakeid', share_network_id='fakenetid')
+        db_utils.create_share_server(
+            share_network_subnets=[share_subnet],
+            status=constants.STATUS_ERROR,
+            security_service_update_support=True)
         share_network = db_utils.create_share_network(id='fakenetid')
         new_sec_service = db_utils.create_security_service(
             share_network_id='fakenetid', type='ldap')
@@ -5874,10 +5968,10 @@ class ShareAPITestCase(test.TestCase):
         )
 
     def test__share_network_update_initial_checks_shares_not_available(self):
-        db_utils.create_share_server(share_network_subnet_id='fakeid',
-                                     security_service_update_support=True)
-        db_utils.create_share_network_subnet(
+        share_subnet = db_utils.create_share_network_subnet(
             id='fakeid', share_network_id='fake_network_id')
+        db_utils.create_share_server(share_network_subnets=[share_subnet],
+                                     security_service_update_support=True)
         share_network = db_utils.create_share_network(
             id='fake_network_id')
         new_sec_service = db_utils.create_security_service(
@@ -5900,10 +5994,10 @@ class ShareAPITestCase(test.TestCase):
             search_opts={'share_network_id': share_network['id']})
 
     def test__share_network_update_initial_checks_rules_in_error(self):
-        db_utils.create_share_server(share_network_subnet_id='fakeid',
-                                     security_service_update_support=True)
-        db_utils.create_share_network_subnet(
+        share_subnet = db_utils.create_share_network_subnet(
             id='fakeid', share_network_id='fake_network_id')
+        db_utils.create_share_server(share_network_subnets=[share_subnet],
+                                     security_service_update_support=True)
         share_network = db_utils.create_share_network(
             id='fake_network_id')
         new_sec_service = db_utils.create_security_service(
@@ -5928,10 +6022,10 @@ class ShareAPITestCase(test.TestCase):
             search_opts={'share_network_id': share_network['id']})
 
     def test__share_network_update_initial_checks_share_is_busy(self):
-        db_utils.create_share_server(share_network_subnet_id='fakeid',
-                                     security_service_update_support=True)
-        db_utils.create_share_network_subnet(
+        share_subnet = db_utils.create_share_network_subnet(
             id='fakeid', share_network_id='fake_net_id')
+        db_utils.create_share_server(share_network_subnets=[share_subnet],
+                                     security_service_update_support=True)
         share_network = db_utils.create_share_network(id='fake_net_id')
         new_sec_service = db_utils.create_security_service(
             share_network_id='fake_net_id', type='ldap')
@@ -5958,10 +6052,10 @@ class ShareAPITestCase(test.TestCase):
         self.api._check_is_share_busy.assert_called_once_with(shares[0])
 
     def test__share_network_update_initial_checks_unsupported_server(self):
-        db_utils.create_share_server(share_network_subnet_id='fakeid',
-                                     security_service_update_support=False)
-        db_utils.create_share_network_subnet(
+        share_subnet = db_utils.create_share_network_subnet(
             id='fakeid', share_network_id='fake_net_id')
+        db_utils.create_share_server(share_network_subnets=[share_subnet],
+                                     security_service_update_support=False)
         share_network = db_utils.create_share_network(id='fake_net_id')
 
         self.assertRaises(
@@ -6184,60 +6278,125 @@ class ShareAPITestCase(test.TestCase):
                     '_' + 'hosts_check')
         fake_share_network = {'id': 'fake_network_id'}
         backend_hosts = {'hostA', 'hostB'}
-        hosts_to_validate = {}
-        for bh in backend_hosts:
-            hosts_to_validate[bh] = None
+        fake_return = 'fake_update'
         mock_get_key = self.mock_object(
             self.api, 'get_security_service_update_key',
             mock.Mock(return_value=fake_key))
+        mock_do_update_validate = self.mock_object(
+            self.api, '_do_update_validate_hosts',
+            mock.Mock(return_value=fake_return))
+
+        res = self.api._security_service_update_validate_hosts(
+            self.context, fake_share_network, backend_hosts, None,
+            new_security_service_id=new_sec_service_id,
+            current_security_service_id=curr_sec_service_id)
+
+        self.assertEqual(fake_return, res)
+        mock_get_key.assert_called_once_with(
+            'hosts_check', new_sec_service_id,
+            current_security_service_id=curr_sec_service_id)
+        mock_do_update_validate.assert_called_once_with(
+            self.context, fake_share_network['id'], backend_hosts, fake_key,
+            new_security_service_id=new_sec_service_id,
+            current_security_service_id=curr_sec_service_id)
+
+    @ddt.data(True, False)
+    def test__do_update_validate_hosts(self, update_security_service):
+        curr_sec_service_id = None
+        new_sec_service_id = None
+        new_share_network_subnet = 'fake_new_share_network_subnet'
+        if update_security_service:
+            curr_sec_service_id = "fake_curr_sec_serv_id"
+            new_sec_service_id = "fake_new_sec_serv_id"
+            new_share_network_subnet = None
+
+        fake_key = 'fake_key'
+        fake_share_network_id = 'fake_network_id'
+        backend_hosts = {'hostA', 'hostB'}
+        hosts_to_validate = {}
+        for bh in backend_hosts:
+            hosts_to_validate[bh] = None
         mock_async_data_get = self.mock_object(
             db_api, 'async_operation_data_get', mock.Mock(return_value=None))
         mock_async_data_update = self.mock_object(
             db_api, 'async_operation_data_update')
-        mock_shareapi_check = self.mock_object(
+        mock_check_update_allocations = self.mock_object(
+            self.share_rpcapi, 'check_update_share_server_network_allocations')
+        mock_check_update_services = self.mock_object(
             self.share_rpcapi, 'check_update_share_network_security_service')
 
-        compatible, hosts_info = (
-            self.api._security_service_update_validate_hosts(
-                self.context, fake_share_network, backend_hosts, None,
-                new_security_service_id=new_sec_service_id,
-                current_security_service_id=curr_sec_service_id))
+        compatible, hosts_info = self.api._do_update_validate_hosts(
+            self.context, fake_share_network_id, backend_hosts, fake_key,
+            new_share_network_subnet=new_share_network_subnet,
+            new_security_service_id=new_sec_service_id,
+            current_security_service_id=curr_sec_service_id)
 
         self.assertIsNone(compatible)
         self.assertEqual(hosts_to_validate, hosts_info)
-
-        mock_get_key.assert_called_once_with(
-            'hosts_check', new_sec_service_id,
-            current_security_service_id=curr_sec_service_id)
         mock_async_data_get.assert_called_once_with(
-            self.context, fake_share_network['id'], fake_key)
+            self.context, fake_share_network_id, fake_key)
         mock_async_data_update.assert_called_once_with(
-            self.context, fake_share_network['id'],
+            self.context, fake_share_network_id,
             {fake_key: json.dumps(hosts_to_validate)})
-        mock_shareapi_check_calls = []
+        mock_share_api_check_calls = []
         for host in backend_hosts:
-            mock_shareapi_check_calls.append(
-                mock.call(self.context, host, fake_share_network['id'],
-                          new_sec_service_id,
-                          current_security_service_id=curr_sec_service_id))
-        mock_shareapi_check.assert_has_calls(mock_shareapi_check_calls)
+            if update_security_service:
+                mock_share_api_check_calls.append(
+                    mock.call(self.context, host, fake_share_network_id,
+                              new_sec_service_id,
+                              current_security_service_id=curr_sec_service_id))
+            else:
+                mock_share_api_check_calls.append(
+                    mock.call(self.context, host, fake_share_network_id,
+                              new_share_network_subnet))
+        if update_security_service:
+            mock_check_update_services.assert_has_calls(
+                mock_share_api_check_calls)
+            mock_check_update_allocations.assert_not_called()
+        else:
+            mock_check_update_allocations.assert_has_calls(
+                mock_share_api_check_calls)
+            mock_check_update_services.assert_not_called()
 
     @ddt.data(
-        {'new_host': None, 'host_support': None, 'exp_result': None},
-        {'new_host': None, 'host_support': False, 'exp_result': False},
-        {'new_host': None, 'host_support': True, 'exp_result': True},
-        {'new_host': 'hostC', 'host_support': None, 'exp_result': None},
-        {'new_host': 'hostC', 'host_support': False, 'exp_result': False},
-        {'new_host': 'hostC', 'host_support': True, 'exp_result': None})
+        {'update_security_service': True, 'new_host': None,
+         'host_support': None, 'exp_result': None},
+        {'update_security_service': True, 'new_host': None,
+         'host_support': False, 'exp_result': False},
+        {'update_security_service': True, 'new_host': None,
+         'host_support': True, 'exp_result': True},
+        {'update_security_service': True, 'new_host': 'hostC',
+         'host_support': None, 'exp_result': None},
+        {'update_security_service': True, 'new_host': 'hostC',
+         'host_support': False, 'exp_result': False},
+        {'update_security_service': True, 'new_host': 'hostC',
+         'host_support': True, 'exp_result': None},
+        {'update_security_service': False, 'new_host': None,
+         'host_support': None, 'exp_result': None},
+        {'update_security_service': False, 'new_host': None,
+         'host_support': False, 'exp_result': False},
+        {'update_security_service': False, 'new_host': None,
+         'host_support': True, 'exp_result': True},
+        {'update_security_service': False, 'new_host': 'hostC',
+         'host_support': None, 'exp_result': None},
+        {'update_security_service': False, 'new_host': 'hostC',
+         'host_support': False, 'exp_result': False},
+        {'update_security_service': False, 'new_host': 'hostC',
+         'host_support': True, 'exp_result': None},
+    )
     @ddt.unpack
-    def test__security_service_update_validate_hosts(self, new_host,
-                                                     host_support,
-                                                     exp_result):
-        curr_sec_service_id = "fake_curr_sec_serv_id"
-        new_sec_service_id = "fake_new_sec_serv_id"
-        fake_key = (curr_sec_service_id + '_' + new_sec_service_id +
-                    '_' + 'hosts_check')
-        fake_share_network = {'id': 'fake_network_id'}
+    def test__do_update_validate_hosts_all(
+            self, update_security_service, new_host, host_support, exp_result):
+        curr_sec_service_id = None
+        new_sec_service_id = None
+        new_share_network_subnet = 'fake_new_share_network_subnet'
+        if update_security_service:
+            curr_sec_service_id = "fake_curr_sec_serv_id"
+            new_sec_service_id = "fake_new_sec_serv_id"
+            new_share_network_subnet = None
+
+        fake_key = 'fake_key'
+        fake_share_network_id = 'fake_network_id'
         backend_hosts = ['hostA', 'hostB']
         hosts_to_validate = {}
         for bh in backend_hosts:
@@ -6248,41 +6407,41 @@ class ShareAPITestCase(test.TestCase):
             backend_hosts.append(new_host)
             hosts_to_validate[new_host] = None
 
-        mock_get_key = self.mock_object(
-            self.api, 'get_security_service_update_key',
-            mock.Mock(return_value=fake_key))
         mock_async_data_get = self.mock_object(
             db_api, 'async_operation_data_get',
             mock.Mock(return_value=json_orig_hosts))
         mock_async_data_update = self.mock_object(
             db_api, 'async_operation_data_update')
-        mock_shareapi_check = self.mock_object(
+        mock_check_update_allocations = self.mock_object(
+            self.share_rpcapi, 'check_update_share_server_network_allocations')
+        mock_check_update_services = self.mock_object(
             self.share_rpcapi, 'check_update_share_network_security_service')
 
-        result, hosts_info = (
-            self.api._security_service_update_validate_hosts(
-                self.context, fake_share_network, backend_hosts, None,
-                new_security_service_id=new_sec_service_id,
-                current_security_service_id=curr_sec_service_id))
+        result, hosts_info = self.api._do_update_validate_hosts(
+            self.context, fake_share_network_id, backend_hosts, fake_key,
+            new_share_network_subnet=new_share_network_subnet,
+            new_security_service_id=new_sec_service_id,
+            current_security_service_id=curr_sec_service_id)
 
         self.assertEqual(exp_result, result)
         self.assertEqual(hosts_to_validate, hosts_info)
-
-        mock_get_key.assert_called_once_with(
-            'hosts_check', new_sec_service_id,
-            current_security_service_id=curr_sec_service_id)
         mock_async_data_get.assert_called_once_with(
-            self.context, fake_share_network['id'], fake_key)
+            self.context, fake_share_network_id, fake_key)
 
-        # we fail earlier if one one the host answer False
+        # we fail earlier if one one the host answer False.
         if new_host and host_support is not False:
             mock_async_data_update.assert_called_once_with(
-                self.context, fake_share_network['id'],
+                self.context, fake_share_network_id,
                 {fake_key: json.dumps(hosts_to_validate)})
-            mock_shareapi_check.assert_called_once_with(
-                self.context, new_host, fake_share_network['id'],
-                new_sec_service_id,
-                current_security_service_id=curr_sec_service_id)
+            if update_security_service:
+                mock_check_update_services.assert_called_once_with(
+                    self.context, new_host, fake_share_network_id,
+                    new_sec_service_id,
+                    current_security_service_id=curr_sec_service_id)
+            else:
+                mock_check_update_allocations.assert_called_once_with(
+                    self.context, new_host, fake_share_network_id,
+                    new_share_network_subnet)
 
     def test_soft_delete_share_already_soft_deleted(self):
         share = fakes.fake_share(id='fake_id',
@@ -6356,6 +6515,408 @@ class ShareAPITestCase(test.TestCase):
                                  is_soft_deleted=True)
         self.mock_object(db_api, 'share_restore')
         self.api.restore(self.context, share)
+
+    def test__share_server_update_allocations_validate_hosts(self):
+        update_return = 'fake_return'
+        mock_do_update = self.mock_object(
+            self.api, '_do_update_validate_hosts',
+            mock.Mock(return_value=update_return))
+
+        backend_hosts = 'fake_hosts'
+        update_key = 'fake_key'
+        share_network_id = 'fake_net_id'
+        subnet = {
+            'neutron_net_id': 'fake_net_id',
+            'neutron_subnet_id': 'fake_subnet_id',
+            'availability_zone_id': 'fake_availability_zone_id',
+        }
+        res = self.api._share_server_update_allocations_validate_hosts(
+            self.context, backend_hosts, update_key,
+            share_network_id=share_network_id,
+            neutron_net_id=subnet['neutron_net_id'],
+            neutron_subnet_id=subnet['neutron_subnet_id'],
+            availability_zone_id=subnet['availability_zone_id'])
+
+        self.assertEqual(update_return, res)
+        mock_do_update.assert_called_once_with(
+            self.context, share_network_id, backend_hosts, update_key,
+            new_share_network_subnet=subnet)
+
+    def test_get_share_server_update_allocations_key(self):
+        availability_zone_id = None
+        share_network_id = 'fake_share_network_id'
+        expected_key = ('share_server_update_allocations_' +
+                        share_network_id + '_' + str(availability_zone_id) +
+                        '_' + 'hosts_check')
+        res = self.api.get_share_server_update_allocations_key(
+            share_network_id, availability_zone_id)
+
+        self.assertEqual(expected_key, res)
+
+    def test__share_server_update_allocations_initial_checks(self):
+        share_network = db_utils.create_share_network()
+        share1 = db_utils.create_share(
+            share_network_id=share_network['id'],
+            status=constants.STATUS_AVAILABLE)
+        server_host = 'fake_host'
+        share_server = db_utils.create_share_server(host=server_host)
+        mock_validate_service_host = self.mock_object(
+            utils, 'validate_service_host')
+        mock_share_get_all_by_share_server = self.mock_object(
+            self.api.db, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[share1]))
+        mock_share_is_busy = self.mock_object(
+            self.api, '_check_is_share_busy')
+
+        res_hosts = self.api._share_server_update_allocations_initial_checks(
+            self.context, share_network, [share_server])
+
+        self.assertEqual(set([server_host]), res_hosts)
+        mock_validate_service_host.assert_called_once()
+        mock_share_get_all_by_share_server.assert_called_once_with(
+            self.context, share_server['id'])
+        mock_share_is_busy.assert_called_once_with(share1)
+
+    def test__share_server_update_allocations_initial_checks_no_support(self):
+        fake_share_network = {
+            'id': 'fake_sn_id',
+            'network_allocation_update_support': False,
+            'status': constants.STATUS_NETWORK_ACTIVE,
+        }
+        sn_subnet = db_utils.create_share_network_subnet()
+
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api._share_server_update_allocations_initial_checks,
+            self.context,
+            fake_share_network,
+            sn_subnet)
+
+    def test__share_server_update_allocations_initial_checks_inactive(self):
+        share_network = db_utils.create_share_network()
+        share_server = db_utils.create_share_server(
+            status=constants.STATUS_INACTIVE)
+
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api._share_server_update_allocations_initial_checks,
+            self.context,
+            share_network,
+            [share_server])
+
+    def test__share_server_update_allocations_initial_checks_shares_na(self):
+        share_network = db_utils.create_share_network()
+        share1 = db_utils.create_share(
+            share_network_id=share_network['id'],
+            status=constants.STATUS_ERROR)
+        share_server = db_utils.create_share_server()
+        mock_validate_service_host = self.mock_object(
+            utils, 'validate_service_host')
+        mock_share_get_all_by_share_server = self.mock_object(
+            self.api.db, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[share1]))
+
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api._share_server_update_allocations_initial_checks,
+            self.context,
+            share_network,
+            [share_server])
+
+        mock_validate_service_host.assert_called_once()
+        mock_share_get_all_by_share_server.assert_called_once_with(
+            self.context, share_server['id'])
+
+    def test__share_server_update_allocations_initial_checks_rules_na(self):
+        share_network = db_utils.create_share_network()
+        share1 = db_utils.create_share(
+            share_network_id=share_network['id'],
+            status=constants.STATUS_AVAILABLE)
+        share_server = db_utils.create_share_server()
+        share1['instance']['access_rules_status'] = constants.STATUS_INACTIVE
+        mock_validate_service_host = self.mock_object(
+            utils, 'validate_service_host')
+        mock_share_get_all_by_share_server = self.mock_object(
+            self.api.db, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[share1]))
+
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api._share_server_update_allocations_initial_checks,
+            self.context,
+            share_network,
+            [share_server])
+
+        mock_validate_service_host.assert_called_once()
+        mock_share_get_all_by_share_server.assert_called_once_with(
+            self.context, share_server['id'])
+
+    def test__share_server_update_allocations_initial_checks_share_busy(self):
+        share_network = db_utils.create_share_network()
+        share1 = db_utils.create_share(
+            share_network_id=share_network['id'],
+            status=constants.STATUS_AVAILABLE)
+        share_server = db_utils.create_share_server()
+        mock_validate_service_host = self.mock_object(
+            utils, 'validate_service_host')
+        mock_share_get_all_by_share_server = self.mock_object(
+            self.api.db, 'share_get_all_by_share_server',
+            mock.Mock(return_value=[share1]))
+        mock_share_is_busy = self.mock_object(
+            self.api, '_check_is_share_busy',
+            mock.Mock(side_effect=exception.ShareBusyException(message='fake'))
+        )
+
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api._share_server_update_allocations_initial_checks,
+            self.context,
+            share_network,
+            [share_server])
+
+        mock_validate_service_host.assert_called_once()
+        mock_share_get_all_by_share_server.assert_called_once_with(
+            self.context, share_server['id'])
+        mock_share_is_busy.assert_called_once_with(share1)
+
+    def test_check_update_share_server_network_allocations(self):
+        backend_hosts = 'fake_hosts'
+        mock_initial_check = self.mock_object(
+            self.api, '_share_server_update_allocations_initial_checks',
+            mock.Mock(return_value=backend_hosts))
+        update_key = 'fake_key'
+        mock_get_key = self.mock_object(
+            self.api, 'get_share_server_update_allocations_key',
+            mock.Mock(return_value=update_key))
+        mock_reset_data = self.mock_object(
+            self.api.db, 'async_operation_data_delete')
+        compatible = True
+        hosts_info = {'fake_host': True}
+        mock_validate_hosts = self.mock_object(
+            self.api, '_share_server_update_allocations_validate_hosts',
+            mock.Mock(return_value=(compatible, hosts_info)))
+
+        share_network = {'id': 'fake_id'}
+        new_share_network_subnet = {
+            'share_servers': 'fake_servers',
+            'availability_zone_id': 'fake_availability_zone_id',
+            'neutron_net_id': 'fake_neutron_net_id',
+            'neutron_subnet_id': 'fake_neutron_subnet_id',
+        }
+        res = self.api.check_update_share_server_network_allocations(
+            self.context, share_network, new_share_network_subnet, True)
+
+        self.assertEqual(
+            {'compatible': compatible, 'hosts_check_result': hosts_info}, res)
+        mock_initial_check.assert_called_once_with(
+            self.context, share_network,
+            new_share_network_subnet['share_servers'])
+        mock_get_key.assert_called_once_with(
+            share_network['id'],
+            new_share_network_subnet['availability_zone_id'])
+        mock_reset_data.assert_called_once_with(
+            self.context, share_network['id'], update_key)
+        mock_validate_hosts.assert_called_once_with(
+            self.context, backend_hosts, update_key,
+            share_network_id=share_network['id'],
+            neutron_net_id=new_share_network_subnet['neutron_net_id'],
+            neutron_subnet_id=new_share_network_subnet['neutron_subnet_id'],
+            availability_zone_id=(
+                new_share_network_subnet["availability_zone_id"]))
+
+    def test_check_update_share_server_network_allocations_failed(self):
+        backend_hosts = 'fake_hosts'
+        self.mock_object(
+            self.api, '_share_server_update_allocations_initial_checks',
+            mock.Mock(return_value=backend_hosts))
+        update_key = 'fake_key'
+        self.mock_object(
+            self.api, 'get_share_server_update_allocations_key',
+            mock.Mock(return_value=update_key))
+        self.mock_object(self.api.db, 'async_operation_data_delete')
+        self.mock_object(
+            self.api, '_share_server_update_allocations_validate_hosts',
+            mock.Mock(side_effect=exception.InvalidShareNetwork(reason="msg")))
+
+        share_network = {'id': 'fake_id'}
+        new_share_network_subnet = {
+            'share_servers': 'fake_servers',
+            'availability_zone_id': 'fake_availability_zone_id',
+            'neutron_net_id': 'fake_neutron_net_id',
+            'neutron_subnet_id': 'fake_neutron_subnet_id',
+        }
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api.check_update_share_server_network_allocations,
+            self.context, share_network, new_share_network_subnet, True)
+
+    def test_update_share_server_network_allocations(self):
+        backend_host = 'fake_host'
+        backend_hosts = [backend_host]
+        mock_initial_check = self.mock_object(
+            self.api, '_share_server_update_allocations_initial_checks',
+            mock.Mock(return_value=backend_hosts))
+        update_key = 'fake_key'
+        mock_get_key = self.mock_object(
+            self.api, 'get_share_server_update_allocations_key',
+            mock.Mock(return_value=update_key))
+        mock_get_data = self.mock_object(
+            self.api.db, 'async_operation_data_get',
+            mock.Mock(return_value='fake_update_value'))
+        mock_validate_hosts = self.mock_object(
+            self.api, '_share_server_update_allocations_validate_hosts',
+            mock.Mock(return_value=(True, 'fake_host')))
+        mock_net_update = self.mock_object(self.api.db, 'share_network_update')
+        mock_server_update = self.mock_object(self.api.db,
+                                              'share_servers_update')
+        new_share_network_subnet_db = {'id': 'fake_subnet_id'}
+        mock_subnet_create = self.mock_object(
+            self.api.db, 'share_network_subnet_create',
+            mock.Mock(return_value=new_share_network_subnet_db))
+        mock_update_allocations = self.mock_object(
+            self.api.share_rpcapi, 'update_share_server_network_allocations')
+        mock_delete_data = self.mock_object(self.api.db,
+                                            'async_operation_data_delete')
+
+        share_network = {'id': 'fake_id'}
+        server1 = {'id': 'fake_id'}
+        new_share_network_subnet = {
+            'share_servers': [server1],
+            'availability_zone_id': 'fake_availability_zone_id',
+            'neutron_net_id': 'fake_neutron_net_id',
+            'neutron_subnet_id': 'fake_neutron_subnet_id',
+        }
+        res_subnet = self.api.update_share_server_network_allocations(
+            self.context, share_network, new_share_network_subnet)
+
+        self.assertEqual(new_share_network_subnet_db, res_subnet)
+        mock_initial_check.assert_called_once_with(
+            self.context, share_network,
+            new_share_network_subnet['share_servers'])
+        mock_get_key.assert_called_once_with(
+            share_network['id'],
+            new_share_network_subnet['availability_zone_id'])
+        mock_get_data.assert_called_once_with(
+            self.context, share_network['id'], update_key)
+        mock_validate_hosts.assert_called_once_with(
+            self.context, backend_hosts, update_key,
+            share_network_id=share_network['id'],
+            neutron_net_id=new_share_network_subnet['neutron_net_id'],
+            neutron_subnet_id=new_share_network_subnet['neutron_subnet_id'],
+            availability_zone_id=(
+                new_share_network_subnet["availability_zone_id"]))
+        mock_net_update.assert_called_once_with(
+            self.context, share_network['id'],
+            {'status': constants.STATUS_NETWORK_CHANGE})
+        mock_server_update.assert_called_once_with(
+            self.context, [server1['id']],
+            {'status': constants.STATUS_SERVER_NETWORK_CHANGE})
+        mock_subnet_create.assert_called_once_with(
+            self.context, new_share_network_subnet)
+        mock_update_allocations.assert_called_once_with(
+            self.context, backend_host, share_network['id'],
+            new_share_network_subnet_db['id'])
+        mock_delete_data.assert_called_once_with(
+            self.context, share_network['id'], update_key)
+
+    def test_update_share_server_network_allocations_no_check(self):
+        backend_host = 'fake_host'
+        backend_hosts = [backend_host]
+        self.mock_object(
+            self.api, '_share_server_update_allocations_initial_checks',
+            mock.Mock(return_value=backend_hosts))
+        update_key = 'fake_key'
+        self.mock_object(
+            self.api, 'get_share_server_update_allocations_key',
+            mock.Mock(return_value=update_key))
+        self.mock_object(
+            self.api.db, 'async_operation_data_get',
+            mock.Mock(return_value=None))
+
+        share_network = {'id': 'fake_id'}
+        server1 = {'id': 'fake_id'}
+        new_share_network_subnet = {
+            'share_servers': [server1],
+            'availability_zone_id': 'fake_availability_zone_id',
+            'neutron_net_id': 'fake_neutron_net_id',
+            'neutron_subnet_id': 'fake_neutron_subnet_id',
+        }
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api.update_share_server_network_allocations,
+            self.context,
+            share_network,
+            new_share_network_subnet)
+
+    def test_update_share_server_network_allocations_fail_validation(self):
+        backend_host = 'fake_host'
+        backend_hosts = [backend_host]
+        self.mock_object(
+            self.api, '_share_server_update_allocations_initial_checks',
+            mock.Mock(return_value=backend_hosts))
+        update_key = 'fake_key'
+        self.mock_object(
+            self.api, 'get_share_server_update_allocations_key',
+            mock.Mock(return_value=update_key))
+        self.mock_object(
+            self.api.db, 'async_operation_data_get',
+            mock.Mock(return_value='fake_update_value'))
+        self.mock_object(
+            self.api, '_share_server_update_allocations_validate_hosts',
+            mock.Mock(side_effect=exception.InvalidShareNetwork))
+        mock_delete_data = self.mock_object(self.api.db,
+                                            'async_operation_data_delete')
+
+        share_network = {'id': 'fake_id'}
+        server1 = {'id': 'fake_id'}
+        new_share_network_subnet = {
+            'share_servers': [server1],
+            'availability_zone_id': 'fake_availability_zone_id',
+            'neutron_net_id': 'fake_neutron_net_id',
+            'neutron_subnet_id': 'fake_neutron_subnet_id',
+        }
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api.update_share_server_network_allocations,
+            self.context,
+            share_network,
+            new_share_network_subnet)
+
+        mock_delete_data.assert_called_once_with(
+            self.context, share_network['id'], update_key)
+
+    @ddt.data(False, None)
+    def test_update_share_server_network_allocations_check_fail(self, result):
+        backend_host = 'fake_host'
+        backend_hosts = [backend_host]
+        self.mock_object(
+            self.api, '_share_server_update_allocations_initial_checks',
+            mock.Mock(return_value=backend_hosts))
+        update_key = 'fake_key'
+        self.mock_object(
+            self.api, 'get_share_server_update_allocations_key',
+            mock.Mock(return_value=update_key))
+        self.mock_object(
+            self.api.db, 'async_operation_data_get',
+            mock.Mock(return_value='fake_update_value'))
+        self.mock_object(
+            self.api, '_share_server_update_allocations_validate_hosts',
+            mock.Mock(return_value=(result, 'fake_host')))
+
+        share_network = {'id': 'fake_id'}
+        server1 = {'id': 'fake_id'}
+        new_share_network_subnet = {
+            'share_servers': [server1],
+            'availability_zone_id': 'fake_availability_zone_id',
+            'neutron_net_id': 'fake_neutron_net_id',
+            'neutron_subnet_id': 'fake_neutron_subnet_id',
+        }
+        self.assertRaises(
+            exception.InvalidShareNetwork,
+            self.api.update_share_server_network_allocations,
+            self.context,
+            share_network,
+            new_share_network_subnet)
 
 
 class OtherTenantsShareActionsTestCase(test.TestCase):

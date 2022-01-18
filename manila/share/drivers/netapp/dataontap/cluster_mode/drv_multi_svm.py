@@ -135,6 +135,8 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
             self.admin_network_api)
 
     def _setup_server(self, network_info, metadata=None):
+        # NOTE(felipe_rodrigues): keep legacy network_info support as a dict.
+        network_info = network_info[0]
         return self.library.setup_server(network_info, metadata)
 
     def _teardown_server(self, server_details, **kwargs):

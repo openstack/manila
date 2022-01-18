@@ -24,7 +24,8 @@ class ViewBuilder(common.ViewBuilder):
         "add_is_auto_deletable_and_identifier_fields",
         "add_share_network_subnet_id_field",
         "add_task_state_and_source_server_fields",
-        "add_sec_service_update_fields"
+        "add_sec_service_update_fields",
+        "add_share_network_subnet_ids_and_network_allocation_update_support"
     ]
 
     def build_share_server(self, request, share_server):
@@ -64,11 +65,13 @@ class ViewBuilder(common.ViewBuilder):
 
         return share_server_dict
 
-    @common.ViewBuilder.versioned_method("2.51")
+    @common.ViewBuilder.versioned_method("2.51", "2.69")
     def add_share_network_subnet_id_field(
             self, context, share_server_dict, share_server):
+        """In 2.70, share_network_subnet_id is dropped, it becomes a list."""
         share_server_dict['share_network_subnet_id'] = (
-            share_server['share_network_subnet_id'])
+            share_server['share_network_subnet_ids'][0]
+            if share_server['share_network_subnet_ids'] else None)
 
     @common.ViewBuilder.versioned_method("2.49")
     def add_is_auto_deletable_and_identifier_fields(
@@ -89,3 +92,11 @@ class ViewBuilder(common.ViewBuilder):
             self, context, share_server_dict, share_server):
         share_server_dict['security_service_update_support'] = share_server[
             'security_service_update_support']
+
+    @common.ViewBuilder.versioned_method("2.70")
+    def add_share_network_subnet_ids_and_network_allocation_update_support(
+            self, context, share_server_dict, share_server):
+        share_server_dict['share_network_subnet_ids'] = sorted(
+            share_server['share_network_subnet_ids'])
+        share_server_dict['network_allocation_update_support'] = (
+            share_server['network_allocation_update_support'])

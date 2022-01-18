@@ -120,17 +120,18 @@ class ShareServerControllerTest(test.TestCase):
                                       version="2.49")
         context = req.environ['manila.context']
         share_network = db_utils.create_share_network(name=share_net_name)
-        share_net_subnet = db_utils.create_share_network_subnet(
-            share_network_id=share_network['id'])
+        share_net_subnet = [db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])]
         share_server = db_utils.create_share_server(
-            share_network_subnet_id=share_net_subnet['id'],
+            share_network_subnet_id=share_net_subnet[0]['id'],
             host='fake_host',
             identifier='fake_identifier',
-            is_auto_deletable=False)
+            is_auto_deletable=False,
+            share_network_subnets=share_net_subnet)
 
         self.mock_object(db_api, 'share_network_get', mock.Mock(
             return_value=share_network))
-        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnets',
                          mock.Mock(return_value=share_net_subnet))
         self.mock_object(utils, 'validate_service_host')
 
@@ -151,7 +152,8 @@ class ShareServerControllerTest(test.TestCase):
                 'status': constants.STATUS_ACTIVE,
                 'host': 'fake_host',
                 'share_network_id':
-                    share_server['share_network_subnet']['share_network_id'],
+                    (share_server['share_network_subnets'][0]
+                     ['share_network_id']),
                 'created_at': share_server['created_at'],
                 'backend_details': {},
                 'identifier': share_server['identifier'],
@@ -163,12 +165,12 @@ class ShareServerControllerTest(test.TestCase):
                 'fake_net_name')
         else:
             expected_result['share_server']['share_network_name'] = (
-                share_net_subnet['share_network_id'])
+                share_net_subnet[0]['share_network_id'])
 
         req_params = body['share_server']
         manage_share_server_mock.assert_called_once_with(
             context, req_params['identifier'], req_params['host'],
-            share_net_subnet, req_params['driver_options'])
+            share_net_subnet[0], req_params['driver_options'])
 
         self.assertEqual(expected_result, result)
 
@@ -178,31 +180,22 @@ class ShareServerControllerTest(test.TestCase):
     def test_manage_invalid(self):
         req = fakes.HTTPRequest.blank('/manage_share_server',
                                       use_admin_context=True, version="2.49")
-        context = req.environ['manila.context']
         share_network = db_utils.create_share_network()
-        share_net_subnet = db_utils.create_share_network_subnet(
-            share_network_id=share_network['id'])
+        share_net_subnet = [db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])]
 
         body = {
             'share_server': self._setup_manage_test_request_body()
         }
+        body['share_server']['driver_options'] = []
         self.mock_object(utils, 'validate_service_host')
         self.mock_object(db_api, 'share_network_get',
                          mock.Mock(return_value=share_network))
-        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnets',
                          mock.Mock(return_value=share_net_subnet))
-
-        manage_share_server_mock = self.mock_object(
-            share_api.API, 'manage_share_server',
-            mock.Mock(side_effect=exception.InvalidInput('foobar')))
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.manage, req, body)
-
-        req_params = body['share_server']
-        manage_share_server_mock.assert_called_once_with(
-            context, req_params['identifier'], req_params['host'],
-            share_net_subnet, req_params['driver_options'])
 
     def test_manage_forbidden(self):
         """Tests share server manage without admin privileges"""
@@ -211,12 +204,12 @@ class ShareServerControllerTest(test.TestCase):
         self.mock_object(share_api.API, 'manage_share_server', error)
 
         share_network = db_utils.create_share_network()
-        share_net_subnet = db_utils.create_share_network_subnet(
-            share_network_id=share_network['id'])
+        share_net_subnet = [db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])]
 
         self.mock_object(db_api, 'share_network_get', mock.Mock(
             return_value=share_network))
-        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnets',
                          mock.Mock(return_value=share_net_subnet))
         self.mock_object(utils, 'validate_service_host')
 
@@ -281,12 +274,12 @@ class ShareServerControllerTest(test.TestCase):
         self.mock_object(utils, 'validate_service_host', error)
 
         share_network = db_utils.create_share_network()
-        share_net_subnet = db_utils.create_share_network_subnet(
-            share_network_id=share_network['id'])
+        share_net_subnet = [db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])]
 
         self.mock_object(db_api, 'share_network_get', mock.Mock(
             return_value=share_network))
-        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnets',
                          mock.Mock(return_value=share_net_subnet))
         self.mock_object(common, 'check_share_network_is_active',
                          mock.Mock(return_value=True))
@@ -296,7 +289,7 @@ class ShareServerControllerTest(test.TestCase):
             {'share_server': self._setup_manage_test_request_body()})
 
         common.check_share_network_is_active.assert_called_once_with(
-            share_net_subnet['share_network'])
+            share_net_subnet[0]['share_network'])
         policy.check_policy.assert_called_once_with(
             context, self.resource_name, 'manage_share_server')
 
@@ -305,12 +298,12 @@ class ShareServerControllerTest(test.TestCase):
         context = req.environ['manila.context']
 
         share_network = db_utils.create_share_network()
-        share_net_subnet = db_utils.create_share_network_subnet(
-            share_network_id=share_network['id'])
+        share_net_subnet = [db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])]
 
         self.mock_object(db_api, 'share_network_get', mock.Mock(
             return_value=share_network))
-        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnets',
                          mock.Mock(return_value=share_net_subnet))
         self.mock_object(utils, 'validate_service_host')
         self.mock_object(common, 'check_share_network_is_active',
@@ -321,7 +314,7 @@ class ShareServerControllerTest(test.TestCase):
             {'share_server': self._setup_manage_test_request_body()})
 
         common.check_share_network_is_active.assert_called_once_with(
-            share_net_subnet['share_network'])
+            share_net_subnet[0]['share_network'])
         policy.check_policy.assert_called_once_with(
             context, self.resource_name, 'manage_share_server')
 
@@ -377,16 +370,16 @@ class ShareServerControllerTest(test.TestCase):
         context = req.environ['manila.context']
         share_network = db_utils.create_share_network()
         body = {'share_server': self._setup_manage_test_request_body()}
-        share_net_subnet = db_utils.create_share_network_subnet(
-            share_network_id=share_network['id'])
+        share_net_subnet = [db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])]
         body['share_server']['share_network_subnet_id'] = (
-            share_net_subnet['id'] if body_contains_subnet else None)
+            share_net_subnet[0]['id'] if body_contains_subnet else None)
 
         self.mock_object(
-            db_api, 'share_network_subnet_get',
+            db_api, 'share_network_subnet_get_all_with_same_az',
             mock.Mock(side_effect=exception.ShareNetworkSubnetNotFound(
                 share_network_subnet_id='fake')))
-        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnets',
                          mock.Mock(return_value=None))
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -397,10 +390,47 @@ class ShareServerControllerTest(test.TestCase):
         policy.check_policy.assert_called_once_with(
             context, self.resource_name, 'manage_share_server')
         if body_contains_subnet:
-            db_api.share_network_subnet_get.assert_called_once_with(
-                context, share_net_subnet['id'])
+            (db_api.share_network_subnet_get_all_with_same_az.
+             assert_called_once_with(context, share_net_subnet[0]['id']))
         else:
-            (db_api.share_network_subnet_get_default_subnet
+            (db_api.share_network_subnet_get_default_subnets
+                .assert_called_once_with(
+                    context, body['share_server']['share_network_id']))
+
+    @ddt.data(True, False)
+    def test__validate_manage_share_server_error_multiple_subnet(
+            self, body_contains_subnet):
+        req = fakes.HTTPRequest.blank('/manage', version="2.70")
+        context = req.environ['manila.context']
+        share_network = db_utils.create_share_network()
+        body = {'share_server': self._setup_manage_test_request_body()}
+        share_net_subnets = [
+            db_utils.create_share_network_subnet(
+                share_network_id=share_network['id']),
+            db_utils.create_share_network_subnet(
+                share_network_id=share_network['id'], id='fake_sns_id_2'),
+        ]
+        body['share_server']['share_network_subnet_id'] = (
+            share_net_subnets[0]['id'] if body_contains_subnet else None)
+
+        self.mock_object(
+            db_api, 'share_network_subnet_get_all_with_same_az',
+            mock.Mock(return_value=share_net_subnets))
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnets',
+                         mock.Mock(return_value=share_net_subnets))
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.manage,
+                          req,
+                          body)
+
+        policy.check_policy.assert_called_once_with(
+            context, self.resource_name, 'manage_share_server')
+        if body_contains_subnet:
+            (db_api.share_network_subnet_get_all_with_same_az.
+             assert_called_once_with(context, share_net_subnets[0]['id']))
+        else:
+            (db_api.share_network_subnet_get_default_subnets
                 .assert_called_once_with(
                     context, body['share_server']['share_network_id']))
 
@@ -442,6 +472,23 @@ class ShareServerControllerTest(test.TestCase):
 
         get_mock.assert_called_once_with(context, 'fake_server_id')
 
+    def test_unmanage_share_server_multiple_subnets_fail(self):
+        """Tests unmanaging share servers"""
+        server = self._setup_unmanage_tests(multiple_subnets=True)
+        get_mock = self.mock_object(db_api, 'share_server_get',
+                                    mock.Mock(return_value=server))
+        req = fakes.HTTPRequest.blank('/unmanage_share_server', version="2.70")
+        context = req.environ['manila.context']
+        body = {'unmanage': {'force': True}}
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.unmanage,
+                          req,
+                          server['id'],
+                          body)
+
+        get_mock.assert_called_once_with(context, server['id'])
+
     @ddt.data(constants.STATUS_MANAGING, constants.STATUS_DELETING,
               constants.STATUS_CREATING, constants.STATUS_UNMANAGING)
     def test_unmanage_share_server_invalid_statuses(self, status):
@@ -461,18 +508,24 @@ class ShareServerControllerTest(test.TestCase):
 
         get_mock.assert_called_once_with(context, server['id'])
 
-    def _setup_unmanage_tests(self, status=constants.STATUS_ACTIVE):
-        server = db_utils.create_share_server(
-            id='fake_server_id', status=status)
+    def _setup_unmanage_tests(self, status=constants.STATUS_ACTIVE,
+                              multiple_subnets=False):
         share_network = db_utils.create_share_network()
-        network_subnet = db_utils.create_share_network_subnet(
-            share_network_id=share_network['id'])
+        network_subnets = [db_utils.create_share_network_subnet(
+            id='fake_sns_id', share_network_id=share_network['id'])]
+        if multiple_subnets:
+            share_network1 = db_utils.create_share_network()
+            network_subnets.append(db_utils.create_share_network_subnet(
+                share_network_id=share_network1['id'], id='fake_sns_id_2'))
+        server = db_utils.create_share_server(
+            id='fake_server_id', status=status,
+            share_network_subnets=network_subnets)
         self.mock_object(db_api, 'share_server_get',
                          mock.Mock(return_value=server))
         self.mock_object(db_api, 'share_network_get',
                          mock.Mock(return_value=share_network))
         self.mock_object(db_api, 'share_network_subnet_get',
-                         mock.Mock(return_value=network_subnet))
+                         mock.Mock(return_value=network_subnets))
         return server
 
     @ddt.data(exception.ShareServerInUse, exception.PolicyNotAuthorized)
@@ -505,13 +558,11 @@ class ShareServerControllerTest(test.TestCase):
             '/v2/share-servers/fake_server_id/', version="2.63")
         context = req.environ['manila.context']
         share_server = db_utils.create_share_server()
-        network_subnet = db_utils.create_share_network_subnet()
+        network_subnets = [db_utils.create_share_network_subnet()]
+        share_server['share_network_subnets'] = network_subnets
         share_network = db_utils.create_share_network()
         get_mock = self.mock_object(
             db_api, 'share_server_get', mock.Mock(return_value=share_server))
-        get_subnet_mock = self.mock_object(
-            db_api, 'share_network_subnet_get',
-            mock.Mock(return_value=network_subnet))
         get_network_mock = self.mock_object(
             db_api, 'share_network_get',
             mock.Mock(return_value=share_network))
@@ -526,10 +577,9 @@ class ShareServerControllerTest(test.TestCase):
                           'fake_server_id',
                           body)
         get_mock.assert_called_once_with(context, 'fake_server_id')
-        get_subnet_mock.assert_called_once_with(
-            context, share_server.get('share_network_subnet_id'))
         get_network_mock.assert_called_once_with(
-            context, network_subnet['share_network_id'])
+            context,
+            share_server['share_network_subnets'][0]['share_network_id'])
         is_active_mock.assert_called_once_with(share_network)
 
     def _get_server_migration_request(self, server_id, version='2.57'):
@@ -589,11 +639,12 @@ class ShareServerControllerTest(test.TestCase):
     def test__share_server_migration_start_conflict(self, api_exception,
                                                     expected_exception):
         share_network = db_utils.create_share_network()
-        share_network_subnet = db_utils.create_share_network_subnet(
-            share_network_id=share_network['id'])
+        share_network_subnet = [db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])]
         server = db_utils.create_share_server(
             id='fake_server_id', status=constants.STATUS_ACTIVE,
-            share_network_subnet_id=share_network_subnet['id'])
+            share_network_subnet_id=share_network_subnet[0]['id'])
+        server['share_network_subnets'] = share_network_subnet
         req = self._get_server_migration_request(server['id'])
         context = req.environ['manila.context']
         body = {

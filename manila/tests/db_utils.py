@@ -214,7 +214,6 @@ def create_share_server(**kwargs):
     backend_details = kwargs.pop('backend_details', {})
     srv = {
         'host': 'host1',
-        'share_network_subnet_id': 'fake_srv_id',
         'status': constants.STATUS_ACTIVE
     }
     share_srv = _create_db_row(db.share_server_create, srv, kwargs)

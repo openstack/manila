@@ -232,6 +232,11 @@ class ShareNetworkSubnetNotFound(NotFound):
                 " found.")
 
 
+class ShareNetworkSubnetNotFoundByShareServer(NotFound):
+    message = _("Share network subnet could not be found by "
+                "%(share_server_id)s.")
+
+
 class ShareServerNotFound(NotFound):
     message = _("Share server %(share_server_id)s could not be found.")
 
@@ -239,6 +244,11 @@ class ShareServerNotFound(NotFound):
 class ShareServerNotFoundByFilters(ShareServerNotFound):
     message = _("Share server could not be found by "
                 "filters: %(filters_description)s.")
+
+
+class AllocationsNotFoundForShareServer(NotFound):
+    message = _("No allocations found for the share server "
+                "%(share_server_id)s on the subnet.")
 
 
 class InvalidShareNetwork(Invalid):

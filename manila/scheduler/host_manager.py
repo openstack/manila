@@ -151,6 +151,8 @@ class HostState(object):
         self.ipv4_support = None
         self.ipv6_support = None
         self.security_service_update_support = False
+        self.network_allocation_update_support = False
+        self.share_server_multiple_subnet_support = False
 
         # PoolState for all pools
         self.pools = {}
@@ -346,6 +348,14 @@ class HostState(object):
             pool_cap['security_service_update_support'] = (
                 self.security_service_update_support)
 
+        if 'network_allocation_update_support' not in pool_cap:
+            pool_cap['network_allocation_update_support'] = (
+                self.network_allocation_update_support)
+
+        if 'share_server_multiple_subnet_support' not in pool_cap:
+            pool_cap['share_server_multiple_subnet_support'] = (
+                self.share_server_multiple_subnet_support)
+
         if self.ipv4_support is not None:
             pool_cap['ipv4_support'] = self.ipv4_support
 
@@ -377,6 +387,10 @@ class HostState(object):
             self.ipv6_support = capability['ipv6_support']
         self.security_service_update_support = capability.get(
             'security_service_update_support', False)
+        self.network_allocation_update_support = capability.get(
+            'network_allocation_update_support', False)
+        self.share_server_multiple_subnet_support = capability.get(
+            'share_server_multiple_subnet_support', False)
 
     def consume_from_share(self, share):
         """Incrementally update host state from an share."""
@@ -477,6 +491,10 @@ class PoolState(HostState):
                 'sg_consistent_snapshot_support')
             self.security_service_update_support = capability.get(
                 'security_service_update_support', False)
+            self.network_allocation_update_support = capability.get(
+                'network_allocation_update_support', False)
+            self.share_server_multiple_subnet_support = capability.get(
+                'share_server_multiple_subnet_support', False)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet

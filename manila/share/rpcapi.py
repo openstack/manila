@@ -81,6 +81,8 @@ class ShareAPI(object):
             and share_server_get_progress()
         1.22 - Add update_share_network_security_service() and
             check_update_share_network_security_service()
+        1.23 - Add update_share_server_network_allocations() and
+            check_update_share_server_network_allocations()
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -89,7 +91,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.22')
+        self.client = rpc.get_client(target, version_cap='1.23')
 
     def create_share_instance(self, context, share_instance, host,
                               request_spec, filter_properties,
@@ -462,3 +464,25 @@ class ShareAPI(object):
             share_network_id=share_network_id,
             new_security_service_id=new_security_service_id,
             current_security_service_id=current_security_service_id)
+
+    def check_update_share_server_network_allocations(
+            self, context, dest_host, share_network_id,
+            new_share_network_subnet):
+        host = utils.extract_host(dest_host)
+        call_context = self.client.prepare(server=host, version='1.23')
+        call_context.cast(
+            context,
+            'check_update_share_server_network_allocations',
+            share_network_id=share_network_id,
+            new_share_network_subnet=new_share_network_subnet)
+
+    def update_share_server_network_allocations(
+            self, context, dest_host, share_network_id,
+            new_share_network_subnet_id):
+        host = utils.extract_host(dest_host)
+        call_context = self.client.prepare(server=host, version='1.23')
+        call_context.cast(
+            context,
+            'update_share_server_network_allocations',
+            share_network_id=share_network_id,
+            new_share_network_subnet_id=new_share_network_subnet_id)

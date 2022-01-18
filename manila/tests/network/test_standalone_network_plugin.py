@@ -346,7 +346,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
                  ip_version=6,
                  mtu=1500))
 
-    def test_allocate_network_one_ip_address_ipv4_no_usages_exist(self):
+    @ddt.data('admin', 'user')
+    def test_allocate_network_one_ip_address_ipv4_no_usages_exist(self, label):
         data = {
             'DEFAULT': {
                 'standalone_network_plugin_network_type': 'vlan',
@@ -356,8 +357,9 @@ class StandaloneNetworkPluginTest(test.TestCase):
             },
         }
         with test_utils.create_temp_config_with_opts(data):
-            instance = plugin.StandaloneNetworkPlugin()
-        self.mock_object(instance.db, 'share_network_subnet_update')
+            instance = plugin.StandaloneNetworkPlugin(label=label)
+        if label != 'admin':
+            self.mock_object(instance.db, 'share_network_subnet_update')
         self.mock_object(instance.db, 'network_allocation_create')
         self.mock_object(
             instance.db, 'network_allocations_get_by_ip_address',
@@ -376,15 +378,18 @@ class StandaloneNetworkPluginTest(test.TestCase):
             'ip_version': 4,
             'mtu': 1500,
         }
-        instance.db.share_network_subnet_update.assert_called_once_with(
-            fake_context, fake_share_network_subnet['id'], na_data)
+        if label != 'admin':
+            instance.db.share_network_subnet_update.assert_called_once_with(
+                fake_context, fake_share_network_subnet['id'], na_data)
+            na_data['share_network_subnet_id'] = \
+                fake_share_network_subnet['id']
         instance.db.network_allocations_get_by_ip_address.assert_has_calls(
             [mock.call(fake_context, '10.0.0.2')])
         instance.db.network_allocation_create.assert_called_once_with(
             fake_context,
             dict(share_server_id=fake_share_server['id'],
                  ip_address='10.0.0.2', status=constants.STATUS_ACTIVE,
-                 label='user', **na_data))
+                 label=label, **na_data))
 
     def test_allocate_network_two_ip_addresses_ipv4_two_usages_exist(self):
         ctxt = type('FakeCtxt', (object,), {'fake': ['10.0.0.2', '10.0.0.4']})
@@ -428,6 +433,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
         instance.db.network_allocations_get_by_ip_address.assert_has_calls(
             [mock.call(ctxt, '10.0.0.2'), mock.call(ctxt, '10.0.0.3'),
              mock.call(ctxt, '10.0.0.4'), mock.call(ctxt, '10.0.0.5')])
+        na_data['share_network_subnet_id'] = fake_share_network_subnet['id']
         instance.db.network_allocation_create.assert_has_calls([
             mock.call(
                 ctxt,
@@ -522,6 +528,10 @@ class StandaloneNetworkPluginTest(test.TestCase):
         if not label:
             instance.db.share_network_subnet_update.assert_called_once_with(
                 fake_context, fake_share_network_subnet['id'], network_data)
+            data_list[0]['share_network_subnet_id'] = (
+                fake_share_network_subnet['id'])
+            data_list[1]['share_network_subnet_id'] = (
+                fake_share_network_subnet['id'])
             instance._verify_share_network_subnet.assert_called_once_with(
                 fake_share_server['id'], fake_share_network_subnet)
 
@@ -536,3 +546,22 @@ class StandaloneNetworkPluginTest(test.TestCase):
         instance.unmanage_network_allocations('context', 'server_id')
         instance.deallocate_network.assert_called_once_with(
             'context', 'server_id')
+
+    def _setup_include_network_info(self):
+        data = {
+            'DEFAULT': {
+                'standalone_network_plugin_gateway': '192.168.0.1',
+                'standalone_network_plugin_mask': '24',
+            },
+        }
+        with test_utils.create_temp_config_with_opts(data):
+            instance = plugin.StandaloneNetworkPlugin()
+
+        return instance
+
+    def test_include_network_info(self):
+        instance = self._setup_include_network_info()
+        self.mock_object(instance, '_save_network_info')
+        instance.include_network_info(fake_share_network)
+        instance._save_network_info.assert_called_once_with(
+            None, fake_share_network, save_db=False)

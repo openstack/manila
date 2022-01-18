@@ -4254,6 +4254,24 @@ def share_network_subnet_get(context, network_subnet_id, session=None):
 
 
 @require_context
+def share_network_subnet_get_all_with_same_az(context, network_subnet_id,
+                                              session=None):
+    subnet = (_network_subnet_get_query(context, session)
+              .filter_by(id=network_subnet_id).subquery())
+    result = (_network_subnet_get_query(context, session)
+              .join(subnet, subnet.c.share_network_id ==
+                    models.ShareNetworkSubnet.share_network_id)
+              .filter(func.coalesce(subnet.c.availability_zone_id, '0') ==
+                      func.coalesce(
+                          models.ShareNetworkSubnet.availability_zone_id, '0'))
+              .all())
+    if not result:
+        raise exception.ShareNetworkSubnetNotFound(
+            share_network_subnet_id=network_subnet_id)
+    return result
+
+
+@require_context
 def share_network_subnet_get_all(context):
     return _network_subnet_get_query(context).all()
 
@@ -4265,23 +4283,53 @@ def share_network_subnet_get_all_by_share_network(context, network_id):
 
 
 @require_context
-def share_network_subnet_get_by_availability_zone_id(
-        context, share_network_id, availability_zone_id):
+def share_network_subnets_get_all_by_availability_zone_id(
+        context, share_network_id, availability_zone_id,
+        fallback_to_default=True):
+    """Get the share network subnets DB records in a given AZ.
+
+    This method returns list of subnets DB record for a given share network id
+    and an availability zone. If the 'availability_zone_id' is 'None', a
+    record may be returned and it will represent the default share network
+    subnets. If there is no subnet for a specific availability zone id and
+    "fallback_to_default" is True, this method will return the default share
+    network subnets, if it exists.
+
+    :param context: operation context.
+    :param share_network_id: the share network id to be the subnets.
+    :param  availability_zone_id: the availability zone id to be the subnets.
+    :param fallback_to_default: determines in case no subnets found in the
+                                given AZ, it will return the "default" subnets.
+    :return: the list of share network subnets in the AZ and share network.
+    """
     result = (_network_subnet_get_query(context).filter_by(
         share_network_id=share_network_id,
-        availability_zone_id=availability_zone_id).first())
+        availability_zone_id=availability_zone_id).all())
     # If a specific subnet wasn't found, try get the default one
-    if availability_zone_id and not result:
+    if availability_zone_id and not result and fallback_to_default:
         return (_network_subnet_get_query(context).filter_by(
             share_network_id=share_network_id,
-            availability_zone_id=None).first())
+            availability_zone_id=None).all())
     return result
 
 
 @require_context
-def share_network_subnet_get_default_subnet(context, share_network_id):
-    return share_network_subnet_get_by_availability_zone_id(
+def share_network_subnet_get_default_subnets(context, share_network_id):
+    return share_network_subnets_get_all_by_availability_zone_id(
         context, share_network_id, availability_zone_id=None)
+
+
+@require_context
+def share_network_subnet_get_all_by_share_server_id(context, share_server_id):
+    result = (_network_subnet_get_query(context)
+              .filter(models.ShareNetworkSubnet.share_servers.any(
+                      id=share_server_id))
+              .all())
+    if not result:
+        raise exception.ShareNetworkSubnetNotFoundByShareServer(
+            share_server_id=share_server_id)
+
+    return result
 
 
 ###################
@@ -4293,7 +4341,7 @@ def _server_get_query(context, session=None):
     return (model_query(context, models.ShareServer, session=session).
             options(joinedload('share_instances'),
                     joinedload('network_allocations'),
-                    joinedload('share_network_subnet')))
+                    joinedload('share_network_subnets')))
 
 
 @require_context
@@ -4314,6 +4362,12 @@ def share_server_delete(context, id):
     session = get_session()
     with session.begin():
         server_ref = share_server_get(context, id, session=session)
+        model_query(
+            context, models.ShareServerShareNetworkSubnetMapping,
+            session=session
+        ).filter_by(
+            share_server_id=id,
+        ).soft_delete()
         share_server_backend_details_delete(context, id, session=session)
         server_ref.soft_delete(session=session, update_status=True)
 
@@ -4384,12 +4438,19 @@ def share_server_search_by_identifier(context, identifier, session=None):
 @require_context
 def share_server_get_all_by_host_and_share_subnet_valid(context, host,
                                                         share_subnet_id,
+                                                        server_status=None,
                                                         session=None):
-    result = (_server_get_query(context, session).filter_by(host=host)
-              .filter_by(share_network_subnet_id=share_subnet_id)
-              .filter(models.ShareServer.status.in_(
-                      (constants.STATUS_CREATING,
-                       constants.STATUS_ACTIVE))).all())
+    query = (_server_get_query(context, session)
+             .filter_by(host=host)
+             .filter(models.ShareServer.share_network_subnets.any(
+                     id=share_subnet_id)))
+    if server_status:
+        query.filter_by(status=server_status)
+    else:
+        query.filter(models.ShareServer.status.in_(
+            (constants.STATUS_CREATING, constants.STATUS_ACTIVE)))
+
+    result = query.all()
     if not result:
         filters_description = ('share_network_subnet_id is "%(share_net_id)s",'
                                ' host is "%(host)s" and status in'
@@ -4423,9 +4484,13 @@ def share_server_get_all_with_filters(context, filters):
             source_share_server_id=filters.get('source_share_server_id'))
     if filters.get('share_network_id'):
         query = query.join(
+            models.ShareServerShareNetworkSubnetMapping,
+            models.ShareServerShareNetworkSubnetMapping.share_server_id ==
+            models.ShareServer.id
+        ).join(
             models.ShareNetworkSubnet,
             models.ShareNetworkSubnet.id ==
-            models.ShareServer.share_network_subnet_id
+            models.ShareServerShareNetworkSubnetMapping.share_network_subnet_id
         ).filter(
             models.ShareNetworkSubnet.share_network_id ==
             filters.get('share_network_id'))
@@ -4637,7 +4702,8 @@ def network_allocations_get_by_ip_address(context, ip_address):
 
 @require_context
 def network_allocations_get_for_share_server(context, share_server_id,
-                                             session=None, label=None):
+                                             session=None, label=None,
+                                             subnet_id=None):
     if session is None:
         session = get_session()
 
@@ -4655,6 +4721,9 @@ def network_allocations_get_for_share_server(context, share_server_id,
             ))
         else:
             query = query.filter(models.NetworkAllocation.label == label)
+    if subnet_id:
+        query = query.filter(
+            models.NetworkAllocation.share_network_subnet_id == subnet_id)
 
     result = query.all()
     return result

@@ -182,13 +182,17 @@ REST_API_VERSION_HISTORY = """
              restore share from recycle bin. Also, a new parameter called
              `is_soft_deleted` was added so users can filter out
              shares in the recycle bin while listing shares.
+    * 2.70 - Added support for multiple share network subnets in the same
+             availability zone. Also, users can add subnets for an in-use share
+             network.
+
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.69"
+_MAX_API_VERSION = "2.70"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

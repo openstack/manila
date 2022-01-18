@@ -51,7 +51,6 @@ class ShareServerController(wsgi.Controller):
         share_servers = db_api.share_server_get_all(context)
         for s in share_servers:
             try:
-                s.share_network_id = s.share_network_subnet['share_network_id']
                 share_network = db_api.share_network_get(
                     context, s.share_network_id)
                 s.project_id = share_network['project_id']
@@ -75,7 +74,9 @@ class ShareServerController(wsgi.Controller):
                                  (hasattr(s, k) and
                                   s[k] == v or k == 'share_network' and
                                   v in [s.share_network_name,
-                                        s.share_network_id])]
+                                        s.share_network_id] or
+                                  k == 'share_network_subnet_id' and
+                                  v in s.share_network_subnet_ids)]
         return self._view_builder.build_share_servers(req, share_servers)
 
     @wsgi.Controller.authorize
@@ -85,8 +86,7 @@ class ShareServerController(wsgi.Controller):
         try:
             server = db_api.share_server_get(context, id)
             share_network = db_api.share_network_get(
-                context, server.share_network_subnet['share_network_id'])
-            server.share_network_id = share_network['id']
+                context, server['share_network_id'])
             server.project_id = share_network['project_id']
             if share_network['name']:
                 server.share_network_name = share_network['name']
@@ -97,7 +97,7 @@ class ShareServerController(wsgi.Controller):
         except exception.ShareNetworkNotFound:
             msg = _("Share server %s could not be found. Its associated "
                     "share network does not "
-                    "exist.") % server.share_network_subnet['share_network_id']
+                    "exist.") % server['share_network_id']
             raise exc.HTTPNotFound(explanation=msg)
         return self._view_builder.build_share_server(req, server)
 

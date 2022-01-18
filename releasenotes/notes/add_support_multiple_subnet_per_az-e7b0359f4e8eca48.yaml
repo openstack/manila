@@ -1,0 +1,25 @@
+---
+features:
+  - |
+    Add support for multiple subnet per availability zone. The multiple
+    configuration can be done either on share server deployment or updating
+    a pre-existent share server.
+
+    The new field ``network_allocation_update_support`` was added to share
+    server's model This field defaults to ``False``, and all of the
+    already deployed share servers are going to get the default value even if
+    their backend support it. Administrators will be able to update the field
+    value using ``manila-manage`` commands.
+
+    The driver will report its support for adding a subnet on a pre-existent
+    share server through ``network_allocation_update_support``. Also, it will
+    report the support for creating the server with multiple subnets with the
+    ``share_server_multiple_subnet_support``. The scheduler will filter out
+    backend that does not handle this request during some operations. Example,
+    creating a share with a share network containing multiple subnets, only
+    hosts that support this deployment will be selected.
+deprecations:
+  - |
+    Remove 'share_network_subnet_id' attribute from share server view and
+    add 'share_network_subnet_ids' starting with microversion '2.70'. The share
+    server has a list of subnets.

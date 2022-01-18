@@ -290,6 +290,9 @@ class EMCShareDriver(driver.ShareDriver):
 
     def _setup_server(self, network_info, metadata=None):
         """Set up and configures share server with given network parameters."""
+        # NOTE(felipe_rodrigues): keep legacy network_info support as a dict.
+        network_info = network_info[0]
+
         return self.plugin.setup_server(network_info, metadata)
 
     def _teardown_server(self, server_details, security_services=None):

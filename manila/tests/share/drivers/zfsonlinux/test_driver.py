@@ -374,6 +374,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'ipv4_support': True,
             'ipv6_support': False,
             'security_service_update_support': False,
+            'share_server_multiple_subnet_support': False,
+            'network_allocation_update_support': False,
         }
         if replication_domain:
             expected['replication_type'] = 'readable'

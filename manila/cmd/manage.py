@@ -421,7 +421,8 @@ class ShareServerCommands(object):
         """
         share_servers = [server.strip() for server in share_servers.split(",")]
         capabilities = [cap.strip() for cap in capabilities.split(",")]
-        supported_capabilities = ['security_service_update_support']
+        supported_capabilities = ['security_service_update_support',
+                                  'network_allocation_update_support']
 
         values = dict()
         for capability in capabilities:

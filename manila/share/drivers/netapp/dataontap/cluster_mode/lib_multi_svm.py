@@ -1658,6 +1658,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         2. Build the list of export_locations for each share
         3. Release all resources from the source share server
         """
+        new_network_alloc = new_network_alloc[0]
         src_backend_name = share_utils.extract_host(
             source_share_server['host'], level='backend_name')
         src_vserver, src_client = self._get_vserver(
@@ -2013,7 +2014,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             dns_ips = set()
             domains = set()
             # Read all dns-ips and domains from other security services
-            for sec_svc in network_info['security_services']:
+            for sec_svc in network_info[0]['security_services']:
                 if sec_svc['type'] == current_type:
                     # skip the one that we are replacing
                     continue

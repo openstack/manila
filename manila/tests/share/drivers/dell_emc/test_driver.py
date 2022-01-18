@@ -145,6 +145,8 @@ class EMCShareFrameworkTestCase(test.TestCase):
         data['max_shares_per_share_server'] = -1
         data['max_share_server_size'] = -1
         data['security_service_update_support'] = False
+        data['share_server_multiple_subnet_support'] = False
+        data['network_allocation_update_support'] = False
         self.assertEqual(data, self.driver._stats)
 
     def _fake_safe_get(self, value):
@@ -214,3 +216,9 @@ class EMCShareFrameworkTestCase(test.TestCase):
         expected = None
         actual = self.driver.get_default_filter_function()
         self.assertEqual(expected, actual)
+
+    def test_setup_server(self):
+        network_info = [{}]
+        expected = None
+        result = self.driver._setup_server(network_info)
+        self.assertEqual(expected, result)

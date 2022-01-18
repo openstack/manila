@@ -432,6 +432,8 @@ class HPE3ParShareDriver(driver.ShareDriver):
                 'vfs': vfs}
 
     def _setup_server(self, network_info, metadata=None):
+        # NOTE(felipe_rodrigues): keep legacy network_info support as a dict.
+        network_info = network_info[0]
 
         LOG.debug("begin _setup_server with %s", network_info)
 

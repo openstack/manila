@@ -34,6 +34,7 @@ import time
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 
 from manila.common import constants
@@ -141,6 +142,7 @@ class DummyDriver(driver.ShareDriver):
             "share_backend_name") or "DummyDriver"
         self.migration_progress = {}
         self.security_service_update_support = True
+        self.network_allocation_update_support = True
 
     def _verify_configuration(self):
         allowed_driver_methods = [m for m in dir(self) if m[0] != '_']
@@ -184,24 +186,40 @@ class DummyDriver(driver.ShareDriver):
             "s_id": snapshot["snapshot_id"].replace("-", "_"),
             "si_id": snapshot["id"].replace("-", "_")}
 
-    def _generate_export_locations(self, mountpoint, share_server=None):
-        details = share_server["backend_details"] if share_server else {
-            "primary_public_ip": "10.0.0.10",
-            "secondary_public_ip": "10.0.0.20",
-            "service_ip": "11.0.0.11",
+    def _get_export(self, mountpoint, ip, is_admin_only, preferred):
+        return {
+            "path": "%(ip)s:%(mp)s" % {"ip": ip, "mp": mountpoint},
+            "metadata": {
+                "preferred": preferred,
+            },
+            "is_admin_only": is_admin_only,
         }
-        return [
-            {
-                "path": "%(ip)s:%(mp)s" % {"ip": ip, "mp": mountpoint},
-                "metadata": {
-                    "preferred": preferred,
-                },
-                "is_admin_only": is_admin_only,
-            } for ip, is_admin_only, preferred in (
-                (details["primary_public_ip"], False, True),
-                (details["secondary_public_ip"], False, False),
-                (details["service_ip"], True, False))
-        ]
+
+    def _generate_export_locations(self, mountpoint, share_server=None):
+        if share_server:
+            subnet_allocations = jsonutils.loads(
+                share_server["backend_details"]["subnet_allocations"])
+            service_ip = share_server["backend_details"]["service_ip"]
+        else:
+            subnet_allocations = [{
+                "primary_public_ip": "10.0.0.10",
+                "secondary_public_ip": "10.0.0.20",
+            }]
+            service_ip = "11.0.0.11"
+
+        export_locations = [
+            self._get_export(mountpoint, service_ip, True, False)]
+        for subnet_allocation in subnet_allocations:
+            export_locations.append(
+                self._get_export(
+                    mountpoint, subnet_allocation["primary_public_ip"],
+                    False, True))
+            export_locations.append(
+                self._get_export(
+                    mountpoint, subnet_allocation["secondary_public_ip"],
+                    False, False))
+
+        return export_locations
 
     def _create_share(self, share, share_server=None):
         share_proto = share["share_proto"]
@@ -410,16 +428,25 @@ class DummyDriver(driver.ShareDriver):
         Redefine it within share driver when it is going to handle share
         servers.
         """
+        common_net_info = network_info[0]
         server_details = {
-            "primary_public_ip": network_info[
-                "network_allocations"][0]["ip_address"],
-            "secondary_public_ip": network_info[
-                "network_allocations"][1]["ip_address"],
-            "service_ip": network_info[
+            "service_ip": common_net_info[
                 "admin_network_allocations"][0]["ip_address"],
             "username": "fake_username",
-            "server_id": network_info['server_id']
+            "server_id": common_net_info['server_id'],
         }
+
+        subnet_allocations = []
+        for subnet_info in network_info:
+            subnet_allocations.append({
+                "primary_public_ip": subnet_info[
+                    "network_allocations"][0]["ip_address"],
+                "secondary_public_ip": subnet_info[
+                    "network_allocations"][1]["ip_address"]
+            })
+
+        server_details['subnet_allocations'] = jsonutils.dumps(
+            subnet_allocations)
         return server_details
 
     @slow_me_down
@@ -460,6 +487,7 @@ class DummyDriver(driver.ShareDriver):
             "share_group_stats": {
                 "consistent_snapshot_support": "pool",
             },
+            'share_server_multiple_subnet_support': True,
         }
         if self.configuration.replication_domain:
             data["replication_type"] = "readable"
@@ -828,9 +856,12 @@ class DummyDriver(driver.ShareDriver):
                    "private storage." % identifier)
             raise exception.ShareBackendException(msg=msg)
 
-        return [server_details['primary_public_ip'],
-                server_details['secondary_public_ip'],
-                server_details['service_ip']]
+        ips = [server_details['service_ip']]
+        subnet_allocations = jsonutils.loads(
+            server_details['subnet_allocations'])
+        for subnet_allocation in subnet_allocations:
+            ips += list(subnet_allocation.values())
+        return ips
 
     @slow_me_down
     def manage_server(self, context, share_server, identifier, driver_options):
@@ -889,3 +920,65 @@ class DummyDriver(driver.ShareDriver):
             share_instance_rules, new_security_service,
             current_security_service=None):
         return True
+
+    def check_update_share_server_network_allocations(
+            self, context, share_server, current_network_allocations,
+            new_share_network_subnet, security_services, share_instances,
+            share_instances_rules):
+
+        LOG.debug("Share server %(server)s can be updated with allocations "
+                  "from new subnet.", {'server': share_server['id']})
+        return True
+
+    def update_share_server_network_allocations(
+            self, context, share_server, current_network_allocations,
+            new_network_allocations, security_services, shares, snapshots):
+
+        subnet_allocations = jsonutils.loads(
+            share_server['backend_details']['subnet_allocations'])
+        subnet_allocations.append({
+            'primary_public_ip': new_network_allocations[
+                'network_allocations'][0]['ip_address'],
+            'secondary_public_ip': new_network_allocations[
+                'network_allocations'][1]['ip_address'],
+        })
+        new_server = {
+            "backend_details": {
+                "subnet_allocations": jsonutils.dumps(subnet_allocations),
+                "service_ip": share_server["backend_details"]["service_ip"],
+            }
+        }
+        shares_updates = {}
+        for instance in shares:
+
+            share_name = self._get_share_name(instance)
+            mountpoint = "/path/to/fake/share/%s" % share_name
+            export_locations = self._generate_export_locations(
+                mountpoint, share_server=new_server)
+            shares_updates.update(
+                {instance['id']: export_locations}
+            )
+
+        snapshot_updates = {}
+        for instance in snapshots:
+            snapshot_name = self._get_snapshot_name(instance)
+            mountpoint = "/path/to/fake/snapshot/%s" % snapshot_name
+            snap_export_locations = self._generate_export_locations(
+                mountpoint, share_server=new_server)
+            snapshot_updates.update(
+                {instance['id']: {
+                    'provider_location': mountpoint,
+                    'export_locations': snap_export_locations}}
+            )
+
+        LOG.debug(
+            "Network update allocations of dummy share server with ID '%s' "
+            "has been completed.", share_server["id"])
+        return {
+            "share_updates": shares_updates,
+            "snapshot_updates": snapshot_updates,
+            "server_details": {
+                "subnet_allocations": (
+                    new_server["backend_details"]["subnet_allocations"])
+            },
+        }

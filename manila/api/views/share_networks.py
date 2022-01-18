@@ -22,7 +22,8 @@ class ViewBuilder(common.ViewBuilder):
     _collection_name = 'share_networks'
     _detail_version_modifiers = ["add_gateway", "add_mtu", "add_nova_net_id",
                                  "add_subnets",
-                                 "add_status_and_sec_service_update_fields"]
+                                 "add_status_and_sec_service_update_fields",
+                                 "add_network_allocation_update_support_field"]
 
     def build_share_network(self, request, share_network):
         """View of a share network."""
@@ -50,6 +51,16 @@ class ViewBuilder(common.ViewBuilder):
         view = {
             'compatible': result['compatible'],
             'requested_operation': requested_operation,
+        }
+        if context.is_admin:
+            view['hosts_check_result'] = result['hosts_check_result']
+        return view
+
+    def build_share_network_subnet_create_check(self, request, result):
+        """View of share network subnet create check."""
+        context = request.environ['manila.context']
+        view = {
+            'compatible': result['compatible'],
         }
         if context.is_admin:
             view['hosts_check_result'] = result['hosts_check_result']
@@ -135,3 +146,9 @@ class ViewBuilder(common.ViewBuilder):
         network_dict['status'] = network.get('status')
         network_dict['security_service_update_support'] = network.get(
             'security_service_update_support')
+
+    @common.ViewBuilder.versioned_method("2.70")
+    def add_network_allocation_update_support_field(
+            self, context, network_dict, network):
+        network_dict['network_allocation_update_support'] = network.get(
+            'network_allocation_update_support')

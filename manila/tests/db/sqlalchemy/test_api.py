@@ -366,8 +366,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
     def test_share_filter_all_by_share_server(self):
         share_network = db_utils.create_share_network()
-        share_server = db_utils.create_share_server(
-            share_network_id=share_network['id'])
+        share_server = db_utils.create_share_server()
         share = db_utils.create_share(share_server_id=share_server['id'],
                                       share_network_id=share_network['id'])
 
@@ -379,8 +378,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
     def test_share_in_recycle_bin_filter_all_by_share_server(self):
         share_network = db_utils.create_share_network()
-        share_server = db_utils.create_share_server(
-            share_network_id=share_network['id'])
+        share_server = db_utils.create_share_server()
         share = db_utils.create_share(share_server_id=share_server['id'],
                                       share_network_id=share_network['id'],
                                       is_soft_deleted=True)
@@ -393,8 +391,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
     def test_share_in_recycle_bin_filter_all_by_share_network(self):
         share_network = db_utils.create_share_network()
-        share_server = db_utils.create_share_server(
-            share_network_id=share_network['id'])
+        share_server = db_utils.create_share_server()
         share = db_utils.create_share(share_server_id=share_server['id'],
                                       share_network_id=share_network['id'],
                                       is_soft_deleted=True)
@@ -798,7 +795,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
         db_utils.create_share_replica(share_id=share_2['id'])
         expected_ss_keys = {
             'backend_details', 'host', 'id',
-            'share_network_subnet_id', 'status',
+            'share_network_subnet_ids', 'status',
         }
         expected_share_keys = {
             'project_id', 'share_type_id', 'display_name',
@@ -846,7 +843,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
             share_server_id=share_server['id'])
         expected_ss_keys = {
             'backend_details', 'host', 'id',
-            'share_network_subnet_id', 'status',
+            'share_network_subnet_ids', 'status',
         }
         expected_share_keys = {
             'project_id', 'share_type_id', 'display_name',
@@ -911,7 +908,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
         session = db_api.get_session()
         expected_ss_keys = {
             'backend_details', 'host', 'id',
-            'share_network_subnet_id', 'status',
+            'share_network_subnet_ids', 'status',
         }
         expected_share_keys = {
             'project_id', 'share_type_id', 'display_name',
@@ -999,7 +996,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
         )
         expected_extra_keys = {
             'backend_details', 'host', 'id',
-            'share_network_subnet_id', 'status',
+            'share_network_subnet_ids', 'status',
         }
         with session.begin():
             share_replica = db_api.share_replica_get(
@@ -2866,11 +2863,12 @@ class ShareNetworkSubnetDatabaseAPITestCase(BaseDatabaseAPITestCase):
                {'id': 'fake_id_3', 'identifier': 'fake_identifier',
                 'host': 'fake_host'}])
     def test_get_with_share_servers(self, share_servers):
-        db_api.share_network_subnet_create(self.fake_context,
-                                           self.subnet_dict)
+        share_net_subnets = [
+            db_api.share_network_subnet_create(
+                self.fake_context, self.subnet_dict)]
 
         for share_server in share_servers:
-            share_server['share_network_subnet_id'] = self.subnet_dict['id']
+            share_server['share_network_subnets'] = share_net_subnets
             db_api.share_server_create(self.fake_context, share_server)
 
         result = db_api.share_network_subnet_get(self.fake_context,
@@ -2880,8 +2878,11 @@ class ShareNetworkSubnetDatabaseAPITestCase(BaseDatabaseAPITestCase):
                          len(result['share_servers']))
 
         for index, share_server in enumerate(share_servers):
-            self._check_fields(expected=share_server,
-                               actual=result['share_servers'][index])
+            result = db_api.share_network_subnet_get_all_by_share_server_id(
+                self.fake_context, share_server['id'])
+            for key, value in share_server['share_network_subnets'][0].items():
+                if key != 'share_servers':
+                    self.assertEqual(value, result[0][key])
 
     def test_get_not_found(self):
         db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
@@ -2967,18 +2968,43 @@ class ShareNetworkSubnetDatabaseAPITestCase(BaseDatabaseAPITestCase):
         self.subnet_dict['availability_zone_id'] = az['id']
         db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
 
-        result = db_api.share_network_subnet_get_by_availability_zone_id(
+        result = db_api.share_network_subnets_get_all_by_availability_zone_id(
             self.fake_context, self.subnet_dict['share_network_id'], az['id'])
 
-        self._check_fields(expected=self.subnet_dict, actual=result)
+        self._check_fields(expected=self.subnet_dict, actual=result[0])
+
+    def test_get_az_subnets(self):
+        az = db_api.availability_zone_create_if_not_exist(self.fake_context,
+                                                          'fake_zone_id')
+        self.subnet_dict['availability_zone_id'] = az['id']
+        db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
+
+        result = db_api.share_network_subnet_get_all_with_same_az(
+            self.fake_context, self.subnet_dict['id'])
+
+        self.subnet_dict['share_network'] = None
+
+        self._check_fields(expected=self.subnet_dict, actual=result[0])
+
+    def test_get_az_subnets_not_found(self):
+        self.assertRaises(
+            exception.ShareNetworkSubnetNotFound,
+            db_api.share_network_subnet_get_all_with_same_az,
+            self.fake_context, 'share_network_subnet_id')
 
     def test_get_default_subnet(self):
         db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
 
-        result = db_api.share_network_subnet_get_default_subnet(
+        result = db_api.share_network_subnet_get_default_subnets(
             self.fake_context, self.subnet_dict['share_network_id'])
 
-        self._check_fields(expected=self.subnet_dict, actual=result)
+        self._check_fields(expected=self.subnet_dict, actual=result[0])
+
+    def test_get_by_share_server_id_not_found(self):
+        self.assertRaises(
+            exception.ShareNetworkSubnetNotFoundByShareServer,
+            db_api.share_network_subnet_get_all_by_share_server_id,
+            self.fake_context, 'share_server_id')
 
 
 @ddt.ddt
@@ -3144,13 +3170,21 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         self.ctxt = context.RequestContext(user_id='user_id',
                                            project_id='project_id',
                                            is_admin=True)
+        self.share_net_subnets = [
+            db_utils.create_share_network_subnet(
+                id=uuidutils.generate_uuid(),
+                share_network_id=uuidutils.generate_uuid())]
 
     def test_share_server_get(self):
-        expected = db_utils.create_share_server()
+        expected = db_utils.create_share_server(
+            share_network_subnets=self.share_net_subnets)
         server = db_api.share_server_get(self.ctxt, expected['id'])
         self.assertEqual(expected['id'], server['id'])
-        self.assertEqual(expected.share_network_subnet_id,
-                         server.share_network_subnet_id)
+        self.assertEqual(expected.share_network_subnets[0]['id'],
+                         server.share_network_subnets[0]['id'])
+        self.assertEqual(
+            expected.share_network_subnets[0]['share_network_id'],
+            server.share_network_subnets[0]['share_network_id'])
         self.assertEqual(expected.host, server.host)
         self.assertEqual(expected.status, server.status)
 
@@ -3160,10 +3194,14 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
                           db_api.share_server_get, self.ctxt, fake_id)
 
     def test_create(self):
-        server = db_utils.create_share_server()
+        server = db_utils.create_share_server(
+            share_network_subnets=self.share_net_subnets)
         self.assertTrue(server['id'])
-        self.assertEqual(server.share_network_subnet_id,
-                         server['share_network_subnet_id'])
+        self.assertEqual(server.share_network_subnets[0]['id'],
+                         server['share_network_subnets'][0]['id'])
+        self.assertEqual(
+            server.share_network_subnets[0]['share_network_id'],
+            server['share_network_subnets'][0]['share_network_id'])
         self.assertEqual(server.host, server['host'])
         self.assertEqual(server.status, server['status'])
 
@@ -3181,17 +3219,23 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
                           self.ctxt, fake_id)
 
     def test_update(self):
+        share_net_subnets_update = [
+            db_utils.create_share_network_subnet(
+                id=uuidutils.generate_uuid(),
+                share_network_id=uuidutils.generate_uuid())]
         update = {
-            'share_network_id': 'update_net',
+            'share_network_subnets': share_net_subnets_update,
             'host': 'update_host',
             'status': constants.STATUS_ACTIVE,
         }
-        server = db_utils.create_share_server()
+        server = db_utils.create_share_server(
+            share_network_subnets=self.share_net_subnets)
         updated_server = db_api.share_server_update(self.ctxt, server['id'],
                                                     update)
         self.assertEqual(server['id'], updated_server['id'])
-        self.assertEqual(update['share_network_id'],
-                         updated_server.share_network_id)
+        self.assertEqual(
+            update['share_network_subnets'][0]['share_network_id'],
+            updated_server.share_network_subnets[0]['share_network_id'])
         self.assertEqual(update['host'], updated_server.host)
         self.assertEqual(update['status'], updated_server.status)
 
@@ -3201,7 +3245,8 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
                           db_api.share_server_update,
                           self.ctxt, fake_id, {})
 
-    def test_get_all_by_host_and_share_net_valid(self):
+    @ddt.data(None, constants.STATUS_SERVER_NETWORK_CHANGE)
+    def test_get_all_by_host_and_share_net_valid(self, server_status):
         subnet_1 = {
             'id': '1',
             'share_network_id': '1',
@@ -3210,31 +3255,41 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
             'id': '2',
             'share_network_id': '2',
         }
-        valid = {
-            'share_network_subnet_id': '1',
+        share_net_subnets1 = db_utils.create_share_network_subnet(**subnet_1)
+        share_net_subnets2 = db_utils.create_share_network_subnet(**subnet_2)
+        valid_no_status = {
+            'share_network_subnets': [share_net_subnets1],
             'host': 'host1',
             'status': constants.STATUS_ACTIVE,
         }
+        valid_with_status = {
+            'share_network_subnets': [share_net_subnets1],
+            'host': 'host1',
+            'status': constants.STATUS_SERVER_NETWORK_CHANGE,
+        }
         invalid = {
-            'share_network_subnet_id': '2',
+            'share_network_subnets': [share_net_subnets2],
             'host': 'host1',
             'status': constants.STATUS_ERROR,
         }
         other = {
-            'share_network_subnet_id': '1',
+            'share_network_subnets': [share_net_subnets1],
             'host': 'host2',
             'status': constants.STATUS_ACTIVE,
         }
-        db_utils.create_share_network_subnet(**subnet_1)
-        db_utils.create_share_network_subnet(**subnet_2)
-        valid = db_utils.create_share_server(**valid)
+        if server_status:
+            valid = db_utils.create_share_server(**valid_with_status)
+        else:
+            valid = db_utils.create_share_server(**valid_no_status)
         db_utils.create_share_server(**invalid)
         db_utils.create_share_server(**other)
 
         servers = db_api.share_server_get_all_by_host_and_share_subnet_valid(
             self.ctxt,
             host='host1',
-            share_subnet_id='1')
+            share_subnet_id='1',
+            server_status=server_status)
+
         self.assertEqual(valid['id'], servers[0]['id'])
 
     def test_get_all_by_host_and_share_net_not_found(self):
@@ -3246,17 +3301,14 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
 
     def test_get_all(self):
         srv1 = {
-            'share_network_id': '1',
             'host': 'host1',
             'status': constants.STATUS_ACTIVE,
         }
         srv2 = {
-            'share_network_id': '1',
             'host': 'host1',
             'status': constants.STATUS_ERROR,
         }
         srv3 = {
-            'share_network_id': '2',
             'host': 'host2',
             'status': constants.STATUS_ACTIVE,
         }
@@ -3296,7 +3348,10 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
 
     def test_get_with_details(self):
         values = {
-            'share_network_subnet_id': 'fake-share-net-id',
+            'share_network_subnets': [
+                db_utils.create_share_network_subnet(
+                    id='fake_subnet_id',
+                    share_network_id='fake_share_net_id')],
             'host': 'hostname',
             'status': constants.STATUS_ACTIVE,
         }
@@ -3308,8 +3363,11 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         db_api.share_server_backend_details_set(self.ctxt, srv_id, details)
         server = db_api.share_server_get(self.ctxt, srv_id)
         self.assertEqual(srv_id, server['id'])
-        self.assertEqual(values['share_network_subnet_id'],
-                         server.share_network_subnet_id)
+        self.assertEqual(values['share_network_subnets'][0]['id'],
+                         server.share_network_subnets[0]['id'])
+        self.assertEqual(
+            values['share_network_subnets'][0]['share_network_id'],
+            server.share_network_subnets[0]['share_network_id'])
         self.assertEqual(values['host'], server.host)
         self.assertEqual(values['status'], server.status)
         self.assertDictEqual(server['backend_details'], details)
@@ -3331,7 +3389,6 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
     def test_share_server_search_by_identifier(self, identifier):
 
         server = {
-            'share_network_id': 'fake-share-net-id',
             'host': 'hostname',
             'status': constants.STATUS_ACTIVE,
             'is_auto_deletable': True,
@@ -3360,21 +3417,18 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
                                                    server_3_is_auto_deletable,
                                                    expected_len):
         server1 = {
-            'share_network_id': 'fake-share-net-id',
             'host': 'hostname',
             'status': constants.STATUS_ACTIVE,
             'is_auto_deletable': server_1_is_auto_deletable,
             'updated_at': datetime.datetime(2018, 5, 1)
         }
         server2 = {
-            'share_network_id': 'fake-share-net-id',
             'host': 'hostname',
             'status': constants.STATUS_ACTIVE,
             'is_auto_deletable': server_2_is_auto_deletable,
             'updated_at': datetime.datetime(2018, 5, 1)
         }
         server3 = {
-            'share_network_id': 'fake-share-net-id',
             'host': 'hostname',
             'status': constants.STATUS_ACTIVE,
             'is_auto_deletable': server_3_is_auto_deletable,
@@ -3403,7 +3457,7 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
             share_network_subnet = db_utils.create_share_network_subnet(
                 id=uuidutils.generate_uuid(),
                 share_network_id=share_network_id)
-            server_data['share_network_subnet_id'] = share_network_subnet['id']
+            server_data['share_network_subnets'] = [share_network_subnet]
         db_utils.create_share_server(**server_data)
         db_utils.create_share_server()
         filter_keys = filters.keys()
@@ -3417,7 +3471,7 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
                     self.assertEqual(share_network_subnet['share_network_id'],
                                      filters[key])
                     self.assertEqual(share_network_subnet['id'],
-                                     result['share_network_subnet_id'])
+                                     result['share_network_subnets'][0]['id'])
                 else:
                     self.assertEqual(result[key], filters[key])
 
@@ -3534,27 +3588,32 @@ class NetworkAllocationsDatabaseAPITestCase(test.TestCase):
         self.user_id = 'user_id'
         self.project_id = 'project_id'
         self.share_server_id = 'foo_share_server_id'
+        self.share_network_subnet_id = 'foo_share_network_subnet_id'
         self.ctxt = context.RequestContext(
             user_id=self.user_id, project_id=self.project_id, is_admin=True)
         self.user_network_allocations = [
             {'share_server_id': self.share_server_id,
              'ip_address': '1.1.1.1',
              'status': constants.STATUS_ACTIVE,
-             'label': None},
+             'label': None,
+             'share_network_subnet_id': self.share_network_subnet_id},
             {'share_server_id': self.share_server_id,
              'ip_address': '2.2.2.2',
              'status': constants.STATUS_ACTIVE,
-             'label': 'user'},
+             'label': 'user',
+             'share_network_subnet_id': self.share_network_subnet_id},
         ]
         self.admin_network_allocations = [
             {'share_server_id': self.share_server_id,
              'ip_address': '3.3.3.3',
              'status': constants.STATUS_ACTIVE,
-             'label': 'admin'},
+             'label': 'admin',
+             'share_network_subnet_id': None},
             {'share_server_id': self.share_server_id,
              'ip_address': '4.4.4.4',
              'status': constants.STATUS_ACTIVE,
-             'label': 'admin'},
+             'label': 'admin',
+             'share_network_subnet_id': None},
         ]
 
     def _setup_network_allocations_get_for_share_server(self):
@@ -3566,10 +3625,17 @@ class NetworkAllocationsDatabaseAPITestCase(test.TestCase):
         }
         db_api.share_network_create(self.ctxt, share_network_data)
 
+        # Create share network subnet
+        share_network_subnet_data = {
+            'id': self.share_network_subnet_id,
+            'share_network_id': self.user_id,
+        }
+        db_api.share_network_subnet_create(self.ctxt,
+                                           share_network_subnet_data)
+
         # Create share server
         share_server_data = {
             'id': self.share_server_id,
-            'share_network_id': share_network_data['id'],
             'host': 'fake_host',
             'status': 'active',
         }
@@ -3643,6 +3709,20 @@ class NetworkAllocationsDatabaseAPITestCase(test.TestCase):
                           db_api.network_allocation_get,
                           self.ctxt,
                           id='fake')
+
+    def test_network_allocation_get_by_subnet_id(self):
+        self._setup_network_allocations_get_for_share_server()
+
+        result = db_api.network_allocations_get_for_share_server(
+            self.ctxt, self.share_server_id,
+            subnet_id=self.share_network_subnet_id)
+
+        self.assertEqual(2, len(result))
+
+        for network_allocation in result:
+            self.assertIsInstance(network_allocation, models.NetworkAllocation)
+            self.assertEqual(self.share_network_subnet_id,
+                             network_allocation.share_network_subnet_id)
 
     @ddt.data(True, False)
     def test_network_allocation_get_read_deleted(self, read_deleted):
@@ -3798,8 +3878,7 @@ class PurgeDeletedTest(test.TestCase):
                     # create share server
                     db_utils.create_share_server(
                         id=uuidutils.generate_uuid(),
-                        deleted_at=self._days_ago(start, end),
-                        share_network_id=network.id)
+                        deleted_at=self._days_ago(start, end))
                     # create snapshot
                     db_api.share_snapshot_create(
                         self.context, {'share_id': share['id'],
@@ -4360,6 +4439,9 @@ class ShareResourcesAPITestCase(test.TestCase):
         share_id = uuidutils.generate_uuid()
         share_network_id = uuidutils.generate_uuid()
         share_network_subnet_id = uuidutils.generate_uuid()
+        share_net_subnets = [db_utils.create_share_network_subnet(
+            id=share_network_subnet_id,
+            share_network_id=share_network_id)]
         if '@' in current_host:
             if '#' in current_host:
                 new_host = 'new-controller-X@backendX#poolX'
@@ -4400,15 +4482,15 @@ class ShareResourcesAPITestCase(test.TestCase):
                 status=constants.STATUS_DELETING),
             # share servers
             db_utils.create_share_server(
-                share_network_subnet_id=share_network_subnet_id,
+                share_network_subnets=share_net_subnets,
                 host='controller-0@fancystore01',
                 status=constants.STATUS_ACTIVE),
             db_utils.create_share_server(
-                share_network_subnet_id=share_network_subnet_id,
+                share_network_subnets=share_net_subnets,
                 host='controller-0@otherstore02#pool100',
                 status=constants.STATUS_ERROR),
             db_utils.create_share_server(
-                share_network_subnet_id=share_network_subnet_id,
+                share_network_subnets=share_net_subnets,
                 host='controller-2@beststore07',
                 status=constants.STATUS_DELETING),
 
@@ -4425,8 +4507,9 @@ class ShareResourcesAPITestCase(test.TestCase):
             self.context, filters={'share_id': share_id})
         share_groups = db_api.share_group_get_all(
             self.context, filters={'share_network_id': share_network_id})
-        share_servers = db_api._server_get_query(self.context).filter_by(
-            share_network_subnet_id=share_network_subnet_id).all()
+        share_servers = db_api._server_get_query(self.context).filter(
+            models.ShareServer.share_network_subnets.any(
+                id=share_net_subnets[0]['id'])).all()
         self.assertEqual(3, len(share_instances))
         self.assertEqual(3, len(share_groups))
         self.assertEqual(3, len(share_servers))
@@ -4450,6 +4533,9 @@ class ShareResourcesAPITestCase(test.TestCase):
         share_id = uuidutils.generate_uuid()
         share_network_id = uuidutils.generate_uuid()
         share_network_subnet_id = uuidutils.generate_uuid()
+        share_net_subnets = [db_utils.create_share_network_subnet(
+            id=share_network_subnet_id,
+            share_network_id=share_network_id)]
         if '@' in current_host:
             if '#' in current_host:
                 new_host = 'new-controller-X@backendX#poolX'
@@ -4493,15 +4579,15 @@ class ShareResourcesAPITestCase(test.TestCase):
                 status=constants.STATUS_DELETING),
             # share servers
             db_utils.create_share_server(
-                share_network_subnet_id=share_network_subnet_id,
+                share_network_subnets=share_net_subnets,
                 host='controller-0@fancystore01#pool100',
                 status=constants.STATUS_ACTIVE),
             db_utils.create_share_server(
-                share_network_subnet_id=share_network_subnet_id,
+                share_network_subnets=share_net_subnets,
                 host='controller-2@fancystore01',
                 status=constants.STATUS_ERROR),
             db_utils.create_share_server(
-                share_network_subnet_id=share_network_subnet_id,
+                share_network_subnets=share_net_subnets,
                 host='controller-2@beststore07#pool200',
                 status=constants.STATUS_DELETING),
         ]
@@ -4513,8 +4599,9 @@ class ShareResourcesAPITestCase(test.TestCase):
             self.context, filters={'share_id': share_id})
         share_groups = db_api.share_group_get_all(
             self.context, filters={'share_network_id': share_network_id})
-        share_servers = db_api._server_get_query(self.context).filter_by(
-            share_network_subnet_id=share_network_subnet_id).all()
+        share_servers = db_api._server_get_query(self.context).filter(
+            models.ShareServer.share_network_subnets.any(
+                id=share_net_subnets[0]['id'])).all()
 
         updated_resources = [
             res for res in share_instances + share_groups + share_servers

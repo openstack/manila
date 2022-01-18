@@ -93,6 +93,30 @@ def locked_security_service_update_operation(operation):
     return wrapped
 
 
+def locked_share_server_update_allocations_operation(operation):
+    """Lock decorator for share server update allocations operation.
+
+    Takes a named lock prior to executing the operation. The lock is named with
+    the ids of the share network and the region to be updated.
+    """
+
+    def wrapped(*args, **kwargs):
+        az_id = kwargs.get('availability_zone_id')
+        share_net_id = kwargs.get('share_network_id')
+
+        @coordination.synchronized(
+            'locked-share-server-update-allocations-operation-%(net)s-%(az)s'
+            % {
+                'net': share_net_id,
+                'az': az_id,
+            })
+        def locked_share_server_allocations_operation(*_args, **_kwargs):
+            return operation(*_args, **_kwargs)
+        return locked_share_server_allocations_operation(*args, **kwargs)
+
+    return wrapped
+
+
 class API(base.Base):
     """API for interacting with the share manager."""
 
@@ -105,13 +129,17 @@ class API(base.Base):
 
     def _get_all_availability_zones_with_subnets(self, context,
                                                  share_network_id):
-        compatible_azs = []
+        compatible_azs_name = []
+        compatible_azs_multiple = {}
         for az in self.db.availability_zone_get_all(context):
-            if self.db.share_network_subnet_get_by_availability_zone_id(
+            subnets = (
+                self.db.share_network_subnets_get_all_by_availability_zone_id(
                     context, share_network_id=share_network_id,
-                    availability_zone_id=az['id']):
-                compatible_azs.append(az['name'])
-        return compatible_azs
+                    availability_zone_id=az['id']))
+            if subnets:
+                compatible_azs_multiple[az['id']] = len(subnets) > 1
+                compatible_azs_name.append(az['name'])
+        return compatible_azs_name, compatible_azs_multiple
 
     def _check_if_share_quotas_exceeded(self, context, quota_exception,
                                         share_size, operation='create'):
@@ -189,7 +217,8 @@ class API(base.Base):
                snapshot_id=None, availability_zone=None, metadata=None,
                share_network_id=None, share_type=None, is_public=False,
                share_group_id=None, share_group_snapshot_member=None,
-               availability_zones=None, scheduler_hints=None):
+               availability_zones=None, scheduler_hints=None,
+               az_request_multiple_subnet_support_map=None):
         """Create new share."""
 
         self._check_metadata_properties(metadata)
@@ -345,13 +374,15 @@ class API(base.Base):
         # scheduler will receive a list with all availability zones that
         # contains a subnet within the selected share network.
         if share_network_id and not availability_zone:
-            azs_with_subnet = self._get_all_availability_zones_with_subnets(
-                context, share_network_id)
+            compatible_azs_name, compatible_azs_multiple = (
+                self._get_all_availability_zones_with_subnets(
+                    context, share_network_id))
             if not availability_zones:
-                availability_zones = azs_with_subnet
+                availability_zones = compatible_azs_name
             else:
                 availability_zones = (
-                    [az for az in availability_zones if az in azs_with_subnet])
+                    [az for az in availability_zones
+                     if az in compatible_azs_name])
             if not availability_zones:
                 msg = _(
                     "The share network is not supported within any requested "
@@ -359,6 +390,12 @@ class API(base.Base):
                     "'availability_zones' extra-spec and the availability "
                     "zones of the share network subnets")
                 raise exception.InvalidInput(message=msg)
+            if az_request_multiple_subnet_support_map:
+                az_request_multiple_subnet_support_map.update(
+                    compatible_azs_multiple)
+            else:
+                az_request_multiple_subnet_support_map = (
+                    compatible_azs_multiple)
 
         try:
             share = self.db.share_create(context, options,
@@ -391,7 +428,9 @@ class API(base.Base):
             availability_zone=availability_zone, share_group=share_group,
             share_group_snapshot_member=share_group_snapshot_member,
             share_type_id=share_type_id, availability_zones=availability_zones,
-            snapshot_host=snapshot_host, scheduler_hints=scheduler_hints)
+            snapshot_host=snapshot_host, scheduler_hints=scheduler_hints,
+            az_request_multiple_subnet_support_map=(
+                az_request_multiple_subnet_support_map))
 
         # Retrieve the share with instance details
         share = self.db.share_get(context, share['id'])
@@ -468,7 +507,8 @@ class API(base.Base):
                         host=None, availability_zone=None,
                         share_group=None, share_group_snapshot_member=None,
                         share_type_id=None, availability_zones=None,
-                        snapshot_host=None, scheduler_hints=None):
+                        snapshot_host=None, scheduler_hints=None,
+                        az_request_multiple_subnet_support_map=None):
         request_spec, share_instance = (
             self.create_share_instance_and_get_request_spec(
                 context, share, availability_zone=availability_zone,
@@ -476,7 +516,9 @@ class API(base.Base):
                 share_network_id=share_network_id,
                 share_type_id=share_type_id,
                 availability_zones=availability_zones,
-                snapshot_host=snapshot_host))
+                snapshot_host=snapshot_host,
+                az_request_multiple_subnet_support_map=(
+                    az_request_multiple_subnet_support_map)))
 
         if share_group_snapshot_member:
             # Inherit properties from the share_group_snapshot_member
@@ -518,7 +560,8 @@ class API(base.Base):
             self, context, share, availability_zone=None,
             share_group=None, host=None, share_network_id=None,
             share_type_id=None, cast_rules_to_readonly=False,
-            availability_zones=None, snapshot_host=None):
+            availability_zones=None, snapshot_host=None,
+            az_request_multiple_subnet_support_map=None):
 
         availability_zone_id = None
         if availability_zone:
@@ -590,6 +633,8 @@ class API(base.Base):
             'share_group': share_group,
             'availability_zone_id': availability_zone_id,
             'availability_zones': availability_zones,
+            'az_request_multiple_subnet_support_map': (
+                az_request_multiple_subnet_support_map),
         }
         return request_spec, share_instance
 
@@ -643,6 +688,7 @@ class API(base.Base):
         except exception.OverQuota as e:
             self._check_if_replica_quotas_exceeded(context, e, share['size'])
 
+        az_request_multiple_subnet_support_map = {}
         if share_network_id:
             if availability_zone:
                 try:
@@ -652,24 +698,31 @@ class API(base.Base):
                     msg = _("Share replica cannot be created because the "
                             "specified availability zone does not exist.")
                     raise exception.InvalidInput(message=msg)
-                if self.db.share_network_subnet_get_by_availability_zone_id(
-                        context, share_network_id, az.get('id')) is None:
+                az_id = az.get('id')
+                subnets = (
+                    self.db.
+                    share_network_subnets_get_all_by_availability_zone_id(
+                        context, share_network_id, az_id))
+                if not subnets:
                     msg = _("Share replica cannot be created because the "
                             "share network is not available within the "
                             "specified availability zone.")
                     raise exception.InvalidShare(message=msg)
+                az_request_multiple_subnet_support_map[az_id] = (
+                    len(subnets) > 1)
             else:
                 # NOTE(dviroel): If a target availability zone was not
                 # provided, the scheduler will receive a list with all
                 # availability zones that contains subnets within the
                 # selected share network.
-                azs_subnet = self._get_all_availability_zones_with_subnets(
-                    context, share_network_id)
+                compatible_azs_name, compatible_azs_multiple = (
+                    self._get_all_availability_zones_with_subnets(
+                        context, share_network_id))
                 if not type_azs:
-                    type_azs = azs_subnet
+                    type_azs = compatible_azs_name
                 else:
                     type_azs = (
-                        [az for az in type_azs if az in azs_subnet])
+                        [az for az in type_azs if az in compatible_azs_name])
                 if not type_azs:
                     msg = _(
                         "The share network is not supported within any "
@@ -677,6 +730,8 @@ class API(base.Base):
                         "'availability_zones' extra-spec and the availability "
                         "zones of the share network subnets")
                     raise exception.InvalidInput(message=msg)
+                az_request_multiple_subnet_support_map.update(
+                    compatible_azs_multiple)
 
         if share['replication_type'] == constants.REPLICATION_TYPE_READABLE:
             cast_rules_to_readonly = True
@@ -690,7 +745,9 @@ class API(base.Base):
                     share_network_id=share_network_id,
                     share_type_id=share['instance']['share_type_id'],
                     cast_rules_to_readonly=cast_rules_to_readonly,
-                    availability_zones=type_azs)
+                    availability_zones=type_azs,
+                    az_request_multiple_subnet_support_map=(
+                        az_request_multiple_subnet_support_map))
             )
             QUOTAS.commit(
                 context, reservations, project_id=share['project_id'],
@@ -860,9 +917,8 @@ class API(base.Base):
             if share_server['status'] != constants.STATUS_ACTIVE:
                 msg = _("The provided share server is not active.")
                 raise exception.InvalidShareServer(reason=msg)
-            subnet = self.db.share_network_subnet_get(
-                context, share_server['share_network_subnet_id'])
-            share_data['share_network_id'] = subnet['share_network_id']
+            share_data['share_network_id'] = (
+                share_server['share_network_id'])
 
             try:
                 share_network = self.db.share_network_get(
@@ -1322,7 +1378,7 @@ class API(base.Base):
 
         values = {
             'host': host,
-            'share_network_subnet_id': share_net_subnet['id'],
+            'share_network_subnets': [share_net_subnet],
             'status': constants.STATUS_MANAGING,
             'is_auto_deletable': False,
             'identifier': identifier,
@@ -2659,11 +2715,11 @@ class API(base.Base):
         # we should deny this operation.
         dest_az = self.db.availability_zone_get(
             context, service['availability_zone']['name'])
-        compatible_subnet = (
-            self.db.share_network_subnet_get_by_availability_zone_id(
+        compatible_subnets = (
+            self.db.share_network_subnets_get_all_by_availability_zone_id(
                 context, new_share_network_id, dest_az['id']))
 
-        if not compatible_subnet:
+        if not compatible_subnets:
             msg = _("The share network %(network)s does not have a subnet "
                     "that spans the destination host availability zone.")
             payload = {'network': new_share_network_id}
@@ -2671,11 +2727,8 @@ class API(base.Base):
 
         net_changes_identified = False
         if new_share_network:
-            current_subnet = self.db.share_network_subnet_get(
-                context, share_server['share_network_subnet_id'])
-            for key in ['neutron_net_id', 'neutron_subnet_id']:
-                if current_subnet[key] != compatible_subnet[key]:
-                    net_changes_identified = True
+            net_changes_identified = not share_utils.is_az_subnets_compatible(
+                share_server['share_network_subnets'], compatible_subnets)
 
         # NOTE(carloss): Refreshing the list of shares since something could've
         # changed from the initial list.
@@ -3118,28 +3171,44 @@ class API(base.Base):
             'hosts_check', new_security_service_id,
             current_security_service_id=current_security_service_id)
 
-        # check if there is an entry being processed
+        return self._do_update_validate_hosts(
+            context, share_network['id'], backend_hosts, update_key,
+            new_security_service_id=new_security_service_id,
+            current_security_service_id=current_security_service_id)
+
+    def _do_update_validate_hosts(
+            self, context, share_network_id,
+            backend_hosts, update_key, new_share_network_subnet=None,
+            new_security_service_id=None, current_security_service_id=None):
+
+        # check if there is an entry being processed.
         update_value = self.db.async_operation_data_get(
-            context, share_network['id'], update_key)
+            context, share_network_id, update_key)
         if not update_value:
-            # Create a new entry, send all asynchronous rpcs and return
+            # Create a new entry, send all asynchronous rpcs and return.
             hosts_to_validate = {}
             for host in backend_hosts:
                 hosts_to_validate[host] = None
             self.db.async_operation_data_update(
-                context, share_network['id'],
+                context, share_network_id,
                 {update_key: json.dumps(hosts_to_validate)})
             for host in backend_hosts:
-                (self.share_rpcapi.
-                    check_update_share_network_security_service(
-                        context, host, share_network['id'],
-                        new_security_service_id,
-                        current_security_service_id=(
-                            current_security_service_id)))
+                if new_share_network_subnet:
+                    (self.share_rpcapi.
+                        check_update_share_server_network_allocations(
+                            context, host, share_network_id,
+                            new_share_network_subnet))
+                else:
+                    (self.share_rpcapi.
+                        check_update_share_network_security_service(
+                            context, host, share_network_id,
+                            new_security_service_id,
+                            current_security_service_id=(
+                                current_security_service_id)))
             return None, hosts_to_validate
 
         else:
-            # process current existing hosts and update them if needed
+            # process current existing hosts and update them if needed.
             current_hosts = json.loads(update_value)
             hosts_to_include = (
                 set(backend_hosts).difference(set(current_hosts.keys())))
@@ -3147,24 +3216,30 @@ class API(base.Base):
             for host in backend_hosts:
                 hosts_to_validate[host] = current_hosts.get(host, None)
 
-            # Check if there is any unsupported host
+            # Check if there is any unsupported host.
             if any(hosts_to_validate[host] is False for host in backend_hosts):
                 return False, hosts_to_validate
 
-            # Update the list of hosts to be validated
+            # Update the list of hosts to be validated.
             if hosts_to_include:
                 self.db.async_operation_data_update(
-                    context, share_network['id'],
+                    context, share_network_id,
                     {update_key: json.dumps(hosts_to_validate)})
 
                 for host in hosts_to_include:
-                    # send asynchronous check only for new backend hosts
-                    (self.share_rpcapi.
-                        check_update_share_network_security_service(
-                            context, host, share_network['id'],
-                            new_security_service_id,
-                            current_security_service_id=(
-                                current_security_service_id)))
+                    # send asynchronous check only for new backend hosts.
+                    if new_share_network_subnet:
+                        (self.share_rpcapi.
+                            check_update_share_server_network_allocations(
+                                context, host, share_network_id,
+                                new_share_network_subnet))
+                    else:
+                        (self.share_rpcapi.
+                            check_update_share_network_security_service(
+                                context, host, share_network_id,
+                                new_security_service_id,
+                                current_security_service_id=(
+                                    current_security_service_id)))
 
                 return None, hosts_to_validate
 
@@ -3190,7 +3265,6 @@ class API(base.Base):
         curr_sec_serv_id = (
             current_security_service['id']
             if current_security_service else None)
-
         key = self.get_security_service_update_key(
             'hosts_check', new_security_service['id'],
             current_security_service_id=curr_sec_serv_id)
@@ -3306,3 +3380,251 @@ class API(base.Base):
 
         LOG.info('Security service update has been started for share network '
                  '%(share_net_id)s.', {'share_net_id': share_network['id']})
+
+    @locked_share_server_update_allocations_operation
+    def _share_server_update_allocations_validate_hosts(
+            self, context, backend_hosts, update_key, share_network_id=None,
+            neutron_net_id=None, neutron_subnet_id=None,
+            availability_zone_id=None):
+
+        new_share_network_subnet = {
+            'neutron_net_id': neutron_net_id,
+            'neutron_subnet_id': neutron_subnet_id,
+            'availability_zone_id': availability_zone_id,
+        }
+        return self._do_update_validate_hosts(
+            context, share_network_id, backend_hosts, update_key,
+            new_share_network_subnet=new_share_network_subnet)
+
+    def get_share_server_update_allocations_key(
+            self, share_network_id, availability_zone_id):
+        return ('share_server_update_allocations_' + share_network_id + '_' +
+                str(availability_zone_id) + '_' + 'hosts_check')
+
+    def _share_server_update_allocations_initial_checks(
+            self, context, share_network, share_servers):
+
+        api_common.check_share_network_is_active(share_network)
+        if not share_network['network_allocation_update_support']:
+            msg = _("Updating network allocations is not supported on this "
+                    "share network (%(sn_id)s) while it has shares. "
+                    "See the capability 'network_allocation_update_support'."
+                    ) % {"sn_id": share_network["id"]}
+            raise exception.InvalidShareNetwork(reason=msg)
+
+        backend_hosts = set()
+        for share_server in share_servers:
+            share_server_id = share_server['id']
+            if share_server['status'] != constants.STATUS_ACTIVE:
+                msg = _('The share server %(server)s in the specified '
+                        'availability zone subnet is not currently '
+                        'available.') % {'server': share_server_id}
+                raise exception.InvalidShareNetwork(reason=msg)
+
+            # We need an admin context to validate these hosts.
+            admin_ctx = manila_context.get_admin_context()
+            # Make sure the host is in the list of available hosts.
+            utils.validate_service_host(admin_ctx, share_server['host'])
+
+            # Create a set of backend hosts.
+            backend_hosts.add(share_server['host'])
+
+            shares = self.db.share_get_all_by_share_server(
+                context, share_server_id)
+            shares_not_available = [
+                share['id']
+                for share in shares if
+                share['status'] != constants.STATUS_AVAILABLE]
+
+            if shares_not_available:
+                msg = _("The share server (%(server_id)s) in the specified "
+                        "availability zone subnet has some shares that are "
+                        "not available: "
+                        "%(share_ids)s.") % {
+                    'server_id': share_server_id,
+                    'share_ids': shares_not_available,
+                }
+                raise exception.InvalidShareNetwork(reason=msg)
+
+            shares_rules_not_available = [
+                share['id'] for share in shares if
+                share['instance'][
+                    'access_rules_status'] != constants.STATUS_ACTIVE]
+
+            if shares_rules_not_available:
+                msg = _("The share server (%(server_id)s) in the specified "
+                        "availability zone subnet has either these shares or "
+                        "one of their replicas or migration copies that are "
+                        "not available: %(share_ids)s.") % {
+                    'server_id': share_server_id,
+                    'share_ids': shares_rules_not_available,
+                }
+                raise exception.InvalidShareNetwork(reason=msg)
+
+            busy_shares = []
+            for share in shares:
+                try:
+                    self._check_is_share_busy(share)
+                except exception.ShareBusyException:
+                    busy_shares.append(share['id'])
+            if busy_shares:
+                msg = _("The share server (%(server_id)s) in the specified "
+                        "availability zone subnet has some shares that are "
+                        "busy as part of an active task: "
+                        "%(share_ids)s.") % {
+                    'server_id': share_server_id,
+                    'share_ids': busy_shares,
+                }
+                raise exception.InvalidShareNetwork(reason=msg)
+
+        return backend_hosts
+
+    def check_update_share_server_network_allocations(
+            self, context, share_network, new_share_network_subnet,
+            reset_operation):
+
+        backend_hosts = self._share_server_update_allocations_initial_checks(
+            context, share_network, new_share_network_subnet['share_servers'])
+
+        update_key = self.get_share_server_update_allocations_key(
+            share_network['id'],
+            new_share_network_subnet['availability_zone_id'])
+        if reset_operation:
+            self.db.async_operation_data_delete(context, share_network['id'],
+                                                update_key)
+        try:
+            compatible, hosts_info = (
+                self._share_server_update_allocations_validate_hosts(
+                    context, backend_hosts, update_key,
+                    share_network_id=share_network['id'],
+                    neutron_net_id=(
+                        new_share_network_subnet.get('neutron_net_id')),
+                    neutron_subnet_id=(
+                        new_share_network_subnet.get('neutron_subnet_id')),
+                    availability_zone_id=new_share_network_subnet.get(
+                        "availability_zone_id")))
+        except Exception as e:
+            LOG.exception(e)
+            # Due to an internal error, we will delete the entry.
+            self.db.async_operation_data_delete(
+                context, share_network['id'], update_key)
+            msg = _(
+                "The server's allocations cannot be updated on availability "
+                "zone %(zone_id)s of the share network %(share_net_id)s, "
+                "since at least one of its backend hosts do not support this "
+                "operation.") % {
+                'share_net_id': share_network['id'],
+                'zone_id': new_share_network_subnet['availability_zone_id']}
+            raise exception.InvalidShareNetwork(reason=msg)
+
+        return {
+            'compatible': compatible,
+            'hosts_check_result': hosts_info
+        }
+
+    def update_share_server_network_allocations(
+            self, context, share_network, new_share_network_subnet):
+
+        backend_hosts = self._share_server_update_allocations_initial_checks(
+            context, share_network, new_share_network_subnet['share_servers'])
+
+        update_key = self.get_share_server_update_allocations_key(
+            share_network['id'],
+            new_share_network_subnet['availability_zone_id'])
+
+        # check if there is an entry being processed at this moment.
+        update_value = self.db.async_operation_data_get(
+            context, share_network['id'], update_key)
+        if not update_value:
+            msg = _(
+                'The share network %(share_net_id)s cannot start the update '
+                'process since no check operation was found. Before starting '
+                'the update operation, a "check" operation must be triggered '
+                'to validate if all backend hosts support the provided '
+                'configuration paramaters.') % {
+                    'share_net_id': share_network['id']
+                }
+            raise exception.InvalidShareNetwork(reason=msg)
+
+        subnet_info = {
+            'availability_zone_id':
+                new_share_network_subnet.get("availability_zone_id"),
+            'neutron_net_id':
+                new_share_network_subnet.get('neutron_net_id'),
+            'neutron_subnet_id':
+                new_share_network_subnet.get('neutron_subnet_id'),
+        }
+        try:
+            result, __ = self._share_server_update_allocations_validate_hosts(
+                context, backend_hosts, update_key,
+                share_network_id=share_network['id'],
+                neutron_net_id=(
+                    new_share_network_subnet.get('neutron_net_id')),
+                neutron_subnet_id=(
+                    new_share_network_subnet.get('neutron_subnet_id')),
+                availability_zone_id=new_share_network_subnet.get(
+                    "availability_zone_id"))
+        except Exception:
+            # Due to an internal error, we will delete the entry.
+            self.db.async_operation_data_delete(
+                context, share_network['id'], update_key)
+            msg = _(
+                "The server's allocations cannot be updated on availability "
+                "zone %(zone_id)s of the share network %(share_net_id)s, "
+                "since an internal error occurred."
+                "operation.") % {
+                    'share_net_id': share_network['id'],
+                    'zone_id': subnet_info['availability_zone_id']
+                }
+            raise exception.InvalidShareNetwork(reason=msg)
+
+        if result is False:
+            msg = _(
+                "The server's allocations cannot be updated on availability "
+                "zone %(zone_id)s of the share network %(share_net_id)s, "
+                "since at least one of its backend hosts do not support this "
+                "operation.") % {
+                    'share_net_id': share_network['id'],
+                    'zone_id': subnet_info['availability_zone_id']
+                }
+            raise exception.InvalidShareNetwork(reason=msg)
+        elif result is None:
+            msg = _(
+                'Not all of the validation has been completed yet. A '
+                'validation check is in progress. This operation can be '
+                'retried.')
+            raise exception.InvalidShareNetwork(reason=msg)
+
+        # change db to start the update.
+        self.db.share_network_update(
+            context, share_network['id'],
+            {'status': constants.STATUS_NETWORK_CHANGE})
+        share_servers_ids = [ss['id'] for ss in
+                             new_share_network_subnet['share_servers']]
+        self.db.share_servers_update(
+            context, share_servers_ids,
+            {'status': constants.STATUS_SERVER_NETWORK_CHANGE})
+
+        # create the new subnet.
+        new_share_network_subnet_db = self.db.share_network_subnet_create(
+            context, new_share_network_subnet)
+
+        # triggering the actual update.
+        for backend_host in backend_hosts:
+            self.share_rpcapi.update_share_server_network_allocations(
+                context, backend_host, share_network['id'],
+                new_share_network_subnet_db['id'])
+
+        # Erase db entry, since we won't need it anymore.
+        self.db.async_operation_data_delete(
+            context, share_network['id'], update_key)
+
+        LOG.info('Share servers allocations update have been started for '
+                 'share network %(share_net_id)s on its availability zone '
+                 '%(az_id)s with new subnet %(subnet_id)s.',
+                 {
+                     'share_net_id': share_network['id'],
+                     'az_id': new_share_network_subnet['availability_zone_id'],
+                     'subnet_id': new_share_network_subnet_db['id'],
+                 })
+        return new_share_network_subnet_db

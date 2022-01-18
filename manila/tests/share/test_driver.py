@@ -971,6 +971,37 @@ class ShareDriverTestCase(test.TestCase):
             {'id', 'fake_sec_service_id'},
             current_security_service=None)
 
+    def test_check_update_share_server_network_allocations(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        self.assertRaises(
+            NotImplementedError,
+            share_driver.check_update_share_server_network_allocations,
+            'fake_context',
+            {'id', 'share_server_id'},
+            {'admin_network_allocations': [], 'subnets': []},
+            {"id": "fake_subnet_id"},
+            [{"id": "fake_security_service_id"}],
+            [{'id', 'fake_share_instance_id'}],
+            [{"id": "fake_rule_id"}])
+
+    def test_update_share_server_network_allocations(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        self.assertRaises(
+            NotImplementedError,
+            share_driver.update_share_server_network_allocations,
+            'fake_context',
+            {'id', 'share_server_id'},
+            {'admin_network_allocations': [], 'subnets': []},
+            {
+                'share_network_subnet_id': 'fake_share_network_subnet_id',
+                'neutron_net_id': 'fake_neutron_net_id',
+                'neutron_subnet_id': 'fake_neutron_subnet_id',
+                'network_allocations': []
+            },
+            [{"id": "fake_security_service_id"}],
+            [{"id": "fake_share_id"}],
+            [{"id": "fake_snapshot_id"}])
+
     def test_create_share_group_from_sg_snapshot_with_no_members(self):
         share_driver = self._instantiate_share_driver(None, False)
         fake_share_group_dict = {}
