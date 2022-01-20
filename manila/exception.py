@@ -1122,3 +1122,8 @@ class ZadaraVPSASnapshotManageFailed(ShareBackendException):
 
 class ZadaraServerNotFound(NotFound):
     message = _("Unable to find server object for initiator %(name)s")
+
+
+# Macrosan Storage driver
+class MacrosanBackendExeption(ShareBackendException):
+    message = _("Macrosan backend exception: %(reason)s")
