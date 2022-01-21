@@ -346,6 +346,24 @@ source $BASE/new/devstack/openrc admin admin
 manila service-list
 
 cd $BASE/new/tempest/
+# NOTE(gmann): If gate explicitly set the non master
+# constraints to use for Tempest venv then use the same
+# while running the tests too otherwise, it will recreate
+# the Tempest venv due to constraints mismatch.
+# recreation of Tempest venv can flush the initially installed
+# tempest plugins and their deps.
+# We cap EMstate stable branch with older Tempest and stable
+# constraints.
+TEMPEST_VENV_UPPER_CONSTRAINTS=$(set +o xtrace &&
+    source $BASE/new/devstack/stackrc &&
+    echo $TEMPEST_VENV_UPPER_CONSTRAINTS)
+if [[ "$TEMPEST_VENV_UPPER_CONSTRAINTS" != "master" ]]; then
+    echo "Using $TEMPEST_VENV_UPPER_CONSTRAINTS constraints in Tempest virtual env."
+    # NOTE: setting both tox env var and once Tempest start using new var
+    # TOX_CONSTRAINTS_FILE then we can remove the old one.
+    export UPPER_CONSTRAINTS_FILE=$TEMPEST_VENV_UPPER_CONSTRAINTS
+    export TOX_CONSTRAINTS_FILE=$TEMPEST_VENV_UPPER_CONSTRAINTS
+fi
 echo "Running manila tempest tests:"
 tox -evenv-tempest -- tempest run -r $MANILA_TESTS -w $MANILA_TEMPEST_CONCURRENCY
 RETVAL=$?
