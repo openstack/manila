@@ -795,7 +795,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 available_share_servers = None
 
             compatible_share_server = None
-            if available_share_servers:
+            if available_share_servers and not snapshot:
                 available_share_servers = (
                     self._check_share_server_backend_limits(
                         context, available_share_servers,
@@ -1067,7 +1067,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
             compatible_share_server = None
 
-            if available_share_servers:
+            if available_share_servers and not share_group_snapshot:
                 available_share_servers = (
                     self._check_share_server_backend_limits(
                         context, available_share_servers))
