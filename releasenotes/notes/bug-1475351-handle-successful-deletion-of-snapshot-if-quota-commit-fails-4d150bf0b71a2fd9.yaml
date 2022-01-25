@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed an issue during snapshot creation where a database error was being
+    mishandled with dead code. See `Launchpad bug 1475351
+    <https://launchpad.net/bugs/1475351>`_ for more details.
