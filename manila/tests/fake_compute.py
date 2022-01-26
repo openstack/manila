@@ -48,13 +48,6 @@ class FakeKeypair(object):
             setattr(self, key, value)
 
 
-class FakeImage(object):
-    def __init__(self, **kwargs):
-        self.id = kwargs.pop('id', 'fake_image_id')
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-
 class API(object):
     """Fake Compute API."""
     def instance_volume_attach(self, ctx, server_id, volume_id, mount_path):
@@ -88,12 +81,6 @@ class API(object):
         pass
 
     def keypair_delete(self, *args, **kwargs):
-        pass
-
-    def image_list(self, *args, **kwargs):
-        pass
-
-    def image_get(self, *args, **kwargs):
         pass
 
     def add_security_group_to_server(self, *args, **kwargs):

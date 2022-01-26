@@ -240,26 +240,6 @@ class API(base.Base):
     def keypair_list(self, context):
         return novaclient(context).keypairs.list()
 
-    def image_list(self, context):
-        client = novaclient(context)
-        if hasattr(client, 'images'):
-            # Old novaclient with 'images' API proxy
-            return client.images.list()
-        # New novaclient without 'images' API proxy
-        return client.glance.list()
-
-    def image_get(self, context, name):
-        client = novaclient(context)
-        try:
-            # New novaclient without 'images' API proxy
-            return client.glance.find_image(name)
-        except nova_exception.NotFound:
-            raise exception.ServiceInstanceException(
-                _("Image with name '%s' was not found.") % name)
-        except nova_exception.NoUniqueMatch:
-            raise exception.ServiceInstanceException(
-                _("Found more than one image by name '%s'.") % name)
-
     def add_security_group_to_server(self, context, server, security_group):
         return novaclient(context).servers.add_security_group(server,
                                                               security_group)
