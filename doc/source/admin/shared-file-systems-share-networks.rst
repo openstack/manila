@@ -100,6 +100,13 @@ network provider.
    Service. A default subnet is expected to be reachable from all availability
    zones in the cloud.
 
+.. note::
+   Since API version 2.63, the share network will have two additional fields:
+   ``status`` and ``security_service_update_support``. The former indicates the
+   current status of a share network, and the latter informs if all the share
+   network's resources can hold updating or adding security services after they
+   are already deployed.
+
 To check the network list, run:
 
 .. code-block:: console
@@ -165,6 +172,14 @@ You also can see detailed information about the share network including
 
 You also can add and remove the security services from the share network.
 For more detail, see :ref:`shared_file_systems_security_services`.
+
+How to reset the state of a share network (Since API version 2.63)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To reset the state of a given share network, run:
+
+.. code-block:: console
+
+   $ manila share-network-reset-state manila_service_network --state active
 
 
 ==============================================

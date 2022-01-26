@@ -247,6 +247,26 @@ Share network show
       | share_network_subnets | [{'id': '900d9ddc-7062-404e-8ef5-f63b84782d89', 'availability_zone': None, 'created_at': '2019-10-09T04:19:31.000000', 'updated_at': '2019-10-09T07:39:59.000000', 'segmentation_id': None, 'neutron_net_id': 'fake_updated_net_id', 'neutron_subnet_id': 'fake_updated_subnet_id', 'ip_version': None, 'cidr': None, 'network_type': None, 'mtu': None, 'gateway': None}]                                |
       +-----------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
+   .. note::
+      Since API version 2.63, the ``share-network-show`` command also shows
+      the ``status`` and ``security_service_update_support`` fields.
+
+   .. code-block:: console
+
+      +---------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+      | Property                        | Value                                                                                                                                                                                                                                                                                                                                                                                                     |
+      +---------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+      | id                              | feed6a6c-f9e0-45ba-9a2b-0db76bde63e1                                                                                                                                                                                                                                                                                                                                                                      |
+      | name                            | sharenetwork1                                                                                                                                                                                                                                                                                                                                                                                             |
+      | project_id                      | 8c2962a4832743469a336f7c179f7d34                                                                                                                                                                                                                                                                                                                                                                          |
+      | created_at                      | 2019-10-09T04:19:31.000000                                                                                                                                                                                                                                                                                                                                                                                |
+      | updated_at                      | None                                                                                                                                                                                                                                                                                                                                                                                                      |
+      | description                     | Share Network created for demo purposes                                                                                                                                                                                                                                                                                                                                                                   |
+      | status                          | active                                                                                                                                                                                                                                                                                                                                                                                                    |
+      | security_service_update_support | True                                                                                                                                                                                                                                                                                                                                                                                                      |
+      | share_network_subnets           | [{'id': '900d9ddc-7062-404e-8ef5-f63b84782d89', 'availability_zone': None, 'created_at': '2019-10-09T04:19:31.000000', 'updated_at': '2019-10-09T07:39:59.000000', 'segmentation_id': None, 'neutron_net_id': 'fake_updated_net_id', 'neutron_subnet_id': 'fake_updated_subnet_id', 'ip_version': None, 'cidr': None, 'network_type': None, 'mtu': None, 'gateway': None}]                                |
+      +---------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
 Add security service/s
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -263,6 +283,16 @@ Add security service/s
       +--------------------------------------+----------------+--------+------+
       | 50303c35-2c53-4d37-a0d9-61dfe3789569 | my_sec_service | new    | ldap |
       +--------------------------------------+----------------+--------+------+
+
+.. note::
+   Since API version 2.63, manila supports adding security services to share
+   networks that already are in use, depending on the share network's
+   support. The share network entity now contains a field called
+   ``security_service_update_support`` which holds information whether all
+   resources built within it can hold such operation.
+   Before starting the operation to actually add the security service to a
+   share network that is being used, a check operation must be triggered. See
+   :ref:`subsection <share_network_security_service_add_check>`.
 
 List share network security services
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -312,3 +342,100 @@ Delete share networks
       | id                                   | name          |
       +--------------------------------------+---------------+
       +--------------------------------------+---------------+
+
+.. _share_network_security_service_update_check:
+
+Update share network security service check (Since API version 2.63)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#. Check if the update for security services of the same type can be performed:
+
+   .. code-block:: console
+
+      $ manila share-network-security-service-update-check \
+         sharenetwork1 \
+         my_sec_service \
+         my_sec_service_updated
+      +---------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+      | Property            | Value                                                                                                                                                                      |
+      +---------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+      | compatible          | None                                                                                                                                                                       |
+      | requested_operation | {'operation': 'update_security_service', 'current_security_service': 50303c35-2c53-4d37-a0d9-61dfe3789569, 'new_security_service': '8971c5f6-52ec-4c53-bf6a-3fae38a9221e'} |
+      +---------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+#. Check the result of the operation:
+
+   .. code-block:: console
+
+      $ manila share-network-security-service-update-check \
+         sharenetwork1 \
+         my_sec_service \
+         my_sec_service_updated
+      +---------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+      | Property            | Value                                                                                                                                                                      |
+      +---------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+      | compatible          | True                                                                                                                                                                       |
+      | requested_operation | {'operation': 'update_security_service', 'current_security_service': 50303c35-2c53-4d37-a0d9-61dfe3789569, 'new_security_service': '8971c5f6-52ec-4c53-bf6a-3fae38a9221e'} |
+      +---------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Now, the request to update a share network security service should be accepted.
+
+Update share network security services (Since API version 2.63)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#. Replaces one security service for another of the same type.
+
+   .. code-block:: console
+
+      $ manila share-network-security-service-update \
+          sharenetwork1 \
+          my_sec_service \
+          my_sec_service_updated
+      $ manila share-network-security-service-list sharenetwork1
+      +--------------------------------------+------------------------+--------+------+
+      | id                                   | name                   | status | type |
+      +--------------------------------------+------------------------+--------+------+
+      | 8971c5f6-52ec-4c53-bf6a-3fae38a9221e | my_sec_service_updated | new    | ldap |
+      +--------------------------------------+------------------------+--------+------+
+
+.. note::
+   The share network entity now contains a field called
+   ``security_service_update_support`` which holds information whether all
+   resources built within it can hold such operation.
+   In order to update security services in share networks that currently
+   contain shares, an operation to check if the operation can be completed
+   must be performed. See
+   :ref:`subsection <share_network_security_service_update_check>`.
+
+.. _share_network_security_service_add_check:
+
+Add share network security service check (Since API version 2.63)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#. Check if it is possible to add a security service to a share network:
+
+   .. code-block:: console
+
+      $ manila share-network-security-service-add-check \
+         sharenetwork1 \
+         my_sec_service
+      +---------------------+-----------------------------------------------------------------------------------------------------------------------------------------+
+      | Property            | Value                                                                                                                                   |
+      +---------------------+-----------------------------------------------------------------------------------------------------------------------------------------+
+      | compatible          | None                                                                                                                                    |
+      | requested_operation | {'operation': 'add_security_service', 'current_security_service': None, 'new_security_service': '50303c35-2c53-4d37-a0d9-61dfe3789569'} |
+      +---------------------+-----------------------------------------------------------------------------------------------------------------------------------------+
+
+#. Check if the result of the operation:
+
+   .. code-block:: console
+
+      $ manila share-network-security-service-add-check \
+         sharenetwork1 \
+         my_sec_service
+      +---------------------+-----------------------------------------------------------------------------------------------------------------------------------------+
+      | Property            | Value                                                                                                                                   |
+      +---------------------+-----------------------------------------------------------------------------------------------------------------------------------------+
+      | compatible          | True                                                                                                                                    |
+      | requested_operation | {'operation': 'add_security_service', 'current_security_service': None, 'new_security_service': '50303c35-2c53-4d37-a0d9-61dfe3789569'} |
+      +---------------------+-----------------------------------------------------------------------------------------------------------------------------------------+
