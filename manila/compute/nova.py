@@ -163,32 +163,9 @@ class API(base.Base):
         return _untranslate_server_summary_view(server)
 
     @translate_server_exception
-    def server_pause(self, context, instance_id):
-        novaclient(context).servers.pause(instance_id)
-
-    @translate_server_exception
-    def server_unpause(self, context, instance_id):
-        novaclient(context).servers.unpause(instance_id)
-
-    @translate_server_exception
-    def server_suspend(self, context, instance_id):
-        novaclient(context).servers.suspend(instance_id)
-
-    @translate_server_exception
-    def server_resume(self, context, instance_id):
-        novaclient(context).servers.resume(instance_id)
-
-    @translate_server_exception
     def server_reboot(self, context, instance_id, soft_reboot=False):
         hardness = 'SOFT' if soft_reboot else 'HARD'
         novaclient(context).servers.reboot(instance_id, hardness)
-
-    @translate_server_exception
-    def server_rebuild(self, context, instance_id, image_id, password=None):
-        return _untranslate_server_summary_view(
-            novaclient(context).servers.rebuild(instance_id, image_id,
-                                                password)
-        )
 
     @translate_server_exception
     def instance_volume_attach(self, context, instance_id, volume_id,
@@ -221,15 +198,6 @@ class API(base.Base):
         return _untranslate_server_summary_view(
             novaclient(context).servers.update(instance_id, name=name)
         )
-
-    def update_server_volume(self, context, instance_id, volume_id,
-                             new_volume_id):
-        novaclient(context).volumes.update_server_volume(instance_id,
-                                                         volume_id,
-                                                         new_volume_id)
-
-    def keypair_create(self, context, name):
-        return novaclient(context).keypairs.create(name)
 
     def keypair_import(self, context, name, public_key):
         return novaclient(context).keypairs.create(name, public_key)
