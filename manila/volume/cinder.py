@@ -281,9 +281,6 @@ class API(base.Base):
         item = client.volumes.get(volume_id)
         client.volumes.update(item, **fields)
 
-    def get_volume_encryption_metadata(self, context, volume_id):
-        return cinderclient(context).volumes.get_encryption_metadata(volume_id)
-
     @translate_snapshot_exception
     def get_snapshot(self, context, snapshot_id):
         item = cinderclient(context).volume_snapshots.get(snapshot_id)
