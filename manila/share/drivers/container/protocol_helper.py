@@ -30,6 +30,7 @@ class DockerCIFSHelper(object):
         self.container = container_helper
 
     def create_share(self, server_id):
+        export_locations = []
         share_name = self.share.share_id
         cmd = ["net", "conf", "addshare", share_name,
                "/shares/%s" % share_name, "writeable=y"]
@@ -49,9 +50,20 @@ class DockerCIFSHelper(object):
                 ["net", "conf", "setparm", share_name, param, value]
             )
         # TODO(tbarron): pass configured address family when we support IPv6
-        address = self.container.fetch_container_address(
-            server_id, address_family='inet')
-        return r"//%(addr)s/%(name)s" % {"addr": address, "name": share_name}
+        addresses = self.container.fetch_container_addresses(
+            server_id, address_family="inet")
+        for address in addresses:
+            export_location = {
+                "is_admin_only": False,
+                "path": "//%(ip_address)s/%(share_name)s" %
+                {
+                    "ip_address": address,
+                    "share_name": share_name
+                },
+                "preferred": False
+            }
+            export_locations.append(export_location)
+        return export_locations
 
     def delete_share(self, server_id, share_name, ignore_errors=False):
         self.container.execute(

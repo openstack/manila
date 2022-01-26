@@ -15,7 +15,6 @@
 """Unit tests for the Container helper module."""
 
 from unittest import mock
-import uuid
 
 import ddt
 
@@ -38,28 +37,50 @@ class DockerExecHelperTestCase(test.TestCase):
         self.DockerExecHelper = container_helper.DockerExecHelper(
             configuration=self.fake_conf)
 
+    def test_create_container(self):
+        fake_name = 'fake_container'
+        self.DockerExecHelper.configuration.container_image_name = 'fake_image'
+
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(return_value=('fake_container_id', '')))
+        self.mock_object(self.DockerExecHelper, 'disconnect_network')
+
+        self.DockerExecHelper.create_container(fake_name)
+
+        self.DockerExecHelper._inner_execute.assert_called_once_with([
+            'docker', 'container', 'create', '--name=%s' % fake_name,
+            '--privileged', '-v', '/dev:/dev', '-v', '/tmp/shares:/shares',
+            'fake_image'])
+        self.DockerExecHelper.disconnect_network.assert_called_once_with(
+            'bridge', fake_name)
+
+    def test_create_container_failure(self):
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(side_effect=OSError()))
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.DockerExecHelper.create_container)
+
     def test_start_container(self):
-        self.mock_object(self.DockerExecHelper, "_inner_execute",
-                         mock.Mock(return_value=['fake_output', '']))
-        uuid.uuid1 = mock.Mock(return_value='')
-        expected = ['docker', 'run', '-d', '-i', '-t', '--privileged', '-v',
-                    '/dev:/dev', '--name=manila_cifs_docker_container', '-v',
-                    '/tmp/shares:/shares', 'fake_image']
+        fake_name = 'fake_container'
 
-        self.DockerExecHelper.start_container()
+        self.mock_object(self.DockerExecHelper, '_inner_execute', mock.Mock())
 
-        self.DockerExecHelper._inner_execute.assert_called_once_with(expected)
+        self.DockerExecHelper.start_container(fake_name)
+
+        self.DockerExecHelper._inner_execute.assert_called_once_with([
+            'docker', 'container', 'start', 'fake_container'])
 
     def test_start_container_impossible_failure(self):
         self.mock_object(self.DockerExecHelper, "_inner_execute",
                          mock.Mock(side_effect=OSError()))
 
         self.assertRaises(exception.ShareBackendException,
-                          self.DockerExecHelper.start_container)
+                          self.DockerExecHelper.start_container, None)
 
     def test_stop_container(self):
         self.mock_object(self.DockerExecHelper, "_inner_execute",
-                         mock.Mock(return_value=['fake_output', '']))
+                         mock.Mock(return_value=['fake_output', None]))
         expected = ['docker', 'stop', 'manila-fake-conainer']
 
         self.DockerExecHelper.stop_container("manila-fake-conainer")
@@ -120,153 +141,101 @@ class DockerExecHelperTestCase(test.TestCase):
 
         self.assertIsNone(result)
 
-    @ddt.data(('inet',
-               "192.168.0.254",
-               ["5: br0 inet 192.168.0.254/24 brd 192.168.0.255 "
-                "scope global br0 valid_lft forever preferred_lft forever"]),
-              ("inet6",
-               "2001:470:8:c82:6600:6aff:fe84:8dda",
-               ["5: br0 inet6 2001:470:8:c82:6600:6aff:fe84:8dda/64 "
-                "scope global valid_lft forever preferred_lft forever"]),
-              )
-    @ddt.unpack
-    def test_fetch_container_address(self, address_family, expected_address,
-                                     return_value):
-        fake_name = "fakeserver"
-        mock_execute = self.DockerExecHelper.execute = mock.Mock(
-            return_value=return_value)
+    def test_fetch_container_addresses(self):
+        fake_name = 'fake_container'
+        fake_addresses = ['192.168.144.19', '10.0.0.131']
+        fake_ip_addr_show = fakes.FAKE_IP_ADDR_SHOW
+        fake_interfaces = ['eth0', 'eth1']
 
-        address = self.DockerExecHelper.fetch_container_address(
-            fake_name,
-            address_family)
+        self.mock_object(self.DockerExecHelper, 'fetch_container_interfaces',
+                         mock.Mock(return_value=fake_interfaces))
+        self.mock_object(self.DockerExecHelper, 'execute',
+                         mock.Mock(side_effect=[fake_ip_addr_show[0],
+                                                fake_ip_addr_show[1]]))
 
-        self.assertEqual(expected_address, address)
-        mock_execute.assert_called_once_with(
-            fake_name, ["ip", "-oneline", "-family", address_family, "address",
-                        "show", "scope", "global", "dev", "eth0"]
+        self.assertEqual(fake_addresses,
+                         self.DockerExecHelper.fetch_container_addresses(
+                             fake_name, 'inet'))
+        (self.DockerExecHelper.fetch_container_interfaces
+         .assert_called_once_with(fake_name))
+        self.DockerExecHelper.execute.assert_any_call(
+            fake_name, ['ip', '-oneline', '-family', 'inet', 'address',
+                        'show', 'scope', 'global', 'dev', 'eth0']
         )
+        self.DockerExecHelper.execute.assert_any_call(
+            fake_name, ['ip', '-oneline', '-family', 'inet', 'address',
+                        'show', 'scope', 'global', 'dev', 'eth1']
+        )
+
+    def test_fetch_container_interfaces(self):
+        fake_name = 'fake_container'
+        fake_eths = fakes.FAKE_IP_LINK_SHOW
+
+        self.mock_object(self.DockerExecHelper, 'execute',
+                         mock.Mock(return_value=fake_eths))
+
+        self.assertEqual(
+            ['eth0', 'eth1'],
+            self.DockerExecHelper.fetch_container_interfaces(fake_name))
+        self.DockerExecHelper.execute.assert_called_once_with(
+            fake_name, ['ip', '-o', 'link', 'show'])
 
     def test_rename_container(self):
+        fake_old_name = 'old_name'
+        fake_new_name = 'new_name'
+        fake_veth_names = ['fake_veth']
 
-        fake_old_name = "old_name"
-        fake_new_name = "new_name"
-        fake_veth_name = "veth_fake"
-        self.DockerExecHelper.find_container_veth = mock.Mock(
-            return_value=fake_veth_name)
-        mock__inner_execute = self.DockerExecHelper._inner_execute = mock.Mock(
-            return_value=['fake', ''])
+        self.mock_object(self.DockerExecHelper, 'get_container_veths',
+                         mock.Mock(return_value=fake_veth_names))
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(side_effect=[None, None]))
 
         self.DockerExecHelper.rename_container(fake_old_name, fake_new_name)
-        self.DockerExecHelper.find_container_veth.assert_called_once_with(
-            fake_old_name
-        )
-        mock__inner_execute.assert_has_calls([
-            mock.call(["docker", "rename", fake_old_name, fake_new_name]),
-            mock.call(["ovs-vsctl", "set", "interface", fake_veth_name,
-                      "external-ids:manila-container=%s" % fake_new_name])
-        ])
+
+        self.DockerExecHelper.get_container_veths.assert_called_once_with(
+            fake_old_name)
+        self.DockerExecHelper._inner_execute.assert_has_calls([
+            mock.call(['docker', 'rename', fake_old_name, fake_new_name]),
+            mock.call(['ovs-vsctl', 'set', 'interface', fake_veth_names[0],
+                       'external-ids:manila-container=%s' % fake_new_name])])
 
     def test_rename_container_exception_veth(self):
+        fake_old_name = 'old_name'
+        fake_new_name = 'new_name'
 
-        self.DockerExecHelper.find_container_veth = mock.Mock(
-            return_value=None)
+        self.mock_object(self.DockerExecHelper, 'get_container_veths',
+                         mock.Mock(return_value=[]))
 
         self.assertRaises(exception.ManilaException,
                           self.DockerExecHelper.rename_container,
-                          "old_name", "new_name")
+                          fake_old_name, fake_new_name)
 
     @ddt.data([['fake', ''], OSError, ['fake', '']],
               [['fake', ''], OSError, OSError],
               [OSError])
     def test_rename_container_exception_cmds(self, side_effect):
-        fake_old_name = "old_name"
-        fake_new_name = "new_name"
-        fake_veth_name = "veth_fake"
+        fake_old_name = 'old_name'
+        fake_new_name = 'new_name'
+        fake_veth_names = ['fake_veth']
 
-        self.DockerExecHelper.find_container_veth = mock.Mock(
-            return_value=fake_veth_name)
-        mock__inner_execute = self.DockerExecHelper._inner_execute = mock.Mock(
-            side_effect=side_effect)
+        self.mock_object(self.DockerExecHelper, 'get_container_veths',
+                         mock.Mock(return_value=fake_veth_names))
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(side_effect=side_effect))
 
         self.assertRaises(exception.ShareBackendException,
                           self.DockerExecHelper.rename_container,
                           fake_old_name, fake_new_name)
 
         if len(side_effect) > 1:
-            mock__inner_execute.assert_has_calls([
-                mock.call(["docker", "rename", fake_old_name, fake_new_name]),
-                mock.call(["ovs-vsctl", "set", "interface", fake_veth_name,
-                           "external-ids:manila-container=%s" % fake_new_name])
+            self.DockerExecHelper._inner_execute.assert_has_calls([
+                mock.call(['docker', 'rename', fake_old_name, fake_new_name]),
+                mock.call(['ovs-vsctl', 'set', 'interface', fake_veth_names[0],
+                           'external-ids:manila-container=%s' % fake_new_name])
             ])
         else:
-            mock__inner_execute.assert_has_calls([
-                mock.call(["docker", "rename", fake_old_name, fake_new_name]),
-            ])
-
-    @ddt.data('my_container', 'manila_my_container')
-    def test_find_container_veth(self, name):
-
-        interfaces = [fakes.FAKE_VSCTL_LIST_INTERFACE_1,
-                      fakes.FAKE_VSCTL_LIST_INTERFACE_2,
-                      fakes.FAKE_VSCTL_LIST_INTERFACE_4]
-
-        if 'manila_' in name:
-            list_interfaces = [fakes.FAKE_VSCTL_LIST_INTERFACES]
-            interfaces.append(fakes.FAKE_VSCTL_LIST_INTERFACE_3)
-        else:
-            list_interfaces = [fakes.FAKE_VSCTL_LIST_INTERFACES_X]
-            interfaces.append(fakes.FAKE_VSCTL_LIST_INTERFACE_3_X)
-
-        def get_interface_data_according_to_veth(*args, **kwargs):
-            if len(args) == 4:
-                for interface in interfaces:
-                    if args[3] in interface:
-                        return [interface]
-            else:
-                return list_interfaces
-
-        self.DockerExecHelper._execute = mock.Mock(
-            side_effect=get_interface_data_according_to_veth)
-
-        result = self.DockerExecHelper.find_container_veth(name)
-
-        self.assertEqual("veth3jd83j7", result)
-
-    @ddt.data(True, False)
-    def test_find_container_veth_not_found(self, remove_veth):
-
-        if remove_veth:
-            list_executes = [[fakes.FAKE_VSCTL_LIST_INTERFACES],
-                             [fakes.FAKE_VSCTL_LIST_INTERFACE_1],
-                             OSError,
-                             [fakes.FAKE_VSCTL_LIST_INTERFACE_3],
-                             [fakes.FAKE_VSCTL_LIST_INTERFACE_4]]
-        else:
-            list_executes = [[fakes.FAKE_VSCTL_LIST_INTERFACES],
-                             [fakes.FAKE_VSCTL_LIST_INTERFACE_1],
-                             [fakes.FAKE_VSCTL_LIST_INTERFACE_2],
-                             [fakes.FAKE_VSCTL_LIST_INTERFACE_3],
-                             [fakes.FAKE_VSCTL_LIST_INTERFACE_4]]
-
-        self.DockerExecHelper._execute = mock.Mock(
-            side_effect=list_executes)
-        list_veths = ['veth11b2c34', 'veth25f6g7h', 'veth3jd83j7',
-                      'veth4i9j10k']
-
-        self.assertIsNone(
-            self.DockerExecHelper.find_container_veth("foo_bar"))
-        list_calls = [mock.call("ovs-vsctl", "list", "interface",
-                                run_as_root=True)]
-
-        for veth in list_veths:
-            list_calls.append(
-                mock.call("ovs-vsctl", "list", "interface", veth,
-                          run_as_root=True)
-            )
-
-        self.DockerExecHelper._execute.assert_has_calls(
-            list_calls, any_order=True
-        )
+            self.DockerExecHelper._inner_execute.assert_has_calls([
+                mock.call(['docker', 'rename', fake_old_name, fake_new_name])])
 
     @ddt.data((["wrong_name\nfake\nfake_container\nfake_name'"], True),
               (["wrong_name\nfake_container\nfake'"], False),
@@ -283,3 +252,162 @@ class DockerExecHelperTestCase(test.TestCase):
             "docker", "ps", "--no-trunc", "--format='{{.Names}}'",
             run_as_root=True)
         self.assertEqual(expected_result, result)
+
+    def test_create_network(self):
+        fake_network_name = 'fake_network_name'
+
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(return_value=('fake_network_id', '')))
+
+        self.DockerExecHelper.create_network(fake_network_name)
+
+        self.DockerExecHelper._inner_execute.assert_called_once_with([
+            'docker', 'network', 'create', fake_network_name])
+
+    def test_create_network_failure(self):
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(side_effect=OSError()))
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.DockerExecHelper.create_network, None)
+
+    def test_remove_network(self):
+        fake_network_name = 'fake_network_name'
+
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(return_value=('fake_network_id', '')))
+
+        self.DockerExecHelper.remove_network(fake_network_name)
+
+        self.DockerExecHelper._inner_execute.assert_called_once_with([
+            'docker', 'network', 'remove', fake_network_name])
+
+    def test_remove_network_failure(self):
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(side_effect=OSError()))
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.DockerExecHelper.remove_network, None)
+
+    def test_connect_network(self):
+        fake_network_name = 'fake_network_name'
+        fake_server_id = 'fake_server_id'
+
+        self.mock_object(self.DockerExecHelper, '_inner_execute')
+
+        self.DockerExecHelper.connect_network(fake_network_name,
+                                              fake_server_id)
+
+        self.DockerExecHelper._inner_execute.assert_called_once_with([
+            'docker', 'network', 'connect', fake_network_name, fake_server_id])
+
+    def test_connect_network_failure(self):
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(side_effect=OSError()))
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.DockerExecHelper.connect_network, None, None)
+
+    def test_disconnect_network(self):
+        fake_network_name = 'fake_network_name'
+        fake_server_id = 'fake_server_id'
+
+        self.mock_object(self.DockerExecHelper, '_inner_execute')
+
+        self.DockerExecHelper.disconnect_network(fake_network_name,
+                                                 fake_server_id)
+
+        self.DockerExecHelper._inner_execute.assert_called_once_with([
+            'docker', 'network', 'disconnect', fake_network_name,
+            fake_server_id])
+
+    def test_disconnect_network_failure(self):
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(side_effect=OSError()))
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.DockerExecHelper.disconnect_network, None, None)
+
+    def test_get_container_networks(self):
+        fake_container_name = 'fake_container_name'
+        fake_docker_inspect_networks = fakes.FAKE_DOCKER_INSPECT_NETWORKS
+        fake_networks = ['fake_docker_network_0', 'fake_docker_network_1']
+
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(return_value=fake_docker_inspect_networks))
+
+        self.assertEqual(
+            fake_networks,
+            self.DockerExecHelper.get_container_networks(fake_container_name))
+        self.DockerExecHelper._inner_execute.assert_called_once_with([
+            'docker', 'container', 'inspect', '-f',
+            '\'{{json .NetworkSettings.Networks}}\'', fake_container_name])
+
+    def test_get_container_networks_failure(self):
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(side_effect=OSError()))
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.DockerExecHelper.get_container_networks, None)
+
+    def test_get_container_veths(self):
+        fake_container_name = 'fake_container_name'
+        fake_eths_iflinks = ('10\n11\n', '')
+        fake_veths = ['fake_veth_0', 'fake_veth_1']
+
+        self.mock_object(self.DockerExecHelper, 'execute',
+                         mock.Mock(return_value=fake_eths_iflinks))
+        self.mock_object(
+            self.DockerExecHelper, '_execute',
+            mock.Mock(side_effect=[('/sys/class/net/%s/ifindex'
+                                    % fake_veths[0], ''),
+                                   ('/sys/class/net/%s/ifindex'
+                                    % fake_veths[1], '')]))
+
+        self.assertEqual(
+            fake_veths,
+            self.DockerExecHelper.get_container_veths(fake_container_name))
+        self.DockerExecHelper.execute.assert_called_once_with(
+            fake_container_name,
+            ['bash', '-c', 'cat /sys/class/net/eth*/iflink'])
+        self.DockerExecHelper._execute.assert_has_calls([
+            mock.call('bash', '-c', 'grep -l 10 /sys/class/net/veth*/ifindex'),
+            mock.call('bash', '-c', 'grep -l 11 /sys/class/net/veth*/ifindex')
+        ])
+
+    def test_get_network_bridge(self):
+        fake_network_name = 'fake_network_name'
+        fake_network_id = ('012345abcdef', '')
+        fake_bridge = 'br-' + fake_network_id[0]
+
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(return_value=fake_network_id))
+
+        self.assertEqual(
+            fake_bridge,
+            self.DockerExecHelper.get_network_bridge(fake_network_name))
+        self.DockerExecHelper._inner_execute.assert_called_once_with([
+            'docker', 'network', 'inspect', '-f', '{{.Id}}', fake_network_name
+        ])
+
+    def test_get_network_bridge_failure(self):
+        self.mock_object(self.DockerExecHelper, '_inner_execute',
+                         mock.Mock(side_effect=OSError()))
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.DockerExecHelper.get_network_bridge, None)
+
+    def test_get_veth_from_bridge(self):
+        fake_bridge = 'br-012345abcdef'
+        fake_ip_link_show_master = fakes.FAKE_IP_LINK_SHOW_MASTER
+        fake_veth = 'fake_veth'
+
+        self.mock_object(self.DockerExecHelper, '_execute',
+                         mock.Mock(return_value=fake_ip_link_show_master))
+
+        self.assertEqual(
+            fake_veth, self.DockerExecHelper.get_veth_from_bridge(fake_bridge))
+        self.DockerExecHelper._execute.assert_called_once_with('ip', 'link',
+                                                               'show',
+                                                               'master',
+                                                               fake_bridge)

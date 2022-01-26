@@ -21,11 +21,12 @@ be plugged into a Linux bridge. Also it is suggested that all interfaces
 willing to talk to each other reside in an OVS bridge."""
 
 import math
-import re
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_serialization import jsonutils
 from oslo_utils import importutils
+from oslo_utils import uuidutils
 
 from manila import exception
 from manila.i18n import _
@@ -99,6 +100,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
             self.configuration.container_storage_helper)(
                 configuration=self.configuration)
         self._helpers = {}
+        self.network_allocation_update_support = True
 
     def _get_helper(self, share):
         if share["share_proto"].upper() == "CIFS":
@@ -130,7 +132,8 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
             'create_share_from_snapshot_support': False,
             'driver_name': 'ContainerShareDriver',
             'pools': self.storage.get_share_server_pools(),
-            'security_service_update_support': True
+            'security_service_update_support': True,
+            'share_server_multiple_subnet_support': True,
         }
         super(ContainerShareDriver, self)._update_share_stats(data)
 
@@ -219,23 +222,25 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
             LOG.warning("neutron_host_id is not specified. This driver "
                         "might not work as expected without it.")
 
-    def _connect_to_network(self, server_id, network_info, host_veth):
+    def _connect_to_network(self, server_id, network_info, host_veth,
+                            host_bridge, iface):
         LOG.debug("Attempting to connect container to neutron network.")
-        network_allocation = network_info['network_allocations'][0]
+        network_allocation = network_info["network_allocations"][0]
         port_address = network_allocation.ip_address
         port_mac = network_allocation.mac_address
         port_id = network_allocation.id
         self.container.execute(
             server_id,
-            ["ifconfig", "eth0", port_address, "up"]
+            ["ifconfig", iface, port_address, "up"]
         )
         self.container.execute(
             server_id,
-            ["ip", "link", "set", "dev", "eth0", "address", port_mac]
+            ["ip", "link", "set", "dev", iface, "address", port_mac]
         )
         msg_helper = {
-            'id': server_id, 'veth': host_veth,
-            'lb': self.configuration.container_linux_bridge_name,
+            'id': server_id,
+            'veth': host_veth,
+            'lb': host_bridge,
             'ovsb': self.configuration.container_ovs_bridge_name,
             'ip': port_address,
             'network': network_info['neutron_net_id'],
@@ -243,9 +248,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         }
         LOG.debug("Container %(id)s veth is %(veth)s.", msg_helper)
         LOG.debug("Removing %(veth)s from %(lb)s.", msg_helper)
-        self._execute("brctl", "delif",
-                      self.configuration.container_linux_bridge_name,
-                      host_veth,
+        self._execute("brctl", "delif", host_bridge, host_veth,
                       run_as_root=True)
 
         LOG.debug("Plugging %(veth)s into %(ovsb)s.", msg_helper)
@@ -264,61 +267,80 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
     @utils.synchronized("container_driver_teardown_lock", external=True)
     def _teardown_server(self, *args, **kwargs):
         server_id = self._get_container_name(kwargs["server_details"]["id"])
-        self.container.stop_container(server_id)
-        veth = self.container.find_container_veth(server_id)
-        if veth:
+        veths = self.container.get_container_veths(server_id)
+        networks = self.container.get_container_networks(server_id)
+
+        for veth, network in zip(veths, networks):
             LOG.debug("Deleting veth %s.", veth)
             try:
                 self._execute("ovs-vsctl", "--", "del-port",
                               self.configuration.container_ovs_bridge_name,
                               veth, run_as_root=True)
             except exception.ProcessExecutionError as e:
-                LOG.warning("Failed to delete port %s: port "
-                            "vanished.", veth)
+                LOG.warning("Failed to delete port %s: port vanished.", veth)
                 LOG.error(e)
+            self.container.disconnect_network(network, server_id)
 
-    def _get_veth_state(self):
-        result = self._execute("brctl", "show",
-                               self.configuration.container_linux_bridge_name,
-                               run_as_root=True)
-        veths = re.findall("veth.*\\n", result[0])
-        veths = [x.rstrip('\n') for x in veths]
-        msg = ("The following veth interfaces are plugged into %s now: " %
-               self.configuration.container_linux_bridge_name)
-        LOG.debug(msg + ", ".join(veths))
-        return veths
+            if network != "bridge":
+                self.container.remove_network(network)
 
-    def _get_corresponding_veth(self, before, after):
-        result = list(set(after) ^ set(before))
-        if len(result) != 1:
-            raise exception.ManilaException(_("Multiple veths for container."))
-        return result[0]
+        self.container.stop_container(server_id)
+
+    def _setup_server_network(self, server_id, network_info):
+        existing_interfaces = self.container.fetch_container_interfaces(
+            server_id)
+        new_interfaces = []
+
+        # If the share server network allocations are being updated, create
+        # interfaces starting with ethX + 1.
+        if existing_interfaces:
+            ifnum_offset = len(existing_interfaces)
+            for ifnum, subnet in enumerate(network_info):
+                # TODO(ecsantos): Newer Ubuntu images (systemd >= 197) use
+                # predictable network interface names (e.g., enp3s0) instead of
+                # the classical kernel naming scheme (e.g., eth0). The
+                # Container driver currently uses an Ubuntu Xenial Docker
+                # image, so if it's updated in the future, these "eth" strings
+                # should also be updated.
+                new_interfaces.append("eth" + str(ifnum + ifnum_offset))
+        # Otherwise (the share server was just created), create interfaces
+        # starting with eth0.
+        else:
+            for ifnum, subnet in enumerate(network_info):
+                new_interfaces.append("eth" + str(ifnum))
+
+        for new_interface, subnet in zip(new_interfaces, network_info):
+            network_name = "manila-docker-network-" + uuidutils.generate_uuid()
+            self.container.create_network(network_name)
+            self.container.connect_network(network_name, server_id)
+
+            bridge = self.container.get_network_bridge(network_name)
+            veth = self.container.get_veth_from_bridge(bridge)
+            self._connect_to_network(server_id, subnet, veth, bridge,
+                                     new_interface)
 
     @utils.synchronized("veth-lock", external=True)
     def _setup_server(self, network_info, metadata=None):
-        # NOTE(felipe_rodrigues): keep legacy network_info support as a dict.
-        network_info = network_info[0]
         msg = "Creating share server '%s'."
-        server_id = self._get_container_name(network_info["server_id"])
+        common_net_info = network_info[0]
+        server_id = self._get_container_name(common_net_info["server_id"])
         LOG.debug(msg, server_id)
 
-        veths_before = self._get_veth_state()
         try:
+            self.container.create_container(server_id)
             self.container.start_container(server_id)
         except Exception as e:
             raise exception.ManilaException(_("Cannot create container: %s") %
                                             e)
-        security_services = network_info.get('security_services')
+
+        self._setup_server_network(server_id, network_info)
+        security_services = common_net_info.get('security_services')
 
         if security_services:
             self.setup_security_services(server_id, security_services)
 
-        veths_after = self._get_veth_state()
-
-        veth = self._get_corresponding_veth(veths_before, veths_after)
-        self._connect_to_network(server_id, network_info, veth)
         LOG.info("Container %s was created.", server_id)
-        return {"id": network_info["server_id"]}
+        return {"id": common_net_info["server_id"]}
 
     def _delete_export_and_umount_storage(
             self, share, server_id, share_name, ignore_errors=False):
@@ -382,7 +404,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         location = self._create_export_and_mount_storage(
             share, server_id, new_share_name)
 
-        result = {'size': size, 'export_locations': [location]}
+        result = {'size': size, 'export_locations': location}
         LOG.info("Successfully managed share %(share)s, returning %(data)s",
                  {'share': share.id, 'data': result})
         return result
@@ -393,7 +415,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
     def get_share_server_network_info(
             self, context, share_server, identifier, driver_options):
         name = self._get_correct_container_old_name(identifier)
-        return [self.container.fetch_container_address(name, "inet")]
+        return self.container.fetch_container_addresses(name, "inet")
 
     def manage_server(self, context, share_server, identifier, driver_options):
         new_name = self._get_container_name(share_server['id'])
@@ -470,7 +492,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         # Enables the access on the destination container
         destination_server_id = self._get_container_name(
             destination_share_server["id"])
-        new_export_location = self._mount_storage(
+        new_export_locations = self._mount_storage(
             destination_share, destination_server_id,
             destination_share.share_id)
 
@@ -485,7 +507,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         LOG.info(msg, msg_args)
 
         return {
-            'export_locations': new_export_location,
+            'export_locations': new_export_locations,
         }
 
     def share_server_migration_check_compatibility(
@@ -547,11 +569,11 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         shares_updates = {}
         for destination_share in shares:
             share_id = destination_share.share_id
-            new_export_location = self._mount_storage(
+            new_export_locations = self._mount_storage(
                 destination_share, destination_server_id, share_id)
 
             shares_updates[destination_share['id']] = {
-                'export_locations': new_export_location,
+                'export_locations': new_export_locations,
                 'pool_name': self.storage.get_share_pool_name(share_id),
             }
 
@@ -661,3 +683,66 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
                 "'password'.")
             return False
         return True
+
+    def _form_share_server_update_return(self, share_server,
+                                         current_network_allocations,
+                                         new_network_allocations,
+                                         share_instances):
+        server_id = self._get_container_name(share_server["id"])
+        addresses = self.container.fetch_container_addresses(server_id, "inet")
+        share_updates = {}
+        subnet_allocations = {}
+
+        for share_instance in share_instances:
+            export_locations = []
+            for address in addresses:
+                # TODO(ecsantos): The Container driver currently only
+                # supports CIFS. If NFS support is implemented in the
+                # future, the path should be adjusted accordingly.
+                export_location = {
+                    "is_admin_only": False,
+                    "path": "//%(ip_address)s/%(share_id)s" %
+                    {
+                        "ip_address": address,
+                        "share_id": share_instance["share_id"]
+                    },
+                    "preferred": False
+                }
+                export_locations.append(export_location)
+            share_updates[share_instance["id"]] = export_locations
+
+        for subnet in current_network_allocations["subnets"]:
+            for network_allocation in subnet["network_allocations"]:
+                subnet_allocations[network_allocation["id"]] = (
+                    network_allocation["ip_address"])
+
+        for network_allocation in (
+                new_network_allocations["network_allocations"]):
+            subnet_allocations[network_allocation["id"]] = (
+                network_allocation["ip_address"])
+
+        server_details = {
+            "subnet_allocations": jsonutils.dumps(subnet_allocations)
+        }
+        return {
+            "share_updates": share_updates,
+            "server_details": server_details
+        }
+
+    def check_update_share_server_network_allocations(
+            self, context, share_server, current_network_allocations,
+            new_share_network_subnet, security_services, share_instances,
+            share_instances_rules):
+        LOG.debug("Share server %(server)s can be updated with allocations "
+                  "from new subnet.", {"server": share_server["id"]})
+        return True
+
+    def update_share_server_network_allocations(
+            self, context, share_server, current_network_allocations,
+            new_network_allocations, security_services, share_instances,
+            snapshots):
+        server_id = self._get_container_name(share_server["id"])
+        self._setup_server_network(server_id, [new_network_allocations])
+        return self._form_share_server_update_return(
+            share_server, current_network_allocations, new_network_allocations,
+            share_instances)

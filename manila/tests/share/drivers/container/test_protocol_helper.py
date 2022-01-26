@@ -65,6 +65,9 @@ class DockerCIFSHelperTestCase(test.TestCase):
             self.fake_exec_sync, execute_arguments=actual_arguments,
             ret_val=" fake 192.0.2.2/24 more fake \n" * 20)
         self.DockerCIFSHelper.share = fake_share()
+        self.mock_object(self.DockerCIFSHelper.container,
+                         'fetch_container_addresses',
+                         mock.Mock(return_value=['192.0.2.2']))
 
         self.DockerCIFSHelper.create_share("fakeserver")
 
@@ -91,6 +94,9 @@ class DockerCIFSHelperTestCase(test.TestCase):
             self.fake_exec_sync, execute_arguments=actual_arguments,
             ret_val=" fake 192.0.2.2/24 more fake \n" * 20)
         self.DockerCIFSHelper.share = fake_share()
+        self.mock_object(self.DockerCIFSHelper.container,
+                         'fetch_container_addresses',
+                         mock.Mock(return_value=['192.0.2.2']))
 
         self.DockerCIFSHelper.create_share("fakeserver")
 

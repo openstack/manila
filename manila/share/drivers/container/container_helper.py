@@ -17,6 +17,7 @@ import re
 import uuid
 
 from oslo_log import log
+from oslo_serialization import jsonutils
 from oslo_utils import excutils
 
 from manila import exception
@@ -33,7 +34,7 @@ class DockerExecHelper(driver.ExecuteMixin):
         super(DockerExecHelper, self).__init__(*args, **kwargs)
         self.init_execute_mixin()
 
-    def start_container(self, name=None):
+    def create_container(self, name=None):
         name = name or "".join(["manila_cifs_docker_container",
                                 str(uuid.uuid1()).replace("-", "_")])
         image_name = self.configuration.container_image_name
@@ -60,19 +61,30 @@ class DockerExecHelper(driver.ExecuteMixin):
         # share providers contain vulnerabilities then the driver does not
         # provide any more possibilities for an exploitation than other
         # first-party drivers.
-
         path = "{0}:/shares".format(
             self.configuration.container_volume_mount_path)
-        cmd = ["docker", "run", "-d", "-i", "-t", "--privileged",
-               "-v", "/dev:/dev", "--name=%s" % name,
-               "-v", path, image_name]
+        cmd = ["docker", "container", "create", "--name=%s" % name,
+               "--privileged", "-v", "/dev:/dev", "-v", path, image_name]
         try:
             result = self._inner_execute(cmd)
         except (exception.ProcessExecutionError, OSError):
             raise exception.ShareBackendException(
+                msg="Container %s failed to be created." % name)
+
+        self.disconnect_network("bridge", name)
+        LOG.info("A container has been successfully created! Its id is %s.",
+                 result[0].rstrip("\n"))
+
+    def start_container(self, name):
+        cmd = ["docker", "container", "start", name]
+
+        try:
+            self._inner_execute(cmd)
+        except (exception.ProcessExecutionError, OSError):
+            raise exception.ShareBackendException(
                 msg="Container %s has failed to start." % name)
-        LOG.info("A container has been successfully started! Its id is "
-                 "%s.", result[0].rstrip('\n'))
+
+        LOG.info("Container %s successfully started!", name)
 
     def stop_container(self, name):
         LOG.debug("Stopping container %s.", name)
@@ -106,20 +118,37 @@ class DockerExecHelper(driver.ExecuteMixin):
             LOG.debug("Execution result: %s.", result)
             return result
 
-    def fetch_container_address(self, name, address_family="inet6"):
-        result = self.execute(
-            name,
-            ["ip", "-oneline",
-             "-family", address_family,
-             "address", "show", "scope", "global", "dev", "eth0"],
-        )
-        address_w_prefix = result[0].split()[3]
-        address = address_w_prefix.split('/')[0]
-        return address
+    def fetch_container_addresses(self, name, address_family="inet6"):
+        addresses = []
+        interfaces = self.fetch_container_interfaces(name)
+
+        for interface in interfaces:
+            result = self.execute(
+                name,
+                ["ip", "-oneline",
+                 "-family", address_family,
+                 "address", "show", "scope", "global", "dev", interface],
+            )
+            address_w_prefix = result[0].split()[3]
+            addresses.append(address_w_prefix.split("/")[0])
+
+        return addresses
+
+    def fetch_container_interfaces(self, name):
+        interfaces = []
+        links = self.execute(name, ["ip", "-o", "link", "show"])
+        links = links[0].rstrip().split("\n")
+        links = [link for link in links if link.split()[1].startswith("eth")]
+
+        for link in links:
+            interface = re.search(" (.+?)@", link).group(1)
+            interfaces.append(interface)
+
+        return interfaces
 
     def rename_container(self, name, new_name):
-        veth_name = self.find_container_veth(name)
-        if not veth_name:
+        veth_names = self.get_container_veths(name)
+        if not veth_names:
             raise exception.ManilaException(
                 _("Could not find OVS information related to "
                   "container %s.") % name)
@@ -130,42 +159,21 @@ class DockerExecHelper(driver.ExecuteMixin):
             raise exception.ShareBackendException(
                 msg="Could not rename container %s." % name)
 
-        cmd = ["ovs-vsctl", "set", "interface", veth_name,
-               "external-ids:manila-container=%s" % new_name]
-        try:
-            self._inner_execute(cmd)
-        except (exception.ProcessExecutionError, OSError):
+        for veth_name in veth_names:
+            cmd = ["ovs-vsctl", "set", "interface", veth_name,
+                   "external-ids:manila-container=%s" % new_name]
             try:
-                self._inner_execute(["docker", "rename", new_name, name])
+                self._inner_execute(cmd)
             except (exception.ProcessExecutionError, OSError):
-                msg = _("Could not rename back container %s.") % name
-                LOG.exception(msg)
-            raise exception.ShareBackendException(
-                msg="Could not update OVS information %s." % name)
+                try:
+                    self._inner_execute(["docker", "rename", new_name, name])
+                except (exception.ProcessExecutionError, OSError):
+                    msg = _("Could not rename back container %s.") % name
+                    LOG.exception(msg)
+                raise exception.ShareBackendException(
+                    msg="Could not update OVS information %s." % name)
 
         LOG.info("Container %s has been successfully renamed.", name)
-
-    def find_container_veth(self, name):
-        interfaces = self._execute("ovs-vsctl", "list", "interface",
-                                   run_as_root=True)[0]
-        veths = set(re.findall("veth[0-9a-zA-Z]{7}", interfaces))
-        manila_re = "manila-container=\"?.{%s}\"?" % len(name)
-        for veth in veths:
-            try:
-                iface_data = self._execute("ovs-vsctl", "list", "interface",
-                                           veth, run_as_root=True)[0]
-            except (exception.ProcessExecutionError, OSError) as e:
-                LOG.debug("Error listing interface %(veth)s. "
-                          "Reason: %(reason)s", {'veth': veth,
-                                                 'reason': e})
-                continue
-
-            container_id = re.findall(manila_re, iface_data)
-            if container_id == []:
-                continue
-            elif container_id[0].split("manila-container=")[-1].split(
-                    "manila_")[-1].strip('"') == name.split("manila_")[-1]:
-                return veth
 
     def container_exists(self, name):
 
@@ -175,3 +183,104 @@ class DockerExecHelper(driver.ExecuteMixin):
             if name == line.strip("'"):
                 return True
         return False
+
+    def create_network(self, network_name):
+        cmd = ["docker", "network", "create", network_name]
+        LOG.debug("Creating the %s Docker network.", network_name)
+
+        try:
+            result = self._inner_execute(cmd)
+        except (exception.ProcessExecutionError, OSError):
+            raise exception.ShareBackendException(
+                msg="Docker network %s could not be created." % network_name)
+
+        LOG.info("The Docker network has been successfully created! Its id is "
+                 "%s.", result[0].rstrip("\n"))
+
+    def remove_network(self, network_name):
+        cmd = ["docker", "network", "remove", network_name]
+        LOG.debug("Removing the %s Docker network.", network_name)
+
+        try:
+            result = self._inner_execute(cmd)
+        except (exception.ProcessExecutionError, OSError):
+            raise exception.ShareBackendException(
+                msg="Docker network %s could not be removed. One or more "
+                    "containers are probably still using it." % network_name)
+
+        LOG.info("The %s Docker network has been successfully removed!",
+                 result[0].rstrip("\n"))
+
+    def connect_network(self, network_name, container_name):
+        cmd = ["docker", "network", "connect", network_name, container_name]
+
+        try:
+            self._inner_execute(cmd)
+        except (exception.ProcessExecutionError, OSError):
+            raise exception.ShareBackendException(
+                msg="Could not connect the Docker network %s to container %s."
+                    % (network_name, container_name))
+
+        LOG.info("Docker network %s has been successfully connected to "
+                 "container %s!", network_name, container_name)
+
+    def disconnect_network(self, network_name, container_name):
+        cmd = ["docker", "network", "disconnect", network_name, container_name]
+
+        try:
+            self._inner_execute(cmd)
+        except (exception.ProcessExecutionError, OSError):
+            raise exception.ShareBackendException(
+                msg="Could not disconnect the Docker network %s from "
+                    "container %s." % (network_name, container_name))
+
+        LOG.debug("Docker network %s has been successfully disconnected from "
+                  "container %s!", network_name, container_name)
+
+    def get_container_networks(self, container_name):
+        cmd = ["docker", "container", "inspect", "-f",
+               "'{{json .NetworkSettings.Networks}}'", container_name]
+
+        try:
+            result = self._inner_execute(cmd)
+        except (exception.ProcessExecutionError, OSError):
+            raise exception.ShareBackendException(
+                msg="Could not find any networks associated with the %s "
+                    "container." % container_name)
+
+        # NOTE(ecsantos): The stdout from _inner_execute comes with extra
+        # single quotes.
+        networks = list(jsonutils.loads(result[0].strip("\n'")))
+        return networks
+
+    def get_container_veths(self, container_name):
+        veths = []
+        cmd = ["bash", "-c", "cat /sys/class/net/eth*/iflink"]
+        eths_iflinks = self.execute(container_name, cmd)
+
+        for eth_iflink in eths_iflinks[0].rstrip().split("\n"):
+            veth = self._execute("bash", "-c", "grep -l %s "
+                                 "/sys/class/net/veth*/ifindex" % eth_iflink)
+            veth = re.search("t/(.+?)/i", veth[0]).group(1)
+            veths.append(veth)
+
+        return veths
+
+    def get_network_bridge(self, network_name):
+        cmd = ["docker", "network", "inspect", "-f", "{{.Id}}", network_name]
+
+        try:
+            network_id = self._inner_execute(cmd)
+        except (exception.ProcessExecutionError, OSError):
+            raise exception.ShareBackendException(
+                msg="Could not find the ID of the %s Docker network."
+                    % network_name)
+
+        # The name of the bridge associated with a given Docker network is
+        # always "br-" followed by the first 12 digits of that network's ID.
+        return "br-" + network_id[0][0:12]
+
+    def get_veth_from_bridge(self, bridge):
+        veth = self._execute("ip", "link", "show", "master", bridge)
+        veth = re.search(" (.+?)@", veth[0]).group(1)
+        return veth
