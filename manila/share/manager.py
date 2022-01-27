@@ -1076,7 +1076,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 # NOTE(carloss): For a nondisruptive migration request, we must
                 # not change the share server, otherwise the share's export
                 # location will change, disconnecting the user. Disruptive
-                # migration requests to the driver the share server.
+                # migration requests the share server from the driver.
                 if nondisruptive:
                     dest_share_server = self._get_share_server_dict(
                         context, share_server)
