@@ -137,7 +137,9 @@ class JsonFilter(base_host.BaseHostFilter):
         # and scheduler_hints.
         try:
             query = filter_properties['scheduler_hints']['query']
-        except KeyError:
+        # If filter_properties['scheduler_hints'] is None, and TypeError
+        # will occur, add TypeError exception here.
+        except (KeyError, TypeError):
             query = None
         if not query:
             return True

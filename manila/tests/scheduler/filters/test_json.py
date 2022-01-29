@@ -264,6 +264,14 @@ class HostFiltersTestCase(test.TestCase):
         self.assertRaises(KeyError,
                           self.filter.host_passes, host, filter_properties)
 
+    def test_json_filter_type_errror_passes(self):
+        filter_properties = {
+            'scheduler_hints': None
+        }
+        host = fakes.FakeHostState('host1',
+                                   {'capabilities': {'enabled': True}})
+        self.assertTrue(self.filter.host_passes, (host, filter_properties))
+
     def test_json_filter_empty_filters_pass(self):
         host = fakes.FakeHostState('host1',
                                    {'capabilities': {'enabled': True}})
