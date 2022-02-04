@@ -14,11 +14,11 @@
 #    under the License.
 
 from unittest import mock
+from urllib import error as url_error
+from urllib import request as url_request
 
 from eventlet import greenthread
 from oslo_concurrency import processutils
-from six.moves.urllib import error as url_error
-from six.moves.urllib import request as url_request
 
 from manila import exception
 from manila.share import configuration as conf

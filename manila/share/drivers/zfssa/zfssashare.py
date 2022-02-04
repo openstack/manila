@@ -20,7 +20,6 @@ import math
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import units
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -138,7 +137,7 @@ class ZFSSAShareDriver(driver.ShareDriver):
         self.zfssa = factory_zfssa()
         self.zfssa.set_host(lcfg.zfssa_host, timeout=lcfg.zfssa_rest_timeout)
         creds = '%s:%s' % (lcfg.zfssa_auth_user, lcfg.zfssa_auth_password)
-        auth_str = base64.encodebytes(six.b(creds))[:-1]
+        auth_str = base64.encodebytes(creds.encode("latin-1"))[:-1]
         self.zfssa.login(auth_str)
         if lcfg.zfssa_nas_mountpoint == '':
             self.mountpoint += lcfg.zfssa_project

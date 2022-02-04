@@ -20,7 +20,6 @@ from unittest import mock
 
 from oslo_config import cfg
 import requests
-import six
 
 from manila import context
 from manila import exception
@@ -189,8 +188,8 @@ class ACCESSShareDriverTestCase(test.TestCase):
         sharepath = self._driver._get_va_share_path(sharename)
         self._driver._get_vip.return_value = '1.1.1.1'
         vip = self._driver._get_vip()
-        location = (six.text_type(vip) + ':' +
-                    six.text_type(sharepath) + ':' + six.text_type(snapname))
+        location = (str(vip) + ':' +
+                    str(sharepath) + ':' + str(snapname))
 
         ret = self._driver.create_share_from_snapshot(self._context,
                                                       self.share,

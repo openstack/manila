@@ -14,12 +14,11 @@
 #    under the License.
 
 import base64
+import ddt
+from http import client as http_client
 import time
 from unittest import mock
-
-import ddt
-import six
-from six.moves import urllib
+from urllib import parse as urlparse
 
 from manila import exception
 from manila.share.drivers.qnap import qnap
@@ -82,7 +81,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         fake_parms['serviceKey'] = 1
         sanitized_params = self._sanitize_params(fake_parms)
         self.login_url = ('/cgi-bin/authLogin.cgi?%s' % sanitized_params)
-        self.mock_object(six.moves.http_client, 'HTTPConnection')
+        self.mock_object(http_client, 'HTTPConnection')
         self.share = fake_share.fake_share(
             share_proto='NFS',
             id='shareId',
@@ -97,17 +96,17 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             value = params[key]
             if value is not None:
                 if isinstance(value, list):
-                    sanitized_params[key] = [six.text_type(v) for v in value]
+                    sanitized_params[key] = [str(v) for v in value]
                 else:
-                    sanitized_params[key] = six.text_type(value)
+                    sanitized_params[key] = str(value)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params, doseq)
+        sanitized_params = urlparse.urlencode(sanitized_params, doseq)
         return sanitized_params
 
     @ddt.data('fake_share_name', 'fakeLabel')
     def test_create_share_api(self, fake_name):
         """Test create share api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -169,7 +168,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
 
     def test_api_delete_share(self):
         """Test delete share api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -203,7 +202,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
 
     def test_get_specific_poolinfo(self):
         """Test get specific poolinfo api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -240,7 +239,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
               {'pool_id': "Storage Pool 1", 'vol_label': 'fakeShareName'})
     def test_get_share_info(self, dict_parm):
         """Test get share info api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -273,7 +272,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
 
     def test_get_specific_volinfo(self):
         """Test get specific volume info api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -307,7 +306,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
 
     def test_get_snapshot_info_es(self):
         """Test get snapsho info api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -342,7 +341,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
 
     def test_create_snapshot_api(self):
         """Test create snapshot api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -381,7 +380,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
               fakes.FakeDeleteSnapshotResponseShareNotExist())
     def test_delete_snapshot_api(self, fakeDeleteSnapshotResponse):
         """Test delete snapshot api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -413,7 +412,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
 
     def test_clone_snapshot_api(self):
         """Test clone snapshot api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -450,7 +449,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
 
     def test_edit_share_api(self):
         """Test edit share api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseTs_4_3_0(),
@@ -511,7 +510,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
               fakes.FakeGetNoHostListResponse())
     def test_get_host_list(self, fakeGetHostListResponse):
         """Test get host list api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -543,7 +542,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
 
     def test_add_host(self):
         """Test add host api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -578,7 +577,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
 
     def test_edit_host(self):
         """Test edit host api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -613,7 +612,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
 
     def test_delete_host(self):
         """Test delete host api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -647,7 +646,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
     @ddt.data(fakes.FakeGetHostListResponse())
     def test_set_nfs_access(self, fakeGetHostListResponse):
         """Test get host list api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -683,7 +682,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
 
     def test_get_snapshot_info_ts_api(self):
         """Test get snapshot info api."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseTs_4_3_0(),
@@ -722,7 +721,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
               fakes.FakeEsResCodeNegativeResponse())
     def test_api_create_share_with_fail_response(self, fake_fail_response):
         """Test create share api with fail response."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
@@ -900,7 +899,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             self, api, dict_parm,
             fake_fail_response, fake_basic_info):
         """Test get snapshot info api with fail response."""
-        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection = http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fake_basic_info,

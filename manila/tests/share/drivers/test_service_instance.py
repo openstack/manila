@@ -24,7 +24,6 @@ import ddt
 import netaddr
 from oslo_config import cfg
 from oslo_utils import importutils
-import six
 
 from manila import exception
 from manila.share import configuration
@@ -2065,7 +2064,7 @@ class NeutronNetworkHelperTestCase(test.TestCase):
     def test__get_cidr_for_subnet_success(self):
         expected = (
             fake_get_config_option('service_network_cidr').split('/')[0] +
-            '/' + six.text_type(
+            '/' + str(
                 fake_get_config_option('service_network_division_mask')))
         instance = self._init_neutron_network_plugin()
         self.mock_object(
@@ -2082,7 +2081,7 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             fake_get_config_option('service_network_cidr'))
         division_mask = fake_get_config_option('service_network_division_mask')
         for subnet in serv_cidr.subnet(division_mask):
-            subnets.append(dict(cidr=six.text_type(subnet.cidr)))
+            subnets.append(dict(cidr=str(subnet.cidr)))
         instance = self._init_neutron_network_plugin()
         self.mock_object(
             instance, '_get_all_service_subnets',

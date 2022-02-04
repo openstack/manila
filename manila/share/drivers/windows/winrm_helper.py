@@ -20,7 +20,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import strutils
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -120,7 +119,7 @@ class WinRMHelper(object):
 
     def _parse_command(self, command):
         if isinstance(command, list) or isinstance(command, tuple):
-            command = " ".join([six.text_type(c) for c in command])
+            command = " ".join([str(c) for c in command])
 
         sanitized_cmd = strutils.mask_password(command)
 

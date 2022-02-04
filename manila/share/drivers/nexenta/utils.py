@@ -14,7 +14,6 @@
 #    under the License.
 
 import re
-import six
 
 from oslo_utils import units
 
@@ -29,7 +28,7 @@ def str2size(s, scale=1024):
     """
     if not s:
         return 0
-    if isinstance(s, six.integer_types):
+    if isinstance(s, int):
         return s
 
     match = re.match(r'^([\.\d]+)\s*([BbKkMmGgTtPpEeZzYy]?)', s)

@@ -20,6 +20,7 @@ Limitation:
 """
 
 import hashlib
+from http import client as http_client
 import json
 
 from oslo_config import cfg
@@ -28,8 +29,6 @@ from oslo_utils import units
 from random import shuffle
 import requests
 import requests.auth
-import six
-from six.moves import http_client
 
 from manila.common import constants as const
 from manila import exception
@@ -257,7 +256,7 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             if ips['type'] == 'Virtual' and ips['status'] == 'ONLINE':
                 vip.append(ips['ip'])
         shuffle(vip)
-        return six.text_type(vip[0])
+        return str(vip[0])
 
     def delete_share(self, context, share, share_server=None):
         """Delete a share from ACCESS."""
@@ -297,7 +296,7 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def extend_share(self, share, new_size, share_server=None):
         """Extend existing share to new size."""
         sharename = share['name']
-        size = '%s%s' % (six.text_type(new_size), 'g')
+        size = '%s%s' % (str(new_size), 'g')
         va_sharename = self._get_va_share_name(sharename)
         path = self._fs_extend_str
         provider = '%s:%s' % (self.host, self._port)
@@ -318,7 +317,7 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Shrink existing share to new size."""
         sharename = share['name']
         va_sharename = self._get_va_share_name(sharename)
-        size = '%s%s' % (six.text_type(new_size), 'g')
+        size = '%s%s' % (str(new_size), 'g')
         path = self._fs_extend_str
         provider = '%s:%s' % (self.host, self._port)
         data1 = {"operationOption": "shrinkto", "tier": "primary"}
@@ -346,8 +345,8 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         if access_level not in (const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO):
             raise exception.InvalidShareAccessLevel(level=access_level)
         export_path = share['export_locations'][0]['path'].split(':', 1)
-        va_sharepath = six.text_type(export_path[1])
-        access_level = '%s,%s' % (six.text_type(access_level),
+        va_sharepath = str(export_path[1])
+        access_level = '%s,%s' % (str(access_level),
                                   'sync,no_root_squash')
 
         path = self._nfs_add_str
@@ -390,7 +389,7 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         if access_type != 'ip':
             return
         export_path = share['export_locations'][0]['path'].split(':', 1)
-        va_sharepath = six.text_type(export_path[1])
+        va_sharepath = str(export_path[1])
         LOG.debug("ACCESSShareDriver deny_access sharepath %s server %s",
                   va_sharepath, server)
 
@@ -444,14 +443,14 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                                               access_rules)
                 for rule in d_rule:
                     LOG.debug("Removing rule %s in recovery.",
-                              six.text_type(rule))
+                              str(rule))
                     self._deny_access(context, share, rule, share_server)
 
                 a_rule = self._return_access_lists_difference(access_rules,
                                                               existing_a_rules)
                 for rule in a_rule:
                     LOG.debug("Adding rule %s in recovery.",
-                              six.text_type(rule))
+                              str(rule))
                     self._allow_access(context, share, rule, share_server)
 
     def create_snapshot(self, context, snapshot, share_server=None):
@@ -597,7 +596,7 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                         json.dumps(data), 'GET')
 
         for pool in pool_details:
-            if pool['device_group_name'] == six.text_type(self._pool):
+            if pool['device_group_name'] == str(self._pool):
                 total_capacity = (int(pool['capacity']) / units.Gi)
                 used_size = (int(pool['used_size']) / units.Gi)
                 return (total_capacity, (total_capacity - used_size))
@@ -610,7 +609,7 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Retrieve status info from share volume group."""
 
         LOG.debug("VRTSISA Updating share status.")
-        self.host = six.text_type(self._va_ip)
+        self.host = str(self._va_ip)
         self.session = self._authenticate_access(self._va_ip,
                                                  self._user, self._pwd)
         total_capacity, free_capacity = self._get_access_pool_details()

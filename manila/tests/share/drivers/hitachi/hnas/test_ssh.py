@@ -20,7 +20,6 @@ import ddt
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 import paramiko
-import six
 
 from manila import exception
 from manila.share.drivers.hitachi.hnas import ssh
@@ -1521,7 +1520,7 @@ class HNASSSHTestCase(test.TestCase):
 
     def test__locked_selectfs_create_operation(self):
         exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
-                        'console-context', '--evs', six.text_type(self.evs_id),
+                        'console-context', '--evs', str(self.evs_id),
                         'mkdir', '-p', '/path']
         self.mock_object(ssh.HNASSSHBackend, '_execute')
 
@@ -1531,7 +1530,7 @@ class HNASSSHTestCase(test.TestCase):
 
     def test__locked_selectfs_create_operation_error(self):
         exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
-                        'console-context', '--evs', six.text_type(self.evs_id),
+                        'console-context', '--evs', str(self.evs_id),
                         'mkdir', '-p', '/path']
         self.mock_object(
             ssh.HNASSSHBackend, '_execute',
@@ -1545,7 +1544,7 @@ class HNASSSHTestCase(test.TestCase):
 
     def test__locked_selectfs_create_operation_context_change(self):
         exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
-                        'console-context', '--evs', six.text_type(self.evs_id),
+                        'console-context', '--evs', str(self.evs_id),
                         'mkdir', '-p', '/path']
         self.mock_object(
             ssh.HNASSSHBackend, '_execute',
@@ -1560,7 +1559,7 @@ class HNASSSHTestCase(test.TestCase):
 
     def test__locked_selectfs_delete_operation_successful(self):
         exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
-                        'console-context', '--evs', six.text_type(self.evs_id),
+                        'console-context', '--evs', str(self.evs_id),
                         'rmdir', '/path']
         self.mock_object(ssh.HNASSSHBackend, '_execute')
 

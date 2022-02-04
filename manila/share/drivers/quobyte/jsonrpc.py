@@ -21,11 +21,10 @@ Control Quobyte over its JSON RPC API.
 import requests
 from requests import auth
 from requests import codes
+from urllib import parse as urlparse
 
 from oslo_log import log
 from oslo_serialization import jsonutils
-import six
-import six.moves.urllib.parse as urlparse
 
 from manila import exception
 from manila import utils
@@ -71,7 +70,7 @@ class JsonRpc(object):
             'jsonrpc': '2.0',
             'method': method_name,
             'params': parameters,
-            'id': six.text_type(self._id),
+            'id': str(self._id),
         }
         LOG.debug("Request payload to be send is: %s",
                   jsonutils.dumps(post_data))
@@ -118,5 +117,5 @@ class JsonRpc(object):
                         result=result["error"]["message"],
                         qbcode=result["error"]["code"])
             else:
-                raise exception.QBException(six.text_type(result["error"]))
+                raise exception.QBException(str(result["error"]))
         return result["result"]

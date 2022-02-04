@@ -20,7 +20,6 @@ from lxml import builder
 from lxml import etree as ET
 from oslo_concurrency import processutils
 from oslo_log import log
-import six
 
 from manila.common import constants as const
 from manila import exception
@@ -236,7 +235,7 @@ class FileSystem(StorageObject):
                 mover,
                 self.elt_maker.StoragePool(
                     pool=pool_id,
-                    size=six.text_type(size),
+                    size=str(size),
                     mayContainSlices='true'
                 ),
                 name=name
@@ -360,7 +359,7 @@ class FileSystem(StorageObject):
             self.elt_maker.ExtendFileSystem(
                 self.elt_maker.StoragePool(
                     pool=pool_id,
-                    size=six.text_type(new_size - size)
+                    size=str(new_size - size)
                 ),
                 fileSystem=enas_id,
             )
@@ -1036,7 +1035,7 @@ class Snapshot(StorageObject):
         if ckpt_size:
             elt_pool = self.elt_maker.StoragePool(
                 pool=pool_id,
-                size=six.text_type(ckpt_size)
+                size=str(ckpt_size)
             )
         else:
             elt_pool = self.elt_maker.StoragePool(pool=pool_id)
@@ -1161,11 +1160,11 @@ class MoverInterface(StorageObject):
         mover_id = self._get_mover_id(mover_name, False)
 
         params = dict(device=device_name,
-                      ipAddress=six.text_type(ip_addr),
+                      ipAddress=str(ip_addr),
                       mover=mover_id,
                       name=name,
                       netMask=net_mask,
-                      vlanid=six.text_type(vlan_id))
+                      vlanid=str(vlan_id))
 
         if interface.get('ip_version') == 6:
             params['ipVersion'] = 'IPv6'
@@ -1197,7 +1196,7 @@ class MoverInterface(StorageObject):
             # vlan id, PowerMax will leave an interface with vlan id 0 in the
             # backend. So we should explicitly remove the interface.
             try:
-                self.delete(six.text_type(ip_addr), mover_name)
+                self.delete(str(ip_addr), mover_name)
             except exception.EMCPowerMaxXMLAPIError:
                 pass
             message = (_("Invalid vlan id %s. Other interfaces on this "
@@ -1235,7 +1234,7 @@ class MoverInterface(StorageObject):
 
         request = self._build_task_package(
             self.elt_maker.DeleteMoverInterface(
-                ipAddress=six.text_type(ip_addr),
+                ipAddress=str(ip_addr),
                 mover=mover_id
             )
         )

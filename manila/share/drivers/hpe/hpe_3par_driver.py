@@ -23,7 +23,6 @@ import re
 from oslo_config import cfg
 from oslo_config import types
 from oslo_log import log
-import six
 
 from manila.common import config
 from manila import exception
@@ -115,7 +114,7 @@ class FPG(types.String, types.IPAddress):
         return 'FPG'
 
     def _formatter(self, value):
-        return six.text_type(value)
+        return str(value)
 
 
 HPE3PAR_OPTS = [
@@ -176,7 +175,7 @@ CONF.register_opts(HPE3PAR_OPTS)
 
 def to_list(var):
     """Convert var to list type if not"""
-    if isinstance(var, six.string_types):
+    if isinstance(var, str):
         return [var]
     else:
         return var
@@ -350,7 +349,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
             # with startup.  This is just debug info to identify the source
             # code.  If it doesn't work, just log a debug message.
             LOG.debug('Source code SHA1 not logged due to: %s',
-                      six.text_type(e))
+                      str(e))
 
     @staticmethod
     def sha1_hash(clazz):

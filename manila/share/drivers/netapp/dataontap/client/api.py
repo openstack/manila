@@ -26,7 +26,6 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 import requests
 from requests import auth
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -142,8 +141,8 @@ class BaseClient(object):
         try:
             self._api_major_version = int(major)
             self._api_minor_version = int(minor)
-            self._api_version = (six.text_type(major) + "." +
-                                 six.text_type(minor))
+            self._api_version = (str(major) + "." +
+                                 str(minor))
         except ValueError:
             raise ValueError('Major and minor versions must be integers')
         self._refresh_conn = True
@@ -171,7 +170,7 @@ class BaseClient(object):
             int(port)
         except ValueError:
             raise ValueError('Port must be integer')
-        self._port = six.text_type(port)
+        self._port = str(port)
         self._refresh_conn = True
 
     def get_port(self):
@@ -338,7 +337,7 @@ class ZapiClient(BaseClient):
         except requests.HTTPError as e:
             raise NaApiError(e.errno, e.strerror)
         except requests.URLRequired as e:
-            raise exception.StorageCommunicationException(six.text_type(e))
+            raise exception.StorageCommunicationException(str(e))
         except Exception as e:
             raise NaApiError(message=e)
 
@@ -523,7 +522,7 @@ class RestClient(BaseClient):
         except requests.HTTPError as e:
             raise NaApiError(e.errno, e.strerror)
         except requests.URLRequired as e:
-            raise exception.StorageCommunicationException(six.text_type(e))
+            raise exception.StorageCommunicationException(str(e))
         except Exception as e:
             raise NaApiError(message=e)
 
@@ -851,8 +850,8 @@ class NaElement(object):
                     self.add_child_elem(child)
                 elif isinstance(
                         value,
-                        six.string_types + six.integer_types + (float, )):
-                    self.add_new_child(key, six.text_type(value))
+                        (str, ) + (int, ) + (float, )):
+                    self.add_new_child(key, str(value))
                 elif isinstance(value, (list, tuple, dict)):
                     child = NaElement(key)
                     child.translate_struct(value)
@@ -902,7 +901,7 @@ class NaElement(object):
                     child.translate_struct(data_struct[k])
                 else:
                     if data_struct[k]:
-                        child.set_content(six.text_type(data_struct[k]))
+                        child.set_content(str(data_struct[k]))
                 self.add_child_elem(child)
         else:
             raise ValueError(_('Type cannot be converted into NaElement.'))
@@ -993,7 +992,7 @@ def create_api_request(api_name, query=None, des_result=None,
     if additional_elems:
         api_el.translate_struct(additional_elems)
     if is_iter:
-        api_el.add_new_child('max-records', six.text_type(record_step))
+        api_el.add_new_child('max-records', str(record_step))
     if tag:
         api_el.add_new_child('tag', tag, True)
     return api_el

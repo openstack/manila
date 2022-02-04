@@ -22,7 +22,6 @@ import functools
 import json
 import re
 import requests
-import six
 import time
 
 from oslo_config import cfg
@@ -142,13 +141,13 @@ class RestAPIExecutor(object):
             try:
                 return self.send_api(method, params, request_type)
             except exception.NetworkException as e:
-                msge = six.text_type(e)
+                msge = str(e)
                 LOG.error(msge)
 
                 self.refresh_token(force=True)
                 eventlet.sleep(1)
             except exception.ShareBackendException as e:
-                msge = six.text_type(e)
+                msge = str(e)
                 break
 
         msg = (_('Access RestAPI /rest/%(method)s by %(type)s failed,'

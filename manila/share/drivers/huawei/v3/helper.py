@@ -21,7 +21,6 @@ from xml.etree import ElementTree as ET
 
 from oslo_log import log
 from oslo_serialization import jsonutils
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -93,7 +92,7 @@ class RestHelper(object):
             res.raise_for_status()
         except requests.HTTPError as exc:
             return {"error": {"code": exc.response.status_code,
-                              "description": six.text_type(exc)}}
+                              "description": str(exc)}}
 
         result = res.json()
         LOG.debug('Response Data: %s', result)
@@ -198,11 +197,11 @@ class RestHelper(object):
             node = root.find('Storage/%s' % key)
             if node.text.startswith(prefix_name):
                 logininfo[key] = base64.b64decode(
-                    six.b(node.text[4:])).decode()
+                    (node.text[4:]).encode("latin-1")).decode()
             else:
                 logininfo[key] = node.text
                 node.text = prefix_name + base64.b64encode(
-                    six.b(node.text)).decode()
+                    node.text.encode("latin-1")).decode()
                 need_encode = True
         if need_encode:
             self._change_file_mode(filename)
@@ -445,8 +444,8 @@ class RestHelper(object):
                                      share_client_type):
         range_end = range_begin + 100
         url = ("/" + share_client_type + "?filter=PARENTID::"
-               + share_id + "&range=[" + six.text_type(range_begin)
-               + "-" + six.text_type(range_end) + "]")
+               + share_id + "&range=[" + str(range_begin)
+               + "-" + str(range_end) + "]")
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, 'Get access id by share error!')
         return result.get('data', [])
@@ -674,8 +673,8 @@ class RestHelper(object):
         """Get share by share name."""
         range_end = range_begin + 100
         url = ("/" + share_url_type + "?range=["
-               + six.text_type(range_begin) + "-"
-               + six.text_type(range_end) + "]")
+               + str(range_begin) + "-"
+               + str(range_end) + "]")
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, 'Get share by name error!')
 
@@ -1130,7 +1129,7 @@ class RestHelper(object):
         result = self.call(url, None, 'GET')
         self._assert_rest_result(result, _('Get vlan error.'))
 
-        vlan_tag = six.text_type(vlan_tag)
+        vlan_tag = str(vlan_tag)
         if "data" in result:
             for item in result['data']:
                 if port_id == item['PORTID'] and vlan_tag == item['TAG']:
@@ -1142,7 +1141,7 @@ class RestHelper(object):
         url = "/vlan"
         data = jsonutils.dumps({"PORTID": port_id,
                                 "PORTTYPE": port_type,
-                                "TAG": six.text_type(vlan_tag),
+                                "TAG": str(vlan_tag),
                                 "TYPE": "280"})
         result = self.call(url, data, "POST")
         self._assert_rest_result(result, _('Create vlan error.'))

@@ -18,7 +18,6 @@ from unittest import mock
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
-import six
 
 from manila import context
 from manila import exception
@@ -248,7 +247,7 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
 
     def test__set_volume_size(self):
         volume = self._driver._volume_name(self.share['name'])
-        sizestr = six.text_type(self.share['size']) + 'G'
+        sizestr = str(self.share['size']) + 'G'
         self._driver._maprfs_util._execute = mock.Mock(return_value=('', 0))
 
         self._driver._maprfs_util.set_volume_size(volume,
@@ -420,7 +419,7 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
         self.assertEqual(self.export_path, result[0]['path'])
 
     def test_create_share(self):
-        size_str = six.text_type(self.share['size']) + 'G'
+        size_str = str(self.share['size']) + 'G'
         path = self._driver._share_dir(self.share['name'])
         self._driver.api.get_share_metadata = mock.Mock(
             return_value={'_fake': 'fake'})
@@ -440,7 +439,7 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
                                                                        '777')
 
     def test_create_share_with_custom_name(self):
-        size_str = six.text_type(self.share['size']) + 'G'
+        size_str = str(self.share['size']) + 'G'
         self._driver.api.get_share_metadata = mock.Mock(
             return_value={'_name': 'fake', '_path': 'fake'})
         self._driver._maprfs_util._execute = mock.Mock(return_value=('', 0))
@@ -473,7 +472,7 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
     def test_create_share_from_snapshot(self):
         fake_snapshot = dict(self.snapshot)
         fake_snapshot.update(share_instance={'share_id': 1})
-        size_str = six.text_type(self.share['size']) + 'G'
+        size_str = str(self.share['size']) + 'G'
         path = self._driver._share_dir(self.share['name'])
         snapthot_path = self._driver._get_snapshot_path(self.snapshot) + '/*'
         self._driver._maprfs_util._execute = mock.Mock(

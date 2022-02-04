@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import client as http_client
 import time
 from unittest import mock
 
@@ -24,7 +25,6 @@ except ImportError:
 import ddt
 from eventlet import greenthread
 from oslo_config import cfg
-import six
 
 from manila import exception
 from manila.share.drivers.qnap import api
@@ -81,8 +81,8 @@ class QnapShareDriverLoginTestCase(QnapShareDriverBaseTestCase):
     def setUp(self):
         """Setup the Qnap Share Driver login TestCase."""
         super(QnapShareDriverLoginTestCase, self).setUp()
-        self.mock_object(six.moves.http_client, 'HTTPConnection')
-        self.mock_object(six.moves.http_client, 'HTTPSConnection')
+        self.mock_object(http_client, 'HTTPConnection')
+        self.mock_object(http_client, 'HTTPSConnection')
 
     @ddt.unpack
     @ddt.data({'mng_url': 'http://1.2.3.4:8080', 'port': '8080', 'ssl': False},
@@ -93,9 +93,9 @@ class QnapShareDriverLoginTestCase(QnapShareDriverBaseTestCase):
         fake_get_basic_info_response_es = (
             fakes.FakeGetBasicInfoResponseEs_1_1_3())
         if ssl:
-            mock_connection = six.moves.http_client.HTTPSConnection
+            mock_connection = http_client.HTTPSConnection
         else:
-            mock_connection = six.moves.http_client.HTTPConnection
+            mock_connection = http_client.HTTPConnection
         mock_connection.return_value.getresponse.side_effect = [
             fake_login_response,
             fake_get_basic_info_response_es,
@@ -128,7 +128,7 @@ class QnapShareDriverLoginTestCase(QnapShareDriverBaseTestCase):
     def test_do_setup_positive_with_diff_nas(self, fake_basic_info):
         """Test do_setup with different NAS model."""
         fake_login_response = fakes.FakeLoginResponse()
-        mock_connection = six.moves.http_client.HTTPSConnection
+        mock_connection = http_client.HTTPSConnection
         mock_connection.return_value.getresponse.side_effect = [
             fake_login_response,
             fake_basic_info,
@@ -173,7 +173,7 @@ class QnapShareDriverLoginTestCase(QnapShareDriverBaseTestCase):
     def test_create_api_executor(self, fake_basic_info, expect_result):
         """Test do_setup with different NAS model."""
         fake_login_response = fakes.FakeLoginResponse()
-        mock_connection = six.moves.http_client.HTTPSConnection
+        mock_connection = http_client.HTTPSConnection
         mock_connection.return_value.getresponse.side_effect = [
             fake_login_response,
             fake_basic_info,
@@ -206,7 +206,7 @@ class QnapShareDriverLoginTestCase(QnapShareDriverBaseTestCase):
                                           fake_basic_info, expect_result):
         """Test do_setup with different NAS model."""
         fake_login_response = fakes.FakeLoginResponse()
-        mock_connection = six.moves.http_client.HTTPSConnection
+        mock_connection = http_client.HTTPSConnection
         mock_connection.return_value.getresponse.side_effect = [
             fake_login_response,
             fake_basic_info,
@@ -225,7 +225,7 @@ class QnapShareDriverLoginTestCase(QnapShareDriverBaseTestCase):
         fake_login_response = fakes.FakeLoginResponse()
         fake_get_basic_info_response_error = (
             fakes.FakeGetBasicInfoResponseError())
-        mock_connection = six.moves.http_client.HTTPSConnection
+        mock_connection = http_client.HTTPSConnection
         mock_connection.return_value.getresponse.side_effect = [
             fake_login_response,
             fake_get_basic_info_response_error,

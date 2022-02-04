@@ -22,7 +22,6 @@ import ipaddress
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
-import six
 
 from manila.common import constants
 from manila import exception
@@ -328,7 +327,7 @@ class InfiniboxShareDriver(driver.ShareDriver):
         address, returns only that IP address.
         """
 
-        ip_address = six.text_type(ip_address)
+        ip_address = str(ip_address)
 
         # try treating the ip_address parameter as a range of IP addresses:
         ip_network = ipaddress.ip_network(ip_address, strict=False)

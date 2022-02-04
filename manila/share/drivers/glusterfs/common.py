@@ -21,7 +21,6 @@ import xml.etree.cElementTree as etree
 
 from oslo_config import cfg
 from oslo_log import log
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -361,7 +360,7 @@ class GlusterManager(object):
                 "%(server)s, minimum requirement: %(minvers)s") % {
                 'server': self.host,
                 'version': '.'.join(vers),
-                'minvers': '.'.join(six.text_type(c) for c in minvers)})
+                'minvers': '.'.join(str(c) for c in minvers)})
 
 
 def numreduct(vers):

@@ -24,7 +24,6 @@ import time
 from oslo_log import log
 from oslo_utils import strutils
 from oslo_utils import units
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -169,7 +168,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             next_tag = next_result.get_child_content('next-tag')
 
         result.get_child_by_name('num-records').set_content(
-            six.text_type(num_records))
+            str(num_records))
         result.get_child_by_name('next-tag').set_content('')
         return result
 
@@ -590,7 +589,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         def sort_key(port):
             value = port.get('speed')
-            if not (value and isinstance(value, six.string_types)):
+            if not (value and isinstance(value, str)):
                 return 0
             elif value.isdigit():
                 return int(value)
@@ -1561,7 +1560,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if security_service.get('dns_ip'):
             self.configure_dns(security_service)
 
-        config_name = hashlib.md5(six.b(security_service['id'])).hexdigest()
+        config_name = hashlib.md5(
+            security_service['id'].encode("latin-1")).hexdigest()
         api_args = {
             'ldap-client-config': config_name,
             'tcp-port': '389',
@@ -1621,14 +1621,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def _delete_ldap_client(self, security_service):
         config_name = (
-            hashlib.md5(six.b(security_service['id'])).hexdigest())
+            hashlib.md5(security_service['id'].encode("latin-1")).hexdigest())
         api_args = {'ldap-client-config': config_name}
         self.send_request('ldap-client-delete', api_args)
 
     @na_utils.trace
     def configure_ldap(self, security_service, timeout=30):
         """Configures LDAP on Vserver."""
-        config_name = hashlib.md5(six.b(security_service['id'])).hexdigest()
+        config_name = hashlib.md5(
+            security_service['id'].encode("latin-1")).hexdigest()
         self._create_ldap_client(security_service)
         self._enable_ldap_client(config_name, timeout=timeout)
 
@@ -1655,7 +1656,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 LOG.debug(msg)
 
         new_config_name = (
-            hashlib.md5(six.b(new_security_service['id'])).hexdigest())
+            hashlib.md5(
+                new_security_service['id'].encode("latin-1")).hexdigest())
         # Create ldap config with the new client
         api_args = {'client-config': new_config_name, 'client-enabled': 'true'}
         self.send_request('ldap-config-create', api_args)
@@ -1666,8 +1668,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         except netapp_api.NaApiError as e:
             if e.code != netapp_api.EOBJECTNOTFOUND:
                 current_config_name = (
-                    hashlib.md5(six.b(
-                        current_security_service['id'])).hexdigest())
+                    hashlib.md5(
+                        current_security_service['id'].encode(
+                            "latin-1")).hexdigest())
                 msg = _("An error occurred while deleting original LDAP "
                         "client configuration %(current_config)s. "
                         "Error details: %(e_msg)s")
@@ -2049,7 +2052,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         api_args = {
             'containing-aggr-name': aggregate_name,
-            'size': six.text_type(size_gb) + 'g',
+            'size': str(size_gb) + 'g',
             'volume': volume_name,
         }
         api_args.update(self._get_create_volume_api_args(
@@ -2293,7 +2296,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'attributes': {
                 'volume-attributes': {
                     'volume-snapshot-attributes': {
-                        'snapdir-access-enabled': six.text_type(
+                        'snapdir-access-enabled': str(
                             not hide_snapdir).lower(),
                     },
                 },
@@ -2325,7 +2328,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'attributes': {
                 'volume-attributes': {
                     'volume-space-attributes': {
-                        'is-filesys-size-fixed': six.text_type(
+                        'is-filesys-size-fixed': str(
                             filesys_size_fixed).lower(),
                     },
                 },
@@ -2477,7 +2480,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             # Value of hide_snapdir needs to be inverted for ZAPI parameter
             api_args['attributes']['volume-attributes'][
                 'volume-snapshot-attributes'][
-                'snapdir-access-enabled'] = six.text_type(
+                'snapdir-access-enabled'] = str(
                 not hide_snapdir).lower()
 
         self.send_request('volume-modify-iter', api_args)
@@ -3040,7 +3043,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         """Gets a volume junction path."""
         api_args = {
             'volume': volume_name,
-            'is-style-cifs': six.text_type(is_style_cifs).lower(),
+            'is-style-cifs': str(is_style_cifs).lower(),
         }
         result = self.send_request('volume-get-volume-path', api_args)
         return result.get_child_content('junction')
@@ -3070,7 +3073,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         """Unmounts a volume."""
         api_args = {
             'volume-name': volume_name,
-            'force': six.text_type(force).lower(),
+            'force': str(force).lower(),
         }
         try:
             self.send_request('volume-unmount', api_args)
@@ -3553,7 +3556,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         rule_indices = [int(export_rule_info.get_child_content('rule-index'))
                         for export_rule_info in export_rule_info_list]
         rule_indices.sort()
-        return [six.text_type(rule_index) for rule_index in rule_indices]
+        return [str(rule_index) for rule_index in rule_indices]
 
     @na_utils.trace
     def remove_nfs_export_rule(self, policy_name, client_match):
@@ -4072,7 +4075,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'true' if strutils.bool_from_string(
                     is_unauthenticated_access_permitted) else 'false')
         if passphrase_minimum_length is not None:
-            api_args['passphrase-minlength'] = six.text_type(
+            api_args['passphrase-minlength'] = str(
                 passphrase_minimum_length)
 
         self.send_request('cluster-peer-policy-modify', api_args)

@@ -15,7 +15,6 @@
 
 import copy
 import ddt
-import six
 
 from manila import exception
 from manila.share.drivers.dell_emc.common.enas import utils as enas_utils
@@ -643,9 +642,9 @@ class TestConnection(test.TestCase):
     @res_mock.patch_connection
     def test_get_proto_enum(self, connection):
         self.assertIn('FSSupportedProtocolEnum.CIFS',
-                      six.text_type(connection._get_proto_enum('CIFS')))
+                      str(connection._get_proto_enum('CIFS')))
         self.assertIn('FSSupportedProtocolEnum.NFS',
-                      six.text_type(connection._get_proto_enum('nfs')))
+                      str(connection._get_proto_enum('nfs')))
 
     @res_mock.mock_manila_input
     @res_mock.patch_connection

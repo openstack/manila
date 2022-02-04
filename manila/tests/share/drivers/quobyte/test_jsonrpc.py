@@ -20,7 +20,6 @@ from unittest import mock
 import requests
 from requests import auth
 from requests import exceptions
-import six
 
 from manila import exception
 from manila.share.drivers.quobyte import jsonrpc
@@ -32,7 +31,7 @@ class FakeResponse(object):
         self.status_code = status
         self.reason = "HTTP reason"
         self.body = body
-        self.text = six.text_type(body)
+        self.text = str(body)
 
     def json(self):
         return self.body

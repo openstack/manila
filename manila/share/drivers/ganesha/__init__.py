@@ -31,7 +31,7 @@ CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 
-class NASHelperBase(object, metaclass=abc.ABCMeta):
+class NASHelperBase(metaclass=abc.ABCMeta):
     """Interface to work with share."""
 
     # drivers that use a helper derived from this class

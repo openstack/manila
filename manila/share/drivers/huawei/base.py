@@ -16,11 +16,8 @@
 """Abstract base class to work with share."""
 import abc
 
-import six
 
-
-@six.add_metaclass(abc.ABCMeta)
-class HuaweiBase(object):
+class HuaweiBase(metaclass=abc.ABCMeta):
     """Interface to work with share."""
 
     def __init__(self, configuration):

@@ -19,7 +19,6 @@
 import os
 import requests
 import shutil
-import six
 import tempfile
 import time
 from unittest import mock
@@ -342,7 +341,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
 
         if self.custom_results and self.custom_results.get(url):
             result = self.custom_results[url]
-            if isinstance(result, six.string_types):
+            if isinstance(result, str):
                 return jsonutils.loads(result)
 
             if isinstance(result, dict) and result.get(method):

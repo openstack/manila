@@ -17,7 +17,6 @@ import doctest
 from unittest import mock
 
 from lxml import doctestcompare
-import six
 
 
 CHECKER = doctestcompare.LXMLOutputChecker()
@@ -92,10 +91,10 @@ class EMCMock(mock.Mock):
             except StopIteration:
                 return True
 
-            if not isinstance(expect, six.binary_type):
-                expect = six.b(expect)
-            if not isinstance(actual, six.binary_type):
-                actual = six.b(actual)
+            if not isinstance(expect, bytes):
+                expect = expect.encode("latin-1")
+            if not isinstance(actual, bytes):
+                actual = actual.encode("latin-1")
             if not CHECKER.check_output(expect, actual, PARSE_XML):
                 raise AssertionError(
                     'Mismatch error.\nExpected: %r\n'

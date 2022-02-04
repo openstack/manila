@@ -18,7 +18,6 @@ Share driver for Tegile storage.
 
 import json
 import requests
-import six
 
 from oslo_config import cfg
 from oslo_log import log
@@ -232,7 +231,7 @@ class TegileShareDriver(driver.ShareDriver):
                                    TEGILE_LOCAL_CONTAINER_NAME,
                                    project,
                                    share_name),
-                  six.text_type(new_size),
+                  str(new_size),
                   'GB')
         self._api('resizeShare', params)
 

@@ -19,7 +19,6 @@ from unittest import mock
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
-import six
 
 from manila import context
 from manila import exception
@@ -92,7 +91,7 @@ class HDFSNativeShareDriverTestCase(test.TestCase):
 
     def test__set_share_size(self):
         share_dir = '/' + self.share['name']
-        sizestr = six.text_type(self.share['size']) + 'g'
+        sizestr = str(self.share['size']) + 'g'
         self._driver._hdfs_execute = mock.Mock(return_value=True)
         self._driver._set_share_size(self.share)
         self._driver._hdfs_execute.assert_called_once_with(
@@ -100,7 +99,7 @@ class HDFSNativeShareDriverTestCase(test.TestCase):
 
     def test__set_share_size_exception(self):
         share_dir = '/' + self.share['name']
-        sizestr = six.text_type(self.share['size']) + 'g'
+        sizestr = str(self.share['size']) + 'g'
         self._driver._hdfs_execute = mock.Mock(
             side_effect=exception.ProcessExecutionError)
         self.assertRaises(exception.HDFSException,

@@ -26,7 +26,6 @@ from oslo_serialization import jsonutils
 from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import units
-import six
 
 from manila.common import constants as common_constants
 from manila.data import utils as data_utils
@@ -586,7 +585,7 @@ class V3StorageConnection(driver.HuaweiBase):
             message = (_("Failed to unmount share %(share)s. "
                          "Reason: %(reason)s.")
                        % {'share': share['name'],
-                          'reason': six.text_type(err)})
+                          'reason': str(err)})
             raise exception.ShareUmountException(reason=message)
 
     def mount_share_to_host(self, share, access):
@@ -611,7 +610,7 @@ class V3StorageConnection(driver.HuaweiBase):
             message = (_('Bad response from mount share: %(share)s. '
                          'Reason: %(reason)s.')
                        % {'share': share['name'],
-                          'reason': six.text_type(err)})
+                          'reason': str(err)})
             raise exception.ShareMountException(reason=message)
 
     def get_network_allocations_number(self):

@@ -17,7 +17,6 @@ from unittest import mock
 
 from oslo_config import cfg
 from oslo_utils import units
-import six
 
 from manila import context
 from manila import exception
@@ -353,8 +352,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
         self._driver._get_qb_replication_factor = mock.Mock(
             return_value=replfact)
         self._driver.rpc.call = mock.Mock(
-            return_value={'total_physical_capacity': six.text_type(capval),
-                          'total_physical_usage': six.text_type(useval)})
+            return_value={'total_physical_capacity': str(capval),
+                          'total_physical_usage': str(useval)})
 
         self.assertEqual((39.223160718, 6.960214182),
                          self._driver._get_capacities())
@@ -366,8 +365,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
         self._driver._get_qb_replication_factor = mock.Mock(
             return_value=replfact)
         self._driver.rpc.call = mock.Mock(
-            return_value={'total_physical_capacity': six.text_type(capval),
-                          'total_physical_usage': six.text_type(useval)})
+            return_value={'total_physical_capacity': str(capval),
+                          'total_physical_usage': str(useval)})
 
         self.assertEqual((3.0, 0), self._driver._get_capacities())
 
@@ -378,7 +377,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
             return_value={'configuration':
                           {'volume_metadata_configuration':
                            {'replication_factor':
-                            six.text_type(fakerepl)}}})
+                            str(fakerepl)}}})
 
         self.assertEqual(fakerepl, self._driver._get_qb_replication_factor())
 

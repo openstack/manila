@@ -19,7 +19,6 @@ import ddt
 if 'hpe3parclient' not in sys.modules:
     sys.modules['hpe3parclient'] = mock.Mock()
 from oslo_utils import units
-import six
 
 from manila.data import utils as data_utils
 from manila import exception
@@ -1176,8 +1175,8 @@ class HPE3ParMediatorTestCase(test.TestCase):
             mock.call.setfsquota(constants.EXPECTED_VFS,
                                  fpg=constants.EXPECTED_FPG,
                                  fstore=constants.EXPECTED_FSTORE,
-                                 scapacity=six.text_type(expected_capacity),
-                                 hcapacity=six.text_type(expected_capacity))]
+                                 scapacity=str(expected_capacity),
+                                 hcapacity=str(expected_capacity))]
         self.mock_client.assert_has_calls(expected_calls)
 
         expected_mount_path = constants.EXPECTED_MOUNT_PATH + (
@@ -1509,7 +1508,7 @@ class HPE3ParMediatorTestCase(test.TestCase):
         self.assertTrue(mock_log.debug.called)
         self.assertTrue(mock_log.exception.called)
 
-    @ddt.data(six.text_type('volname.1'), ['volname.2', 'volname.3'])
+    @ddt.data('volname.1', ['volname.2', 'volname.3'])
     def test_mediator_get_fpg_status(self, volume_name_or_list):
         """Mediator converts client stats to capacity result."""
         expected_capacity = constants.EXPECTED_SIZE_2
@@ -2310,8 +2309,8 @@ class HPE3ParMediatorTestCase(test.TestCase):
             constants.EXPECTED_VFS,
             fpg=constants.EXPECTED_FPG,
             fstore=fstore,
-            scapacity=six.text_type(expected_capacity),
-            hcapacity=six.text_type(expected_capacity))
+            scapacity=str(expected_capacity),
+            hcapacity=str(expected_capacity))
 
     @ddt.data(['This is a fake setfsquota returned error'], Exception('boom'))
     def test_mediator_resize_share_setfsquota_side_effects(self, side_effect):
@@ -2347,8 +2346,8 @@ class HPE3ParMediatorTestCase(test.TestCase):
             constants.EXPECTED_VFS,
             fpg=constants.EXPECTED_FPG,
             fstore=fstore,
-            scapacity=six.text_type(expected_capacity),
-            hcapacity=six.text_type(expected_capacity))
+            scapacity=str(expected_capacity),
+            hcapacity=str(expected_capacity))
 
     def test_mediator_resize_share_not_found(self):
         self.init_mediator()

@@ -24,7 +24,6 @@ Module for storing ZFSonLinux driver utility stuff such as:
 import abc
 
 from oslo_log import log
-import six
 
 from manila.common import constants
 from manila import exception
@@ -151,8 +150,7 @@ class ExecuteMixin(driver.ExecuteMixin):
         return self.execute_with_retry('sudo', 'zfs', *cmd, **kwargs)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class NASHelperBase(object):
+class NASHelperBase(metaclass=abc.ABCMeta):
     """Base class for share helpers of 'ZFS on Linux' driver."""
 
     def __init__(self, configuration):

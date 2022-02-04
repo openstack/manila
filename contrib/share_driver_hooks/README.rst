@@ -70,8 +70,6 @@ both should be in the same dir.
 
   - python-zaqarclient
 
-  - six
-
 - System libs that install 'mount' and 'mount.nfs' apps.
 
 3. Create file with following options:
