@@ -14,14 +14,19 @@
 #    under the License.
 
 from http import client as http_client
-
+from oslo_log import log
 import webob
 from webob import exc
 
 from manila.api.openstack import wsgi
+from manila.common import constants
 from manila import exception
 from manila.i18n import _
+from manila import policy
 from manila import share
+
+
+LOG = log.getLogger(__name__)
 
 
 class ShareMetadataController(object):
@@ -58,7 +63,6 @@ class ShareMetadataController(object):
                                                    share_id,
                                                    metadata,
                                                    delete=False)
-
         return {'metadata': new_metadata}
 
     def update(self, req, share_id, id, body):
@@ -92,19 +96,32 @@ class ShareMetadataController(object):
             raise exc.HTTPBadRequest(explanation=expl)
 
         context = req.environ['manila.context']
-        new_metadata = self._update_share_metadata(context, share_id,
-                                                   metadata, delete=True)
+
+        new_metadata = self._update_share_metadata(
+            context, share_id, metadata, delete=True)
         return {'metadata': new_metadata}
 
     def _update_share_metadata(self, context,
                                share_id, metadata,
                                delete=False):
+        ignore_keys = constants.AdminOnlyMetadata.SCHEDULER_FILTERS
         try:
             share = self.share_api.get(context, share_id)
-            return self.share_api.update_share_metadata(context,
-                                                        share,
-                                                        metadata,
-                                                        delete)
+            if set(metadata).intersection(set(ignore_keys)):
+                try:
+                    policy.check_policy(
+                        context, 'share', 'update_admin_only_metadata')
+                except exception.PolicyNotAuthorized:
+                    msg = _("Cannot set or update admin only metadata.")
+                    LOG.exception(msg)
+                    raise exc.HTTPForbidden(explanation=msg)
+                ignore_keys = None
+            return self.share_api.update_share_metadata(
+                context,
+                share,
+                metadata,
+                ignore_keys=ignore_keys,
+                delete=delete)
         except exception.NotFound:
             msg = _('share does not exist')
             raise exc.HTTPNotFound(explanation=msg)
@@ -142,10 +159,17 @@ class ShareMetadataController(object):
 
         try:
             share = self.share_api.get(context, share_id)
+            if id in constants.AdminOnlyMetadata.SCHEDULER_FILTERS:
+                policy.check_policy(context, 'share',
+                                    'update_admin_only_metadata')
             self.share_api.delete_share_metadata(context, share, id)
         except exception.NotFound:
             msg = _('share does not exist')
             raise exc.HTTPNotFound(explanation=msg)
+        except exception.PolicyNotAuthorized:
+            msg = _("Cannot delete admin only metadata.")
+            LOG.exception(msg)
+            raise exc.HTTPForbidden(explanation=msg)
         return webob.Response(status_int=http_client.OK)
 
 

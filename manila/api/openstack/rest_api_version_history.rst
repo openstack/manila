@@ -370,6 +370,10 @@ user documentation.
 
 2.67
 ____
-  Added supprot for 'only_host' key in "scheduler_hints" in the request body
+  Added support for 'only_host' key in "scheduler_hints" in the request body
   of the POST/shares request. This hint will invoke OnlyHost scheduler
   filter during share creation.
+
+2.68
+----
+  Added admin only capabilities to share metadata API

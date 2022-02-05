@@ -1,0 +1,8 @@
+---
+
+fixes:
+  - |
+    User specified scheduler hints such as "affinity_same_host" and
+    "affinity_different_host" are stored as share metadata. These are
+    stored as admin-only metadata keys that cannot be deleted or
+    manipulated by nonadmin users.

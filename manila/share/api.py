@@ -2200,19 +2200,34 @@ class API(base.Base):
             context, access_id, metadata)
 
     @policy.wrap_check_policy('share')
-    def update_share_metadata(self, context, share, metadata, delete=False):
+    def update_share_metadata(self,
+                              context, share,
+                              metadata, ignore_keys=None,
+                              delete=False):
         """Updates or creates share metadata.
 
         If delete is True, metadata items that are not specified in the
         `metadata` argument will be deleted.
 
+        Non-admin user may not attempt to create or update admin-only keys.
+        For example: "__affinity_same_host" or "__affinity_different_host".
+        These keys will be ignored in update-all method, preserving their
+        values, unless RBAC policy allows manipluation of this data.
+
         """
+        ignore_keys = ignore_keys or []
         orig_meta = self.get_share_metadata(context, share)
         if delete:
             _metadata = metadata
+            for key in ignore_keys:
+                if key in orig_meta:
+                    _metadata[key] = orig_meta[key]
         else:
+            metadata_copy = metadata.copy()
+            for key in ignore_keys:
+                metadata_copy.pop(key, None)
             _metadata = orig_meta.copy()
-            _metadata.update(metadata)
+            _metadata.update(metadata_copy)
 
         self._check_metadata_properties(_metadata)
         self.db.share_metadata_update(context, share['id'],
