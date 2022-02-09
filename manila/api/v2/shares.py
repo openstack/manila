@@ -150,13 +150,13 @@ class ShareController(shares.ShareMixin,
 
             self.share_api.revert_to_snapshot(context, share, snapshot)
         except exception.ShareNotFound as e:
-            raise exc.HTTPNotFound(explanation=e)
+            raise exc.HTTPNotFound(explanation=e.msg)
         except exception.ShareSnapshotNotFound as e:
-            raise exc.HTTPBadRequest(explanation=e)
+            raise exc.HTTPBadRequest(explanation=e.msg)
         except exception.ShareSizeExceedsAvailableQuota as e:
-            raise exc.HTTPForbidden(explanation=e)
+            raise exc.HTTPForbidden(explanation=e.msg)
         except exception.ReplicationException as e:
-            raise exc.HTTPBadRequest(explanation=e)
+            raise exc.HTTPBadRequest(explanation=e.msg)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
