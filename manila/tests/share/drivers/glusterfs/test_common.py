@@ -680,6 +680,7 @@ class GlusterManagerTestCase(test.TestCase):
             'volume', args[0], 'testvol', 'an_option', *args[1:],
             error_policy=mock.ANY)
 
+    @mock.patch('tenacity.nap.sleep', mock.Mock())
     @ddt.data({}, {'ignore_failure': False})
     def test_set_vol_option_error(self, kwargs):
         fake_obj = mock.Mock(
