@@ -771,3 +771,18 @@ class QuotaSetsControllerTest(test.TestCase):
             exception.VersionNotFoundForAPIMethod,
             controller().update,
             req, self.project_id)
+
+    def test_update_without_quota(self):
+        body = {
+            'quota_set': {
+                'tenant_id': self.project_id,
+            }
+        }
+        req = _get_request(True, False)
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.update,
+            req, self.project_id, body=body)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'update')
