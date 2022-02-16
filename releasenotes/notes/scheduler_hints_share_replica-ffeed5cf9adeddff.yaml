@@ -1,0 +1,7 @@
+---
+features:
+  - Added option "scheduler_hints" to share replica create API. For now, the
+    onlyHostFilter will be supported using this option. The filter needs admin
+    to specify host@backend#pool to "share_replica.scheduler_hints.only_host"
+    in the request payload when creating a manila share replica. For non-admin
+    users the onlyHostFilter will always be ignored.

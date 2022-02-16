@@ -2941,6 +2941,15 @@ share_replica_reset_replica_state:
   in: body
   required: true
   type: object
+share_replica_scheduler_hints:
+  description: |
+    One or more scheduler_hints key and value pairs as a dictionary of
+    strings. Accepted hints are:
+    - ``only_host``: value must be a share manager service host in ``host@backend#POOL`` format (admin only)
+  in: body
+  required: false
+  type: object
+  min_version: 2.67
 share_replica_share_id:
   description: |
     The UUID of the share from which to create a
