@@ -43,6 +43,7 @@ class ViewBuilder(common.ViewBuilder):
             'share_id': share_instance.get('share_id'),
             'availability_zone': share_instance.get('availability_zone'),
             'created_at': share_instance.get('created_at'),
+            'updated_at': share_instance.get('updated_at'),
             'host': share_instance.get('host'),
             'status': share_instance.get('status'),
             'share_network_id': share_instance.get('share_network_id'),
