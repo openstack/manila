@@ -34,6 +34,8 @@
             voting: false
         - manila-grenade:
             voting: false
+        - manila-grenade-skip-level:
+            voting: false
         - manila-rally-no-ss:
             voting: false
         - manila-rally-ss:
