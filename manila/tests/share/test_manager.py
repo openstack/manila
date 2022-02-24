@@ -3939,17 +3939,21 @@ class ShareManagerTestCase(test.TestCase):
             'server1')
         timeutils.utcnow.assert_called_once_with()
 
-    @mock.patch.object(db, 'get_all_expired_shares',
-                       mock.Mock(return_value=[{"id": "share1"}, ]))
-    @mock.patch.object(api.API, 'delete',
-                       mock.Mock())
-    def test_delete_expired_share(self):
+    @ddt.data("available", "error_deleting")
+    def test_delete_expired_share(self, share_status):
+        self.mock_object(db, 'get_all_expired_shares',
+                         mock.Mock(return_value=[{"id": "share1",
+                                                  "status": share_status}, ]))
+        self.mock_object(db, 'share_update')
+        self.mock_object(api.API, 'delete')
         self.share_manager.delete_expired_share(self.context)
-        db.get_all_expired_shares.assert_called_once_with(
-            self.context)
-        share1 = {"id": "share1"}
+        db.get_all_expired_shares.assert_called_once_with(self.context)
+        share1 = {"id": "share1", "status": share_status}
+        if share1["status"] == "error_deleting":
+            db.share_update.assert_called_once_with(
+                self.context, share1["id"], {'status': 'error'})
         api.API.delete.assert_called_once_with(
-            self.context, share1, force=True)
+            self.context, share1)
 
     @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
     def test_extend_share_invalid(self, mock_notify):

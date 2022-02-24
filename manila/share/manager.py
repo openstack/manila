@@ -3496,8 +3496,16 @@ class ShareManager(manager.SchedulerDependentManager):
         expired_shares = self.db.get_all_expired_shares(ctxt)
 
         for share in expired_shares:
-            LOG.debug("share %s has expired, will be deleted", share['id'])
-            self.share_api.delete(ctxt, share, force=True)
+            if share['status'] == constants.STATUS_ERROR_DELETING:
+                LOG.info("Share %s was soft-deleted but a prior deletion "
+                         "attempt failed. Resetting status and re-attempting "
+                         "deletion", share['id'])
+                # reset share status to error in order to try deleting again
+                update_data = {'status': constants.STATUS_ERROR}
+                self.db.share_update(ctxt, share['id'], update_data)
+            else:
+                LOG.info("share %s has expired, will be deleted", share['id'])
+            self.share_api.delete(ctxt, share)
 
     @add_hooks
     @utils.require_driver_initialized
