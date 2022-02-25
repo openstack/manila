@@ -1,0 +1,6 @@
+---
+security:
+  - |
+    Privsep transitions. Manila is transitioning from using the older style
+    rootwrap privilege escalation path to the new style Oslo privsep path.
+    This should improve performance and security of Manila in the long term.

@@ -46,7 +46,7 @@ Mako==1.0.7
 MarkupSafe==1.1.1
 monotonic==1.4
 mox3==0.25.0
-msgpack==0.5.6
+msgpack==0.6.0
 munch==2.2.0
 netaddr==0.8.0
 netifaces==0.10.6
@@ -65,6 +65,7 @@ oslo.log==4.4.0
 oslo.messaging==12.5.0
 oslo.middleware==4.1.1
 oslo.policy==3.7.0
+oslo.privsep==2.4.0
 oslo.reports==2.2.0
 oslo.rootwrap==6.2.0
 oslo.serialization==4.0.1
