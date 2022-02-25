@@ -23,6 +23,7 @@ import math
 import os
 import re
 
+from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
@@ -30,6 +31,10 @@ from oslo_utils import timeutils
 
 from manila import exception
 from manila.i18n import _
+from manila.privsep import common as privsep_common
+from manila.privsep import filesystem as privsep_filesystem
+from manila.privsep import lvm as privsep_lvm
+from manila.privsep import os as privsep_os
 from manila.share import driver
 from manila.share.drivers import generic
 from manila.share import utils as share_utils
@@ -67,8 +72,11 @@ CONF.register_opts(generic.share_opts)
 class LVMMixin(driver.ExecuteMixin):
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
-        out, err = self._execute('vgs', '--noheadings', '-o', 'name',
-                                 run_as_root=True)
+        try:
+            out, err = privsep_lvm.list_vgs_get_name()
+        except processutils.ProcessExecutionError:
+            msg = _("Failed to get LVM volume group names.")
+            raise exception.ShareBackendException(msg=msg)
         volume_groups = out.split()
         if self.configuration.lvm_share_volume_group not in volume_groups:
             msg = (_("Share volume group %s doesn't exist.")
@@ -81,32 +89,46 @@ class LVMMixin(driver.ExecuteMixin):
 
     def _allocate_container(self, share):
         sizestr = '%sG' % share['size']
-        cmd = ['lvcreate', '-Wy', '--yes', '-L', sizestr, '-n', share['name'],
-               self.configuration.lvm_share_volume_group]
+        mirrors = 0
+        region_size = 0
         if self.configuration.lvm_share_mirrors:
-            cmd += ['-m', self.configuration.lvm_share_mirrors, '--nosync']
+            mirrors = self.configuration.lvm_share_mirrors
             terras = int(sizestr[:-1]) / 1024.0
             if terras >= 1.5:
                 rsize = int(2 ** math.ceil(math.log(terras) / math.log(2)))
                 # NOTE(vish): Next power of two for region size. See:
                 #             http://red.ht/U2BPOD
-                cmd += ['-R', str(rsize)]
-
-        self._try_execute(*cmd, run_as_root=True)
+                region_size = str(rsize)
+        action_args = [
+            share['size'],
+            share['name'],
+            self.configuration.lvm_share_volume_group,
+            mirrors,
+            region_size
+        ]
+        privsep_common.execute_with_retries(
+            privsep_lvm.lvcreate, action_args,
+            self.configuration.num_shell_tries)
         device_name = self._get_local_path(share)
-        self._execute('mkfs.%s' % self.configuration.share_volume_fstype,
-                      device_name, run_as_root=True)
+        try:
+            privsep_filesystem.make_filesystem(
+                self.configuration.share_volume_fstype, device_name)
+        except processutils.ProcessExecutionError:
+            raise
 
     def _extend_container(self, share, device_name, size):
-        cmd = ['lvextend', '-L', '%sG' % size, '-r', device_name]
-        self._try_execute(*cmd, run_as_root=True)
+        privsep_common.execute_with_retries(
+            privsep_lvm.lvextend, [device_name, size],
+            self.configuration.num_shell_tries)
 
     def _deallocate_container(self, share_name):
         """Deletes a logical volume for share."""
         try:
-            self._try_execute('lvremove', '-f', "%s/%s" %
-                              (self.configuration.lvm_share_volume_group,
-                               share_name), run_as_root=True)
+            action_args = [
+                self.configuration.lvm_share_volume_group, share_name]
+            privsep_common.execute_with_retries(
+                privsep_lvm.lvremove, action_args,
+                self.configuration.num_shell_tries)
         except exception.ProcessExecutionError as exc:
             err_pattern = re.compile(".*failed to find.*|.*not found.*",
                                      re.IGNORECASE)
@@ -119,10 +141,11 @@ class LVMMixin(driver.ExecuteMixin):
         """Creates a snapshot."""
         orig_lv_name = "%s/%s" % (self.configuration.lvm_share_volume_group,
                                   snapshot['share_name'])
-        self._try_execute(
-            'lvcreate', '-L',
-            '%sG' % snapshot['share']['size'], '--name', snapshot['name'],
-            '--snapshot', orig_lv_name, run_as_root=True)
+        action_args = [
+            snapshot['share']['size'], snapshot['name'], orig_lv_name]
+        privsep_common.execute_with_retries(
+            privsep_lvm.lv_snapshot_create, action_args,
+            self.configuration.num_shell_tries)
 
         self._set_random_uuid_to_device(snapshot)
 
@@ -135,10 +158,12 @@ class LVMMixin(driver.ExecuteMixin):
         # a recently checked filesystem.
         # See: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=857336
         device_path = self._get_local_path(share_or_snapshot)
-        self._execute('e2fsck', '-y', '-f', device_path, run_as_root=True)
-        self._execute(
-            'tune2fs', '-U', 'random', device_path, run_as_root=True,
-        )
+        try:
+            privsep_filesystem.e2fsck(device_path)
+            privsep_filesystem.tune2fs(device_path)
+        except processutils.ProcessExecutionError:
+            msg = _("Failed to check or modify filesystems.")
+            raise exception.ShareBackendException(msg=msg)
 
     def create_snapshot(self, context, snapshot, share_server=None):
         self._create_snapshot(context, snapshot)
@@ -224,10 +249,12 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         super(LVMShareDriver, self)._update_share_stats(data)
 
     def get_share_server_pools(self, share_server=None):
-        out, err = self._execute('vgs',
-                                 self.configuration.lvm_share_volume_group,
-                                 '--rows', '--units', 'g',
-                                 run_as_root=True)
+        try:
+            out, err = privsep_lvm.get_vgs(
+                self.configuration.lvm_share_volume_group)
+        except processutils.ProcessExecutionError:
+            msg = _("Failed to list LVM Volume Groups.")
+            raise exception.ShareBackendException(msg=msg)
         total_size = re.findall(r"VSize\s[0-9.]+g", out)[0][6:-1]
         free_size = re.findall(r"VFree\s[0-9.]+g", out)[0][6:-1]
         return [{
@@ -279,7 +306,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                          retries=retries)
             def _unmount_device_with_retry():
                 try:
-                    self._execute('umount', '-f', mount_path, run_as_root=True)
+                    privsep_os.umount(mount_path)
                 except exception.ProcessExecutionError as exc:
                     if 'is busy' in exc.stderr.lower():
                         raise exception.ShareBusyException(
@@ -294,7 +321,11 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
 
             _unmount_device_with_retry()
             # remove dir
-            self._execute('rmdir', mount_path, run_as_root=True)
+            try:
+                privsep_os.rmdir(mount_path)
+            except exception.ProcessExecutionError:
+                msg = _("Failed to remove the directory.")
+                raise exception.ShareBackendException(msg=msg)
 
     def ensure_shares(self, context, shares):
         updates = {}
@@ -362,12 +393,10 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         mount_path = self._get_mount_path(share_or_snapshot)
         self._execute('mkdir', '-p', mount_path)
         try:
-            self._execute('mount', device_name, mount_path,
-                          run_as_root=True, check_exit_code=True)
-            self._execute('chmod', '777', mount_path,
-                          run_as_root=True, check_exit_code=True)
+            privsep_os.mount(device_name, mount_path)
+            privsep_os.chmod('777', mount_path)
         except exception.ProcessExecutionError:
-            out, err = self._execute('mount', '-l', run_as_root=True)
+            out, err = privsep_os.list_mounts()
             if device_name in out:
                 LOG.warning("%s is already mounted", device_name)
             else:
@@ -381,19 +410,18 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
 
     def _copy_volume(self, srcstr, deststr, size_in_g):
         # Use O_DIRECT to avoid thrashing the system buffer cache
-        extra_flags = ['iflag=direct', 'oflag=direct']
-
         # Check whether O_DIRECT is supported
-        try:
-            self._execute('dd', 'count=0', 'if=%s' % srcstr, 'of=%s' % deststr,
-                          *extra_flags, run_as_root=True)
-        except exception.ProcessExecutionError:
-            extra_flags = []
+        use_direct_io = (
+            privsep_os.is_data_definition_direct_io_supported(srcstr, deststr))
 
         # Perform the copy
-        self._execute('dd', 'if=%s' % srcstr, 'of=%s' % deststr,
-                      'count=%d' % (size_in_g * 1024), 'bs=1M',
-                      *extra_flags, run_as_root=True)
+        try:
+            privsep_os.data_definition(
+                srcstr, deststr, (size_in_g * 1024),
+                use_direct_io=use_direct_io)
+        except exception.ProcessExecutionError:
+            msg = _("Failed while copying from the snapshot to the share.")
+            raise exception.ShareBackendException(msg=msg)
 
     def extend_share(self, share, new_size, share_server=None):
         device_name = self._get_local_path(share)
@@ -412,9 +440,12 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         # Unmount the share filesystem
         self._unmount_device(share)
         # Merge the snapshot LV back into the share, reverting it
-        snap_lv_name = "%s/%s" % (self.configuration.lvm_share_volume_group,
+        try:
+            privsep_lvm.lvconvert(self.configuration.lvm_share_volume_group,
                                   snapshot['name'])
-        self._execute('lvconvert', '--merge', snap_lv_name, run_as_root=True)
+        except exception.ProcessExecutionError:
+            msg = _('Failed to revert the share to the given snapshot.')
+            raise exception.ShareBackendException(msg=msg)
 
         # Now recreate the snapshot that was destroyed by the merge
         self._create_snapshot(context, snapshot)
