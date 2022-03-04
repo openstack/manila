@@ -626,9 +626,10 @@ def share_snapshot_create(context, values):
     return IMPL.share_snapshot_create(context, values)
 
 
-def share_snapshot_get(context, snapshot_id):
+def share_snapshot_get(context, snapshot_id, project_only=True):
     """Get a snapshot or raise if it does not exist."""
-    return IMPL.share_snapshot_get(context, snapshot_id)
+    return IMPL.share_snapshot_get(context, snapshot_id,
+                                   project_only=project_only)
 
 
 def share_snapshot_get_all(context, filters=None, limit=None, offset=None,
@@ -761,7 +762,42 @@ def share_snapshot_instance_export_location_delete(context, el_id):
     return IMPL.share_snapshot_instance_export_location_delete(context, el_id)
 
 
+####################
+
+def share_snapshot_metadata_get(context, share_snapshot_id, **kwargs):
+    """Get all metadata for a share snapshot."""
+    return IMPL.share_snapshot_metadata_get(context,
+                                            share_snapshot_id,
+                                            **kwargs)
+
+
+def share_snapshot_metadata_get_item(context, share_snapshot_id, key):
+    """Get metadata item for a share snapshot."""
+    return IMPL.share_snapshot_metadata_get_item(context,
+                                                 share_snapshot_id, key)
+
+
+def share_snapshot_metadata_delete(context, share_snapshot_id, key):
+    """Delete the given metadata item."""
+    IMPL.share_snapshot_metadata_delete(context, share_snapshot_id, key)
+
+
+def share_snapshot_metadata_update(context, share_snapshot_id,
+                                   metadata, delete):
+    """Update metadata if it exists, otherwise create it."""
+    return IMPL.share_snapshot_metadata_update(context, share_snapshot_id,
+                                               metadata, delete)
+
+
+def share_snapshot_metadata_update_item(context, share_snapshot_id,
+                                        metadata):
+    """Update metadata item if it exists, otherwise create it."""
+    return IMPL.share_snapshot_metadata_update_item(context,
+                                                    share_snapshot_id,
+                                                    metadata)
 ###################
+
+
 def security_service_create(context, values):
     """Create security service DB record."""
     return IMPL.security_service_create(context, values)

@@ -1434,8 +1434,10 @@ class API(base.Base):
             context, share_server, force=force)
 
     def create_snapshot(self, context, share, name, description,
-                        force=False):
+                        force=False, metadata=None):
         policy.check_policy(context, 'share', 'create_snapshot', share)
+        if metadata:
+            api_common._check_metadata_properties(metadata)
 
         if ((not force) and (share['status'] != constants.STATUS_AVAILABLE)):
             msg = _("Source share status must be "
@@ -1486,6 +1488,8 @@ class API(base.Base):
                    'display_name': name,
                    'display_description': description,
                    'share_proto': share['share_proto']}
+        if metadata:
+            options.update({"metadata": metadata})
 
         try:
             snapshot = None
@@ -2067,7 +2071,7 @@ class API(base.Base):
         string_args = {'sort_key': sort_key, 'sort_dir': sort_dir}
         string_args.update(search_opts)
         for k, v in string_args.items():
-            if not (isinstance(v, str) and v):
+            if not (isinstance(v, str) and v) and k != 'metadata':
                 msg = _("Wrong '%(k)s' filter provided: "
                         "'%(v)s'.") % {'k': k, 'v': string_args[k]}
                 raise exception.InvalidInput(reason=msg)

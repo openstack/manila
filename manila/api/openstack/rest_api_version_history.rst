@@ -399,4 +399,10 @@ ____
 
 2.72
 ----
+
   Added 'share_network' option to share replica create API.
+
+2.73
+----
+  Added Metadata API methods (GET, PUT, POST, DELETE)
+  to Share Snapshots

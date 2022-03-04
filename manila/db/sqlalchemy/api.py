@@ -39,6 +39,7 @@ from oslo_db.sqlalchemy import utils as db_utils
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
+from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import sqlalchemy
@@ -204,6 +205,20 @@ def require_share_exists(f):
     def wrapper(context, share_id, *args, **kwargs):
         share_get(context, share_id)
         return f(context, share_id, *args, **kwargs)
+    wrapper.__name__ = f.__name__
+    return wrapper
+
+
+def require_share_snapshot_exists(f):
+    """Decorator to require the specified share snapshot to exist.
+
+    Requires the wrapped function to use context and share_snapshot_id as
+    their first two arguments.
+    """
+    @wraps(f)
+    def wrapper(context, share_snapshot_id, *args, **kwargs):
+        share_snapshot_get(context, share_snapshot_id)
+        return f(context, share_snapshot_id, *args, **kwargs)
     wrapper.__name__ = f.__name__
     return wrapper
 
@@ -1999,10 +2014,10 @@ def share_replica_delete(context, share_replica_id, session=None,
 
 
 @require_context
-def _share_get_query(context, session=None):
+def _share_get_query(context, session=None, **kwargs):
     if session is None:
         session = get_session()
-    return (model_query(context, models.Share, session=session).
+    return (model_query(context, models.Share, session=session, **kwargs).
             options(joinedload('share_metadata')))
 
 
@@ -2174,8 +2189,9 @@ def share_update(context, share_id, update_values):
 
 
 @require_context
-def share_get(context, share_id, session=None):
-    result = _share_get_query(context, session).filter_by(id=share_id).first()
+def share_get(context, share_id, session=None, **kwargs):
+    result = _share_get_query(context, session, **kwargs).filter_by(
+        id=share_id).first()
 
     if result is None:
         raise exception.NotFound()
@@ -2802,6 +2818,8 @@ def share_instance_access_update(context, access_id, instance_id, updates):
 def share_snapshot_instance_create(context, snapshot_id, values, session=None):
     session = session or get_session()
     values = copy.deepcopy(values)
+    values['share_snapshot_metadata'] = _metadata_refs(
+        values.get('metadata'), models.ShareSnapshotMetadata)
 
     _change_size_to_instance_size(values)
 
@@ -2858,6 +2876,8 @@ def share_snapshot_instance_delete(context, snapshot_instance_id,
         snapshot = share_snapshot_get(
             context, snapshot_instance_ref['snapshot_id'], session=session)
         if len(snapshot.instances) == 0:
+            session.query(models.ShareSnapshotMetadata).filter_by(
+                share_snapshot_id=snapshot['id']).soft_delete()
             snapshot.soft_delete(session=session)
 
 
@@ -2958,6 +2978,8 @@ def share_snapshot_create(context, create_values,
                           create_snapshot_instance=True):
     values = copy.deepcopy(create_values)
     values = ensure_model_dict_has_id(values)
+    values['share_snapshot_metadata'] = _metadata_refs(
+        values.pop('metadata', {}), models.ShareSnapshotMetadata)
 
     snapshot_ref = models.ShareSnapshot()
     snapshot_instance_values, snapshot_values = (
@@ -3007,12 +3029,13 @@ def snapshot_data_get_for_project(context, project_id, user_id,
 
 
 @require_context
-def share_snapshot_get(context, snapshot_id, session=None):
+def share_snapshot_get(context, snapshot_id, project_only=True, session=None):
     result = (model_query(context, models.ShareSnapshot, session=session,
-                          project_only=True).
+                          project_only=project_only).
               filter_by(id=snapshot_id).
               options(joinedload('share')).
               options(joinedload('instances')).
+              options(joinedload('share_snapshot_metadata')).
               first())
 
     if not result:
@@ -3048,8 +3071,10 @@ def _share_snapshot_get_all_with_filters(context, project_id=None,
         query = query.filter_by(project_id=project_id)
     if share_id:
         query = query.filter_by(share_id=share_id)
-    query = query.options(joinedload('share'))
-    query = query.options(joinedload('instances'))
+    query = (query.options(joinedload('share'))
+             .options(joinedload('instances'))
+             .options(joinedload('share_snapshot_metadata'))
+             )
 
     # Snapshots with no instances are filtered out.
     query = query.filter(
@@ -3077,6 +3102,13 @@ def _share_snapshot_get_all_with_filters(context, project_id=None,
         query = query.filter(models.ShareSnapshotInstance.status == (
             filters['status']))
         filters.pop('status')
+    if 'metadata' in filters:
+        for k, v in filters['metadata'].items():
+            # pylint: disable=no-member
+            query = query.filter(
+                or_(models.ShareSnapshot.share_snapshot_metadata.any(
+                    key=k, value=v)))
+        filters.pop('metadata')
 
     legal_filter_keys = ('display_name', 'display_name~',
                          'display_description', 'display_description~',
@@ -3165,6 +3197,125 @@ def share_snapshot_instances_status_update(
             ).update(values, synchronize_session=False))
 
     return result
+
+
+###################################
+# Share Snapshot Metadata functions
+###################################
+
+@require_context
+@require_share_snapshot_exists
+def share_snapshot_metadata_get(context, share_snapshot_id):
+    session = get_session()
+    return _share_snapshot_metadata_get(context,
+                                        share_snapshot_id, session=session)
+
+
+@require_context
+@require_share_snapshot_exists
+def share_snapshot_metadata_delete(context, share_snapshot_id, key):
+    session = get_session()
+    meta_ref = _share_snapshot_metadata_get_item(
+        context, share_snapshot_id, key, session=session)
+    meta_ref.soft_delete(session=session)
+
+
+@require_context
+@require_share_snapshot_exists
+def share_snapshot_metadata_update(context, share_snapshot_id,
+                                   metadata, delete):
+    session = get_session()
+    return _share_snapshot_metadata_update(context, share_snapshot_id,
+                                           metadata, delete,
+                                           session=session)
+
+
+def share_snapshot_metadata_update_item(context, share_snapshot_id,
+                                        item):
+    session = get_session()
+    return _share_snapshot_metadata_update(context, share_snapshot_id,
+                                           item, delete=False,
+                                           session=session)
+
+
+def share_snapshot_metadata_get_item(context, share_snapshot_id,
+                                     key):
+
+    session = get_session()
+    row = _share_snapshot_metadata_get_item(context, share_snapshot_id,
+                                            key, session=session)
+    result = {}
+    result[row['key']] = row['value']
+
+    return result
+
+
+def _share_snapshot_metadata_get_query(context, share_snapshot_id,
+                                       session=None):
+    session = session or get_session()
+    return (model_query(context, models.ShareSnapshotMetadata,
+                        session=session,
+                        read_deleted="no").
+            filter_by(share_snapshot_id=share_snapshot_id).
+            options(joinedload('share_snapshot')))
+
+
+def _share_snapshot_metadata_get(context, share_snapshot_id, session=None):
+    session = session or get_session()
+    rows = _share_snapshot_metadata_get_query(context, share_snapshot_id,
+                                              session=session).all()
+
+    result = {}
+    for row in rows:
+        result[row['key']] = row['value']
+    return result
+
+
+def _share_snapshot_metadata_get_item(context, share_snapshot_id,
+                                      key, session=None):
+    session = session or get_session()
+    result = (_share_snapshot_metadata_get_query(
+        context, share_snapshot_id, session=session).filter_by(
+            key=key).first())
+    if not result:
+        raise exception.MetadataItemNotFound
+    return result
+
+
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def _share_snapshot_metadata_update(context, share_snapshot_id,
+                                    metadata, delete, session=None):
+    session = session or get_session()
+    delete = strutils.bool_from_string(delete)
+    with session.begin():
+        if delete:
+            original_metadata = _share_snapshot_metadata_get(
+                context, share_snapshot_id, session=session)
+            for meta_key, meta_value in original_metadata.items():
+                if meta_key not in metadata:
+                    meta_ref = _share_snapshot_metadata_get_item(
+                        context, share_snapshot_id, meta_key,
+                        session=session)
+                    meta_ref.soft_delete(session=session)
+        meta_ref = None
+        # Now update all existing items with new values, or create new meta
+        # objects
+        for meta_key, meta_value in metadata.items():
+
+            # update the value whether it exists or not
+            item = {"value": meta_value}
+            meta_ref = _share_snapshot_metadata_get_query(
+                context, share_snapshot_id,
+                session=session).filter_by(
+                key=meta_key).first()
+            if not meta_ref:
+                meta_ref = models.ShareSnapshotMetadata()
+                item.update({"key": meta_key,
+                             "share_snapshot_id": share_snapshot_id})
+            meta_ref.update(item)
+            meta_ref.save(session=session)
+
+        return metadata
 
 #################################
 
@@ -3582,6 +3733,7 @@ def _share_metadata_update(context, share_id, metadata, delete, session=None):
 
     with session.begin():
         # Set existing metadata to deleted if delete argument is True
+        delete = strutils.bool_from_string(delete)
         if delete:
             original_metadata = _share_metadata_get(context, share_id,
                                                     session=session)

@@ -26,30 +26,37 @@ class MetadataController(object):
     # From db, ensure it exists
     resource_get = {
         "share": "share_get",
+        "share_snapshot": "share_snapshot_get",
     }
 
     resource_metadata_get = {
         "share": "share_metadata_get",
+        "share_snapshot": "share_snapshot_metadata_get",
     }
 
     resource_metadata_get_item = {
         "share": "share_metadata_get_item",
+        "share_snapshot": "share_snapshot_metadata_get_item",
     }
 
     resource_metadata_update = {
         "share": "share_metadata_update",
+        "share_snapshot": "share_snapshot_metadata_update",
     }
 
     resource_metadata_update_item = {
         "share": "share_metadata_update_item",
+        "share_snapshot": "share_snapshot_metadata_update_item",
     }
 
     resource_metadata_delete = {
         "share": "share_metadata_delete",
+        "share_snapshot": "share_snapshot_metadata_delete",
     }
 
     resource_policy_get = {
         'share': 'get',
+        'share_snapshot': 'get_snapshot',
     }
 
     def __init__(self):
@@ -60,7 +67,8 @@ class MetadataController(object):
                       for_modification=False, parent_id=None):
         if self.resource_name in ['share']:
             # we would allow retrieving some "public" resources
-            # across project namespaces
+            # across project namespaces excpet share snaphots,
+            # project_only=True is hard coded
             kwargs = {}
         else:
             kwargs = {'project_only': True}

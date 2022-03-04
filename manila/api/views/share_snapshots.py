@@ -23,6 +23,7 @@ class ViewBuilder(common.ViewBuilder):
     _detail_version_modifiers = [
         "add_provider_location_field",
         "add_project_and_user_ids",
+        "add_metadata"
     ]
 
     def summary_list(self, request, snapshots):
@@ -73,6 +74,15 @@ class ViewBuilder(common.ViewBuilder):
     def add_project_and_user_ids(self, context, snapshot_dict, snapshot):
         snapshot_dict['user_id'] = snapshot.get('user_id')
         snapshot_dict['project_id'] = snapshot.get('project_id')
+
+    @common.ViewBuilder.versioned_method("2.73")
+    def add_metadata(self, context, snapshot_dict, snapshot):
+        metadata = snapshot.get('share_snapshot_metadata')
+        if metadata:
+            metadata = {item['key']: item['value'] for item in metadata}
+        else:
+            metadata = {}
+        snapshot_dict['metadata'] = metadata
 
     def _list_view(self, func, request, snapshots):
         """Provide a view for a list of share snapshots."""

@@ -255,6 +255,44 @@ class APIRouter(manila.api.openstack.APIRouter):
                         controller=self.resources["snapshots"],
                         collection={"detail": "GET"},
                         member={"action": "POST"})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("snapshots_metadata",
+                           "%s/snapshots/{resource_id}/metadata"
+                           % path_prefix,
+                           controller=self.resources["snapshots"],
+                           action="create_metadata",
+                           conditions={"method": ["POST"]})
+            mapper.connect("snapshots_metadata",
+                           "%s/snapshots/{resource_id}/metadata"
+                           % path_prefix,
+                           controller=self.resources["snapshots"],
+                           action="update_all_metadata",
+                           conditions={"method": ["PUT"]})
+            mapper.connect("snapshots_metadata",
+                           "%s/snapshots/{resource_id}/metadata/{key}"
+                           % path_prefix,
+                           controller=self.resources["snapshots"],
+                           action="update_metadata_item",
+                           conditions={"method": ["POST"]})
+            mapper.connect("snapshots_metadata",
+                           "%s/snapshots/{resource_id}/metadata"
+                           % path_prefix,
+                           controller=self.resources["snapshots"],
+                           action="index_metadata",
+                           conditions={"method": ["GET"]})
+            mapper.connect("snapshots_metadata",
+                           "%s/snapshots/{resource_id}/metadata/{key}"
+                           % path_prefix,
+                           controller=self.resources["snapshots"],
+                           action="show_metadata",
+                           conditions={"method": ["GET"]})
+            mapper.connect("snapshots_metadata",
+                           "%s/snapshots/{resource_id}/metadata/{key}"
+                           % path_prefix,
+                           controller=self.resources["snapshots"],
+                           action="delete_metadata",
+                           conditions={"method": ["DELETE"]})
 
         for path_prefix in ['/{project_id}', '']:
             # project_id is optional
