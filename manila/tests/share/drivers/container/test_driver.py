@@ -19,6 +19,7 @@ from unittest import mock
 
 import ddt
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 
 from manila.common import constants as const
 from manila import context
@@ -305,29 +306,34 @@ class ContainerShareDriverTestCase(test.TestCase):
         self.assertTrue(driver.LOG.warning.called)
 
     def test__connect_to_network(self):
-        network_info = cont_fakes.fake_network()
+        network_info = cont_fakes.fake_network()[0]
         helper = mock.Mock()
         self.mock_object(self._driver, "_execute",
                          mock.Mock(return_value=helper))
         self.mock_object(self._driver.container, "execute")
 
         self._driver._connect_to_network("fake-server", network_info,
-                                         "fake-veth")
+                                         "fake-veth", "fake-host-bridge",
+                                         "fake0")
 
-    @ddt.data({'veth': "fake_veth", 'exception': None},
-              {'veth': "fake_veth", 'exception':
+    @ddt.data({'veth': ["fake_veth"], 'exception': None},
+              {'veth': ["fake_veth"], 'exception':
                   exception.ProcessExecutionError('fake')},
-              {'veth': None, 'exception': None})
+              {'veth': ["fake_veth"], 'exception': None})
     @ddt.unpack
     def test__teardown_server(self, veth, exception):
         fake_server_details = {"id": "b5afb5c1-6011-43c4-8a37-29820e6951a7"}
+        fake_networks = ["fake_docker_network_0"]
         container_name = self._driver._get_container_name(
             fake_server_details['id'])
         mock_stop_container = self.mock_object(
             self._driver.container, "stop_container")
-        mock_find_container = self.mock_object(
-            self._driver.container, "find_container_veth",
+        mock_get_container_veths = self.mock_object(
+            self._driver.container, "get_container_veths",
             mock.Mock(return_value=veth))
+        mock_get_container_networks = self.mock_object(
+            self._driver.container, "get_container_networks",
+            mock.Mock(return_value=fake_networks))
         mock_execute = self.mock_object(self._driver, "_execute",
                                         mock.Mock(side_effect=exception))
 
@@ -337,42 +343,92 @@ class ContainerShareDriverTestCase(test.TestCase):
         mock_stop_container.assert_called_once_with(
             container_name
         )
-        mock_find_container.assert_called_once_with(
+        mock_get_container_veths.assert_called_once_with(
+            container_name
+        )
+        mock_get_container_networks.assert_called_once_with(
             container_name
         )
         if exception is None and veth is not None:
             mock_execute.assert_called_once_with(
                 "ovs-vsctl", "--", "del-port",
-                self._driver.configuration.container_ovs_bridge_name, veth,
+                self._driver.configuration.container_ovs_bridge_name, veth[0],
                 run_as_root=True)
 
-    def test__get_veth_state(self):
-        retval = ('veth0000000\n', '')
-        self.mock_object(self._driver, "_execute",
-                         mock.Mock(return_value=retval))
+    def test__setup_server_network(self):
+        fake_server_id = 'fake_container_id'
+        fake_network_info = cont_fakes.fake_network()
+        fake_existing_interfaces = []
+        fake_bridge = 'br-012345abcdef'
+        fake_veth = 'fake_veth'
 
-        result = self._driver._get_veth_state()
+        self.mock_object(self._driver.container, 'fetch_container_interfaces',
+                         mock.Mock(return_value=fake_existing_interfaces))
+        self.mock_object(driver.uuidutils, 'generate_uuid',
+                         mock.Mock(return_value='fakeuuid'))
+        self.mock_object(self._driver.container, 'create_network')
+        self.mock_object(self._driver.container, 'connect_network')
+        self.mock_object(self._driver.container, 'get_network_bridge',
+                         mock.Mock(return_value=fake_bridge))
+        self.mock_object(self._driver.container, 'get_veth_from_bridge',
+                         mock.Mock(return_value=fake_veth))
+        self.mock_object(self._driver, '_connect_to_network')
 
-        self.assertEqual(['veth0000000'], result)
+        self._driver._setup_server_network(fake_server_id, fake_network_info)
 
-    def test__get_corresponding_veth_ok(self):
-        before = ['veth0000000']
-        after = ['veth0000000', 'veth0000001']
+        (self._driver.container.fetch_container_interfaces
+         .assert_called_once_with(fake_server_id))
+        self._driver.container.create_network.assert_called_with(
+            'manila-docker-network-fakeuuid')
+        self._driver.container.connect_network.assert_called_with(
+            'manila-docker-network-fakeuuid',
+            fake_server_id)
+        self._driver.container.get_network_bridge.assert_called_with(
+            'manila-docker-network-fakeuuid')
+        self._driver.container.get_veth_from_bridge.assert_called_with(
+            fake_bridge)
+        self._driver._connect_to_network.assert_called_with(
+            fake_server_id, fake_network_info[0], fake_veth, fake_bridge,
+            'eth0')
 
-        result = self._driver._get_corresponding_veth(before, after)
+    def test__setup_server_network_existing_interfaces(self):
+        fake_server_id = 'fake_container_id'
+        fake_network_info = cont_fakes.fake_network()
+        fake_existing_interfaces = cont_fakes.FAKE_IP_LINK_SHOW
+        fake_bridge = 'br-012345abcdef'
+        fake_veth = 'fake_veth'
 
-        self.assertEqual('veth0000001', result)
+        self.mock_object(self._driver.container, 'fetch_container_interfaces',
+                         mock.Mock(return_value=fake_existing_interfaces))
+        self.mock_object(driver.uuidutils, 'generate_uuid',
+                         mock.Mock(return_value='fakeuuid'))
+        self.mock_object(self._driver.container, 'create_network')
+        self.mock_object(self._driver.container, 'connect_network')
+        self.mock_object(self._driver.container, 'get_network_bridge',
+                         mock.Mock(return_value=fake_bridge))
+        self.mock_object(self._driver.container, 'get_veth_from_bridge',
+                         mock.Mock(return_value=fake_veth))
+        self.mock_object(self._driver, '_connect_to_network')
 
-    def test__get_corresponding_veth_raises(self):
-        before = ['veth0000000']
-        after = ['veth0000000', 'veth0000001', 'veth0000002']
+        self._driver._setup_server_network(fake_server_id, fake_network_info)
 
-        self.assertRaises(exception.ManilaException,
-                          self._driver._get_corresponding_veth,
-                          before, after)
+        (self._driver.container.fetch_container_interfaces
+         .assert_called_once_with(fake_server_id))
+        self._driver.container.create_network.assert_called_with(
+            'manila-docker-network-fakeuuid')
+        self._driver.container.connect_network.assert_called_with(
+            'manila-docker-network-fakeuuid',
+            fake_server_id)
+        self._driver.container.get_network_bridge.assert_called_with(
+            'manila-docker-network-fakeuuid')
+        self._driver.container.get_veth_from_bridge.assert_called_with(
+            fake_bridge)
+        self._driver._connect_to_network.assert_called_with(
+            fake_server_id, fake_network_info[0], fake_veth, fake_bridge,
+            'eth2')
 
     def test__setup_server_container_fails(self):
-        network_info = [cont_fakes.fake_network()]
+        network_info = cont_fakes.fake_network()
         self.mock_object(self._driver.container, 'start_container')
         self._driver.container.start_container.side_effect = KeyError()
 
@@ -380,21 +436,37 @@ class ContainerShareDriverTestCase(test.TestCase):
                           self._driver._setup_server, network_info)
 
     def test__setup_server_ok(self):
-        network_info = [cont_fakes.fake_network()]
-        server_id = self._driver._get_container_name(
-            network_info[0]["server_id"])
-        self.mock_object(self._driver.container, 'start_container')
-        self.mock_object(self._driver, '_get_veth_state')
-        self.mock_object(self._driver, '_get_corresponding_veth',
-                         mock.Mock(return_value='veth0'))
-        self.mock_object(self._driver, '_connect_to_network')
+        fake_network_info = cont_fakes.fake_network()
 
-        self.assertEqual(network_info[0]['server_id'],
-                         self._driver._setup_server(network_info)['id'])
+        self.mock_object(self._driver, '_get_container_name',
+                         mock.Mock(return_value='fake_server_id'))
+        self.mock_object(self._driver.container, 'create_container')
+        self.mock_object(self._driver.container, 'start_container')
+        self.mock_object(self._driver, '_setup_server_network')
+
+        self.assertEqual(fake_network_info[0]['server_id'],
+                         self._driver._setup_server(fake_network_info)['id'])
+        self._driver._get_container_name.assert_called_once_with(
+            fake_network_info[0]['server_id'])
+        self._driver.container.create_container.assert_called_once_with(
+            'fake_server_id')
         self._driver.container.start_container.assert_called_once_with(
-            server_id)
-        self._driver._connect_to_network.assert_called_once_with(
-            server_id, network_info[0], 'veth0')
+            'fake_server_id')
+        self._driver._setup_server_network.assert_called_once_with(
+            fake_network_info[0]['server_id'], fake_network_info)
+
+    def test__setup_server_security_services(self):
+        fake_network_info = cont_fakes.fake_network_with_security_services()
+
+        self.mock_object(self._driver, '_get_container_name')
+        self.mock_object(self._driver.container, 'create_container')
+        self.mock_object(self._driver.container, 'start_container')
+        self.mock_object(self._driver, '_setup_server_network')
+        self.mock_object(self._driver, 'setup_security_services')
+
+        self._driver._setup_server(fake_network_info)
+
+        self._driver.setup_security_services.assert_called_once()
 
     def test_manage_existing(self):
 
@@ -402,7 +474,7 @@ class ContainerShareDriverTestCase(test.TestCase):
         fake_export_location = 'export_location'
         expected_result = {
             'size': 1,
-            'export_locations': [fake_export_location]
+            'export_locations': fake_export_location
         }
         fake_share_server = cont_fakes.fake_share()
         fake_share_name = self._driver._get_share_name(self.share)
@@ -461,13 +533,10 @@ class ContainerShareDriverTestCase(test.TestCase):
         fake_id = cont_fakes.fake_identifier()
         expected_result = ['veth11b2c34']
 
-        interfaces = [cont_fakes.FAKE_VSCTL_LIST_INTERFACE_1,
-                      cont_fakes.FAKE_VSCTL_LIST_INTERFACE_2,
-                      cont_fakes.FAKE_VSCTL_LIST_INTERFACE_4,
-                      cont_fakes.FAKE_VSCTL_LIST_INTERFACE_3]
-
-        self.mock_object(self._driver.container, 'execute',
-                         mock.Mock(return_value=interfaces))
+        self.mock_object(self._driver, '_get_correct_container_old_name',
+                         mock.Mock(return_value=fake_id))
+        self.mock_object(self._driver.container, 'fetch_container_addresses',
+                         mock.Mock(return_value=expected_result))
 
         result = self._driver.get_share_server_network_info(self._context,
                                                             fake_share_server,
@@ -717,3 +786,77 @@ class ContainerShareDriverTestCase(test.TestCase):
             self._context, share_server, network_info, share_instances,
             share_instance_access_rules, new_security_service,
             current_security_service=current_security_service)
+
+    def test__form_share_server_update_return(self):
+        fake_share_server = cont_fakes.fake_share_server()
+        fake_current_network_allocations = (
+            cont_fakes.fake_current_network_allocations())
+        fake_new_network_allocations = (
+            cont_fakes.fake_new_network_allocations())
+        fake_share_instances = cont_fakes.fake_share_instances()
+        fake_server_id = 'fake_container_id'
+        fake_addresses = ['192.168.144.100', '10.0.0.100']
+        fake_subnet_allocations = {
+            'fake_id_current': '192.168.144.100',
+            'fake_id_new': '10.0.0.100'
+        }
+        fake_share_updates = {
+            'fakeid': [
+                {
+                    'is_admin_only': False,
+                    'path': '//%s/fakeshareid' % fake_addresses[0],
+                    'preferred': False
+                },
+                {
+                    'is_admin_only': False,
+                    'path': '//%s/fakeshareid' % fake_addresses[1],
+                    'preferred': False
+                }
+            ]
+        }
+        fake_server_details = {
+            'subnet_allocations': jsonutils.dumps(fake_subnet_allocations)
+        }
+        fake_return = {
+            'share_updates': fake_share_updates,
+            'server_details': fake_server_details
+        }
+
+        self.mock_object(self._driver, '_get_container_name',
+                         mock.Mock(return_value=fake_server_id))
+        self.mock_object(self._driver.container, 'fetch_container_addresses',
+                         mock.Mock(return_value=fake_addresses))
+
+        self.assertEqual(
+            fake_return, self._driver._form_share_server_update_return(
+                fake_share_server, fake_current_network_allocations,
+                fake_new_network_allocations, fake_share_instances))
+        self._driver._get_container_name.assert_called_once_with(
+            fake_share_server['id'])
+        (self._driver.container.fetch_container_addresses
+         .assert_called_once_with(fake_server_id, 'inet'))
+
+    def test_check_update_share_server_network_allocations(self):
+        fake_share_server = cont_fakes.fake_share_server()
+        self.mock_object(driver.LOG, 'debug')
+
+        self.assertTrue(
+            self._driver.check_update_share_server_network_allocations(
+                None, fake_share_server, None, None, None, None, None))
+        self.assertTrue(driver.LOG.debug.called)
+
+    def test_update_share_server_network_allocations(self):
+        fake_share_server = cont_fakes.fake_share_server()
+        fake_server_id = 'fake_container_id'
+        fake_return = 'fake_return'
+
+        self.mock_object(self._driver, '_get_container_name',
+                         mock.Mock(return_value=fake_server_id))
+        self.mock_object(self._driver, '_setup_server_network')
+        self.mock_object(self._driver, '_form_share_server_update_return',
+                         mock.Mock(return_value=fake_return))
+
+        self.assertEqual(fake_return,
+                         self._driver.update_share_server_network_allocations(
+                             None, fake_share_server, None, None, None, None,
+                             None))

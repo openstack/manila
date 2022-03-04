@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    The Container driver is now able to:
+
+    - Create shares using share networks that have multiple share network
+      subnets in the same availability zone.
+    - Add more network interfaces into share servers that are already
+      deployed based on the share network subnets within the share network.
