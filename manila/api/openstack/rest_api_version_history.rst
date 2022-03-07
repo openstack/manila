@@ -385,8 +385,8 @@ ____
   Recycle Bin: `` GET /v2/shares?is_soft_deleted=true``. Restore share from
   Recycle Bin: `` POST /v2/shares/{share_id}/action  {'restore': null}``.
 
-2.70
-----
+2.70 (Maximum in Yoga)
+----------------------
   Added support to configure multiple subnets for a given share network in the
   same availability zone (or the default one). Users can also add new subnets
   for an in-use share network. To distinguish this update support a new
