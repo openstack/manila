@@ -612,3 +612,28 @@ def validate_subnet_create(context, share_network_id, data,
         raise exc.HTTPConflict(explanation=msg)
 
     return share_network, existing_subnets
+
+
+def _check_metadata_properties(metadata=None):
+    if not metadata:
+        metadata = {}
+
+    for k, v in metadata.items():
+        if not k:
+            msg = _("Metadata property key is blank.")
+            LOG.warning(msg)
+            raise exception.InvalidMetadata(message=msg)
+        if len(k) > 255:
+            msg = _("Metadata property key is "
+                    "greater than 255 characters.")
+            LOG.warning(msg)
+            raise exception.InvalidMetadataSize(message=msg)
+        if not v:
+            msg = _("Metadata property value is blank.")
+            LOG.warning(msg)
+            raise exception.InvalidMetadata(message=msg)
+        if len(v) > 1023:
+            msg = _("Metadata property value is "
+                    "greater than 1023 characters.")
+            LOG.warning(msg)
+            raise exception.InvalidMetadataSize(message=msg)

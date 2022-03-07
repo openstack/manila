@@ -389,9 +389,9 @@ def share_update(context, share_id, values):
     return IMPL.share_update(context, share_id, values)
 
 
-def share_get(context, share_id):
+def share_get(context, share_id, **kwargs):
     """Get share by id."""
-    return IMPL.share_get(context, share_id)
+    return IMPL.share_get(context, share_id, **kwargs)
 
 
 def share_get_all(context, filters=None, sort_key=None, sort_dir=None):
@@ -805,17 +805,17 @@ def share_metadata_get_item(context, share_id, key):
 
 def share_metadata_delete(context, share_id, key):
     """Delete the given metadata item."""
-    IMPL.share_metadata_delete(context, share_id, key)
+    return IMPL.share_metadata_delete(context, share_id, key)
 
 
 def share_metadata_update(context, share, metadata, delete):
     """Update metadata if it exists, otherwise create it."""
-    IMPL.share_metadata_update(context, share, metadata, delete)
+    return IMPL.share_metadata_update(context, share, metadata, delete)
 
 
 def share_metadata_update_item(context, share_id, item):
     """update meta item containing key and value for given share."""
-    IMPL.share_metadata_update_item(context, share_id, item)
+    return IMPL.share_metadata_update_item(context, share_id, item)
 
 
 ###################

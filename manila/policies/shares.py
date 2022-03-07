@@ -598,12 +598,20 @@ shares_policies = [
         name=BASE_POLICY_NAME % 'update_share_metadata',
         check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         scope_types=['system', 'project'],
-        description=("Update share metadata."),
+        description="Update share metadata.",
         operations=[
             {
                 'method': 'PUT',
                 'path': '/shares/{share_id}/metadata',
-            }
+            },
+            {
+                'method': 'POST',
+                'path': '/shares/{share_id}/metadata/{key}',
+            },
+            {
+                'method': 'POST',
+                'path': '/shares/{share_id}/metadata',
+            },
         ],
         deprecated_rule=deprecated_share_update_metadata
     ),
@@ -611,7 +619,7 @@ shares_policies = [
         name=BASE_POLICY_NAME % 'delete_share_metadata',
         check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         scope_types=['system', 'project'],
-        description=("Delete share metadata."),
+        description="Delete share metadata.",
         operations=[
             {
                 'method': 'DELETE',
@@ -624,11 +632,15 @@ shares_policies = [
         name=BASE_POLICY_NAME % 'get_share_metadata',
         check_str=base.SYSTEM_OR_PROJECT_READER,
         scope_types=['system', 'project'],
-        description=("Get share metadata."),
+        description="Get share metadata.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/shares/{share_id}/metadata',
+            },
+            {
+                'method': 'GET',
+                'path': '/shares/{share_id}/metadata/{key}',
             }
         ],
         deprecated_rule=deprecated_share_get_metadata

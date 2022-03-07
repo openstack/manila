@@ -18,8 +18,10 @@ from oslo_log import log
 import webob
 from webob import exc
 
+from manila.api import common as api_common
 from manila.api.openstack import wsgi
 from manila.common import constants
+from manila import db
 from manila import exception
 from manila.i18n import _
 from manila import policy
@@ -39,7 +41,8 @@ class ShareMetadataController(object):
     def _get_metadata(self, context, share_id):
         try:
             share = self.share_api.get(context, share_id)
-            meta = self.share_api.get_share_metadata(context, share)
+            rv = db.share_metadata_get(context, share['id'])
+            meta = dict(rv.items())
         except exception.NotFound:
             msg = _('share does not exist')
             raise exc.HTTPNotFound(explanation=msg)
@@ -115,13 +118,27 @@ class ShareMetadataController(object):
                     msg = _("Cannot set or update admin only metadata.")
                     LOG.exception(msg)
                     raise exc.HTTPForbidden(explanation=msg)
-                ignore_keys = None
-            return self.share_api.update_share_metadata(
-                context,
-                share,
-                metadata,
-                ignore_keys=ignore_keys,
-                delete=delete)
+                ignore_keys = []
+
+            rv = db.share_metadata_get(context, share['id'])
+            orig_meta = dict(rv.items())
+            if delete:
+                _metadata = metadata
+                for key in ignore_keys:
+                    if key in orig_meta:
+                        _metadata[key] = orig_meta[key]
+            else:
+                metadata_copy = metadata.copy()
+                for key in ignore_keys:
+                    metadata_copy.pop(key, None)
+                _metadata = orig_meta.copy()
+                _metadata.update(metadata_copy)
+
+            api_common._check_metadata_properties(_metadata)
+            db.share_metadata_update(context, share['id'],
+                                     _metadata, delete)
+
+            return _metadata
         except exception.NotFound:
             msg = _('share does not exist')
             raise exc.HTTPNotFound(explanation=msg)
@@ -162,7 +179,7 @@ class ShareMetadataController(object):
             if id in constants.AdminOnlyMetadata.SCHEDULER_FILTERS:
                 policy.check_policy(context, 'share',
                                     'update_admin_only_metadata')
-            self.share_api.delete_share_metadata(context, share, id)
+            db.share_metadata_delete(context, share['id'], id)
         except exception.NotFound:
             msg = _('share does not exist')
             raise exc.HTTPNotFound(explanation=msg)
