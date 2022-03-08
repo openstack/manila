@@ -157,6 +157,12 @@ class FlashBladeShareDriver(driver.ShareDriver):
         if reserved_share_from_snapshot_percentage is None:
             reserved_share_from_snapshot_percentage = reserved_share_percentage
 
+        reserved_share_extend_percentage = self.configuration.safe_get(
+            "reserved_share_extend_percentage"
+        )
+        if reserved_share_extend_percentage is None:
+            reserved_share_extend_percentage = reserved_share_percentage
+
         data = dict(
             share_backend_name=self._backend_name,
             vendor_name="PURE STORAGE",
@@ -166,6 +172,8 @@ class FlashBladeShareDriver(driver.ShareDriver):
             reserved_percentage=reserved_share_percentage,
             reserved_snapshot_percentage=(
                 reserved_share_from_snapshot_percentage),
+            reserved_share_extend_percentage=(
+                reserved_share_extend_percentage),
             total_capacity_gb=float(physical_capacity_bytes) / units.Gi,
             free_capacity_gb=float(free_capacity_bytes) / units.Gi,
             provisioned_capacity_gb=float(provisioned_cap_bytes) / units.Gi,

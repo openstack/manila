@@ -198,6 +198,9 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
             reserved_percentage=self.configuration.reserved_share_percentage,
             reserved_snapshot_percentage=(
                 self.configuration.reserved_share_from_snapshot_percentage or
+                self.configuration.reserved_share_percentage),
+            reserved_share_extend_percentage=(
+                self.configuration.reserved_share_extend_percentage or
                 self.configuration.reserved_share_percentage))
 
         # We don't use a service mount to get stats data.

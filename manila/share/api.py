@@ -2334,6 +2334,7 @@ class API(base.Base):
             share_type = share_types.get_share_type(
                 context, share['instance']['share_type_id'])
             request_spec = self._get_request_spec_dict(share, share_type)
+            request_spec.update({'is_share_extend': True})
             self.scheduler_rpcapi.extend_share(context, share['id'], new_size,
                                                reservations, request_spec)
         LOG.info("Extend share request issued successfully.",

@@ -215,6 +215,9 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             'reserved_snapshot_percentage':
                 (self.configuration.reserved_share_from_snapshot_percentage
                     or self.configuration.reserved_share_percentage),
+            'reserved_share_extend_percentage':
+                (self.configuration.reserved_share_extend_percentage
+                    or self.configuration.reserved_share_percentage),
             'snapshot_support': True,
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': True,
@@ -237,6 +240,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             'free_capacity_gb': float(free_size),
             'reserved_percentage': 0,
             'reserved_snapshot_percentage': 0,
+            'reserved_share_extend_percentage': 0,
         }, ]
 
     def create_share(self, context, share, share_server=None):

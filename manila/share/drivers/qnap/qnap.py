@@ -262,6 +262,9 @@ class QnapShareDriver(driver.ShareDriver):
         reserved_snapshot_percentage = self.configuration.safe_get(
             'reserved_share_from_snapshot_percentage') or reserved_percentage
 
+        reserved_shr_extend_percentage = self.configuration.safe_get(
+            'reserved_share_extend_percentage') or reserved_percentage
+
         # single pool now, need support multiple pools in the future
         single_pool = {
             "pool_name": self.configuration.qnap_poolname,
@@ -270,6 +273,7 @@ class QnapShareDriver(driver.ShareDriver):
             "allocated_capacity_gb": alloc_capacity_gb,
             "reserved_percentage": reserved_percentage,
             "reserved_snapshot_percentage": reserved_snapshot_percentage,
+            "reserved_share_extend_percentage": reserved_shr_extend_percentage,
             "qos": False,
             "dedupe": [True, False],
             "compression": [True, False],

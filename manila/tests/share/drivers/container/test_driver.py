@@ -102,8 +102,10 @@ class ContainerShareDriverTestCase(test.TestCase):
         self.assertEqual('Docker', self._driver._stats['share_backend_name'])
         self.assertEqual('CIFS', self._driver._stats['storage_protocol'])
         self.assertEqual(0, self._driver._stats['reserved_percentage'])
-        self.assertEqual(0,
-                         self._driver._stats['reserved_snapshot_percentage'])
+        self.assertEqual(
+            0, self._driver._stats['reserved_snapshot_percentage'])
+        self.assertEqual(
+            0, self._driver._stats['reserved_share_extend_percentage'])
         self.assertIsNone(self._driver._stats['consistency_group_support'])
         self.assertEqual(False, self._driver._stats['snapshot_support'])
         self.assertEqual('ContainerShareDriver',

@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    'reserved_share_extend_percentage' backend config option allows
+    Manila to consider different reservation percentage for share extend
+    operation.
+    This distinct option is useful if operators want to prevent provisioning
+    of new shares but allow extensions of existing shares on storage pools
+    beyond their reserved space.

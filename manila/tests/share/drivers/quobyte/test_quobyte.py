@@ -344,7 +344,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
                  total_capacity_gb=42,
                  free_capacity_gb=23,
                  reserved_percentage=0,
-                 reserved_snapshot_percentage=0))
+                 reserved_snapshot_percentage=0,
+                 reserved_share_extend_percentage=0))
 
     def test_get_capacities_gb(self):
         capval = 42115548133

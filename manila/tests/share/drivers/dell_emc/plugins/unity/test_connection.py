@@ -303,6 +303,7 @@ class TestConnection(test.TestCase):
             enas_utils.bytes_to_gb(10000.0), pool['allocated_capacity_gb'])
         self.assertEqual(0, pool['reserved_percentage'])
         self.assertEqual(0, pool['reserved_snapshot_percentage'])
+        self.assertEqual(0, pool['reserved_share_extend_percentage'])
         self.assertTrue(pool['thin_provisioning'])
         self.assertEqual(
             enas_utils.bytes_to_gb(490000.0), pool['free_capacity_gb'])

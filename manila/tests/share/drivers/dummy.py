@@ -435,7 +435,9 @@ class DummyDriver(driver.ShareDriver):
             "reserved_percentage":
                 self.configuration.reserved_share_percentage,
             "reserved_snapshot_percentage":
-                self.configuration.reserved_share_from_snapshot_percentage
+                self.configuration.reserved_share_from_snapshot_percentage,
+            "reserved_share_extend_percentage":
+                self.configuration.reserved_share_extend_percentage
         }]
         if self.configuration.replication_domain:
             pools[0]["replication_type"] = "readable"
@@ -451,6 +453,8 @@ class DummyDriver(driver.ShareDriver):
                 self.configuration.reserved_share_percentage,
             "reserved_snapshot_percentage":
                 self.configuration.reserved_share_from_snapshot_percentage,
+            "reserved_share_extend_percentage":
+                self.configuration.reserved_share_extend_percentage,
             "snapshot_support": True,
             "create_share_from_snapshot_support": True,
             "revert_to_snapshot_support": True,

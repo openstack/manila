@@ -90,6 +90,7 @@ class TestNexentaNasDriver(test.TestCase):
         self.cfg.nexenta_rest_port = 1000
         self.cfg.reserved_share_percentage = 0
         self.cfg.reserved_share_from_snapshot_percentage = 0
+        self.cfg.reserved_share_extend_percentage = 0
         self.cfg.max_over_subscription_ratio = 0
         self.cfg.nexenta_rest_protocol = 'auto'
         self.cfg.nexenta_volume = 'volume'
@@ -596,6 +597,8 @@ class TestNexentaNasDriver(test.TestCase):
                     self.cfg.reserved_share_percentage),
                 'reserved_snapshot_percentage': (
                     self.cfg.reserved_share_from_snapshot_percentage),
+                'reserved_share_extend_percentage': (
+                    self.cfg.reserved_share_extend_percentage),
                 'compression': True,
                 'dedupe': True,
                 'thin_provisioning': self.cfg.nexenta_thin_provisioning,

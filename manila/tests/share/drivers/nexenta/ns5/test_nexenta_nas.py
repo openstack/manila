@@ -55,6 +55,7 @@ class TestNexentaNasDriver(test.TestCase):
         self.cfg.nexenta_dataset_record_size = 131072
         self.cfg.reserved_share_percentage = 0
         self.cfg.reserved_share_from_snapshot_percentage = 0
+        self.cfg.reserved_share_extend_percentage = 0
         self.cfg.nexenta_folder = 'nfs_share'
         self.cfg.nexenta_user = 'user'
         self.cfg.share_backend_name = 'NexentaStor5'
@@ -394,6 +395,8 @@ class TestNexentaNasDriver(test.TestCase):
                     self.cfg.reserved_share_percentage),
                 'reserved_snapshot_percentage': (
                     self.cfg.reserved_share_from_snapshot_percentage),
+                'reserved_share_extend_percentage': (
+                    self.cfg.reserved_share_extend_percentage),
                 'thin_provisioning': self.cfg.nexenta_thin_provisioning,
             }],
         }

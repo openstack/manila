@@ -54,6 +54,8 @@ class CapacityWeigher(base_host.BaseHostWeigher):
         """Higher weighers win.  We want spreading to be the default."""
         if weight_properties.get('snapshot_id'):
             reserved = float(host_state.reserved_snapshot_percentage) / 100
+        elif weight_properties.get('is_share_extend'):
+            reserved = float(host_state.reserved_share_extend_percentage) / 100
         else:
             reserved = float(host_state.reserved_percentage) / 100
 

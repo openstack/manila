@@ -977,6 +977,7 @@ POOLS = [
         'allocated_capacity_gb': 2.2,
         'reserved_percentage': 5,
         'reserved_snapshot_percentage': 2,
+        'reserved_share_extend_percentage': 2,
         'max_over_subscription_ratio': 2.0,
         'dedupe': [True, False],
         'compression': [True, False],
@@ -1004,6 +1005,7 @@ POOLS = [
         'allocated_capacity_gb': 4.0,
         'reserved_percentage': 5,
         'reserved_snapshot_percentage': 2,
+        'reserved_share_extend_percentage': 2,
         'max_over_subscription_ratio': 2.0,
         'dedupe': [True, False],
         'compression': [True, False],
@@ -1036,6 +1038,7 @@ POOLS_VSERVER_CREDS = [
         'allocated_capacity_gb': 0.0,
         'reserved_percentage': 5,
         'reserved_snapshot_percentage': 2,
+        'reserved_share_extend_percentage': 2,
         'max_over_subscription_ratio': 2.0,
         'dedupe': [True, False],
         'compression': [True, False],
@@ -1058,6 +1061,7 @@ POOLS_VSERVER_CREDS = [
         'allocated_capacity_gb': 0.0,
         'reserved_percentage': 5,
         'reserved_snapshot_percentage': 2,
+        'reserved_share_extend_percentage': 2,
         'max_over_subscription_ratio': 2.0,
         'dedupe': [True, False],
         'compression': [True, False],
@@ -1784,6 +1788,7 @@ def get_config_cmode():
     config.local_conf.set_override('share_backend_name', BACKEND_NAME)
     config.reserved_share_percentage = 5
     config.reserved_share_from_snapshot_percentage = 2
+    config.reserved_share_extend_percentage = 2
     config.max_over_subscription_ratio = 2.0
     config.netapp_login = CLIENT_KWARGS['username']
     config.netapp_password = CLIENT_KWARGS['password']

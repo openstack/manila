@@ -544,12 +544,16 @@ class CephFSDriverTestCase(test.TestCase):
             'reserved_share_percentage', 5)
         self._driver.configuration.local_conf.set_override(
             'reserved_share_from_snapshot_percentage', 2)
+        self._driver.configuration.local_conf.set_override(
+            'reserved_share_extend_percentage', 2)
 
         self._driver._update_share_stats()
         result = self._driver._stats
 
         self.assertEqual(5, result['pools'][0]['reserved_percentage'])
         self.assertEqual(2, result['pools'][0]['reserved_snapshot_percentage'])
+        self.assertEqual(
+            2, result['pools'][0]['reserved_share_extend_percentage'])
         self.assertEqual(164.94, result['pools'][0]['total_capacity_gb'])
         self.assertEqual(149.84, result['pools'][0]['free_capacity_gb'])
         self.assertTrue(result['ipv4_support'])

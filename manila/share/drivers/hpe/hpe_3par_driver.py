@@ -611,6 +611,11 @@ class HPE3ParShareDriver(driver.ShareDriver):
         if reserved_share_from_snapshot_percentage is None:
             reserved_share_from_snapshot_percentage = reserved_share_percentage
 
+        reserved_share_extend_percentage = self.configuration.safe_get(
+            'reserved_share_extend_percentage')
+        if reserved_share_extend_percentage is None:
+            reserved_share_extend_percentage = reserved_share_percentage
+
         stats = {
             'share_backend_name': backend_name,
             'driver_handles_share_servers': self.driver_handles_share_servers,
@@ -623,6 +628,8 @@ class HPE3ParShareDriver(driver.ShareDriver):
             'reserved_percentage': reserved_share_percentage,
             'reserved_snapshot_percentage':
                 reserved_share_from_snapshot_percentage,
+            'reserved_share_extend_percentage':
+                reserved_share_extend_percentage,
             'max_over_subscription_ratio': max_over_subscription_ratio,
             'qos': False,
             'thin_provisioning': True,  # 3PAR default is thin
@@ -638,6 +645,8 @@ class HPE3ParShareDriver(driver.ShareDriver):
                 fpg_status['reserved_percentage'] = reserved_share_percentage
                 fpg_status['reserved_snapshot_percentage'] = (
                     reserved_share_from_snapshot_percentage)
+                fpg_status['reserved_share_extend_percentage'] = (
+                    reserved_share_extend_percentage)
                 LOG.debug("FPG status = %s.", fpg_status)
                 stats.setdefault('pools', []).append(fpg_status)
 

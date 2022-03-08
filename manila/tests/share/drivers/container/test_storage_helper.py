@@ -56,6 +56,7 @@ class LVMHelperTestCase(test.TestCase):
     def test_get_share_server_pools(self, ret_vgs):
         expected_result = [{'reserved_percentage': 0,
                             'reserved_snapshot_percentage': 0,
+                            'reserved_share_extend_percentage': 0,
                             'pool_name': 'manila_docker_volumes',
                             'total_capacity_gb': 72.5,
                             'free_capacity_gb': 62.5}]

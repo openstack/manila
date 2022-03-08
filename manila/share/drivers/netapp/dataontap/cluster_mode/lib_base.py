@@ -512,6 +512,9 @@ class NetAppCmodeFileStorageLibrary(object):
         reserved_snapshot_percentage = (
             self.configuration.reserved_share_from_snapshot_percentage or
             reserved_percentage)
+        reserved_shr_extend_percentage = (
+            self.configuration.reserved_share_extend_percentage or
+            reserved_percentage)
         max_over_ratio = self.configuration.max_over_subscription_ratio
 
         if total_capacity_gb == 0.0:
@@ -527,6 +530,7 @@ class NetAppCmodeFileStorageLibrary(object):
             'qos': qos_support,
             'reserved_percentage': reserved_percentage,
             'reserved_snapshot_percentage': reserved_snapshot_percentage,
+            'reserved_share_extend_percentage': reserved_shr_extend_percentage,
             'max_over_subscription_ratio': max_over_ratio,
             'dedupe': [True, False],
             'compression': [True, False],

@@ -52,6 +52,13 @@ share_opts = [
              "taken, so we can set a lower value in this option compared to "
              "reserved_share_percentage, and allow to create shares from the "
              "snapshot on the same host up to a higher threshold."),
+    cfg.IntOpt(
+        'reserved_share_extend_percentage',
+        default=0,
+        help="The percentage of backend capacity reserved for share extend "
+             "operation. When existing limit of 'reserved_share_percentage' "
+             "is hit, we do not want user to create a new share but existing "
+             "shares can be extended based on value of this parameter."),
     cfg.StrOpt(
         'share_backend_name',
         help='The backend name for a given driver implementation.'),
@@ -1319,6 +1326,7 @@ class ShareDriver(object):
             free_capacity_gb='unknown',
             reserved_percentage=0,
             reserved_snapshot_percentage=0,
+            reserved_share_extend_percentage=0,
             qos=False,
             pools=self.pools or None,
             snapshot_support=self.snapshots_are_supported,
