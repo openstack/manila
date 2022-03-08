@@ -750,6 +750,9 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             reserved_percentage=self.configuration.reserved_share_percentage,
             reserved_snapshot_percentage=(
                 self.configuration.reserved_share_from_snapshot_percentage
+                or self.configuration.reserved_share_percentage),
+            reserved_share_extend_percentage=(
+                self.configuration.reserved_share_extend_percentage
                 or self.configuration.reserved_share_percentage))
 
         free, capacity = self._get_available_capacity(

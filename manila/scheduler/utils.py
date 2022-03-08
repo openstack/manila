@@ -38,6 +38,8 @@ def generate_stats(host_state, properties):
         'reserved_percentage': host_state.reserved_percentage,
         'reserved_snapshot_percentage':
             host_state.reserved_snapshot_percentage,
+        'reserved_share_extend_percentage':
+            host_state.reserved_share_extend_percentage,
         'driver_handles_share_servers':
             host_state.driver_handles_share_servers,
         'thin_provisioning': host_state.thin_provisioning,

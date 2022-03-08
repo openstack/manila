@@ -360,6 +360,9 @@ class FilterScheduler(base.Scheduler):
         filter_properties['user_id'] = shr.get('user_id')
         filter_properties['metadata'] = shr.get('metadata')
         filter_properties['snapshot_id'] = shr.get('snapshot_id')
+        filter_properties['is_share_extend'] = (
+            request_spec.get('is_share_extend')
+        )
         self.populate_filter_properties_scheduler_hints(context, request_spec,
                                                         filter_properties)
 

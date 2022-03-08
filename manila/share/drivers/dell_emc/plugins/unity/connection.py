@@ -93,6 +93,7 @@ class UnityStorageConnection(driver.StorageConnection):
         self.nas_server_pool = None
         self.reserved_percentage = None
         self.reserved_snapshot_percentage = None
+        self.reserved_share_extend_percentage = None
         self.max_over_subscription_ratio = None
         self.port_ids_conf = None
         self.unity_share_server = None
@@ -134,6 +135,11 @@ class UnityStorageConnection(driver.StorageConnection):
             'reserved_share_from_snapshot_percentage')
         if self.reserved_snapshot_percentage is None:
             self.reserved_snapshot_percentage = self.reserved_percentage
+
+        self.reserved_share_extend_percentage = config.safe_get(
+            'reserved_share_extend_percentage')
+        if self.reserved_share_extend_percentage is None:
+            self.reserved_share_extend_percentage = self.reserved_percentage
 
         self.max_over_subscription_ratio = config.safe_get(
             'max_over_subscription_ratio')
@@ -593,6 +599,8 @@ class UnityStorageConnection(driver.StorageConnection):
                     'reserved_percentage': self.reserved_percentage,
                     'reserved_snapshot_percentage':
                         self.reserved_snapshot_percentage,
+                    'reserved_share_extend_percentage':
+                        self.reserved_share_extend_percentage,
                     'max_over_subscription_ratio':
                         self.max_over_subscription_ratio,
                 }

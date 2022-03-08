@@ -973,6 +973,8 @@ class HitachiHNASTestCase(test.TestCase):
             'reserved_percentage': driver.CONF.reserved_share_percentage,
             'reserved_snapshot_percentage':
                 driver.CONF.reserved_share_from_snapshot_percentage,
+            'reserved_share_extend_percentage':
+                driver.CONF.reserved_share_extend_percentage,
             'qos': False,
             'thin_provisioning': True,
             'dedupe': True,

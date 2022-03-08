@@ -70,6 +70,9 @@ class HitachiHSPDriver(driver.ShareDriver):
         reserved_snapshot = (self.configuration.safe_get(
             'reserved_share_from_snapshot_percentage') or
             self.configuration.safe_get('reserved_share_percentage'))
+        reserved_share_extend = (self.configuration.safe_get(
+            'reserved_share_extend_percentage') or
+            self.configuration.safe_get('reserved_share_percentage'))
         max_over_subscription_ratio = self.configuration.safe_get(
             'max_over_subscription_ratio')
         hsp_cluster = self.hsp.get_cluster()
@@ -85,6 +88,7 @@ class HitachiHSPDriver(driver.ShareDriver):
             'pools': [{
                 'reserved_percentage': reserved,
                 'reserved_snapshot_percentage': reserved_snapshot,
+                'reserved_share_extend_percentage': reserved_share_extend,
                 'pool_name': 'HSP',
                 'thin_provisioning': True,
                 'total_capacity_gb': total_space / units.Gi,

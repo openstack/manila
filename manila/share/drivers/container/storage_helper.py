@@ -71,6 +71,7 @@ class LVMHelper(driver.ExecuteMixin):
             'free_capacity_gb': float(free_size),
             'reserved_percentage': 0,
             'reserved_snapshot_percentage': 0,
+            'reserved_share_extend_percentage': 0,
         }, ]
 
     def _get_lv_device(self, share_name):

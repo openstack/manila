@@ -113,6 +113,50 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertFalse(self.filter.host_passes(host, filter_properties))
 
+    @ddt.data(
+        {'free_capacity': 120, 'total_capacity': 200,
+         'reserved': 20, 'reserved_share_extend_percentage': 5})
+    @ddt.unpack
+    def test_capacity_filter_passes_share_extend_reserved(
+            self, free_capacity,
+            total_capacity,
+            reserved,
+            reserved_share_extend_percentage):
+        self._stub_service_is_up(True)
+        filter_properties = {'size': 100, 'is_share_extend': True}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'total_capacity_gb': total_capacity,
+                                    'free_capacity_gb': free_capacity,
+                                    'reserved_percentage': reserved,
+                                    'reserved_share_extend_percentage':
+                                        reserved_share_extend_percentage,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertTrue(self.filter.host_passes(host, filter_properties))
+
+    @ddt.data(
+        {'free_capacity': 120, 'total_capacity': 200,
+         'reserved': 20, 'reserved_share_extend_percentage': 15})
+    @ddt.unpack
+    def test_capacity_filter_fails_share_extend_reserved(
+            self, free_capacity,
+            total_capacity,
+            reserved,
+            reserved_share_extend_percentage):
+        self._stub_service_is_up(True)
+        filter_properties = {'size': 100, 'is_share_extend': True}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'total_capacity_gb': total_capacity,
+                                    'free_capacity_gb': free_capacity,
+                                    'reserved_percentage': reserved,
+                                    'reserved_share_extend_percentage':
+                                        reserved_share_extend_percentage,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertFalse(self.filter.host_passes(host, filter_properties))
+
     def test_capacity_filter_passes_unknown(self):
         free = 'unknown'
         self._stub_service_is_up(True)
