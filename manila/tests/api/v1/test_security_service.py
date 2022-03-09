@@ -23,6 +23,7 @@ from manila.api.v1 import security_service
 from manila.common import constants
 from manila import db
 from manila import exception
+from manila import policy
 from manila import test
 from manila.tests.api import fakes
 
@@ -339,31 +340,38 @@ class ShareApiTest(test.TestCase):
             req.environ['manila.context'],
             sn['id'])
 
+    @mock.patch.object(db, 'security_service_get_all_by_project', mock.Mock())
     @mock.patch.object(db, 'security_service_get_all', mock.Mock())
-    def test_security_services_list_all_tenants_admin_context(self):
+    def test_security_services_list_all_tenants_policy_authorized(self):
         self.check_policy_patcher.stop()
         db.security_service_get_all.return_value = [
             self.ss_active_directory,
             self.ss_ldap,
         ]
         req = fakes.HTTPRequest.blank(
-            '/security-services?all_tenants=1&name=fake-name',
-            use_admin_context=True)
-        res_dict = self.controller.index(req)
-        self.assertEqual(self.security_service_list_expected_resp, res_dict)
-        db.security_service_get_all.assert_called_once_with(
-            req.environ['manila.context'])
-
-    @mock.patch.object(db, 'security_service_get_all_by_project', mock.Mock())
-    def test_security_services_list_all_tenants_non_admin_context(self):
-        db.security_service_get_all_by_project.return_value = []
-        req = fakes.HTTPRequest.blank(
             '/security-services?all_tenants=1')
+        self.mock_object(policy, "check_policy", mock.Mock(return_value=True))
         fake_context = req.environ['manila.context']
         self.controller.index(req)
-        db.security_service_get_all_by_project.assert_called_once_with(
-            fake_context, fake_context.project_id
-        )
+        db.security_service_get_all_by_project.assert_not_called()
+        db.security_service_get_all.assert_called_once_with(fake_context)
+
+    @mock.patch.object(db, 'security_service_get_all_by_project', mock.Mock())
+    @mock.patch.object(db, 'security_service_get_all', mock.Mock())
+    def test_security_services_list_all_tenants_policy_not_authorized(self):
+        self.check_policy_patcher.stop()
+        db.security_service_get_all.return_value = [
+            self.ss_active_directory,
+            self.ss_ldap,
+        ]
+        req = fakes.HTTPRequest.blank(
+            '/security-services?all_tenants=1')
+        self.mock_object(policy,
+                         "check_policy",
+                         mock.Mock(side_effect=exception.NotAuthorized()))
+        self.assertRaises(exception.NotAuthorized, self.controller.index, req)
+        db.security_service_get_all_by_project.assert_not_called()
+        db.security_service_get_all.assert_not_called()
 
     @mock.patch.object(db, 'security_service_get_all', mock.Mock())
     def test_security_services_list_all_tenants_with_invalid_value(self):

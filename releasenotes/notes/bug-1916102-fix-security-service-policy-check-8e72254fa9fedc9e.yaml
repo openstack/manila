@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Decoupled the RBAC ``share:get_all_security_services`` from
+    ``context_is_admin``, potentially allowing the use of the
+    ``all_tenants`` query by non-administrators.
