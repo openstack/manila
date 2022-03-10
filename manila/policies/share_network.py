@@ -101,7 +101,9 @@ deprecated_share_network_reset_status = policy.DeprecatedRule(
 )
 deprecated_share_network_subnet_create_check = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'subnet_create_check',
-    check_str=base.RULE_DEFAULT
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since="Yoga"
 )
 
 
