@@ -89,7 +89,6 @@ class ServiceFlagsTestCase(test.TestCase):
         app = service.Service.create(host=host, binary=binary)
         app.start()
         app.stop()
-        app.wait()
         ref = db.service_get(context.get_admin_context(), app.service_id)
         db.service_destroy(context.get_admin_context(), app.service_id)
         self.assertFalse(ref['disabled'])
