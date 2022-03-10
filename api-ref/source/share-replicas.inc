@@ -155,6 +155,12 @@ Request
    - project_id: project_id_path
    - share_replica_id: share_replica_id_path
 
+Request example
+---------------
+
+.. literalinclude:: samples/share-replica-promote-request.json
+   :language: javascript
+
 
 Resync share replica
 ====================
@@ -186,6 +192,13 @@ Request
 
    - project_id: project_id_path
    - share_replica_id: share_replica_id_path
+
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-replica-resync-request.json
+   :language: javascript
 
 
 List share replicas
