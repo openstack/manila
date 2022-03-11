@@ -90,3 +90,17 @@
         - manila-tempest-plugin
       tempest_test_regex: ^manila_tempest_tests.tests.api
       tox_envlist: all
+
+- job:
+    name: manila-grenade-skip-level
+    description: |
+      Grenade job that skips a release, validating that deployers can skip
+      specific releases as prescribed by our process.
+    parent: manila-grenade
+    vars:
+      # Move this forward when master changes to a new skip-level-allowed
+      # target release. Right now, this is wallaby because master is yoga.
+      # When master is A, this should become yoga, and so forth.
+      grenade_from_branch: stable/wallaby
+      grenade_localrc:
+        NOVA_ENABLE_UPGRADE_WORKAROUND: True
