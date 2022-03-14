@@ -23,6 +23,7 @@ import re
 from oslo_concurrency import processutils as putils
 from oslo_log import log
 from oslo_utils import timeutils
+from oslo_utils import units
 import six
 
 from manila import exception
@@ -51,6 +52,8 @@ FLEXGROUP_STYLE_EXTENDED = 'flexgroup'
 FLEXVOL_STYLE_EXTENDED = 'flexvol'
 
 FLEXGROUP_DEFAULT_POOL_NAME = 'flexgroup_auto'
+
+ABSOLUTE_MAX_INODES = 2_040_109_451
 
 
 def validate_driver_instantiation(**kwargs):
@@ -200,6 +203,30 @@ def parse_flexgroup_pool_config(config, cluster_aggr_set={}, check=False):
             flexgroup_pools_map[pool_name] = aggr_name_list
 
     return flexgroup_pools_map
+
+
+def calculate_max_files(size, max_files_multiplier, max_files=None):
+    """Returns the max_files as integer or None.
+
+    :param size: volume size in gb
+    :param max_files_multiplier: config out of string extra spec
+    :param max_files: pass max_files option
+    """
+    if size is None or max_files_multiplier is None:
+        return None
+
+    if max_files is not None:
+        msg = _('Something went wrong: '
+                'validate_provisioning_options_for_share should have made '
+                'sure that max_files and max_files_multiplier cannot be set '
+                'at same time.')
+        raise exception.NetAppException(msg)
+
+    # size_gb * units.Mi = size_kib
+    # calculation based upon TR-4617
+    max_files = int(size * units.Mi * float(max_files_multiplier) / 33.6925)
+
+    return min(max_files, ABSOLUTE_MAX_INODES)
 
 
 class OpenStackInfo(object):

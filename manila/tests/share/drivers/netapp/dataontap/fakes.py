@@ -361,6 +361,7 @@ PROVISIONING_OPTIONS_STRING = {
     'snapshot_policy': 'default',
     'language': 'en-US',
     'max_files': 5000,
+    'max_files_multiplier': 4.2,
     'adaptive_qos_policy_group': None,
     'fpolicy_extensions_to_exclude': None,
     'fpolicy_extensions_to_include': None,
@@ -371,6 +372,7 @@ PROVISIONING_OPTIONS_STRING_MISSING_SPECS = {
     'snapshot_policy': 'default',
     'language': 'en-US',
     'max_files': None,
+    'max_files_multiplier': None,
     'adaptive_qos_policy_group': None,
     'fpolicy_extensions_to_exclude': None,
     'fpolicy_extensions_to_include': None,
@@ -381,6 +383,7 @@ PROVISIONING_OPTIONS_STRING_DEFAULT = {
     'snapshot_policy': None,
     'language': None,
     'max_files': None,
+    'max_files_multiplier': None,
     'adaptive_qos_policy_group': None,
     'fpolicy_extensions_to_exclude': None,
     'fpolicy_extensions_to_include': None,
@@ -395,6 +398,7 @@ STRING_EXTRA_SPEC = {
     'netapp:snapshot_policy': 'default',
     'netapp:language': 'en-US',
     'netapp:max_files': 5000,
+    'netapp:max_files_multiplier': 4.2,
     'netapp:adaptive_qos_policy_group': None,
 }
 

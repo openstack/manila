@@ -3485,7 +3485,10 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_set_volume_max_files(self):
 
-        self.mock_object(self.client, 'send_request')
+        api_response = netapp_api.NaElement(fake.VOLUME_MODIFY_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
 
         self.client.set_volume_max_files(fake.SHARE_NAME, fake.MAX_FILES)
 
