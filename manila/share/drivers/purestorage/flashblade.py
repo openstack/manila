@@ -94,9 +94,10 @@ class FlashBladeShareDriver(driver.ShareDriver):
        1.0.0 - Initial version
        2.0.0 - Xena release
        3.0.0 - Yoga release
+       4.0.0 - Zed release
     """
 
-    VERSION = "3.0"  # driver version
+    VERSION = "4.0"  # driver version
     USER_AGENT_BASE = "OpenStack Manila"
 
     def __init__(self, *args, **kwargs):
