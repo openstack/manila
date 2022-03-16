@@ -6,6 +6,7 @@
         "availability_zone": "nova",
         "replica_state": null,
         "created_at": "2015-09-07T08:51:34.000000",
+        "updated_at": "2015-09-07T08:52:20.000000",
         "cast_rules_to_readonly": false,
         "share_network_id": "713df749-aac0-4a54-af52-10f6c991e80c",
         "share_server_id": "ba11930a-bf1a-4aa7-bae4-a8dfbaa3cc73",

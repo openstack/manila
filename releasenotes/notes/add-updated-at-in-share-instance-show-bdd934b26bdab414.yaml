@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    In order to let user know when was the last time share instance updated, a
+    field ``updated_at`` is added in the response of share instance show API.

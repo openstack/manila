@@ -392,3 +392,7 @@ ____
   for an in-use share network. To distinguish this update support a new
   property called 'network_allocation_update_support' was added in the share
   network and share server.
+
+2.71
+----
+  Added 'updated_at' field in share instance show API output.

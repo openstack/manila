@@ -28,6 +28,7 @@ class ViewBuilder(common.ViewBuilder):
         "add_cast_rules_to_readonly_field",
         "add_progress_field",
         "translate_creating_from_snapshot_status",
+        "add_updated_at_field",
     ]
 
     def detail_list(self, request, instances):
@@ -106,3 +107,7 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("2.54")
     def add_progress_field(self, context, instance_dict, share_instance):
         instance_dict['progress'] = share_instance.get('progress')
+
+    @common.ViewBuilder.versioned_method("2.71")
+    def add_updated_at_field(self, context, instance_dict, share_instance):
+        instance_dict['updated_at'] = share_instance.get('updated_at')

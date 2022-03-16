@@ -56,6 +56,7 @@ Response parameters
    - progress: progress_share_instance
    - availability_zone: availability_zone
    - created_at: created_at
+   - updated_at: updated_at
    - replica_state: replica_state
    - export_location: export_location
    - export_locations: export_locations
@@ -116,6 +117,7 @@ Response parameters
    - progress: progress_share_instance
    - availability_zone: availability_zone
    - created_at: created_at
+   - updated_at: updated_at
    - replica_state: replica_state
    - export_location: export_location
    - export_locations: export_locations
