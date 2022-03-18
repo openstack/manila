@@ -108,16 +108,16 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             msg = _('Share server or vserver name not provided')
             raise exception.InvalidInput(reason=msg)
 
+        if not reexport:
+            if not self._client.vserver_exists(vserver):
+                raise exception.VserverNotFound(vserver=vserver)
+
         if backend_name:
             vserver_client = data_motion.get_client_for_backend(
                 backend_name, vserver
             )
         else:
             vserver_client = self._get_api_client(vserver)
-
-        if not reexport:
-            if not vserver_client.vserver_exists(vserver):
-                raise exception.VserverNotFound(vserver=vserver)
 
         return vserver, vserver_client
 

@@ -221,11 +221,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           self.library._get_vserver)
 
     def test_get_vserver_no_share_server_with_vserver_name(self):
+        self.library._client.vserver_exists.return_value = True
         fake_vserver_client = mock.Mock()
-
-        mock_vserver_exists = self.mock_object(
-            fake_vserver_client, 'vserver_exists',
-            mock.Mock(return_value=True))
         self.mock_object(self.library,
                          '_get_api_client',
                          mock.Mock(return_value=fake_vserver_client))
@@ -233,9 +230,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result_vserver, result_vserver_client = self.library._get_vserver(
             share_server=None, vserver_name=fake.VSERVER1)
 
-        mock_vserver_exists.assert_called_once_with(
-            fake.VSERVER1
-        )
         self.assertEqual(fake.VSERVER1, result_vserver)
         self.assertEqual(fake_vserver_client, result_vserver_client)
 
@@ -281,11 +275,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_get_vserver_not_found(self):
 
-        mock_client = mock.Mock()
-        mock_client.vserver_exists.return_value = False
-        self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=mock_client))
+        self.library._client.vserver_exists.return_value = False
         kwargs = {'share_server': fake.SHARE_SERVER}
 
         self.assertRaises(exception.VserverNotFound,
