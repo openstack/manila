@@ -7427,6 +7427,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(
             self.share_manager, '_get_share_server',
             mock.Mock(return_value=None))
+        self.mock_object(share_types, 'get_share_type', mock.Mock())
         self.mock_object(
             db, 'share_replicas_get_all_by_share',
             mock.Mock(return_value=replicas))

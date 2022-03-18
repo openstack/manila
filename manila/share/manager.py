@@ -4932,6 +4932,12 @@ class ShareManager(manager.SchedulerDependentManager):
         if share_instance_ref.get('share_type'):
             share_instance_ref['share_type_name'] = share_instance_ref.get(
                 'share_type').get('name')
+        else:
+            if share_instance.get('share_type_id'):
+                share_type = share_types.get_share_type(
+                    context, share_instance.get('share_type_id'))
+                share_instance_ref['share_type_name'] = share_type.get('name')
+
         if share_instance_ref['share_server']:
             share_instance_ref['share_server'] = self._get_share_server_dict(
                 context, share_instance_ref['share_server']
