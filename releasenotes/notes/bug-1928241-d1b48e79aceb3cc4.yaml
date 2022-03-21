@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes `bug #1928241 <https://bugs.launchpad.net/manila/+bug/1928241>`_.
+    The NetApp ONTAP driver will now avoid reusing a share server during
+    the share creation in case the share server does not span the selected pool.
