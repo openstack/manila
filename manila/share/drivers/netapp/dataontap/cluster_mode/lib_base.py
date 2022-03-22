@@ -1715,12 +1715,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def _deallocate_container(self, share_name, vserver_client,
                               force_delete=False):
         """Free share space."""
-        try:
-            vserver_client.unmount_volume(share_name, force=True)
-        except exception.NetAppException:
-            # offline job can proceed without unmounted volume
-            pass
-
+        vserver_client.unmount_volume(share_name, force=True)
         vserver_client.offline_volume(share_name)
         vserver_client.delete_volume(share_name, force_delete)
 
