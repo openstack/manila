@@ -3330,6 +3330,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         for retry in range(int(wait_seconds / retry_interval)):
             try:
                 self._unmount_volume(volume_name, force=force)
+                # ccloud wait in any case for unmount to finish
+                time.sleep(retry_interval)
                 LOG.debug('Volume %s unmounted.', volume_name)
                 return
             except netapp_api.NaApiError as e:
