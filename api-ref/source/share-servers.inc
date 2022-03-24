@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=============
 Share servers
 =============
 
@@ -41,7 +40,7 @@ The possible share servers statuses are:
 
 
 List share servers
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-servers
 
@@ -90,7 +89,7 @@ Response example
 
 
 Show share server
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-servers/{share_server_id}
 
@@ -145,7 +144,7 @@ Response example
 
 
 Show share server back end details
-==================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-servers/{share_server_id}/details
 
@@ -188,7 +187,7 @@ Response example
 
 
 Delete share server
-===================
+~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/share-servers/{share_server_id}
 
@@ -222,7 +221,7 @@ Request
 
 
 Manage share server (since API v2.49)
-=====================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method:: POST /v2/share-servers/manage
 
@@ -292,7 +291,7 @@ Response examples
 
 
 Unmanage share server (since API v2.49)
-=======================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method:: POST /v2/share-servers/{share_server_id}/action
 
@@ -344,7 +343,7 @@ There is no body content for the response.
 
 
 Reset status (since API v2.49)
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method:: POST /v2/share-servers/{share_server_id}/action
 

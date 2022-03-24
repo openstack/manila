@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===============================
 Scheduler Stats - Storage Pools
 ===============================
 
@@ -9,7 +8,7 @@ to the scheduler service.
 
 
 List back-end storage pools
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/scheduler-stats/pools?pool={pool_name}&host={host_name}&backend={backend_name}&capabilities={capabilities}&share_type={share_type}
 
@@ -59,7 +58,7 @@ Response example
 
 
 List back-end storage pools with details
-========================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/scheduler-stats/pools/detail?pool={pool_name}&host={host_name}&backend={backend_name}&capabilities={capabilities}&share_type={share_type}
 

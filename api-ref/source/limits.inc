@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-======
 Limits
 ======
 
@@ -35,7 +34,7 @@ GET requests that can be processed during a one-minute period.
 
 
 List share limits
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/limits
 

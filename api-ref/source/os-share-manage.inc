@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=======================================
 Manage and unmanage shares (DEPRECATED)
 =======================================
 
@@ -8,7 +7,7 @@ Allows bringing shared file systems under service management.
 
 
 Manage share (DEPRECATED)
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. warning::
 
@@ -100,7 +99,7 @@ Response example
 
 
 Unmanage share (DEPRECATED)
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. warning::
 

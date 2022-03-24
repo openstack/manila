@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===================================
 Share group types (since API v2.31)
 ===================================
 
@@ -37,7 +36,7 @@ share group type for the following purposes:
     version 2.55.
 
 List share group types
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-group-types
 
@@ -81,7 +80,7 @@ Response example
 
 
 List default share group types
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-group-types/default
 
@@ -130,7 +129,7 @@ Response example
 
 
 List share group types extra specs
-==================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-group-types/{share_group_type_id}/group_specs
 
@@ -175,7 +174,7 @@ Response example
 
 
 Create share group type
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-group-types
 
@@ -235,7 +234,7 @@ Response example
 
 
 Show share group type access details
-====================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-group-types/{share_group_type_id}/share_type_access
 
@@ -283,7 +282,7 @@ Response example
 
 
 Set extra spec for share group type
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-group-types/{share_group_type_id}/group_specs
 
@@ -336,7 +335,7 @@ Response example
 
 
 Unset an group spec
-===================
+~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/share-group-types/{share_group_type_id}/group-specs/{group_spec_key}
 
@@ -369,7 +368,7 @@ Request
 
 
 Add share group type access
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-group-types/{share_group_type_id}/action
 
@@ -412,7 +411,7 @@ Request example
 
 
 Remove share group type access
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-group-types/{share_group_type_id}/action
 
@@ -455,7 +454,7 @@ Request example
 
 
 Delete share group type
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/share-group-types/{share_group_type_id}
 

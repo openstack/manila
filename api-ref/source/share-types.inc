@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===========
 Share types
 ===========
 
@@ -91,7 +90,7 @@ other roles.
 
 
 List share types
-================
+~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/types?is_public={is_public}&extra-specs={extra-specs-as-dict}
 
@@ -134,7 +133,7 @@ Response example
 
 
 List default share types
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/types/default
 
@@ -182,7 +181,7 @@ Response example
 
 
 Show share type detail
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/types/{share_type_id}
 
@@ -231,7 +230,7 @@ Response Example
 
 
 List extra specs
-================
+~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/types/{share_type_id}/extra_specs
 
@@ -274,7 +273,7 @@ Response example
 
 
 Create share type
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/types
 
@@ -335,7 +334,7 @@ Response example
 
 
 Show share type access details
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/types/{share_type_id}/share_type_access
 
@@ -381,7 +380,7 @@ Response example
 
 
 Set extra spec for share type
-=============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/types/{share_type_id}/extra_specs
 
@@ -437,7 +436,7 @@ Response example
 
 
 Unset an extra spec
-===================
+~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/types/{share_type_id}/extra_specs/{extra-spec-key}
 
@@ -468,7 +467,7 @@ Request
 
 
 Add share type access
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/types/{share_type_id}/action
 
@@ -509,7 +508,7 @@ Request example
 
 
 Remove share type access
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/types/{share_type_id}/action
 
@@ -549,7 +548,7 @@ Request example
 
 
 Delete share type
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/types/{share_type_id}
 
@@ -579,7 +578,7 @@ Request
 
 
 Update share type (since API v2.50)
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/types/{share_type_id}
 

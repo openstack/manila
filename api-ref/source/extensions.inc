@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-==============
 API extensions
 ==============
 
@@ -8,7 +7,7 @@ Lists available Shared File Systems API extensions.
 
 
 List extensions
-===============
+~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/extensions
 

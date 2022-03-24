@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-==============================
 Share groups (since API v2.31)
 ==============================
 
@@ -23,7 +22,7 @@ share groups, and show information for delete a share group.
     fields were added to ``share_group`` object since version 2.34.
 
 List share groups
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share_groups
 
@@ -87,7 +86,7 @@ Response example
 
 
 Show share group details
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share_groups/{share_group_id}
 
@@ -146,7 +145,7 @@ Response example
 
 
 Create share group
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share_groups
 
@@ -218,7 +217,7 @@ Response example
 
 
 Reset share group state
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-groups/{share_group_id}/action
 
@@ -262,7 +261,7 @@ Request example
 
 
 Update share group
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/share-groups/{share_group_id}
 
@@ -330,7 +329,7 @@ Response example
 
 
 Delete share group
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/share-groups/{share_group_id}
 

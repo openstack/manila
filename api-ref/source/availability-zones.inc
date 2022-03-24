@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-==================
 Availability zones
 ==================
 
@@ -14,7 +13,7 @@ configured with.
 
 
 List availability zones
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/availability-zones
 

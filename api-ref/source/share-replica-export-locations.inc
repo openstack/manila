@@ -2,14 +2,13 @@
 
 .. _share_replica_export_locations:
 
-================================================
 Share replica export locations (since API v2.47)
 ================================================
 
 Set of APIs used to view export locations of share replicas.
 
 List export locations
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-replicas/{share_replica_id}/export-locations
 
@@ -58,7 +57,7 @@ Response example
 
 
 Show single export location
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-replicas/{share_replica_id}/export-locations/{export-location-id}
 

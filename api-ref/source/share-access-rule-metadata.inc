@@ -1,13 +1,12 @@
 .. -*- rst -*-
 
-============================================
 Share access rule metadata (since API v2.45)
 ============================================
 
 Updates, and unsets share access rule metadata.
 
 Update share access rule metadata
-==================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/share-access-rules/{access_id}/metadata
 
@@ -59,7 +58,7 @@ Response example
 
 
 Unset share access rule metadata
-================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/share-access-rules/{access_id}/metadata/{key}
 

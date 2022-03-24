@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-==============================
 User messages (since API 2.37)
 ==============================
 
@@ -18,7 +17,7 @@ creation request with different parameters.
 
 
 List user messages
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/messages
 
@@ -86,7 +85,7 @@ Response example
 
 
 Show user message details
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/messages/{message_id}
 
@@ -142,7 +141,7 @@ Response example
 
 
 Delete message
-==============
+~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/messages/{message_id}
 
