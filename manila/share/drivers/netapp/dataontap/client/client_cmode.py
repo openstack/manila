@@ -2142,14 +2142,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                                  dedup_enabled,
                                                  compression_enabled)
 
-        if options.get('max_files_multiplier') is not None:
-            max_files_multiplier = options.pop('max_files_multiplier')
-            max_files = na_utils.calculate_max_files(size_gb,
-                                                     max_files_multiplier,
-                                                     max_files)
+        if volume_type != 'dp':
+            if options.get('max_files_multiplier') is not None:
+                max_files_multiplier = options.pop('max_files_multiplier')
+                max_files = na_utils.calculate_max_files(size_gb,
+                                                         max_files_multiplier,
+                                                         max_files)
 
-        if max_files is not None:
-            self.set_volume_max_files(volume_name, max_files)
+            if max_files is not None:
+                self.set_volume_max_files(volume_name, max_files)
 
     @na_utils.trace
     def create_volume_async(self, aggregate_list, volume_name, size_gb,
