@@ -6018,7 +6018,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=fake.SHARE_NAME))
         self.mock_object(
             data_motion, 'get_backend_configuration',
-            mock.Mock(side_effect=exception.BadConfigurationException))
+            mock.Mock(side_effect=exception.BadConfigurationException(
+                reason='fake_reason')))
         self.mock_object(self.library, '_get_vserver')
         mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
         self.mock_object(share_utils, 'extract_host', mock.Mock(
@@ -6058,10 +6059,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     @ddt.data(
         utils.annotated(
             'dest_share_server_not_expected',
-            (('src_vserver', None), exception.InvalidParameterValue)),
+            (('src_vserver', None), exception.InvalidParameterValue(
+                err='fake_err'))),
         utils.annotated(
             'src_share_server_not_expected',
-            (exception.InvalidParameterValue, ('dest_vserver', None))))
+            (exception.InvalidParameterValue(err='fake_err'),
+                ('dest_vserver', None))))
     def test_migration_check_compatibility_errors(self, side_effects):
         self.library._have_cluster_creds = True
         mock_dm = mock.Mock()
