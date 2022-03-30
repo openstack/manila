@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp driver: driver can now delete the share server in error state that
+    had not been created on storage side. For more details, please refer to
+    `launchpad bug #1964592 <https://bugs.launchpad.net/manila/+bug/1964592>`_
