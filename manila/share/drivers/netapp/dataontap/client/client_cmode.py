@@ -338,7 +338,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             },
         }
         try:
-            result = self.send_iter_request('vserver-get-iter', api_args)
+            result = self.send_iter_request('vserver-get-iter', api_args,
+                                            enable_tunneling=False)
         except netapp_api.NaApiError as e:
             if e.code == netapp_api.EVSERVERNOTFOUND:
                 return False

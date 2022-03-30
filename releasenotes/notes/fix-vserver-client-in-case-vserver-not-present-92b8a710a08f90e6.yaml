@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp driver: When manila share server is in error state and backend
+    vserver is not created, but DB objects for share server and share are
+    present. In order to correctly perform share deletion, we should
+    check vserver existence with the cluster client instead of tunneling to
+    the vserver client. For more details, please refer to
+    `launchpad bug #1964592 <https://bugs.launchpad.net/manila/+bug/1964592>`_

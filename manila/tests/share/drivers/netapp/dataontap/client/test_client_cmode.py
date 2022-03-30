@@ -403,7 +403,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
         result = self.client.vserver_exists(fake.VSERVER_NAME)
 
         self.client.send_iter_request.assert_has_calls([
-            mock.call('vserver-get-iter', vserver_get_args)])
+            mock.call('vserver-get-iter', vserver_get_args,
+                      enable_tunneling=False)])
         self.assertTrue(result)
 
     def test_vserver_exists_not_found(self):
