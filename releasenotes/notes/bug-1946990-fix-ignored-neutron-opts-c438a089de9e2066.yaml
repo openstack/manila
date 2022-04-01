@@ -8,5 +8,5 @@ deprecations:
 fixes:
   - |
     `Bug #1946990 <https://bugs.launchpad.net/manila/+bug/1946990>`_: Fix
-    the ignored ``[neutorn] url`` option. Now the parameter overrides
+    the ignored ``[neutron] url`` option. Now the parameter overrides
     the endpoint url which Manila uses to access Neutron API.
