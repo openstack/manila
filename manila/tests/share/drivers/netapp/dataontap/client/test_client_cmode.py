@@ -3066,6 +3066,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume': fake.SHARE_NAME,
             'volume-type': 'rw',
             'junction-path': '/%s' % fake.SHARE_NAME,
+            'space-reserve': 'volume',
         }
 
         self.client.send_request.assert_called_once_with('volume-create',
@@ -3126,6 +3127,28 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.enable_dedup.assert_called_once_with(fake.SHARE_NAME)
         self.client.enable_compression.assert_called_once_with(fake.SHARE_NAME)
 
+    @ddt.data(True, False)
+    def test_create_volume_thin_provisioned(self, thin_provisioned):
+
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'update_volume_efficiency_attributes')
+
+        self.client.create_volume(
+            fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100,
+            thin_provisioned=thin_provisioned)
+
+        volume_create_args = {
+            'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
+            'size': '100g',
+            'volume': fake.SHARE_NAME,
+            'volume-type': 'rw',
+            'junction-path': '/%s' % fake.SHARE_NAME,
+            'space-reserve': ('none' if thin_provisioned else 'volume'),
+        }
+
+        self.client.send_request.assert_called_once_with('volume-create',
+                                                         volume_create_args)
+
     def test_create_encrypted_volume(self):
 
         self.mock_object(self.client, 'send_request')
@@ -3142,6 +3165,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume-type': 'rw',
             'junction-path': '/%s' % fake.SHARE_NAME,
             'encrypt': 'true',
+            'space-reserve': 'volume',
         }
 
         self.client.send_request.assert_called_once_with('volume-create',
@@ -3162,6 +3186,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume': fake.SHARE_NAME,
             'volume-type': 'rw',
             'junction-path': '/%s' % fake.SHARE_NAME,
+            'space-reserve': 'volume',
         }
 
         self.client.send_request.assert_called_once_with('volume-create',
