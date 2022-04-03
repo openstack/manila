@@ -1,0 +1,7 @@
+---
+deprecations:
+  - |
+    The ``[DEFAULT] use_forwarded_for`` parameter has been deprecated. Instead
+    of using this parameter, add the ``HTTPProxyToWSGI`` middleware to api
+    pipelines, and ``[oslo_middleware] enable_proxy_headers_parsing = True``
+    to manila.conf.
