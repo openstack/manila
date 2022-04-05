@@ -1200,6 +1200,7 @@ class API(base.Base):
                    'share_proto': share['share_proto']}
 
         try:
+            snapshot = None
             snapshot = self.db.share_snapshot_create(context, options)
             QUOTAS.commit(
                 context, reservations,
@@ -1207,7 +1208,9 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
-                    self.db.snapshot_delete(context, share['id'])
+                    if snapshot and snapshot['instance']:
+                        self.db.share_snapshot_instance_delete(
+                            context, snapshot['instance']['id'])
                 finally:
                     QUOTAS.rollback(
                         context, reservations,
