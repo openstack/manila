@@ -3413,25 +3413,124 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return result_info
 
     @na_utils.trace
+    def _get_snapmirror_destinations(self, source_path=None, dest_path=None,
+                                     source_vserver=None, source_volume=None,
+                                     dest_vserver=None, dest_volume=None,
+                                     desired_attributes=None):
+        """Gets one or more SnapMirror at source endpoint."""
+
+        snapmirror_info = self._build_snapmirror_request(
+            source_path, dest_path, source_vserver,
+            dest_vserver, source_volume, dest_volume)
+        api_args = {}
+        if snapmirror_info:
+            api_args['query'] = {
+                'snapmirror-destination-info': snapmirror_info
+            }
+        if desired_attributes:
+            api_args['desired-attributes'] = desired_attributes
+
+        result = self.send_iter_request('snapmirror-get-destination-iter',
+                                        api_args)
+        if not self._has_records(result):
+            return []
+        else:
+            return result.get_child_by_name('attributes-list').get_children()
+
+    @na_utils.trace
+    def get_snapmirror_destinations(self, source_path=None, dest_path=None,
+                                    source_vserver=None, dest_vserver=None,
+                                    source_volume=None, dest_volume=None,
+                                    desired_attributes=None):
+        """Gets one or more SnapMirror relationships in the source endpoint.
+
+        Either the source or destination info may be omitted.
+        Desired attributes should be a flat list of attribute names.
+        """
+        self._ensure_snapmirror_v2()
+
+        if desired_attributes is not None:
+            desired_attributes = {
+                'snapmirror-destination-info': {
+                    attr: None for attr in desired_attributes},
+            }
+
+        result = self._get_snapmirror_destinations(
+            source_path=source_path,
+            dest_path=dest_path,
+            source_vserver=source_vserver,
+            source_volume=source_volume,
+            dest_vserver=dest_vserver,
+            dest_volume=dest_volume,
+            desired_attributes=desired_attributes)
+
+        snapmirrors = []
+
+        for snapmirror_info in result:
+            snapmirror = {}
+            for child in snapmirror_info.get_children():
+                name = self._strip_xml_namespace(child.get_name())
+                snapmirror[name] = child.get_content()
+            snapmirrors.append(snapmirror)
+
+        return snapmirrors
+
+    def _build_snapmirror_request(self, source_path=None, dest_path=None,
+                                  source_vserver=None, dest_vserver=None,
+                                  source_volume=None, dest_volume=None):
+        """Build a default SnapMirror request."""
+
+        req_args = {}
+        if source_path:
+            req_args['source-location'] = source_path
+        if dest_path:
+            req_args['destination-location'] = dest_path
+        if source_vserver:
+            req_args['source-vserver'] = source_vserver
+        if source_volume:
+            req_args['source-volume'] = source_volume
+        if dest_vserver:
+            req_args['destination-vserver'] = dest_vserver
+        if dest_volume:
+            req_args['destination-volume'] = dest_volume
+
+        return req_args
+
+    @na_utils.trace
     def release_snapmirror(self, source_vserver, source_volume,
                            destination_vserver, destination_volume,
                            relationship_info_only=False):
         """Removes a SnapMirror relationship on the source endpoint."""
-        self._ensure_snapmirror_v2()
 
-        api_args = {
-            'query': {
-                'snapmirror-destination-info': {
-                    'source-volume': source_volume,
-                    'source-vserver': source_vserver,
-                    'destination-volume': destination_volume,
-                    'destination-vserver': destination_vserver,
-                    'relationship-info-only': ('true' if relationship_info_only
-                                               else 'false'),
-                }
-            }
-        }
-        self.send_request('snapmirror-release-iter', api_args)
+        self._ensure_snapmirror_v2()
+        snapmirror_destinations_list = self.get_snapmirror_destinations(
+            source_vserver=source_vserver,
+            dest_vserver=destination_vserver,
+            source_volume=source_volume,
+            dest_volume=destination_volume,
+            desired_attributes=['relationship-id'])
+
+        if len(snapmirror_destinations_list) > 1:
+            msg = ("Expected snapmirror relationship to be unique. "
+                   "List returned: %s." % snapmirror_destinations_list)
+            raise exception.NetAppException(msg)
+
+        api_args = self._build_snapmirror_request(
+            source_vserver=source_vserver, dest_vserver=destination_vserver,
+            source_volume=source_volume, dest_volume=destination_volume)
+        api_args['relationship-info-only'] = (
+            'true' if relationship_info_only else 'false')
+
+        # NOTE(nahimsouza): This verification is needed because an empty list
+        # is returned in snapmirror_destinations_list when a single share is
+        # created with only one replica and this replica is deleted, thus there
+        # will be no relationship-id in that case.
+        if len(snapmirror_destinations_list) == 1:
+            api_args['relationship-id'] = (
+                snapmirror_destinations_list[0]['relationship-id'])
+
+        self.send_request('snapmirror-release', api_args,
+                          enable_tunneling=True)
 
     @na_utils.trace
     def quiesce_snapmirror(self, source_vserver, source_volume,
