@@ -221,10 +221,7 @@ class API(base.Base):
                az_request_multiple_subnet_support_map=None):
         """Create new share."""
 
-        try:
-            api_common._check_metadata_properties(metadata)
-        except (exception.InvalidMetadata, exception.InvalidMetadataSize):
-            raise
+        api_common._check_metadata_properties(metadata)
 
         if snapshot_id is not None:
             snapshot = self.get_snapshot(context, snapshot_id)
@@ -2091,10 +2088,7 @@ class API(base.Base):
             msg = _("Invalid share access level: %s.") % access_level
             raise exception.InvalidShareAccess(reason=msg)
 
-        try:
-            api_common._check_metadata_properties(metadata)
-        except (exception.InvalidMetadata, exception.InvalidMetadataSize):
-            raise
+        api_common._check_metadata_properties(metadata)
         access_exists = self.db.share_access_check_for_existing_access(
             ctx, share['id'], access_type, access_to)
 

@@ -39,7 +39,6 @@ class MetadataAPITest(test.TestCase):
             metadata.MetadataController())
         self.controller.resource_name = 'share'
         self.admin_context = context.RequestContext('admin', 'fake', True)
-        self.member_context = context.RequestContext('fake', 'fake')
         self.mock_policy_check = self.mock_object(
             policy, 'check_policy', mock.Mock(return_value=True))
         self.resource = db_utils.create_share(size=1)
@@ -59,7 +58,7 @@ class MetadataAPITest(test.TestCase):
               ({'metadata': {'test_key1': 'test_v1'}}, 'test_key1'),
               ({'metadata': {'key1': 'v2'}}, 'key1'))
     @ddt.unpack
-    def test_update_metadata_item(self, body, key):
+    def test_update_get_metadata_item(self, body, key):
         url = self._get_request()
         update = self.controller._update_metadata_item(
             url, self.resource['id'], body=body, key=key)
@@ -69,6 +68,10 @@ class MetadataAPITest(test.TestCase):
 
         self.assertEqual(1, len(get))
         self.assertEqual(body['metadata'], get['metadata'])
+
+        get_item = self.controller._show_metadata(url, self.resource['id'],
+                                                  key=key)
+        self.assertEqual({'meta': body['metadata']}, get_item)
 
     @ddt.data({'metadata': {'key1': 'v1', 'key2': 'v2'}},
               {'metadata': {'test_key1': 'test_v1'}},
