@@ -3492,7 +3492,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          'send_request',
                          mock.Mock(return_value=api_response))
 
-        self.client.set_volume_max_files(fake.SHARE_NAME, fake.MAX_FILES)
+        self.client.set_volume_max_files(fake.SHARE_NAME, fake.MAX_FILES,
+                                         retry_allocated=False,
+                                         allow_decrease=True)
 
         volume_modify_iter_api_args = {
             'query': {

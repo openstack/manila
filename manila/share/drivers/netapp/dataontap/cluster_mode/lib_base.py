@@ -2116,8 +2116,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'max_files_multiplier')
             max_files = na_utils.calculate_max_files(volume_size,
                                                      max_files_multiplier)
-            vserver_client.set_volume_max_files(share_name, max_files,
-                                                retry_allocated=True)
+            vserver_client.set_volume_max_files(share_name, max_files)
 
         # Save original volume info to private storage.
         original_data = {
@@ -2467,7 +2466,7 @@ class NetAppCmodeFileStorageLibrary(object):
             max_files = na_utils.calculate_max_files(new_size,
                                                      max_files_multiplier)
             vserver_client.set_volume_max_files(share_name, max_files,
-                                                retry_allocated=True)
+                                                allow_decrease=True)
 
     @na_utils.trace
     def _update_access(self, helper, share, share_name, access_rules):

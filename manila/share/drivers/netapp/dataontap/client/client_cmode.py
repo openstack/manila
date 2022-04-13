@@ -2337,8 +2337,31 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def set_volume_max_files(self, volume_name, max_files,
-                             retry_allocated=False):
+                             retry_allocated=True, allow_decrease=False):
         """Set flexvol file limit."""
+        if not allow_decrease:
+            alloc_files = self.get_volume_allocated_files(volume_name)
+            current_max_files = alloc_files['max']
+            if current_max_files is None:
+                # volume is most likely being deleted / offline
+                return
+            """
+            '13', because netapp is setting less than you request:
+            vol modify -vserver ma_1 -volume share_1 -files 149771
+
+            vol show share_1 -fields files
+            vserver volume  files
+            ------- ------- ------
+            ma_1    share_1 149758
+            """
+            if (int(current_max_files) + 13) >= int(max_files):
+                """
+                Do nothing in case max files is already set to a value
+                that is higher or the same like the one requested.
+                Higher can happen due to manual overwrite on the backend
+                """
+                return
+
         api_args = {
             'query': {
                 'volume-attributes': {
@@ -2373,13 +2396,20 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                         if new_max_files == alloc_files['max']:
                             return
 
-                        msg = _('Set higher max files %(new_max_files)s '
-                                'on %(vol)s. The current allocated inodes '
-                                'are larger than requested %(max_files)s.')
+                        msg = _('Set current allocated inodes to max files '
+                                '%(new_max_files)s on %(vol)s. Requested was '
+                                '%(max_files)s.')
                         msg_args = {'vol': volume_name,
                                     'max_files': max_files,
                                     'new_max_files': new_max_files}
-                        LOG.info(msg, msg_args)
+
+                        if int(new_max_files) <= max_files:
+                            raise netapp_api.NaApiError(
+                                error_code,
+                                errors[0].get_child_content('error-message'))
+                        else:
+                            LOG.info(msg, msg_args)
+
                         self.set_volume_max_files(volume_name, new_max_files,
                                                   retry_allocated=False)
                 else:
