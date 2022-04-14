@@ -126,7 +126,7 @@ cephfs_opts = [
                     "Ganesha server host. This is not required if "
                     "'cephfs_ganesha_path_to_private_key' is configured."),
     cfg.ListOpt('cephfs_ganesha_export_ips',
-                default='',
+                default=[],
                 help="List of IPs to export shares. If not supplied, "
                      "then the value of 'cephfs_ganesha_server_ip' "
                      "will be used to construct share export locations."),

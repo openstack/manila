@@ -1004,7 +1004,8 @@ class NFSProtocolHelperTestCase(test.TestCase):
         fake_conf = configuration.Configuration(None)
         conf_args_list = [
             ('cephfs_ganesha_server_ip', '1.2.3.4'),
-            ('cephfs_ganesha_export_ips', '127.0.0.1,fd3f:c057:1192:1::1,::1')]
+            ('cephfs_ganesha_export_ips',
+             ['127.0.0.1', 'fd3f:c057:1192:1::1', '::1'])]
         for args in conf_args_list:
             fake_conf.set_default(*args)
 
