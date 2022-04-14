@@ -709,7 +709,8 @@ class API(base.Base):
 
         all_replicas = self.db.share_replicas_get_all_by_share(
             context, share['id'])
-        all_hosts = [r['host'] for r in all_replicas]
+        all_hosts = [share_utils.extract_host(r['host'], level='host')
+                     for r in all_replicas]
 
         request_spec['active_replica_host'] = active_replica['host']
         request_spec['all_replica_hosts'] = ','.join(all_hosts)

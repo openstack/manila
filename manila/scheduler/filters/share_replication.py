@@ -16,6 +16,7 @@
 from oslo_log import log
 
 from manila.scheduler.filters import base_host
+from manila.share import utils as share_utils
 
 LOG = log.getLogger(__name__)
 
@@ -76,10 +77,11 @@ class ShareReplicationFilter(base_host.BaseHostFilter):
             return False
 
         # Check host string for already created replicas
-        if host_state.host in existing_replica_hosts:
+        host_name = share_utils.extract_host(host_state.host, level='host')
+        if host_name in existing_replica_hosts:
             msg = ("Skipping host %s since it already hosts a replica for "
                    "this share.")
-            LOG.debug(msg, host_state.host)
+            LOG.debug(msg, host_name)
             return False
 
         return True
