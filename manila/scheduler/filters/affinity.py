@@ -18,6 +18,7 @@ from oslo_log import log
 from manila import exception
 from manila.scheduler.filters import base_host
 from manila.share import api
+from manila.share import utils as share_utils
 
 LOG = log.getLogger(__name__)
 
@@ -100,17 +101,6 @@ class AffinityBaseFilter(base_host.BaseHostFilter):
 
         return filter_properties
 
-    def _get_host_name_from_state(self, host_state_host):
-        """Returns the actual host_name from the host_state"""
-        host_name = ""
-        if host_state_host:
-            full_name = host_state_host.split('@')
-            if len(full_name) == 2:
-                # we can relibly say that first is the hostname
-                host_name = full_name[0]
-
-        return host_name
-
 
 class AffinityFilter(AffinityBaseFilter):
     _filter_type = api.AFFINITY_HINT
@@ -118,11 +108,12 @@ class AffinityFilter(AffinityBaseFilter):
     def host_passes(self, host_state, filter_properties):
         allowed_hosts = \
             filter_properties['scheduler_hints'][self._filter_type]
-        host_name = self._get_host_name_from_state(host_state.host)
+        host_name = share_utils.extract_host(host_state.host, level='host')
 
         allowed_host_names = set()
         for allowed_host in allowed_hosts:
-            allowed_host_name = self._get_host_name_from_state(allowed_host)
+            allowed_host_name = share_utils.extract_host(allowed_host,
+                                                         level='host')
             allowed_host_names.add(allowed_host_name)
 
         if len(allowed_host_names) > 1:
@@ -141,10 +132,11 @@ class AntiAffinityFilter(AffinityBaseFilter):
     def host_passes(self, host_state, filter_properties):
         forbidden_hosts = \
             filter_properties['scheduler_hints'][self._filter_type]
-        host_name = self._get_host_name_from_state(host_state.host)
+        host_name = share_utils.extract_host(host_state.host, level='host')
 
         for forbidden_host in forbidden_hosts:
-            if host_name in self._get_host_name_from_state(forbidden_host):
+            if host_name in share_utils.extract_host(forbidden_host,
+                                                     level='host'):
                 # do not pass the host if there is a host_name match:
                 return None
 
