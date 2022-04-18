@@ -52,7 +52,7 @@ resources including IP addresses and network interfaces.
 What network plug-ins are available?
 ------------------------------------
 
-There are two network plug-ins and three python classes in the
+There are three network plug-ins and three python classes in the
 Shared File Systems service:
 
 #. Network plug-in for using the OpenStack Networking service. It allows to use
@@ -70,6 +70,13 @@ Shared File Systems service:
       This is a simplification of the previous case. It accepts values for
       ``neutron_net_id`` and ``neutron_subnet_id`` from the ``manila.conf``
       configuration file and uses one network for all shares.
+
+   c) ``manila.network.neutron.neutron_network_plugin.NeutronBindNetworkPlugin``.
+      This driver waits for active binding and fails if a Neutron port can't be
+      bound or an error occurs. This plugin is useful for agent based binding
+      (like OVS with docker driver) and fabric binding where real hardware
+      reconfiguration is taking place. The existing
+      ``NeutronBindSingleNetworkPlugin`` is a combination of `1b` and `1c`.
 
    When only a single network is needed, the NeutronSingleNetworkPlugin (1.b)
    is a simple solution. Otherwise NeutronNetworkPlugin (1.a) should be chosen.
