@@ -32,7 +32,9 @@ class CapacityFilter(base_host.BaseHostFilter):
 
     def host_passes(self, host_state, filter_properties):
         """Return True if host has sufficient capacity."""
-        share_size = filter_properties.get('size', 0)
+        size_increase = filter_properties.get('size_increase')
+        share_size = size_increase if size_increase else filter_properties.get(
+            'size', 0)
 
         if host_state.free_capacity_gb is None:
             # Fail Safe
