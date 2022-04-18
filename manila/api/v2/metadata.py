@@ -199,7 +199,7 @@ class MetadataController(object):
             db, self.resource_metadata_get_item[self.resource_name])
         item = get_metadata_item_method(context, resource_id, key)
 
-        return {'metadata': {key: item}}
+        return {'meta': {key: item[key]}}
 
     @wsgi.response(200)
     def _delete_metadata(self, req, resource_id, key, parent_id=None):

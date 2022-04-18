@@ -1,0 +1,7 @@
+---
+
+fixes:
+  - |
+    Fixes regression for show_metadata and the response dictionary. The
+    correct response is: {meta: {'key': 'value}}.
+
