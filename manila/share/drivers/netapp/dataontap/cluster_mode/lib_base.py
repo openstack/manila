@@ -3954,7 +3954,9 @@ class NetAppCmodeFileStorageLibrary(object):
                         share_server=share_server
                     )
                 }
-            except (exception.NetAppException, netapp_api.NaApiError) as e:
+            except (exception.NetAppException,
+                    netapp_api.NaApiError,
+                    exception.StorageResourceNotFound) as e:
                 err_msg = e.message
                 msg_args = {
                     'share': share['id'],
@@ -3963,7 +3965,8 @@ class NetAppCmodeFileStorageLibrary(object):
                 msg = _('Failed to ensure share %(share)s: '
                         '%(exception)s. ') % msg_args
 
-                if err_msg.startswith('Could not find export policy'):
+                if (err_msg.startswith('Could not find') or
+                        err_msg.endswith('not found.')):
                     LOG.debug(msg)
                 else:
                     LOG.warning(msg)
