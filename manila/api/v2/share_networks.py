@@ -598,7 +598,7 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
         data = body['add_security_service_check']
         try:
             security_service = db_api.security_service_get(
-                context, data['security_service_id'])
+                context, data['security_service_id'], project_only=True)
         except KeyError:
             msg = "Malformed request body."
             raise exc.HTTPBadRequest(explanation=msg)
