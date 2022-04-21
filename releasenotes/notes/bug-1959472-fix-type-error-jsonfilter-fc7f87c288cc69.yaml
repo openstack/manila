@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fix the bug of TypeError with JsonFilter. If the scheduler_hints
+    value is None, the TypeError exception may occur when creating share
+    with JsonFilter. The TypeError exception is added to solve this problem.
