@@ -32,6 +32,10 @@ from manila.wsgi import common as base_wsgi
 use_forwarded_for_opt = cfg.BoolOpt(
     'use_forwarded_for',
     default=False,
+    deprecated_for_removal=True,
+    deprecated_reason='This feature is duplicate of the HTTPProxyToWSGI '
+                      'middleware of oslo.middleware.',
+    deprecated_since='Zed',
     help='Treat X-Forwarded-For as the canonical remote address. '
          'Only enable this if you have a sanitizing proxy.')
 
