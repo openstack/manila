@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1964696 <https://bugs.launchpad.net/manila/+bug/1964696>`_: Fix
+    calling the GaneshaNASHelper `update_access` method from the gluster
+    GaneshaNFSHelper with the wrong signature.
+
