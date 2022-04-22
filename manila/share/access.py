@@ -169,6 +169,14 @@ class ShareInstanceAccessDatabaseMixin(object):
                     self.db.share_instance_access_update(
                         context, rule['access_id'], share_instance_id,
                         rule_updates)
+                    if mapping_state == constants.ACCESS_STATE_ERROR:
+                        msg = ("Access rule %(rule_id)s (allowing access to "
+                               "share instance %(si)s) updated from error.")
+                        msg_payload = {
+                            'si': share_instance_id,
+                            'rule_id': rule['access_id'],
+                        }
+                        LOG.debug(msg, msg_payload)
 
             # Refresh the rules after the updates
             rules_to_get = {
@@ -587,6 +595,8 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
 
     def reset_applying_rules(self, context, share_instance_id):
         conditional_updates = {
+            constants.ACCESS_STATE_ERROR:
+                constants.ACCESS_STATE_QUEUED_TO_APPLY,
             constants.ACCESS_STATE_APPLYING:
                 constants.ACCESS_STATE_QUEUED_TO_APPLY,
             constants.ACCESS_STATE_DENYING:
