@@ -132,7 +132,7 @@ Response example
 List share group types extra specs
 ==================================
 
-.. rest_method::  GET /v2/share-group-types/{share_group_type_id}/group_specs
+.. rest_method::  GET /v2/share-group-types/{share_group_type_id}/group-specs
 
 .. versionadded:: 2.31
 
@@ -237,7 +237,7 @@ Response example
 Show share group type access details
 ====================================
 
-.. rest_method::  GET /v2/share-group-types/{share_group_type_id}/share_type_access
+.. rest_method::  GET /v2/share-group-types/{share_group_type_id}/access
 
 .. versionadded:: 2.31
 
@@ -285,7 +285,7 @@ Response example
 Set extra spec for share group type
 ===================================
 
-.. rest_method::  POST /v2/share-group-types/{share_group_type_id}/group_specs
+.. rest_method::  POST /v2/share-group-types/{share_group_type_id}/group-specs
 
 .. versionadded:: 2.31
 
