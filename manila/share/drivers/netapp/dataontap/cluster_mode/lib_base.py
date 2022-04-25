@@ -218,7 +218,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def check_for_setup_error(self):
         self._start_periodic_tasks()
 
-    def _get_vserver(self, share_server=None, reexport=False):
+    def _get_vserver(self, share_server=None):
         raise NotImplementedError()
 
     @na_utils.trace
@@ -2523,8 +2523,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
         Returns updated export locations info.
         """
-        vserver, vserver_client = self._get_vserver(share_server=share_server,
-                                                    reexport=True)
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_backend_share_name(share['id'])
         aggregate_name = share_utils.extract_host(share['host'], level='pool')
         if share_comment is None:
