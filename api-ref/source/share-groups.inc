@@ -24,7 +24,7 @@ share groups, and show information for delete a share group.
 List share groups
 ~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v2/share_groups
+.. rest_method::  GET /v2/share-groups
 
 .. versionadded:: 2.31
 
@@ -84,11 +84,83 @@ Response example
 .. literalinclude:: samples/share-groups-list-response.json
    :language: javascript
 
+List share groups with details
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  GET /v2/share-groups/detail
+
+.. versionadded:: 2.31
+
+Lists all share groups with details.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - all_tenants: all_tenants_query
+   - name: name_query
+   - description: description_query
+   - status: share_group_status_query
+   - share_server_id: share_server_id_query
+   - snapshot_id: snapshot_id_query
+   - host: backend_host_query
+   - share_network_id: share_network_id_query
+   - share_group_type_id: share_group_type_id_query
+   - share_group_snapshot_id: source_share_group_snapshot_id_query
+   - share_types: share_types_query
+   - limit: limit_query
+   - offset: offset
+   - sort_key: sort_key
+   - sort_dir: sort_dir
+   - name~: name_inexact_query
+   - description~: description_inexact_query
+
+Response parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - id: share_group_id
+   - name: name
+   - created_at: created_at
+   - status: share_group_status
+   - description: description
+   - project_id: project_id
+   - host: backend_host
+   - share_group_type_id: share_group_type_id_required
+   - source_share_group_snapshot_id: source_share_group_snapshot_id_response
+   - share_network_id: share_network_id
+   - share_types: share_types_1
+   - links: share_group_links
+   - availability_zone: availability_zone_id_share_group
+   - consistent_snapshot_support: consistent_snapshot_support
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-groups-list-detailed-response.json
+   :language: javascript
+
 
 Show share group details
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  GET /v2/share_groups/{share_group_id}
+.. rest_method::  GET /v2/share-groups/{share_group_id}
 
 .. versionadded:: 2.31
 
@@ -147,7 +219,7 @@ Response example
 Create share group
 ~~~~~~~~~~~~~~~~~~
 
-.. rest_method::  POST /v2/share_groups
+.. rest_method::  POST /v2/share-groups
 
 .. versionadded:: 2.31
 
