@@ -25,7 +25,9 @@ from lxml import etree
 from oslo_log import log
 from oslo_serialization import jsonutils
 import requests
+from requests.adapters import HTTPAdapter
 from requests import auth
+from requests.packages.urllib3.util.retry import Retry
 import six
 
 from manila import exception
@@ -228,6 +230,11 @@ class BaseClient(object):
             auth_handler = self._create_certificate_auth_handler()
 
         self._session = requests.Session()
+
+        max_retries = Retry(total=5, connect=5, read=2, backoff_factor=1)
+        adapter = HTTPAdapter(max_retries=max_retries)
+        self._session.mount('%s://' % self._protocol, adapter)
+
         self._session.auth = auth_handler
         self._session.verify = self._ssl_verify
         headers = self._build_headers()
