@@ -51,6 +51,8 @@ from manila import quota
 from manila.share import access
 from manila.share import api
 from manila.share import configuration
+# ccloud: try to avoid pulling in driver code
+from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share import drivers_private_data
 from manila.share import migration
 from manila.share import rpcapi as share_rpcapi
@@ -581,18 +583,29 @@ class ShareManager(manager.SchedulerDependentManager):
 
             if share_instance['access_rules_status'] != (
                     constants.STATUS_ACTIVE):
+                err_msg = ("'%(error_n)s' error occurred while updating "
+                           "access rules for share instance %(s_id)s.")
                 try:
                     # Cast any existing 'applying' rules to 'new'
                     self.access_helper.reset_applying_rules(
                         ctxt, share_instance['id'])
                     self.access_helper.update_access_rules(
                         ctxt, share_instance['id'], share_server=share_server)
+                except netapp_api.NaApiError as e:
+                    failed_sid = 'Failed to resolve the security identifier'
+                    if (e.code == netapp_api.EAPIERROR and
+                            failed_sid in e.message):
+                        LOG.warning(err_msg, {
+                            'error_n': failed_sid,
+                            's_id': share_instance['id']})
+                    else:
+                        LOG.error(err_msg, {
+                            'error_n': 'NaApiError',
+                            's_id': share_instance['id']})
                 except Exception:
-                    LOG.exception(
-                        ("Unexpected error occurred while updating access "
-                         "rules for share instance %(s_id)s."),
-                        {'s_id': share_instance['id']},
-                    )
+                    LOG.exception(err_msg, {
+                        'error_n': 'Unexpected',
+                        's_id': share_instance['id']})
 
             snapshot_instances = (
                 self.db.share_snapshot_instance_get_all_with_filters(

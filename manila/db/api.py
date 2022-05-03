@@ -484,11 +484,13 @@ def share_access_get_all_for_share(context, share_id, filters=None):
 
 
 def share_access_get_all_for_instance(context, instance_id, filters=None,
-                                      with_share_access_data=True):
+                                      with_share_access_data=True,
+                                      updated_before=None):
     """Get all access rules related to a certain share instance."""
     return IMPL.share_access_get_all_for_instance(
         context, instance_id, filters=filters,
-        with_share_access_data=with_share_access_data)
+        with_share_access_data=with_share_access_data,
+        updated_before=updated_before)
 
 
 def share_access_get_all_by_type_and_access(context, share_id, access_type,

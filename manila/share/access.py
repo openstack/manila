@@ -14,9 +14,11 @@
 #    under the License.
 
 import copy
+import datetime
 import ipaddress
 
 from oslo_log import log
+from oslo_utils import timeutils
 
 from manila.common import constants
 from manila.i18n import _
@@ -117,7 +119,8 @@ class ShareInstanceAccessDatabaseMixin(object):
     def get_and_update_share_instance_access_rules(self, context,
                                                    filters=None, updates=None,
                                                    conditionally_change=None,
-                                                   share_instance_id=None):
+                                                   share_instance_id=None,
+                                                   updated_before=None):
         """Get and conditionally update all access rules of a share instance.
 
         :param updates: Set this parameter to a dictionary of key:value
@@ -151,7 +154,8 @@ class ShareInstanceAccessDatabaseMixin(object):
 
         """
         instance_rules = self.db.share_access_get_all_for_instance(
-            context, share_instance_id, filters=filters)
+            context, share_instance_id, filters=filters,
+            updated_before=updated_before)
 
         if instance_rules and (updates or conditionally_change):
             if not updates:
@@ -602,6 +606,10 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
             constants.ACCESS_STATE_DENYING:
                 constants.ACCESS_STATE_QUEUED_TO_DENY,
         }
+
+        updated_before_7_days = timeutils.utcnow() - datetime.timedelta(days=7)
+
         self.get_and_update_share_instance_access_rules(
             context, share_instance_id=share_instance_id,
-            conditionally_change=conditional_updates)
+            conditionally_change=conditional_updates,
+            updated_before=updated_before_7_days)
