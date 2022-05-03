@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Sometimes NetApp API call fails due to name resolution(DNS) issue. In
+    such case, a client will now make 5 retries on connect and 2 on read
+    calls. Also, the connection retry will be visible in the log. For more
+    details, please refer to
+    `launchpad bug #1971542 <https://bugs.launchpad.net/manila/+bug/1971542>`_
