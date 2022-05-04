@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The CephFS driver no longer fails to delete access rules that were never
+    applied or were missing from the back end storage. See `LP #1971530
+    <https://launchpad.net/bugs/1971530>`_ for more details.
