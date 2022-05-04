@@ -846,7 +846,16 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
         if share["share_group_id"] is not None:
             argdict.update({"group_name": share["share_group_id"]})
 
-        rados_command(self.rados_client, "fs subvolume deauthorize", argdict)
+        try:
+            rados_command(self.rados_client,
+                          "fs subvolume deauthorize",
+                          argdict)
+        except exception.ShareBackendException as e:
+            if "doesn't exist" in e.msg.lower():
+                LOG.warning(f"%{access['access_to']} did not have access to "
+                            f"share {share['id']}.")
+                return
+            raise e
         rados_command(self.rados_client, "fs subvolume evict", argdict)
 
     def update_access(self, context, share, access_rules, add_rules,
