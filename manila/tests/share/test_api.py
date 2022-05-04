@@ -966,6 +966,7 @@ class ShareAPITestCase(test.TestCase):
         db_api.share_instance_create.assert_called_once_with(
             self.context, share['id'],
             {
+                'id': None,
                 'share_network_id': None,
                 'status': constants.STATUS_CREATING,
                 'scheduled_at': self.dt_utc,
@@ -3839,7 +3840,8 @@ class ShareAPITestCase(test.TestCase):
              self.context, share, availability_zone=None,
              share_network_id=share_network_id, share_type_id=share_type['id'],
              availability_zones=expected_azs,
-             cast_rules_to_readonly=cast_rules_to_readonly))
+             cast_rules_to_readonly=cast_rules_to_readonly,
+             share_instance_id=None))
         db_api.share_replica_update.assert_called_once()
         mock_snapshot_get_all_call.assert_called_once()
         mock_sched_rpcapi_call.assert_called_once()
@@ -3966,7 +3968,8 @@ class ShareAPITestCase(test.TestCase):
              self.context, share, availability_zone='FAKE_AZ',
              share_network_id=share_network_id, share_type_id=share_type['id'],
              availability_zones=expected_azs,
-             cast_rules_to_readonly=cast_rules_to_readonly))
+             cast_rules_to_readonly=cast_rules_to_readonly,
+             share_instance_id=None))
 
     def test_delete_last_active_replica(self):
         fake_replica = fakes.fake_replica(
@@ -4203,7 +4206,8 @@ class ShareAPITestCase(test.TestCase):
                                  share_network_id=share_network_id,
                                  share_type_id=share_type['id'],
                                  availability_zones=expected_azs,
-                                 cast_rules_to_readonly=False))
+                                 cast_rules_to_readonly=False,
+                                 share_instance_id=None))
 
     def test_migration_complete(self):
 

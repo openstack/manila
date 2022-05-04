@@ -1840,6 +1840,69 @@ def share_instances_get_all_by_share_group_id(context, share_group_id):
     return instances
 
 
+@require_admin_context
+def share_instance_purge(context, instance_id):
+    session = get_session()
+    with session.begin():
+        share_instance_export_locations = model_query(
+            context,
+            models.ShareInstanceExportLocations,
+            session=session
+        ).filter(
+            models.ShareInstanceExportLocations.share_instance_id ==
+            instance_id).all()
+
+        for export_location in share_instance_export_locations:
+            share_instance_export_locations_metadata = model_query(
+                context,
+                models.ShareInstanceExportLocationsMetadata,
+                session=session,
+            ).filter(
+                models.ShareInstanceExportLocationsMetadata.export_location_id
+                == export_location.id,
+            ).all()
+
+            for si_el_metadatum in share_instance_export_locations_metadata:
+                session.delete(si_el_metadatum)
+            session.delete(export_location)
+
+        share_instance_access_mappings = model_query(
+            context,
+            models.ShareInstanceAccessMapping,
+            session=session
+        ).filter(
+            models.ShareInstanceAccessMapping.share_instance_id ==
+            instance_id).all()
+
+        for access_mapping in share_instance_access_mappings:
+            session.delete(access_mapping)
+
+        share_snapshot_instances = model_query(
+            context,
+            models.ShareSnapshotInstance,
+            session=session
+        ).filter(
+            models.ShareSnapshotInstance.share_instance_id ==
+            instance_id).all()
+
+        for snapshot_instance in share_snapshot_instances:
+            snap_instance_export_locations = model_query(
+                context,
+                models.ShareSnapshotInstanceExportLocation,
+                session=session
+            ).filter(
+                models.ShareSnapshotInstanceExportLocation
+                .share_snapshot_instance_id ==
+                snapshot_instance.id).all()
+            for snap_iel in snap_instance_export_locations:
+                session.delete(snap_iel)
+            session.delete(snapshot_instance)
+
+        instance_ref = share_instance_get(context, instance_id,
+                                          session=session)
+        session.delete(instance_ref)
+
+
 ################
 
 def _share_replica_get_with_filters(context, share_id=None, replica_id=None,

@@ -527,7 +527,8 @@ class API(base.Base):
             self, context, share, availability_zone=None,
             share_group=None, host=None, share_network_id=None,
             share_type_id=None, cast_rules_to_readonly=False,
-            availability_zones=None, snapshot_host=None):
+            availability_zones=None, snapshot_host=None,
+            share_instance_id=None):
 
         availability_zone_id = None
         if availability_zone:
@@ -540,6 +541,7 @@ class API(base.Base):
         share_instance = self.db.share_instance_create(
             context, share['id'],
             {
+                'id': share_instance_id if context.is_admin else None,
                 'share_network_id': share_network_id,
                 'status': constants.STATUS_CREATING,
                 'scheduled_at': timeutils.utcnow(),
@@ -604,7 +606,7 @@ class API(base.Base):
 
     def create_share_replica(self, context, share, availability_zone=None,
                              share_network_id=None,
-                             scheduler_hints=None):
+                             scheduler_hints=None, replica_id=None):
 
         if not share.get('replication_type'):
             msg = _("Replication not supported for share %s.")
@@ -694,7 +696,7 @@ class API(base.Base):
                     share_network_id=share_network_id,
                     share_type_id=share['instance']['share_type_id'],
                     cast_rules_to_readonly=cast_rules_to_readonly,
-                    availability_zones=type_azs)
+                    availability_zones=type_azs, share_instance_id=replica_id)
             )
             QUOTAS.commit(
                 context, reservations, project_id=share['project_id'],
