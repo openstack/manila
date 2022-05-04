@@ -4671,6 +4671,85 @@ class ShareManagerTestCase(test.TestCase):
         with test_utils.create_temp_config_with_opts(data):
             manager.ShareManager()
 
+    def test_delete_share_server_server_not_found(self):
+        share_server = db_utils.create_share_server()
+        self.share_manager.driver.initialized = True
+
+        mock_server_get = self.mock_object(
+            self.share_manager.db, 'share_server_get',
+            mock.Mock(side_effect=exception.ShareServerNotFound(
+                share_server_id=share_server['id'])))
+
+        self.assertRaises(
+            exception.ShareServerNotFound,
+            self.share_manager.delete_share_server,
+            self.context,
+            share_server
+        )
+
+        mock_server_get.assert_called_once_with(
+            self.context, share_server['id'])
+
+    def test_delete_share_server_server_in_use(self):
+        share_server = db_utils.create_share_server()
+        share_server_shares = [db_utils.create_share()]
+        self.share_manager.driver.initialized = True
+
+        mock_server_get = self.mock_object(
+            self.share_manager.db, 'share_server_get',
+            mock.Mock(return_value=share_server))
+        mock_instances_get = self.mock_object(
+            self.share_manager.db, 'share_instance_get_all_by_share_server',
+            mock.Mock(return_value=share_server_shares))
+
+        self.assertRaises(
+            exception.ShareServerInUse,
+            self.share_manager.delete_share_server,
+            self.context,
+            share_server
+        )
+
+        mock_server_get.assert_called_once_with(
+            self.context, share_server['id'])
+        mock_instances_get.assert_called_once_with(
+            self.context, share_server['id'])
+
+    def test_delete_share_server_teardown_failure(self):
+        share_server = db_utils.create_share_server()
+        self.share_manager.driver.initialized = True
+
+        mock_server_get = self.mock_object(
+            self.share_manager.db, 'share_server_get',
+            mock.Mock(return_value=share_server))
+        mock_instances_get = self.mock_object(
+            self.share_manager.db, 'share_instance_get_all_by_share_server',
+            mock.Mock(return_value=[]))
+        mock_teardown_server = self.mock_object(
+            self.share_manager.driver, 'teardown_server',
+            mock.Mock(side_effect=exception.ShareBackendException(msg='fake')))
+        mock_server_update = self.mock_object(
+            self.share_manager.db, 'share_server_update')
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.share_manager.delete_share_server,
+            self.context,
+            share_server
+        )
+
+        mock_server_get.assert_called_once_with(
+            self.context, share_server['id'])
+        mock_instances_get.assert_called_once_with(
+            self.context, share_server['id'])
+        mock_teardown_server.assert_called_once_with(
+            server_details=share_server['backend_details'],
+            security_services=[]
+        )
+        mock_server_update.assert_called_with(
+            self.context, share_server['id'],
+            {'status': constants.STATUS_ERROR}
+        )
+
     @mock.patch.object(db, 'share_server_get_all_unused_deletable',
                        mock.Mock())
     @mock.patch.object(manager.ShareManager, 'delete_share_server',

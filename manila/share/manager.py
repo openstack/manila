@@ -3805,7 +3805,14 @@ class ShareManager(manager.SchedulerDependentManager):
                                                                 self.host,
                                                                 updated_before)
         for server in servers:
-            self.delete_share_server(ctxt, server)
+            try:
+                self.delete_share_server(ctxt, server)
+            except exception.ShareServerNotFound:
+                continue
+            except Exception:
+                LOG.exception(
+                    "Unable to delete share server %s, will retry in the next "
+                    "run.", server['id'])
 
     @periodic_task.periodic_task(
         spacing=CONF.check_for_expired_shares_in_recycle_bin_interval)
@@ -4681,6 +4688,12 @@ class ShareManager(manager.SchedulerDependentManager):
             # this method starts executing when amount of dependent shares
             # has been changed.
             server_id = share_server['id']
+            try:
+                self.db.share_server_get(
+                    context, server_id)
+            except exception.ShareServerNotFound:
+                raise
+
             shares = self.db.share_instance_get_all_by_share_server(
                 context, server_id)
 
