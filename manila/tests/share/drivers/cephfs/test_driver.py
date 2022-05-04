@@ -706,6 +706,37 @@ class NativeProtocolHelperTestCase(test.TestCase):
 
         self.assertEqual(2, driver.rados_command.call_count)
 
+    def test_deny_access_missing_access_rule(self):
+        access_deny_prefix = "fs subvolume deauthorize"
+
+        exception_msg = (
+            f"json_command failed - prefix=fs subvolume deauthorize, "
+            f"argdict='vol_name': {self._native_protocol_helper.volname}, "
+            f"'sub_name': '{self._share['id']}', 'auth_id': 'alice', "
+            f"'format': 'json' - exception message: [errno -2] "
+            f"auth ID: alice doesn't exist.")
+
+        driver.rados_command.side_effect = exception.ShareBackendException(
+            msg=exception_msg)
+
+        access_deny_dict = {
+            "vol_name": self._native_protocol_helper.volname,
+            "sub_name": self._share["id"],
+            "auth_id": "alice",
+        }
+
+        self._native_protocol_helper._deny_access(self._context, self._share, {
+            'access_level': 'rw',
+            'access_type': 'cephx',
+            'access_to': 'alice'
+        })
+
+        driver.rados_command.assert_called_once_with(
+            self._native_protocol_helper.rados_client,
+            access_deny_prefix, access_deny_dict)
+
+        self.assertEqual(1, driver.rados_command.call_count)
+
     def test_update_access_add_rm(self):
         alice = {
             'id': 'instance_mapping_id1',
