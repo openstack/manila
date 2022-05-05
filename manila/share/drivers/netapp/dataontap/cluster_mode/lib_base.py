@@ -1862,6 +1862,10 @@ class NetAppCmodeFileStorageLibrary(object):
         snapshot_name = self._get_backend_snapshot_name(snapshot['id'])
         LOG.debug('Creating snapshot %s', snapshot_name)
         vserver_client.create_snapshot(share_name, snapshot_name)
+        if not vserver_client.snapshot_exists(snapshot_name, share_name):
+            raise exception.SnapshotResourceNotFound(
+                name=snapshot_name)
+
         return {'provider_location': snapshot_name}
 
     def revert_to_snapshot(self, context, snapshot, share_server=None):
