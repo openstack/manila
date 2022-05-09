@@ -2436,6 +2436,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'netapp_raid_type': aggregate.get('raid-type'),
                 'netapp_hybrid_aggregate': hybrid,
                 'netapp_disk_type': disk_types,
+                'netapp_is_home': aggregate.get('is-home'),
             }
 
         return aggr_info

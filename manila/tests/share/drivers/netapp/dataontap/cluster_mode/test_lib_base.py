@@ -3785,11 +3785,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 'netapp_raid_type': 'raid4',
                 'netapp_disk_type': 'FCAL',
                 'netapp_hybrid_aggregate': 'false',
+                'netapp_is_home': False,
             },
             fake.AGGREGATES[1]: {
                 'netapp_raid_type': 'raid_dp',
                 'netapp_disk_type': ['SATA', 'SSD'],
                 'netapp_hybrid_aggregate': 'true',
+                'netapp_is_home': True,
             },
         }
 
