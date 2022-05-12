@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-============
 API versions
 ============
 
@@ -8,7 +7,7 @@ Lists information for all Shared File Systems API versions.
 
 
 Concepts
-========
+~~~~~~~~
 
 In order to bring new features to users over time, the Shared File Systems API
 supports versioning. There are two kinds of versions in the Shared File
@@ -28,7 +27,7 @@ requests.
 
 
 List All Major Versions
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method:: GET /
 
@@ -77,7 +76,7 @@ v2.1 API is lower than listed below.
 
 
 Show Details of Specific API Version
-====================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method:: GET /{api_version}/
 

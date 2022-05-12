@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-==========
 Quota sets
 ==========
 
@@ -35,7 +34,7 @@ Provides quotas management support.
 
 
 Show default quota set
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/quota-sets/{project_id_quota_request_path}/defaults
 
@@ -89,7 +88,7 @@ Response example
 
 
 Show quota set
-==============
+~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/quota-sets/{project_id_quota_request_path}?user_id={user_id}
 
@@ -148,7 +147,7 @@ Response example
 
 
 Show quota set in detail (since API v2.25)
-==========================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/quota-sets/{project_id_quota_request_path}/detail?user_id={user_id}
 
@@ -209,7 +208,7 @@ Response example
 
 
 Update quota set
-================
+~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/quota-sets/{project_id_quota_request_path}?user_id={user_id}
 
@@ -286,7 +285,7 @@ Response example
 
 
 Delete quota set
-================
+~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/quota-sets/{project_id_quota_request_path}?user_id={user_id}
 

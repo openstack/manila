@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-==============
 Share networks
 ==============
 
@@ -41,7 +40,7 @@ A share network resource can also have a user defined name and description.
 
 
 List share networks
-===================
+~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-networks
 
@@ -87,7 +86,7 @@ Response example
 
 
 List share networks with details
-================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-networks/detail
 
@@ -153,7 +152,7 @@ Response example
 
 
 Show share network details
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-networks/{share_network_id}
 
@@ -217,7 +216,7 @@ Response example
 
 
 Create share network
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-networks
 
@@ -306,7 +305,7 @@ Response example
 
 
 Add security service to share network
-=====================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-networks/{share_network_id}/action
 
@@ -386,7 +385,7 @@ Response example
 
 
 Remove security service from share network
-==========================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-networks/{share_network_id}/action
 
@@ -458,7 +457,7 @@ Response example
 
 
 Update share network
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/share-networks/{share_network_id}
 
@@ -539,7 +538,7 @@ Response example
 
 
 Delete share network
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/share-networks/{share_network_id}
 
@@ -579,7 +578,7 @@ Request
 
 
 Update share network security service (since API v2.63)
-=======================================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-networks/{share_network_id}/action
 
@@ -660,7 +659,7 @@ Response example
 .. _share-net-sec-service-update-check:
 
 Check share network security service update (since API v2.63)
-=============================================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-networks/{share_network_id}/action
 
@@ -723,7 +722,7 @@ Response example
 
 
 Check share network security service add (since API v2.63)
-==========================================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-networks/{share_network_id}/action
 
@@ -785,7 +784,7 @@ Response example
 
 
 Reset status (since API v2.63)
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method:: POST /v2/share-networks/{share_network_id}/action
 

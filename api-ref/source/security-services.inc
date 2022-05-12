@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=================
 Security services
 =================
 
@@ -37,7 +36,7 @@ A security service resource can also be given a user defined name and
 description.
 
 List security services
-======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/security-services
 
@@ -82,7 +81,7 @@ Response example
 
 
 List security services with details
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/security-services/detail
 
@@ -137,7 +136,7 @@ Response example
 
 
 Show security service details
-=============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/security-services/{security_service_id}
 
@@ -193,7 +192,7 @@ Response example
 
 
 Create security service
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/security-services
 
@@ -263,7 +262,7 @@ Response example
 
 
 Update security service
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/security-services/{security_service_id}
 
@@ -340,7 +339,7 @@ Response example
 
 
 Delete security service
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/security-services/{security_service_id}
 

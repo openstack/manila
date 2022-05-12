@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=======================================
 Share network subnets (since API v2.51)
 =======================================
 
@@ -44,7 +43,7 @@ A share network subnet resource has these attributes:
 
 
 List share network subnets
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-networks/{share_network_id}/subnets
 
@@ -100,7 +99,7 @@ Response example
 
 
 Show share network subnet details
-=================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-networks/{share_network_id}/subnets/{share_network_subnet_id}
 
@@ -157,7 +156,7 @@ Response example
 
 
 Create share network subnet
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-networks/{share_network_id}/subnets
 
@@ -225,7 +224,7 @@ Response example
 
 
 Delete share network subnet
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/share-networks/{share_network_id}/subnets/{share_network_subnet_id}
 

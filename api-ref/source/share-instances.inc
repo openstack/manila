@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-================================
 Share instances (since API v2.3)
 ================================
 
@@ -15,7 +14,7 @@ roles.
 
 
 List share instances
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share_instances
 
@@ -76,7 +75,7 @@ Response example
 
 
 Show share instance details
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share_instances/{share_instance_id}
 
@@ -135,7 +134,7 @@ Response example
 
 
 Reset share instance state
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share_instances/{share_instance_id}/action
 
@@ -177,7 +176,7 @@ Request example
 
 
 Force-delete share instance
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share_instances/{share_instance_id}/action
 

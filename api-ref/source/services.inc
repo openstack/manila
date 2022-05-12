@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-========
 Services
 ========
 
@@ -14,7 +13,7 @@ These APIs help in interacting with the Shared File Systems services,
 
 
 List services
-=============
+~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/services?host={host}&binary={binary}&zone={zone}&state={state}&status={status}
 
@@ -67,7 +66,7 @@ Response example
 
 
 Enable service
-==============
+~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/services/enable
 
@@ -119,7 +118,7 @@ Response example
 
 
 Disable service
-===============
+~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/services/disable
 

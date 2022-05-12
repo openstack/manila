@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-================================
 Share replicas (since API v2.11)
 ================================
 
@@ -53,7 +52,7 @@ one of these supported replication types:
 
 
 Create share replica
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-replicas
 
@@ -125,7 +124,7 @@ Response example
 
 
 Promote share replica
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-replicas/{share_replica_id}/action
 
@@ -163,7 +162,7 @@ Request example
 
 
 Resync share replica
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-replicas/{share_replica_id}/action
 
@@ -202,7 +201,7 @@ Request example
 
 
 List share replicas
-===================
+~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-replicas?share_id={share_id}
 
@@ -250,7 +249,7 @@ Response example
 
 
 List share replicas with details
-================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-replicas/detail?share_id={share_id}
 
@@ -304,7 +303,7 @@ Response example
 
 
 Show share replica
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-replicas/{share_replica_id}
 
@@ -359,7 +358,7 @@ Response example
 
 
 Reset status of the share replica
-=================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-replicas/{share_replica_id}/action
 
@@ -402,7 +401,7 @@ Request example
 
 
 Reset replica_state of the share replica
-========================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-replicas/{share_replica_id}/action
 
@@ -445,7 +444,7 @@ Request example
 
 
 Delete share replica
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/share-replicas/{share_replica_id}
 
@@ -482,7 +481,7 @@ Request
 
 
 Force-delete share replica
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-replicas/{share_replica_id}/action
 

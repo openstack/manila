@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-==============
 Share metadata
 ==============
 
@@ -8,7 +7,7 @@ Shows, sets, updates, and unsets share metadata.
 
 
 Show all share metadata
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/shares/{share_id}/metadata
 
@@ -51,7 +50,7 @@ Response example
 
 
 Show share metadata item
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/shares/{share_id}/metadata/{key}
 
@@ -97,7 +96,7 @@ Response example
 
 
 Set share metadata
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/metadata
 
@@ -152,7 +151,7 @@ Response example
 
 
 Update share metadata
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/shares/{share_id}/metadata
 
@@ -221,7 +220,7 @@ Response example
 
 
 Delete share metadata item
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/shares/{share_id}/metadata/{key}
 

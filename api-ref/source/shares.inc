@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-======
 Shares
 ======
 
@@ -87,7 +86,7 @@ A share has one of these status values:
 
 
 List shares
-===========
+~~~~~~~~~~~
 
 .. rest_method::  GET /v2/shares
 
@@ -154,7 +153,7 @@ Response example
 
 
 List shares with details
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/shares/detail
 
@@ -256,7 +255,7 @@ Response example
 
 
 Show share details
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/shares/{share_id}
 
@@ -333,7 +332,7 @@ Response example
 
 
 List share instances
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/shares/{share_id}/instances
 
@@ -400,7 +399,7 @@ Response example
    :language: javascript
 
 Create share
-============
+~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares
 
@@ -497,7 +496,7 @@ Response example
 
 
 Manage share (since API v2.7)
-=============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/manage
 
@@ -602,7 +601,7 @@ Response example
 
 
 Update share
-============
+~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/shares/{share_id}
 
@@ -700,7 +699,7 @@ Response example
 
 
 Delete share
-============
+~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/shares/{share_id}
 

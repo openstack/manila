@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-==========================================
 Share snapshot instances (since API v2.19)
 ==========================================
 
@@ -17,7 +16,7 @@ to grant permissions for these actions to other roles.
 
 
 List share snapshot instances
-=============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/snapshot-instances
 
@@ -63,7 +62,7 @@ Response example
 
 
 List share snapshot instances with details
-==========================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/snapshot-instances/detail
 
@@ -115,7 +114,7 @@ Response example
 
 
 Show share snapshot instance details
-====================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/snapshot-instances/{snapshot_instance_id}
 
@@ -168,7 +167,7 @@ Response example
 
 
 Reset share snapshot instance state
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/snapshot-instances/{snapshot_instance_id}/action
 

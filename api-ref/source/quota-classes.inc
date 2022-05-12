@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===============
 Quota class set
 ===============
 
@@ -14,7 +13,7 @@ Quota classes can be shown and updated for a project.
 
 
 Show quota classes for a project
-================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/quota-class-sets/{quota_class_name}
 
@@ -68,7 +67,7 @@ Response Example
 
 
 Update quota classes for a project
-==================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/quota-class-sets/{quota_class_name}
 

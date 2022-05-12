@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=======================================
 Share group snapshots (since API v2.31)
 =======================================
 
@@ -23,7 +22,7 @@ roles.
     version 2.55.
 
 List share group snapshots
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-group-snapshots
 
@@ -76,7 +75,7 @@ Response example
 
 
 List share group snapshots with details
-=======================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-group-snapshots/detail
 
@@ -135,7 +134,7 @@ Response example
 
 
 List share group snapshots members
-==================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-group-snapshots/{group_snapshot_id}/members
 
@@ -186,7 +185,7 @@ Response example
 
 
 Show share group snapshot details
-=================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/share-group-snapshots/{group_snapshot_id}
 
@@ -238,7 +237,7 @@ Response example
 
 
 Create share group snapshot
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-group-snapshots
 
@@ -300,7 +299,7 @@ Response example
 
 
 Reset share group snapshot state
-================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/share-group-snapshots/{group_snapshot_id}/action
 
@@ -342,7 +341,7 @@ Request example
 
 
 Update share group snapshot
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/share-group-snapshots/{group_snapshot_id}
 
@@ -404,7 +403,7 @@ Response example
 
 
 Delete share group snapshot
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/share-group-snapshots/{group_snapshot_id}
 

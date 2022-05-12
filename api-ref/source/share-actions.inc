@@ -2,7 +2,6 @@
 
 .. _get-access-rules-before-2-45:
 
-=============
 Share actions
 =============
 
@@ -35,7 +34,7 @@ access_list": null} is valid for v1.0-2.6
 
 
 Grant access
-============
+~~~~~~~~~~~~
 
 All manila shares begin with no access. Clients must be provided with
 explicit access via this API.
@@ -131,7 +130,7 @@ Response example
 
 
 Revoke access
-=============
+~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/action
 
@@ -172,7 +171,7 @@ Request example
 
 
 List access rules (DEPRECATED)
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. warning::
 
@@ -240,7 +239,7 @@ Response example
 
 
 Reset share state
-=================
+~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/action
 
@@ -282,7 +281,7 @@ Request example
 
 
 Force-delete share
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/action
 
@@ -322,7 +321,7 @@ Request example
 
 
 Extend share
-============
+~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/action
 
@@ -362,7 +361,7 @@ Request example
 
 
 Shrink share
-============
+~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/action
 
@@ -400,7 +399,7 @@ Request example
 
 
 Unmanage share (since API v2.7)
-===============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/action
 
@@ -461,7 +460,7 @@ There is no body content for the response.
 
 
 Revert share to snapshot (since API v2.27)
-==========================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/action
 
@@ -503,7 +502,7 @@ Request example
 
 
 Soft delete share (since API v2.69)
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/action
 
@@ -559,7 +558,7 @@ Request example
 
 
 Restore share (since API v2.69)
-===============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/action
 

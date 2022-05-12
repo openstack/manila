@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-========================================
 Share Server Migration (since API v2.57)
 ========================================
 
@@ -40,7 +39,7 @@ Possible uses for share server migration include:
 
 
 Share Server Migration Check Compatibility
-==========================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method:: POST /v2/{project_id}/share_servers/{share_server_id}/action
 
@@ -101,7 +100,7 @@ Response example
 
 
 Start a Share Server Migration
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method:: POST /v2/{project_id}/share_servers/{share_server_id}/action
 
@@ -146,7 +145,7 @@ Request example
 
 
 Complete Share Server Migration
-===============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method:: POST /v2/{project_id}/share_servers/{share_server_id}/action
 
@@ -200,7 +199,7 @@ Response example
 
 
 Share Server Migration Get Progress
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method:: POST /v2/{project_id}/share_servers/{share_server_id}/action
 
@@ -254,7 +253,7 @@ Response example
 
 
 Cancel Share Server Migration
-=============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method:: POST /v2/{project_id}/share_servers/{share_server_id}/action
 

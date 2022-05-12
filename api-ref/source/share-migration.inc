@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-=================================
 Share Migration (since API v2.22)
 =================================
 
@@ -67,7 +66,7 @@ Possible use cases for data migration include:
 
 
 Start Migration
-===============
+~~~~~~~~~~~~~~~
 
 .. rest_method:: POST /v2/shares/{share_id}/action
 
@@ -115,7 +114,7 @@ Request example
 
 
 Complete Migration
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/action
 
@@ -155,7 +154,7 @@ Request example
 
 
 Migration Get Process
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/action
 
@@ -207,7 +206,7 @@ Response_parameters
 
 
 Cancel Migration
-================
+~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/shares/{share_id}/action
 

@@ -1,6 +1,5 @@
 .. -*- rst -*-
 
-===============
 Share snapshots
 ===============
 
@@ -44,7 +43,7 @@ file to grant permissions for these actions to other roles.
 
 
 List share snapshots
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/snapshots
 
@@ -88,7 +87,7 @@ Response example
 
 
 List share snapshots with details
-=================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/snapshots/detail
 
@@ -141,7 +140,7 @@ Response example
 
 
 Show share snapshot details
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  GET /v2/snapshots/{snapshot_id}
 
@@ -193,7 +192,7 @@ Response example
 
 
 Create share snapshot
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/snapshots
 
@@ -260,7 +259,7 @@ Response example
 
 
 Manage share snapshot (since API v2.12)
-=======================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/snapshots/manage
 
@@ -335,7 +334,7 @@ Response example
 
 
 Unmanage share snapshot (since API v2.12)
-=========================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/snapshots/{snapshot_id}/action
 
@@ -385,7 +384,7 @@ Response parameters
 There is no body content for the response.
 
 Reset share snapshot state
-==========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/snapshots/{snapshot_id}/action
 
@@ -425,7 +424,7 @@ Request example
 
 
 Force-delete share snapshot
-===========================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  POST /v2/snapshots/{snapshot_id}/action
 
@@ -465,7 +464,7 @@ Request example
 
 
 Update share snapshot
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  PUT /v2/snapshots/{snapshot_id}
 
@@ -538,7 +537,7 @@ Response example
 
 
 Delete share snapshot
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. rest_method::  DELETE /v2/snapshots/{snapshot_id}
 
