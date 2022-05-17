@@ -76,7 +76,6 @@ class AffinityBaseFilter(base_host.BaseHostFilter):
 
         filter_properties['scheduler_hints'][self._filter_type] = []
 
-        filtered_hosts = []
         for uuid in share_uuids:
             try:
                 # NOTE(ccloud):
@@ -89,15 +88,8 @@ class AffinityBaseFilter(base_host.BaseHostFilter):
             instances = share.get('instances')
             if len(instances) == 0:
                 raise exception.ShareInstanceNotFound(share_instance_id=uuid)
-            filtered_hosts.append(
+            filter_properties['scheduler_hints'][self._filter_type].extend(
                 [instance.get('host') for instance in instances])
-
-        if self._filter_type == AFFINITY_FILTER:
-            filter_properties['scheduler_hints'][self._filter_type] = list(
-                set.intersection(*map(set, filtered_hosts)))
-        else:
-            filter_properties['scheduler_hints'][self._filter_type] = list(
-                set.union(*map(set, filtered_hosts)))
 
         return filter_properties
 
