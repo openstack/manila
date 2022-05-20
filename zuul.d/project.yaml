@@ -7,6 +7,7 @@
       - release-notes-jobs-python3
       - periodic-stable-jobs
       - manila-tempest-plugin-jobs-using-service-image-stable
+    queue: manila
     check:
       jobs:
         - manila-tox-genconfig
@@ -30,7 +31,6 @@
         - manila-rally-ss:
             voting: false
     gate:
-      queue: manila
       jobs:
         - manila-tempest-plugin-dummy-no-dhss
         - manila-tempest-plugin-dummy-dhss
