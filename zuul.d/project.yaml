@@ -6,6 +6,7 @@
       - check-requirements
       - release-notes-jobs-python3
       - periodic-stable-jobs
+    queue: manila
     check:
       jobs:
         - manila-tox-genconfig
@@ -39,7 +40,6 @@
         - openstack-tox-cover:
             voting: false
     gate:
-      queue: manila
       jobs:
         - manila-tox-genconfig
         - manila-tempest-minimal-dsvm-dummy
