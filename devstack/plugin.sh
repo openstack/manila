@@ -276,7 +276,7 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT enabled_share_backends $MANILA_ENABLED_BACKENDS
 
     if [ ! -f $MANILA_PATH_TO_PRIVATE_KEY ]; then
-        ssh-keygen -N "" -t rsa -f $MANILA_PATH_TO_PRIVATE_KEY;
+        ssh-keygen -N "" -t $MANILA_KEY_FORMAT -f $MANILA_PATH_TO_PRIVATE_KEY;
     fi
 
     iniset $MANILA_CONF DEFAULT manila_service_keypair_name $MANILA_SERVICE_KEYPAIR_NAME
