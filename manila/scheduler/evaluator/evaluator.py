@@ -56,9 +56,9 @@ class EvalConstant(object):
         except ValueError:
             try:
                 result = float(result)
-            except ValueError as e:
-                msg = _("ValueError: %s") % e
-                raise exception.EvaluatorParseException(reason=msg)
+            except ValueError:
+                if isinstance(result, str):
+                    result = result.replace('"', '').replace('\'', '')
 
         return result
 
@@ -233,6 +233,7 @@ def _def_parser():
     Combine = pyparsing.Combine
     Forward = pyparsing.Forward
     nums = pyparsing.nums
+    quoted_string = pyparsing.quotedString
     oneOf = pyparsing.oneOf
     opAssoc = pyparsing.opAssoc
     operatorPrecedence = pyparsing.operatorPrecedence
@@ -244,7 +245,7 @@ def _def_parser():
     number = real | integer
     expr = Forward()
     fn = Word(alphas + '_' + '.')
-    operand = number | variable | fn
+    operand = number | variable | fn | quoted_string
 
     signop = oneOf('+ -')
     addop = oneOf('+ -')
