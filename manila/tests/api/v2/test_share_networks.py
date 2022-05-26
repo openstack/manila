@@ -276,6 +276,19 @@ class ShareNetworkAPITest(test.TestCase):
                           req,
                           body)
 
+    def test_create_error_on_network_creation(self):
+        self.mock_object(share_networks.QUOTAS, 'reserve',
+                         mock.Mock(return_value='fake_reservation'))
+        self.mock_object(share_networks.QUOTAS, 'rollback')
+        self.mock_object(db_api, 'share_network_create',
+                         mock.Mock(side_effect=db_exception.DBError()))
+
+        self.assertRaises(webob_exc.HTTPInternalServerError,
+                          self.controller.create,
+                          self.req,
+                          self.body)
+        self.assertTrue(share_networks.QUOTAS.rollback.called)
+
     def test_create_error_on_subnet_creation(self):
         data = {
             'neutron_net_id': 'fake',
@@ -283,6 +296,9 @@ class ShareNetworkAPITest(test.TestCase):
             'id': fake_share_network['id']
         }
         subnet_data = copy.deepcopy(data)
+        self.mock_object(share_networks.QUOTAS, 'reserve',
+                         mock.Mock(return_value='fake_reservation'))
+        self.mock_object(share_networks.QUOTAS, 'rollback')
         self.mock_object(db_api, 'share_network_create',
                          mock.Mock(return_value=fake_share_network))
         self.mock_object(db_api, 'share_network_subnet_create',
@@ -302,6 +318,7 @@ class ShareNetworkAPITest(test.TestCase):
             self.context, subnet_data)
         db_api.share_network_delete.assert_called_once_with(
             self.context, fake_share_network['id'])
+        self.assertTrue(share_networks.QUOTAS.rollback.called)
 
     def test_delete_nominal(self):
         share_nw = fake_share_network.copy()
