@@ -748,6 +748,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_setup_network_for_vserver',
                          mock.Mock(side_effect=network_exception))
         self.mock_object(self.library, '_delete_vserver')
+        self.mock_object(vserver_client,
+                         'get_network_interfaces',
+                         mock.Mock(return_value=fake.LIFS))
+        self.mock_object(self.library._client,
+                         'delete_network_interface')
 
         self.assertRaises(network_exception,
                           self.library._create_vserver,
@@ -764,10 +769,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.IPSPACE,
             security_services=security_service,
             nfs_config=None)
-        self.library._delete_vserver.assert_called_once_with(
-            vserver_name,
-            needs_lock=False,
-            security_services=security_service)
+
+        if not security_service:
+            self.library._delete_vserver.assert_called_once_with(
+                vserver_name,
+                needs_lock=False,
+                security_services=security_service)
+        else:
+            self.library._client.delete_network_interface.assert_has_calls(
+                [mock.call(vserver_name, lif['interface-name'])
+                 for lif in fake.LIFS])
         self.assertFalse(vserver_client.enable_nfs.called)
         self.assertEqual(1, lib_multi_svm.LOG.warning.call_count)
 

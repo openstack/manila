@@ -304,10 +304,17 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     # NOTE(dviroel): At this point, the lock was already
                     # acquired by the caller of _create_vserver.
                     # NOTE(carthaca): keep debris for analysis in debug
-                    if not CONF.keep_share_server_on_failure:
+                    if not (CONF.keep_share_server_on_failure or security_services):  # noqa: E501
                         self._delete_vserver(vserver_name,
                                              security_services=security_services,  # noqa: E501
                                              needs_lock=False)
+                    # NOTE(carthaca): lifs need to be cleaned up in any case
+                    # to not provoke duplicate IPs
+                    else:
+                        lifs = vserver_client.get_network_interfaces()
+                        for lif in lifs:
+                            self._client.delete_network_interface(
+                                vserver_name, lif['interface-name'])
 
     def _setup_network_for_vserver(self, vserver_name, vserver_client,
                                    network_info, ipspace_name,
@@ -528,8 +535,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 if security_service['type'].lower() == 'active_directory':
                     try:
                         vserver_client.configure_certificates()
-                        vserver_client.configure_cifs_encryption()
-                        vserver_client.configure_cifs_options()
+                        # vserver_client.configure_cifs_encryption()
+                        # vserver_client.configure_cifs_options(security_service) # noqa: E501
                     except exception.NetAppException as e:
                         LOG.warning(e.message)
 
