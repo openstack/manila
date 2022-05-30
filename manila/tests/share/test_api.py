@@ -929,8 +929,8 @@ class ShareAPITestCase(test.TestCase):
 
         if replication_type:
             # Prevent the raising of an exception, to force the call to the
-            # function _check_if_replica_quotas_exceeded
-            self.mock_object(self.api, '_check_if_share_quotas_exceeded')
+            # function check_if_replica_quotas_exceeded
+            self.mock_object(self.api, 'check_if_share_quotas_exceeded')
 
         self.assertRaises(
             expected_exception,

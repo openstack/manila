@@ -1,0 +1,36 @@
+{
+    "transfers": [
+        {
+            "id": "02a948b4-671b-4c62-b13a-18d613cb4576",
+            "resource_type": "share",
+            "resource_id": "0fe7cf64-b879-4902-9d86-f80aeff12b06",
+            "name": "transfer2",
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "http://192.168.48.129/shar/v2/share-transfer/02a948b4-671b-4c62-b13a-18d613cb4576"
+                },
+                {
+                    "rel": "bookmark",
+                    "href": "http://192.168.48.129/shar/share-transfer/02a948b4-671b-4c62-b13a-18d613cb4576"
+                }
+            ]
+        },
+        {
+            "id": "a10209ff-b55d-4fed-9f63-abea53b6f107",
+            "resource_type": "share",
+            "resource_id": "29476819-28a9-4b1a-a21d-3b2d203025a0",
+            "name": "transfer1",
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "http://192.168.48.129/shar/v2/share-transfer/a10209ff-b55d-4fed-9f63-abea53b6f107"
+                },
+                {
+                    "rel": "bookmark",
+                    "href": "http://192.168.48.129/shar/share-transfer/a10209ff-b55d-4fed-9f63-abea53b6f107"
+                }
+            ]
+        }
+    ]
+}

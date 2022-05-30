@@ -159,6 +159,12 @@ snapshot_instance_id_path:
   in: path
   required: true
   type: string
+transfer_id:
+  description: |
+    The unique identifier for a transfer.
+  in: path
+  required: true
+  type: string
 
 # variables in query
 action_id:
@@ -389,7 +395,7 @@ metadata_query:
 name_inexact_query:
   description: |
     The name pattern that can be used to filter shares,
-    share snapshots, share networks or share groups.
+    share snapshots, share networks, transfers or share groups.
   in: query
   required: false
   type: string
@@ -460,6 +466,12 @@ resource_id:
 resource_type:
   description: |
     The type of the resource for which the message was created.
+  in: query
+  required: false
+  type: string
+resource_type_query:
+  description: |
+    The type of the resource for which the transfer was created.
   in: query
   required: false
   type: string
@@ -581,7 +593,7 @@ snapshot_id_query:
   type: string
 sort_dir:
   description: |
-    The direction to sort a list of shares. A valid
+    The direction to sort a list of resources. A valid
     value is ``asc``, or ``desc``.
   in: query
   required: false
@@ -603,6 +615,15 @@ sort_key_messages:
     is ``id``, ``project_id``, ``request_id``, ``resource_type``,
     ``action_id``, ``detail_id``, ``resource_id``, ``message_level``,
     ``expires_at``, ``created_at``.
+  in: query
+  required: false
+  type: string
+sort_key_transfer:
+  description: |
+    The key to sort a list of transfers. A valid value
+    is ``id``, ``name``, ``resource_type``, ``resource_id``,
+    ``source_project_id``, ``destination_project_id``, ``created_at``,
+    ``expires_at``.
   in: query
   required: false
   type: string
@@ -639,6 +660,12 @@ with_count_query:
   min_version: 2.42
 
 # variables in body
+accepted:
+  description: |
+    Whether the transfer has been accepted.
+  in: body
+  required: true
+  type: boolean
 access:
   description: |
     The ``access`` object.
@@ -782,6 +809,12 @@ allow_access:
   in: body
   required: true
   type: object
+auth_key:
+  description: |
+    The authentication key for the transfer.
+  in: body
+  required: true
+  type: string
 availability_zone:
   description: |
     The name of the availability zone the share exists within.
@@ -952,6 +985,12 @@ cidr:
   required: true
   type: string
   max_version: 2.50
+clear_access_rules:
+  description: |
+    Whether clear all access rules when accept share.
+  in: body
+  required: false
+  type: boolean
 compatible:
   description: |
     Whether the destination backend can or can't handle the share server
@@ -1044,6 +1083,12 @@ description_request:
     limited to 255 characters.
   in: body
   required: false
+  type: string
+destination_project_id:
+  description: |
+    UUID of the destination project to accept transfer resource.
+  in: body
+  required: true
   type: string
 destination_share_server_id:
   description: |
@@ -2757,6 +2802,12 @@ share_group_type_name_request:
   in: body
   required: false
   type: string
+share_id_request:
+  description: |
+    The UUID of the share.
+  in: body
+  required: true
+  type: string
 share_id_response:
   description: |
     The UUID of the share.
@@ -3593,6 +3644,61 @@ totalSnapshotGigabytesUsed:
   in: body
   required: true
   type: integer
+transfer:
+  description: |
+    The transfer object.
+  in: body
+  required: true
+  type: object
+transfer_expires_at_body:
+  description: |
+    The date and time stamp when the resource transfer will expire.
+    After transfer expired, will be automatically deleted.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2016-12-31T13:14:15-05:00``.
+  in: body
+  required: true
+  type: string
+transfer_id_in_body:
+  description: |
+    The transfer UUID.
+  in: body
+  required: true
+  type: string
+transfer_name:
+  description: |
+    The transfer display name.
+  in: body
+  required: false
+  type: string
+transfer_resource_id:
+  description: |
+    The UUID of the resource for the transfer.
+  in: body
+  required: true
+  type: string
+transfer_resource_type:
+  description: |
+    The type of the resource for the transfer.
+  in: body
+  required: true
+  type: string
+transfers:
+  description: |
+    List of transfers.
+  in: body
+  required: true
+  type: array
 unit:
   description: |
     The time interval during which a number of API

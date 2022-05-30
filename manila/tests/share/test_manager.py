@@ -49,6 +49,7 @@ from manila.tests import fake_notifier
 from manila.tests import fake_share as fakes
 from manila.tests import fake_utils
 from manila.tests import utils as test_utils
+from manila.transfer import api as transfer_api
 from manila import utils
 
 
@@ -3993,6 +3994,54 @@ class ShareManagerTestCase(test.TestCase):
                 self.context, share1["id"], {'status': 'error'})
         api.API.delete.assert_called_once_with(
             self.context, share1)
+
+    def test_delete_expired_transfers(self):
+        self.mock_object(db, 'get_all_expired_transfers',
+                         mock.Mock(return_value=[{"id": "transfer1",
+                                                  "name": "test_tr"}, ]))
+        self.mock_object(transfer_api.API, 'delete')
+        self.share_manager.delete_expired_transfers(self.context)
+        db.get_all_expired_transfers.assert_called_once_with(self.context)
+        transfer1 = {"id": "transfer1", "name": "test_tr"}
+        transfer_api.API.delete.assert_called_once_with(
+            self.context, transfer_id=transfer1["id"])
+
+    @ddt.data(True, False)
+    def test_transfer_accept(self, clear_rules):
+        share = db_utils.create_share(id="fake")
+        self.mock_object(db, 'share_get', mock.Mock(return_value=share))
+        update_access_rules_call = self.mock_object(
+            self.share_manager.access_helper,
+            'update_access_rules')
+        transfer_accept_call = self.mock_object(self.share_manager.driver,
+                                                'transfer_accept')
+        instances, rules = self._setup_init_mocks()
+        self.mock_object(self.share_manager.db,
+                         'share_access_get_all_for_share',
+                         mock.Mock(return_value=rules))
+        self.mock_object(self.share_manager.db,
+                         'share_instances_get_all_by_share',
+                         mock.Mock(return_value=instances))
+        self.mock_object(db, 'share_instance_get',
+                         mock.Mock(return_value=instances[0]))
+        self.mock_object(self.share_manager,
+                         '_get_share_server',
+                         mock.Mock(return_value=None))
+        self.share_manager.transfer_accept(self.context, "fake_share_id",
+                                           "fake_user_id", "fake_project_id",
+                                           clear_rules)
+        if clear_rules:
+            update_access_rules_call.assert_called_with(
+                self.context, instances[0]['id'], delete_all_rules=True)
+            transfer_accept_call.assert_called_with(
+                self.context, instances[0], "fake_user_id",
+                "fake_project_id", access_rules=[],
+                share_server=None)
+        else:
+            transfer_accept_call.assert_called_with(
+                self.context, instances[0], "fake_user_id",
+                "fake_project_id", access_rules=rules,
+                share_server=None)
 
     @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
     def test_extend_share_invalid(self, mock_notify):

@@ -83,6 +83,9 @@ A share has one of these status values:
 +----------------------------------------+--------------------------------------------------------+
 | ``reverting_error``                    | Share revert to snapshot failed.                       |
 +----------------------------------------+--------------------------------------------------------+
+| ``awaiting_transfer``                  | Share is being transferred to a different project's    |
+|                                        | namespace.                                             |
++----------------------------------------+--------------------------------------------------------+
 
 
 List shares

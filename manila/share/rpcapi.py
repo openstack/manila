@@ -84,6 +84,7 @@ class ShareAPI(object):
         1.23 - Add update_share_server_network_allocations() and
             check_update_share_server_network_allocations()
         1.24 - Add quiesce_wait_time paramater to promote_share_replica()
+        1.25 - Add transfer_accept()
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -92,7 +93,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.24')
+        self.client = rpc.get_client(target, version_cap='1.25')
 
     def create_share_instance(self, context, share_instance, host,
                               request_spec, filter_properties,
@@ -310,6 +311,18 @@ class ShareAPI(object):
     def publish_service_capabilities(self, context):
         call_context = self.client.prepare(fanout=True, version='1.0')
         call_context.cast(context, 'publish_service_capabilities')
+
+    def transfer_accept(self, ctxt, share, new_user,
+                        new_project, clear_rules=False):
+        msg_args = {
+            'share_id': share['id'],
+            'new_user': new_user,
+            'new_project': new_project,
+            'clear_rules': clear_rules
+        }
+        host = utils.extract_host(share['instance']['host'])
+        call_context = self.client.prepare(server=host, version='1.25')
+        call_context.call(ctxt, 'transfer_accept', **msg_args)
 
     def extend_share(self, context, share, new_size, reservations):
         host = utils.extract_host(share['instance']['host'])

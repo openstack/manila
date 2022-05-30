@@ -53,6 +53,7 @@ from manila.share import rpcapi as share_rpcapi
 from manila.share import share_types
 from manila.share import snapshot_access
 from manila.share import utils as share_utils
+from manila.transfer import api as transfer_api
 from manila import utils
 
 profiler = importutils.try_import('osprofiler.profiler')
@@ -136,6 +137,11 @@ share_manager_opts = [
                help='This value, specified in seconds, determines how often '
                     'the share manager will check for expired shares and '
                     'delete them from the Recycle bin.'),
+    cfg.IntOpt('check_for_expired_transfers',
+               default=300,
+               help='This value, specified in seconds, determines how often '
+                    'the share manager will check for expired transfers and '
+                    'destroy them and roll back share state.'),
 ]
 
 CONF = cfg.CONF
@@ -243,7 +249,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.24'
+    RPC_API_VERSION = '1.25'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -286,6 +292,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.message_api = message_api.API()
         self.share_api = api.API()
+        self.transfer_api = transfer_api.API()
         if CONF.profiler.enabled and profiler is not None:
             self.driver = profiler.trace_cls("driver")(self.driver)
         self.hooks = []
@@ -3556,6 +3563,79 @@ class ShareManager(manager.SchedulerDependentManager):
             else:
                 LOG.info("share %s has expired, will be deleted", share['id'])
             self.share_api.delete(ctxt, share)
+
+    @periodic_task.periodic_task(
+        spacing=CONF.check_for_expired_transfers)
+    def delete_expired_transfers(self, ctxt):
+        LOG.info("Checking for expired transfers.")
+        expired_transfers = self.db.get_all_expired_transfers(ctxt)
+
+        for transfer in expired_transfers:
+            LOG.debug("Transfer %s has expired, will be destroyed.",
+                      transfer['id'])
+            self.transfer_api.delete(ctxt, transfer_id=transfer['id'])
+
+    @utils.require_driver_initialized
+    def transfer_accept(self, context, share_id, new_user,
+                        new_project, clear_rules):
+        # need elevated context as we haven't "given" the share yet
+        elevated_context = context.elevated()
+        share_ref = self.db.share_get(elevated_context, share_id)
+        access_rules = self.db.share_access_get_all_for_share(
+            elevated_context, share_id)
+        share_instances = self.db.share_instances_get_all_by_share(
+            elevated_context, share_id)
+        share_server = self._get_share_server(context, share_ref)
+
+        for share_instance in share_instances:
+            share_instance = self.db.share_instance_get(context,
+                                                        share_instance['id'],
+                                                        with_share_data=True)
+            if clear_rules and access_rules:
+                try:
+                    self.access_helper.update_access_rules(
+                        context,
+                        share_instance['id'],
+                        delete_all_rules=True
+                    )
+                    access_rules = []
+                except Exception:
+                    with excutils.save_and_reraise_exception():
+                        msg = (
+                            "Can not remove access rules for share "
+                            "instance %(si)s belonging to share %(shr)s.")
+                        msg_payload = {
+                            'si': share_instance['id'],
+                            'shr': share_id,
+                        }
+                        LOG.error(msg, msg_payload)
+            try:
+                self.driver.transfer_accept(context, share_instance,
+                                            new_user,
+                                            new_project,
+                                            access_rules=access_rules,
+                                            share_server=share_server)
+            except exception.DriverTransferShareWithRules as e:
+                with excutils.save_and_reraise_exception():
+                    self.message_api.create(
+                        context,
+                        message_field.Action.TRANSFER_ACCEPT,
+                        new_project,
+                        resource_type=message_field.Resource.SHARE,
+                        resource_id=share_id,
+                        detail=(message_field.Detail.
+                                DRIVER_FAILED_TRANSFER_ACCEPT))
+                    msg = _("The backend failed to accept the share: %s.")
+                    LOG.error(msg, e)
+
+        msg = ('Share %(share_id)s has transfer from %(old_project_id)s to '
+               '%(new_project_id)s completed successfully.')
+        msg_args = {
+            "share_id": share_id,
+            "old_project_id": share_ref['project_id'],
+            "new_project_id": context.project_id
+        }
+        LOG.info(msg, msg_args)
 
     @add_hooks
     @utils.require_driver_initialized

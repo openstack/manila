@@ -1,0 +1,4 @@
+---
+features:
+  - Share can be transferred between project with API version ``2.77``
+    and beyond.

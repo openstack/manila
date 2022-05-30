@@ -5083,3 +5083,146 @@ class AsyncOperationDatabaseAPITestCase(test.TestCase):
             self.ctxt, test_id)
 
         self.assertEqual({}, actual_result)
+
+
+class TransfersTestCase(test.TestCase):
+    """Test case for transfers."""
+
+    def setUp(self):
+        super(TransfersTestCase, self).setUp()
+        self.user_id = uuidutils.generate_uuid()
+        self.project_id = uuidutils.generate_uuid()
+        self.ctxt = context.RequestContext(user_id=self.user_id,
+                                           project_id=self.project_id)
+
+    @staticmethod
+    def _create_transfer(resource_type='share',
+                         resource_id=None, source_project_id=None):
+        """Create a transfer object."""
+        if resource_id and source_project_id:
+            transfer = db_utils.create_transfer(
+                resource_type=resource_type,
+                resource_id=resource_id,
+                source_project_id=source_project_id)
+        elif resource_id:
+            transfer = db_utils.create_transfer(
+                resource_type=resource_type,
+                resource_id=resource_id)
+        elif source_project_id:
+            transfer = db_utils.create_transfer(
+                resource_type=resource_type,
+                source_project_id=source_project_id)
+        else:
+            transfer = db_utils.create_transfer(
+                resource_type=resource_type)
+        return transfer['id']
+
+    def test_transfer_create(self):
+        # If the resource_id is Null a KeyError exception will be raised.
+        self.assertRaises(KeyError, self._create_transfer)
+
+        share = db_utils.create_share(size=1, user_id=self.user_id,
+                                      project_id=self.project_id)
+        share_id = share['id']
+        self._create_transfer(resource_id=share_id)
+
+    def test_share_transfer_get(self):
+        share_id = db_utils.create_share(size=1, user_id=self.user_id,
+                                         project_id=self.project_id)['id']
+        transfer_id = self._create_transfer(resource_id=share_id)
+
+        transfer = db_api.share_transfer_get(self.ctxt, transfer_id)
+        self.assertEqual(share_id, transfer['resource_id'])
+
+        new_ctxt = context.RequestContext(user_id='new_user_id',
+                                          project_id='new_project_id')
+        self.assertRaises(exception.TransferNotFound,
+                          db_api.share_transfer_get, new_ctxt, transfer_id)
+
+        transfer = db_api.share_transfer_get(new_ctxt.elevated(), transfer_id)
+        self.assertEqual(share_id, transfer['resource_id'])
+
+    def test_transfer_get_all(self):
+        share_id1 = db_utils.create_share(size=1, user_id=self.user_id,
+                                          project_id=self.project_id)['id']
+        share_id2 = db_utils.create_share(size=1, user_id=self.user_id,
+                                          project_id=self.project_id)['id']
+        self._create_transfer(resource_id=share_id1,
+                              source_project_id=self.project_id)
+        self._create_transfer(resource_id=share_id2,
+                              source_project_id=self.project_id)
+
+        self.assertRaises(exception.NotAuthorized,
+                          db_api.transfer_get_all,
+                          self.ctxt)
+        transfers = db_api.transfer_get_all(context.get_admin_context())
+        self.assertEqual(2, len(transfers))
+
+        transfers = db_api.transfer_get_all_by_project(self.ctxt,
+                                                       self.project_id)
+        self.assertEqual(2, len(transfers))
+
+        new_ctxt = context.RequestContext(user_id='new_user_id',
+                                          project_id='new_project_id')
+        transfers = db_api.transfer_get_all_by_project(new_ctxt,
+                                                       'new_project_id')
+        self.assertEqual(0, len(transfers))
+
+    def test_transfer_destroy(self):
+        share_id1 = db_utils.create_share(size=1, user_id=self.user_id,
+                                          project_id=self.project_id)['id']
+        share_id2 = db_utils.create_share(size=1, user_id=self.user_id,
+                                          project_id=self.project_id)['id']
+        transfer_id1 = self._create_transfer(resource_id=share_id1,
+                                             source_project_id=self.project_id)
+        transfer_id2 = self._create_transfer(resource_id=share_id2,
+                                             source_project_id=self.project_id)
+
+        transfers = db_api.transfer_get_all(context.get_admin_context())
+        self.assertEqual(2, len(transfers))
+
+        db_api.transfer_destroy(self.ctxt, transfer_id1)
+        transfers = db_api.transfer_get_all(context.get_admin_context())
+        self.assertEqual(1, len(transfers))
+
+        db_api.transfer_destroy(self.ctxt, transfer_id2)
+        transfers = db_api.transfer_get_all(context.get_admin_context())
+        self.assertEqual(0, len(transfers))
+
+    def test_transfer_accept_then_rollback(self):
+        share = db_utils.create_share(size=1, user_id=self.user_id,
+                                      project_id=self.project_id)
+        transfer_id = self._create_transfer(resource_id=share['id'],
+                                            source_project_id=self.project_id)
+        new_ctxt = context.RequestContext(user_id='new_user_id',
+                                          project_id='new_project_id')
+
+        transfer = db_api.share_transfer_get(new_ctxt.elevated(), transfer_id)
+        self.assertEqual(share['project_id'], transfer['source_project_id'])
+        self.assertFalse(transfer['accepted'])
+        self.assertIsNone(transfer['destination_project_id'])
+        # accept the transfer
+        db_api.transfer_accept(new_ctxt.elevated(), transfer_id,
+                               'new_user_id', 'new_project_id')
+
+        transfer = db_api.model_query(
+            new_ctxt.elevated(), models.Transfer,
+            read_deleted='yes').filter_by(id=transfer_id).first()
+        share = db_api.share_get(new_ctxt.elevated(), share['id'])
+
+        self.assertEqual(share['project_id'], 'new_project_id')
+        self.assertEqual(share['user_id'], 'new_user_id')
+        self.assertTrue(transfer['accepted'])
+        self.assertEqual('new_project_id', transfer['destination_project_id'])
+
+        # then test rollback the transfer
+        db_api.transfer_accept_rollback(new_ctxt.elevated(), transfer_id,
+                                        self.user_id, self.project_id)
+        transfer = db_api.model_query(
+            new_ctxt.elevated(),
+            models.Transfer).filter_by(id=transfer_id).first()
+        share = db_api.share_get(new_ctxt.elevated(), share['id'])
+
+        self.assertEqual(share['project_id'], self.project_id)
+        self.assertEqual(share['user_id'], self.user_id)
+        self.assertFalse(transfer['accepted'])

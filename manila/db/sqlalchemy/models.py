@@ -1170,6 +1170,26 @@ class ShareNetworkSecurityServiceAssociation(BASE, ManilaBase):
                                  nullable=False)
 
 
+class Transfer(BASE, ManilaBase):
+    """Represents a share transfer request."""
+
+    __tablename__ = 'transfers'
+
+    id = Column(String(36), primary_key=True, nullable=False)
+    deleted = Column(String(36), default='False')
+    # resource type can be "share" or "share_network"
+    resource_type = Column(String(36), nullable=False)
+    # The uuid of the related resource.
+    resource_id = Column(String(36), nullable=False)
+    display_name = Column(String(255))
+    salt = Column(String(255))
+    crypt_hash = Column(String(255))
+    expires_at = Column(DateTime)
+    source_project_id = Column(String(255), nullable=True)
+    destination_project_id = Column(String(255), nullable=True)
+    accepted = Column(Boolean, default=False)
+
+
 class NetworkAllocation(BASE, ManilaBase):
     """Represents network allocation data."""
     __tablename__ = 'network_allocations'

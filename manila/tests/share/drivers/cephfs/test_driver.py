@@ -588,6 +588,26 @@ class CephFSDriverTestCase(test.TestCase):
         (self._driver.protocol_helper.get_configured_ip_versions.
             assert_called_once_with())
 
+    @ddt.data(
+        ([{'id': 'instance_mapping_id1', 'access_id': 'accessid1',
+           'access_level': 'rw', 'access_type': 'cephx', 'access_to': 'alice'
+           }], 'fake_project_uuid_1'),
+        ([{'id': 'instance_mapping_id1', 'access_id': 'accessid1',
+           'access_level': 'rw', 'access_type': 'cephx', 'access_to': 'alice'
+           }], 'fake_project_uuid_2'),
+        ([], 'fake_project_uuid_1'),
+        ([], 'fake_project_uuid_2'),
+    )
+    @ddt.unpack
+    def test_transfer_accept(self, access_rules, new_project):
+        fake_share_1 = {"project_id": "fake_project_uuid_1"}
+        same_project = new_project == 'fake_project_uuid_1'
+        if access_rules and not same_project:
+            self.assertRaises(exception.DriverCannotTransferShareWithRules,
+                              self._driver.transfer_accept,
+                              self._context, fake_share_1,
+                              'new_user', new_project, access_rules)
+
 
 @ddt.ddt
 class NativeProtocolHelperTestCase(test.TestCase):

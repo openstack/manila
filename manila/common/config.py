@@ -132,6 +132,11 @@ global_opts = [
                help='Maximum time (in seconds) to keep a share in the recycle '
                     'bin, it will be deleted automatically after this amount '
                     'of time has elapsed.'),
+    cfg.IntOpt('transfer_retention_time',
+               default=300,
+               help='Maximum time (in seconds) to keep a share in '
+                    'awaiting_transfer state, after timeout, the share will '
+                    'automatically be rolled back to the available state'),
 ]
 
 CONF.register_opts(global_opts)

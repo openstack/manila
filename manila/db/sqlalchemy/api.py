@@ -2506,6 +2506,189 @@ def share_restore(context, share_id):
 ###################
 
 
+@context_manager.reader
+def _transfer_get(context, transfer_id, resource_type='share',
+                  session=None, read_deleted=False):
+    """resource_type can be share or network(TODO network transfer)"""
+    query = model_query(context, models.Transfer,
+                        session=session,
+                        read_deleted=read_deleted).filter_by(id=transfer_id)
+
+    if not is_admin_context(context):
+        if resource_type == 'share':
+            share = models.Share
+            query = query.filter(models.Transfer.resource_id == share.id,
+                                 share.project_id == context.project_id)
+
+    result = query.first()
+    if not result:
+        raise exception.TransferNotFound(transfer_id=transfer_id)
+
+    return result
+
+
+@context_manager.reader
+def share_transfer_get(context, transfer_id, read_deleted=False):
+    return _transfer_get(context, transfer_id, read_deleted=read_deleted)
+
+
+def _transfer_get_all(context, limit=None, sort_key=None,
+                      sort_dir=None, filters=None, offset=None):
+    session = get_session()
+    sort_key = sort_key or 'created_at'
+    sort_dir = sort_dir or 'desc'
+    with session.begin():
+        query = model_query(context, models.Transfer, session=session)
+
+        if filters:
+            legal_filter_keys = ('display_name', 'display_name~',
+                                 'id', 'resource_type', 'resource_id',
+                                 'source_project_id', 'destination_project_id')
+            query = exact_filter(query, models.Transfer,
+                                 filters, legal_filter_keys)
+            query = utils.paginate_query(query, models.Transfer, limit,
+                                         sort_key=sort_key,
+                                         sort_dir=sort_dir,
+                                         offset=offset)
+        return query.all()
+
+
+@require_admin_context
+def transfer_get_all(context, limit=None, sort_key=None,
+                     sort_dir=None, filters=None, offset=None):
+    return _transfer_get_all(context, limit=limit,
+                             sort_key=sort_key, sort_dir=sort_dir,
+                             filters=filters, offset=offset)
+
+
+@require_context
+def transfer_get_all_by_project(context, project_id,
+                                limit=None, sort_key=None,
+                                sort_dir=None, filters=None, offset=None):
+    filters = filters.copy() if filters else {}
+    filters['source_project_id'] = project_id
+    return _transfer_get_all(context, limit=limit,
+                             sort_key=sort_key, sort_dir=sort_dir,
+                             filters=filters, offset=offset)
+
+
+@require_context
+@handle_db_data_error
+def transfer_create(context, values):
+    if not values.get('id'):
+        values['id'] = uuidutils.generate_uuid()
+
+    resource_id = values['resource_id']
+    now_time = timeutils.utcnow()
+    time_delta = datetime.timedelta(
+        seconds=CONF.transfer_retention_time)
+    transfer_timeout = now_time + time_delta
+    values['expires_at'] = transfer_timeout
+
+    session = get_session()
+    with session.begin():
+        transfer = models.Transfer()
+        transfer.update(values)
+        transfer.save(session=session)
+        update = {'status': constants.STATUS_AWAITING_TRANSFER}
+        if values['resource_type'] == 'share':
+            share_update(context, resource_id, update)
+        return transfer
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def transfer_destroy(context, transfer_id,
+                     update_share_status=True):
+    session = get_session()
+    with session.begin():
+        update = {'status': constants.STATUS_AVAILABLE}
+        transfer = share_transfer_get(context, transfer_id)
+        if transfer['resource_type'] == 'share':
+            if update_share_status:
+                share_update(context, transfer['resource_id'], update)
+        transfer_query = model_query(context, models.Transfer,
+                                     session=session).filter_by(id=transfer_id)
+
+        transfer_query.soft_delete()
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def transfer_accept(context, transfer_id, user_id, project_id,
+                    accept_snapshots=False):
+    session = get_session()
+    with session.begin():
+        share_id = share_transfer_get(context, transfer_id)['resource_id']
+        update = {'status': constants.STATUS_AVAILABLE,
+                  'user_id': user_id,
+                  'project_id': project_id,
+                  'updated_at': timeutils.utcnow()}
+        share_update(context, share_id, update)
+
+        # Update snapshots for transfer snapshots with share.
+        if accept_snapshots:
+            snapshots = share_snapshot_get_all_for_share(context, share_id)
+            for snapshot in snapshots:
+                LOG.debug('Begin to transfer snapshot: %s', snapshot['id'])
+                update = {'user_id': user_id,
+                          'project_id': project_id,
+                          'updated_at': timeutils.utcnow()}
+                share_snapshot_update(context, snapshot['id'], update)
+        query = session.query(models.Transfer).filter_by(id=transfer_id)
+        query.update({'deleted': True,
+                      'deleted_at': timeutils.utcnow(),
+                      'updated_at': timeutils.utcnow(),
+                      'destination_project_id': project_id,
+                      'accepted': True})
+
+
+@require_context
+def transfer_accept_rollback(context, transfer_id, user_id,
+                             project_id, rollback_snap=False):
+    session = get_session()
+    with session.begin():
+        share_id = share_transfer_get(
+            context, transfer_id, read_deleted=True)['resource_id']
+        update = {'status': constants.STATUS_AWAITING_TRANSFER,
+                  'user_id': user_id,
+                  'project_id': project_id,
+                  'updated_at': timeutils.utcnow()}
+        share_update(context, share_id, update)
+
+        # rollback snapshots for transfer snapshots with share.
+        if rollback_snap:
+            snapshots = share_snapshot_get_all_for_share(context, share_id)
+            for snapshot in snapshots:
+                LOG.debug('Begin to rollback snapshot: %s', snapshot['id'])
+                update = {'user_id': user_id,
+                          'project_id': project_id,
+                          'updated_at': timeutils.utcnow()}
+                share_snapshot_update(context, snapshot['id'], update)
+
+        query = session.query(models.Transfer).filter_by(id=transfer_id)
+        query.update({'deleted': 'False',
+                      'deleted_at': None,
+                      'updated_at': timeutils.utcnow(),
+                      'destination_project_id': None,
+                      'accepted': 0})
+
+
+@require_admin_context
+def get_all_expired_transfers(context):
+    session = get_session()
+    with session.begin():
+        query = model_query(context, models.Transfer, session=session)
+        expires_at_attr = getattr(models.Transfer, 'expires_at', None)
+        now_time = timeutils.utcnow()
+        query = query.filter(expires_at_attr.op('<=')(now_time))
+        result = query.all()
+
+        return result
+
+###################
+
+
 def _share_access_get_query(context, session, values, read_deleted='no'):
     """Get access record."""
     query = (model_query(

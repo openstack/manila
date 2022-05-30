@@ -42,6 +42,7 @@ from manila.policies import share_snapshot
 from manila.policies import share_snapshot_export_location
 from manila.policies import share_snapshot_instance
 from manila.policies import share_snapshot_instance_export_location
+from manila.policies import share_transfer
 from manila.policies import share_type
 from manila.policies import share_types_extra_spec
 from manila.policies import shares
@@ -78,4 +79,5 @@ def list_rules():
         message.list_rules(),
         share_access.list_rules(),
         share_access_metadata.list_rules(),
+        share_transfer.list_rules(),
     )

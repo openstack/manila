@@ -588,6 +588,19 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
+    def transfer_accept(self, context, share, new_user, new_project,
+                        access_rules=None, share_server=None):
+        """Backend update project and user info if stored on the backend.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param share: Share instance model.
+        :param access_rules: A list of access rules for given share.
+        :param new_user: the share will be updated with the new user id .
+        :param new_project: the share will be updated with the new project id.
+        :param share_server: share server for given share.
+        """
+        pass
+
     def migration_get_progress(
             self, context, source_share, destination_share, source_snapshots,
             snapshot_mappings, share_server=None,

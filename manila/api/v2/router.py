@@ -51,6 +51,7 @@ from manila.api.v2 import share_snapshot_export_locations
 from manila.api.v2 import share_snapshot_instance_export_locations
 from manila.api.v2 import share_snapshot_instances
 from manila.api.v2 import share_snapshots
+from manila.api.v2 import share_transfer
 from manila.api.v2 import share_types
 from manila.api.v2 import shares
 from manila.api import versions
@@ -543,6 +544,13 @@ class APIRouter(manila.api.openstack.APIRouter):
                         controller=self.resources['share-replicas'],
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
+
+        self.resources['share_transfers'] = (
+            share_transfer.create_resource())
+        mapper.resource("share-transfer", "share-transfers",
+                        controller=self.resources['share_transfers'],
+                        collection={'detail': 'GET'},
+                        member={'accept': 'POST'})
 
         self.resources["share-replica-export-locations"] = (
             share_replica_export_locations.create_resource())

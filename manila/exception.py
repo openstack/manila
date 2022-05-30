@@ -329,6 +329,10 @@ class HostBinaryNotFound(NotFound):
     message = _("Could not find binary %(binary)s on host %(host)s.")
 
 
+class TransferNotFound(NotFound):
+    message = _("Transfer %(transfer_id)s could not be found.")
+
+
 class InvalidReservationExpiration(Invalid):
     message = _("Invalid reservation expiration %(expire)s.")
 
@@ -489,6 +493,10 @@ class InvalidShare(Invalid):
     message = _("Invalid share: %(reason)s.")
 
 
+class InvalidAuthKey(Invalid):
+    message = _("Invalid auth key: %(reason)s")
+
+
 class ShareBusyException(Invalid):
     message = _("Share is busy with an active task: %(reason)s.")
 
@@ -527,6 +535,10 @@ class ShareSnapshotAccessExists(InvalidInput):
     message = _("Share snapshot access %(access_type)s:%(access)s exists.")
 
 
+class InvalidSnapshot(Invalid):
+    message = _("Invalid snapshot: %(reason)s")
+
+
 class InvalidSnapshotAccess(Invalid):
     message = _("Invalid access rule: %(reason)s")
 
@@ -541,6 +553,10 @@ class InvalidShareAccessLevel(Invalid):
 
 class InvalidShareAccessType(Invalid):
     message = _("Invalid or unsupported share access type: %(type)s.")
+
+
+class DriverCannotTransferShareWithRules(ManilaException):
+    message = _("Driver failed to transfer share with rules.")
 
 
 class ShareBackendException(ManilaException):

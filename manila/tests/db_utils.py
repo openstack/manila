@@ -299,3 +299,11 @@ def create_message(**kwargs):
         'message_level': message_levels.ERROR,
     }
     return _create_db_row(db.message_create, message_dict, kwargs)
+
+
+def create_transfer(**kwargs):
+    transfer = {'display_name': 'display_name',
+                'salt': 'salt',
+                'crypt_hash': 'crypt_hash',
+                'resource_type': constants.SHARE_RESOURCE_TYPE}
+    return _create_db_row(db.transfer_create, transfer, kwargs)

@@ -1,0 +1,23 @@
+{
+    "transfer": {
+        "id": "d2035732-d0c0-4380-a44c-f978a264ab1a",
+        "created_at": "2022-09-07T01:12:29.000000",
+        "name": "transfer1",
+        "resource_type": "share",
+        "resource_id": "29476819-28a9-4b1a-a21d-3b2d203025a0",
+        "source_project_id": "714198c7ac5e45a4b785de732ea4695d",
+        "destination_project_id": null,
+        "accepted": false,
+        "expires_at": "2022-09-07T01:17:29.000000",
+        "links": [
+            {
+                "rel": "self",
+                "href": "http://192.168.48.129/shar/v2/share-transfer/d2035732-d0c0-4380-a44c-f978a264ab1a"
+            },
+            {
+                "rel": "bookmark",
+                "href": "http://192.168.48.129/shar/share-transfer/d2035732-d0c0-4380-a44c-f978a264ab1a"
+            }
+        ]
+    }
+}

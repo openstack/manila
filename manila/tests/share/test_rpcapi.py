@@ -235,6 +235,15 @@ class ShareRpcAPITestCase(test.TestCase):
                              rpc_method='cast',
                              share_server=self.fake_share_server)
 
+    def test_transfer_accept(self):
+        self._test_share_api('transfer_accept',
+                             rpc_method='call',
+                             version='1.25',
+                             share=self.fake_share,
+                             new_user='new_user',
+                             new_project='new_project',
+                             clear_rules=False)
+
     def test_extend_share(self):
         self._test_share_api('extend_share',
                              rpc_method='cast',

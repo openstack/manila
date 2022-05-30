@@ -36,6 +36,7 @@ class Action(object):
     SHRINK = ('009', _('shrink'))
     UPDATE_ACCESS_RULES = ('010', _('update access rules'))
     ADD_UPDATE_SECURITY_SERVICE = ('011', _('add or update security service'))
+    TRANSFER_ACCEPT = ('026', _('transfer accept'))
     ALL = (
         ALLOCATE_HOST,
         CREATE,
@@ -48,6 +49,7 @@ class Action(object):
         SHRINK,
         UPDATE_ACCESS_RULES,
         ADD_UPDATE_SECURITY_SERVICE,
+        TRANSFER_ACCEPT,
     )
 
 
@@ -136,6 +138,9 @@ class Detail(object):
         _("Share Driver failed to create share because a security service "
           "has not been added to the share network used. Please add a "
           "security service to the share network."))
+    DRIVER_FAILED_TRANSFER_ACCEPT = (
+        '026',
+        _("Share transfer cannot be accepted without clearing access rules."))
 
     ALL = (
         UNKNOWN_ERROR,
@@ -163,6 +168,7 @@ class Detail(object):
         SECURITY_SERVICE_FAILED_AUTH,
         NO_DEFAULT_SHARE_TYPE,
         MISSING_SECURITY_SERVICE,
+        DRIVER_FAILED_TRANSFER_ACCEPT,
     )
 
     # Exception and detail mappings

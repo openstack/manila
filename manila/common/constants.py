@@ -44,6 +44,10 @@ STATUS_REPLICATION_CHANGE = 'replication_change'
 STATUS_RESTORING = 'restoring'
 STATUS_REVERTING = 'reverting'
 STATUS_REVERTING_ERROR = 'reverting_error'
+STATUS_AWAITING_TRANSFER = 'awaiting_transfer'
+
+# Transfer resource type
+SHARE_RESOURCE_TYPE = 'share'
 
 # Access rule states
 ACCESS_STATE_QUEUED_TO_APPLY = 'queued_to_apply'

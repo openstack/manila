@@ -141,8 +141,9 @@ class API(base.Base):
                 compatible_azs_name.append(az['name'])
         return compatible_azs_name, compatible_azs_multiple
 
-    def _check_if_share_quotas_exceeded(self, context, quota_exception,
-                                        share_size, operation='create'):
+    @staticmethod
+    def check_if_share_quotas_exceeded(context, quota_exception,
+                                       share_size, operation='create'):
         overs = quota_exception.kwargs['overs']
         usages = quota_exception.kwargs['usages']
         quotas = quota_exception.kwargs['quotas']
@@ -171,9 +172,10 @@ class API(base.Base):
                             'operation': operation})
             raise exception.ShareLimitExceeded(allowed=quotas['shares'])
 
-    def _check_if_replica_quotas_exceeded(self, context, quota_exception,
-                                          replica_size,
-                                          resource_type='share_replica'):
+    @staticmethod
+    def check_if_replica_quotas_exceeded(context, quota_exception,
+                                         replica_size,
+                                         resource_type='share_replica'):
         overs = quota_exception.kwargs['overs']
         usages = quota_exception.kwargs['usages']
         quotas = quota_exception.kwargs['quotas']
@@ -291,7 +293,7 @@ class API(base.Base):
                          supported=CONF.enabled_share_protocols))
             raise exception.InvalidInput(reason=msg)
 
-        self._check_is_share_size_within_per_share_quota_limit(context, size)
+        self.check_is_share_size_within_per_share_quota_limit(context, size)
 
         deltas = {'shares': 1, 'gigabytes': size}
         share_type_attributes = self.get_share_attributes_from_share_type(
@@ -306,10 +308,10 @@ class API(base.Base):
             reservations = QUOTAS.reserve(
                 context, share_type_id=share_type_id, **deltas)
         except exception.OverQuota as e:
-            self._check_if_share_quotas_exceeded(context, e, size)
+            self.check_if_share_quotas_exceeded(context, e, size)
             if share_type_supports_replication:
-                self._check_if_replica_quotas_exceeded(context, e, size,
-                                                       resource_type='share')
+                self.check_if_replica_quotas_exceeded(context, e, size,
+                                                      resource_type='share')
 
         share_group = None
         if share_group_id:
@@ -702,7 +704,7 @@ class API(base.Base):
                 share_type_id=share_type['id']
             )
         except exception.OverQuota as e:
-            self._check_if_replica_quotas_exceeded(context, e, share['size'])
+            self.check_if_replica_quotas_exceeded(context, e, share['size'])
 
         az_request_multiple_subnet_support_map = {}
         if share_network_id:
@@ -1436,6 +1438,12 @@ class API(base.Base):
 
         self.share_rpcapi.unmanage_share_server(
             context, share_server, force=force)
+
+    def transfer_accept(self, context, share, new_user,
+                        new_project, clear_rules=False):
+        self.share_rpcapi.transfer_accept(context, share,
+                                          new_user, new_project,
+                                          clear_rules=clear_rules)
 
     def create_snapshot(self, context, share, name, description,
                         force=False, metadata=None):
@@ -2390,7 +2398,8 @@ class API(base.Base):
             }
             raise exception.ShareBusyException(reason=msg)
 
-    def _check_is_share_size_within_per_share_quota_limit(self, context, size):
+    @staticmethod
+    def check_is_share_size_within_per_share_quota_limit(context, size):
         """Raises an exception if share size above per share quota limit."""
         try:
             values = {'per_share_gigabytes': size}
@@ -2442,8 +2451,8 @@ class API(base.Base):
                                                     'size': share['size']})
             raise exception.InvalidInput(reason=msg)
 
-        self._check_is_share_size_within_per_share_quota_limit(context,
-                                                               new_size)
+        self.check_is_share_size_within_per_share_quota_limit(context,
+                                                              new_size)
 
         # ensure we pass the share_type provisioning filter on size
         try:
@@ -2479,12 +2488,12 @@ class API(base.Base):
             reservations = QUOTAS.reserve(context, **deltas)
         except exception.OverQuota as exc:
             # Check if the exceeded quota was 'gigabytes'
-            self._check_if_share_quotas_exceeded(context, exc, share['size'],
-                                                 operation='extend')
+            self.check_if_share_quotas_exceeded(context, exc, share['size'],
+                                                operation='extend')
             # NOTE(carloss): Check if the exceeded quota is
             # 'replica_gigabytes'. If so the failure could be caused due to
             # lack of quotas to extend the share's replicas, then the
-            # '_check_if_replica_quotas_exceeded' method can't be reused here
+            # 'check_if_replica_quotas_exceeded' method can't be reused here
             # since the error message must be different from the default one.
             if supports_replication:
                 overs = exc.kwargs['overs']

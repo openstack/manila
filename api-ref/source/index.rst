@@ -52,6 +52,7 @@ shared file system storage resources.
 .. include:: share-groups.inc
 .. include:: share-group-types.inc
 .. include:: share-group-snapshots.inc
+.. include:: share-transfers.inc
 
 ======================================
 Shared File Systems API (EXPERIMENTAL)

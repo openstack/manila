@@ -764,6 +764,13 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
     def get_configured_ip_versions(self):
         return self.protocol_helper.get_configured_ip_versions()
 
+    def transfer_accept(self, context, share, new_user, new_project,
+                        access_rules=None, share_server=None):
+        # CephFS driver cannot transfer shares by preserving access rules
+        same_project = share["project_id"] == new_project
+        if access_rules and not same_project:
+            raise exception.DriverCannotTransferShareWithRules()
+
 
 class NativeProtocolHelper(ganesha.NASHelperBase):
     """Helper class for native CephFS protocol"""

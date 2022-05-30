@@ -418,3 +418,7 @@ ____
 2.76
 ----
   Added 'default_ad_site' field in security service object.
+
+2.77
+----
+  Added support for share transfer between different projects.

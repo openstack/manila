@@ -494,6 +494,58 @@ def share_restore(context, share_id):
 ###################
 
 
+def share_transfer_get(context, transfer_id):
+    """Get a share transfer record or raise if it does not exist."""
+    return IMPL.share_transfer_get(context, transfer_id)
+
+
+def transfer_get_all(context, limit=None, sort_key=None,
+                     sort_dir=None, filters=None, offset=None):
+    """Get all share transfer records."""
+    return IMPL.transfer_get_all(context, limit=limit,
+                                 sort_key=sort_key, sort_dir=sort_dir,
+                                 filters=filters, offset=offset)
+
+
+def transfer_get_all_by_project(context, project_id,
+                                limit=None, sort_key=None,
+                                sort_dir=None, filters=None, offset=None):
+    """Get all share transfer records for specified project."""
+    return IMPL.transfer_get_all_by_project(context, project_id,
+                                            limit=limit, sort_key=sort_key,
+                                            sort_dir=sort_dir,
+                                            filters=filters, offset=offset)
+
+
+def transfer_create(context, values):
+    """Create an entry in the transfers table."""
+    return IMPL.transfer_create(context, values)
+
+
+def transfer_destroy(context, transfer_id, update_share_status=True):
+    """Destroy a record in the share transfer table."""
+    return IMPL.transfer_destroy(context, transfer_id,
+                                 update_share_status=update_share_status)
+
+
+def transfer_accept(context, transfer_id, user_id, project_id,
+                    accept_snapshots=False):
+    """Accept a share transfer."""
+    return IMPL.transfer_accept(context, transfer_id, user_id, project_id,
+                                accept_snapshots=accept_snapshots)
+
+
+def transfer_accept_rollback(context, transfer_id, user_id,
+                             project_id, rollback_snap=False):
+    """Rollback a share transfer."""
+    return IMPL.transfer_accept_rollback(context, transfer_id,
+                                         user_id, project_id,
+                                         rollback_snap=rollback_snap)
+
+
+###################
+
+
 def share_access_create(context, values):
     """Allow access to share."""
     return IMPL.share_access_create(context, values)
@@ -1175,6 +1227,11 @@ def share_server_get_all_unused_deletable(context, host, updated_before):
 def get_all_expired_shares(context):
     """Get all expired share DB records."""
     return IMPL.get_all_expired_shares(context)
+
+
+def get_all_expired_transfers(context):
+    """Get all expired transfers DB records."""
+    return IMPL.get_all_expired_transfers(context)
 
 
 def share_server_backend_details_set(context, share_server_id, server_details):
