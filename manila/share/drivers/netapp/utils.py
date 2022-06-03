@@ -52,6 +52,10 @@ FLEXVOL_STYLE_EXTENDED = 'flexvol'
 FLEXGROUP_DEFAULT_POOL_NAME = 'flexgroup_auto'
 
 
+class NetAppDriverException(exception.ShareBackendException):
+    message = _("NetApp Manila Driver exception.")
+
+
 def validate_driver_instantiation(**kwargs):
     """Checks if a driver is instantiated other than by the unified driver.
 

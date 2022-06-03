@@ -37,7 +37,15 @@ netapp_connection_opts = [
     cfg.PortOpt('netapp_server_port',
                 help=('The TCP port to use for communication with the storage '
                       'system or proxy server. If not specified, Data ONTAP '
-                      'drivers will use 80 for HTTP and 443 for HTTPS.')), ]
+                      'drivers will use 80 for HTTP and 443 for HTTPS.')),
+    cfg.BoolOpt('netapp_use_legacy_client',
+                default=True,
+                help=('The ONTAP client used for retrieving and modifying '
+                      'data on the storage. The legacy client relies mostly '
+                      'on ZAPI calls, only using REST calls for SVM migrate '
+                      'feature. If set to False, the new REST client is used, '
+                      'which runs REST calls if supported, otherwise falls '
+                      'back to the equivalent ZAPI call.')), ]
 
 netapp_transport_opts = [
     cfg.StrOpt('netapp_transport_type',

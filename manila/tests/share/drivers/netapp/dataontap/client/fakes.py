@@ -30,6 +30,7 @@ CONNECTION_INFO = {
     'api_trace_pattern': '(.*)',
 }
 
+FAKE_UUID = 'b32bab78-82be-11ec-a8a3-0242ac120002'
 CLUSTER_NAME = 'fake_cluster'
 REMOTE_CLUSTER_NAME = 'fake_cluster_2'
 CLUSTER_ADDRESS_1 = 'fake_cluster_address'
@@ -48,6 +49,7 @@ NFS_VERSIONS = ['nfs3', 'nfs4.0']
 ROOT_AGGREGATE_NAMES = ('root_aggr1', 'root_aggr2')
 ROOT_VOLUME_AGGREGATE_NAME = 'fake_root_aggr'
 ROOT_VOLUME_NAME = 'fake_root_volume'
+VOLUME_NAMES = ('volume1', 'volume2')
 SHARE_AGGREGATE_NAME = 'fake_aggr1'
 SHARE_AGGREGATE_NAMES = ('fake_aggr1', 'fake_aggr2')
 SHARE_AGGREGATE_RAID_TYPES = ('raid4', 'raid_dp')
@@ -3031,6 +3033,7 @@ FAKE_ACTION_URL = '/endpoint'
 FAKE_BASE_URL = '10.0.0.3/api'
 FAKE_HTTP_BODY = {'fake_key': 'fake_value'}
 FAKE_HTTP_QUERY = {'type': 'fake_type'}
+FAKE_FORMATTED_HTTP_QUERY = "?type=fake_type"
 FAKE_HTTP_HEADER = {"fake_header_key": "fake_header_value"}
 FAKE_URL_PARAMS = {"fake_url_key": "fake_url_value_to_be_concatenated"}
 
@@ -3237,3 +3240,175 @@ JOB_GET_STATE_NOT_UNIQUE_RESPONSE = etree.XML("""
 """ % {
     'state': JOB_STATE,
 })
+
+NO_RECORDS_RESPONSE_REST = {
+    "records": [],
+    "num_records": 0,
+    "_links": {
+        "self": {
+            "href": "/api/cluster/nodes"
+        }
+    }
+}
+
+ERROR_RESPONSE_REST = {
+    "error": {
+        "code": 1100,
+        "message": "fake error",
+    }
+}
+
+GET_VERSION_RESPONSE_REST = {
+    "records": [
+        {
+            "version": {
+                "generation": "9",
+                "minor": "11",
+                "major": "1",
+                "full": "NetApp Release 9.11.1: Sun Nov 05 18:20:57 UTC 2017"
+            }
+        }
+    ],
+    "_links": {
+        "next": {
+            "href": "/api/resourcelink"
+        },
+        "self": {
+            "href": "/api/resourcelink"
+        }
+    },
+    "num_records": 0
+}
+
+VOLUME_GET_ITER_RESPONSE_LIST_REST = [
+    {
+        "uuid": "2407b637-119c-11ec-a4fb-00a0b89c9a78",
+        "name": VOLUME_NAMES[0],
+        "state": "online",
+        "style": "flexvol",
+        "is_svm_root": False,
+        "type": "rw",
+        "error_state": {
+            "is_inconsistent": False
+        },
+        "_links": {
+            "self": {
+                "href": "/api/storage/volumes/2407b637-119c-11ec-a4fb"
+            }
+        }
+    },
+    {
+        "uuid": "2c190609-d51c-11eb-b83a",
+        "name": VOLUME_NAMES[1],
+        "state": "online",
+        "style": "flexvol",
+        "is_svm_root": False,
+        "type": "rw",
+        "error_state": {
+            "is_inconsistent": False
+        },
+        "_links": {
+            "self": {
+                "href": "/api/storage/volumes/2c190609-d51c-11eb-b83a"
+            }
+        }
+    }
+]
+
+VOLUME_GET_ITER_RESPONSE_REST_PAGE = {
+    "records": [
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+    ],
+    "num_records": 10,
+    "_links": {
+        "self": {
+            "href": "/api/storage/volumes?fields=name&max_records=2"
+        },
+        "next": {
+            "href": "/api/storage/volumes?"
+            f"start.uuid={VOLUME_GET_ITER_RESPONSE_LIST_REST[0]['uuid']}"
+            "&fields=name&max_records=2"
+        }
+    }
+}
+
+VOLUME_GET_ITER_RESPONSE_REST_LAST_PAGE = {
+    "records": [
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+    ],
+    "num_records": 8,
+}
+
+INVALID_GET_ITER_RESPONSE_NO_RECORDS_REST = {
+    "num_records": 1,
+}
+
+INVALID_GET_ITER_RESPONSE_NO_NUM_RECORDS_REST = {
+    "records": [],
+}
+
+JOB_RESPONSE_REST = {
+    "job": {
+        "uuid": "uuid-12345",
+        "_links": {
+            "self": {
+                "href": "/api/cluster/jobs/uuid-12345"
+            }
+        }
+    }
+}
+
+JOB_SUCCESSFUL_REST = {
+    "uuid": FAKE_UUID,
+    "description": "Fake description",
+    "state": "success",
+    "message": "success",
+    "code": 0,
+    "start_time": "2022-02-18T20:08:03+00:00",
+    "end_time": "2022-02-18T20:08:04+00:00",
+}
+
+JOB_RUNNING_REST = {
+    "uuid": FAKE_UUID,
+    "description": "Fake description",
+    "state": "running",
+    "message": "running",
+    "code": 0,
+}
+
+JOB_ERROR_REST = {
+    "uuid": FAKE_UUID,
+    "description": "Fake description",
+    "state": "failure",
+    "message": "failure",
+    "code": 4,
+    "error": {
+        "target": "uuid",
+        "arguments": [
+            {
+                "message": "string",
+                "code": "string"
+            }
+        ],
+        "message": "entry doesn't exist",
+        "code": "4"
+    },
+    "start_time": "2022-02-18T20:08:03+00:00",
+    "end_time": "2022-02-18T20:08:04+00:00",
+}
