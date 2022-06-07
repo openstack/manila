@@ -52,7 +52,7 @@ from manila.i18n import _
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
-if hasattr('CONF', 'debug') and CONF.debug:
+if getattr(CONF, 'debug', False):
     logging.getLogger("paramiko").setLevel(logging.DEBUG)
 
 _ISO8601_TIME_FORMAT_SUBSECOND = '%Y-%m-%dT%H:%M:%S.%f'
@@ -95,7 +95,7 @@ def execute(*cmd, **kwargs):
     """Convenience wrapper around oslo's execute() function."""
     if 'run_as_root' in kwargs and 'root_helper' not in kwargs:
         kwargs['root_helper'] = _get_root_helper()
-    if hasattr('CONF', 'debug') and CONF.debug:
+    if getattr(CONF, 'debug', False):
         kwargs['loglevel'] = logging.DEBUG
     return processutils.execute(*cmd, **kwargs)
 
