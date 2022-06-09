@@ -28,8 +28,11 @@ CONNECTION_INFO = {
     'username': 'admin',
     'password': 'passw0rd',
     'api_trace_pattern': '(.*)',
+    'client_api': 'rest',
+    'async_rest_timeout': 60,
 }
 
+NO_SNAPRESTORE_LICENSE = '"SnapRestore" is not licensed in the cluster.'
 FAKE_UUID = 'b32bab78-82be-11ec-a8a3-0242ac120002'
 CLUSTER_NAME = 'fake_cluster'
 REMOTE_CLUSTER_NAME = 'fake_cluster_2'
@@ -52,9 +55,11 @@ ROOT_VOLUME_NAME = 'fake_root_volume'
 VOLUME_NAMES = ('volume1', 'volume2')
 SHARE_AGGREGATE_NAME = 'fake_aggr1'
 SHARE_AGGREGATE_NAMES = ('fake_aggr1', 'fake_aggr2')
+SHARE_AGGREGATE_NAMES_LIST = ['fake_aggr1', 'fake_aggr2']
 SHARE_AGGREGATE_RAID_TYPES = ('raid4', 'raid_dp')
 SHARE_AGGREGATE_DISK_TYPE = 'FCAL'
 SHARE_AGGREGATE_DISK_TYPES = ['SATA', 'SSD']
+EFFECTIVE_TYPE = 'fake_effective_type1'
 SHARE_NAME = 'fake_share'
 SHARE_SIZE = '1000000000'
 SHARE_NAME_2 = 'fake_share_2'
@@ -79,6 +84,7 @@ DELETED_EXPORT_POLICIES = {
 }
 QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
 QOS_MAX_THROUGHPUT = '5000B/s'
+QOS_MAX_THROUGHPUT_NO_UNIT = 5000
 ADAPTIVE_QOS_POLICY_GROUP_NAME = 'fake_adaptive_qos_policy_group_name'
 VSERVER_TYPE_DEFAULT = 'default'
 VSERVER_TYPE_DP_DEST = 'dp_destination'
@@ -112,6 +118,9 @@ SM_SOURCE_VSERVER = 'fake_source_vserver'
 SM_SOURCE_VOLUME = 'fake_source_volume'
 SM_DEST_VSERVER = 'fake_destination_vserver'
 SM_DEST_VOLUME = 'fake_destination_volume'
+SM_SOURCE_PATH = SM_SOURCE_VSERVER + ':' + SM_SOURCE_VOLUME
+SM_DEST_PATH = SM_DEST_VSERVER + ':' + SM_DEST_VOLUME
+
 
 FPOLICY_POLICY_NAME = 'fake_fpolicy_name'
 FPOLICY_EVENT_NAME = 'fake_fpolicy_event_name'
@@ -3435,4 +3444,582 @@ JOB_ERROR_REST = {
     },
     "start_time": "2022-02-18T20:08:03+00:00",
     "end_time": "2022-02-18T20:08:04+00:00",
+}
+
+FAKE_GET_ONTAP_VERSION_REST = {
+    "version": {
+        "full": "NetApp Release 9.10.1RC1: Wed Oct 27 02:46:19 UTC 2021",
+        "generation": 9,
+        "major": 10,
+        "minor": 1
+    },
+}
+
+FAKE_GET_CLUSTER_NODE_VERSION_REST = {
+    "records": [
+        {
+            "uuid": "fake_uuid",
+            "name": CLUSTER_NAME,
+            "version": FAKE_GET_ONTAP_VERSION_REST["version"],
+        }
+    ],
+}
+
+FAKE_GET_LICENSES_REST = {
+    "records": [
+        {
+            "name": "base",
+        },
+        {
+            "name": "nfs",
+        },
+        {
+            "name": "cifs",
+        }
+    ],
+    "num_records": 3,
+}
+
+VOLUME_ITEM_SIMPLE_RESPONSE_REST = {
+    "uuid": "fake_uuid",
+    "name": VOLUME_NAMES[0],
+    "style": 'flexvol',
+    "svm": {
+        "name": VSERVER_NAME,
+        "uuid": "fake_uuid",
+        },
+    "efficiency": {
+        "state": "enabled",
+        "compression": "true"
+    },
+}
+
+VOLUME_LIST_SIMPLE_RESPONSE_REST = {
+    "records": [
+        VOLUME_ITEM_SIMPLE_RESPONSE_REST
+    ],
+    "num_records": 1,
+}
+
+SVMS_LIST_SIMPLE_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "fake_uuid",
+            "name": VSERVER_NAME,
+        },
+        {
+            "uuid": "fake_uuid_2",
+            "name": VSERVER_NAME_2,
+        },
+    ],
+    "num_records": 2,
+}
+
+AGGR_GET_ITER_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "fake_uuid_1",
+            "name": "fake_aggr1",
+            "home_node": {
+                "name": "fake_home_node_name"
+            },
+            "space": {
+                "footprint": 702764609536,
+                "footprint_percent": 55,
+                "block_storage": {
+                    "size": 1271819509760,
+                    "available": 568692293632,
+                    "used": 703127216128,
+                },
+                "snapshot": {
+                    "used_percent": 0,
+                    "available": 0,
+                    "total": 0,
+                    "used": 0,
+                    "reserve_percent": 0
+                },
+                "cloud_storage": {
+                    "used": 0
+                },
+                "efficiency": {
+                    "savings": 70597836800,
+                    "ratio": 11.00085294873662,
+                    "logical_used": 77657018368
+                },
+                "efficiency_without_snapshots": {
+                    "savings": 4288385024,
+                    "ratio": 1.614324692241794,
+                    "logical_used": 11269033984
+                },
+                "efficiency_without_snapshots_flexclones": {
+                    "savings": 4288385024,
+                    "ratio": 1.614324692241794,
+                    "logical_used": 11269033984
+                }
+            },
+            "block_storage": {
+                "storage_type": "vmdisk",
+                "primary": {
+                    "raid_type": "raid0"
+                }
+            },
+        },
+        {
+            "uuid": "fake_uuid_2",
+            "name": "fake_aggr2",
+            "home_node": {
+                "name": "fake_home_node_name"
+            },
+            "space": {
+                "footprint": 699261227008,
+                "footprint_percent": 49,
+                "block_storage": {
+                    "size": 1426876227584,
+                    "available": 727211110400,
+                    "used": 699665117184,
+                },
+                "snapshot": {
+                    "used_percent": 0,
+                    "available": 0,
+                    "total": 0,
+                    "used": 0,
+                    "reserve_percent": 0
+                },
+                "cloud_storage": {
+                    "used": 0
+                },
+                "efficiency": {
+                    "savings": 4173848576,
+                    "ratio": 1.447821420943505,
+                    "logical_used": 13494190080
+                },
+                "efficiency_without_snapshots": {
+                    "savings": 0,
+                    "ratio": 1,
+                    "logical_used": 8565026816
+                },
+                "efficiency_without_snapshots_flexclones": {
+                    "savings": 0,
+                    "ratio": 1,
+                    "logical_used": 8565026816
+                }
+            },
+            "block_storage": {
+                "storage_type": "vmdisk",
+                "primary": {
+                    "raid_type": "raid0"
+                }
+            },
+        }
+    ],
+    "num_records": 2,
+}
+
+EFFECTIVE_TYPE = 'fake_effective_type1'
+DISK_LIST_SIMPLE_RESPONSE_REST = {
+    "records": [
+        {
+            "name": "NET-1.2",
+            "effective_type": EFFECTIVE_TYPE,
+        }
+    ],
+    "num_records": 1,
+}
+
+GENERIC_JOB_POST_RESPONSE = {
+    "job": {
+        "_links": {
+            "self": {
+                "href": "/api/resourcelink"
+            }
+        },
+        "uuid": "fake_uuid"
+    }
+}
+
+GENERIC_NETWORK_INTERFACES_GET_REPONSE = {
+    "records": [
+        {
+            "uuid": "fake_uuid",
+            "name": LIF_NAME,
+            "ip": {
+                "address": IP_ADDRESS,
+                "netmask": NETMASK
+            },
+            "svm": {
+                "name": VSERVER_NAME
+            },
+            "services": [
+                "data_nfs",
+                "data_cifs",
+            ],
+            "location": {
+                "home_node": {
+                    "name": CLUSTER_NAME
+                },
+                "home_port": {
+                    "name": PORT
+                }
+            }
+        }
+    ]
+}
+
+GENERIC_EXPORT_POLICY_RESPONSE_AND_VOLUMES = {
+    "records": [
+        {
+            "svm": {
+                "uuid": "fake_uuid",
+                "name": VSERVER_NAME,
+            },
+            "efficiency": {
+                "volume_path": VOLUME_JUNCTION_PATH
+            },
+            "id": "fake-policy-uuid",
+            "name": EXPORT_POLICY_NAME,
+            "style": "flexvol",
+            "type": "rw",
+            "aggregates": [
+                {
+                    "name": SHARE_AGGREGATE_NAME
+                }
+            ],
+            "nas": {
+                "path": VOLUME_JUNCTION_PATH
+            },
+            "space": {
+                "size": 21474836480
+            },
+        }
+    ],
+    "num_records": 1,
+}
+
+GENERIC_FPOLICY_RESPONSE = {
+    "records": [
+        {
+            "name": FPOLICY_POLICY_NAME,
+            "enabled": "true",
+            "priority": 1,
+            "events": [
+                {
+                    "name": FPOLICY_EVENT_NAME,
+                }
+            ],
+            "engine": {
+                "name": FPOLICY_ENGINE,
+            },
+            "scope": {
+                "include_shares": [
+                    VOLUME_NAMES[0]
+                ],
+                "include_extension": FPOLICY_EXT_TO_INCLUDE_LIST,
+                "exclude_extension": FPOLICY_EXT_TO_EXCLUDE_LIST
+            },
+        }
+    ],
+    "num_records": 1,
+}
+
+GENERIC_FPOLICY_EVENTS_RESPONSE = {
+    "records": [
+        {
+            "name": FPOLICY_EVENT_NAME,
+            "protocol": FPOLICY_PROTOCOL,
+            "file_operations": {
+                "create": 'true',
+                "write": 'true',
+                "rename": 'true'
+            },
+        }
+    ],
+    "num_records": 1,
+}
+
+EXPORT_POLICY_REST = {
+    "records": [
+        {
+            "_links": {
+                "self": {
+                    "href": "/api/resourcelink"
+                }
+            },
+            "name": "string",
+            "id": 0,
+            "svm": {
+                "_links": {
+                    "self": {
+                        "href": "/api/resourcelink"
+                    }
+                },
+                "name": "svm1",
+                "uuid": "02c9e252-41be-11e9-81d5-00a0986138f7"
+            },
+            "rules": [{
+                "rw_rule": [
+                    "any"
+                ],
+                "_links": {
+                    "self": {
+                        "href": "/api/resourcelink"
+                    }
+                },
+                "ro_rule": [
+                    "any"
+                ],
+                "allow_suid": True,
+                "chown_mode": "restricted",
+                "index": 0,
+                "superuser": [
+                    "any"
+                ],
+                "protocols": [
+                    "any"
+                ],
+                "anonymous_user": "string",
+                "clients": [
+                    {"match": "0.0.0.0/0"}
+                ],
+                "ntfs_unix_security": "fail",
+                "allow_device_creation": True
+            }]
+        }],
+    "_links": {
+        "next": {
+            "href": "/api/resourcelink"
+        },
+        "self": {
+            "href": "/api/resourcelink"
+        }
+    },
+    "num_records": 1
+}
+
+QOS_POLICY_GROUP_REST = {
+    "records": [
+        {
+            "policy_class": "undefined",
+            "object_count": '0',
+            "fixed": {
+                "max_throughput_iops": 0,
+                "capacity_shared": True,
+                "max_throughput_mbps": 0,
+                "min_throughput_iops": 0,
+                "min_throughput_mbps": 0
+            },
+            "_links": {
+                "self": {
+                    "href": "/api/resourcelink"
+                }
+            },
+            "name": "extreme",
+            "adaptive": {
+                "expected_iops_allocation": "allocated_space",
+                "expected_iops": 0,
+                "peak_iops_allocation": "used_space",
+                "block_size": "any",
+                "peak_iops": 0,
+                "absolute_min_iops": 0
+            },
+            "uuid": "1cd8a442-86d1-11e0-ae1c-123478563412",
+            "svm": {
+                "_links": {
+                    "self": {
+                        "href": "/api/resourcelink"
+                    }
+                },
+                "name": "svm1",
+                "uuid": "02c9e252-41be-11e9-81d5-00a0986138f7"
+            },
+            "pgid": 0,
+            "scope": "cluster"
+        }
+    ],
+    "_links": {
+        "next": {
+            "href": "/api/resourcelink"
+        },
+        "self": {
+            "href": "/api/resourcelink"
+        }
+    },
+    "error": {
+        "target": "uuid",
+        "arguments": [
+            {
+                "message": "string",
+                "code": "string"
+            }
+        ],
+        "message": "entry doesn't exist",
+        "code": "4"
+    },
+    "num_records": 1
+}
+
+FAKE_SNAPSHOT_UUID = "fake_uuid"
+FAKE_VOLUME_UUID = "fake_volume_uuid"
+SNAPSHOT_REST = {
+    "name": SNAPSHOT_NAME,
+    "uuid": FAKE_SNAPSHOT_UUID,
+    "volume": {
+        "name": VOLUME_NAMES[0],
+        "uuid": FAKE_VOLUME_UUID,
+    },
+    "create_time": "2019-02-04T19:00:00Z",
+    "owners": ["volume_clone"],
+    "svm": {
+        "name": VSERVER_NAME,
+    }
+}
+
+SNAPSHOTS_REST_RESPONSE = {
+    "records": [
+        SNAPSHOT_REST,
+    ],
+    "num_records": 1,
+}
+
+SNAPSHOTS_MULTIPLE_REST_RESPONSE = {
+    "records": [
+        SNAPSHOT_REST,
+        SNAPSHOT_REST,
+    ],
+    "num_records": 2,
+}
+
+SNAPMIRROR_GET_ITER_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": FAKE_UUID,
+            "source": {
+                "path": SM_SOURCE_VSERVER + ':' + SM_SOURCE_VOLUME,
+                "svm": {
+                    "name": SM_SOURCE_VSERVER
+                }
+            },
+            "destination": {
+                "path": SM_DEST_VSERVER + ':' + SM_DEST_VOLUME,
+                "svm": {
+                    "name": SM_DEST_VSERVER
+                }
+            },
+            "policy": {
+                "type": "async"
+            },
+            "state": "snapmirrored",
+            "healthy": True
+        }
+    ],
+    "num_records": 1,
+}
+
+REST_GET_SNAPMIRRORS_RESPONSE = [{
+    'destination-volume': SM_DEST_VOLUME,
+    'destination-vserver': SM_DEST_VSERVER,
+    'last-transfer-end-timestamp': 0,
+    'mirror-state': 'snapmirrored',
+    'relationship-status': 'snapmirrored',
+    'source-volume': SM_SOURCE_VOLUME,
+    'source-vserver': SM_SOURCE_VSERVER,
+    'uuid': FAKE_UUID,
+    'policy-type': 'async'
+}]
+
+FAKE_CIFS_RECORDS = {
+    "records": [
+        {
+            "svm": {
+                "uuid": "000c5cd2-ebdf-11e8-a96e-0050568ea3cb",
+                "name": "vs1"
+            },
+            "user_or_group": "Everyone",
+            "permission": "full_control"
+        },
+        {
+            "svm": {
+                "uuid": "000c5cd2-ebdf-11e8-a96e-0050568ea3cb",
+                "name": "vs1"
+            },
+            "user_or_group": "root",
+            "permission": "no_access"
+        }
+    ],
+    "num_records": 2
+}
+
+VOLUME = {
+    "name": "fake_volume_name",
+    "uuid": "028baa66-41bd-11e9-81d5-00a0986138f7",
+    "max_dir_size": 0,
+}
+
+SECUTITY_KEY_MANAGER_SUPPORT_RESPONSE_TRUE_REST = {
+    'records': [
+        {
+            'volume_encryption': {
+                'supported': True,
+                'message': '',
+                'code': 0
+            }
+        }
+    ],
+    'num_records': 1
+}
+
+SECUTITY_KEY_MANAGER_SUPPORT_RESPONSE_FALSE_REST = {
+    'records': [
+        {
+            'volume_encryption': {
+                'supported': False,
+                'message': 'No platform support for volume encryption '
+                           'in following nodes - node1, node2.',
+                'code': 346758
+            }
+        }
+    ],
+    'num_records': 1
+}
+
+FAKE_DISK_TYPE_RESPONSE = {
+    "records": [
+        {
+            "effective_type": "fakedisk"
+        }
+    ]
+}
+
+FAKE_SVM_AGGREGATES = {
+    "records": [
+        {
+            "name": VSERVER_NAME,
+            "aggregates": [
+                {
+                    "name": SHARE_AGGREGATE_NAMES_LIST[0],
+                    "available_size": 568692293632
+                },
+                {
+                    "name": SHARE_AGGREGATE_NAMES_LIST[1],
+                    "available_size": 727211110400
+                },
+            ]
+        }
+    ]
+}
+
+FAKE_SVM_AGGR_EMPTY = {
+    "records": [
+        {
+            "name": VSERVER_NAME,
+            "aggregates": []
+        }
+    ]
+}
+
+FAKE_AGGR_LIST = {
+    "records": [
+        {
+            "name": SHARE_AGGREGATE_NAMES_LIST[0]
+        }
+    ]
 }

@@ -363,37 +363,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result = self.library._check_snaprestore_license()
         self.assertIs(True, result)
 
-    def test_check_snaprestore_license_svm_scoped_notfound(self):
+    def test_check_snaprestore_license_svm_scoped(self):
         self.library._have_cluster_creds = False
         self.mock_object(self.library._client,
-                         'restore_snapshot',
-                         mock.Mock(side_effect=netapp_api.NaApiError(
-                                   code=netapp_api.EAPIERROR,
-                                   message=fake.NO_SNAPRESTORE_LICENSE)))
-        result = self.library._check_snaprestore_license()
-        self.assertIs(False, result)
+                         'check_snaprestore_license',
+                         mock.Mock(return_value=True))
 
-    def test_check_snaprestore_license_svm_scoped_found(self):
-        self.library._have_cluster_creds = False
-        self.mock_object(self.library._client,
-                         'restore_snapshot',
-                         mock.Mock(side_effect=netapp_api.NaApiError(
-                                   code=netapp_api.EAPIERROR,
-                                   message='Other error')))
         result = self.library._check_snaprestore_license()
+
         self.assertIs(True, result)
-
-    def test_check_snaprestore_license_svm_scoped_found_exception(self):
-        self.mock_object(lib_base.LOG, 'exception')
-        self.library._have_cluster_creds = False
-        self.mock_object(self.library._client,
-                         'restore_snapshot',
-                         mock.Mock(return_value=None))
-
-        self.assertRaises(
-            exception.NetAppException,
-            self.library._check_snaprestore_license)
-        lib_base.LOG.exception.assert_called_once()
 
     def test_get_aggregate_node_cluster_creds(self):
 
@@ -1611,7 +1589,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(job, result)
         vserver_client.create_volume_async.assert_called_once_with(
-            aggr_list, fake.SHARE_NAME, 1, snapshot_reserve=10,
+            aggr_list, fake.SHARE_NAME, 1, is_flexgroup=True,
+            snapshot_reserve=10,
             auto_provisioned=self.library._is_flexgroup_auto)
 
     def test_wait_for_start_create_flexgroup_timeout(self):
@@ -2767,6 +2746,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS,
                 shares_to_include=[fake.FLEXVOL_NAME])
             mock_modify_fpolicy.assert_called_once_with(
+                fake.SHARE_NAME,
                 fake.FPOLICY_POLICY_NAME, shares_to_include=[fake.SHARE_NAME])
         else:
             mock_find_scope.assert_not_called()
@@ -7173,12 +7153,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=[]))
         mock_create_event = self.mock_object(
             vserver_client, 'create_fpolicy_event')
-        mock_create_fpolicy = self.mock_object(
-            vserver_client, 'create_fpolicy_policy')
-        mock_create_scope = self.mock_object(
-            vserver_client, 'create_fpolicy_scope')
         mock_enable_fpolicy = self.mock_object(
             vserver_client, 'enable_fpolicy_policy')
+        mock_create_fpolicy_policy_with_scope = self.mock_object(
+            vserver_client, 'create_fpolicy_policy_with_scope')
 
         self.library._create_fpolicy_for_share(
             new_fake_share, vserver_name, vserver_client,
@@ -7194,25 +7172,27 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         if reusable_scope:
             mock_modify_policy.assert_called_once_with(
-                fake.FPOLICY_POLICY_NAME, shares_to_include=shares_to_include)
+                'share_new_fake_id', fake.FPOLICY_POLICY_NAME,
+                shares_to_include=shares_to_include)
             mock_get_policies.assert_not_called()
             mock_create_event.assert_not_called()
-            mock_create_fpolicy.assert_not_called()
-            mock_create_scope.assert_not_called()
+            mock_create_fpolicy_policy_with_scope.assert_not_called()
             mock_enable_fpolicy.assert_not_called()
         else:
             mock_modify_policy.assert_not_called()
 
             mock_get_policies.assert_called_once()
             mock_create_event.assert_called_once_with(
+                'share_new_fake_id',
                 event_name, new_fake_share['share_proto'].lower(),
                 fake.FPOLICY_FILE_OPERATIONS_LIST)
-            mock_create_fpolicy.assert_called_once_with(policy_name, events)
-            mock_create_scope.assert_called_once_with(
-                policy_name, 'share_new_fake_id',
+            mock_create_fpolicy_policy_with_scope.assert_called_once_with(
+                policy_name, 'share_new_fake_id', events,
                 extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
-                extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE)
-            mock_enable_fpolicy.assert_called_once_with(policy_name, 1)
+                extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE
+            )
+            mock_enable_fpolicy.assert_called_once_with(
+                'share_new_fake_id', policy_name, 1)
 
     def test__create_fpolicy_for_share_max_policies_error(self):
         fake_client = mock.Mock()
@@ -7259,10 +7239,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=[]))
         mock_create_event = self.mock_object(
             fake_client, 'create_fpolicy_event')
-        mock_create_fpolicy = self.mock_object(
-            fake_client, 'create_fpolicy_policy')
-        mock_create_scope = self.mock_object(
-            fake_client, 'create_fpolicy_scope',
+        mock_create_fpolicy_policy_with_scope = self.mock_object(
+            fake_client, 'create_fpolicy_policy_with_scope',
             mock.Mock(side_effect=self._mock_api_error()))
         mock_delete_fpolicy = self.mock_object(
             fake_client, 'delete_fpolicy_policy')
@@ -7284,15 +7262,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS)
         mock_get_policies.assert_called_once()
         mock_create_event.assert_called_once_with(
-            event_name, new_fake_share['share_proto'].lower(),
+            'share_new_fake_id', event_name,
+            new_fake_share['share_proto'].lower(),
             fake.FPOLICY_FILE_OPERATIONS_LIST)
-        mock_create_fpolicy.assert_called_once_with(policy_name, events)
-        mock_create_scope.assert_called_once_with(
-            policy_name, 'share_new_fake_id',
+        mock_create_fpolicy_policy_with_scope.assert_called_once_with(
+            policy_name, 'share_new_fake_id', events,
             extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
             extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE)
-        mock_delete_fpolicy.assert_called_once_with(policy_name)
-        mock_delete_event.assert_called_once_with(event_name)
+        mock_delete_fpolicy.assert_called_once_with(
+            'share_new_fake_id', policy_name)
+        mock_delete_event.assert_called_once_with(
+            'share_new_fake_id', event_name)
 
     def test__find_reusable_fpolicy_scope(self):
         vserver_client = mock.Mock()
@@ -7334,12 +7314,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual(reusable_scopes[0], result)
 
         mock_get_scopes.assert_called_once_with(
+            share_name=fake.SHARE_NAME,
             extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
             extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
             shares_to_include=None)
         mock_get_policies.assert_called_once_with(
+            share_name=fake.SHARE_NAME,
             policy_name=fake.FPOLICY_POLICY_NAME)
         mocke_get_events.assert_called_once_with(
+            share_name=fake.SHARE_NAME,
             event_name=fake.FPOLICY_EVENT_NAME)
 
     @ddt.data(False, True)
@@ -7387,18 +7370,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                fake_vserver_client)
 
         mock_get_scopes.assert_called_once_with(
+            share_name=fake.SHARE_NAME,
             shares_to_include=[share_name])
         if shares_to_include:
             mock_modify_scope.assert_called_once_with(
+                fake.SHARE_NAME,
                 fake.FPOLICY_POLICY_NAME, shares_to_include=shares_to_include)
         else:
             mock_disable_policy.assert_called_once_with(
                 fake.FPOLICY_POLICY_NAME)
             mock_get_policies.assert_called_once_with(
+                share_name=fake.SHARE_NAME,
                 policy_name=fake.FPOLICY_POLICY_NAME)
             mock_delete_scope.assert_called_once_with(
                 fake.FPOLICY_POLICY_NAME)
             mock_delete_policy.assert_called_once_with(
+                fake.SHARE_NAME,
                 fake.FPOLICY_POLICY_NAME)
             mock_delete_event.assert_called_once_with(
                 fake.FPOLICY_EVENT_NAME)
