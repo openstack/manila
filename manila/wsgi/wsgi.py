@@ -17,6 +17,8 @@ import sys
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_reports import guru_meditation_report as gmr
+from oslo_reports import opts as gmr_opts
 from oslo_service import wsgi
 
 # Need to register global_opts
@@ -30,9 +32,12 @@ CONF = cfg.CONF
 
 def initialize_application():
     log.register_options(CONF)
+    gmr_opts.set_defaults(CONF)
     CONF(sys.argv[1:], project="manila", version=version.version_string())
     config.verify_share_protocols()
     log.setup(CONF, "manila")
+
+    gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
     rpc.init(CONF)
     service.setup_profiler("manila-api", CONF.host)
     return wsgi.Loader(CONF).load_app(name='osapi_share')
