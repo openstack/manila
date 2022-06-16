@@ -3314,8 +3314,7 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
                           db_api.share_server_update,
                           self.ctxt, fake_id, {})
 
-    @ddt.data(None, constants.STATUS_SERVER_NETWORK_CHANGE)
-    def test_get_all_by_host_and_share_net_valid(self, server_status):
+    def test_get_all_by_host_and_share_subnet_valid(self):
         subnet_1 = {
             'id': '1',
             'share_network_id': '1',
@@ -3326,15 +3325,10 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         }
         share_net_subnets1 = db_utils.create_share_network_subnet(**subnet_1)
         share_net_subnets2 = db_utils.create_share_network_subnet(**subnet_2)
-        valid_no_status = {
+        valid = {
             'share_network_subnets': [share_net_subnets1],
             'host': 'host1',
             'status': constants.STATUS_ACTIVE,
-        }
-        valid_with_status = {
-            'share_network_subnets': [share_net_subnets1],
-            'host': 'host1',
-            'status': constants.STATUS_SERVER_NETWORK_CHANGE,
         }
         invalid = {
             'share_network_subnets': [share_net_subnets2],
@@ -3346,25 +3340,64 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
             'host': 'host2',
             'status': constants.STATUS_ACTIVE,
         }
-        if server_status:
-            valid = db_utils.create_share_server(**valid_with_status)
-        else:
-            valid = db_utils.create_share_server(**valid_no_status)
+        valid = db_utils.create_share_server(**valid)
         db_utils.create_share_server(**invalid)
         db_utils.create_share_server(**other)
 
         servers = db_api.share_server_get_all_by_host_and_share_subnet_valid(
             self.ctxt,
             host='host1',
-            share_subnet_id='1',
-            server_status=server_status)
+            share_subnet_id='1')
 
         self.assertEqual(valid['id'], servers[0]['id'])
 
-    def test_get_all_by_host_and_share_net_not_found(self):
+    def test_get_all_by_host_and_share_subnet_valid_not_found(self):
         self.assertRaises(
             exception.ShareServerNotFound,
             db_api.share_server_get_all_by_host_and_share_subnet_valid,
+            self.ctxt, host='fake', share_subnet_id='fake'
+        )
+
+    def test_get_all_by_host_and_share_subnet(self):
+        subnet_1 = {
+            'id': '1',
+            'share_network_id': '1',
+        }
+        share_net_subnets1 = db_utils.create_share_network_subnet(**subnet_1)
+        valid = {
+            'share_network_subnets': [share_net_subnets1],
+            'host': 'host1',
+            'status': constants.STATUS_SERVER_NETWORK_CHANGE,
+        }
+        other = {
+            'share_network_subnets': [share_net_subnets1],
+            'host': 'host1',
+            'status': constants.STATUS_ERROR,
+        }
+        invalid = {
+            'share_network_subnets': [share_net_subnets1],
+            'host': 'host2',
+            'status': constants.STATUS_ACTIVE,
+        }
+        valid = db_utils.create_share_server(**valid)
+        invalid = db_utils.create_share_server(**invalid)
+        other = db_utils.create_share_server(**other)
+
+        servers = db_api.share_server_get_all_by_host_and_share_subnet(
+            self.ctxt,
+            host='host1',
+            share_subnet_id='1')
+
+        self.assertEqual(2, len(servers))
+        ids = [s['id'] for s in servers]
+        self.assertTrue(valid['id'] in ids)
+        self.assertTrue(other['id'] in ids)
+        self.assertFalse(invalid['id'] in ids)
+
+    def test_get_all_by_host_and_share_subnet_not_found(self):
+        self.assertRaises(
+            exception.ShareServerNotFound,
+            db_api.share_server_get_all_by_host_and_share_subnet,
             self.ctxt, host='fake', share_subnet_id='fake'
         )
 

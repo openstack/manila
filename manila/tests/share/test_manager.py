@@ -10011,7 +10011,7 @@ class ShareManagerTestCase(test.TestCase):
         server = {'id': server_id}
         mock_servers_get = self.mock_object(
             self.share_manager.db,
-            'share_server_get_all_by_host_and_share_subnet_valid',
+            'share_server_get_all_by_host_and_share_subnet',
             mock.Mock(return_value=[server]))
         current_network_allocations = 'fake_current_net_allocations'
         mock_form_net_allocations = self.mock_object(
@@ -10047,8 +10047,7 @@ class ShareManagerTestCase(test.TestCase):
             self.context, net_id, new_subnet['availability_zone_id'],
             fallback_to_default=False)
         mock_servers_get.assert_called_once_with(
-            self.context, self.share_manager.host, new_share_network_subnet_id,
-            server_status=constants.STATUS_SERVER_NETWORK_CHANGE)
+            self.context, self.share_manager.host, new_share_network_subnet_id)
         mock_form_net_allocations.assert_called_once_with(
             self.context, server['id'], subnets)
         mock_instances_get.assert_called_once_with(
@@ -10082,7 +10081,7 @@ class ShareManagerTestCase(test.TestCase):
         server = {'id': server_id}
         mock_servers_get = self.mock_object(
             self.share_manager.db,
-            'share_server_get_all_by_host_and_share_subnet_valid',
+            'share_server_get_all_by_host_and_share_subnet',
             mock.Mock(return_value=[server]))
         current_network_allocations = 'fake_current_net_allocations'
         mock_form_net_allocations = self.mock_object(
@@ -10123,8 +10122,7 @@ class ShareManagerTestCase(test.TestCase):
             self.context, net_id, new_subnet['availability_zone_id'],
             fallback_to_default=False)
         mock_servers_get.assert_called_once_with(
-            self.context, self.share_manager.host, new_share_network_subnet_id,
-            server_status=constants.STATUS_SERVER_NETWORK_CHANGE)
+            self.context, self.share_manager.host, new_share_network_subnet_id)
         mock_form_net_allocations.assert_called_once_with(
             self.context, server['id'], subnets)
         mock_instances_get.assert_called_once_with(
