@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Drivers using DHSS True mode has the server creation phase. This phase
+    tries to reuse one of available share servers, however, the Manila code
+    is considering all share servers states as available, rather than
+    considering only the active or creating ones. Now, only the correct share
+    servers are passed to drivers as available to be reused.
