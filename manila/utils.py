@@ -38,6 +38,7 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import netutils
+from oslo_utils.secretutils import md5
 from oslo_utils import strutils
 from oslo_utils import timeutils
 import paramiko
@@ -59,6 +60,21 @@ _ISO8601_TIME_FORMAT_SUBSECOND = '%Y-%m-%dT%H:%M:%S.%f'
 _ISO8601_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
 synchronized = lockutils.synchronized_with_prefix('manila-')
+
+
+def get_fingerprint(self):
+    """Patch paramiko
+
+    This method needs to be patched to allow paramiko to work under FIPS.
+    Until the patch to do this merges, patch paramiko here.
+
+    TODO(carloss) Remove this when paramiko is patched.
+    See https://github.com/paramiko/paramiko/pull/1928
+    """
+    return md5(self.asbytes(), usedforsecurity=False).digest()
+
+
+paramiko.pkey.PKey.get_fingerprint = get_fingerprint
 
 
 def isotime(at=None, subsecond=False):
