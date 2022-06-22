@@ -345,7 +345,7 @@ replicated or is in the process of being migrated is physically stored in
 multiple locations. Each of these individual locations is called an "instance"
 within the Shared File Systems service. End users need not be concerned with
 this internal representation. As an administrator, you can list all instances
-of a share through this endpoint resource. Use the ``policy.json`` file to
+of a share through this endpoint resource. Use the ``policy.yaml`` file to
 grant permissions for this action to other roles.
 
 Response codes
@@ -505,7 +505,7 @@ Manage share (since API v2.7)
 Use this API to bring a share under the management of the Shared File
 Systems service.
 
-Administrator only. Use the ``policy.json`` file to grant permissions for this
+Administrator only. Use the ``policy.yaml`` file to grant permissions for this
 action to other roles.
 
 

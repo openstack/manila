@@ -84,7 +84,7 @@ capabilities_and_extra_specs.html>`_.
 Each driver implementation determines which extra specification
 keys it uses. For details, see the documentation for the driver.
 
-An administrator can use the ``policy.json`` file to grant
+An administrator can use the ``policy.yaml`` file to grant
 permissions for share type creation with extra specifications to
 other roles.
 

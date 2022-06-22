@@ -13,7 +13,7 @@ You can update a share group snapshot to rename it, change its
 description, or update its state.
 
 As administrator, you can also reset the state of a group snapshot. Use
-the ``policy.json`` file to grant permissions for these actions to other
+the ``policy.yaml`` file to grant permissions for these actions to other
 roles.
 
 .. note::
@@ -307,7 +307,7 @@ Reset share group snapshot state
 
 Administrator only. Explicitly updates the state of a share group snapshot.
 
-Use the ``policy.json`` file to grant permissions for this action
+Use the ``policy.yaml`` file to grant permissions for this action
 to other roles.
 
 Response codes

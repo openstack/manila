@@ -38,7 +38,7 @@ description, or update its state to one of these supported states:
 - ``restoring``
 
 As administrator, you can also reset the state of a snapshot and
-force-delete a share snapshot in any state. Use the ``policy.json``
+force-delete a share snapshot in any state. Use the ``policy.yaml``
 file to grant permissions for these actions to other roles.
 
 
@@ -390,7 +390,7 @@ Reset share snapshot state
 
 Administrator only. Explicitly updates the state of a share snapshot.
 
-Use the ``policy.json`` file to grant permissions for this action
+Use the ``policy.yaml`` file to grant permissions for this action
 to other roles.
 
 Response codes
@@ -430,7 +430,7 @@ Force-delete share snapshot
 
 Administrator only. Force-deletes a share snapshot in any state.
 
-Use the ``policy.json`` file to grant permissions for this action
+Use the ``policy.yaml`` file to grant permissions for this action
 to other roles.
 
 Response codes

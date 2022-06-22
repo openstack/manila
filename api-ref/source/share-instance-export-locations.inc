@@ -5,7 +5,7 @@ Share instance export locations (since API v2.9)
 
 Set of APIs used to view export locations of share instances.
 
-By default, these APIs are admin-only. Use the ``policy.json`` file
+By default, these APIs are admin-only. Use the ``policy.yaml`` file
 to grant permissions for these actions to other roles.
 
 Lists all export locations for a share instance.

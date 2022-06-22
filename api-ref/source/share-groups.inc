@@ -297,7 +297,7 @@ Reset share group state
 
 Administrator only. Explicitly updates the state of a share group.
 
-Use the ``policy.json`` file to grant permissions for this action
+Use the ``policy.yaml`` file to grant permissions for this action
 to other roles.
 
 Response codes

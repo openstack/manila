@@ -22,7 +22,7 @@ Use this API to bring a share under the management of the Shared File
 Systems service. In the service, the share will be represented as a resource
 in the database. It can have a user defined name and description.
 
-Administrator only. Use the ``policy.json`` file to grant permissions for this
+Administrator only. Use the ``policy.yaml`` file to grant permissions for this
 action to other roles.
 
 Response codes
@@ -113,7 +113,7 @@ Unmanage share (DEPRECATED)
 Use this API to remove a share from the management of the Shared File
 Systems service without deleting the share.
 
-Administrator only. Use the ``policy.json`` file to grant permissions for this
+Administrator only. Use the ``policy.yaml`` file to grant permissions for this
 action to other roles.
 
 

@@ -10,7 +10,7 @@ available access rules for a share, explicitly updating the state of a
 share, resizing a share and un-managing a share.
 
 As administrator, you can reset the state of a share and force-
-delete a share in any state. Use the ``policy.json`` file to grant
+delete a share in any state. Use the ``policy.yaml`` file to grant
 permissions for this action to other roles.
 
 You can set the state of a share to one of these supported states:
@@ -245,7 +245,7 @@ Reset share state
 
 Administrator only. Explicitly updates the state of a share.
 
-Use the ``policy.json`` file to grant permissions for this action
+Use the ``policy.yaml`` file to grant permissions for this action
 to other roles.
 
 Response codes
@@ -287,7 +287,7 @@ Force-delete share
 
 Administrator only. Force-deletes a share in any state.
 
-Use the ``policy.json`` file to grant permissions for this action
+Use the ``policy.yaml`` file to grant permissions for this action
 to other roles.
 
 Response codes
@@ -409,7 +409,7 @@ Unmanage share (since API v2.7)
 Use this API to remove a share from the management of the Shared File
 Systems service without deleting the share.
 
-Administrator only. Use the ``policy.json`` file to grant permissions for this
+Administrator only. Use the ``policy.yaml`` file to grant permissions for this
 action to other roles.
 
 

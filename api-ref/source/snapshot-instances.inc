@@ -11,7 +11,7 @@ and each individual location is called an "instance", internally within
 the Shared File Systems service.
 
 By default administrators can list, show information for and explicitly
-set the state of share snapshot instances. Use the ``policy.json`` file
+set the state of share snapshot instances. Use the ``policy.yaml`` file
 to grant permissions for these actions to other roles.
 
 
@@ -175,7 +175,7 @@ Reset share snapshot instance state
 
 Administrator only. Explicitly updates the state of a share snapshot instance.
 
-Use the ``policy.json`` file to grant permissions for this action
+Use the ``policy.yaml`` file to grant permissions for this action
 to other roles.
 
 Response codes
