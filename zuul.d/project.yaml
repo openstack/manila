@@ -6,6 +6,7 @@
       - check-requirements
       - release-notes-jobs-python3
       - periodic-stable-jobs
+      - manila-tempest-plugin-jobs-using-service-image-stable
     check:
       jobs:
         - manila-tox-genconfig
@@ -16,20 +17,11 @@
             voting: false
         - manila-tempest-plugin-dummy-no-dhss
         - manila-tempest-plugin-dummy-dhss
-        - manila-tempest-plugin-lvm
-        - manila-tempest-plugin-cephfs-native:
-            voting: false
-        - manila-tempest-plugin-cephfs-nfs:
-            voting: false
         - manila-tempest-plugin-container:
-            voting: false
-        - manila-tempest-plugin-generic:
             voting: false
         - manila-tempest-plugin-glusterfs-native:
             voting: false
         - manila-tempest-plugin-glusterfs-nfs:
-            voting: false
-        - manila-tempest-plugin-zfsonlinux:
             voting: false
         - manila-grenade:
             voting: false
@@ -42,7 +34,6 @@
       jobs:
         - manila-tempest-plugin-dummy-no-dhss
         - manila-tempest-plugin-dummy-dhss
-        - manila-tempest-plugin-lvm
     experimental:
       jobs:
         - tripleo-ci-centos-8-scenario004-standalone
