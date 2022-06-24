@@ -189,7 +189,7 @@ if [[ "$DRIVER" == "lvm" ]]; then
     RUN_MANILA_IPV6_TESTS=True
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
-    iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-master'
+    iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-1.3.0-76-ga216835'
     iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
     iniset $TEMPEST_CONFIG share capability_snapshot_support True
     if ! grep $USERNAME_FOR_USER_RULES "/etc/passwd"; then
@@ -223,7 +223,7 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     iniset $TEMPEST_CONFIG share multitenancy_enabled False
     iniset $TEMPEST_CONFIG share multi_backend True
     iniset $TEMPEST_CONFIG share backend_replication_type 'readable'
-    iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-master'
+    iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-1.3.0-76-ga216835'
     iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
     iniset $TEMPEST_CONFIG share capability_snapshot_support True
 elif [[ "$DRIVER" == "dummy" ]]; then
