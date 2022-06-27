@@ -147,14 +147,15 @@ function set_cinder_quotas {
 function set_backend_availability_zones {
     ENABLED_BACKENDS=$1
     echo_summary "Setting up backend_availability_zone option \
-        for any enabled backends that do not use the Generic driver. \
-        Availability zones for the Generic driver must coincide with those \
-        created for Nova and Cinder."
+        for any enabled backends that do not use the Generic driver and have \
+        not been set previously. Availability zones for the Generic driver \
+        must coincide with those created for Nova and Cinder."
     local zonenum
     generic_driver='manila.share.drivers.generic.GenericShareDriver'
     for BE in ${ENABLED_BACKENDS//,/ }; do
         share_driver=$(iniget $MANILA_CONF $BE share_driver)
-        if [[ $share_driver != $generic_driver ]]; then
+        az=$(iniget $MANILA_CONF $BE backend_availability_zone)
+        if [[ -z $az && $share_driver != $generic_driver ]]; then
             zone="manila-zone-$((zonenum++))"
             iniset $MANILA_CONF $BE backend_availability_zone $zone
         fi
