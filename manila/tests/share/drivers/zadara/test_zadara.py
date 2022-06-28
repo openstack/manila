@@ -737,6 +737,7 @@ class ZadaraVPSAShareDriverTestCase(test.TestCase):
             'fake_admin_network_config_group')
         self.configuration.reserved_percentage = 0
         self.configuration.reserved_snapshot_percentage = 0
+        self.configuration.reserved_share_extend_percentage = 0
         self.configuration.zadara_use_iser = True
         self.configuration.zadara_vpsa_host = '192.168.5.5'
         self.configuration.zadara_vpsa_port = '80'
@@ -757,6 +758,7 @@ class ZadaraVPSAShareDriverTestCase(test.TestCase):
         self.configuration.share_backend_name = 'zadaravpsa'
         self.configuration.reserved_share_percentage = '0'
         self.configuration.reserved_share_from_snapshot_percentage = '0'
+        self.configuration.reserved_share_extend_percentage = 0
         self.configuration.replication_domain = None
         self.configuration.filter_function = None
         self.configuration.goodness_function = None
@@ -963,6 +965,8 @@ class ZadaraVPSAShareDriverTestCase(test.TestCase):
                          self.configuration.reserved_percentage)
         self.assertEqual(data['reserved_snapshot_percentage'],
                          self.configuration.reserved_snapshot_percentage)
+        self.assertEqual(data['reserved_share_extend_percentage'],
+                         self.configuration.reserved_share_extend_percentage)
         self.assertEqual(data['snapshot_support'], True)
         self.assertEqual(data['create_share_from_snapshot_support'], True)
         self.assertEqual(data['revert_to_snapshot_support'], False)

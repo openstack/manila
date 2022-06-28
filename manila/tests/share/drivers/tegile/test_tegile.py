@@ -38,6 +38,7 @@ test_config.tegile_nas_login = 'some-user'
 test_config.tegile_nas_password = 'some-password'
 test_config.reserved_share_percentage = 10
 test_config.reserved_share_from_snapshot_percentage = 5
+test_config.reserved_share_extend_percentage = 5
 test_config.max_over_subscription_ratio = 30.0
 
 test_share = {
@@ -83,6 +84,7 @@ array_stats = {
             'free_capacity_gb': 911.812650680542,
             'reserved_percentage': 0,
             'reserved_snapshot_percentage': 0,
+            'reserved_share_extend_percentage': 0,
             'pool_name': 'pyramid',
         },
         {
@@ -91,6 +93,7 @@ array_stats = {
             'free_capacity_gb': 2740.148867149747,
             'reserved_percentage': 0,
             'reserved_snapshot_percentage': 0,
+            'reserved_share_extend_percentage': 0,
             'pool_name': 'cobalt',
         },
         {
@@ -99,6 +102,7 @@ array_stats = {
             'free_capacity_gb': 913.4198722839355,
             'reserved_percentage': 0,
             'reserved_snapshot_percentage': 0,
+            'reserved_share_extend_percentage': 0,
             'pool_name': 'test',
         },
     ],
@@ -451,6 +455,7 @@ class TegileShareDriverTestCase(test.TestCase):
                     'qos': False,
                     'reserved_percentage': 10,
                     'reserved_snapshot_percentage': 5,
+                    'reserved_share_extend_percentage': 5,
                     'thin_provisioning': True,
                     'max_over_subscription_ratio': 30.0,
                     'total_capacity_gb': 913.5},
@@ -463,6 +468,7 @@ class TegileShareDriverTestCase(test.TestCase):
                     'qos': False,
                     'reserved_percentage': 10,
                     'reserved_snapshot_percentage': 5,
+                    'reserved_share_extend_percentage': 5,
                     'thin_provisioning': True,
                     'max_over_subscription_ratio': 30.0,
                     'total_capacity_gb': 2742.1996604874
@@ -476,12 +482,14 @@ class TegileShareDriverTestCase(test.TestCase):
                     'qos': False,
                     'reserved_percentage': 10,
                     'reserved_snapshot_percentage': 5,
+                    'reserved_share_extend_percentage': 5,
                     'thin_provisioning': True,
                     'max_over_subscription_ratio': 30.0,
                     'total_capacity_gb': 913.5}, ],
             'qos': False,
             'reserved_percentage': 0,
             'reserved_snapshot_percentage': 0,
+            'reserved_share_extend_percentage': 0,
             'replication_domain': None,
             'share_backend_name': 'Tegile',
             'snapshot_support': True,

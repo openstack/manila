@@ -281,6 +281,11 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                             'reserved_share_from_snapshot_percentage') or
                         self.configuration.safe_get(
                             'reserved_share_percentage'),
+                    'reserved_share_extend_percentage':
+                        self.configuration.safe_get(
+                            'reserved_share_extend_percentage') or
+                        self.configuration.safe_get(
+                            'reserved_share_percentage'),
                     'dedupe': [False],
                     'compression': [False],
                     'thin_provisioning': [False]

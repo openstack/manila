@@ -141,6 +141,7 @@ class ShareDriverTestCase(test.TestCase):
             'free_capacity_gb', 'total_capacity_gb',
             'driver_handles_share_servers',
             'reserved_percentage', 'reserved_snapshot_percentage',
+            'reserved_share_extend_percentage',
             'vendor_name', 'storage_protocol',
             'snapshot_support', 'mount_snapshot_support',
         ]

@@ -65,6 +65,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
 
         CONF.set_default('reserved_share_percentage', 50)
         CONF.set_default('reserved_share_from_snapshot_percentage', 30)
+        CONF.set_default('reserved_share_extend_percentage', 30)
         CONF.set_default('driver_handles_share_servers', False)
 
         self.fake_conf = config.Configuration(None)
@@ -157,7 +158,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
                                   'vendor_name': 'Red Hat',
                                   'share_backend_name': 'GlusterFS',
                                   'reserved_percentage': 50,
-                                  'reserved_snapshot_percentage': 30}))
+                                  'reserved_snapshot_percentage': 30,
+                                  'reserved_share_extend_percentage': 30}))
 
     def test_get_network_allocations_number(self):
         self.assertEqual(0, self._driver.get_network_allocations_number())
