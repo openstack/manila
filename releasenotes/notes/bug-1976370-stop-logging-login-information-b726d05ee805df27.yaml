@@ -1,0 +1,5 @@
+---
+security:
+  - |
+    The SSH utility module no longer logs usernames and passwords as
+    debug information.
