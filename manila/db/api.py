@@ -777,9 +777,9 @@ def security_service_update(context, id, values):
     return IMPL.security_service_update(context, id, values)
 
 
-def security_service_get(context, id):
+def security_service_get(context, id, **kwargs):
     """Get security service DB record."""
-    return IMPL.security_service_get(context, id)
+    return IMPL.security_service_get(context, id, **kwargs)
 
 
 def security_service_get_all(context):
