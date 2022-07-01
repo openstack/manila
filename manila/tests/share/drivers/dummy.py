@@ -195,11 +195,31 @@ class DummyDriver(driver.ShareDriver):
             "is_admin_only": is_admin_only,
         }
 
+    def _get_subnet_allocations_from_backend_details(self, backend_details):
+        """Reads subnet_allocations info from backend details"""
+        # NOTE(sfernand): Ensure backward compatibility for share servers
+        # created prior to the addition of support to multiple subnets per AZ,
+        # by read ip information using the old format in case
+        # subnet_allocations does not exist.
+        if 'subnet_allocations' in backend_details:
+            subnet_allocations = jsonutils.loads(
+                backend_details['subnet_allocations'])
+        else:
+            subnet_allocations = [{
+                'primary_public_ip':
+                    backend_details['primary_public_ip'],
+                'secondary_public_ip':
+                    backend_details['secondary_public_ip']
+            }]
+        return subnet_allocations
+
     def _generate_export_locations(self, mountpoint, share_server=None):
         if share_server:
-            subnet_allocations = jsonutils.loads(
-                share_server["backend_details"]["subnet_allocations"])
-            service_ip = share_server["backend_details"]["service_ip"]
+            backend_details = share_server['backend_details']
+            subnet_allocations = (
+                self._get_subnet_allocations_from_backend_details(
+                    backend_details))
+            service_ip = backend_details["service_ip"]
         else:
             subnet_allocations = [{
                 "primary_public_ip": "10.0.0.10",
@@ -857,8 +877,10 @@ class DummyDriver(driver.ShareDriver):
             raise exception.ShareBackendException(msg=msg)
 
         ips = [server_details['service_ip']]
-        subnet_allocations = jsonutils.loads(
-            server_details['subnet_allocations'])
+
+        subnet_allocations = (
+            self._get_subnet_allocations_from_backend_details(server_details))
+
         for subnet_allocation in subnet_allocations:
             ips += list(subnet_allocation.values())
         return ips
@@ -934,8 +956,10 @@ class DummyDriver(driver.ShareDriver):
             self, context, share_server, current_network_allocations,
             new_network_allocations, security_services, shares, snapshots):
 
-        subnet_allocations = jsonutils.loads(
-            share_server['backend_details']['subnet_allocations'])
+        backend_details = share_server['backend_details']
+        subnet_allocations = (
+            self._get_subnet_allocations_from_backend_details(backend_details))
+
         subnet_allocations.append({
             'primary_public_ip': new_network_allocations[
                 'network_allocations'][0]['ip_address'],
@@ -945,7 +969,7 @@ class DummyDriver(driver.ShareDriver):
         new_server = {
             "backend_details": {
                 "subnet_allocations": jsonutils.dumps(subnet_allocations),
-                "service_ip": share_server["backend_details"]["service_ip"],
+                "service_ip": backend_details["service_ip"],
             }
         }
         shares_updates = {}
