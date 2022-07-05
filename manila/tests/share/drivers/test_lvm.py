@@ -183,7 +183,7 @@ class LVMShareDriverTestCase(test.TestCase):
         self._driver._mount_device.assert_called_with(
             self.share, '/dev/mapper/fakevg-fakename')
         expected_exec = [
-            'lvcreate -L 1G -n fakename fakevg',
+            'lvcreate -Wy --yes -L 1G -n fakename fakevg',
             'mkfs.ext4 /dev/mapper/fakevg-fakename',
         ]
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
@@ -207,7 +207,7 @@ class LVMShareDriverTestCase(test.TestCase):
         self._driver._mount_device.assert_called_with(self.share,
                                                       mount_snapshot)
         expected_exec = [
-            'lvcreate -L 1G -n fakename fakevg',
+            'lvcreate -Wy --yes -L 1G -n fakename fakevg',
             'mkfs.ext4 /dev/mapper/fakevg-fakename',
             'e2fsck -y -f %s' % mount_share,
             'tune2fs -U random %s' % mount_share,
@@ -229,9 +229,8 @@ class LVMShareDriverTestCase(test.TestCase):
         self._driver._mount_device.assert_called_with(
             share, '/dev/mapper/fakevg-fakename')
         expected_exec = [
-            'lvcreate -L 2048G -n fakename fakevg -m 2 --nosync -R 2',
-            'mkfs.ext4 /dev/mapper/fakevg-fakename',
-        ]
+            'lvcreate -Wy --yes -L 2048G -n fakename fakevg -m 2 --nosync'
+            ' -R 2', 'mkfs.ext4 /dev/mapper/fakevg-fakename']
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
         self.assertEqual(self._helper_nfs.create_exports.return_value, ret)
 
