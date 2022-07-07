@@ -140,9 +140,15 @@ cephfs_opts = [
                     "multiple filesystems in the cluster."),
 ]
 
+cephfsnfs_opts = [
+    cfg.StrOpt('cephfs_nfs_cluster_id',
+               help="The ID of the NFS cluster to use."),
+]
+
 
 CONF = cfg.CONF
 CONF.register_opts(cephfs_opts)
+CONF.register_opts(cephfsnfs_opts)
 
 
 class RadosError(Exception):
@@ -151,8 +157,8 @@ class RadosError(Exception):
     pass
 
 
-def rados_command(rados_client, prefix=None, args=None, json_obj=False,
-                  target=None):
+def rados_command(rados_client, prefix=None, args=None,
+                  json_obj=False, target=None, inbuf=None):
     """Safer wrapper for ceph_argparse.json_command
 
     Raises error exception instead of relying on caller to check return
@@ -177,17 +183,21 @@ def rados_command(rados_client, prefix=None, args=None, json_obj=False,
     argdict = args.copy()
     argdict['format'] = 'json'
 
+    if inbuf is None:
+        inbuf = b''
+
     LOG.debug("Invoking ceph_argparse.json_command - rados_client=%(cl)s, "
-              "target=%(tg)s, prefix='%(pf)s', argdict=%(ad)s, "
+              "target=%(tg)s, prefix='%(pf)s', argdict=%(ad)s, inbuf=%(ib)s, "
               "timeout=%(to)s.",
               {"cl": rados_client, "tg": target, "pf": prefix, "ad": argdict,
-               "to": RADOS_TIMEOUT})
+               "ib": inbuf, "to": RADOS_TIMEOUT})
 
     try:
         ret, outbuf, outs = json_command(rados_client,
                                          target=target,
                                          prefix=prefix,
                                          argdict=argdict,
+                                         inbuf=inbuf,
                                          timeout=RADOS_TIMEOUT)
         if ret != 0:
             raise rados.Error(outs, ret)
@@ -223,6 +233,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         self._volname = None
         self._ceph_mon_version = None
         self.configuration.append_config_values(cephfs_opts)
+        self.configuration.append_config_values(cephfsnfs_opts)
 
         try:
             int(self.configuration.cephfs_volume_mode, 8)
@@ -239,8 +250,14 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             protocol_helper_class = getattr(
                 sys.modules[__name__], 'NativeProtocolHelper')
         else:
-            protocol_helper_class = getattr(
-                sys.modules[__name__], 'NFSProtocolHelper')
+            # FIXME(vkmc) we intent to replace NFSProtocolHelper
+            # with NFSClusterProtocolHelper helper in BB/CC release
+            if self.configuration.cephfs_nfs_cluster_id is None:
+                protocol_helper_class = getattr(
+                    sys.modules[__name__], 'NFSProtocolHelper')
+            else:
+                protocol_helper_class = getattr(
+                    sys.modules[__name__], 'NFSClusterProtocolHelper')
 
         self.setup_default_ceph_cmd_target()
 
@@ -952,7 +969,75 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
         return [4]
 
 
-class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
+class NFSProtocolHelperMixin():
+
+    def get_export_locations(self, share, subvolume_path):
+        export_locations = []
+
+        if not self.export_ips:
+            self.export_ips = self._get_export_ips()
+
+        for export_ip in self.export_ips:
+            # Try to escape the export ip. If it fails, means that the
+            # `cephfs_ganesha_server_ip` wasn't possibly set and the used
+            # address is the hostname
+            try:
+                server_address = driver_helpers.escaped_address(export_ip)
+            except ValueError:
+                server_address = export_ip
+
+            export_path = "{server_address}:{mount_path}".format(
+                server_address=server_address, mount_path=subvolume_path)
+
+            LOG.info("Calculated export path for share %(id)s: %(epath)s",
+                     {"id": share['id'], "epath": export_path})
+            export_location = {
+                'path': export_path,
+                'is_admin_only': False,
+                'metadata': {},
+            }
+            export_locations.append(export_location)
+        return export_locations
+
+    def _get_export_path(self, share):
+        """Callback to provide export path."""
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": share["id"]
+        }
+        if share["share_group_id"] is not None:
+            argdict.update({"group_name": share["share_group_id"]})
+
+        path = rados_command(
+            self.rados_client, "fs subvolume getpath", argdict)
+
+        return path
+
+    def _get_export_pseudo_path(self, share):
+        """Callback to provide pseudo path."""
+        return self._get_export_path(share)
+
+    def get_configured_ip_versions(self):
+        if not self.configured_ip_versions:
+            try:
+                if not self.export_ips:
+                    self.export_ips = self._get_export_ips()
+
+                for export_ip in self.export_ips:
+                    self.configured_ip_versions.add(
+                        ipaddress.ip_address(str(export_ip)).version)
+            except Exception:
+                # export_ips contained a hostname, safest thing is to
+                # claim support for IPv4 and IPv6 address families
+                LOG.warning("Setting configured IP versions to [4, 6] since "
+                            "a hostname (rather than IP address) was supplied "
+                            "in 'cephfs_ganesha_server_ip' or "
+                            "in 'cephfs_ganesha_export_ips'.")
+                return [4, 6]
+        return list(self.configured_ip_versions)
+
+
+class NFSProtocolHelper(NFSProtocolHelperMixin, ganesha.GaneshaNASHelper2):
 
     shared_data = {}
     supported_protocols = ('NFS',)
@@ -980,9 +1065,7 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
             self.rados_client = kwargs.pop('rados_client')
         if not hasattr(self, 'volname'):
             self.volname = kwargs.pop('volname')
-        self.export_ips = config_object.cephfs_ganesha_export_ips
-        if not self.export_ips:
-            self.export_ips = [self.ganesha_host]
+        self.export_ips = None
         self.configured_ip_versions = set()
         self.config = config_object
 
@@ -997,30 +1080,6 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
                          "option supplied %s -- not a valid IP address or "
                          "hostname.") % export_ip)
                 raise exception.InvalidParameterValue(err=msg)
-
-    def get_export_locations(self, share, subvolume_path):
-        export_locations = []
-        for export_ip in self.export_ips:
-            # Try to escape the export ip. If it fails, means that the
-            # `cephfs_ganesha_server_ip` wasn't possibly set and the used
-            # address is the hostname
-            try:
-                server_address = driver_helpers.escaped_address(export_ip)
-            except ValueError:
-                server_address = export_ip
-
-            export_path = "{server_address}:{mount_path}".format(
-                server_address=server_address, mount_path=subvolume_path)
-
-            LOG.info("Calculated export path for share %(id)s: %(epath)s",
-                     {"id": share['id'], "epath": export_path})
-            export_location = {
-                'path': export_path,
-                'is_admin_only': False,
-                'metadata': {},
-            }
-            export_locations.append(export_location)
-        return export_locations
 
     def _default_config_hook(self):
         """Callback to provide default export block."""
@@ -1070,36 +1129,160 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
 
         rados_command(self.rados_client, "fs subvolume deauthorize", argdict)
 
-    def _get_export_path(self, share):
-        """Callback to provide export path."""
+    def _get_export_ips(self):
+        export_ips = self.config.cephfs_ganesha_export_ips
+        if not export_ips:
+            export_ips = [self.ganesha_host]
+
+        return export_ips
+
+
+class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
+
+    supported_access_types = ('ip', )
+    supported_access_levels = (constants.ACCESS_LEVEL_RW,
+                               constants.ACCESS_LEVEL_RO)
+
+    def __init__(self, execute, config_object, **kwargs):
+        self.rados_client = kwargs.pop('rados_client')
+        self.volname = kwargs.pop('volname')
+        self.configured_ip_versions = set()
+        self.configuration = config_object
+        self._nfs_clusterid = None
+        self.export_ips = None
+        super(NFSClusterProtocolHelper, self).__init__(execute,
+                                                       config_object,
+                                                       **kwargs)
+
+    @property
+    def nfs_clusterid(self):
+        # ID of the NFS cluster where the driver exports shares
+        if self._nfs_clusterid:
+            return self._nfs_clusterid
+
+        self._nfs_clusterid = (
+            self.configuration.safe_get('cephfs_nfs_cluster_id'))
+
+        if not self._nfs_clusterid:
+            msg = _("The NFS Cluster ID has not been configured"
+                    "Please check cephfs_nfs_cluster_id option "
+                    "has been correctly set in the backend configuration.")
+            raise exception.ShareBackendException(msg=msg)
+
+        return self._nfs_clusterid
+
+    def _get_export_ips(self):
+        """Get NFS cluster export ips."""
+        nfs_clusterid = self.nfs_clusterid
+        export_ips = []
+
         argdict = {
-            "vol_name": self.volname,
-            "sub_name": share["id"]
+            "nfs_cluster_id": nfs_clusterid,
         }
-        if share["share_group_id"] is not None:
-            argdict.update({"group_name": share["share_group_id"]})
 
-        path = rados_command(
-            self.rados_client, "fs subvolume getpath", argdict)
+        output = rados_command(self.rados_client, "nfs cluster info", argdict)
 
-        return path
+        nfs_cluster_info = json.loads(output)
 
-    def _get_export_pseudo_path(self, share):
-        """Callback to provide pseudo path."""
-        return self._get_export_path(share)
+        # NFS has been deployed with an ingress
+        # we use the VIP for the export ips
+        vip = nfs_cluster_info[nfs_clusterid]["virtual_ip"]
 
-    def get_configured_ip_versions(self):
-        if not self.configured_ip_versions:
+        # there is no VIP, we fallback to NFS cluster ips
+        if not vip:
+            hosts = nfs_cluster_info[nfs_clusterid]["backend"]
+            for host in hosts:
+                export_ips.append(host["ip"])
+        else:
+            export_ips.append(vip)
+
+        return export_ips
+
+    def check_for_setup_error(self):
+        """Returns an error if prerequisites aren't met."""
+        return
+
+    def _allow_access(self, share, access):
+        """Allow access to the share."""
+        export = {
+            "path": self._get_export_path(share),
+            "nfs_cluster_id": self.nfs_clusterid,
+            "pseudo": self._get_export_pseudo_path(share),
+            "squash": "none",
+            "security_label": True,
+            "protocols": [4],
+            "fsal": {
+                "name": "CEPH",
+                "fs_name": self.volname,
+
+            },
+            "clients": access
+        }
+
+        argdict = {
+            "nfs_cluster_id": self.nfs_clusterid,
+        }
+
+        inbuf = json.dumps(export).encode('utf-8')
+        rados_command(self.rados_client,
+                      "nfs export apply", argdict, inbuf=inbuf)
+
+    def _deny_access(self, share):
+        """Deny access to the share."""
+
+        argdict = {
+            "nfs_cluster_id": self.nfs_clusterid,
+            "pseudo_path": self._get_export_pseudo_path(share)
+        }
+
+        rados_command(self.rados_client, "nfs export rm", argdict)
+
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
+        """Update access rules of share.
+
+        Creates an export per share. Modifies access rules of shares by
+        dynamically updating exports via ceph nfs.
+        """
+        rule_state_map = {}
+
+        wanted_rw_clients, wanted_ro_clients = [], []
+        for rule in access_rules:
             try:
-                for export_ip in self.export_ips:
-                    self.configured_ip_versions.add(
-                        ipaddress.ip_address(str(export_ip)).version)
-            except Exception:
-                # export_ips contained a hostname, safest thing is to
-                # claim support for IPv4 and IPv6 address families
-                LOG.warning("Setting configured IP versions to [4, 6] since "
-                            "a hostname (rather than IP address) was supplied "
-                            "in 'cephfs_ganesha_server_ip' or "
-                            "in 'cephfs_ganesha_export_ips'.")
-                return [4, 6]
-        return list(self.configured_ip_versions)
+                ganesha_utils.validate_access_rule(
+                    self.supported_access_types, self.supported_access_levels,
+                    rule, True)
+            except (exception.InvalidShareAccess,
+                    exception.InvalidShareAccessLevel):
+                rule_state_map[rule['id']] = {'state': 'error'}
+                continue
+
+            rule = ganesha_utils.fixup_access_rule(rule)
+            if rule['access_level'] == 'rw':
+                wanted_rw_clients.append(rule['access_to'])
+            elif rule['access_level'] == 'ro':
+                wanted_ro_clients.append(rule['access_to'])
+
+        if access_rules:
+            # add or update export
+            clients = []
+            if wanted_ro_clients:
+                clients.append({
+                    'access_type': 'ro',
+                    'addresses': wanted_ro_clients,
+                    'squash': 'none'
+                })
+            if wanted_rw_clients:
+                clients.append({
+                    'access_type': 'rw',
+                    'addresses': wanted_rw_clients,
+                    'squash': 'none'
+                })
+
+            if clients:  # empty list if no rules passed validation
+                self._allow_access(share, clients)
+        else:
+            # no clients have access to the share. remove export
+            self._deny_access(share)
+
+        return rule_state_map

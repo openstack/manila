@@ -105,7 +105,11 @@ def validate_access_rule(supported_access_types, supported_access_levels,
     errmsg = _("Unsupported access rule of 'type' %(access_type)s, "
                "'level' %(access_level)s, 'to' %(access_to)s: "
                "%(field)s should be one of %(supported)s.")
-    access_param = access_rule.to_dict()
+
+    if not isinstance(access_rule, dict):
+        access_param = access_rule.to_dict()
+    else:
+        access_param = access_rule
 
     def validate(field, supported_tokens, excinfo):
         if access_rule['access_%s' % field] in supported_tokens:

@@ -215,7 +215,7 @@ def setup_rados():
             rados = importutils.import_module('rados')
         except ImportError:
             raise exception.ShareBackendException(
-                _("python-rados is not installed"))
+                _("rados python module is not installed"))
 
 
 class GaneshaManager(object):

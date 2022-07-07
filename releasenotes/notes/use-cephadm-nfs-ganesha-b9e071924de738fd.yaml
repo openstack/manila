@@ -1,0 +1,22 @@
+---
+features:
+  - |
+    NFSClusterProtocolHelper has been added to allow users to consume to export CephFS shares
+    over a clustered NFS gateway. This presents many advantages, since the operator no longer
+    needs to maintain their own instances of NFS Ganesha apart of the Ceph cluster.
+    For this, we now communicate with ceph mgr using the nfs plugin. Read more
+    about this plugin in https://docs.ceph.com/en/latest/cephfs/nfs/
+upgrade:
+  - |
+    The CephFS driver now supports a new configuration option:
+    * cephfs_nfs_cluster_id (string option): name of the nfs cluster to use.
+    This option can be used to specify which NFS cluster to use.
+other:
+  - |
+    Since the CephFS driver is now capable of using ceph manager commands to manage
+    NFS exports, we would like to deprecate and remove support for managing exports
+    with the help of DBUS in a future release. Please use cephadm deployed NFS ganesha
+    clusters in greenfield deployments with OpenStack Manila and refrain from using
+    a standalone non-clustered nfs-ganesha service with this driver. As this solution
+    is hardened for HA within Ceph, we expect to provide code to help migrate existing
+    nfs-ganesha exports to the nfs-ganesha clusters in a future release.

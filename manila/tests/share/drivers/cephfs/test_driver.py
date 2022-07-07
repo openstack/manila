@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import json
 from unittest import mock
 
 import ddt
@@ -88,6 +89,7 @@ class CephFSDriverTestCase(test.TestCase):
         self.mock_object(driver, "json_command", MockCephArgparseModule)
         self.mock_object(driver, 'NativeProtocolHelper')
         self.mock_object(driver, 'NFSProtocolHelper')
+        self.mock_object(driver, 'NFSClusterProtocolHelper')
 
         driver.ceph_default_target = ('mon-mgr', )
 
@@ -101,10 +103,17 @@ class CephFSDriverTestCase(test.TestCase):
         self.mock_object(share_types, 'get_share_type_extra_specs',
                          mock.Mock(return_value={}))
 
-    @ddt.data('cephfs', 'nfs')
-    def test_do_setup(self, protocol_helper):
+    @ddt.data(
+        ('cephfs', None),
+        ('nfs', None),
+        ('nfs', 'fs-manila')
+    )
+    @ddt.unpack
+    def test_do_setup(self, protocol_helper, cephfs_nfs_cluster_id):
         self._driver.configuration.cephfs_protocol_helper_type = (
             protocol_helper)
+        self.fake_conf.set_default('cephfs_nfs_cluster_id',
+                                   cephfs_nfs_cluster_id)
 
         self._driver.do_setup(self._context)
 
@@ -114,10 +123,16 @@ class CephFSDriverTestCase(test.TestCase):
                 rados_client=self._driver._rados_client,
                 volname=self._driver.volname)
         else:
-            driver.NFSProtocolHelper.assert_called_once_with(
-                self._execute, self._driver.configuration,
-                rados_client=self._driver._rados_client,
-                volname=self._driver.volname)
+            if self.fake_conf.cephfs_nfs_cluster_id is None:
+                driver.NFSProtocolHelper.assert_called_once_with(
+                    self._execute, self._driver.configuration,
+                    rados_client=self._driver._rados_client,
+                    volname=self._driver.volname)
+            else:
+                driver.NFSClusterProtocolHelper.assert_called_once_with(
+                    self._execute, self._driver.configuration,
+                    rados_client=self._driver._rados_client,
+                    volname=self._driver.volname)
 
         self._driver.protocol_helper.init_helper.assert_called_once_with()
 
@@ -1217,6 +1232,136 @@ class NFSProtocolHelperTestCase(test.TestCase):
             get_path_prefix, get_path_dict)
 
         self.assertEqual('/foo/bar', ret)
+
+
+@ddt.ddt
+class NFSClusterProtocolHelperTestCase(test.TestCase):
+
+    def setUp(self):
+        super(NFSClusterProtocolHelperTestCase, self).setUp()
+        self._execute = mock.Mock()
+        self._context = context.get_admin_context()
+        self._share = fake_share.fake_share(share_proto='NFS')
+        self._rados_client = MockRadosModule.Rados()
+        self._volname = "cephfs"
+        self.fake_conf = configuration.Configuration(None)
+
+        self.mock_object(driver.NFSClusterProtocolHelper,
+                         '_get_export_path',
+                         mock.Mock(return_value="ganesha:/foo/bar"))
+        self.mock_object(driver.NFSClusterProtocolHelper,
+                         '_get_export_pseudo_path',
+                         mock.Mock(return_value="ganesha:/foo/bar"))
+        self.mock_object(driver, "rados_command")
+
+        driver.ceph_default_target = ('mon-mgr', )
+
+        self._nfscluster_protocol_helper = driver.NFSClusterProtocolHelper(
+            self._execute,
+            self.fake_conf,
+            rados_client=self._rados_client,
+            volname=self._volname)
+
+        type(self._nfscluster_protocol_helper).nfs_clusterid = (
+            mock.PropertyMock(return_value='fs-manila'))
+
+    @ddt.data(constants.ACCESS_LEVEL_RW, constants.ACCESS_LEVEL_RO)
+    def test_allow_access_rw_ro(self, mode):
+        access_allow_prefix = "nfs export apply"
+        nfs_clusterid = self._nfscluster_protocol_helper.nfs_clusterid
+        volname = self._nfscluster_protocol_helper.volname
+
+        clients = {
+            'access_type': mode,
+            'addresses': ['10.0.0.1'],
+            'squash': 'none'
+        }
+
+        access_allow_dict = {
+            "nfs_cluster_id": nfs_clusterid,
+        }
+
+        export = {
+            "path": "ganesha:/foo/bar",
+            "nfs_cluster_id": nfs_clusterid,
+            "pseudo": "ganesha:/foo/bar",
+            "squash": "none",
+            "security_label": True,
+            "protocols": [4],
+            "fsal": {
+                "name": "CEPH",
+                "fs_name": volname,
+
+            },
+            "clients": clients
+        }
+
+        inbuf = json.dumps(export).encode('utf-8')
+
+        self._nfscluster_protocol_helper._allow_access(self._share, clients)
+
+        driver.rados_command.assert_called_once_with(
+            self._rados_client,
+            access_allow_prefix, access_allow_dict, inbuf=inbuf)
+
+    def test_deny_access(self):
+        access_deny_prefix = "nfs export rm"
+
+        nfs_clusterid = self._nfscluster_protocol_helper.nfs_clusterid
+
+        access_deny_dict = {
+            "nfs_cluster_id": nfs_clusterid,
+            "pseudo_path": "ganesha:/foo/bar"
+        }
+
+        self._nfscluster_protocol_helper._deny_access(self._share)
+
+        driver.rados_command.assert_called_once_with(
+            self._rados_client,
+            access_deny_prefix, access_deny_dict)
+
+    def test_get_export_locations(self):
+        cluster_info_prefix = "nfs cluster info"
+        nfs_clusterid = self._nfscluster_protocol_helper.nfs_clusterid
+
+        cluster_info_dict = {
+            "nfs_cluster_id": nfs_clusterid,
+        }
+
+        cluster_info = {"fs-manila": {
+                        "virtual_ip": None,
+                        "backend": [
+                            {"hostname": "fake-ceph-node-1",
+                             "ip": "10.0.0.10",
+                             "port": "1010"},
+                            {"hostname": "fake-ceph-node-2",
+                             "ip": "10.0.0.11",
+                             "port": "1011"}
+                            ]
+                        }}
+
+        driver.rados_command.return_value = json.dumps(cluster_info)
+
+        fake_cephfs_subvolume_path = "/foo/bar"
+        expected_export_locations = [{
+            'path': '10.0.0.10:/foo/bar',
+            'is_admin_only': False,
+            'metadata': {},
+        }, {
+            'path': '10.0.0.11:/foo/bar',
+            'is_admin_only': False,
+            'metadata': {},
+        }]
+
+        export_locations = (
+            self._nfscluster_protocol_helper.get_export_locations(
+                self._share, fake_cephfs_subvolume_path))
+
+        driver.rados_command.assert_called_once_with(
+            self._rados_client,
+            cluster_info_prefix, cluster_info_dict)
+
+        self.assertEqual(expected_export_locations, export_locations)
 
 
 @ddt.ddt
