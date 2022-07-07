@@ -9,7 +9,7 @@ multiple locations. Each of these individual locations is called an "instance"
 within the Shared File Systems service. End users need not be concerned with
 this internal representation. As an administrator, you can list, show
 information for, explicitly set the state of, and force-delete share instances.
-Use the ``policy.json`` file to grant permissions for these actions to other
+Use the ``policy.yaml`` file to grant permissions for these actions to other
 roles.
 
 
@@ -142,7 +142,7 @@ Reset share instance state
 
 Administrator only. Explicitly updates the state of a share instance.
 
-Use the ``policy.json`` file to grant permissions for this action
+Use the ``policy.yaml`` file to grant permissions for this action
 to other roles.
 
 Response codes
@@ -184,7 +184,7 @@ Force-delete share instance
 
 Administrator only. Force-deletes a share instance.
 
-Use the ``policy.json`` file to grant permissions for this action
+Use the ``policy.yaml`` file to grant permissions for this action
 to other roles.
 
 Response codes

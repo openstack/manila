@@ -1091,7 +1091,7 @@ export_location_share_instance_id:
   description: |
     The UUID of the share instance that this
     export location belongs to. This parameter is only available to users
-    with an "administrator" role, and cannot be controlled via policy.json.
+    with an "administrator" role, and cannot be controlled via policy.yaml.
   in: body
   required: true
   type: string

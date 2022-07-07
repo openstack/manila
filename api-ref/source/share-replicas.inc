@@ -366,7 +366,7 @@ Reset status of the share replica
 
 Administrator only. Explicitly updates the ``status`` of a share replica.
 
-Use the ``policy.json`` file to grant permissions for this action
+Use the ``policy.yaml`` file to grant permissions for this action
 to other roles.
 
 Response codes
@@ -409,7 +409,7 @@ Reset replica_state of the share replica
 
 Administrator only. Explicitly updates the ``replica state`` of a share replica.
 
-Use the ``policy.json`` file to grant permissions for this action
+Use the ``policy.yaml`` file to grant permissions for this action
 to other roles.
 
 Response codes
@@ -489,7 +489,7 @@ Force-delete share replica
 
 Administrator only. Force-deletes a share replica in any state.
 
-Use the ``policy.json`` file to grant permissions for this action
+Use the ``policy.yaml`` file to grant permissions for this action
 to other roles.
 
 Response codes

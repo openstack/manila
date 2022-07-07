@@ -13,7 +13,7 @@ it contains no dependent shares. If an administrator deletes the
 share server, the Shared File Systems service creates a share
 server in response to a subsequent create share request.
 
-An administrator can use the ``policy.json`` file to grant
+An administrator can use the ``policy.yaml`` file to grant
 permissions for share server actions to other roles.
 
 The status of a share server indicates its current state. After you
@@ -353,7 +353,7 @@ Resets a share server status
 
 Administrator only. Explicitly updates the state of a share server.
 
-Use the ``policy.json`` file to grant permissions for this action to other
+Use the ``policy.yaml`` file to grant permissions for this action to other
 roles.
 
 Response codes

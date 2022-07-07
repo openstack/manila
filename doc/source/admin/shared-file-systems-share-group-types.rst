@@ -60,7 +60,7 @@ specifications used to filter back ends.
 
 Administrators can create share group types with these extra specifications for
 the back ends filtering.
-An administrator can use the ``policy.json`` file to grant permissions for
+An administrator can use the ``policy.yaml`` file to grant permissions for
 share group type creation with extra specifications to other roles.
 
 You set a share group type to private or public and
