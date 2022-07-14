@@ -571,6 +571,23 @@ class ShareGroupAPITest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
+    def test_share_group_create_invalid_input(self):
+        fake_snap_id = uuidutils.generate_uuid()
+        body = {
+            "share_group": {"source_share_group_snapshot_id": fake_snap_id}
+        }
+        self.mock_object(
+            self.controller.share_group_api, 'create',
+            mock.Mock(side_effect=exception.InvalidInput(
+                reason='invalid input')))
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.create, self.request, body)
+
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
+
     def test_share_group_create_source_group_snapshot_not_a_uuid(self):
         fake_snap_id = "Not a uuid"
         body = {
