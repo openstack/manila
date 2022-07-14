@@ -323,6 +323,8 @@ Response parameters
    - volume_type: volume_type_shares_response
    - export_location: export_location
    - export_locations: export_locations
+   - is_soft_deleted: is_soft_deleted_response
+   - scheduled_to_be_deleted_at: scheduled_to_be_deleted_at_response
 
 Response example
 ----------------
@@ -487,6 +489,8 @@ Response parameters
    - volume_type: volume_type_shares_response
    - export_location: export_location
    - export_locations: export_locations
+   - is_soft_deleted: is_soft_deleted_response
+   - scheduled_to_be_deleted_at: scheduled_to_be_deleted_at_response
 
 Response example
 ----------------
@@ -592,6 +596,8 @@ Response parameters
    - volume_type: volume_type_shares_response
    - export_location: export_location
    - export_locations: export_locations
+   - is_soft_deleted: is_soft_deleted_response
+   - scheduled_to_be_deleted_at: scheduled_to_be_deleted_at_response
 
 Response example
 ----------------
@@ -690,6 +696,8 @@ Response parameters
    - volume_type: volume_type_shares_response
    - export_location: export_location
    - export_locations: export_locations
+   - is_soft_deleted: is_soft_deleted_response
+   - scheduled_to_be_deleted_at: scheduled_to_be_deleted_at_response
 
 Response example
 ----------------

@@ -308,8 +308,8 @@ class ShareController(wsgi.Controller,
         # it too late to restore the share.
         if share['status'] in [constants.STATUS_DELETING,
                                constants.STATUS_ERROR_DELETING]:
-            msg = _("Share %s is being deleted or error deleted, "
-                    "cannot be restore.")
+            msg = _("Share %s is being deleted or has suffered an error "
+                    "during deletion, cannot be restored.")
             raise exc.HTTPForbidden(explanation=msg % id)
 
         self.share_api.restore(context, share)
