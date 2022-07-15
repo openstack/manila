@@ -108,11 +108,15 @@ class SecurityServiceController(wsgi.Controller):
             security_services = share_nw['security_services']
             del search_opts['share_network_id']
         else:
-            if context.is_admin and utils.is_all_tenants(search_opts):
-                policy.check_policy(context, RESOURCE_NAME,
-                                    'get_all_security_services')
-                security_services = db.security_service_get_all(context)
-            else:
+            # ignore all_tenants if not authorized to use it.
+            security_services = None
+            if utils.is_all_tenants(search_opts):
+                allowed_to_list_all_tenants = policy.check_policy(
+                    context, RESOURCE_NAME, 'get_all_security_services',
+                    do_raise=False)
+                if allowed_to_list_all_tenants:
+                    security_services = db.security_service_get_all(context)
+            if security_services is None:
                 security_services = db.security_service_get_all_by_project(
                     context, context.project_id)
         search_opts.pop('all_tenants', None)
