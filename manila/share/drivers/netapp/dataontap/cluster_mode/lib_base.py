@@ -2660,6 +2660,15 @@ class NetAppCmodeFileStorageLibrary(object):
                                                        share_name)):
                 return constants.REPLICA_STATE_OUT_OF_SYNC
 
+        # NOTE(sfernand): When promoting replicas, the previous source volume
+        # and its destinations are put in an 'out of sync' state and must be
+        # cleaned up once to avoid retaining unused snapshots from the previous
+        # relationship. Replicas already 'in-sync' won't try another cleanup
+        # attempt.
+        if replica['replica_state'] == constants.REPLICA_STATE_OUT_OF_SYNC:
+            dm_session.cleanup_previous_snapmirror_relationships(
+                replica, replica_list)
+
         return constants.REPLICA_STATE_IN_SYNC
 
     def promote_replica(self, context, replica_list, replica, access_rules,
