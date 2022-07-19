@@ -1,0 +1,102 @@
+# Stable victoria branch jobs run with a pinned version of manila-tempest-plugin
+
+- job:
+    name: manila-generic-scenario-stable-victoria
+    description: |
+      Test the scenario test cases on the generic driver multibackend
+      (DHSS=True) with NFS and CIFS in the stable/victoria branch
+    parent: manila-tempest-plugin-generic-scenario-base
+    vars: &manila_tempest_image_pinned_vars
+      devstack_localrc:
+        # NOTE(carloss): Pinning manila service image to a Focal version,
+        # since on Zed we moved to Ubuntu Jammy (22), and it requires more
+        # VM resources.
+        MANILA_SERVICE_IMAGE_URL: https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-1.3.0-76-ga216835.qcow2
+        MANILA_SERVICE_IMAGE_NAME: manila-service-image-1.3.0-76-ga216835
+    required-projects: &manila-tempest-plugin-pinned-version
+      - name: openstack/manila-tempest-plugin
+        override-checkout: 1.8.0
+
+- job:
+    name: manila-generic-stable-victoria
+    description: |
+      Test the generic driver multibackend (DHSS=True) with NFS and CIFS in
+      stable victoria
+    parent: manila-tempest-plugin-generic-base
+    vars: *manila_tempest_image_pinned_vars
+    required-projects: *manila-tempest-plugin-pinned-version
+
+- job:
+    name: manila-lvm-stable-victoria
+    description: |
+      Test LVM multibackend (DHSS=False) in a 4+6 (dual-stack) devstack
+      environment with IPv6 control plane endpoints on the stable/victoria
+      branch
+    parent: manila-tempest-plugin-lvm-base
+    vars: *manila_tempest_image_pinned_vars
+    required-projects: *manila-tempest-plugin-pinned-version
+
+- job:
+    name: manila-cephfs-native-stable-victoria
+    description: Test CephFS Native (DHSS=False) in stable/victoria
+    parent: manila-tempest-plugin-cephfs-native-base
+    vars:
+      devstack_localrc:
+        # NOTE(gouthamr): The following need to use the latest images, however, there's a bug
+        # with cephfs on Ubuntu 20.04 LTS: https://tracker.ceph.com/issues/47236
+        # the latest image is built as https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-cephfs-master.qcow2
+        MANILA_SERVICE_IMAGE_URL: https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-cephfs-1.3.0-58-g2859569.qcow2
+        MANILA_SERVICE_IMAGE_NAME: manila-service-image-cephfs-1.3.0-58-g2859569
+    required-projects: *manila-tempest-plugin-pinned-version
+
+- job:
+    name: manila-cephfs-nfs-stable-victoria
+    description: Test CephFS NFS (DHSS=False) in stable/victoria
+    parent: manila-tempest-plugin-cephfs-nfs-base
+    vars: *manila_tempest_image_pinned_vars
+    required-projects: *manila-tempest-plugin-pinned-version
+
+- job:
+    name: manila-zfsonlinux-stable-victoria
+    description: |
+      Test ZFSOnLinux multibackend (DHSS=False) with postgresql db in
+      stable victoria
+    parent: manila-tempest-plugin-zfsonlinux-base
+    vars: *manila_tempest_image_pinned_vars
+    required-projects: *manila-tempest-plugin-pinned-version
+
+- job:
+    name: manila-dummy-no-dhss-stable-victoria
+    description: Test the Dummy driver with DHSS=False in stable victoria
+    parent: manila-tempest-plugin-dummy-no-dhss
+    required-projects: *manila-tempest-plugin-pinned-version
+
+- job:
+    name: manila-dummy-dhss-stable-victoria
+    description: Test the Dummy driver with DHSS=True in stable victoria
+    parent: manila-tempest-plugin-dummy-dhss
+    required-projects: *manila-tempest-plugin-pinned-version
+
+- job:
+    name: manila-container-stable-victoria
+    description: |
+        Test the container driver multibackend (DHSS=True) with CIFS
+        and postgresql db. API only, in a minimal devstack in stable victoria
+    parent: manila-tempest-plugin-container
+    required-projects: *manila-tempest-plugin-pinned-version
+
+- job:
+    name: manila-glusterfs-native-stable-victoria
+    description: |
+      Test the GlusterFS driver (DHSS=False) with the native GlusterFS
+      protocol in stable victoria
+    parent: manila-tempest-plugin-glusterfs-native
+    required-projects: *manila-tempest-plugin-pinned-version
+
+- job:
+    name: manila-glusterfs-nfs-stable-victoria
+    description: |
+      Test the GlusterFS driver (DHSS=False) with the native NFS protocol in
+      stable victoria
+    parent: manila-tempest-plugin-glusterfs-nfs
+    required-projects: *manila-tempest-plugin-pinned-version

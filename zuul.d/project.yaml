@@ -15,22 +15,24 @@
             timeout: 5400
         - openstack-tox-cover:
             voting: false
-        - manila-tempest-plugin-dummy-no-dhss
-        - manila-tempest-plugin-dummy-dhss
-        - manila-tempest-plugin-lvm
-        - manila-tempest-plugin-cephfs-native:
+        - manila-dummy-no-dhss-stable-victoria
+        - manila-dummy-dhss-stable-victoria
+        - manila-lvm-stable-victoria
+        - manila-cephfs-native-stable-victoria:
             voting: false
-        - manila-tempest-plugin-cephfs-nfs:
+        - manila-cephfs-nfs-stable-victoria:
             voting: false
-        - manila-tempest-plugin-container:
+        - manila-container-stable-victoria:
             voting: false
-        - manila-tempest-plugin-generic:
+        - manila-generic-stable-victoria:
             voting: false
-        - manila-tempest-plugin-glusterfs-native:
+        - manila-generic-scenario-stable-victoria:
             voting: false
-        - manila-tempest-plugin-glusterfs-nfs:
+        - manila-glusterfs-native-stable-victoria:
             voting: false
-        - manila-tempest-plugin-zfsonlinux:
+        - manila-glusterfs-nfs-stable-victoria:
+            voting: false
+        - manila-zfsonlinux-stable-victoria:
             voting: false
         - manila-grenade:
             voting: false
@@ -41,9 +43,9 @@
     gate:
       queue: manila
       jobs:
-        - manila-tempest-plugin-dummy-no-dhss
-        - manila-tempest-plugin-dummy-dhss
-        - manila-tempest-plugin-lvm
+        - manila-dummy-no-dhss-stable-victoria
+        - manila-dummy-dhss-stable-victoria
+        - manila-lvm-stable-victoria
     experimental:
       jobs:
         - tripleo-ci-centos-8-scenario004-standalone
