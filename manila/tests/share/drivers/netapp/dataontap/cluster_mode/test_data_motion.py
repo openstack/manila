@@ -1217,3 +1217,57 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
         src_mock_client.release_snapmirror_vol.assert_called_once_with(
             fake.VSERVER1, fake.SHARE_NAME, fake.VSERVER2, fake.SHARE_NAME2,
             relationship_info_only=False)
+
+    @ddt.data([{'id': 'src_share'}, {'id': 'dst_share'}],
+              [{'id': 'dst_share'}])
+    def test_cleanup_previous_snapmirror_relationships(self, replica_list):
+        mock_src_client = mock.Mock()
+        src_backend_info = ('src_share', 'src_vserver', 'src_backend')
+        dst_backend_info = ('dst_share', 'dst_vserver', 'dst_backend')
+        self.mock_object(self.dm_session, 'get_backend_info_for_share',
+                         mock.Mock(side_effect=[src_backend_info,
+                                                dst_backend_info]))
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=mock_src_client))
+        self.mock_object(mock_src_client, 'release_snapmirror_vol')
+
+        result = self.dm_session.cleanup_previous_snapmirror_relationships(
+            {'id': 'src_share'}, replica_list)
+
+        data_motion.get_client_for_backend.assert_called_once_with(
+            'src_backend', vserver_name='src_vserver')
+        self.dm_session.get_backend_info_for_share.assert_has_calls([
+            mock.call({'id': 'src_share'}),
+            mock.call({'id': 'dst_share'})
+        ])
+        mock_src_client.release_snapmirror_vol.assert_called_once_with(
+            'src_vserver', 'src_share', 'dst_vserver', 'dst_share')
+
+        self.assertIsNone(result)
+
+    @ddt.data(netapp_api.NaApiError(),
+              netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND),
+              netapp_api.NaApiError(code=netapp_api.ESOURCE_IS_DIFFERENT),
+              netapp_api.NaApiError(code='some_random_code',
+                                    message="(entry doesn't exist)"),
+              netapp_api.NaApiError(code='some_random_code',
+                                    message='(actually, entry does exist!)'))
+    def test_cleanup_previous_snapmirror_relationships_does_not_exist(
+            self, release_exception):
+        mock_src_client = mock.Mock()
+        self.mock_object(self.dm_session, 'get_backend_info_for_share',
+                         mock.Mock(return_value=(
+                             mock.Mock(), mock.Mock(), mock.Mock())))
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=mock_src_client))
+        self.mock_object(mock_src_client, 'release_snapmirror_vol',
+                         mock.Mock(side_effect=release_exception))
+
+        replica = {'id': 'src_share'}
+        replica_list = [replica, {'id': 'dst_share'}]
+
+        result = self.dm_session.cleanup_previous_snapmirror_relationships(
+            replica, replica_list)
+
+        mock_src_client.release_snapmirror_vol.assert_called()
+        self.assertIsNone(result)

@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #1982808
+    <https://bugs.launchpad.net/manila/+bug/1982808>`_: Fixed issue
+    preventing the storage system from proper clean up unused SnapMirror
+    snapshots after a replica promote, significantly increasing the amount
+    of space consumed in ONTAP volumes by snapshots.
+
