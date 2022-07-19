@@ -840,3 +840,33 @@ class DataMotionSession(object):
             msg = _("Unable to release the snapmirror from source volume %s. "
                     "Retries exhausted. Aborting") % src_volume_name
             raise exception.NetAppException(message=msg)
+
+    def cleanup_previous_snapmirror_relationships(self, replica, replica_list):
+        """Cleanup previous snapmirrors relationships for replica."""
+        LOG.debug("Cleaning up old snapmirror relationships for replica %s.",
+                  replica['id'])
+        src_vol_name, src_vserver, src_backend = (
+            self.get_backend_info_for_share(replica))
+        src_client = get_client_for_backend(src_backend,
+                                            vserver_name=src_vserver)
+
+        # replica_list may contain the replica we are trying to clean up
+        destinations = (r for r in replica_list if r['id'] != replica['id'])
+
+        for destination in destinations:
+            dest_vol_name, dest_vserver, _ = (
+                self.get_backend_info_for_share(destination))
+            try:
+                src_client.release_snapmirror_vol(
+                    src_vserver, src_vol_name, dest_vserver, dest_vol_name)
+            except netapp_api.NaApiError as e:
+                if (e.code == netapp_api.EOBJECTNOTFOUND or
+                        e.code == netapp_api.ESOURCE_IS_DIFFERENT or
+                        "(entry doesn't exist)" in e.message):
+                    LOG.debug(
+                        'Snapmirror destination %s no longer exists for '
+                        'replica %s.', destination['id'], replica['id'])
+                else:
+                    LOG.exception(
+                        'Error releasing snapmirror destination %s for '
+                        'replica %s.', destination['id'], replica['id'])
