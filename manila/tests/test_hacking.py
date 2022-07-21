@@ -13,7 +13,6 @@
 #    under the License.
 
 import itertools
-import sys
 import textwrap
 from unittest import mock
 
@@ -183,15 +182,8 @@ class HackingTestCase(test.TestCase):
                    return msg
                """
 
-        # Python 3.4.0 introduced a change to the column calculation during AST
-        # parsing. This was reversed in Python 3.4.3, hence the version-based
-        # expected value calculation. See #1499743 for more background.
-        if sys.version_info < (3, 4, 0) or sys.version_info >= (3, 4, 3):
-            errors = [(13, 10, 'M326'), (14, 10, 'M326'), (15, 10, 'M326'),
-                      (16, 10, 'M326'), (17, 10, 'M326'), (18, 24, 'M326')]
-        else:
-            errors = [(13, 11, 'M326'), (14, 13, 'M326'), (15, 13, 'M326'),
-                      (16, 13, 'M326'), (17, 13, 'M326'), (18, 25, 'M326')]
+        errors = [(13, 10, 'M326'), (14, 10, 'M326'), (15, 10, 'M326'),
+                  (16, 10, 'M326'), (17, 10, 'M326'), (18, 24, 'M326')]
         self._assert_has_errors(code, checker, expected_errors=errors)
 
         code = """
