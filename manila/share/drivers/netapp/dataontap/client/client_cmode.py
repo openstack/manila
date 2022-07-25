@@ -1535,7 +1535,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 vserver_client.configure_cifs_encryption()
                 vserver_client.configure_active_directory(security_service,
                                                           vserver_name)
-                vserver_client.configure_cifs_options()
+                vserver_client.configure_cifs_options(security_service)
 
             elif security_service['type'].lower() == 'kerberos':
                 vserver_client.create_kerberos_realm(security_service)
@@ -2120,7 +2120,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             raise exception.NetAppException(msg % e.message)
 
     @na_utils.trace
-    def configure_cifs_options(self):
+    def configure_cifs_options(self, security_service):
         if not self.features.CIFS_LARGE_MTU:
             api_args = {
                 'is-large-mtu-enabled': 'true'
@@ -2132,6 +2132,21 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 msg = _("Failed to set cifs options. %s")
                 # no raise to be non-blocking
                 LOG.warning(msg, e.message)
+
+        if not security_service['server']:
+            return
+
+        api_args = {
+            'mode': 'none'
+        }
+        try:
+            self.send_request(
+                'cifs-domain-server-discovery-mode-modify',
+                api_args)
+        except netapp_api.NaApiError as e:
+            msg = _("Failed to set cifs domain server discovery mode. %s")
+            # no raise to be non-blocking
+            LOG.warning(msg, e.message)
 
     @na_utils.trace
     def set_preferred_dc(self, security_service):
