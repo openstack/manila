@@ -554,7 +554,7 @@ class ShareMixin(object):
         try:
             self.share_api.extend(context, share, size, force=force)
         except (exception.InvalidInput, exception.InvalidShare) as e:
-            raise webob.exc.HTTPBadRequest(explanation=e.message)
+            raise webob.exc.HTTPBadRequest(explanation=str(e))
         except exception.ShareSizeExceedsAvailableQuota as e:
             raise webob.exc.HTTPForbidden(explanation=e.message)
 
@@ -574,7 +574,7 @@ class ShareMixin(object):
         try:
             self.share_api.shrink(context, share, size)
         except (exception.InvalidInput, exception.InvalidShare) as e:
-            raise webob.exc.HTTPBadRequest(explanation=e.message)
+            raise webob.exc.HTTPBadRequest(explanation=str(e))
 
         return webob.Response(status_int=http_client.ACCEPTED)
 

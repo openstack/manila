@@ -280,7 +280,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
             raise exc.HTTPConflict(explanation=e.message)
         except (exception.ShareGroupSnapshotNotFound,
                 exception.InvalidInput) as e:
-            raise exc.HTTPBadRequest(explanation=e.message)
+            raise exc.HTTPBadRequest(explanation=str(e))
 
         return self._view_builder.detail(
             req, {k: v for k, v in new_share_group.items()})
