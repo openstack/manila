@@ -2505,6 +2505,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         nfs_service_modify_args = {
             'is-nfsv3-enabled': 'true' if v3 else 'false',
+            'is-nfsv40-enabled': 'true' if v40 else 'false',
             'is-nfsv41-enabled': 'true' if v41 else 'false',
             'showmount': 'true',
             'is-v3-ms-dos-client-enabled': 'true',
@@ -2512,8 +2513,16 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'enable-ejukebox': 'false',
             'is-vstorage-enabled': 'true',
         }
-        if v40:
-            nfs_service_modify_args['is-nfsv40-enabled'] = 'true'
+
+        if v41:
+            nfs41_opts = {
+                'is-nfsv41-pnfs-enabled': 'true',
+                'is-nfsv41-acl-enabled': 'true',
+                'is-nfsv41-read-delegation-enabled': 'true',
+                'is-nfsv41-write-delegation-enabled': 'true',
+            }
+
+            nfs_service_modify_args.update(nfs41_opts)
 
         self.client.send_request.assert_called_once_with(
             'nfs-service-modify', nfs_service_modify_args)

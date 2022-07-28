@@ -1562,10 +1562,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def _enable_nfs_protocols(self, versions):
         """Set the enabled NFS protocol versions."""
         nfs3 = 'true' if 'nfs3' in versions else 'false'
+        nfs40 = 'true' if 'nfs4.0' in versions else 'false'
         nfs41 = 'true' if 'nfs4.1' in versions else 'false'
 
         nfs_service_modify_args = {
             'is-nfsv3-enabled': nfs3,
+            'is-nfsv40-enabled': nfs40,
             'is-nfsv41-enabled': nfs41,
             'showmount': 'true',
             'is-v3-ms-dos-client-enabled': 'true',
@@ -1574,8 +1576,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'is-vstorage-enabled': 'true',
         }
 
-        if 'nfs4.0' in versions:
-            nfs_service_modify_args['is-nfsv40-enabled'] = 'true'
+        if 'nfs4.1' in versions:
+            nfs41_opts = {
+                'is-nfsv41-pnfs-enabled': 'true',
+                'is-nfsv41-acl-enabled': 'true',
+                'is-nfsv41-read-delegation-enabled': 'true',
+                'is-nfsv41-write-delegation-enabled': 'true',
+            }
+
+            nfs_service_modify_args.update(nfs41_opts)
 
         self.send_request('nfs-service-modify', nfs_service_modify_args)
 
