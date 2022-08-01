@@ -16,6 +16,7 @@
 import copy
 import ddt
 import itertools
+from unittest import mock
 
 from manila.api.openstack import api_version_request as api_version
 from manila.api.views import share_networks
@@ -29,6 +30,11 @@ class ViewBuilderTestCase(test.TestCase):
     def setUp(self):
         super(ViewBuilderTestCase, self).setUp()
         self.builder = share_networks.ViewBuilder()
+        # By default, allow viewing sensitive fields so that existing
+        # structural tests are not affected by the redaction logic.
+        self.mock_object(
+            share_networks.ViewBuilder, '_is_network_details_authorized',
+            mock.Mock(return_value=True))
 
     def test__collection_name(self):
         self.assertEqual('share_networks', self.builder._collection_name)
@@ -229,6 +235,80 @@ class ViewBuilderTestCase(test.TestCase):
                                                    is_detail=True)
 
         self.assertEqual(expected, result)
+
+    @ddt.data(True, False)
+    def test_sensitive_fields_redacted_for_non_admin(self, is_admin):
+        share_network = {
+            'id': 'fake_id',
+            'name': 'fake_name',
+            'project_id': 'fake_project_id',
+            'created_at': 'fake_created_at',
+            'updated_at': 'fake_updated_at',
+            'neutron_net_id': 'fake_neutron_net_id',
+            'neutron_subnet_id': 'fake_neutron_subnet_id',
+            'network_type': 'vlan',
+            'segmentation_id': 1234,
+            'cidr': 'fake_cidr',
+            'ip_version': 'fake_ip_version',
+            'description': 'fake_description',
+        }
+
+        req = fakes.HTTPRequest.blank('/share-networks',
+                                      use_admin_context=is_admin)
+        self.mock_object(
+            share_networks.ViewBuilder, '_is_network_details_authorized',
+            mock.Mock(return_value=is_admin))
+        result = self.builder.build_share_network(req, share_network)
+
+        if is_admin:
+            self.assertEqual('vlan',
+                             result['share_network']['network_type'])
+            self.assertEqual(1234,
+                             result['share_network']['segmentation_id'])
+        else:
+            self.assertIsNone(result['share_network']['network_type'])
+            self.assertIsNone(result['share_network']['segmentation_id'])
+
+    @ddt.data(True, False)
+    def test_sensitive_fields_redacted_in_subnets(self, is_admin):
+        share_network = {
+            'id': 'fake_id',
+            'name': 'fake_name',
+            'project_id': 'fake_project_id',
+            'created_at': 'fake_created_at',
+            'updated_at': 'fake_updated_at',
+            'description': 'fake_description',
+            'share_network_subnets': [
+                {
+                    'id': 'fake_subnet_id',
+                    'availability_zone': 'fake_az',
+                    'created_at': 'fake_created_at',
+                    'updated_at': 'fake_updated_at',
+                    'segmentation_id': 1000,
+                    'neutron_net_id': 'fake_net_id',
+                    'neutron_subnet_id': 'fake_subnet_id',
+                    'ip_version': 4,
+                    'cidr': '10.0.0.0/24',
+                    'network_type': 'vlan',
+                    'mtu': 1500,
+                    'gateway': '10.0.0.1',
+                },
+            ],
+        }
+
+        req = fakes.HTTPRequest.blank('/share-networks', version='2.51')
+        self.mock_object(
+            share_networks.ViewBuilder, '_is_network_details_authorized',
+            mock.Mock(return_value=is_admin))
+        result = self.builder.build_share_network(req, share_network)
+
+        subnet = result['share_network']['share_network_subnets'][0]
+        if is_admin:
+            self.assertEqual('vlan', subnet['network_type'])
+            self.assertEqual(1000, subnet['segmentation_id'])
+        else:
+            self.assertIsNone(subnet['network_type'])
+            self.assertIsNone(subnet['segmentation_id'])
 
     @ddt.data(*itertools.product(
         [

@@ -14,6 +14,10 @@
 #    under the License.
 
 from manila.api import common
+from manila import policy
+
+RESOURCE_NAME = 'share_network'
+SENSITIVE_FIELDS = ('network_type', 'segmentation_id')
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -67,6 +71,18 @@ class ViewBuilder(common.ViewBuilder):
             view['hosts_check_result'] = result['hosts_check_result']
         return view
 
+    @staticmethod
+    def _is_network_details_authorized(context):
+        """Check if the user is authorized to see sensitive network fields."""
+        return policy.check_policy(
+            context, RESOURCE_NAME, 'show_network_details', do_raise=False)
+
+    @staticmethod
+    def _redact_sensitive_fields(data):
+        """Set sensitive network fields to None."""
+        for field in SENSITIVE_FIELDS:
+            data[field] = None
+
     def _update_share_network_info(self, request, share_network):
         for sns in share_network.get('share_network_subnets') or []:
             if sns.get('is_default') and sns.get('is_default') is True:
@@ -88,6 +104,9 @@ class ViewBuilder(common.ViewBuilder):
             'name': share_network.get('name'),
         }
         if is_detail:
+            context = request.environ['manila.context']
+            show_details = self._is_network_details_authorized(context)
+
             self._update_share_network_info(request, share_network)
             sn.update({
                 'project_id': share_network.get('project_id'),
@@ -101,12 +120,15 @@ class ViewBuilder(common.ViewBuilder):
                 'ip_version': share_network.get('ip_version'),
                 'description': share_network.get('description'),
             })
+            if not show_details:
+                self._redact_sensitive_fields(sn)
 
             self.update_versioned_resource_dict(request, sn, share_network)
         return sn
 
     @common.ViewBuilder.versioned_method("2.51", "2.77")
     def add_subnets(self, context, network_dict, network):
+        show_details = self._is_network_details_authorized(context)
         subnets = [{
             'id': sns.get('id'),
             'availability_zone': sns.get('availability_zone'),
@@ -122,12 +144,16 @@ class ViewBuilder(common.ViewBuilder):
             'gateway': sns.get('gateway'),
         } for sns in network.get('share_network_subnets')]
 
+        if not show_details:
+            for subnet in subnets:
+                self._redact_sensitive_fields(subnet)
+
         network_dict['share_network_subnets'] = subnets
         attr_to_remove = [
             'neutron_net_id', 'neutron_subnet_id', 'network_type',
             'segmentation_id', 'cidr', 'ip_version', 'gateway', 'mtu']
         for attr in attr_to_remove:
-            network_dict.pop(attr)
+            network_dict.pop(attr, None)
 
     @common.ViewBuilder.versioned_method("2.18")
     def add_gateway(self, context, network_dict, network):
@@ -156,6 +182,7 @@ class ViewBuilder(common.ViewBuilder):
 
     @common.ViewBuilder.versioned_method("2.78")
     def add_subnet_with_metadata(self, context, network_dict, network):
+        show_details = self._is_network_details_authorized(context)
         subnets = [{
             'id': sns.get('id'),
             'availability_zone': sns.get('availability_zone'),
@@ -172,9 +199,13 @@ class ViewBuilder(common.ViewBuilder):
             'metadata': sns.get('subnet_metadata'),
         } for sns in network.get('share_network_subnets')]
 
+        if not show_details:
+            for subnet in subnets:
+                self._redact_sensitive_fields(subnet)
+
         network_dict['share_network_subnets'] = subnets
         attr_to_remove = [
             'neutron_net_id', 'neutron_subnet_id', 'network_type',
             'segmentation_id', 'cidr', 'ip_version', 'gateway', 'mtu']
         for attr in attr_to_remove:
-            network_dict.pop(attr)
+            network_dict.pop(attr, None)

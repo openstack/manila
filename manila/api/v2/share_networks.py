@@ -222,6 +222,16 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
         ]
         for opt in opts_to_remove:
             search_opts.pop(opt, None)
+
+        # Non-admin users should not be able to filter by sensitive
+        # network fields (network_type, segmentation_id) because
+        # allowing such filters would enable enumeration of privileged
+        # network information.
+        if not policy.check_policy(context, RESOURCE_NAME,
+                                   'show_network_details', do_raise=False):
+            search_opts.pop('network_type', None)
+            search_opts.pop('segmentation_id', None)
+
         if search_opts:
             for key, value in search_opts.items():
                 if key in ['ip_version', 'segmentation_id']:

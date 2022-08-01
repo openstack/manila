@@ -14,6 +14,7 @@
 #    under the License.
 
 from manila.api import common
+from manila.api.views import share_networks
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -36,6 +37,7 @@ class ViewBuilder(common.ViewBuilder):
                  for share_network_subnet in share_network_subnets]}
 
     def _build_share_network_subnet_view(self, request, share_network_subnet):
+        context = request.environ['manila.context']
         sns = {
             'id': share_network_subnet.get('id'),
             'availability_zone': share_network_subnet.get('availability_zone'),
@@ -52,6 +54,9 @@ class ViewBuilder(common.ViewBuilder):
             'mtu': share_network_subnet.get('mtu'),
             'gateway': share_network_subnet.get('gateway')
         }
+        if not share_networks.ViewBuilder._is_network_details_authorized(
+                context):
+            share_networks.ViewBuilder._redact_sensitive_fields(sns)
         self.update_versioned_resource_dict(request, sns, share_network_subnet)
         return sns
 

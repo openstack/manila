@@ -297,6 +297,33 @@ share_network_policies = [
         ],
         deprecated_rule=deprecated_share_network_subnet_create_check
     ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'show_network_details',
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description=("Allow viewing network_type and segmentation_id of "
+                     "share networks and share network subnets. Also "
+                     "allows filtering share networks by these fields."),
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/share-networks/{share_network_id}'
+            },
+            {
+                'method': 'GET',
+                'path': '/share-networks/detail'
+            },
+            {
+                'method': 'GET',
+                'path': '/share-networks/{share_network_id}/subnets'
+                        '/{share_network_subnet_id}'
+            },
+            {
+                'method': 'GET',
+                'path': '/share-networks/{share_network_id}/subnets'
+            },
+        ],
+    ),
 ]
 
 

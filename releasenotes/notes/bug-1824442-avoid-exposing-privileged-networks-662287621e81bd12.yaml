@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Non-admin users will no longer be able to see the ``segmentation_id``
+    and ``network_type`` of share networks and share network subnets.
+    These sensitive fields are now redacted in all API responses
+    (show, detail, list, and subnet endpoints) for non-admin users.
+    Additionally, non-admin users can no longer filter share networks
+    by these fields, preventing enumeration of privileged network
+    information.
