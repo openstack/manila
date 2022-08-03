@@ -726,7 +726,8 @@ class ServiceInstanceManager(object):
 
 class BaseNetworkhelper(metaclass=abc.ABCMeta):
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def NAME(self):
         """Returns code name of network helper."""
 
