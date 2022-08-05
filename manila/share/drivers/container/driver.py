@@ -251,7 +251,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         }
         LOG.debug("Container %(id)s veth is %(veth)s.", msg_helper)
         LOG.debug("Removing %(veth)s from %(lb)s.", msg_helper)
-        self._execute("brctl", "delif", host_bridge, host_veth,
+        self._execute("ip", "link", "set", "dev", host_veth, "nomaster",
                       run_as_root=True)
 
         LOG.debug("Plugging %(veth)s into %(ovsb)s.", msg_helper)
