@@ -241,13 +241,15 @@ class API(object):
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
 
-    def subnet_create(self, tenant_id, net_id, name, cidr):
+    def subnet_create(self, tenant_id, net_id, name, cidr, no_gateway=False):
         subnet_req_body = {'subnet': {}}
         subnet_req_body['subnet']['tenant_id'] = tenant_id
         subnet_req_body['subnet']['name'] = name
         subnet_req_body['subnet']['network_id'] = net_id
         subnet_req_body['subnet']['cidr'] = cidr
         subnet_req_body['subnet']['ip_version'] = 4
+        if no_gateway:
+            subnet_req_body['subnet']['gateway_ip'] = None
         try:
             return self.client.create_subnet(
                 subnet_req_body).get('subnet', {})
