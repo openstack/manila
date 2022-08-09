@@ -3298,6 +3298,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 data = {
                     'name': security_service['name'],
                     'ou': security_service['ou'],
+                    'defaultadsite': security_service['defaultadsite'],
                     'domain': security_service['domain'],
                     'server': security_service['server'],
                     'dns_ip': security_service['dns_ip'],
@@ -4205,6 +4206,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 data = {
                     'name': security_service['name'],
                     'ou': security_service['ou'],
+                    'defaultadsite': security_service['defaultadsite'],
                     'domain': security_service['domain'],
                     'server': security_service['server'],
                     'dns_ip': security_service['dns_ip'],

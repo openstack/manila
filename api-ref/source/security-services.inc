@@ -33,6 +33,8 @@ You can configure a security service with these options:
 
 - The password for the user, if you specify a user name.
 
+- A default AD site, optional (available starting with API version 2.65)
+
 A security service resource can also be given a user defined name and
 description.
 
@@ -125,6 +127,7 @@ Response parameters
    - password: security_service_password
    - domain: security_service_domain
    - ou: security_service_ou
+   - defaultadsite: security_service_defaultadsite
    - server: security_service_server
    - updated_at: updated_at
    - created_at: created_at
@@ -181,6 +184,7 @@ Response parameters
    - password: security_service_password
    - domain: security_service_domain
    - ou: security_service_ou
+   - defaultadsite: security_service_defaultadsite
    - server: security_service_server
    - updated_at: updated_at
    - created_at: created_at
@@ -227,6 +231,7 @@ Request
    - password: security_service_password_request
    - domain: security_service_domain_request
    - ou: security_service_ou_request
+   - defaultadsite: security_service_defaultadsite_request
    - server: security_service_server_request
 
 Request example
@@ -251,6 +256,7 @@ Response parameters
    - password: security_service_password
    - domain: security_service_domain
    - ou: security_service_ou
+   - defaultadsite: security_service_defaultadsite
    - server: security_service_server
    - updated_at: updated_at
    - created_at: created_at
@@ -304,6 +310,7 @@ Request
    - password: security_service_password_request
    - domain: security_service_domain_request
    - ou: security_service_ou_request
+   - defaultadsite: security_service_defaultadsite_request
    - server: security_service_server_request
 
 Request example
@@ -328,6 +335,7 @@ Response parameters
    - password: security_service_password
    - domain: security_service_domain
    - ou: security_service_ou
+   - defaultadsite: security_service_defaultadsite
    - server: security_service_server
    - updated_at: updated_at
    - created_at: created_at

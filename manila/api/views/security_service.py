@@ -23,6 +23,7 @@ class ViewBuilder(common.ViewBuilder):
     _collection_name = 'security_services'
     _detail_version_modifiers = [
         'add_ou_to_security_service',
+        'add_defaultadsite_to_security_service',
     ]
 
     def summary_list(self, request, security_services):
@@ -63,6 +64,10 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("2.44")
     def add_ou_to_security_service(self, context, ss_dict, ss):
         ss_dict['ou'] = ss.get('ou')
+
+    @common.ViewBuilder.versioned_method("2.65")
+    def add_defaultadsite_to_security_service(self, context, ss_dict, ss):
+        ss_dict['defaultadsite'] = ss.get('defaultadsite')
 
     def _list_view(self, func, request, security_services):
         """Provide a view for a list of security services."""

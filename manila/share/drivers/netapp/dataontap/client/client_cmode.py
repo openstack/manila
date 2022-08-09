@@ -1794,6 +1794,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         if security_service['ou'] is not None:
             api_args['organizational-unit'] = security_service['ou']
+        if security_service.get('defaultadsite', None):
+            api_args['default-site'] = security_service['defaultadsite']
 
         for attempt in range(6):
             try:
@@ -2142,12 +2144,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 # no raise to be non-blocking
                 LOG.warning(msg, e.message)
 
-        if not security_service['server']:
+        if security_service.get('server', None):
+            api_args = {'mode': 'none'}
+        elif security_service.get('defaultadsite', None):
+            api_args = {'mode': 'site'}
+        else:
             return
 
-        api_args = {
-            'mode': 'none'
-        }
         try:
             self.send_request(
                 'cifs-domain-server-discovery-mode-modify',

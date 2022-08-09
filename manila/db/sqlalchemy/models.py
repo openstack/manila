@@ -938,6 +938,7 @@ class SecurityService(BASE, ManilaBase):
     name = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)
     ou = Column(String(255), nullable=True)
+    defaultadsite = Column(String(255), nullable=True)
 
 
 class ShareNetwork(BASE, ManilaBase):

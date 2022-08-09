@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added 'defaultadsite' field to 'security_service' object to be able to
+    configure in default AD site. This option can not be used along-with
+    'server' field of 'security_service' and restrict the discovery mode
+    to 'site' i.e. only Domain Controller's in local site will be discovered.

@@ -2,6 +2,7 @@
     "security_service": {
         "status": "new",
         "domain": null,
+        "defaultadsite": null,
         "ou": null,
         "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
         "name": "SecServ1",

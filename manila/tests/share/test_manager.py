@@ -3517,6 +3517,7 @@ class ShareManagerTestCase(test.TestCase):
             network_info['security_services'].append({
                 'name': 'fake_name' + ss_type,
                 'ou': 'fake_ou' + ss_type,
+                'defaultadsite': 'fake_defaultadsite' + ss_type,
                 'domain': 'fake_domain' + ss_type,
                 'server': 'fake_server' + ss_type,
                 'dns_ip': 'fake_dns_ip' + ss_type,
@@ -6378,6 +6379,7 @@ class ShareManagerTestCase(test.TestCase):
         ss_data_from_db = {
             'name': ss_from_db['name'],
             'ou': ss_from_db['ou'],
+            'defaultadsite': ss_from_db['defaultadsite'],
             'domain': ss_from_db['domain'],
             'server': ss_from_db['server'],
             'dns_ip': ss_from_db['dns_ip'],

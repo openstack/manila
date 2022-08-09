@@ -173,6 +173,7 @@ REST_API_VERSION_HISTORY = """
              'add_security_service_check'.
     * 2.65 - Added ability to set scheduler hints via the share create API.
              Added optional provisioning:max_share_extend_size
+             Added default AD site option in security service.
 """
 
 # The minimum and maximum versions of the API supported

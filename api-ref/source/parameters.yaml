@@ -2209,6 +2209,21 @@ scheduler_hints:
   required: false
   type: object
   min_version: 2.65
+security_service_defaultadsite:
+  description: |
+    The security service default AD site.
+  in: body
+  required: true
+  type: string
+  min_version: 2.65
+security_service_defaultadsite_request:
+  description: |
+    The security service default AD site. An organizational unit
+    can be added to specify where the share ends up.
+  in: body
+  required: false
+  type: string
+  min_version: 2.65
 security_service_dns_ip:
   description: |
     The DNS IP address that is used inside the project network.
