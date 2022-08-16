@@ -82,7 +82,7 @@ class LVMMixin(driver.ExecuteMixin):
 
     def _allocate_container(self, share):
         sizestr = '%sG' % share['size']
-        cmd = ['lvcreate', '-L', sizestr, '-n', share['name'],
+        cmd = ['lvcreate', '-Wy', '--yes', '-L', sizestr, '-n', share['name'],
                self.configuration.lvm_share_volume_group]
         if self.configuration.lvm_share_mirrors:
             cmd += ['-m', self.configuration.lvm_share_mirrors, '--nosync']
@@ -121,8 +121,8 @@ class LVMMixin(driver.ExecuteMixin):
         orig_lv_name = "%s/%s" % (self.configuration.lvm_share_volume_group,
                                   snapshot['share_name'])
         self._try_execute(
-            'lvcreate', '-L', '%sG' % snapshot['share']['size'],
-            '--name', snapshot['name'],
+            'lvcreate', '-L',
+            '%sG' % snapshot['share']['size'], '--name', snapshot['name'],
             '--snapshot', orig_lv_name, run_as_root=True)
 
         self._set_random_uuid_to_device(snapshot)
