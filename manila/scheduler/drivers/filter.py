@@ -531,8 +531,12 @@ class FilterScheduler(base.Scheduler):
             context, filter_properties, request_spec)
 
         hosts = self.host_manager.get_all_host_states_share(elevated)
+        filter_class_names = None
+        if request_spec.get('is_share_extend', None):
+            filter_class_names = CONF.scheduler_default_extend_filters
         hosts, last_filter = self.host_manager.get_filtered_hosts(
-            hosts, filter_properties)
+            hosts, filter_properties,
+            filter_class_names=filter_class_names)
         hosts = self.host_manager.get_weighed_hosts(hosts, filter_properties)
 
         for tgt_host in hosts:

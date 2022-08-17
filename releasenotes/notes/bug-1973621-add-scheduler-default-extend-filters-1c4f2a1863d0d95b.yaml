@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    When using scheduler filters during share extend, only few filters are
+    necessary. To provide those configurable list of filters for share extend,
+    added new option `scheduler_default_extend_filters`.

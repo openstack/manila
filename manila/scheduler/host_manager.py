@@ -69,6 +69,14 @@ host_manager_opts = [
         ],
         help='Which filter class names to use for filtering hosts '
              'creating share group when not specified in the request.'),
+    cfg.ListOpt(
+        'scheduler_default_extend_filters',
+        default=[
+            'CapacityFilter',
+            'DriverFilter',
+        ],
+        help='Which filter class names to use for filtering hosts '
+             'extending share when not specified in the request.'),
 ]
 
 CONF = cfg.CONF
