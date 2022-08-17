@@ -5,3 +5,7 @@ git+https://github.com/sapcc/python-agentliveness.git#egg=agentliveness
 git+https://github.com/sapcc/openstack-watcher-middleware.git#egg=watcher-middleware
 git+https://github.com/sapcc/openstack-audit-middleware.git@master#egg=audit-middleware
 git+https://github.com/sapcc/manila-extensions.git@master#egg=manila-extensions
+
+# needs for osprofiler
+jaeger-client
+
