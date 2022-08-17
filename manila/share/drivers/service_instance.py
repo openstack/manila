@@ -893,7 +893,8 @@ class NeutronNetworkHelper(BaseNetworkhelper):
                 network_data['service_subnet'] = (
                     self.neutron_api.subnet_create(
                         self.admin_project_id, self.service_network_id,
-                        subnet_name, self._get_cidr_for_subnet()))
+                        subnet_name, self._get_cidr_for_subnet(),
+                        self.connect_share_server_to_tenant_network))
 
         network_data['ports'] = []
 
