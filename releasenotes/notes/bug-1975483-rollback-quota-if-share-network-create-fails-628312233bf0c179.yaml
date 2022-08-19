@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    During share network create API, if either share network or share network
+    subnet db creation fails, manila raises an exception. However quota is not
+    rolled back and its usable only after quota reservations timed out (waiting
+    conf.reservation_expire seconds). Fixed by introducing immediate quota
+    rollback in case any db create api fails.
