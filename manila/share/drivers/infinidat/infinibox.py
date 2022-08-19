@@ -1,4 +1,4 @@
-# Copyright 2017 Infinidat Ltd.
+# Copyright 2022 Infinidat Ltd.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -22,6 +22,7 @@ import ipaddress
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
+import requests
 
 from manila.common import constants
 from manila import exception
@@ -32,9 +33,12 @@ from manila import version
 
 try:
     import capacity
-    import infinisdk
 except ImportError:
     capacity = None
+
+try:
+    import infinisdk
+except ImportError:
     infinisdk = None
 
 
@@ -43,7 +47,14 @@ LOG = logging.getLogger(__name__)
 infinidat_connection_opts = [
     cfg.HostAddressOpt('infinibox_hostname',
                        help='The name (or IP address) for the INFINIDAT '
-                       'Infinibox storage system.'), ]
+                       'Infinibox storage system.'),
+    cfg.BoolOpt('infinidat_use_ssl',
+                help='Use SSL to connect to the INFINIDAT Infinibox storage '
+                     'system.',
+                default=False),
+    cfg.BoolOpt('infinidat_suppress_ssl_warnings',
+                help='Suppress requests library SSL certificate warnings.',
+                default=False), ]
 
 infinidat_auth_opts = [
     cfg.StrOpt('infinibox_login',
@@ -103,8 +114,9 @@ class InfiniboxShareDriver(driver.ShareDriver):
         self.configuration.append_config_values(infinidat_auth_opts)
         self.configuration.append_config_values(infinidat_general_opts)
 
-    def _setup_and_get_system_object(self, management_address, auth):
-        system = infinisdk.InfiniBox(management_address, auth=auth)
+    def _setup_and_get_system_object(self, management_address, auth, use_ssl):
+        system = infinisdk.InfiniBox(management_address, auth=auth,
+                                     use_ssl=use_ssl)
         system.api.add_auto_retry(
             lambda e: isinstance(
                 e, infinisdk.core.exceptions.APITransportFailure) and
@@ -115,11 +127,22 @@ class InfiniboxShareDriver(driver.ShareDriver):
 
     def do_setup(self, context):
         """Driver initialization"""
+        if capacity is None:
+            msg = _("Missing 'capacity' python module, ensure the library"
+                    " is installed and available.")
+            raise exception.ManilaException(message=msg)
         if infinisdk is None:
             msg = _("Missing 'infinisdk' python module, ensure the library"
                     " is installed and available.")
             raise exception.ManilaException(message=msg)
 
+        if self.configuration.safe_get('infinidat_suppress_ssl_warnings'):
+            LOG.warning('Suppressing requests library SSL Warnings')
+            rpu = requests.packages.urllib3  # pylint: disable=no-member
+            rpu.disable_warnings(rpu.exceptions.InsecureRequestWarning)
+            rpu.disable_warnings(rpu.exceptions.InsecurePlatformWarning)
+
+        use_ssl = self.configuration.safe_get('infinidat_use_ssl')
         infinibox_login = self._safe_get_from_config_or_fail('infinibox_login')
         infinibox_password = (
             self._safe_get_from_config_or_fail('infinibox_password'))
@@ -135,8 +158,8 @@ class InfiniboxShareDriver(driver.ShareDriver):
             self._safe_get_from_config_or_fail(
                 'infinidat_nas_network_space_name'))
 
-        self._system = (
-            self._setup_and_get_system_object(management_address, auth))
+        self._system = self._setup_and_get_system_object(management_address,
+                                                         auth, use_ssl)
 
         backend_name = self.configuration.safe_get('share_backend_name')
         self._backend_name = backend_name or self.__class__.__name__

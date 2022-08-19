@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Infinidat Driver `bug #1986653
+    <https://bugs.launchpad.net/manila/+bug/1986653>`_:
+    Fixed Infinidat driver to use TLS/SSL communication between the Manila
+    share service and the storage backend. Admin can set `True` or `False`
+    for the `infinidat_use_ssl` and `infinidat_suppress_ssl_warnings` options
+    in the driver section of manila.conf to enable or disable these features.
