@@ -202,11 +202,6 @@ MANILA_RESTORE_IPV6_DEFAULT_ROUTE=${MANILA_RESTORE_IPV6_DEFAULT_ROUTE:=True}
 # https://docs.openstack.org/oslo.policy/latest/configuration/index.html#oslo_policy.enforce_scope
 MANILA_ENFORCE_SCOPE=$(trueorfalse False MANILA_ENFORCE_SCOPE)
 
-# Install manila-tempest-plugin system-wide
-# This operation has been deprecated. manila-tempest-plugin has a devstack
-# plugin that must be preferred over this approach.
-MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=${MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE:=True}
-
 # Enable manila services
 # ----------------------
 # We have to add Manila to enabled services for screen_it to work
