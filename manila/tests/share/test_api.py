@@ -127,7 +127,8 @@ class ShareAPITestCase(test.TestCase):
     def _setup_sized_share_types(self):
         """create a share type with size limit"""
         spec_dict = {share_types.MIN_SIZE_KEY: 2,
-                     share_types.MAX_SIZE_KEY: 4}
+                     share_types.MAX_SIZE_KEY: 4,
+                     share_types.MAX_EXTEND_SIZE_KEY: 6}
         db_utils.create_share_type(name='limit', extra_specs=spec_dict)
         self.sized_sha_type = db_api.share_type_get_by_name(self.context,
                                                             'limit')
@@ -2888,14 +2889,15 @@ class ShareAPITestCase(test.TestCase):
                           self.api.extend, self.context, share, new_size)
 
     def test_extend_with_share_type_size_limit(self):
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
                                       size=3)
         self.mock_object(share_types, 'get_share_type',
                          mock.Mock(return_value=self.sized_sha_type))
-        new_size = 5
+        new_size = 7
 
         self.assertRaises(exception.InvalidInput,
-                          self.api.extend, self.context,
+                          self.api.extend, ctx,
                           share, new_size)
 
     def _setup_extend_mocks(self, supports_replication):

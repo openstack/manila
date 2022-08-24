@@ -253,6 +253,7 @@ class ExtraSpecs(object):
     AVAILABILITY_ZONES = "availability_zones"
     PROVISIONING_MAX_SHARE_SIZE = "provisioning:max_share_size"
     PROVISIONING_MIN_SHARE_SIZE = "provisioning:min_share_size"
+    PROVISIONING_MAX_SHARE_EXTEND_SIZE = "provisioning:max_share_extend_size"
 
     # Extra specs containers
     REQUIRED = (
@@ -267,7 +268,8 @@ class ExtraSpecs(object):
         MOUNT_SNAPSHOT_SUPPORT,
         AVAILABILITY_ZONES,
         PROVISIONING_MAX_SHARE_SIZE,
-        PROVISIONING_MIN_SHARE_SIZE
+        PROVISIONING_MIN_SHARE_SIZE,
+        PROVISIONING_MAX_SHARE_EXTEND_SIZE,
     )
 
     # NOTE(cknight): Some extra specs are necessary parts of the Manila API and

@@ -36,6 +36,7 @@ LOG = log.getLogger(__name__)
 
 MIN_SIZE_KEY = "provisioning:min_share_size"
 MAX_SIZE_KEY = "provisioning:max_share_size"
+MAX_EXTEND_SIZE_KEY = "provisioning:max_share_extend_size"
 
 
 def create(context, name, extra_specs=None, is_public=True,
@@ -355,7 +356,8 @@ def is_valid_optional_extra_spec(key, value):
     elif key == constants.ExtraSpecs.AVAILABILITY_ZONES:
         return is_valid_csv(value)
     elif key in [constants.ExtraSpecs.PROVISIONING_MAX_SHARE_SIZE,
-                 constants.ExtraSpecs.PROVISIONING_MIN_SHARE_SIZE]:
+                 constants.ExtraSpecs.PROVISIONING_MIN_SHARE_SIZE,
+                 constants.ExtraSpecs.PROVISIONING_MAX_SHARE_EXTEND_SIZE]:
         try:
             common.validate_integer(value, 'share_size', min_value=1)
             return True
@@ -458,5 +460,14 @@ def provision_filter_on_size(context, share_type, size):
                     "greater than the maximum allowable size of "
                     "'%(max_size)s' for share type '%(sha_type)s'."
                     ) % {'req_size': size_int, 'max_size': max_size,
+                         'sha_type': share_type['name']}
+            raise exception.InvalidInput(reason=msg)
+        max_extend_size = extra_specs.get(MAX_EXTEND_SIZE_KEY)
+        if max_extend_size and size_int > int(max_extend_size):
+            msg = _("Specified share size of '%(req_size)d' is "
+                    "greater than the maximum allowable extend size of "
+                    "'%(max_extend_size)s' for share type '%(sha_type)s'."
+                    ) % {'req_size': size_int,
+                         'max_extend_size': max_extend_size,
                          'sha_type': share_type['name']}
             raise exception.InvalidInput(reason=msg)

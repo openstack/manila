@@ -267,3 +267,8 @@ Share type common capability extra-specs that are not visible to end users:
   must be an integer and greater than 0. If administrators set this capability
   as an extra-spec in a share type, the size of share created with the share
   type can not be less than the specified value.
+
+* **provisioning:max_share_extend_size** can set the max size of share extend,
+  the value must be an integer and greater than 0. If administrators set this
+  capability as an extra-spec in a share type, the size of share extended with
+  the share type can not be greater than the specified value.

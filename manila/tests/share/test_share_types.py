@@ -549,6 +549,11 @@ class ShareTypesTestCase(test.TestCase):
                                share_types.MAX_SIZE_KEY: "99",
                                "key4": "val4",
                                "driver_handles_share_servers": False})
+        share_types.create(self.context, "type5",
+                           extra_specs={
+                               share_types.MAX_EXTEND_SIZE_KEY: "99",
+                               "key4": "val4",
+                               "driver_handles_share_servers": False})
 
         # Make sure we don't raise if there are no min/max set
         type1 = share_types.get_share_type_by_name(self.context, 'type1')
@@ -581,3 +586,11 @@ class ShareTypesTestCase(test.TestCase):
         share_types.provision_filter_on_size(self.context, type4, "24")
         share_types.provision_filter_on_size(self.context, type4, "99")
         share_types.provision_filter_on_size(self.context, type4, "30")
+
+        # verify max extend size requirements
+        type5 = share_types.get_share_type_by_name(self.context, 'type5')
+        self.assertRaises(exception.InvalidInput,
+                          share_types.provision_filter_on_size,
+                          self.context, type5, "100")
+        share_types.provision_filter_on_size(self.context, type5, "99")
+        share_types.provision_filter_on_size(self.context, type5, "1")
