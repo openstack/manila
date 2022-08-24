@@ -2051,7 +2051,8 @@ class ShareManagerTestCase(test.TestCase):
         self.assertEqual(quota_error, mock_exception_log.called)
         self.assertEqual(expected_exc_count, mock_exception_log.call_count)
 
-    @ddt.data(exception.ShareSnapshotIsBusy, exception.ManilaException)
+    @ddt.data(exception.ShareSnapshotIsBusy(snapshot_name='fake_snapshot'),
+              exception.ManilaException)
     def test_delete_snapshot_ignore_exceptions_with_the_force(self, exc):
 
         def _raise_quota_error():
@@ -8067,7 +8068,8 @@ class ShareManagerTestCase(test.TestCase):
                                              fake_export_locations)
 
     @ddt.data(mock.Mock(return_value={'status': constants.STATUS_ERROR}),
-              mock.Mock(side_effect=exception.ShareBackendException))
+              mock.Mock(side_effect=exception.ShareBackendException(
+                  msg='fake_msg')))
     def test__update_share_status_share_with_error_or_exception(self,
                                                                 driver_error):
         instances = self._setup_init_mocks(setup_access_rules=False)
@@ -8715,7 +8717,8 @@ class ShareManagerTestCase(test.TestCase):
             db, 'share_server_get', mock.Mock(return_value=fake_share_server))
         mock__server_migration_start_driver = self.mock_object(
             self.share_manager, '_share_server_migration_start_driver',
-            mock.Mock(side_effect=exception.ShareServerMigrationFailed))
+            mock.Mock(side_effect=exception.ShareServerMigrationFailed(
+                reason='fake_reason')))
 
         self.share_manager.share_server_migration_start(
             self.context, fake_share_server['id'], fake_dest_host, writable,
@@ -10104,7 +10107,8 @@ class ShareManagerTestCase(test.TestCase):
             mock.Mock(return_value=snap_instances))
         mock_do_update = self.mock_object(
             self.share_manager, '_do_update_share_server_network_allocations',
-            mock.Mock(side_effect=exception.AllocationsNotFoundForShareServer))
+            mock.Mock(side_effect=exception.AllocationsNotFoundForShareServer(
+                share_server_id=server_id)))
         mock_handle_error = self.mock_object(
             self.share_manager, '_handle_setup_server_error')
         mock_update_status = self.mock_object(

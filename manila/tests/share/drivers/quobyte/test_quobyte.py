@@ -112,7 +112,9 @@ class QuobyteShareDriverTestCase(test.TestCase):
     @mock.patch('manila.share.drivers.quobyte.jsonrpc.JsonRpc.__init__',
                 mock.Mock(return_value=None))
     @mock.patch.object(jsonrpc.JsonRpc, 'call',
-                       side_effect=exception.QBRpcException)
+                       side_effect=exception.QBRpcException(
+                           result='fake_result',
+                           qbcode=666))
     def test_do_setup_failure(self, mock_call):
         self.assertRaises(exception.QBException,
                           self._driver.do_setup, self._context)

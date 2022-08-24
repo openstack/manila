@@ -631,9 +631,10 @@ class ShareServerControllerTest(test.TestCase):
 
     @ddt.data({'api_exception': exception.ServiceIsDown(service='fake_srv'),
                'expected_exception': webob.exc.HTTPBadRequest},
-              {'api_exception': exception.InvalidShareServer(reason=""),
+              {'api_exception': exception.InvalidShareServer(
+                  reason='fake_reason'),
                'expected_exception': webob.exc.HTTPConflict},
-              {'api_exception': exception.InvalidInput(),
+              {'api_exception': exception.InvalidInput(reason='fake_reason'),
                'expected_exception': webob.exc.HTTPBadRequest})
     @ddt.unpack
     def test__share_server_migration_start_conflict(self, api_exception,

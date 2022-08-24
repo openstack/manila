@@ -6863,7 +6863,8 @@ class ShareAPITestCase(test.TestCase):
             mock.Mock(return_value='fake_update_value'))
         self.mock_object(
             self.api, '_share_server_update_allocations_validate_hosts',
-            mock.Mock(side_effect=exception.InvalidShareNetwork))
+            mock.Mock(side_effect=exception.InvalidShareNetwork(
+                reason='fake_reason')))
         mock_delete_data = self.mock_object(self.api.db,
                                             'async_operation_data_delete')
 

@@ -286,9 +286,10 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
             mock_subnet_create.assert_called_once_with(
                 context, fake_data)
 
-    @ddt.data({'exception1': exception.ServiceIsDown(),
+    @ddt.data({'exception1': exception.ServiceIsDown(service='fake_srv'),
                'exc_raise': exc.HTTPInternalServerError},
-              {'exception1': exception.InvalidShareNetwork(),
+              {'exception1': exception.InvalidShareNetwork(
+                  reason='fake_reason'),
                'exc_raise': exc.HTTPBadRequest},
               {'exception1': db_exception.DBError(),
                'exc_raise': exc.HTTPInternalServerError})
