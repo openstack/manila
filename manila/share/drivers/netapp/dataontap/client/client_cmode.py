@@ -1464,6 +1464,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             elif security_service['type'].lower() == 'active_directory':
                 vserver_client.configure_active_directory(security_service,
                                                           vserver_name)
+                vserver_client.configure_cifs_options(security_service)
 
             elif security_service['type'].lower() == 'kerberos':
                 vserver_client.create_kerberos_realm(security_service)
@@ -1996,6 +1997,22 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         except netapp_api.NaApiError as e:
             msg = _("Failed to update DNS configuration. %s")
             raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def configure_cifs_options(self, security_service):
+        if not security_service['server']:
+            return
+
+        api_args = {'mode': 'none'}
+        try:
+            self.send_request(
+                'cifs-domain-server-discovery-mode-modify',
+                api_args)
+        except netapp_api.NaApiError as e:
+            msg = ('Failed to set cifs domain server discovery mode to '
+                   '%(mode)s. Exception: %(exception)s')
+            msg_args = {'mode': api_args['mode'], 'exception': e.message}
+            LOG.warning(msg, msg_args)
 
     @na_utils.trace
     def set_preferred_dc(self, security_service):

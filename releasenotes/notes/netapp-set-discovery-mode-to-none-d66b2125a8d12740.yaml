@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    If user is configuring 'Servers' in AD Server in the security service then,
+    for NetApp ONTAP, the discovery mode should be changed to 'none'. Value of
+    'none' indicates that domain controller discovery will not be done, and it
+    will depend only on preferred DC's configured.
