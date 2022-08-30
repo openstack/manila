@@ -4445,27 +4445,45 @@ def share_server_search_by_identifier(context, identifier, session=None):
 @require_context
 def share_server_get_all_by_host_and_share_subnet_valid(context, host,
                                                         share_subnet_id,
-                                                        server_status=None,
                                                         session=None):
-    query = (_server_get_query(context, session)
-             .filter_by(host=host)
-             .filter(models.ShareServer.share_network_subnets.any(
-                     id=share_subnet_id)))
-    if server_status:
-        query.filter_by(status=server_status)
-    else:
-        query.filter(models.ShareServer.status.in_(
-            (constants.STATUS_CREATING, constants.STATUS_ACTIVE)))
+    result = (_server_get_query(context, session)
+              .filter_by(host=host)
+              .filter(models.ShareServer.share_network_subnets.any(
+                      id=share_subnet_id))
+              .filter(models.ShareServer.status.in_(
+                      (constants.STATUS_CREATING,
+                       constants.STATUS_ACTIVE))).all())
 
-    result = query.all()
     if not result:
-        filters_description = ('share_network_subnet_id is "%(share_net_id)s",'
-                               ' host is "%(host)s" and status in'
-                               ' "%(status_cr)s" or "%(status_act)s"') % {
-            'share_net_id': share_subnet_id,
+        filters_description = ('share_network_subnet_id is '
+                               '"%(share_subnet_id)s", host is "%(host)s" and '
+                               'status in "%(status_cr)s" or '
+                               '"%(status_act)s"') % {
+            'share_subnet_id': share_subnet_id,
             'host': host,
             'status_cr': constants.STATUS_CREATING,
             'status_act': constants.STATUS_ACTIVE,
+        }
+        raise exception.ShareServerNotFoundByFilters(
+            filters_description=filters_description)
+    return result
+
+
+@require_context
+def share_server_get_all_by_host_and_share_subnet(context, host,
+                                                  share_subnet_id,
+                                                  session=None):
+    result = (_server_get_query(context, session)
+              .filter_by(host=host)
+              .filter(models.ShareServer.share_network_subnets.any(
+                      id=share_subnet_id)).all())
+
+    if not result:
+        filters_description = ('share_network_subnet_id is '
+                               '"%(share_subnet_id)s" and host is '
+                               '"%(host)s".') % {
+            'share_subnet_id': share_subnet_id,
+            'host': host,
         }
         raise exception.ShareServerNotFoundByFilters(
             filters_description=filters_description)

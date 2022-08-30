@@ -6155,9 +6155,8 @@ class ShareManager(manager.SchedulerDependentManager):
         current_subnets = [subnet for subnet in current_subnets
                            if subnet['id'] != new_share_network_subnet_id]
         share_servers = (
-            self.db.share_server_get_all_by_host_and_share_subnet_valid(
-                context, self.host, new_share_network_subnet_id,
-                server_status=constants.STATUS_SERVER_NETWORK_CHANGE))
+            self.db.share_server_get_all_by_host_and_share_subnet(
+                context, self.host, new_share_network_subnet_id))
         for share_server in share_servers:
 
             share_server_id = share_server['id']
