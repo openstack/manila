@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp OnTap driver `Bug #1915237
+    <https://bugs.launchpad.net/manila/+bug/1915237>`_:
+    Fixed encryption compatibility check on manila share migrate.
