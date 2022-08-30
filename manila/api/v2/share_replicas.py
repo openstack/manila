@@ -191,7 +191,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
                 common.check_share_network_is_active(share_network)
         except exception.ShareNetworkNotFound:
             msg = _("No share network exists with ID %s.")
-            raise exc.HTTPNotFound(explanation=msg % share_network_id)
+            raise exc.HTTPBadRequest(explanation=msg % share_network_id)
 
         try:
             new_replica = self.share_api.create_share_replica(

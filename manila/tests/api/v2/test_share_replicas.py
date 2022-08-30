@@ -396,11 +396,10 @@ class ShareReplicasApiTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.member_context, self.resource_name, 'create')
 
-    @ddt.data('2.72')
-    def test_create_invalid_network_id(self, microversion):
+    def test_create_invalid_network_id(self):
         fake_replica, _ = self._get_fake_replica(
             replication_type='writable')
-        req = self._get_request(microversion, False)
+        req = self._get_request("2.72", False)
         req_context = req.environ['manila.context']
 
         body = {
@@ -419,7 +418,7 @@ class ShareReplicasApiTest(test.TestCase):
                          mock.Mock(side_effect=exception.ShareNetworkNotFound(
                                    share_network_id='FAKE_NETID')))
 
-        self.assertRaises(exc.HTTPNotFound,
+        self.assertRaises(exc.HTTPBadRequest,
                           self.controller.create,
                           req, body)
         self.assertFalse(mock__view_builder_call.called)
