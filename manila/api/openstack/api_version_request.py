@@ -186,6 +186,7 @@ REST_API_VERSION_HISTORY = """
              availability zone. Also, users can add subnets for an in-use share
              network.
     * 2.71 - Added 'updated_at' field in share instance show API output.
+    * 2.72 - Added new option ``share-network`` to share replica creare API.
 
 """
 
@@ -193,7 +194,7 @@ REST_API_VERSION_HISTORY = """
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.71"
+_MAX_API_VERSION = "2.72"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

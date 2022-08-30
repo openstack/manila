@@ -92,11 +92,12 @@ Request example
    :language: javascript
 
 .. note::
-   Since API version 2.51, the parameter ``share_network_id``
-   is deprecated. It will be inherited from its parent share, and the
-   Shared File Systems service will automatically choose which share network
-   subnet your share replica will be placed, according to the specified
-   availability zone.
+   Since API version 2.72, the parameter ``share_network_id`` is added which
+   was earlier supported but later deprecated from version 2.51. In case, the
+   parameter is not specified, it will be inherited from its parent share,
+   and the Shared File Systems service will automatically choose which share
+   network subnet your share replica will be placed, according to the
+   specified availability zone.
 
 
 Response parameters

@@ -396,6 +396,36 @@ class ShareReplicasApiTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.member_context, self.resource_name, 'create')
 
+    @ddt.data('2.72')
+    def test_create_invalid_network_id(self, microversion):
+        fake_replica, _ = self._get_fake_replica(
+            replication_type='writable')
+        req = self._get_request(microversion, False)
+        req_context = req.environ['manila.context']
+
+        body = {
+            'share_replica': {
+                'share_id': 'FAKE_SHAREID',
+                'availability_zone': 'FAKE_AZ',
+                'share_network_id': 'FAKE_NETID'
+            }
+        }
+        mock__view_builder_call = self.mock_object(
+            share_replicas.replication_view.ReplicationViewBuilder,
+            'detail_list')
+        self.mock_object(share_replicas.db, 'share_get',
+                         mock.Mock(return_value=fake_replica))
+        self.mock_object(share_replicas.db, 'share_network_get',
+                         mock.Mock(side_effect=exception.ShareNetworkNotFound(
+                                   share_network_id='FAKE_NETID')))
+
+        self.assertRaises(exc.HTTPNotFound,
+                          self.controller.create,
+                          req, body)
+        self.assertFalse(mock__view_builder_call.called)
+        self.mock_policy_check.assert_called_once_with(
+            req_context, self.resource_name, 'create')
+
     @ddt.data(exception.AvailabilityZoneNotFound,
               exception.ReplicationException, exception.ShareBusyException)
     def test_create_exception_path(self, exception_type):
@@ -432,19 +462,25 @@ class ShareReplicasApiTest(test.TestCase):
         common.check_share_network_is_active.assert_called_once_with(
             share_network)
 
-    @ddt.data((True, PRE_GRADUATION_VERSION), (False, GRADUATION_VERSION))
+    @ddt.data((True, PRE_GRADUATION_VERSION), (False, GRADUATION_VERSION),
+              (False, "2.72"))
     @ddt.unpack
     def test_create(self, is_admin, microversion):
         fake_replica, expected_replica = self._get_fake_replica(
             replication_type='writable', admin=is_admin,
             microversion=microversion)
-        share_network = db_utils.create_share_network()
         body = {
             'share_replica': {
                 'share_id': 'FAKE_SHAREID',
                 'availability_zone': 'FAKE_AZ'
             }
         }
+        if self.is_microversion_ge(microversion, '2.72'):
+            body["share_replica"].update({"share_network_id": 'FAKE_NETID'})
+            share_network = {'id': 'FAKE_NETID'}
+        else:
+            share_network = db_utils.create_share_network()
+
         self.mock_object(share_replicas.db, 'share_get',
                          mock.Mock(return_value=fake_replica))
         self.mock_object(share.API, 'create_share_replica',
@@ -465,8 +501,12 @@ class ShareReplicasApiTest(test.TestCase):
         self.assertEqual(expected_replica, res_dict['share_replica'])
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'create')
-        share_replicas.db.share_network_get.assert_called_once_with(
-            req_context, fake_replica['share_network_id'])
+        if self.is_microversion_ge(microversion, '2.72'):
+            share_replicas.db.share_network_get.assert_called_once_with(
+                req_context, 'FAKE_NETID')
+        else:
+            share_replicas.db.share_network_get.assert_called_once_with(
+                req_context, fake_replica['share_network_id'])
         common.check_share_network_is_active.assert_called_once_with(
             share_network)
 

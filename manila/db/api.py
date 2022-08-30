@@ -792,6 +792,12 @@ def security_service_get_all_by_project(context, project_id):
     return IMPL.security_service_get_all_by_project(context, project_id)
 
 
+def security_service_get_all_by_share_network(context, share_network_id):
+    """Get all security service DB records for the given share network."""
+    return IMPL.security_service_get_all_by_share_network(context,
+                                                          share_network_id)
+
+
 ####################
 def share_metadata_get(context, share_id):
     """Get all metadata for a share."""

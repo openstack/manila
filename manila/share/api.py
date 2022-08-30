@@ -641,6 +641,21 @@ class API(base.Base):
     def create_share_replica(self, context, share, availability_zone=None,
                              share_network_id=None, scheduler_hints=None):
 
+        parent_share_network_id = share.get('share_network_id')
+        if (parent_share_network_id and share_network_id and
+                parent_share_network_id != share_network_id):
+            parent_share_services = (
+                self.db.security_service_get_all_by_share_network(
+                    context, parent_share_network_id))
+            share_services = (
+                self.db.security_service_get_all_by_share_network(
+                    context, share_network_id))
+            for service in parent_share_services:
+                if service not in share_services:
+                    msg = _("Share and its replica can't be in"
+                            "different authentication domains.")
+                    raise exception.InvalidInput(reason=msg)
+
         if not share.get('replication_type'):
             msg = _("Replication not supported for share %s.")
             raise exception.InvalidShare(message=msg % share['id'])
