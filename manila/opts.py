@@ -72,6 +72,7 @@ import manila.share.drivers.infortrend.driver
 import manila.share.drivers.inspur.as13000.as13000_nas
 import manila.share.drivers.inspur.instorage.instorage
 import manila.share.drivers.lvm
+import manila.share.drivers.macrosan.macrosan_nas
 import manila.share.drivers.maprfs.maprfs_native
 import manila.share.drivers.netapp.options
 import manila.share.drivers.nexenta.options
@@ -160,6 +161,7 @@ _global_opt_lists = [
     manila.share.drivers.infortrend.driver.infortrend_nas_opts,
     manila.share.drivers.inspur.as13000.as13000_nas.inspur_as13000_opts,
     manila.share.drivers.inspur.instorage.instorage.instorage_opts,
+    manila.share.drivers.macrosan.macrosan_nas.macrosan_opts,
     manila.share.drivers.maprfs.maprfs_native.maprfs_native_share_opts,
     manila.share.drivers.lvm.share_opts,
     manila.share.drivers.netapp.options.netapp_proxy_opts,
