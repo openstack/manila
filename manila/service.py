@@ -359,6 +359,8 @@ class WSGIService(service.ServiceBase):
             return None
 
         manager_class = importutils.import_class(manager_class_name)
+        if CONF.profiler.enabled and profiler is not None:
+            manager_class = profiler.trace_cls("rpc")(manager_class)
         return manager_class()
 
     def start(self):
