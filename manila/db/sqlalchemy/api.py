@@ -85,7 +85,13 @@ def _create_facade_lazily():
     if _FACADE is None:
         with _LOCK:
             if _FACADE is None:
-                _FACADE = session.EngineFacade.from_config(cfg.CONF)
+                # FIXME(stephenfin): Remove autocommit=True (and ideally use of
+                # LegacyEngineFacade) asap since it's not compatible with
+                # SQLAlchemy 2.0
+                _FACADE = session.EngineFacade.from_config(
+                    cfg.CONF,
+                    autocommit=True,
+                )
             if CONF.profiler.enabled and CONF.profiler.trace_sqlalchemy:
                 osprofiler_sqlalchemy.add_tracing(sqlalchemy,
                                                   _FACADE.get_engine(),
