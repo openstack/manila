@@ -2158,6 +2158,11 @@ class ShareManager(manager.SchedulerDependentManager):
                             "mandatory for protocol %s.") %
                             share_instance.get('share_proto'))
 
+        # SAPCC Get project_domain_name from request_spec and set to context
+        if context.project_domain_name is None and request_spec:
+            context.project_domain_name = request_spec.get(
+                'project_domain_name')
+
         status = constants.STATUS_AVAILABLE
         try:
             if snapshot_ref:

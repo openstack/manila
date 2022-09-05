@@ -2410,6 +2410,9 @@ SIS_GET_ITER_RESPONSE = etree.XML("""
         <path>/vol/%(volume)s</path>
         <state>enabled</state>
         <vserver>%(vserver)s</vserver>
+        <policy>auto</policy>
+        <is-cross-volume-background-dedupe-enabled>False</is-cross-volume-background-dedupe-enabled>
+        <is-cross-volume-inline-dedupe-enabled>False</is-cross-volume-inline-dedupe-enabled>
       </sis-status-info>
     </attributes-list>
   </results>

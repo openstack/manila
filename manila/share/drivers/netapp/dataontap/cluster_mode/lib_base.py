@@ -750,6 +750,17 @@ class NetAppCmodeFileStorageLibrary(object):
                 src_volume.get('is-space-reporting-logical')
         }
 
+
+    def _get_efficiency_options(self, vserver_client, share_name):
+        status = vserver_client.get_volume_efficiency_status(share_name)
+        provisioning_opts = {
+            'dedup_enabled': status.get('dedupe'),
+            'compression_enabled': status.get('compression'),
+            'policy': status.get('policy'),
+            'cross_dedup_disabled': status.get('cross_dedup_disabled'),
+        }
+        return provisioning_opts
+
     @na_utils.trace
     def create_share(self, context, share, share_server):
         """Creates new share."""
@@ -758,6 +769,10 @@ class NetAppCmodeFileStorageLibrary(object):
         # Force enabling logical-space-reporting on new Volumes.
         # Disable cross volume dedupe in neo projects.
         provisioning_options = {'logical_space_reporting': True}
+        if context.project_domain_name in ['neo']:
+            provisioning_options['dedup_enabled'] = True
+            provisioning_options['compression_enabled'] = True
+            provisioning_options['cross_dedup_disabled'] = True
         self._allocate_container(share, vserver, vserver_client,
                                  **provisioning_options)
         return self._create_export(share, share_server, vserver,
@@ -781,9 +796,11 @@ class NetAppCmodeFileStorageLibrary(object):
             src_share_name = self._get_backend_share_name(snapshot['share_id'])
             logical_opts = self._get_logical_space_options(
                 src_vserver_client, src_share_name)
+            effi_opts = self._get_efficiency_options(src_vserver_client,
+                                                     src_share_name)
             self._allocate_container_from_snapshot(
                 share, snapshot, src_vserver, src_vserver_client,
-                **logical_opts)
+                **logical_opts, **effi_opts)
             return self._create_export(share, share_server, src_vserver,
                                        src_vserver_client)
 
@@ -865,6 +882,8 @@ class NetAppCmodeFileStorageLibrary(object):
         # SAPCC Get attributes from parent share
         logical_opts = self._get_logical_space_options(src_vserver_client,
                                                        parent_share_name)
+        effi_opts = self._get_efficiency_options(src_vserver_client,
+                                                 parent_share_name)
 
         try:
             # NOTE(felipe_rodrigues): no support to move volumes that are
@@ -881,7 +900,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 # 2. Create a replica in destination host.
                 self._allocate_container(
                     dest_share, dest_vserver, dest_vserver_client,
-                    replica=True, set_qos=False, **logical_opts)
+                    replica=True, set_qos=False, **logical_opts, **effi_opts)
                 # 3. Initialize snapmirror relationship with cloned share.
                 src_share_instance['replica_state'] = (
                     constants.REPLICA_STATE_ACTIVE)
@@ -900,7 +919,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 # vserver.
                 self._allocate_container_from_snapshot(
                     dest_share, snapshot, src_vserver, src_vserver_client,
-                    split=True, **logical_opts)
+                    split=True, **logical_opts, **effi_opts)
                 # The split volume clone operation can take some time to be
                 # concluded and we'll answer the call asynchronously.
                 state = self.STATE_SPLITTING_VOLUME_CLONE
@@ -1096,6 +1115,9 @@ class NetAppCmodeFileStorageLibrary(object):
                 provisioning_options.update(
                     self._get_logical_space_options(src_vserver_client,
                                                     share_name))
+                provisioning_options.update(
+                    self._get_efficiency_options(src_vserver_client,
+                                                 share_name))
                 qos_policy_group_name = (
                     self._modify_or_create_qos_for_existing_share(
                         share, extra_specs, dest_vserver, dest_vserver_client))
@@ -2578,8 +2600,11 @@ class NetAppCmodeFileStorageLibrary(object):
             share, vserver, vserver_client=vserver_client)
 
         # SAPCC Keep logical space reporting attributes while update share
+        # SAPCC Keep efficiency attributes while update share
         provisioning_options.update(
             self._get_logical_space_options(vserver_client, share_name))
+        provisioning_options.update(
+            self._get_efficiency_options(vserver_client, share_name))
 
         qos_policy_group_name = self._modify_or_create_qos_for_existing_share(
             share, extra_specs, vserver, vserver_client)
@@ -2978,6 +3003,8 @@ class NetAppCmodeFileStorageLibrary(object):
         logical_opts = self._get_logical_space_options(
             orig_active_vserver_client, orig_active_replica_name)
         is_logical_space_reporting = logical_opts['logical_space_reporting']
+        effi_opts = self._get_efficiency_options(orig_active_vserver_client,
+                                                 orig_active_replica_name)
 
         new_replica_list = []
 
@@ -3069,6 +3096,9 @@ class NetAppCmodeFileStorageLibrary(object):
             new_active_replica['id'])
         new_active_vserver_client.update_volume_space_attributes(
             new_active_replica_name, is_logical_space_reporting)
+        if effi_opts['cross_dedup_disabled']:
+            new_active_vserver_client.update_volume_efficiency_attributes(
+                new_active_replica_name, True, True, cross_dedup_disabled=True)
 
         return new_replica_list
 
