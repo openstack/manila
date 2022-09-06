@@ -60,7 +60,7 @@ CONF.register_opts(test_opts)
 _DB_CACHE = None
 
 
-class Database(fixtures.Fixture):
+class DatabaseFixture(fixtures.Fixture):
 
     def __init__(self, db_session, db_migrate, sql_connection, sqlite_db,
                  sqlite_clean_db):
@@ -86,7 +86,7 @@ class Database(fixtures.Fixture):
             shutil.copyfile(testdb, cleandb)
 
     def setUp(self):
-        super(Database, self).setUp()
+        super().setUp()
         if self.sql_connection == "sqlite://":
             conn = self.engine.connect()
             conn.connection.executescript(self._DB)
@@ -116,7 +116,7 @@ class TestCase(base_test.BaseTestCase):
 
         global _DB_CACHE
         if not _DB_CACHE:
-            _DB_CACHE = Database(
+            _DB_CACHE = DatabaseFixture(
                 db_api,
                 migration,
                 sql_connection=CONF.database.connection,
