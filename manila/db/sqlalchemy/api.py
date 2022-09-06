@@ -897,6 +897,7 @@ def quota_class_update(context, class_name, resource, limit):
 
 
 @require_context
+@context_manager.reader
 def quota_usage_get(context, project_id, resource, user_id=None,
                     share_type_id=None):
     query = (model_query(context, models.QuotaUsage, read_deleted="no").
@@ -947,22 +948,27 @@ def _quota_usage_get_all(context, project_id, user_id=None,
 
 
 @require_context
+@context_manager.reader
 def quota_usage_get_all_by_project(context, project_id):
     return _quota_usage_get_all(context, project_id)
 
 
 @require_context
+@context_manager.reader
 def quota_usage_get_all_by_project_and_user(context, project_id, user_id):
     return _quota_usage_get_all(context, project_id, user_id=user_id)
 
 
 @require_context
+@context_manager.reader
 def quota_usage_get_all_by_project_and_share_type(context, project_id,
                                                   share_type_id):
     return _quota_usage_get_all(
         context, project_id, share_type_id=share_type_id)
 
 
+# TODO(stephenfin): Remove session argument once all callers have been
+# converted
 def _quota_usage_create(context, project_id, user_id, resource, in_use,
                         reserved, until_refresh, share_type_id=None,
                         session=None):
@@ -985,16 +991,25 @@ def _quota_usage_create(context, project_id, user_id, resource, in_use,
 
 
 @require_admin_context
+@context_manager.writer
 def quota_usage_create(context, project_id, user_id, resource, in_use,
                        reserved, until_refresh, share_type_id=None):
-    session = get_session()
     return _quota_usage_create(
-        context, project_id, user_id, resource, in_use, reserved,
-        until_refresh, share_type_id=share_type_id, session=session)
+        context,
+        project_id,
+        user_id,
+        resource,
+        in_use,
+        reserved,
+        until_refresh,
+        share_type_id=share_type_id,
+        session=context.session,
+    )
 
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def quota_usage_update(context, project_id, user_id, resource,
                        share_type_id=None, **kwargs):
     updates = {}
