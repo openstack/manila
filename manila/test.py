@@ -72,6 +72,14 @@ class DatabaseFixture(fixtures.Fixture):
         self.engine = db_session.get_engine()
         self.engine.dispose()
         conn = self.engine.connect()
+        # FIXME(stephenfin): This is an issue. We're not applying our
+        # migrations on SQLite in-memory backends and because the model schemas
+        # and migration schemas don't currently match exactly, we are not
+        # testing against something resembling what our customers would see.
+        # We should (a) start applying the migrations for all backends (which
+        # will require reworking the migrations since SQLite doesn't support
+        # ALTER fully, meaning batch mode must be used) and (b) get the two
+        # different sets of schemas in sync and keep them in sync.
         if sql_connection == "sqlite://":
             self.setup_sqlite(db_migrate)
         else:
