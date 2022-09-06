@@ -24,6 +24,7 @@ inline callbacks.
 import os
 import shutil
 from unittest import mock
+import warnings
 
 import fixtures
 from oslo_concurrency import lockutils
@@ -33,6 +34,7 @@ import oslo_messaging
 from oslo_messaging import conffixture as messaging_conffixture
 from oslo_utils import uuidutils
 import oslotest.base as base_test
+from sqlalchemy import exc as sqla_exc
 
 from manila.api.openstack import api_version_request as api_version
 from manila import coordination
@@ -104,6 +106,84 @@ class DatabaseFixture(fixtures.Fixture):
         db_migrate.stamp('head')
 
 
+class WarningsFixture(fixtures.Fixture):
+    """Filters out warnings during test runs."""
+
+    def setUp(self):
+        super().setUp()
+
+        self._original_warning_filters = warnings.filters[:]
+
+        # NOTE(sdague): Make deprecation warnings only happen once. Otherwise
+        # this gets kind of crazy given the way that upstream python libs use
+        # this.
+        warnings.simplefilter('once', DeprecationWarning)
+
+        # NOTE(sdague): this remains an unresolved item around the way
+        # forward on is_admin, the deprecation is definitely really premature.
+        warnings.filterwarnings(
+            'ignore',
+            message=(
+                'Policy enforcement is depending on the value of is_admin. '
+                'This key is deprecated. Please update your policy '
+                'file to use the standard policy values.'
+            ),
+        )
+
+        # NOTE(mriedem): Ignore scope check UserWarnings from oslo.policy.
+        warnings.filterwarnings(
+            'ignore',
+            message='Policy .* failed scope check',
+            category=UserWarning,
+        )
+
+        # NOTE(gibi): The UUIDFields emits a warning if the value is not a
+        # valid UUID. Let's escalate that to an exception in the test to
+        # prevent adding violations.
+        warnings.filterwarnings('error', message='.*invalid UUID.*')
+
+        # NOTE(mriedem): Avoid adding anything which tries to convert an
+        # object to a primitive which jsonutils.to_primitive() does not know
+        # how to handle (or isn't given a fallback callback).
+        warnings.filterwarnings(
+            'error',
+            message=(
+                'Cannot convert <oslo_db.sqlalchemy.enginefacade._Default '
+                'object at '
+            ),
+            category=UserWarning,
+        )
+
+        # Enable deprecation warnings for manila itself to capture upcoming
+        # SQLAlchemy changes
+
+        warnings.filterwarnings(
+            'ignore',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'error',
+            module='manila',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        # Enable general SQLAlchemy warnings also to ensure we're not doing
+        # silly stuff. It's possible that we'll need to filter things out here
+        # with future SQLAlchemy versions, but that's a good thing
+
+        warnings.filterwarnings(
+            'error',
+            module='manila',
+            category=sqla_exc.SAWarning,
+        )
+
+        self.addCleanup(self._reset_warning_filters)
+
+    def _reset_warning_filters(self):
+        warnings.filters[:] = self._original_warning_filters
+
+
 class TestCase(base_test.BaseTestCase):
     """Test case base class for all unit tests."""
 
@@ -124,6 +204,9 @@ class TestCase(base_test.BaseTestCase):
                 sqlite_clean_db=CONF.sqlite_clean_db,
             )
         self.useFixture(_DB_CACHE)
+
+        # NOTE(stephenfin): WarningsFixture must be after the DatabaseFixture
+        self.useFixture(WarningsFixture())
 
         self.injected = []
         self._services = []
