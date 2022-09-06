@@ -23,7 +23,6 @@ import datetime
 from functools import wraps
 import ipaddress
 import sys
-import threading
 import warnings
 
 # NOTE(uglide): Required to override default oslo_db Query class
@@ -34,7 +33,7 @@ from oslo_db import api as oslo_db_api
 from oslo_db import exception as db_exc
 from oslo_db import exception as db_exception
 from oslo_db import options as db_options
-from oslo_db.sqlalchemy import session
+from oslo_db.sqlalchemy import enginefacade
 from oslo_db.sqlalchemy import utils as db_utils
 from oslo_log import log
 from oslo_utils import excutils
@@ -42,7 +41,6 @@ from oslo_utils import importutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
-import sqlalchemy
 from sqlalchemy import and_
 from sqlalchemy import MetaData
 from sqlalchemy import or_
@@ -60,7 +58,6 @@ from manila import exception
 from manila.i18n import _
 from manila import quota
 
-
 osprofiler_sqlalchemy = importutils.try_import('osprofiler.sqlalchemy')
 
 CONF = cfg.CONF
@@ -72,42 +69,23 @@ QUOTAS = quota.QUOTAS
 _DEFAULT_QUOTA_NAME = 'default'
 PER_PROJECT_QUOTAS = []
 
-_FACADE = None
-_LOCK = threading.Lock()
-
-
 _DEFAULT_SQL_CONNECTION = 'sqlite://'
 db_options.set_defaults(cfg.CONF,
                         connection=_DEFAULT_SQL_CONNECTION)
 
+context_manager = enginefacade.transaction_context()
 
-def _create_facade_lazily():
-    global _LOCK, _FACADE
-    if _FACADE is None:
-        with _LOCK:
-            if _FACADE is None:
-                # FIXME(stephenfin): Remove autocommit=True (and ideally use of
-                # LegacyEngineFacade) asap since it's not compatible with
-                # SQLAlchemy 2.0
-                _FACADE = session.EngineFacade.from_config(
-                    cfg.CONF,
-                    autocommit=True,
-                )
-            if CONF.profiler.enabled and CONF.profiler.trace_sqlalchemy:
-                osprofiler_sqlalchemy.add_tracing(sqlalchemy,
-                                                  _FACADE.get_engine(),
-                                                  "db")
-    return _FACADE
+# FIXME(stephenfin): we need to remove reliance on autocommit semantics ASAP
+# since it's not compatible with SQLAlchemy 2.0
+context_manager.configure(__autocommit=True)
 
 
 def get_engine():
-    facade = _create_facade_lazily()
-    return facade.get_engine()
+    return context_manager._factory.get_legacy_facade().get_engine()
 
 
 def get_session(**kwargs):
-    facade = _create_facade_lazily()
-    return facade.get_session(**kwargs)
+    return context_manager._factory.get_legacy_facade().get_session(**kwargs)
 
 
 def get_backend():
