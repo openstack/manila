@@ -819,12 +819,19 @@ def quota_update(
 
 
 @require_context
-def quota_class_get(context, class_name, resource, session=None):
-    result = (model_query(context, models.QuotaClass, session=session,
-                          read_deleted="no").
-              filter_by(class_name=class_name).
-              filter_by(resource=resource).
-              first())
+@context_manager.reader
+def quota_class_get(context, class_name, resource):
+    result = (
+        model_query(
+            context,
+            models.QuotaClass,
+            read_deleted="no",
+        ).filter_by(
+            class_name=class_name
+        ).filter_by(
+            resource=resource
+        ).first()
+    )
 
     if not result:
         raise exception.QuotaClassNotFound(class_name=class_name)
@@ -833,6 +840,7 @@ def quota_class_get(context, class_name, resource, session=None):
 
 
 @require_context
+@context_manager.reader
 def quota_class_get_default(context):
     rows = (model_query(context, models.QuotaClass, read_deleted="no").
             filter_by(class_name=_DEFAULT_QUOTA_NAME).
@@ -846,6 +854,7 @@ def quota_class_get_default(context):
 
 
 @require_context
+@context_manager.reader
 def quota_class_get_all_by_name(context, class_name):
     authorize_quota_class_context(context, class_name)
 
@@ -861,19 +870,19 @@ def quota_class_get_all_by_name(context, class_name):
 
 
 @require_admin_context
+@context_manager.writer
 def quota_class_create(context, class_name, resource, limit):
     quota_class_ref = models.QuotaClass()
     quota_class_ref.class_name = class_name
     quota_class_ref.resource = resource
     quota_class_ref.hard_limit = limit
-    session = get_session()
-    with session.begin():
-        quota_class_ref.save(session)
+    quota_class_ref.save(context.session)
     return quota_class_ref
 
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def quota_class_update(context, class_name, resource, limit):
     result = (model_query(context, models.QuotaClass, read_deleted="no").
               filter_by(class_name=class_name).
