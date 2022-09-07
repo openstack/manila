@@ -168,6 +168,37 @@ class WarningsFixture(fixtures.Fixture):
             category=sqla_exc.SADeprecationWarning,
         )
 
+        # ..but filter everything out until we get around to fixing them
+        # TODO(stephenfin): Fix all of these
+
+        warnings.filterwarnings(
+            'ignore',
+            module='manila',
+            message='Using strings to indicate column or relationship paths ',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            module='manila',
+            message='The current statement is being autocommitted ',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            module='manila',
+            message='The autoload parameter is deprecated ',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            module='manila',
+            message='Using strings to indicate relationship names in Query',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
         # Enable general SQLAlchemy warnings also to ensure we're not doing
         # silly stuff. It's possible that we'll need to filter things out here
         # with future SQLAlchemy versions, but that's a good thing
