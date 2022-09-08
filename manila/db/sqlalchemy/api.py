@@ -6383,50 +6383,43 @@ def cleanup_expired_messages(context):
 
 
 @require_context
+@context_manager.reader
 def backend_info_get(context, host):
     """Get hash info for given host."""
-    session = get_session()
-
-    result = _backend_info_query(session, context, host)
-
+    result = _backend_info_query(context, host)
     return result
 
 
 @require_context
+@context_manager.writer
 def backend_info_create(context, host, value):
-    session = get_session()
-    with session.begin():
-        info_ref = models.BackendInfo()
-        info_ref.update({"host": host,
-                         "info_hash": value})
-        info_ref.save(session)
-        return info_ref
+    info_ref = models.BackendInfo()
+    info_ref.update({"host": host, "info_hash": value})
+    info_ref.save(context.session)
+    return info_ref
 
 
 @require_context
+@context_manager.writer
 def backend_info_update(context, host, value=None, delete_existing=False):
     """Remove backend info for host name."""
-    session = get_session()
-
-    with session.begin():
-        info_ref = _backend_info_query(session, context, host)
-        if info_ref:
-            if value:
-                info_ref.update({"info_hash": value})
-            elif delete_existing and info_ref['deleted'] != 1:
-                info_ref.update({"deleted": 1,
-                                 "deleted_at": timeutils.utcnow()})
-        else:
-            info_ref = models.BackendInfo()
-            info_ref.update({"host": host,
-                             "info_hash": value})
-        info_ref.save(session)
-        return info_ref
+    info_ref = _backend_info_query(context, host)
+    if info_ref:
+        if value:
+            info_ref.update({"info_hash": value})
+        elif delete_existing and info_ref['deleted'] != 1:
+            info_ref.update({"deleted": 1, "deleted_at": timeutils.utcnow()})
+    else:
+        info_ref = models.BackendInfo()
+        info_ref.update({"host": host, "info_hash": value})
+    info_ref.save(context.session)
+    return info_ref
 
 
-def _backend_info_query(session, context, host, read_deleted=False):
+def _backend_info_query(context, host, read_deleted=False):
     result = model_query(
-        context, models.BackendInfo, session=session,
+        context,
+        models.BackendInfo,
         read_deleted=read_deleted,
     ).filter_by(
         host=host,
