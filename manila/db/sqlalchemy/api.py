@@ -6284,7 +6284,7 @@ def share_group_type_specs_update_or_create(context, type_id, specs):
 
 
 @require_context
-def message_get(context, message_id):
+def _message_get(context, message_id):
     query = model_query(context,
                         models.Message,
                         read_deleted="no",
@@ -6296,6 +6296,13 @@ def message_get(context, message_id):
 
 
 @require_context
+@context_manager.reader
+def message_get(context, message_id):
+    return _message_get(context, message_id)
+
+
+@require_context
+@context_manager.reader
 def message_get_all(context, filters=None, limit=None, offset=None,
                     sort_key='created_at', sort_dir='desc'):
     """Retrieves all messages.
@@ -6317,31 +6324,30 @@ def message_get_all(context, filters=None, limit=None, offset=None,
     """
     messages = models.Message
 
-    session = get_session()
-    with session.begin():
-        query = model_query(context,
-                            messages,
-                            read_deleted="no",
-                            project_only="yes")
+    query = model_query(context,
+                        messages,
+                        read_deleted="no",
+                        project_only="yes")
 
-        legal_filter_keys = ('request_id', 'resource_type', 'resource_id',
-                             'action_id', 'detail_id', 'message_level',
-                             'created_since', 'created_before')
+    legal_filter_keys = ('request_id', 'resource_type', 'resource_id',
+                         'action_id', 'detail_id', 'message_level',
+                         'created_since', 'created_before')
 
-        if not filters:
-            filters = {}
+    if not filters:
+        filters = {}
 
-        query = exact_filter(query, messages, filters, legal_filter_keys)
+    query = exact_filter(query, messages, filters, legal_filter_keys)
 
-        query = utils.paginate_query(query, messages, limit,
-                                     sort_key=sort_key,
-                                     sort_dir=sort_dir,
-                                     offset=offset)
+    query = utils.paginate_query(query, messages, limit,
+                                 sort_key=sort_key,
+                                 sort_dir=sort_dir,
+                                 offset=offset)
 
-        return query.all()
+    return query.all()
 
 
 @require_context
+@context_manager.writer
 def message_create(context, message_values):
     values = copy.deepcopy(message_values)
     message_ref = models.Message()
@@ -6349,28 +6355,31 @@ def message_create(context, message_values):
         values['id'] = uuidutils.generate_uuid()
     message_ref.update(values)
 
-    session = get_session()
-    with session.begin():
-        session.add(message_ref)
+    context.session.add(message_ref)
 
-    return message_get(context, message_ref['id'])
+    return _message_get(context, message_ref['id'])
 
 
 @require_context
+@context_manager.writer
 def message_destroy(context, message):
-    session = get_session()
-    with session.begin():
-        (model_query(context, models.Message, session=session).
-            filter_by(id=message.get('id')).soft_delete())
+    model_query(
+        context, models.Message,
+    ).filter_by(id=message.get('id')).soft_delete()
 
 
 @require_admin_context
+@context_manager.writer
 def cleanup_expired_messages(context):
-    session = get_session()
     now = timeutils.utcnow()
-    with session.begin():
-        return session.query(models.Message).filter(
-            models.Message.expires_at < now).delete()
+    return context.session.query(
+        models.Message
+    ).filter(
+        models.Message.expires_at < now
+    ).delete()
+
+
+###############################
 
 
 @require_context
