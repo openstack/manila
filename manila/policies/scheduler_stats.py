@@ -39,15 +39,11 @@ deprecated_pool_detail = policy.DeprecatedRule(
 scheduler_stats_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get information regarding backends "
                     "(and storage pools) known to the scheduler.",
         operations=[
-            {
-                'method': 'GET',
-                'path': '/scheduler-stats/pools'
-            },
             {
                 'method': 'GET',
                 'path': '/scheduler-stats/pools?{query}'
@@ -57,8 +53,8 @@ scheduler_stats_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'detail',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get detailed information regarding backends "
                     "(and storage pools) known to the scheduler.",
         operations=[
@@ -66,10 +62,6 @@ scheduler_stats_policies = [
                 'method': 'GET',
                 'path': '/scheduler-stats/pools/detail?{query}'
             },
-            {
-                'method': 'GET',
-                'path': '/scheduler-stats/pools/detail'
-            }
         ],
         deprecated_rule=deprecated_pool_detail
     ),

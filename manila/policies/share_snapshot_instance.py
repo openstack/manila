@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_snapshot_instance:%s'
 
 DEPRECATED_REASON = """
-The share snapshot instance API now supports system scope and default roles.
+The share snapshot instance API now supports scope and default roles.
 """
 
 deprecated_snapshot_instance_show = policy.DeprecatedRule(
@@ -51,8 +51,8 @@ deprecated_snapshot_instance_reset_status = policy.DeprecatedRule(
 share_snapshot_instance_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get share snapshot instance.",
         operations=[
             {
@@ -64,14 +64,10 @@ share_snapshot_instance_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get all share snapshot instances.",
         operations=[
-            {
-                'method': 'GET',
-                'path': '/snapshot-instances',
-            },
             {
                 'method': 'GET',
                 'path': '/snapshot-instances?{query}',
@@ -81,14 +77,10 @@ share_snapshot_instance_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'detail',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get details of share snapshot instances.",
         operations=[
-            {
-                'method': 'GET',
-                'path': '/snapshot-instances/detail',
-            },
             {
                 'method': 'GET',
                 'path': '/snapshot-instances/detail?{query}',
@@ -98,8 +90,8 @@ share_snapshot_instance_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Reset share snapshot instance's status.",
         operations=[
             {

@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share:%s'
 
 DEPRECATED_REASON = """
-The share API now supports system scope and default roles.
+The share API now supports scope and default roles.
 """
 
 # Deprecated share policies
@@ -222,8 +222,8 @@ deprecated_update_admin_only_metadata = policy.DeprecatedRule(
 shares_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Create share.",
         operations=[
             {
@@ -235,8 +235,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create_public_share',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Create shares visible across all projects in the cloud.",
         operations=[
             {
@@ -248,8 +248,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get share.",
         operations=[
             {
@@ -261,52 +261,52 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="List shares.",
         operations=[
             {
                 'method': 'GET',
-                'path': '/shares',
+                'path': '/shares?{query}',
             },
             {
                 'method': 'GET',
-                'path': '/shares/detail',
+                'path': '/shares/detail?{query}',
             }
         ],
         deprecated_rule=deprecated_share_get_all
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
-        description="Update share.",
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
+        description="Update a share.",
         operations=[
             {
                 'method': 'PUT',
-                'path': '/shares',
+                'path': '/shares/{share_id}',
             }
         ],
         deprecated_rule=deprecated_share_update
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'set_public_share',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
-        description="Update shares to be visible across all projects in the "
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description="Update a share to be visible across all projects in the "
                     "cloud.",
         operations=[
             {
                 'method': 'PUT',
-                'path': '/shares',
+                'path': '/shares/{share_id}',
             }
         ],
         deprecated_rule=deprecated_share_set_public
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Delete share.",
         operations=[
             {
@@ -318,8 +318,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'soft_delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Soft Delete a share.",
         operations=[
             {
@@ -330,8 +330,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'restore',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Restore a share.",
         operations=[
             {
@@ -342,8 +342,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Force Delete a share.",
         operations=[
             {
@@ -355,8 +355,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'manage',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Manage share.",
         operations=[
             {
@@ -368,8 +368,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'unmanage',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Unmanage share.",
         operations=[
             {
@@ -381,43 +381,43 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'list_by_host',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="List share by host.",
         operations=[
             {
                 'method': 'GET',
-                'path': '/shares',
+                'path': '/shares?host={host}',
             },
             {
                 'method': 'GET',
-                'path': '/shares/detail',
+                'path': '/shares/detail?host={host}',
             }
         ],
         deprecated_rule=deprecated_share_list_by_host
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'list_by_share_server_id',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="List share by server id.",
         operations=[
             {
                 'method': 'GET',
-                'path': '/shares'
+                'path': '/shares?share_server_id={share_server_id}'
             },
             {
                 'method': 'GET',
-                'path': '/shares/detail',
+                'path': '/shares/detail?share_server_id={share_server_id}',
             }
         ],
         deprecated_rule=deprecated_share_list_by_server_id
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'access_get',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
-        description="Get share access rule, it under deny access operation.",
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
+        description="Get share access rule (deprecated in API version 2.45).",
         operations=[
             {
                 'method': 'POST',
@@ -428,9 +428,10 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'access_get_all',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
-        description="List share access rules.",
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
+        description=("List share access rules (deprecated in API "
+                     "version 2.45)."),
         operations=[
             {
                 'method': 'GET',
@@ -441,8 +442,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'extend',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Extend share.",
         operations=[
             {
@@ -454,8 +455,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_extend',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Force extend share.",
         operations=[
             {
@@ -465,8 +466,8 @@ shares_policies = [
         ]),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'shrink',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Shrink share.",
         operations=[
             {
@@ -478,8 +479,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'migration_start',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Migrate a share to the specified host.",
         operations=[
             {
@@ -491,9 +492,9 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'migration_complete',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
-        description="Invokes 2nd phase of share migration.",
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description="Invoke 2nd phase of share migration.",
         operations=[
             {
                 'method': 'POST',
@@ -504,9 +505,9 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'migration_cancel',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
-        description="Attempts to cancel share migration.",
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description="Attempt to cancel share migration.",
         operations=[
             {
                 'method': 'POST',
@@ -517,8 +518,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'migration_get_progress',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description=("Retrieve share migration progress for a given "
                      "share."),
         operations=[
@@ -531,9 +532,9 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_task_state',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
-        description=("Reset task state."),
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description="Reset task state.",
         operations=[
             {
                 'method': 'POST',
@@ -544,9 +545,9 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
-        description=("Reset status."),
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description="Reset status.",
         operations=[
             {
                 'method': 'POST',
@@ -557,9 +558,9 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'revert_to_snapshot',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
-        description=("Revert a share to a snapshot."),
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
+        description="Revert a share to a snapshot.",
         operations=[
             {
                 'method': 'POST',
@@ -570,9 +571,9 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'allow_access',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
-        description=("Add share access rule."),
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
+        description="Add share access rule.",
         operations=[
             {
                 'method': 'POST',
@@ -583,9 +584,9 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'deny_access',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
-        description=("Remove share access rule."),
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
+        description="Remove share access rule.",
         operations=[
             {
                 'method': 'POST',
@@ -596,8 +597,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update_share_metadata',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Update share metadata.",
         operations=[
             {
@@ -617,8 +618,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete_share_metadata',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Delete share metadata.",
         operations=[
             {
@@ -630,8 +631,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_share_metadata',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get share metadata.",
         operations=[
             {
@@ -653,8 +654,8 @@ shares_policies = [
 base_snapshot_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create_snapshot',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Create share snapshot.",
         operations=[
             {
@@ -666,9 +667,9 @@ base_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete_snapshot',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
-        description=("Delete share snapshot."),
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
+        description="Delete share snapshot.",
         operations=[
             {
                 'method': 'DELETE',
@@ -679,9 +680,9 @@ base_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'snapshot_update',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
-        description=("Update share snapshot."),
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
+        description="Update share snapshot.",
         operations=[
             {
                 'method': 'PUT',
@@ -692,8 +693,8 @@ base_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update_admin_only_metadata',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description=(
             "Update metadata items that are considered \"admin only\" "
             "by the service."),

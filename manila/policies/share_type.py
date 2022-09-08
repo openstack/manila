@@ -22,7 +22,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_type:%s'
 
 DEPRECATED_REASON = """
-The share type API now supports system scope and default roles.
+The share type API now supports scope and default roles.
 """
 
 deprecated_share_type_create = policy.DeprecatedRule(
@@ -84,8 +84,8 @@ deprecated_share_type_remove_project_access = policy.DeprecatedRule(
 share_type_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description='Create share type.',
         operations=[
             {
@@ -97,8 +97,8 @@ share_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description='Update share type.',
         operations=[
             {
@@ -110,8 +110,8 @@ share_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description='Get share type.',
         operations=[
             {
@@ -123,14 +123,10 @@ share_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description='List share types.',
         operations=[
-            {
-                'method': 'GET',
-                'path': '/types',
-            },
             {
                 'method': 'GET',
                 'path': '/types?is_public=all',
@@ -140,8 +136,8 @@ share_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'default',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description='Get default share type.',
         operations=[
             {
@@ -153,8 +149,8 @@ share_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description='Delete share type.',
         operations=[
             {
@@ -166,8 +162,8 @@ share_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'list_project_access',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description='List share type project access.',
         operations=[
             {
@@ -179,8 +175,8 @@ share_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'add_project_access',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description='Add share type to project.',
         operations=[
             {
@@ -192,8 +188,8 @@ share_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'remove_project_access',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description='Remove share type from project.',
         operations=[
             {

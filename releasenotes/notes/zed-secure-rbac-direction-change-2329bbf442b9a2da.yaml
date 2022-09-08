@@ -1,0 +1,18 @@
+---
+prelude: >
+    RBAC defaults of all Shared File System service (manila) APIs have been
+    updated to remove "system" scope personas. This is being done in concert
+    with other OpenStack services, and in reaction to operator feedback that
+    the use of system "scope" introduces backwards incompatibility in existing
+    workflows. The new defaults support the use of "scope", however, no RBAC
+    rule by default includes "system" scope. At this time, we do not recommend
+    the use of system scoped personas to interact with the Shared File
+    Systems service (manila) APIs since it is largely un-tested. "reader"
+    role from the OpenStack Identity service (keystone) is fully supported
+    with this release. Currently, these new "defaults" are available as
+    "opt-in" only to prevent breaking existing deployments. To enforce default
+    RBAC rules, set ``[oslo_policy]/enforce_new_defaults`` to True in your
+    deployment. This option will be set to True by default in a future
+    release. See `the OpenStack TC Secure RBAC goal <https://governance.openstack
+    .org/tc/goals/selected/consistent-and-secure-rbac.html>`_ for more
+    information regarding these changes.

@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'quota_set:%s'
 
 DEPRECATED_REASON = """
-The quota API now supports system scope and default roles.
+The quota API now supports scope and default roles.
 """
 
 deprecated_quota_update = policy.DeprecatedRule(
@@ -45,78 +45,78 @@ deprecated_quota_delete = policy.DeprecatedRule(
 quota_set_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description=("Update the quotas for a project/user and/or share "
                      "type."),
         operations=[
             {
                 'method': 'PUT',
-                'path': '/quota-sets/{tenant_id}'
+                'path': '/quota-sets/{project_id}'
             },
             {
                 'method': 'PUT',
-                'path': '/quota-sets/{tenant_id}?user_id={user_id}'
+                'path': '/quota-sets/{project_id}?user_id={user_id}'
             },
             {
                 'method': 'PUT',
-                'path': '/quota-sets/{tenant_id}?share_type={share_type_id}'
+                'path': '/quota-sets/{project_id}?share_type={share_type_id}'
             },
             {
                 'method': 'PUT',
-                'path': '/os-quota-sets/{tenant_id}'
+                'path': '/os-quota-sets/{project_id}'
             },
             {
                 'method': 'PUT',
-                'path': '/os-quota-sets/{tenant_id}?user_id={user_id}'
+                'path': '/os-quota-sets/{project_id}?user_id={user_id}'
             },
         ],
         deprecated_rule=deprecated_quota_update
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
-        description="List the quotas for a tenant/user.",
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
+        description="List the quotas for a project/user.",
         operations=[
             {
                 'method': 'GET',
-                'path': '/quota-sets/{tenant_id}/defaults'
+                'path': '/quota-sets/{project_id}/defaults'
             },
             {
                 'method': 'GET',
-                'path': '/os-quota-sets/{tenant_id}/defaults'
+                'path': '/os-quota-sets/{project_id}/defaults'
             }
         ],
         deprecated_rule=deprecated_quota_show
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
-        description=("Delete quota for a tenant/user or "
-                     "tenant/share-type. The quota will revert back to "
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description=("Delete quota for a project/user or "
+                     "project/share-type. The quota will revert back to "
                      "default (Admin only)."),
         operations=[
             {
                 'method': 'DELETE',
-                'path': '/quota-sets/{tenant_id}'
+                'path': '/quota-sets/{project_id}'
             },
             {
                 'method': 'DELETE',
-                'path': '/quota-sets/{tenant_id}?user_id={user_id}'
+                'path': '/quota-sets/{project_id}?user_id={user_id}'
             },
             {
                 'method': 'DELETE',
-                'path': '/quota-sets/{tenant_id}?share_type={share_type_id}'
+                'path': '/quota-sets/{project_id}?share_type={share_type_id}'
             },
             {
                 'method': 'DELETE',
-                'path': '/os-quota-sets/{tenant_id}'
+                'path': '/os-quota-sets/{project_id}'
             },
             {
                 'method': 'DELETE',
-                'path': '/os-quota-sets/{tenant_id}?user_id={user_id}'
+                'path': '/os-quota-sets/{project_id}?user_id={user_id}'
             },
         ],
         deprecated_rule=deprecated_quota_delete

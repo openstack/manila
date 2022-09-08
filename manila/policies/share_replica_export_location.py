@@ -19,8 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_replica_export_location:%s'
 
 DEPRECATED_REASON = """
-The share replica export location API now supports system scope and default
-roles.
+The share replica export location API now supports scope and default roles.
 """
 
 deprecated_replica_location_index = policy.DeprecatedRule(
@@ -40,8 +39,8 @@ deprecated_replica_location_show = policy.DeprecatedRule(
 share_replica_export_location_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get all export locations of a given share replica.",
         operations=[
             {
@@ -53,8 +52,8 @@ share_replica_export_location_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get details about the requested share replica export "
                     "location.",
         operations=[

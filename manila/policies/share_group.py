@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_group:%s'
 
 DEPRECATED_REASON = """
-The share group API now supports system scope and default roles.
+The share group API now supports scope and default roles.
 """
 
 deprecated_share_group_create = policy.DeprecatedRule(
@@ -69,8 +69,8 @@ deprecated_share_group_reset_status = policy.DeprecatedRule(
 share_group_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Create share group.",
         operations=[
             {
@@ -82,8 +82,8 @@ share_group_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get details of a share group.",
         operations=[
             {
@@ -95,18 +95,10 @@ share_group_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get all share groups.",
         operations=[
-            {
-                'method': 'GET',
-                'path': '/share-groups'
-            },
-            {
-                'method': 'GET',
-                'path': '/share-groups/detail'
-            },
             {
                 'method': 'GET',
                 'path': '/share-groups?{query}'
@@ -120,8 +112,8 @@ share_group_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Update share group.",
         operations=[
             {
@@ -133,8 +125,8 @@ share_group_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Delete share group.",
         operations=[
             {
@@ -146,8 +138,8 @@ share_group_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Force delete a share group.",
         operations=[
             {
@@ -159,8 +151,8 @@ share_group_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Reset share group's status.",
         operations=[
             {

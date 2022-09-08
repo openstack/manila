@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'availability_zone:%s'
 
 DEPRECATED_REASON = """
-The availability zone API now supports system scope and default roles.
+The availability zone API now supports scope and default roles.
 """
 
 deprecated_get_availability_zone = policy.DeprecatedRule(
@@ -33,9 +33,9 @@ deprecated_get_availability_zone = policy.DeprecatedRule(
 availability_zone_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
-        description=("Get all storage availability zones."),
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
+        description="Get all storage availability zones.",
         operations=[
             {
                 'method': 'GET',

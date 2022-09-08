@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'service:%s'
 
 DEPRECATED_REASON = """
-The service API now supports system scope and default roles.
+The service API now supports scope and default roles.
 """
 
 deprecated_service_index = policy.DeprecatedRule(
@@ -39,21 +39,13 @@ deprecated_service_update = policy.DeprecatedRule(
 service_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Return a list of all running services.",
         operations=[
             {
                 'method': 'GET',
-                'path': '/os-services',
-            },
-            {
-                'method': 'GET',
                 'path': '/os-services?{query}',
-            },
-            {
-                'method': 'GET',
-                'path': '/services',
             },
             {
                 'method': 'GET',
@@ -64,8 +56,8 @@ service_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Enable/Disable scheduling for a service.",
         operations=[
             {

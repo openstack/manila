@@ -57,8 +57,8 @@ deprecated_group_type_spec_delete = policy.DeprecatedRule(
 share_group_types_spec_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Create share group type specs.",
         operations=[
             {
@@ -70,8 +70,8 @@ share_group_types_spec_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get share group type specs.",
         operations=[
             {
@@ -83,8 +83,8 @@ share_group_types_spec_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get details of a share group type spec.",
         operations=[
             {
@@ -97,8 +97,8 @@ share_group_types_spec_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Update a share group type spec.",
         operations=[
             {
@@ -111,8 +111,8 @@ share_group_types_spec_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Delete a share group type spec.",
         operations=[
             {

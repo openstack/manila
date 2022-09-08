@@ -21,7 +21,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_network_subnet:%s'
 
 DEPRECATED_REASON = """
-The share network subnet API now supports system scope and default roles.
+The share network subnet API now supports scope and default roles.
 """
 
 deprecated_subnet_create = policy.DeprecatedRule(
@@ -53,8 +53,8 @@ deprecated_subnet_index = policy.DeprecatedRule(
 share_network_subnet_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Create a new share network subnet.",
         operations=[
             {
@@ -66,8 +66,8 @@ share_network_subnet_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Delete a share network subnet.",
         operations=[
             {
@@ -80,8 +80,8 @@ share_network_subnet_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Shows a share network subnet.",
         operations=[
             {
@@ -94,8 +94,8 @@ share_network_subnet_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get all share network subnets.",
         operations=[
             {

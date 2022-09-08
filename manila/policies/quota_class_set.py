@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'quota_class_set:%s'
 
 DEPRECATED_REASON = """
-The quota class API now supports system scope and default roles.
+The quota class API now supports scope and default roles.
 """
 
 deprecated_quota_class_update = policy.DeprecatedRule(
@@ -39,8 +39,8 @@ deprecated_quota_class_show = policy.DeprecatedRule(
 quota_class_set_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Update quota class.",
         operations=[
             {
@@ -56,8 +56,8 @@ quota_class_set_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get quota class.",
         operations=[
             {

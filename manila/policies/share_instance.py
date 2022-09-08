@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_instance:%s'
 
 DEPRECATED_REASON = """
-The share instances API now supports system scope and default roles.
+The share instances API now supports scope and default roles.
 """
 
 deprecated_share_instances_index = policy.DeprecatedRule(
@@ -51,8 +51,8 @@ deprecated_share_instance_reset_status = policy.DeprecatedRule(
 shares_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get all share instances.",
         operations=[
             {
@@ -68,8 +68,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get details of a share instance.",
         operations=[
             {
@@ -81,8 +81,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Force delete a share instance.",
         operations=[
             {
@@ -94,8 +94,8 @@ shares_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Reset share instance's status.",
         operations=[
             {

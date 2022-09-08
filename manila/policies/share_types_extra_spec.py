@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_types_extra_spec:%s'
 
 DEPRECATED_REASON = """
-The share types extra specs API now supports system scope and default roles.
+The share types extra specs API now supports scope and default roles.
 """
 
 deprecated_extra_spec_create = policy.DeprecatedRule(
@@ -57,8 +57,8 @@ deprecated_extra_spec_delete = policy.DeprecatedRule(
 share_types_extra_spec_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Create share type extra spec.",
         operations=[
             {
@@ -70,8 +70,8 @@ share_types_extra_spec_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get share type extra specs of a given share type.",
         operations=[
             {
@@ -83,8 +83,8 @@ share_types_extra_spec_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get details of a share type extra spec.",
         operations=[
             {
@@ -96,8 +96,8 @@ share_types_extra_spec_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Update share type extra spec.",
         operations=[
             {
@@ -109,8 +109,8 @@ share_types_extra_spec_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Delete share type extra spec.",
         operations=[
             {

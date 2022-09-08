@@ -22,8 +22,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_instance_export_location:%s'
 
 DEPRECATED_REASON = """
-The share instance export location API now supports system scope and default
-roles.
+The share instance export location API now supports scope and default roles.
 """
 
 deprecated_instance_export_location_index = policy.DeprecatedRule(
@@ -43,8 +42,8 @@ deprecated_instance_export_location_show = policy.DeprecatedRule(
 share_export_location_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description='Return data about the requested export location.',
         operations=[
             {
@@ -57,8 +56,8 @@ share_export_location_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description='Return data about the requested export location.',
         operations=[
             {
