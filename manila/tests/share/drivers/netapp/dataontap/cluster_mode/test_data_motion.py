@@ -765,7 +765,9 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
                                 'mirror-state',
                                 'source-vserver',
                                 'source-volume',
-                                'last-transfer-end-timestamp']
+                                'last-transfer-end-timestamp',
+                                'last-transfer-size',
+                                'last-transfer-error']
         )
         self.assertEqual(1, self.mock_dest_client.get_snapmirrors.call_count)
 

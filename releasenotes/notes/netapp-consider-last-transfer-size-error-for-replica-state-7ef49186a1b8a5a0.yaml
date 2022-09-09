@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    NetApp driver now considers ``last-transfer-size`` and
+    ``last-transfer-error`` fields of the snapmirror in addition to existing
+    ``last-transfer-end-timestamp`` to decide whether replica is in_sync or
+    out_of_sync. Added new config option
+    `netapp_snapmirror_last_transfer_size_limit` (default 1MB). If value of
+    `last-transfer-size` field is greater than config value or if
+    `last-transfer-error` field is present, then replica is out_of_sync.
