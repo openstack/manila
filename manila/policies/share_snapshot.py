@@ -76,6 +76,24 @@ deprecated_snapshot_deny_access = policy.DeprecatedRule(
     deprecated_reason=DEPRECATED_REASON,
     deprecated_since=versionutils.deprecated.WALLABY
 )
+deprecated_update_snapshot_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update_metadata',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='ZED'
+)
+deprecated_delete_snapshot_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete_metadata',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='ZED'
+)
+deprecated_get_snapshot_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_metadata',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='ZED'
+)
 
 
 share_snapshot_policies = [
@@ -207,6 +225,57 @@ share_snapshot_policies = [
             }
         ],
         deprecated_rule=deprecated_snapshot_deny_access
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'update_metadata',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Update snapshot metadata.",
+        operations=[
+            {
+                'method': 'PUT',
+                'path': '/snapshots/{snapshot_id}/metadata',
+            },
+            {
+                'method': 'POST',
+                'path': '/snapshots/{snapshot_id}/metadata/{key}',
+            },
+            {
+                'method': 'POST',
+                'path': '/snapshots/{snapshot_id}/metadata',
+            },
+        ],
+        deprecated_rule=deprecated_update_snapshot_metadata
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'delete_metadata',
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Delete snapshot metadata.",
+        operations=[
+            {
+                'method': 'DELETE',
+                'path': '/snapshots/{snapshot_id}/metadata/{key}',
+            }
+        ],
+        deprecated_rule=deprecated_delete_snapshot_metadata
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'get_metadata',
+        check_str=base.SYSTEM_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
+        description="Get snapshot metadata.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/snapshots/{snapshot_id}/metadata',
+            },
+            {
+                'method': 'GET',
+                'path': '/snapshots/{snapshot_id}/metadata/{key}',
+            }
+        ],
+        deprecated_rule=deprecated_get_snapshot_metadata
     ),
 ]
 

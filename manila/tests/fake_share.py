@@ -207,7 +207,11 @@ def expected_snapshot(version=None, id='fake_snapshot_id', **kwargs):
             'user_id': 'fakesnapuser',
             'project_id': 'fakesnapproject',
         })
-
+    if version and (api_version.APIVersionRequest(version)
+                    >= api_version.APIVersionRequest('2.73')):
+        snapshot.update({
+            'metadata': {}
+        })
     snapshot.update(kwargs)
     return {'snapshot': snapshot}
 

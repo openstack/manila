@@ -736,6 +736,24 @@ class ShareSnapshot(BASE, ManilaBase):
                              'ShareSnapshot.deleted == "False")')
 
 
+class ShareSnapshotMetadata(BASE, ManilaBase):
+    """Represents a metadata key/value pair for a snapshot."""
+    __tablename__ = 'share_snapshot_metadata'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255), nullable=False)
+    value = Column(String(1023), nullable=False)
+    deleted = Column(String(36), default='False')
+    share_snapshot_id = Column(String(36), ForeignKey(
+        'share_snapshots.id'), nullable=False)
+
+    share_snapshot = orm.relationship(
+        ShareSnapshot, backref="share_snapshot_metadata",
+        foreign_keys=share_snapshot_id,
+        primaryjoin='and_('
+        'ShareSnapshotMetadata.share_snapshot_id == ShareSnapshot.id,'
+        'ShareSnapshotMetadata.deleted == "False")')
+
+
 class ShareSnapshotInstance(BASE, ManilaBase):
     """Represents a snapshot of a share."""
     __tablename__ = 'share_snapshot_instances'

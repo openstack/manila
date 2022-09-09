@@ -3175,3 +3175,81 @@ class ShareServerMultipleSubnets(BaseMigrationChecks):
         ).first()
         self.test_case.assertFalse(
             hasattr(na_record, 'share_network_subnet_id'))
+
+
+@map_to_migration('bb5938d74b73')
+class AddSnapshotMetadata(BaseMigrationChecks):
+    snapshot_id = uuidutils.generate_uuid()
+    new_table_name = 'share_snapshot_metadata'
+
+    def setup_upgrade_data(self, engine):
+        # Setup Share
+        share_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_proto': "NFS",
+            'size': 1,
+            'snapshot_id': None,
+            'user_id': 'fake',
+            'project_id': 'fake'
+        }
+        share_table = utils.load_table('shares', engine)
+        engine.execute(share_table.insert(share_data))
+
+        share_instance_data = {
+            'id': uuidutils.generate_uuid(),
+            'deleted': 'False',
+            'host': 'fake',
+            'share_id': share_data['id'],
+            'status': 'available',
+            'access_rules_status': 'active',
+            'cast_rules_to_readonly': False,
+        }
+        share_instance_table = utils.load_table('share_instances', engine)
+        engine.execute(share_instance_table.insert(share_instance_data))
+
+        # Setup Share Snapshot
+        share_snapshot_data = {
+            'id': self.snapshot_id,
+            'share_id': share_data['id']
+        }
+        snapshot_table = utils.load_table('share_snapshots', engine)
+        engine.execute(snapshot_table.insert(share_snapshot_data))
+
+        # Setup snapshot instances
+        snapshot_instance_data = {
+            'id': uuidutils.generate_uuid(),
+            'snapshot_id': share_snapshot_data['id'],
+            'share_instance_id': share_instance_data['id']
+        }
+        snap_i_table = utils.load_table('share_snapshot_instances', engine)
+        engine.execute(snap_i_table.insert(snapshot_instance_data))
+
+    def check_upgrade(self, engine, data):
+        data = {
+            'id': 1,
+            'key': 't' * 255,
+            'value': 'v' * 1023,
+            'share_snapshot_id': self.snapshot_id,
+            'deleted': 'False',
+        }
+
+        new_table = utils.load_table(self.new_table_name, engine)
+        engine.execute(new_table.insert(data))
+
+        item = engine.execute(
+            new_table.select().where(new_table.c.id == data['id'])).first()
+        self.test_case.assertTrue(hasattr(item, 'id'))
+        self.test_case.assertEqual(data['id'], item['id'])
+        self.test_case.assertTrue(hasattr(item, 'key'))
+        self.test_case.assertEqual(data['key'], item['key'])
+        self.test_case.assertTrue(hasattr(item, 'value'))
+        self.test_case.assertEqual(data['value'], item['value'])
+        self.test_case.assertTrue(hasattr(item, 'share_snapshot_id'))
+        self.test_case.assertEqual(self.snapshot_id,
+                                   item['share_snapshot_id'])
+        self.test_case.assertTrue(hasattr(item, 'deleted'))
+        self.test_case.assertEqual('False', item['deleted'])
+
+    def check_downgrade(self, engine):
+        self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
+                                    self.new_table_name, engine)

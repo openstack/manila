@@ -1666,7 +1666,7 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
             instances=self.snapshot_instances[0:3])
         self.snapshot_2 = db_utils.create_snapshot(
             id='fake_snapshot_id_2', share_id=self.share_2['id'],
-            instances=self.snapshot_instances[3:4])
+            instances=self.snapshot_instances[3:4], metadata={'foo': 'bar'})
 
         self.snapshot_instance_export_locations = [
             db_utils.create_snapshot_instance_export_locations(
@@ -1711,14 +1711,21 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
     def test_share_snapshot_get_all_with_filters_some(self):
         expected_status = constants.STATUS_AVAILABLE
         filters = {
-            'status': expected_status
+            'status': expected_status,
+            'metadata': {'foo': 'bar'}
         }
         snapshots = db_api.share_snapshot_get_all(
             self.ctxt, filters=filters)
 
         for snapshot in snapshots:
+            s = snapshot.get('share_snapshot_metadata')
+            for k, v in filters['metadata'].items():
+                filter_meta_key = k
+                filter_meta_val = v
             self.assertEqual('fake_snapshot_id_2', snapshot['id'])
             self.assertEqual(snapshot['status'], filters['status'])
+            self.assertEqual(s[0]['key'], filter_meta_key)
+            self.assertEqual(s[0]['value'], filter_meta_val)
 
         self.assertEqual(1, len(snapshots))
 
@@ -2043,6 +2050,68 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
             exception.ManilaException,
             db_api.share_snapshot_instance_export_locations_update,
             self.ctxt, snapshot.instance['id'], new_export_locations, False)
+
+    def test_share_snapshot_metadata_get(self):
+        metadata = {'a': 'b', 'c': 'd'}
+
+        self.share_1 = db_utils.create_share(size=1)
+        self.snapshot_1 = db_utils.create_snapshot(
+            share_id=self.share_1['id'])
+        db_api.share_snapshot_metadata_update(
+            self.ctxt, share_snapshot_id=self.snapshot_1['id'],
+            metadata=metadata, delete=False)
+        self.assertEqual(
+            metadata, db_api.share_snapshot_metadata_get(
+                self.ctxt, share_snapshot_id=self.snapshot_1['id']))
+
+    def test_share_snapshot_metadata_get_item(self):
+        metadata = {'a': 'b', 'c': 'd'}
+        key = 'a'
+        shouldbe = {'a': 'b'}
+        self.share_1 = db_utils.create_share(size=1)
+        self.snapshot_1 = db_utils.create_snapshot(
+            share_id=self.share_1['id'])
+        db_api.share_snapshot_metadata_update(
+            self.ctxt, share_snapshot_id=self.snapshot_1['id'],
+            metadata=metadata, delete=False)
+        self.assertEqual(
+            shouldbe, db_api.share_snapshot_metadata_get_item(
+                self.ctxt, share_snapshot_id=self.snapshot_1['id'],
+                key=key))
+
+    def test_share_snapshot_metadata_update(self):
+        metadata1 = {'a': '1', 'c': '2'}
+        metadata2 = {'a': '3', 'd': '5'}
+        should_be = {'a': '3', 'c': '2', 'd': '5'}
+        self.share_1 = db_utils.create_share(size=1)
+        self.snapshot_1 = db_utils.create_snapshot(
+            share_id=self.share_1['id'])
+        db_api.share_snapshot_metadata_update(
+            self.ctxt, share_snapshot_id=self.snapshot_1['id'],
+            metadata=metadata1, delete=False)
+        db_api.share_snapshot_metadata_update(
+            self.ctxt, share_snapshot_id=self.snapshot_1['id'],
+            metadata=metadata2, delete=False)
+        self.assertEqual(
+            should_be, db_api.share_snapshot_metadata_get(
+                self.ctxt, share_snapshot_id=self.snapshot_1['id']))
+
+    def test_share_snapshot_metadata_delete(self):
+        key = 'a'
+        metadata = {'a': '1', 'c': '2'}
+        should_be = {'c': '2'}
+        self.share_1 = db_utils.create_share(size=1)
+        self.snapshot_1 = db_utils.create_snapshot(
+            share_id=self.share_1['id'])
+        db_api.share_snapshot_metadata_update(
+            self.ctxt, share_snapshot_id=self.snapshot_1['id'],
+            metadata=metadata, delete=False)
+        db_api.share_snapshot_metadata_delete(
+            self.ctxt, share_snapshot_id=self.snapshot_1['id'],
+            key=key)
+        self.assertEqual(
+            should_be, db_api.share_snapshot_metadata_get(
+                self.ctxt, share_snapshot_id=self.snapshot_1['id']))
 
 
 class ShareExportLocationsDatabaseAPITestCase(test.TestCase):

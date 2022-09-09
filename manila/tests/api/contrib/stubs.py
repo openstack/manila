@@ -118,6 +118,7 @@ def stub_snapshot(id, **kwargs):
         'display_name': 'displaysnapname',
         'display_description': 'displaysnapdesc',
         'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+        'metadata': {}
     }
     snapshot.update(kwargs)
     return snapshot

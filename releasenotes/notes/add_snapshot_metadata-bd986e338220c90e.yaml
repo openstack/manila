@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Adds snapshot metadata capabilities inlcuding, create, update all,
+    update single, show, and delete metadata. Snapshots may be
+    filtered using metadata keys. Snapshot metadata is
+    available to admin and nonadmin users.

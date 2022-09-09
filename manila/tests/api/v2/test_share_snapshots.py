@@ -15,6 +15,7 @@
 
 from unittest import mock
 
+import ast
 import ddt
 from oslo_serialization import jsonutils
 import webob
@@ -144,7 +145,7 @@ class ShareSnapshotAPITest(test.TestCase):
                           req,
                           200)
 
-    @ddt.data('2.0', '2.16', '2.17')
+    @ddt.data('2.0', '2.16', '2.17', '2.73')
     def test_snapshot_show(self, version):
         req = fakes.HTTPRequest.blank('/v2/fake/snapshots/200',
                                       version=version)
@@ -246,6 +247,46 @@ class ShareSnapshotAPITest(test.TestCase):
                                                     use_admin_context):
         self._snapshot_list_summary_with_search_opts(
             version=version, use_admin_context=use_admin_context)
+
+    def test_snapshot_list_metadata_filter(self, version='2.73',
+                                           use_admin_context=True):
+        search_opts = {
+            'sort_key': 'fake_sort_key',
+            'sort_dir': 'fake_sort_dir',
+            'offset': '1',
+            'limit': '1',
+            'metadata': "{'foo': 'bar'}"
+        }
+        # fake_key should be filtered for non-admin
+        url = '/v2/fake/snapshots?fake_key=fake_value'
+        for k, v in search_opts.items():
+            url = url + '&' + k + '=' + v
+        req = fakes.HTTPRequest.blank(
+            url, use_admin_context=use_admin_context, version=version)
+
+        snapshots = [
+            {'id': 'id1', 'metadata': {'foo': 'bar'}}
+        ]
+        self.mock_object(share_api.API, 'get_all_snapshots',
+                         mock.Mock(return_value=snapshots))
+
+        result = self.controller.index(req)
+
+        search_opts_expected = {
+            'metadata': ast.literal_eval(search_opts['metadata'])
+        }
+        if use_admin_context:
+            search_opts_expected.update({'fake_key': 'fake_value'})
+        share_api.API.get_all_snapshots.assert_called_once_with(
+            req.environ['manila.context'],
+            limit=int(search_opts['limit']),
+            offset=int(search_opts['offset']),
+            sort_key=search_opts['sort_key'],
+            sort_dir=search_opts['sort_dir'],
+            search_opts=search_opts_expected,
+        )
+        self.assertEqual(1, len(result['snapshots']))
+        self.assertEqual(snapshots[0]['id'], result['snapshots'][0]['id'])
 
     def _snapshot_list_detail_with_search_opts(self, use_admin_context):
         search_opts = fake_share.search_opts()

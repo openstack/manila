@@ -15,6 +15,7 @@
 
 """The share snapshots api."""
 
+import ast
 from http import client as http_client
 
 from oslo_log import log
@@ -22,6 +23,7 @@ import webob
 from webob import exc
 
 from manila.api import common
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.views import share_snapshots as snapshot_views
 from manila import db
@@ -114,6 +116,18 @@ class ShareSnapshotMixin(object):
             search_opts['display_description'] = search_opts.pop(
                 'description')
 
+        # Deserialize dicts
+        if req.api_version_request >= api_version.APIVersionRequest("2.73"):
+            if 'metadata' in search_opts:
+                try:
+                    search_opts['metadata'] = ast.literal_eval(
+                        search_opts['metadata'])
+                except ValueError:
+                    msg = _('Invalid value for metadata filter.')
+                    raise webob.exc.HTTPBadRequest(explanation=msg)
+        else:
+            search_opts.pop('metadata', None)
+
         # like filter
         for key, db_key in (('name~', 'display_name~'),
                             ('description~', 'display_description~')):
@@ -141,7 +155,7 @@ class ShareSnapshotMixin(object):
     def _get_snapshots_search_options(self):
         """Return share snapshot search options allowed by non-admin."""
         return ('display_name', 'status', 'share_id', 'size', 'display_name~',
-                'display_description~', 'display_description')
+                'display_description~', 'display_description', 'metadata')
 
     def update(self, req, id, body):
         """Update a snapshot."""
@@ -212,11 +226,20 @@ class ShareSnapshotMixin(object):
             snapshot['display_description'] = snapshot.get('description')
             del snapshot['description']
 
+        kwargs = {}
+        if req.api_version_request >= api_version.APIVersionRequest("2.73"):
+            if snapshot.get('metadata'):
+                metadata = snapshot.get('metadata')
+                kwargs.update({
+                    'metadata': metadata,
+                })
+
         new_snapshot = self.share_api.create_snapshot(
             context,
             share,
             snapshot.get('display_name'),
-            snapshot.get('display_description'))
+            snapshot.get('display_description'),
+            **kwargs)
         return self._view_builder.detail(
             req, dict(new_snapshot.items()))
 
