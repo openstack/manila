@@ -270,7 +270,7 @@ class HostFiltersTestCase(test.TestCase):
         }
         host = fakes.FakeHostState('host1',
                                    {'capabilities': {'enabled': True}})
-        self.assertTrue(self.filter.host_passes, (host, filter_properties))
+        self.assertTrue(self.filter.host_passes(host, filter_properties))
 
     def test_json_filter_empty_filters_pass(self):
         host = fakes.FakeHostState('host1',
