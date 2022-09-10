@@ -152,9 +152,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_set_cluster_info.assert_called_once()
 
     def test_set_cluster_info(self):
+        self.library._client.is_nve_supported.return_value = True
+        self.library._client.features.FLEXVOL_ENCRYPTION = True
         self.library._set_cluster_info()
-        self.assertTrue(self.library._cluster_info['nve_support'],
-                        fake.CLUSTER_NODES)
+        self.assertTrue(self.library._cluster_info['nve_support'])
 
     def test_check_for_setup_error(self):
         mock_start_periodic_tasks = self.mock_object(self.library,
