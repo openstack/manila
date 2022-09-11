@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Infinidat Driver `bug #1989283
+    <https://bugs.launchpad.net/manila/+bug/1989283>`_:
+    Incremented driver version to 1.1, where SSL support was added.
+    For more details on enabling SSL, please check the `Infinidat driver documentation
+    <https://docs.openstack.org/manila/latest/configuration/shared-file-systems/drivers/infinidat-share-driver.html>`_.
