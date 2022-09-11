@@ -107,7 +107,7 @@ def infinisdk_to_manila_exceptions(func):
 
 class InfiniboxShareDriver(driver.ShareDriver):
 
-    VERSION = '1.0'    # driver version
+    VERSION = '1.1'    # driver version
 
     def __init__(self, *args, **kwargs):
         super(InfiniboxShareDriver, self).__init__(False, *args, **kwargs)

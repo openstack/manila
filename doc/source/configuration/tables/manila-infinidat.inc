@@ -10,6 +10,10 @@
      -
    * - ``infinibox_hostname`` = ``None``
      - (String) The name (or IP address) for the INFINIDAT Infinibox storage system.
+   * - ``infinidat_use_ssl`` = ``False``
+     - (Boolean) Enable SSL communication to access the INFINIDAT Infinibox storage system.
+   * - ``infinidat_suppress_ssl_warnings`` = ``False``
+     - (Boolean) Suppress requests library SSL certificate warnings.
    * - ``infinibox_login`` = ``None``
      - (String) Administrative user account name used to access the INFINIDAT Infinibox storage system.
    * - ``infinibox_password`` = ``None``

@@ -75,6 +75,19 @@ Configure the driver back-end section with the parameters below.
 
      infinibox_hostname = InfiniBox management IP
 
+* Configure SSL support for InfiniBox management API:
+
+  We recommend enabling SSL support for InfiniBox management API.
+  Refer to the InfiniBox manuals for details on security management.
+  Configure SSL options by adding the following parameters:
+
+  .. code-block:: ini
+
+     infinidat_use_ssl = true/false
+     infinidat_suppress_ssl_warnings = true/false
+
+  These parameters defaults to ``false``.
+
 * Configure user credentials:
 
   The driver requires an InfiniBox user with administrative privileges.
@@ -133,6 +146,8 @@ Configuration example
    share_backend_name = infinidat-pool-a
    driver_handles_share_servers = false
    infinibox_hostname = 10.1.2.3
+   infinidat_use_ssl = true
+   infinidat_suppress_ssl_warnings = true
    infinibox_login = openstackuser
    infinibox_password = openstackpass
    infinidat_pool_name = pool-a
