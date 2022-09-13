@@ -863,7 +863,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_allocate_container_from_snapshot.assert_called_once_with(
             share, fake.SNAPSHOT, fake.VSERVER1, vserver_client,
             compression_enabled=True, dedup_enabled=True, policy=None,
-            cross_dedup_disabled=None, logical_space_reporting=False)
+            cross_dedup_disabled=False, logical_space_reporting=False)
         mock_create_export.assert_called_once_with(share, fake.SHARE_SERVER,
                                                    fake.VSERVER1,
                                                    vserver_client)
@@ -1003,7 +1003,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.mock_allocate_container.assert_called_once_with(
                 self.fake_share, fake.VSERVER2, self.dest_vserver_client,
                 replica=True, set_qos=False, compression_enabled=True,
-                dedup_enabled=True, policy=None, cross_dedup_disabled=None,
+                dedup_enabled=True, policy=None, cross_dedup_disabled=False,
                 logical_space_reporting=False)
             self.mock_dm_create_snapmirror.assert_called_once()
             self.temp_src_share['replica_state'] = (
@@ -1013,7 +1013,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.mock_allocate_container_from_snapshot.assert_called_once_with(
                 self.fake_share, fake.SNAPSHOT, fake.VSERVER1,
                 self.src_vserver_client, split=True, compression_enabled=True,
-                dedup_enabled=True, policy=None, cross_dedup_disabled=None,
+                dedup_enabled=True, policy=None, cross_dedup_disabled=False,
                 logical_space_reporting=False)
             state = self.library.STATE_SPLITTING_VOLUME_CLONE
 
@@ -1058,7 +1058,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_allocate_container_from_snapshot.assert_called_once_with(
             self.fake_share, fake.SNAPSHOT, fake.VSERVER1,
             self.src_vserver_client, split=True, compression_enabled=True,
-            dedup_enabled=True, policy=None, cross_dedup_disabled=None,
+            dedup_enabled=True, policy=None, cross_dedup_disabled=False,
             logical_space_reporting=False)
         mock_delete_snapmirror.assert_called_once_with(self.temp_src_share,
                                                        self.fake_share)
@@ -1348,7 +1348,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 fake.POOL_NAME, fake.SHARE_NAME,
                 **fake.PROVISIONING_OPTIONS_WITH_QOS,
                 logical_space_reporting=True, policy=None,
-                cross_dedup_disabled=None)
+                cross_dedup_disabled=False)
             self.mock_pvt_storage_delete.assert_called_once_with(
                 fake.SHARE['id'])
             self.mock_create_export.assert_called_once_with(
@@ -1457,7 +1457,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 fake.POOL_NAME, fake.SHARE_NAME,
                 **fake.PROVISIONING_OPTIONS_WITH_QOS,
                 logical_space_reporting=True, policy=None,
-                cross_dedup_disabled=None)
+                cross_dedup_disabled=False)
             expect_result['status'] = constants.STATUS_AVAILABLE
             self.mock_pvt_storage_delete.assert_called_once_with(
                 fake.SHARE['id'])

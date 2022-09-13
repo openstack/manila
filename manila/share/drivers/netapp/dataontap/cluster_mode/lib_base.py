@@ -753,11 +753,13 @@ class NetAppCmodeFileStorageLibrary(object):
 
     def _get_efficiency_options(self, vserver_client, share_name):
         status = vserver_client.get_volume_efficiency_status(share_name)
+        cross_dedup_disabled = (status.get('policy') == 'inline-only'
+                                and status.get('cross_dedup_disabled'))
         provisioning_opts = {
             'dedup_enabled': status.get('dedupe'),
             'compression_enabled': status.get('compression'),
-            'policy': status.get('policy'),
-            'cross_dedup_disabled': status.get('cross_dedup_disabled'),
+            'policy': None,
+            'cross_dedup_disabled': cross_dedup_disabled,
         }
         return provisioning_opts
 
