@@ -402,7 +402,7 @@ ____
 
   Added 'share_network' option to share replica create API.
 
-2.73
-----
+2.73 (Maximum in Zed)
+---------------------
   Added Metadata API methods (GET, PUT, POST, DELETE)
   to Share Snapshots
