@@ -97,6 +97,11 @@
       Grenade job that skips a release, validating that deployers can skip
       specific releases as prescribed by our process.
     parent: manila-grenade
+    # wallaby's constrained to use tempest===27.0.0; when that updates to
+    # tempest>=31.1.0, we can remove this manila-tempest-plugin version pinning
+    required-projects:
+      - name: openstack/manila-tempest-plugin
+        override-checkout: 1.8.0
     vars:
       # Move this forward when master changes to a new skip-level-allowed
       # target release. Right now, this is wallaby because master is yoga.
