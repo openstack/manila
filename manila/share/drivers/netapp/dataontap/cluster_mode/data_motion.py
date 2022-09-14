@@ -164,7 +164,9 @@ class DataMotionSession(object):
                                 'mirror-state',
                                 'source-vserver',
                                 'source-volume',
-                                'last-transfer-end-timestamp'])
+                                'last-transfer-end-timestamp',
+                                'last-transfer-size',
+                                'last-transfer-error'])
         return snapmirrors
 
     def create_snapmirror(self, source_share_obj, dest_share_obj,

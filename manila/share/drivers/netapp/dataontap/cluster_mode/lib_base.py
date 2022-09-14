@@ -750,7 +750,6 @@ class NetAppCmodeFileStorageLibrary(object):
                 src_volume.get('is-space-reporting-logical')
         }
 
-
     def _get_efficiency_options(self, vserver_client, share_name):
         status = vserver_client.get_volume_efficiency_status(share_name)
         cross_dedup_disabled = (status.get('policy') == 'inline-only'
@@ -2954,6 +2953,25 @@ class NetAppCmodeFileStorageLibrary(object):
             (timeutils.is_older_than(
                 datetime.datetime.utcfromtimestamp(last_update_timestamp)
                 .isoformat(), 3600))):
+            return constants.REPLICA_STATE_OUT_OF_SYNC
+
+        replica_backend = share_utils.extract_host(replica['host'],
+                                                   level='backend_name')
+        config = data_motion.get_backend_configuration(replica_backend)
+        config_size = (int(config.safe_get(
+            'netapp_snapmirror_last_transfer_size_limit')) * units.Ki)
+        last_transfer_size = int(snapmirror.get('last-transfer-size', 0))
+        if last_transfer_size > config_size:
+            LOG.debug('Found last-transfer-size %(size)d for replica: '
+                      '%(replica)s.', {'replica': replica['id'],
+                                       'size': last_transfer_size})
+            return constants.REPLICA_STATE_OUT_OF_SYNC
+
+        last_transfer_error = snapmirror.get('last-transfer-error', None)
+        if last_transfer_error:
+            LOG.debug('Found last-transfer-error: %(error)s for replica: '
+                      '%(replica)s.', {'replica': replica['id'],
+                                       'error': last_transfer_error})
             return constants.REPLICA_STATE_OUT_OF_SYNC
 
         # Check all snapshots exist

@@ -4371,6 +4371,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_is_readable_replica',
                          mock.Mock(return_value=False))
+        mock_backend_config = fake.get_config_cmode()
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
 
         result = self.library.update_replica_state(None, [fake.SHARE],
                                                    fake.SHARE, None, [],
@@ -4414,6 +4417,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_is_readable_replica',
                          mock.Mock(return_value=False))
+        mock_backend_config = fake.get_config_cmode()
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
 
         result = self.library.update_replica_state(None, [fake.SHARE],
                                                    fake.SHARE, None, snapshots,
@@ -4442,6 +4448,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_is_readable_replica',
                          mock.Mock(return_value=False))
+        mock_backend_config = fake.get_config_cmode()
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
 
         result = self.library.update_replica_state(None, [fake.SHARE],
                                                    fake.SHARE, None, snapshots,
