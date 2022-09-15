@@ -184,7 +184,7 @@ class ShareInstancesAPITest(test.TestCase):
         req = self._get_request('fake', version=version)
         req_context = req.environ['manila.context']
         share_policy_check_call = mock.call(
-            req_context, 'share', 'get', mock.ANY)
+            req_context, 'share', 'get', mock.ANY, do_raise=False)
         get_instances_policy_check_call = mock.call(
             req_context, 'share_instance', 'index')
 
