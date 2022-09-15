@@ -110,8 +110,8 @@ deprecated_share_network_subnet_create_check = policy.DeprecatedRule(
 share_network_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Create share network.",
         operations=[
             {
@@ -123,8 +123,8 @@ share_network_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get details of a share network.",
         operations=[
             {
@@ -136,14 +136,10 @@ share_network_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
-        description="Get all share networks.",
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
+        description="Get all share networks under a project.",
         operations=[
-            {
-                'method': 'GET',
-                'path': '/share-networks'
-            },
             {
                 'method': 'GET',
                 'path': '/share-networks?{query}'
@@ -153,25 +149,21 @@ share_network_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'detail',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
-        description="Get details of share networks .",
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
+        description="Get details of share networks under a project.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/share-networks/detail?{query}'
-            },
-            {
-                'method': 'GET',
-                'path': '/share-networks/detail'
             },
         ],
         deprecated_rule=deprecated_share_network_detail
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Update a share network.",
         operations=[
             {
@@ -183,8 +175,8 @@ share_network_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Delete a share network.",
         operations=[
             {
@@ -196,8 +188,8 @@ share_network_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'add_security_service',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Add security service to share network.",
         operations=[
             {
@@ -209,8 +201,8 @@ share_network_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'add_security_service_check',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Check the feasibility of add security service to a share "
                     "network.",
         operations=[
@@ -223,8 +215,8 @@ share_network_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'remove_security_service',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Remove security service from share network.",
         operations=[
             {
@@ -236,8 +228,8 @@ share_network_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update_security_service',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Update security service from share network.",
         operations=[
             {
@@ -249,8 +241,8 @@ share_network_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update_security_service_check',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Check the feasibility of update a security service from "
                     "share network.",
         operations=[
@@ -263,8 +255,8 @@ share_network_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Reset share network`s status.",
         operations=[
             {
@@ -276,8 +268,8 @@ share_network_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all_share_networks',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get share networks belonging to all projects.",
         operations=[
             {
@@ -293,8 +285,8 @@ share_network_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'subnet_create_check',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Check the feasibility of create a new share network "
                     "subnet for share network.",
         operations=[

@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_snapshot:%s'
 
 DEPRECATED_REASON = """
-The share snapshot API now supports system scope and default roles.
+The share snapshot API now supports scope and default roles.
 """
 
 deprecated_snapshot_get = policy.DeprecatedRule(
@@ -99,8 +99,8 @@ deprecated_get_snapshot_metadata = policy.DeprecatedRule(
 share_snapshot_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_snapshot',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get share snapshot.",
         operations=[
             {
@@ -112,18 +112,10 @@ share_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all_snapshots',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get all share snapshots.",
         operations=[
-            {
-                'method': 'GET',
-                'path': '/snapshots'
-            },
-            {
-                'method': 'GET',
-                'path': '/snapshots/detail'
-            },
             {
                 'method': 'GET',
                 'path': '/snapshots?{query}'
@@ -137,8 +129,8 @@ share_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Force Delete a share snapshot.",
         operations=[
             {
@@ -150,8 +142,8 @@ share_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'manage_snapshot',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Manage share snapshot.",
         operations=[
             {
@@ -163,8 +155,8 @@ share_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'unmanage_snapshot',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Unmanage share snapshot.",
         operations=[
             {
@@ -176,8 +168,8 @@ share_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Reset status.",
         operations=[
             {
@@ -189,8 +181,8 @@ share_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'access_list',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="List access rules of a share snapshot.",
         operations=[
             {
@@ -202,8 +194,8 @@ share_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'allow_access',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Allow access to a share snapshot.",
         operations=[
             {
@@ -215,8 +207,8 @@ share_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'deny_access',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Deny access to a share snapshot.",
         operations=[
             {
@@ -228,8 +220,8 @@ share_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update_metadata',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Update snapshot metadata.",
         operations=[
             {
@@ -249,8 +241,8 @@ share_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete_metadata',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Delete snapshot metadata.",
         operations=[
             {
@@ -262,8 +254,8 @@ share_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_metadata',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get snapshot metadata.",
         operations=[
             {

@@ -22,7 +22,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_access_rule:%s'
 
 DEPRECATED_REASON = """
-The share access rule API now supports system scope and default roles.
+The share access rule API now supports scope and default roles.
 """
 
 deprecated_access_rule_get = policy.DeprecatedRule(
@@ -42,8 +42,8 @@ deprecated_access_rule_index = policy.DeprecatedRule(
 share_access_rule_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get details of a share access rule.",
         operations=[
             {
@@ -55,8 +55,8 @@ share_access_rule_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="List access rules of a given share.",
         operations=[
             {

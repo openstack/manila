@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_replica:%s'
 
 DEPRECATED_REASON = """
-The share replica API now supports system scope and default roles.
+The share replica API now supports scope and default roles.
 """
 
 deprecated_replica_create = policy.DeprecatedRule(
@@ -81,8 +81,8 @@ deprecated_replica_reset_status = policy.DeprecatedRule(
 share_replica_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Create share replica.",
         operations=[
             {
@@ -94,8 +94,8 @@ share_replica_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get all share replicas.",
         operations=[
             {
@@ -115,8 +115,8 @@ share_replica_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get details of a share replica.",
         operations=[
             {
@@ -128,8 +128,8 @@ share_replica_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Delete a share replica.",
         operations=[
             {
@@ -141,8 +141,8 @@ share_replica_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Force delete a share replica.",
         operations=[
             {
@@ -154,8 +154,8 @@ share_replica_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'promote',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Promote a non-active share replica to active.",
         operations=[
             {
@@ -167,8 +167,8 @@ share_replica_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'resync',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Resync a share replica that is out of sync.",
         operations=[
             {
@@ -180,8 +180,8 @@ share_replica_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_replica_state',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Reset share replica's replica_state attribute.",
         operations=[
             {
@@ -193,8 +193,8 @@ share_replica_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Reset share replica's status.",
         operations=[
             {

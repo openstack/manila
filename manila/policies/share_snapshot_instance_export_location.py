@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_snapshot_instance_export_location:%s'
 
 DEPRECATED_REASON = """
-The share snapshot instance export location API now supports system scope and
+The share snapshot instance export location API now supports scope and
 default roles.
 """
 
@@ -40,8 +40,8 @@ deprecated_snapshot_instance_show = policy.DeprecatedRule(
 share_snapshot_instance_export_location_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="List export locations of a share snapshot instance.",
         operations=[
             {
@@ -54,8 +54,8 @@ share_snapshot_instance_export_location_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Show details of a specified export location of a share "
                     "snapshot instance.",
         operations=[

@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'security_service:%s'
 
 DEPRECATED_REASON = """
-The security service API now supports system scope and default roles.
+The security service API now supports scope and default roles.
 """
 
 deprecated_security_service_create = policy.DeprecatedRule(
@@ -69,8 +69,8 @@ deprecated_security_service_get_all = policy.DeprecatedRule(
 security_service_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Create security service.",
         operations=[
             {
@@ -82,8 +82,8 @@ security_service_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get details of a security service.",
         operations=[
             {
@@ -95,31 +95,23 @@ security_service_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'detail',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get details of all security services.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/security-services/detail?{query}'
             },
-            {
-                'method': 'GET',
-                'path': '/security-services/detail'
-            }
         ],
         deprecated_rule=deprecated_security_service_detail
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
-        description="Get all security services.",
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
+        description="Get all security services under a project.",
         operations=[
-            {
-                'method': 'GET',
-                'path': '/security-services'
-            },
             {
                 'method': 'GET',
                 'path': '/security-services?{query}'
@@ -129,8 +121,8 @@ security_service_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Update a security service.",
         operations=[
             {
@@ -142,8 +134,8 @@ security_service_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Delete a security service.",
         operations=[
             {
@@ -155,8 +147,8 @@ security_service_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all_security_services',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get security services of all projects.",
         operations=[
             {

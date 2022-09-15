@@ -42,8 +42,8 @@ deprecated_access_metadata_delete = policy.DeprecatedRule(
 share_access_rule_metadata_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Set metadata for a share access rule.",
         operations=[
             {
@@ -55,8 +55,8 @@ share_access_rule_metadata_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Delete metadata for a share access rule.",
         operations=[
             {

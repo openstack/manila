@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'message:%s'
 
 DEPRECATED_REASON = """
-The messages API now supports system scope and default roles.
+The messages API now supports scope and default roles.
 """
 
 deprecated_message_get = policy.DeprecatedRule(
@@ -45,8 +45,8 @@ deprecated_message_delete = policy.DeprecatedRule(
 message_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get details of a given message.",
         operations=[
             {
@@ -58,8 +58,8 @@ message_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get all messages.",
         operations=[
             {
@@ -75,8 +75,8 @@ message_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Delete a message.",
         operations=[
             {

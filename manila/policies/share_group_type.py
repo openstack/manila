@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_group_type:%s'
 
 DEPRECATED_REASON = """
-The share group type API now supports system scope and default roles.
+The share group type API now supports scope and default roles.
 """
 
 deprecated_share_group_type_create = policy.DeprecatedRule(
@@ -75,8 +75,8 @@ deprecated_share_group_type_remove_project = policy.DeprecatedRule(
 share_group_type_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Create a new share group type.",
         operations=[
             {
@@ -88,14 +88,10 @@ share_group_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'index',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get the list of share group types.",
         operations=[
-            {
-                'method': 'GET',
-                'path': '/share-group-types',
-            },
             {
                 'method': 'GET',
                 'path': '/share-group-types?is_public=all',
@@ -105,8 +101,8 @@ share_group_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get details regarding the specified share group type.",
         operations=[
             {
@@ -118,8 +114,8 @@ share_group_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'default',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get the default share group type.",
         operations=[
             {
@@ -131,8 +127,8 @@ share_group_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Delete an existing group type.",
         operations=[
             {
@@ -144,8 +140,8 @@ share_group_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'list_project_access',
-        check_str=base.SYSTEM_READER,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Get project access by share group type.",
         operations=[
             {
@@ -157,8 +153,8 @@ share_group_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'add_project_access',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Allow project to use the share group type.",
         operations=[
             {
@@ -170,8 +166,8 @@ share_group_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'remove_project_access',
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Deny project access to use the share group type.",
         operations=[
             {

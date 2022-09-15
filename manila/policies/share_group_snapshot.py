@@ -19,7 +19,7 @@ from manila.policies import base
 BASE_POLICY_NAME = 'share_group_snapshot:%s'
 
 DEPRECATED_REASON = """
-The share group snapshots API now supports system scope and default roles.
+The share group snapshots API now supports scope and default roles.
 """
 
 deprecated_group_snapshot_create = policy.DeprecatedRule(
@@ -69,8 +69,8 @@ deprecated_group_snapshot_reset_status = policy.DeprecatedRule(
 share_group_snapshot_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Create a new share group snapshot.",
         operations=[
             {
@@ -82,8 +82,8 @@ share_group_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get details of a share group snapshot.",
         operations=[
             {
@@ -95,21 +95,13 @@ share_group_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'get_all',
-        check_str=base.SYSTEM_OR_PROJECT_READER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
         description="Get all share group snapshots.",
         operations=[
             {
                 'method': 'GET',
-                'path': '/share-group-snapshots'
-            },
-            {
-                'method': 'GET',
-                'path': '/share-group-snapshots/detail'
-            },
-            {
-                'method': 'GET',
-                'path': '/share-group-snapshots/{query}'
+                'path': '/share-group-snapshots?{query}'
             },
             {
                 'method': 'GET',
@@ -120,8 +112,8 @@ share_group_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Update a share group snapshot.",
         operations=[
             {
@@ -133,8 +125,8 @@ share_group_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
         description="Delete a share group snapshot.",
         operations=[
             {
@@ -146,8 +138,8 @@ share_group_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Force delete a share group snapshot.",
         operations=[
             {
@@ -160,8 +152,8 @@ share_group_snapshot_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'reset_status',
-        check_str=base.SYSTEM_ADMIN_OR_PROJECT_ADMIN,
-        scope_types=['system', 'project'],
+        check_str=base.ADMIN,
+        scope_types=['project'],
         description="Reset a share group snapshot's status.",
         operations=[
             {
