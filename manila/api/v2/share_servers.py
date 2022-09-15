@@ -47,6 +47,9 @@ class ShareServerController(share_servers.ShareServerController,
         'task_state': set(constants.SERVER_TASK_STATE_STATUSES),
     }
 
+    def _get(self, *args, **kwargs):
+        return db_api.share_server_get(*args, **kwargs)
+
     def _update(self, context, id, update):
         db_api.share_server_update(context, id, update)
 
