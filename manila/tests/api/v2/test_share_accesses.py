@@ -137,7 +137,7 @@ class ShareAccessesAPITest(test.TestCase):
             mock.call(req.environ['manila.context'],
                       'share', 'access_get'),
             mock.call(req.environ['manila.context'],
-                      'share', 'get', mock.ANY)])
+                      'share', 'get', mock.ANY, do_raise=False)])
         policy_check_call_args_list = policy.check_policy.call_args_list[2][0]
         share_being_checked = policy_check_call_args_list[3]
         self.assertEqual('c3c5ec1ccc4640d0af1914cbf11f05ad',

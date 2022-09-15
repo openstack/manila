@@ -2478,9 +2478,28 @@ class ShareAPITestCase(test.TestCase):
             result = self.api.get(self.context, 'fakeid')
             self.assertEqual(share, result)
             share_api.policy.check_policy.assert_called_once_with(
-                self.context, 'share', 'get', share)
+                self.context, 'share', 'get', share, do_raise=False)
             db_api.share_get.assert_called_once_with(
                 self.context, 'fakeid')
+
+    def test_get_not_authorized(self):
+        share = db_utils.create_share(
+            is_public=False,
+            project_id='5db325fc4de14fe1a860ff69f190c78c')
+        share_api.policy.check_policy.return_value = False
+        ctx = context.RequestContext('df6d65cc1f8946ba86be06b8140ec4b3',
+                                     'e8133457b853436591a7e4610e7ce679',
+                                     is_admin=False)
+        with mock.patch.object(db_api, 'share_get',
+                               mock.Mock(return_value=share)):
+
+            self.assertRaises(exception.NotFound,
+                              self.api.get,
+                              ctx,
+                              share['id'])
+            share_api.policy.check_policy.assert_called_once_with(
+                ctx, 'share', 'get', share, do_raise=False)
+            db_api.share_get.assert_called_once_with(ctx, share['id'])
 
     @mock.patch.object(db_api, 'share_snapshot_get_all_by_project',
                        mock.Mock())
