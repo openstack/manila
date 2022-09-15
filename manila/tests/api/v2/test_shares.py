@@ -1137,15 +1137,42 @@ class ShareAPITest(test.TestCase):
         update = {'task_state': constants.TASK_STATE_MIGRATION_ERROR}
         body = {'reset_task_state': update}
 
-        self.mock_object(db, 'share_update',
-                         mock.Mock(side_effect=exception.NotFound()))
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(side_effect=exception.NotFound))
+        self.mock_object(db, 'share_update')
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.NotFound,
                           self.controller.reset_task_state, req, share['id'],
                           body)
 
-        db.share_update.assert_called_once_with(utils.IsAMatcher(
-            context.RequestContext), share['id'], update)
+        share_api.API.get.assert_called_once_with(utils.IsAMatcher(
+            context.RequestContext), share['id'])
+        db.share_update.assert_not_called()
+
+    def test_reset_task_state_share_other_project_public_share(self):
+        share = db_utils.create_share(is_public=True)
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/action' % share['id'],
+            use_admin_context=True, version=LATEST_MICROVERSION)
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+        update = {'task_state': constants.TASK_STATE_MIGRATION_ERROR}
+        body = {'reset_task_state': update}
+
+        # NOTE(gouthamr): we're testing a scenario where someone has access
+        # to the RBAC rule share:reset_task_state, but doesn't own the share.
+        # Ideally we'd override the default policy, but it's a shared
+        # resource and we'll bleed into other tests, so we'll mock the
+        # policy check to return False instead
+        rbac_checks = [None, None, exception.NotAuthorized]
+        with mock.patch.object(policy, 'check_policy',
+                               side_effect=rbac_checks):
+            self.mock_object(share_api.API, 'get',
+                             mock.Mock(return_value=share))
+            self.assertRaises(webob.exc.HTTPForbidden,
+                              self.controller.reset_task_state,
+                              req, share['id'], body)
 
     def test_reset_task_state_share_has_been_soft_deleted(self):
         share = self.share_in_recycle_bin
@@ -2687,19 +2714,18 @@ class ShareAdminActionsAPITest(test.TestCase):
         req.headers['X-Openstack-Manila-Api-Version'] = version
         req.body = jsonutils.dumps(body).encode("utf-8")
         req.environ['manila.context'] = ctxt
-        self.mock_object(share_api.API, 'get', mock.Mock(return_value=model))
 
-        resp = req.get_response(fakes.app())
+        resp = req.get_response(fakes.app(), catch_exc_info=True)
 
         # validate response code and model status
         self.assertEqual(valid_code, resp.status_int)
 
-        if valid_code == 404:
+        if valid_code == 404 and db_access_method is not None:
             self.assertRaises(exception.NotFound,
                               db_access_method,
                               ctxt,
                               model['id'])
-        else:
+        elif db_access_method:
             actual_model = db_access_method(ctxt, model['id'])
             self.assertEqual(valid_status, actual_model['status'])
 
@@ -2709,6 +2735,7 @@ class ShareAdminActionsAPITest(test.TestCase):
                                                      valid_status, version):
         share, req = self._setup_share_data(version=version)
         ctxt = self._get_context(role)
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
 
         self._reset_status(ctxt, share, req, db.share_get, valid_code,
                            valid_status, version=version)
@@ -2717,6 +2744,7 @@ class ShareAdminActionsAPITest(test.TestCase):
     def test_share_invalid_reset_status_body(self, body):
         share, req = self._setup_share_data(version='2.6')
         ctxt = self.admin_context
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
 
         self._reset_status(ctxt, share, req, db.share_get, 400,
                            constants.STATUS_AVAILABLE, body, version='2.6')
@@ -2728,7 +2756,23 @@ class ShareAdminActionsAPITest(test.TestCase):
             '/v2/fake/shares/%s/action' % fake_share['id'], version=version)
 
         self._reset_status(self.admin_context, fake_share, req,
-                           db.share_snapshot_get, 404, version=version)
+                           db.share_get, 404, version=version)
+
+    @ddt.data('2.6', '2.7')
+    def test_reset_status_other_project_public_share(self, version):
+        # NOTE(gouthamr): we're testing a scenario where someone has access
+        # to the RBAC rule share:reset_status, but doesn't own the share.
+        # Ideally we'd override the default policy, but it's a shared
+        # resource and we'll bleed into other tests, so we'll mock the
+        # policy check to return False instead
+        share, req = self._setup_share_data(version=version)
+        share['is_public'] = True
+        rbac_checks = [None, exception.NotAuthorized]
+        with mock.patch.object(policy, 'authorize', side_effect=rbac_checks):
+            self.mock_object(share_api.API, 'get',
+                             mock.Mock(return_value=share))
+            self._reset_status(
+                self.member_context, share, req, None, 403, version=version)
 
     def _force_delete(self, ctxt, model, req, db_access_method, valid_code,
                       check_model_in_db=False, version='2.7'):
