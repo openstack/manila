@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Role based access control is enforced on the POST /shares/{share_id}/action
+    API to reset status, task state, replica state and similar fields. This
+    prevents the situation where deployments allow some users access to
+    these APIs, but they don't belong to projects where the resources exist.
+    See `bug 1955627 <https://launchpad.net/bugs/1955627>`_ for more context.

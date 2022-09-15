@@ -81,6 +81,9 @@ class ShareSnapshotInstancesController(wsgi.Controller,
     def _update(self, *args, **kwargs):
         db.share_snapshot_instance_update(*args, **kwargs)
 
+    def _get(self, *args, **kwargs):
+        db.share_snapshot_instance_get(*args, **kwargs)
+
 
 def create_resource():
     return wsgi.Resource(ShareSnapshotInstancesController())
