@@ -2038,7 +2038,13 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def manage_existing_snapshot(
             self, snapshot, driver_options, share_server=None):
-        """Brings an existing snapshot under Manila management."""
+        """Brings an existing snapshot under Manila management.
+
+        The managed snapshot keeps with its name, not renaming to the driver
+        snapshot name pattern (share_snapshot_<id>), because the rename is lost
+        when reverting to the snapshot, causing some issues (bug #1936648).
+        """
+
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_backend_share_name(snapshot['share_id'])
         existing_snapshot_name = snapshot.get('provider_location')
@@ -2074,32 +2080,8 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # When calculating the size, round up to the next GB.
         size = int(math.ceil(float(volume['size']) / units.Gi))
-        update_info = {'size': size}
 
-        # NOTE(felipe_rodrigues): ONTAP does not support rename FlexGroup
-        # snapshots, so those managed snapshots will keep the previous name
-        # being referenced by its provider_location field.
-        is_flexgroup = na_utils.is_style_extended_flexgroup(
-            volume['style-extended'])
-        if not is_flexgroup:
-            new_snapshot_name = self._get_backend_snapshot_name(snapshot['id'])
-            update_info['provider_location'] = new_snapshot_name
-
-            try:
-                vserver_client.rename_snapshot(share_name,
-                                               existing_snapshot_name,
-                                               new_snapshot_name)
-            except netapp_api.NaApiError:
-                msg = _('Could not rename snapshot %(snap)s in share %(vol)s.')
-                msg_args = {'snap': existing_snapshot_name, 'vol': share_name}
-                raise exception.ManageInvalidShareSnapshot(
-                    reason=msg % msg_args)
-
-            # Save original snapshot info to private storage.
-            original_data = {'original_name': existing_snapshot_name}
-            self.private_storage.update(snapshot['id'], original_data)
-
-        return update_info
+        return {'size': size}
 
     @na_utils.trace
     def unmanage_snapshot(self, snapshot, share_server=None):

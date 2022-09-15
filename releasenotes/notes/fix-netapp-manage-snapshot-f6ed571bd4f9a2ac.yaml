@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp driver: fix some issues caused with managed snapshot, it is no more
+    renaming the managed snapshot. For more details, please refer to
+    `launchpad bug #1936648 <https://bugs.launchpad.net/manila/+bug/1936648>`_
