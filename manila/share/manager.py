@@ -704,13 +704,15 @@ class ShareManager(manager.SchedulerDependentManager):
             except exception.ShareServerNotFound:
                 available_share_servers = None
 
-            compatible_share_server = None
-            if available_share_servers:
+            # creating from snapshot in the same host must reuse the server,
+            # so it ignores the server limits.
+            if available_share_servers and not parent_share_same_dest:
                 available_share_servers = (
                     self._check_share_server_backend_limits(
                         context, available_share_servers,
                         share_instance=share_instance))
 
+            compatible_share_server = None
             if available_share_servers:
                 try:
                     compatible_share_server = (

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix creating from snapshot operation with server limits. If the new share
+    and parent are in the same host, the share server must be resued, so the
+    limits must be ignored. For more details, please refer to
+    `launchpad bug #1918845 <https://bugs.launchpad.net/manila/+bug/1918845>`_
