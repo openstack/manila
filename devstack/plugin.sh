@@ -781,9 +781,6 @@ function install_manila {
             fi
             check_nfs_kernel_service_state_ubuntu
         elif [ "$SHARE_DRIVER" == $MANILA_CONTAINER_DRIVER ]; then
-            # Remove workaround for https://launchpad.net/bugs/1876820 when
-            # container driver stops using "brctl"
-            install_package bridge-utils
             if is_ubuntu; then
                 echo "Installing docker...."
                 install_docker_ubuntu
