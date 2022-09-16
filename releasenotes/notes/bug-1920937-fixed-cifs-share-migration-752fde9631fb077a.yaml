@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed non-disruptive share migration of CIFS shares in the NetApp ONTAP
+    driver using ZAPI API. During the CIFS share migration the creation of a
+    new export path is skipped and the actual export path is taken from the
+    backend. For more details, please refer to
+    `launchpad bug #1920937 <https://bugs.launchpad.net/manila/+bug/1920937>`_.

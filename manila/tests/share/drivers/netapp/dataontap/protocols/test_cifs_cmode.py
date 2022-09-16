@@ -46,6 +46,8 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
     def test_create_share(self, replica, cifs_exist):
 
         self.mock_client.cifs_share_exists.return_value = cifs_exist
+        self.mock_client.get_volume_junction_path.return_value = (
+            fake.CIFS_SHARE_PATH)
 
         result = self.helper.create_share(
             fake.CIFS_SHARE, fake.SHARE_NAME,
@@ -54,8 +56,8 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
         export_addresses = [fake.SHARE_ADDRESS_1, fake.SHARE_ADDRESS_2]
         export_paths = [result(address) for address in export_addresses]
         expected_paths = [
-            r'\\%s\%s' % (fake.SHARE_ADDRESS_1, fake.SHARE_NAME),
-            r'\\%s\%s' % (fake.SHARE_ADDRESS_2, fake.SHARE_NAME),
+            r'\\%s%s' % (fake.SHARE_ADDRESS_1, fake.CIFS_SHARE_PATH_PARSED),
+            r'\\%s%s' % (fake.SHARE_ADDRESS_2, fake.CIFS_SHARE_PATH_PARSED),
         ]
         self.assertEqual(expected_paths, export_paths)
 
@@ -66,7 +68,7 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
             self.mock_client.remove_cifs_share.assert_not_called()
         else:
             self.mock_client.create_cifs_share.assert_called_once_with(
-                fake.SHARE_NAME)
+                fake.SHARE_NAME, fake.CIFS_SHARE_PATH)
             self.mock_client.remove_cifs_share_access.assert_called_once_with(
                 fake.SHARE_NAME, 'Everyone')
 
@@ -214,9 +216,24 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def test_get_share_name_for_share(self):
 
+        self.mock_client.get_volume_at_junction_path.return_value = (
+            fake.VOLUME)
+
         share_name = self.helper.get_share_name_for_share(fake.CIFS_SHARE)
 
         self.assertEqual(fake.SHARE_NAME, share_name)
+        self.mock_client.get_volume_at_junction_path.assert_called_once_with(
+            fake.CIFS_SHARE_PATH)
+
+    def test_get_share_name_for_share_not_found(self):
+
+        self.mock_client.get_volume_at_junction_path.return_value = None
+
+        share_name = self.helper.get_share_name_for_share(fake.CIFS_SHARE)
+
+        self.assertIsNone(share_name)
+        self.mock_client.get_volume_at_junction_path.assert_called_once_with(
+            fake.CIFS_SHARE_PATH)
 
     @ddt.data(
         {
