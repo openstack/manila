@@ -23,8 +23,10 @@ SHARE_ADDRESS_2 = '10.10.10.20'
 CLIENT_ADDRESS_1 = '20.20.20.10'
 CLIENT_ADDRESS_2 = '20.20.20.20'
 
+CIFS_SHARE_PATH = '/%s' % SHARE_NAME
+CIFS_SHARE_PATH_PARSED = '\\%s' % SHARE_NAME
 CIFS_SHARE = {
-    'export_location': r'\\%s\%s' % (SHARE_ADDRESS_1, SHARE_NAME),
+    'export_location': r'\\%s%s' % (SHARE_ADDRESS_1, CIFS_SHARE_PATH_PARSED),
     'id': SHARE_ID
 }
 

@@ -3571,12 +3571,31 @@ class NetAppCmodeFileStorageLibrary(object):
         }
         LOG.info(msg, msg_args)
 
-        # NOTE(gouthamr): For nondisruptive migration, current export
+        # NOTE(gouthamr): For NFS nondisruptive migration, current export
         # policy will not be cleared, the export policy will be renamed to
         # match the name of the share.
-        export_locations = self._create_export(
-            destination_share, share_server, vserver, vserver_client,
-            clear_current_export_policy=False)
+        # NOTE (caiquemello): For CIFS nondisruptive migration, current CIFS
+        # share cannot be renamed, so keep the previous CIFS share.
+        share_protocol = source_share['share_proto'].lower()
+        if share_protocol != 'cifs':
+            export_locations = self._create_export(
+                destination_share, share_server, vserver, vserver_client,
+                clear_current_export_policy=False)
+        else:
+            export_locations = []
+            for item in source_share['export_locations']:
+                export_locations.append(
+                    {
+                        'path': item['path'],
+                        'is_admin_only': item['is_admin_only'],
+                        'metadata': item['el_metadata']
+                    }
+                )
+
+        # Sort the export locations to report preferred paths first
+        export_locations = self._sort_export_locations_by_preferred_paths(
+            export_locations)
+
         src_snaps_dict = {s['id']: s for s in source_snapshots}
         snapshot_updates = {}
 
