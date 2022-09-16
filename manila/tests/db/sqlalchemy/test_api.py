@@ -3731,8 +3731,9 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         self.assertEqual(num_records - 1,
                          len(db_api.share_server_get_all(self.ctxt)))
 
-    @ddt.data('fake', '-fake-', 'foo_some_fake_identifier_bar',
-              'foo-some-fake-identifier-bar', 'foobar')
+    @ddt.data('foobar', 'fake', '-fake-', 'some_fake_', 'some-fake-',
+              '-fake-identifier', '_fake_identifier', 'some-fake-identifier',
+              'some_fake_identifier')
     def test_share_server_search_by_identifier(self, identifier):
 
         server = {
@@ -3744,7 +3745,8 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         }
 
         server = db_utils.create_share_server(**server)
-        if identifier == 'foobar':
+        if identifier in ('foobar', 'fake', '-fake-', 'some_fake_',
+                          'some-fake-'):
             self.assertRaises(exception.ShareServerNotFound,
                               db_api.share_server_search_by_identifier,
                               self.ctxt, identifier)

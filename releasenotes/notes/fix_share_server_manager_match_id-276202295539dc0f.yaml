@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix share server manager API match of identifiers by preffix. "Invalid
+    input received Error" now raises only if the identifiers suffixes matches.
+    For more details, please refer to
+    `launchpad bug #1982429 <https://bugs.launchpad.net/manila/+bug/1982429>`_

@@ -5110,20 +5110,20 @@ def share_server_search_by_identifier(context, identifier):
 
     identifier_field = models.ShareServer.identifier
 
-    # try if given identifier is a substring of existing entry's identifier
+    # try if given identifier is a suffix of existing entry's identifier
     result = (_share_server_get_query(context).filter(
-        identifier_field.like('%{}%'.format(identifier))).all())
+        identifier_field.like('%{}'.format(identifier))).all())
 
     if not result:
         # repeat it with underscores instead of hyphens
         result = (_share_server_get_query(context).filter(
-            identifier_field.like('%{}%'.format(
+            identifier_field.like('%{}'.format(
                 identifier.replace("-", "_")))).all())
 
     if not result:
         # repeat it with hypens instead of underscores
         result = (_share_server_get_query(context).filter(
-            identifier_field.like('%{}%'.format(
+            identifier_field.like('%{}'.format(
                 identifier.replace("_", "-")))).all())
 
     if not result:
