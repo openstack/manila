@@ -69,6 +69,20 @@ Request
    - all_tenants: all_tenants_query
    - name~: name_inexact_query
    - description~: description_inexact_query
+   - name: name_query
+   - description: description_query
+   - created_since: created_since_query
+   - created_before: created_before_query
+   - security_service_id: security_service_query
+   - nova_net_id: nova_net_id_query
+   - neutron_net_id: neutron_net_id_query
+   - neutron_subnet_id: neutron_subnet_id_query
+   - network_type: network_type_query
+   - segmentation_id: segmentation_id_query
+   - cidr: cidr_query
+   - ip_version: ip_version_query
+   - offset: offset
+   - limit: limit
 
 Response parameters
 -------------------
@@ -115,6 +129,18 @@ Request
    - all_tenants: all_tenants_query
    - name~: name_inexact_query
    - description~: description_inexact_query
+   - created_since: created_since_query
+   - created_before: created_before_query
+   - nova_net_id: nova_net_id_query
+   - neutron_net_id: neutron_net_id_query
+   - neutron_subnet_id: neutron_subnet_id_query
+   - network_type: network_type_query
+   - segmentation_id: segmentation_id_query
+   - cidr: cidr_query
+   - ip_version: ip_version_query
+   - offset: offset
+   - limit: limit
+   - security_service_id: security_service_query
 
 Response parameters
 -------------------
