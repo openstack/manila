@@ -1,0 +1,187 @@
+# Andi Chandler <andi@gowling.com>, 2017. #zanata
+# Andi Chandler <andi@gowling.com>, 2018. #zanata
+# Andi Chandler <andi@gowling.com>, 2019. #zanata
+# Andi Chandler <andi@gowling.com>, 2020. #zanata
+# Andi Chandler <andi@gowling.com>, 2022. #zanata
+msgid ""
+msgstr ""
+"Project-Id-Version: manila\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-09-16 18:45+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2022-08-02 11:27+0000\n"
+"Last-Translator: Andi Chandler <andi@gowling.com>\n"
+"Language-Team: English (United Kingdom)\n"
+"Language: en_GB\n"
+"X-Generator: Zanata 4.3.3\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+
+msgid "1.0.1"
+msgstr "1.0.1"
+
+msgid "10.0.0"
+msgstr "10.0.0"
+
+msgid "10.0.1"
+msgstr "10.0.1"
+
+msgid "11.0.0"
+msgstr "11.0.0"
+
+msgid "2.0.0"
+msgstr "2.0.0"
+
+msgid "2.0.0-44"
+msgstr "2.0.0-44"
+
+msgid "3.0.0"
+msgstr "3.0.0"
+
+msgid "3.0.0-20"
+msgstr "3.0.0-20"
+
+msgid ""
+"3parclient up to version 4.2.1 always returns only 1 VFS IP address. This "
+"may cause 3PAR driver boot up failure while validating VFS IP addresses "
+"against IP addresses configured in manila.conf."
+msgstr ""
+"3parclient up to version 4.2.1 always returns only 1 VFS IP address. This "
+"may cause 3PAR driver boot up failure while validating VFS IP addresses "
+"against IP addresses configured in manila.conf."
+
+msgid "4.0.0"
+msgstr "4.0.0"
+
+msgid "4.0.1"
+msgstr "4.0.1"
+
+msgid "4.0.2"
+msgstr "4.0.2"
+
+msgid "5.0.0"
+msgstr "5.0.0"
+
+msgid "5.0.1"
+msgstr "5.0.1"
+
+msgid "5.0.2"
+msgstr "5.0.2"
+
+msgid "5.0.3"
+msgstr "5.0.3"
+
+msgid "5.1.0"
+msgstr "5.1.0"
+
+msgid "6.0.0"
+msgstr "6.0.0"
+
+msgid ""
+"A new Container driver is added. It uses docker container as a share server."
+msgstr ""
+"A new Container driver is added. It uses docker container as a share server."
+
+msgid ""
+"A new configuration option 'netapp_qos_policy_group_name_template' has been "
+"added to allow overriding the naming of QoS policies created by the NetApp "
+"driver."
+msgstr ""
+"A new configuration option 'netapp_qos_policy_group_name_template' has been "
+"added to allow overriding the naming of QoS policies created by the NetApp "
+"driver."
+
+msgid "Current Series Release Notes"
+msgstr "Current Series Release Notes"
+
+msgid "Liberty Series Release Notes"
+msgstr "Liberty Series Release Notes"
+
+msgid "Manila Release Notes"
+msgstr "Manila Release Notes"
+
+msgid "Mitaka Series Release Notes"
+msgstr "Mitaka Series Release Notes"
+
+msgid "Newton Series Release Notes"
+msgstr "Newton Series Release Notes"
+
+msgid "Ocata Series Release Notes"
+msgstr "Ocata Series Release Notes"
+
+msgid "Pike Series Release Notes"
+msgstr "Pike Series Release Notes"
+
+msgid "Queens Series Release Notes"
+msgstr "Queens Series Release Notes"
+
+msgid "Rocky Series Release Notes"
+msgstr "Rocky Series Release Notes"
+
+msgid "Stein Series Release Notes"
+msgstr "Stein Series Release Notes"
+
+msgid "Train Series Release Notes"
+msgstr "Train Series Release Notes"
+
+msgid "Ussuri Series Release Notes"
+msgstr "Ussuri Series Release Notes"
+
+msgid "Victoria Series Release Notes"
+msgstr "Victoria Series Release Notes"
+
+msgid "Wallaby Series Release Notes"
+msgstr "Wallaby Series Release Notes"
+
+msgid "Xena Series Release Notes"
+msgstr "Xena Series Release Notes"
+
+msgid "Yoga Series Release Notes"
+msgstr "Yoga Series Release Notes"
+
+msgid "``[quota]/gigabytes`` - previously ``[DEFAULT]/quota_gigabytes``"
+msgstr "``[quota]/gigabytes`` - previously ``[DEFAULT]/quota_gigabytes``"
+
+msgid "``[quota]/max_age`` - previously ``[DEFAULT]/max_age``"
+msgstr "``[quota]/max_age`` - previously ``[DEFAULT]/max_age``"
+
+msgid ""
+"``[quota]/per_share_gigabytes`` - previously ``[DEFAULT]/"
+"quota_per_share_gigabytes``"
+msgstr ""
+"``[quota]/per_share_gigabytes`` - previously ``[DEFAULT]/"
+"quota_per_share_gigabytes``"
+
+msgid ""
+"``[quota]/replica_gigabytes`` - previously ``[DEFAULT]/"
+"quota_replica_gigabytes``"
+msgstr ""
+"``[quota]/replica_gigabytes`` - previously ``[DEFAULT]/"
+"quota_replica_gigabytes``"
+
+msgid ""
+"``[quota]/reservation_expire`` previously ``[DEFAULT]/reservation_expire``"
+msgstr ""
+"``[quota]/reservation_expire`` previously ``[DEFAULT]/reservation_expire``"
+
+msgid "netapp:adaptive_qos_policy_group=platform3"
+msgstr "netapp:adaptive_qos_policy_group=platform3"
+
+msgid ""
+"rabbitmq password is no longer exposed in the logs when debugging is enabled."
+msgstr ""
+"RabbitMQ password is no longer exposed in the logs when debugging is enabled."
+
+msgid "remove undesired rules existing in the backend during recovery mode."
+msgstr "remove undesired rules existing in the backend during recovery mode."
+
+msgid "return ``access_keys`` of ceph auth IDs that are allowed access."
+msgstr "return ``access_keys`` of ceph auth IDs that are allowed access."
+
+msgid ""
+"user_id and project_id fields are added to the JSON response of /snapshots "
+"APIs."
+msgstr ""
+"user_id and project_id fields are added to the JSON response of /snapshots "
+"APIs."
