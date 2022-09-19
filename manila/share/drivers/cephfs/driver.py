@@ -602,7 +602,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         argdict = {
             "vol_name": self.volname,
             "sub_name": snapshot["share_id"],
-            "snap_name": "_".join([snapshot["snapshot_id"], snapshot["id"]]),
+            "snap_name": snapshot["snapshot_id"],
         }
 
         rados_command(
@@ -612,13 +612,24 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         # delete a FS snapshot
         LOG.debug("[%(be)s]: delete_snapshot: snapshot=%(id)s.",
                   {"be": self.backend_name, "id": snapshot['id']})
-        argdict = {
+
+        # FIXME(vkmc) remove this in CC (next tick) release.
+        legacy_snap_name = "_".join([snapshot["snapshot_id"], snapshot["id"]])
+
+        argdict_legacy = {
             "vol_name": self.volname,
             "sub_name": snapshot["share_id"],
-            "snap_name": '_'.join([snapshot['snapshot_id'], snapshot['id']]),
+            "snap_name": legacy_snap_name,
             "force": True,
         }
 
+        # try removing snapshot using legacy naming
+        rados_command(
+            self.rados_client, "fs subvolume snapshot rm", argdict_legacy)
+
+        # in case it's a snapshot with new naming, retry remove with new name
+        argdict = argdict_legacy.copy()
+        argdict.update({"snap_name": snapshot["snapshot_id"]})
         rados_command(self.rados_client, "fs subvolume snapshot rm", argdict)
 
     def create_share_group(self, context, sg_dict, share_server=None):
@@ -741,7 +752,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         argdict = {
             "vol_name": self.volname,
             "sub_name": parent_share["id"],
-            "snap_name": '_'.join([snapshot["snapshot_id"], snapshot["id"]]),
+            "snap_name": snapshot["snapshot_id"],
             "target_sub_name": share["id"]
         }
         if share['share_group_id'] is not None:

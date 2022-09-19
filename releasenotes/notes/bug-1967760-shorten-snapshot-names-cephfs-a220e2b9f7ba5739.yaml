@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Make snapshot names in CephFS drivers shorter to
+    avoid limitation in Ceph clusters which truncates
+    the subvolume name and makes the snapshots inaccesible.
