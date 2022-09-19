@@ -364,8 +364,7 @@ class CephFSDriverTestCase(test.TestCase):
         snapshot_create_dict = {
             "vol_name": self._driver.volname,
             "sub_name": self._snapshot["share_id"],
-            "snap_name": "_".join([
-                self._snapshot["snapshot_id"], self._snapshot["id"]]),
+            "snap_name": self._snapshot["snapshot_id"]
         }
 
         self._driver.create_snapshot(self._context, self._snapshot, None)
@@ -375,23 +374,35 @@ class CephFSDriverTestCase(test.TestCase):
             snapshot_create_prefix, snapshot_create_dict)
 
     def test_delete_snapshot(self):
+        legacy_snap_name = "_".join(
+            [self._snapshot["snapshot_id"], self._snapshot["id"]])
+
         snapshot_remove_prefix = "fs subvolume snapshot rm"
 
         snapshot_remove_dict = {
             "vol_name": self._driver.volname,
             "sub_name": self._snapshot["share_id"],
-            "snap_name": "_".join([
-                self._snapshot["snapshot_id"], self._snapshot["id"]]),
-            "force": True,
+            "snap_name": legacy_snap_name,
+            "force": True
         }
+
+        snapshot_remove_dict_2 = snapshot_remove_dict.copy()
+        snapshot_remove_dict_2.update(
+            {"snap_name": self._snapshot["snapshot_id"]})
 
         self._driver.delete_snapshot(self._context,
                                      self._snapshot,
                                      None)
 
-        driver.rados_command.assert_called_once_with(
-            self._driver.rados_client,
-            snapshot_remove_prefix, snapshot_remove_dict)
+        driver.rados_command.assert_has_calls([
+            mock.call(self._driver.rados_client,
+                      snapshot_remove_prefix,
+                      snapshot_remove_dict),
+            mock.call(self._driver.rados_client,
+                      snapshot_remove_prefix,
+                      snapshot_remove_dict_2)])
+
+        self.assertEqual(2, driver.rados_command.call_count)
 
     def test_create_share_group(self):
         group_create_prefix = "fs subvolumegroup create"
@@ -465,8 +476,7 @@ class CephFSDriverTestCase(test.TestCase):
         create_share_from_snapshot_dict = {
             "vol_name": self._driver.volname,
             "sub_name": parent_share["id"],
-            "snap_name": "_".join([
-                self._snapshot["snapshot_id"], self._snapshot["id"]]),
+            "snap_name": self._snapshot["snapshot_id"],
             "target_sub_name": self._share["id"]
         }
 
