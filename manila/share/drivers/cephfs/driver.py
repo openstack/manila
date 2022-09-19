@@ -1196,6 +1196,13 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
         else:
             export_ips.append(vip)
 
+        # there are no export IPs, there are no NFS servers we can use
+        if not export_ips:
+            msg = _("There are no NFS servers available to use. "
+                    "Please check the health of your Ceph cluster "
+                    "and restart the manila share service.")
+            raise exception.ShareBackendException(msg=msg)
+
         return export_ips
 
     def check_for_setup_error(self):

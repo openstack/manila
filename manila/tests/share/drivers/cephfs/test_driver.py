@@ -1267,6 +1267,27 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
         type(self._nfscluster_protocol_helper).nfs_clusterid = (
             mock.PropertyMock(return_value='fs-manila'))
 
+    def test_get_export_ips_no_backends(self):
+        fake_conf = configuration.Configuration(None)
+        cluster_info = {
+            "fs-manila": {
+                "virtual_ip": None,
+                "backend": []
+            }
+        }
+
+        driver.rados_command.return_value = json.dumps(cluster_info)
+
+        helper = driver.NFSClusterProtocolHelper(
+            self._execute,
+            fake_conf,
+            rados_client=self._rados_client,
+            volname=self._volname
+        )
+
+        self.assertRaises(exception.ShareBackendException,
+                          helper._get_export_ips)
+
     @ddt.data(constants.ACCESS_LEVEL_RW, constants.ACCESS_LEVEL_RO)
     def test_allow_access_rw_ro(self, mode):
         access_allow_prefix = "nfs export apply"
