@@ -398,13 +398,13 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
                        "(found: %s)." % (phy, phy_nets))
                 raise exception.NetworkBadConfigurationException(reason=msg)
         else:
-            network_type = net_info['provider:network_type']
-            segmentation_id = net_info['provider:segmentation_id']
+            network_type = net_info.get('provider:network_type')
+            segmentation_id = net_info.get('provider:segmentation_id')
 
         provider_nw_dict = {
             'network_type': network_type,
             'segmentation_id': segmentation_id,
-            'mtu': net_info['mtu'],
+            'mtu': net_info.get('mtu'),
         }
         share_network_subnet.update(provider_nw_dict)
 
