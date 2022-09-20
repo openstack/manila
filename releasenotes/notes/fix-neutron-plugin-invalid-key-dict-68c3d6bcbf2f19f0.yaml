@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Some neutron integrations might not have the network type, so the neutron network
+    plugin is fixed by taking that scenario in consideration.
+    `Launchpad bug  #1987315 <https://bugs.launchpad.ne/manila/+bug/1987315>`_
+    for more details.
