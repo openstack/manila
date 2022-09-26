@@ -37,6 +37,7 @@ fake_services_list = [
         'availability_zone': {'name': 'manila1'},
         'id': 1,
         'disabled': True,
+        'state': 'up',
         'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 2),
         'created_at': datetime.datetime(2012, 9, 18, 2, 46, 27),
     },
@@ -46,6 +47,7 @@ fake_services_list = [
         'availability_zone': {'name': 'manila1'},
         'id': 2,
         'disabled': True,
+        'state': 'up',
         'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 5),
         'created_at': datetime.datetime(2012, 9, 18, 2, 46, 27)},
     {
@@ -54,6 +56,7 @@ fake_services_list = [
         'availability_zone': {'name': 'manila2'},
         'id': 3,
         'disabled': False,
+        'state': 'down',
         'updated_at': datetime.datetime(2012, 9, 19, 6, 55, 34),
         'created_at': datetime.datetime(2012, 9, 18, 2, 46, 28)},
     {
@@ -62,6 +65,7 @@ fake_services_list = [
         'availability_zone': {'name': 'manila2'},
         'id': 4,
         'disabled': True,
+        'state': 'down',
         'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),
         'created_at': datetime.datetime(2012, 9, 18, 2, 46, 28),
     },
@@ -74,7 +78,8 @@ fake_response_service_list = {'services': [
         'binary': 'manila-scheduler',
         'host': 'host1',
         'zone': 'manila1',
-        'status': 'disabled', 'state': 'up',
+        'status': 'disabled',
+        'state': 'up',
         'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 2),
     },
     {

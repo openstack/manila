@@ -33,6 +33,7 @@ from manila import coordination
 from manila import db
 from manila import exception
 from manila import rpc
+from manila import utils
 from manila import version
 
 osprofiler_initializer = importutils.try_import('osprofiler.initializer')
@@ -45,6 +46,10 @@ service_opts = [
     cfg.IntOpt('report_interval',
                default=10,
                help='Seconds between nodes reporting state to datastore.'),
+    cfg.IntOpt('cleanup_interval',
+               min=300,
+               default=1800,
+               help='Seconds between cleaning up the stopped nodes.'),
     cfg.IntOpt('periodic_interval',
                default=60,
                help='Seconds between running periodic tasks.'),
@@ -121,6 +126,7 @@ class Service(service.Service):
                                      *args, **kwargs)
         self.availability_zone = self.manager.availability_zone
         self.report_interval = report_interval
+        self.cleanup_interval = CONF.cleanup_interval
         self.periodic_interval = periodic_interval
         self.periodic_fuzzy_delay = periodic_fuzzy_delay
         self.saved_args, self.saved_kwargs = args, kwargs
@@ -134,19 +140,21 @@ class Service(service.Service):
         LOG.info('Starting %(topic)s node (version %(version_string)s)',
                  {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
-        self.manager.init_host()
         ctxt = context.get_admin_context()
-
-        if self.coordinator:
-            coordination.LOCK_COORDINATOR.start()
 
         try:
             service_ref = db.service_get_by_args(ctxt,
                                                  self.host,
                                                  self.binary)
             self.service_id = service_ref['id']
+            db.service_update(ctxt, self.service_id, {'state': 'down'})
         except exception.NotFound:
             self._create_service_ref(ctxt)
+
+        self.manager.init_host(service_id=self.service_id)
+
+        if self.coordinator:
+            coordination.LOCK_COORDINATOR.start()
 
         LOG.debug("Creating RPC server for service %s.", self.topic)
 
@@ -162,6 +170,9 @@ class Service(service.Service):
             self.tg.add_timer(self.report_interval, self.report_state,
                               initial_delay=self.report_interval)
 
+        self.tg.add_timer(self.cleanup_interval, self.cleanup_services,
+                          initial_delay=self.cleanup_interval)
+
         if self.periodic_interval:
             if self.periodic_fuzzy_delay:
                 initial_delay = random.randint(0, self.periodic_fuzzy_delay)
@@ -176,6 +187,7 @@ class Service(service.Service):
             'host': self.host,
             'binary': self.binary,
             'topic': self.topic,
+            'state': 'up',
             'report_count': 0,
             'availability_zone': self.availability_zone
         }
@@ -242,6 +254,8 @@ class Service(service.Service):
         except Exception:
             pass
 
+        db.service_update(context.get_admin_context(),
+                          self.service_id, {'state': 'stopped'})
         if self.coordinator:
             try:
                 coordination.LOCK_COORDINATOR.stop()
@@ -287,8 +301,12 @@ class Service(service.Service):
                     service_ref['availability_zone']['name']):
                 state_catalog['availability_zone'] = self.availability_zone
 
-            db.service_update(ctxt,
-                              self.service_id, state_catalog)
+            if utils.service_is_up(service_ref):
+                state_catalog['state'] = 'up'
+            else:
+                if service_ref['state'] != 'stopped':
+                    state_catalog['state'] = 'down'
+            db.service_update(ctxt, self.service_id, state_catalog)
 
             # TODO(termie): make this pattern be more elegant.
             if getattr(self, 'model_disconnected', False):
@@ -300,6 +318,22 @@ class Service(service.Service):
             if not getattr(self, 'model_disconnected', False):
                 self.model_disconnected = True
                 LOG.exception('model server went away')
+
+    def cleanup_services(self):
+        """Remove the stopped services of same topic from the datastore."""
+        ctxt = context.get_admin_context()
+        try:
+            services = db.service_get_all(ctxt, self.topic)
+        except exception.NotFound:
+            LOG.debug('The service database object disappeared,'
+                      'Exiting from cleanup.')
+            return
+
+        for svc in services:
+            if (svc['topic'] == self.topic and
+                svc['state'] == 'stopped' and
+                    not utils.service_is_up(svc)):
+                db.service_destroy(ctxt, svc['id'])
 
 
 class WSGIService(service.ServiceBase):

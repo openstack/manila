@@ -3308,3 +3308,36 @@ class AddSubnetMetadata(BaseMigrationChecks):
         self.test_case.assertRaises(sa_exc.NoSuchTableError,
                                     utils.load_table,
                                     self.new_table_name, engine)
+
+
+@map_to_migration('aebe2a413e13')
+class AddServiceState(BaseMigrationChecks):
+
+    def _get_service_data(self, options):
+        base_dict = {
+            'binary': 'manila-share',
+            'topic': 'share',
+            'disabled': False,
+            'report_count': '100',
+        }
+        base_dict.update(options)
+        return base_dict
+
+    def setup_upgrade_data(self, engine):
+        service_fixture = [
+            self._get_service_data({'host': 'fake1'}),
+            self._get_service_data({'host': 'fake2'}),
+        ]
+        services_table = utils.load_table('services', engine)
+        for fixture in service_fixture:
+            engine.execute(services_table.insert(fixture))
+
+    def check_upgrade(self, engine, data):
+        s_table = utils.load_table('services', engine)
+        for s in engine.execute(s_table.select()):
+            self.test_case.assertTrue(hasattr(s, 'state'))
+
+    def check_downgrade(self, engine):
+        s_table = utils.load_table('services', engine)
+        for s in engine.execute(s_table.select()):
+            self.test_case.assertFalse(hasattr(s, 'state'))
