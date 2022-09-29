@@ -309,7 +309,7 @@ function configure_manila {
     if [[ "$MANILA_ENFORCE_SCOPE" == True ]] ; then
         iniset $MANILA_CONF oslo_policy enforce_scope true
         iniset $MANILA_CONF oslo_policy enforce_new_defaults true
-        OS_CLOUD="devstack-system-admin"
+        OS_CLOUD="devstack-admin"
     fi
 }
 
@@ -516,13 +516,6 @@ function create_manila_accounts {
 
 # create_default_share_group_type - create share group type that will be set as default.
 function create_default_share_group_type {
-
-    # NOTE(gouthamr): manilaclient's shell doesn't support cloud profiles;
-    # OSC is the best approach here: https://review.opendev.org/805064, but,
-    # we need a temporary workaround to use legacy credentials while we wait
-    # for OSC support
-    # TODO(gouthamr): Remove workaround when we replace the commands below
-    # with OSC equivalents
 
     local type_exists=$( openstack --os-cloud $OS_CLOUD share group type list | grep " $MANILA_DEFAULT_SHARE_GROUP_TYPE " )
     if [[ -z $type_exists ]]; then
