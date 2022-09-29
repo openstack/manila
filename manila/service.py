@@ -134,12 +134,7 @@ class Service(service.Service):
         LOG.info('Starting %(topic)s node (version %(version_string)s)',
                  {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
-        self.manager.init_host()
         ctxt = context.get_admin_context()
-
-        if self.coordinator:
-            coordination.LOCK_COORDINATOR.start()
-
         try:
             service_ref = db.service_get_by_args(ctxt,
                                                  self.host,
@@ -147,6 +142,11 @@ class Service(service.Service):
             self.service_id = service_ref['id']
         except exception.NotFound:
             self._create_service_ref(ctxt)
+
+        self.manager.init_host(service_id=self.service_id)
+
+        if self.coordinator:
+            coordination.LOCK_COORDINATOR.start()
 
         LOG.debug("Creating RPC server for service %s.", self.topic)
 
@@ -227,12 +227,7 @@ class Service(service.Service):
         return service_obj
 
     def kill(self):
-        """Destroy the service object in the datastore."""
         self.stop()
-        try:
-            db.service_destroy(context.get_admin_context(), self.service_id)
-        except exception.NotFound:
-            LOG.warning('Service killed that has no database entry.')
 
     def stop(self):
         # Try to shut the connection down, but if we get any sort of
@@ -241,6 +236,11 @@ class Service(service.Service):
             self.rpcserver.stop()
         except Exception:
             pass
+
+        try:
+            db.service_destroy(context.get_admin_context(), self.service_id)
+        except exception.NotFound:
+            LOG.warning('Service killed that has no database entry.')
 
         if self.coordinator:
             try:

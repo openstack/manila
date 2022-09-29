@@ -100,13 +100,14 @@ class Manager(base.Base, PeriodicTasks):
         """Tasks to be run at a periodic interval."""
         return self.run_periodic_tasks(context, raise_on_error=raise_on_error)
 
-    def init_host(self):
+    def init_host(self, service_id=None):
         """Handle initialization if this is a standalone service.
 
         A hook point for services to execute tasks before the services are made
         available (i.e. showing up on RPC and starting to accept RPC calls) to
         other components.  Child classes should override this method.
 
+        :param service_id: ID of the service where the manager is running.
         """
         pass
 

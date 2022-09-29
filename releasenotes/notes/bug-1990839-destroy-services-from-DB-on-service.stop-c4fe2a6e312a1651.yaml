@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    In cluster deployments, where multiple instances of manila-scheduler are
+    deployed via PODs, unique hostname is derived from node name. However if
+    pods are deployed again and launched on new hosts/nodes, the old entries
+    of manila-scheduler remains as it is. Fixed it by deleting DB entries
+    after service.stop() and creating new entries again in service.start().
+    Launchpad bug `1990839 <https://bugs.launchpad.net/manila/+bug/1990839>`_

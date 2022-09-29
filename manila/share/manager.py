@@ -302,6 +302,7 @@ class ShareManager(manager.SchedulerDependentManager):
             self.driver = profiler.trace_cls("driver")(self.driver)
         self.hooks = []
         self._init_hook_drivers()
+        self.service_id = None
 
     def _init_hook_drivers(self):
         # Try to initialize hook driver(s).
@@ -339,7 +340,7 @@ class ShareManager(manager.SchedulerDependentManager):
         return pool
 
     @add_hooks
-    def init_host(self, reexport=False):
+    def init_host(self, service_id=None, reexport=False):
         """Initialization for a standalone service."""
 
         # mark service alive by creating a probe
@@ -349,6 +350,7 @@ class ShareManager(manager.SchedulerDependentManager):
             LOG.error("Probe not created: %(e)s", {'e': six.text_type(e)})
 
         ctxt = context.get_admin_context()
+        self.service_id = service_id
         driver_host_pair = "{}@{}".format(
             self.driver.__class__.__name__,
             self.host)

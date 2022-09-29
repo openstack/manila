@@ -58,9 +58,11 @@ class DataManager(manager.Manager):
     def __init__(self, service_name=None, *args, **kwargs):
         super(DataManager, self).__init__(*args, **kwargs)
         self.busy_tasks_shares = {}
+        self.service_id = None
 
-    def init_host(self):
+    def init_host(self, service_id=None):
         ctxt = context.get_admin_context()
+        self.service_id = service_id
         shares = self.db.share_get_all(ctxt)
         for share in shares:
             if share['task_state'] in constants.BUSY_COPYING_STATES:
