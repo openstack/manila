@@ -49,6 +49,7 @@ class GlanceClientTestCase(test.TestCase):
         data = {
             'glance': {
                 'api_microversion': 'foo_api_microversion',
+                'endpoint_type': 'internal',
                 'region_name': 'foo_region_name'
             }
         }
@@ -63,6 +64,7 @@ class GlanceClientTestCase(test.TestCase):
         mock_client_loader.return_value.get_client.assert_called_once_with(
             fake_context,
             version=data['glance']['api_microversion'],
+            interface=data['glance']['endpoint_type'],
             region_name=data['glance']['region_name']
         )
 
@@ -72,6 +74,7 @@ class GlanceClientTestCase(test.TestCase):
         data = {
             'glance': {
                 'api_microversion': 'foo_api_microversion',
+                'endpoint_type': 'internal',
                 'region_name': 'foo_region_name'
             }
         }
@@ -82,6 +85,7 @@ class GlanceClientTestCase(test.TestCase):
         glance.AUTH_OBJ.get_client.assert_called_once_with(
             fake_context,
             version=data['glance']['api_microversion'],
+            interface=data['glance']['endpoint_type'],
             region_name=data['glance']['region_name']
         )
 

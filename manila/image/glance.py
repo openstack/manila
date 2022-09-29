@@ -35,6 +35,9 @@ glance_opts = [
     cfg.StrOpt('region_name',
                default='RegionOne',
                help='Region name for connecting to glance.'),
+    cfg.StrOpt('endpoint_type',
+               default='publicURL',
+               help='Endpoint type to be used with glance client calls.'),
     ]
 
 CONF = cfg.CONF
@@ -55,6 +58,7 @@ def glanceclient(context):
             client_class=glance_client.Client, cfg_group=GLANCE_GROUP)
     return AUTH_OBJ.get_client(context,
                                version=CONF[GLANCE_GROUP].api_microversion,
+                               interface=CONF[GLANCE_GROUP].endpoint_type,
                                region_name=CONF[GLANCE_GROUP].region_name)
 
 
