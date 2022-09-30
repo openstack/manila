@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    When deploying Manila CephFS NFS with cephadm, the manila share
+    service fails to start with the error "Backend cephfsnfs supports
+    neither IPv4 nor IPv6". This happens because the NFS Ganesha
+    daemon fails to start for some reason, and therefore the driver
+    never gets the location of the NFS Ganesha service that will be
+    used as the backend. We rely on the operator to make sure the CephFS
+    NFS cluster is available when initializing the driver. With this fix in
+    place, we raise an exception to explicitly notify the operator and
+    allow them to take further action.
