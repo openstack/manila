@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    The CephFS NFS driver, specifically the NFSProtocolHelper
+    implementation, was passing a wrong param to the Ceph backend
+    and this was preventing users to add and deny access to the
+    created shares. With this fix, users of the CephFS NFS
+    NFSProtocolHelper can normally create and remove access
+    to their shares.
