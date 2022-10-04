@@ -1299,12 +1299,12 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
         }
 
         access_allow_dict = {
-            "nfs_cluster_id": nfs_clusterid,
+            "cluster_id": nfs_clusterid,
         }
 
         export = {
             "path": "ganesha:/foo/bar",
-            "nfs_cluster_id": nfs_clusterid,
+            "cluster_id": nfs_clusterid,
             "pseudo": "ganesha:/foo/bar",
             "squash": "none",
             "security_label": True,
@@ -1331,7 +1331,7 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
         nfs_clusterid = self._nfscluster_protocol_helper.nfs_clusterid
 
         access_deny_dict = {
-            "nfs_cluster_id": nfs_clusterid,
+            "cluster_id": nfs_clusterid,
             "pseudo_path": "ganesha:/foo/bar"
         }
 
@@ -1346,7 +1346,7 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
         nfs_clusterid = self._nfscluster_protocol_helper.nfs_clusterid
 
         cluster_info_dict = {
-            "nfs_cluster_id": nfs_clusterid,
+            "cluster_id": nfs_clusterid,
         }
 
         cluster_info = {"fs-manila": {
