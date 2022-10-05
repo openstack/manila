@@ -16,7 +16,6 @@
 """
 Share driver test for Macrosan Storage Array.
 """
-
 import ddt
 import requests
 
@@ -25,14 +24,13 @@ from unittest import mock
 
 from manila import context
 from manila import exception
-from manila import test
-
 from manila.share import configuration
 from manila.share import driver
 from manila.share.drivers.macrosan import macrosan_constants as constants
 from manila.share.drivers.macrosan import macrosan_helper
 from manila.share.drivers.macrosan import macrosan_nas
 from manila.share.drivers.macrosan import rest_helper
+from manila import test
 from manila.tests import fake_share
 
 CONF = cfg.CONF
@@ -74,17 +72,20 @@ class MacrosanShareDriverTestCase(test.TestCase):
         self.configuration.macrosan_nas_prefix = 'nas'
         self.configuration.macrosan_share_pools = ['fake_pool']
         self.configuration.macrosan_timeout = 60
+        self.configuration.macrosan_ssl_cert_verify = False
 
         self.configuration.network_config_group = 'fake_network_config_group'
         self.configuration.admin_network_config_group = (
             'fake_admin_network_config_group')
         self.configuration.config_group = 'fake_config_group'
         self.configuration.reserved_share_percentage = 0
+        self.configuration.reserved_share_from_snapshot_percentage = 0
+        self.configuration.reserved_share_extend_percentage = 0
         self.configuration.filter_function = None
         self.configuration.goodness_function = None
         self.driver = macrosan_nas.MacrosanNasDriver(
             configuration=self.configuration)
-        self.resutl_success_storage_pools = {
+        self.result_success_storage_pools = {
             'code': 0,
             'message': 'success',
             'data': [{
@@ -202,17 +203,6 @@ class MacrosanShareDriverTestCase(test.TestCase):
     def test_create_share(self, share_proto):
         share = fake_share.fake_share(
             share_proto=share_proto, host="fake_host@fake_backend#fake_pool")
-        self.mock_object(rest_helper.RestHelper, '_get_all_pool')
-        self.mock_object(
-            macrosan_helper.MacrosanHelper, '_find_pool_info',
-            mock.Mock(return_value={
-                "name": "fake_pool",
-                "totalcapacity": "10G",
-                "allocatedcapacity": "0G",
-                "freecapacity": "10G",
-                "health": "ONLINE",
-                "rw": "off"
-            }))
         mock_cf = self.mock_object(rest_helper.RestHelper,
                                    '_create_filesystem')
         mock_cfd = self.mock_object(rest_helper.RestHelper,
@@ -245,36 +235,9 @@ class MacrosanShareDriverTestCase(test.TestCase):
         else:
             mock_ccs.assert_called_once()
 
-    def test_create_share_pool_fail(self):
-        share = fake_share.fake_share(
-            share_proto='nfs', host="fake_host@fake_backend#fake_pool")
-        self.mock_object(rest_helper.RestHelper, '_get_all_pool')
-        self.mock_object(macrosan_helper.MacrosanHelper, '_find_pool_info',
-                         mock.Mock(return_value=None))
-        self.mock_object(
-            rest_helper.RestHelper, '_create_filesystem')
-        self.mock_object(
-            rest_helper.RestHelper, '_create_nfs_share')
-
-        self.assertRaises(exception.InvalidHost,
-                          self.driver.create_share,
-                          self._context,
-                          share)
-
     def test_create_share_user_error(self):
         share = fake_share.fake_share(
             share_proto='cifs', host="fake_host@fake_backend#fake_pool")
-        self.mock_object(rest_helper.RestHelper, '_get_all_pool')
-        self.mock_object(
-            macrosan_helper.MacrosanHelper, '_find_pool_info',
-            mock.Mock(return_value={
-                "name": "fake_pool",
-                "totalcapacity": "10G",
-                "allocatedcapacity": "0G",
-                "freecapacity": "10G",
-                "health": "ONLINE",
-                "rw": "off"
-            }))
         mock_cf = self.mock_object(rest_helper.RestHelper,
                                    '_create_filesystem')
         mock_cfd = self.mock_object(rest_helper.RestHelper,
@@ -758,7 +721,6 @@ class MacrosanShareDriverTestCase(test.TestCase):
                 'access_type': 'ip',
                 'access_to': '172.0.0.1',
                 'access_level': 'rw',
-
             }
         else:
             access = {
@@ -1310,13 +1272,13 @@ class MacrosanShareDriverTestCase(test.TestCase):
     def test__find_pool_info(self):
         pool_info = self.driver.helper._find_pool_info(
             'fake_pool',
-            self.resutl_success_storage_pools)
+            self.result_success_storage_pools)
         self.assertIsNotNone(pool_info)
 
     def test__find_pool_info_fail(self):
         pool_info = self.driver.helper._find_pool_info(
             'error_pool',
-            self.resutl_success_storage_pools)
+            self.result_success_storage_pools)
         expect = {}
         self.assertEqual(expect, pool_info)
 
@@ -1340,6 +1302,7 @@ class RestHelperTestCase(test.TestCase):
         self.configuration.macrosan_nas_username = 'fake_username'
         self.configuration.macrosan_nas_password = 'fake_password'
         self.configuration.macrosan_timeout = 60
+        self.configuration.macrosan_ssl_cert_verify = False
         self.resthelper = rest_helper.RestHelper(
             configuration=self.configuration)
         self.post = 'POST'
@@ -1372,7 +1335,7 @@ class RestHelperTestCase(test.TestCase):
             'message': 'failed',
             'data': '',
         }
-        self.resutl_success_storage_pools = {
+        self.result_success_storage_pools = {
             'code': 0,
             'message': 'success',
             'data': [{
@@ -1532,7 +1495,7 @@ class RestHelperTestCase(test.TestCase):
         data = {
             'path': 'fake_path',
             'authority': 'ro',
-            'accessClient': '172.0.0.2',
+            'accessClient': '192.0.2.0',
         }
         mock_call.assert_called_once_with(url, data, self.post)
 
@@ -2229,11 +2192,11 @@ class RestHelperTestCase(test.TestCase):
         mock_call = self.mock_object(
             self.resthelper,
             'call',
-            mock.Mock(return_value=self.resutl_success_storage_pools))
+            mock.Mock(return_value=self.result_success_storage_pools))
         self.mock_object(self.resthelper,
                          '_assert_result_code')
         result = self.resthelper._get_all_pool()
-        self.assertEqual(self.resutl_success_storage_pools, result)
+        self.assertEqual(self.result_success_storage_pools, result)
         url = 'rest/storagepool'
         mock_call.assert_called_once_with(url, None, self.get)
 

@@ -36,9 +36,11 @@ class RestHelper(object):
         self._username = self.configuration.macrosan_nas_username
         self._password = self.configuration.macrosan_nas_password
         self.request_timeout = self.configuration.macrosan_timeout
-        # Suppress the Insecure request warnings
-        requests.packages.urllib3.disable_warnings(
-            requests.packages.urllib3.exceptions.InsecureRequestWarning)
+        self.ssl_verify = self.configuration.macrosan_ssl_cert_verify
+        if not self.ssl_verify:
+            # Suppress the Insecure request warnings
+            requests.packages.urllib3.disable_warnings(
+                requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
     @utils.synchronized('macrosan_manila')
     def call(self, url, data, method):
@@ -72,16 +74,20 @@ class RestHelper(object):
 
         if method == 'POST':
             res = requests.post(final_url, data=data, headers=header,
-                                timeout=self.request_timeout, verify=False)
+                                timeout=self.request_timeout,
+                                verify=self.ssl_verify)
         elif method == 'GET':
             res = requests.get(final_url, data=data, headers=header,
-                               timeout=self.request_timeout, verify=False)
+                               timeout=self.request_timeout,
+                               verify=self.ssl_verify)
         elif method == 'PUT':
             res = requests.put(final_url, data=data, headers=header,
-                               timeout=self.request_timeout, verify=False)
+                               timeout=self.request_timeout,
+                               verify=self.ssl_verify)
         elif method == 'DELETE':
             res = requests.delete(final_url, data=data, headers=header,
-                                  timeout=self.request_timeout, verify=False)
+                                  timeout=self.request_timeout,
+                                  verify=self.ssl_verify)
         else:
             msg = (_("Request method %s invalid.") % method)
             raise exception.ShareBackendException(msg=msg)
@@ -130,10 +136,11 @@ class RestHelper(object):
 
     def _create_nfs_share(self, share_path):
         url = 'rest/nfsShare'
+        # IPv4 Address Blocks Reserved for Documentation
         params = {
             'path': share_path,
             'authority': 'ro',
-            'accessClient': '172.0.0.2',
+            'accessClient': '192.0.2.0',
         }
         result = self.call(url, params, 'POST')
 

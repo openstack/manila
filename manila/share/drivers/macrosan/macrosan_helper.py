@@ -61,7 +61,7 @@ class MacrosanHelper(object):
         cifs_status = self.rest._get_cifs_service_status()
         if cifs_status == constants.CIFS_EXCEPTION:
             raise exception.MacrosanBackendExeption(
-                reason=_("cifs service exception.Please check backend"))
+                reason=_("cifs service exception. Please check backend"))
         elif cifs_status == constants.CIFS_NON_CONFIG:
             """need config first, then start service"""
             self.rest._config_cifs_service()
@@ -81,16 +81,7 @@ class MacrosanHelper(object):
     def create_share(self, share, share_server=None):
         """Create a share"""
         pool_name, share_name, proto = self._get_share_instance_pnp(share)
-
         share_size = ''.join((str(share['size']), 'GB'))
-
-        # check pool available
-        storage_pools = self.rest._get_all_pool()
-        pool_info = self._find_pool_info(pool_name, storage_pools)
-        if not pool_info:
-            msg = f'Failed to find information regarding pool {pool_name}'
-            msg = _(msg)
-            raise exception.InvalidHost(reason=msg)
 
         # first create filesystem
         self.rest._create_filesystem(fs_name=share_name,
@@ -112,7 +103,7 @@ class MacrosanHelper(object):
                 self.rest._delete_filesystem(share_name)
                 raise exception.MacrosanBackendExeption(
                     reason=(_(
-                        'Failed to create share %(share)s.Reason:'
+                        'Failed to create share %(share)s. Reason: '
                         'username %(user_name)s error.')
                         % {'share': share_name, 'user_name': user_name}))
 
@@ -328,7 +319,8 @@ class MacrosanHelper(object):
 
         if proto == 'NFS':
             for share_access in access_list:
-                if share_access['access_to'] == '172.0.0.2':
+                # IPv4 Address Blocks Reserved for Documentation
+                if share_access['access_to'] == '192.0.2.0':
                     continue
                 self.rest._delete_nfs_access_rest(share_path,
                                                   share_access['access_to'])
@@ -400,13 +392,10 @@ class MacrosanHelper(object):
 
     def update_share_stats(self, dict_data):
         """Update pools info"""
-
         result = self.rest._get_all_pool()
         dict_data["pools"] = []
         for pool_name in self.pools:
-
             pool_capacity = self._get_pool_capacity(pool_name, result)
-
             if pool_capacity:
                 pool = {
                     'pool_name': pool_name,
@@ -414,9 +403,15 @@ class MacrosanHelper(object):
                     'free_capacity_gb': pool_capacity['freecapacity'],
                     'allocated_capacity_gb':
                         pool_capacity['allocatedcapacity'],
-                    'reserved_percentage': 0,
-                    'reserved_snapshot_percentage': 0,
-                    'reserved_share_extend_percentage': 0,
+                    'reserved_percentage':
+                        self.configuration.reserved_share_percentage,
+                    'reserved_snapshot_percentage':
+                        self.configuration
+                            .reserved_share_from_snapshot_percentage
+                        or self.configuration.reserved_share_percentage,
+                    'reserved_share_extend_percentage':
+                        self.configuration.reserved_share_extend_percentage
+                        or self.configuration.reserved_share_percentage,
                     'dedupe': False,
                     'compression': False,
                     'qos': False,
