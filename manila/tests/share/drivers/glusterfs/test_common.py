@@ -21,6 +21,7 @@ import ddt
 from oslo_config import cfg
 
 from manila import exception
+from manila.privsep import os as privsep_os
 from manila.share.drivers.glusterfs import common
 from manila import test
 from manila.tests import fake_utils
@@ -764,14 +765,15 @@ class GlusterFSCommonTestCase(test.TestCase):
 
     @staticmethod
     def _mount_exec(vol, mnt):
-        return ['mkdir -p %s' % mnt,
-                'mount -t glusterfs %(exp)s %(mnt)s' % {'exp': vol,
-                                                        'mnt': mnt}]
+        return ['mkdir -p %s' % mnt]
 
     def test_mount_gluster_vol(self):
         expected_exec = self._mount_exec(fakeexport, fakemnt)
+        self.mock_object(privsep_os, 'mount')
         ret = common._mount_gluster_vol(self._execute, fakeexport, fakemnt,
                                         False)
+        privsep_os.mount.assert_called_once_with(
+            fakeexport, fakemnt, mount_type='glusterfs')
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
         self.assertIsNone(ret)
 
@@ -779,10 +781,13 @@ class GlusterFSCommonTestCase(test.TestCase):
         def exec_runner(*ignore_args, **ignore_kwargs):
             raise exception.ProcessExecutionError(stderr='already mounted')
         expected_exec = self._mount_exec(fakeexport, fakemnt)
-        fake_utils.fake_execute_set_repliers([('mount', exec_runner)])
+        self.mock_object(
+            privsep_os, 'mount', mock.Mock(side_effect=exec_runner))
         self.assertRaises(exception.GlusterfsException,
                           common._mount_gluster_vol,
                           self._execute, fakeexport, fakemnt, False)
+        privsep_os.mount.assert_called_once_with(
+            fakeexport, fakemnt, mount_type='glusterfs')
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
     def test_mount_gluster_vol_mounted_ensure(self):
@@ -790,11 +795,14 @@ class GlusterFSCommonTestCase(test.TestCase):
             raise exception.ProcessExecutionError(stderr='already mounted')
         expected_exec = self._mount_exec(fakeexport, fakemnt)
         common.LOG.warning = mock.Mock()
-        fake_utils.fake_execute_set_repliers([('mount', exec_runner)])
+        self.mock_object(
+            privsep_os, 'mount', mock.Mock(side_effect=exec_runner))
         ret = common._mount_gluster_vol(self._execute, fakeexport, fakemnt,
                                         True)
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
         self.assertIsNone(ret)
+        self.mock_object(
+            privsep_os, 'mount', mock.Mock(side_effect=exec_runner))
         common.LOG.warning.assert_called_with(
             "%s is already mounted.", fakeexport)
 
@@ -803,15 +811,24 @@ class GlusterFSCommonTestCase(test.TestCase):
         def exec_runner(*ignore_args, **ignore_kwargs):
             raise RuntimeError('fake error')
         expected_exec = self._mount_exec(fakeexport, fakemnt)
-        fake_utils.fake_execute_set_repliers([('mount', exec_runner)])
-        self.assertRaises(RuntimeError, common._mount_gluster_vol,
-                          self._execute, fakeexport, fakemnt, ensure)
+        self.mock_object(
+            privsep_os, 'mount', mock.Mock(side_effect=exec_runner))
+        self.assertRaises(
+            RuntimeError,
+            common._mount_gluster_vol,
+            self._execute,
+            fakeexport,
+            fakemnt,
+            ensure)
+        privsep_os.mount.assert_called_once_with(
+            fakeexport, fakemnt, mount_type='glusterfs')
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
     def test_umount_gluster_vol(self):
-        expected_exec = ['umount %s' % fakemnt]
-        ret = common._umount_gluster_vol(self._execute, fakemnt)
-        self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
+        self.mock_object(privsep_os, 'umount')
+
+        ret = common._umount_gluster_vol(fakemnt)
+        privsep_os.umount.assert_called_once_with(fakemnt)
         self.assertIsNone(ret)
 
     @ddt.data({'in_exc': exception.ProcessExecutionError,
@@ -821,11 +838,10 @@ class GlusterFSCommonTestCase(test.TestCase):
     def test_umount_gluster_vol_fail(self, in_exc, out_exc):
         def exec_runner(*ignore_args, **ignore_kwargs):
             raise in_exc('fake error')
-        expected_exec = ['umount %s' % fakemnt]
-        fake_utils.fake_execute_set_repliers([('umount', exec_runner)])
-        self.assertRaises(out_exc, common._umount_gluster_vol,
-                          self._execute, fakemnt)
-        self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
+        self.mock_object(privsep_os, 'umount',
+                         mock.Mock(side_effect=exec_runner))
+        self.assertRaises(out_exc, common._umount_gluster_vol, fakemnt)
+        privsep_os.umount.assert_called_once_with(fakemnt)
 
     def test_restart_gluster_vol(self):
         gmgr = common.GlusterManager(fakeexport, self._execute, None, None)

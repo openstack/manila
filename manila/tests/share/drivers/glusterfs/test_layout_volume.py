@@ -27,6 +27,7 @@ from oslo_config import cfg
 from manila.common import constants
 from manila import context
 from manila import exception
+from manila.privsep import os as privsep_os
 from manila.share import configuration as config
 from manila.share.drivers.glusterfs import common
 from manila.share.drivers.glusterfs import layout_volume
@@ -449,14 +450,12 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
                           self.glusterfs_target2)
 
     @ddt.data({'vers_minor': '6',
-               'cmd': ['find', '/tmp/tmpKGHKJ', '-mindepth', '1',
-                       '-delete']},
+               'dirs_to_ignore': []},
               {'vers_minor': '7',
-               'cmd': ['find', '/tmp/tmpKGHKJ', '-mindepth', '1', '!',
-                       '-path', '/tmp/tmpKGHKJ/.trashcan', '!', '-path',
-                       '/tmp/tmpKGHKJ/.trashcan/internal_op', '-delete']})
+               'dirs_to_ignore': ['/tmp/tmpKGHKJ/.trashcan',
+                                  '/tmp/tmpKGHKJ/.trashcan/internal_op']})
     @ddt.unpack
-    def test_wipe_gluster_vol(self, vers_minor, cmd):
+    def test_wipe_gluster_vol(self, vers_minor, dirs_to_ignore):
         tmpdir = '/tmp/tmpKGHKJ'
         gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
@@ -466,6 +465,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         self.mock_object(tempfile, 'mkdtemp',
                          mock.Mock(return_value=tmpdir))
         self.mock_object(self.fake_driver, '_execute', mock.Mock())
+        self.mock_object(privsep_os, 'find')
         self.mock_object(common, '_mount_gluster_vol', mock.Mock())
         self.mock_object(common, '_umount_gluster_vol', mock.Mock())
         self.mock_object(shutil, 'rmtree', mock.Mock())
@@ -476,11 +476,10 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         common._mount_gluster_vol.assert_called_once_with(
             self.fake_driver._execute, gmgr1.export,
             tmpdir)
-        kwargs = {'run_as_root': True}
-        self.fake_driver._execute.assert_called_once_with(
-            *cmd, **kwargs)
+        privsep_os.find.assert_called_once_with(
+            tmpdir, dirs_to_ignore=dirs_to_ignore, delete=True)
         common._umount_gluster_vol.assert_called_once_with(
-            self.fake_driver._execute, tmpdir)
+            tmpdir)
         kwargs = {'ignore_errors': True}
         shutil.rmtree.assert_called_once_with(tmpdir,
                                               **kwargs)
@@ -519,11 +518,10 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self._layout.glusterfs_versions = {
             self.glusterfs_server1: ('3', '6')}
-        cmd = ['find', '/tmp/tmpKGHKJ', '-mindepth', '1', '-delete']
         self.mock_object(tempfile, 'mkdtemp',
                          mock.Mock(return_value=tmpdir))
         self.mock_object(
-            self.fake_driver, '_execute',
+            privsep_os, 'find',
             mock.Mock(side_effect=exception.ProcessExecutionError))
         self.mock_object(common, '_mount_gluster_vol', mock.Mock())
         self.mock_object(common, '_umount_gluster_vol', mock.Mock())
@@ -537,11 +535,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         common._mount_gluster_vol.assert_called_once_with(
             self.fake_driver._execute, gmgr1.export,
             tmpdir)
-        kwargs = {'run_as_root': True}
-        self.fake_driver._execute.assert_called_once_with(
-            *cmd, **kwargs)
-        common._umount_gluster_vol.assert_called_once_with(
-            self.fake_driver._execute, tmpdir)
+        common._umount_gluster_vol.assert_called_once_with(tmpdir)
         kwargs = {'ignore_errors': True}
         shutil.rmtree.assert_called_once_with(tmpdir,
                                               **kwargs)

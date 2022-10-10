@@ -29,6 +29,16 @@ def rmdir(dir_path):
 
 
 @manila.privsep.sys_admin_pctxt.entrypoint
+def mkdir(dir_path):
+    processutils.execute('mkdir', dir_path)
+
+
+@manila.privsep.sys_admin_pctxt.entrypoint
+def recursive_forced_rm(dir_path):
+    processutils.execute('rm', '-rf', dir_path)
+
+
+@manila.privsep.sys_admin_pctxt.entrypoint
 def is_data_definition_direct_io_supported(src_str, dest_str):
     try:
         processutils.execute(
@@ -57,8 +67,9 @@ def umount(mount_path):
 
 
 @manila.privsep.sys_admin_pctxt.entrypoint
-def mount(device_name, mount_path):
-    processutils.execute('mount', device_name, mount_path)
+def mount(device_name, mount_path, mount_type=None):
+    extra_args = ['-t', mount_type] if mount_type else []
+    processutils.execute('mount', device_name, mount_path, *extra_args)
 
 
 @manila.privsep.sys_admin_pctxt.entrypoint
@@ -70,3 +81,18 @@ def list_mounts():
 @manila.privsep.sys_admin_pctxt.entrypoint
 def chmod(permission_level_str, mount_path):
     processutils.execute('chmod', permission_level_str, mount_path)
+
+
+@manila.privsep.sys_admin_pctxt.entrypoint
+def find(directory_to_find, min_depth='1', dirs_to_ignore=[], delete=False):
+    ignored_dirs = []
+    extra_args = []
+    for dir in dirs_to_ignore:
+        ignored_dirs += '!', '-path', dir
+
+    if delete:
+        extra_args.append('-delete')
+
+    processutils.execute(
+        'find', directory_to_find, '-mindepth', min_depth, *ignored_dirs,
+        *extra_args)

@@ -24,6 +24,7 @@ from oslo_log import log
 
 from manila import exception
 from manila.i18n import _
+from manila.privsep import os as privsep_os
 from manila.share.drivers.ganesha import utils as ganesha_utils
 from manila import utils
 
@@ -387,9 +388,8 @@ def _mount_gluster_vol(execute, gluster_export, mount_path, ensure=False):
     :param ensure: boolean to allow remounting a volume with a warning
     """
     execute('mkdir', '-p', mount_path)
-    command = ['mount', '-t', 'glusterfs', gluster_export, mount_path]
     try:
-        execute(*command, run_as_root=True)
+        privsep_os.mount(gluster_export, mount_path, mount_type='glusterfs')
     except exception.ProcessExecutionError as exc:
         if ensure and 'already mounted' in exc.stderr:
             LOG.warning("%s is already mounted.", gluster_export)
@@ -399,15 +399,14 @@ def _mount_gluster_vol(execute, gluster_export, mount_path, ensure=False):
             )
 
 
-def _umount_gluster_vol(execute, mount_path):
+def _umount_gluster_vol(mount_path):
     """Unmount a GlusterFS volume at the specified mount path.
 
-    :param execute: command execution function
     :param mount_path: path where volume is mounted
     """
 
     try:
-        execute('umount', mount_path, run_as_root=True)
+        privsep_os.umount(mount_path)
     except exception.ProcessExecutionError as exc:
         msg = (_("Unable to unmount gluster volume. "
                  "mount_dir: %(mount_path)s, Error: %(error)s") %

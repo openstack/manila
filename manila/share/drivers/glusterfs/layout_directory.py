@@ -24,6 +24,7 @@ import xml.etree.cElementTree as etree
 
 from manila import exception
 from manila.i18n import _
+from manila.privsep import os as privsep_os
 from manila.share.drivers.glusterfs import common
 from manila.share.drivers.glusterfs import layout
 from manila import utils
@@ -140,10 +141,9 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
         # probe into getting a NAS protocol helper for the share in order
         # to facilitate early detection of unsupported protocol type
         local_share_path = self._get_local_share_path(share)
-        cmd = ['mkdir', local_share_path]
 
         try:
-            self.driver._execute(*cmd, run_as_root=True)
+            privsep_os.mkdir(local_share_path)
             self._set_directory_quota(share, share['size'])
         except Exception as exc:
             if isinstance(exc, exception.ProcessExecutionError):
@@ -164,9 +164,8 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
     def _cleanup_create_share(self, share_path, share_name):
         """Cleanup share that errored out during its creation."""
         if os.path.exists(share_path):
-            cmd = ['rm', '-rf', share_path]
             try:
-                self.driver._execute(*cmd, run_as_root=True)
+                privsep_os.recursive_forced_rm(share_path)
             except exception.ProcessExecutionError as exc:
                 LOG.error('Cannot cleanup share, %s, that errored out '
                           'during its creation, but exists in GlusterFS '
@@ -176,9 +175,8 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
     def delete_share(self, context, share, share_server=None):
         """Remove a sub-directory/share from the GlusterFS volume."""
         local_share_path = self._get_local_share_path(share)
-        cmd = ['rm', '-rf', local_share_path]
         try:
-            self.driver._execute(*cmd, run_as_root=True)
+            privsep_os.recursive_forced_rm(local_share_path)
         except exception.ProcessExecutionError:
             LOG.exception('Unable to delete share %s', share['name'])
             raise
