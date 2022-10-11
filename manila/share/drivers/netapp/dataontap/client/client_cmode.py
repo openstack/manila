@@ -1562,12 +1562,17 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def _enable_nfs_protocols(self, versions):
         """Set the enabled NFS protocol versions."""
         nfs3 = 'true' if 'nfs3' in versions else 'false'
-        nfs40 = 'true' if 'nfs4.0' in versions else 'false'
+        # SAPCC absence of 'nfs4.0' should not equal 'false'
+        # instead it should mean:
+        #   don't touch existing value for existing vservers
+        #   and set the default value ('false' for ONTAP 9.7 and newer)
+        #   for new vservers
+        # Change back to upstream once all vservers have nfs4.0 disabled!
+        # nfs40 = 'true' if 'nfs4.0' in versions else 'false'
         nfs41 = 'true' if 'nfs4.1' in versions else 'false'
 
         nfs_service_modify_args = {
             'is-nfsv3-enabled': nfs3,
-            'is-nfsv40-enabled': nfs40,
             'is-nfsv41-enabled': nfs41,
             'showmount': 'true',
             'is-v3-ms-dos-client-enabled': 'true',
@@ -1576,6 +1581,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'is-vstorage-enabled': 'true',
         }
 
+        if 'nfs4.0' in versions:
+            nfs_service_modify_args['is-nfsv40-enabled'] = 'true'
         if 'nfs4.1' in versions:
             nfs41_opts = {
                 'is-nfsv41-pnfs-enabled': 'true',
