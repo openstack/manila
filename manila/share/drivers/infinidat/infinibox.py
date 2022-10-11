@@ -72,7 +72,22 @@ infinidat_general_opts = [
                help='Name of the NAS network space on the INFINIDAT '
                'InfiniBox.'),
     cfg.BoolOpt('infinidat_thin_provision', help='Use thin provisioning.',
-                default=True)]
+                default=True),
+    cfg.BoolOpt('infinidat_snapdir_accessible',
+                help=('Controls access to the .snapshot directory. '
+                      'By default, each share allows access to its own '
+                      '.snapshot directory, which contains files and '
+                      'directories of each snapshot taken. To restrict '
+                      'access to the .snapshot directory, this option '
+                      'should be set to False.'),
+                default=True),
+    cfg.BoolOpt('infinidat_snapdir_visible',
+                help=('Controls visibility of the .snapshot directory. '
+                      'By default, each share contains the .snapshot '
+                      'directory, which is hidden on the client side. '
+                      'To make the .snapshot directory visible, this '
+                      'option should be set to True.'),
+                default=False), ]
 
 CONF = cfg.CONF
 CONF.register_opts(infinidat_connection_opts)
@@ -105,8 +120,15 @@ def infinisdk_to_manila_exceptions(func):
 
 
 class InfiniboxShareDriver(driver.ShareDriver):
+    """INFINIDAT InfiniBox Share driver.
 
-    VERSION = '1.1'    # driver version
+    Version history:
+        1.0 - initial release
+        1.1 - added support for TLS/SSL communication
+        1.2 - fixed host assisted migration
+    """
+
+    VERSION = '1.2'    # driver version
 
     def __init__(self, *args, **kwargs):
         super(InfiniboxShareDriver, self).__init__(False, *args, **kwargs)
@@ -361,7 +383,27 @@ class InfiniboxShareDriver(driver.ShareDriver):
 
     @infinisdk_to_manila_exceptions
     def _create_filesystem_export(self, infinidat_filesystem):
-        infinidat_export = infinidat_filesystem.add_export(permissions=[])
+        snapdir_visible = self.configuration.infinidat_snapdir_visible
+        infinidat_export = infinidat_filesystem.add_export(
+            permissions=[], snapdir_visible=snapdir_visible)
+        return self._make_export_locations(infinidat_export)
+
+    @infinisdk_to_manila_exceptions
+    def _ensure_filesystem_export(self, infinidat_filesystem):
+        try:
+            infinidat_export = self._get_export(infinidat_filesystem)
+        except exception.ShareBackendException:
+            return self._create_filesystem_export(infinidat_filesystem)
+        actual = infinidat_export.is_snapdir_visible()
+        expected = self.configuration.infinidat_snapdir_visible
+        if actual is not expected:
+            LOG.debug('Update snapdir_visible for %s: %s -> %s',
+                      infinidat_filesystem.get_name(), actual, expected)
+            infinidat_export.update_snapdir_visible(expected)
+        return self._make_export_locations(infinidat_export)
+
+    @infinisdk_to_manila_exceptions
+    def _make_export_locations(self, infinidat_export):
         export_paths = self._get_full_nfs_export_paths(
             infinidat_export.get_export_path())
         export_locations = [{
@@ -419,10 +461,11 @@ class InfiniboxShareDriver(driver.ShareDriver):
 
         pool = self._get_infinidat_pool()
         size = share['size'] * capacity.GiB    # pylint: disable=no-member
-        share_name = self._make_share_name(share)
-
+        name = self._make_share_name(share)
+        snapdir_accessible = self.configuration.infinidat_snapdir_accessible
         infinidat_filesystem = self._system.filesystems.create(
-            pool=pool, name=share_name, size=size, provtype=self._provtype)
+            pool=pool, name=name, size=size, provtype=self._provtype,
+            snapdir_accessible=snapdir_accessible)
         self._set_manila_object_metadata(infinidat_filesystem, share)
         return self._create_filesystem_export(infinidat_filesystem)
 
@@ -431,8 +474,10 @@ class InfiniboxShareDriver(driver.ShareDriver):
                                    share_server=None, parent_share=None):
         name = self._make_share_name(share)
         infinidat_snapshot = self._get_infinidat_snapshot(snapshot)
+        snapdir_accessible = self.configuration.infinidat_snapdir_accessible
         infinidat_new_share = infinidat_snapshot.create_snapshot(
-            name=name, write_protected=False)
+            name=name, write_protected=False,
+            snapdir_accessible=snapdir_accessible)
         self._extend_share(infinidat_new_share, share, share['size'])
         return self._create_filesystem_export(infinidat_new_share)
 
@@ -442,7 +487,9 @@ class InfiniboxShareDriver(driver.ShareDriver):
         share = snapshot['share']
         infinidat_filesystem = self._get_infinidat_filesystem(share)
         name = self._make_snapshot_name(snapshot)
-        infinidat_snapshot = infinidat_filesystem.create_snapshot(name=name)
+        snapdir_accessible = self.configuration.infinidat_snapdir_accessible
+        infinidat_snapshot = infinidat_filesystem.create_snapshot(
+            name=name, snapdir_accessible=snapdir_accessible)
         # snapshot is created in the same size as the original share, so no
         # extending is needed
         self._set_manila_object_metadata(infinidat_snapshot, snapshot)
@@ -465,18 +512,32 @@ class InfiniboxShareDriver(driver.ShareDriver):
         self._delete_share(snapshot, is_snapshot=True)
 
     def ensure_share(self, context, share, share_server=None):
+        """Ensure that share is properly configured and exported."""
         # will raise ShareResourceNotFound if the share was not found:
         infinidat_filesystem = self._get_infinidat_filesystem(share)
-        try:
-            infinidat_export = self._get_export(infinidat_filesystem)
-            return self._get_full_nfs_export_paths(
-                infinidat_export.get_export_path())
-        except exception.ShareBackendException:
-            # export not found, need to re-export
-            message = ("missing export for share %(share)s, trying to "
-                       "re-export")
-            LOG.info(message, {"share": share})
-            return self._create_filesystem_export(infinidat_filesystem)
+        actual = infinidat_filesystem.is_snapdir_accessible()
+        expected = self.configuration.infinidat_snapdir_accessible
+        if actual is not expected:
+            LOG.debug('Update snapdir_accessible for %s: %s -> %s',
+                      infinidat_filesystem.get_name(), actual, expected)
+            infinidat_filesystem.update_field('snapdir_accessible', expected)
+        return self._ensure_filesystem_export(infinidat_filesystem)
+
+    def ensure_shares(self, context, shares):
+        """Invoked to ensure that shares are exported."""
+        updates = {}
+        for share in shares:
+            updates[share['id']] = {
+                'export_locations': self.ensure_share(context, share)}
+        return updates
+
+    def get_backend_info(self, context):
+        snapdir_accessible = self.configuration.infinidat_snapdir_accessible
+        snapdir_visible = self.configuration.infinidat_snapdir_visible
+        return {
+            'snapdir_accessible': snapdir_accessible,
+            'snapdir_visible': snapdir_visible
+        }
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
