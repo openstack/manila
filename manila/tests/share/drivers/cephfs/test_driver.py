@@ -1115,6 +1115,8 @@ class NFSProtocolHelperTestCase(test.TestCase):
 
         self.assertEqual(set(configured_ip_version),
                          set(helper.get_configured_ip_versions()))
+        self.assertEqual(set(configured_ip_version),
+                         helper.configured_ip_versions)
 
     def test_get_configured_ip_versions_already_set(self):
         fake_conf = configuration.Configuration(None)
