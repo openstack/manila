@@ -2928,7 +2928,8 @@ class NetAppCmodeFileStorageLibrary(object):
                 snapmirror.get('relationship-status') in in_progress_status):
             return constants.REPLICA_STATE_OUT_OF_SYNC
 
-        if snapmirror.get('mirror-state') != 'snapmirrored':
+        if (replica['replica_state'] == constants.REPLICA_STATE_OUT_OF_SYNC or
+                snapmirror.get('mirror-state') != 'snapmirrored'):
             try:
                 vserver_client.resume_snapmirror_vol(
                     snapmirror['source-vserver'],
@@ -2940,7 +2941,7 @@ class NetAppCmodeFileStorageLibrary(object):
                     snapmirror['source-volume'],
                     vserver,
                     share_name)
-                return constants.REPLICA_STATE_OUT_OF_SYNC
+                return constants.STATUS_ERROR
             except netapp_api.NaApiError:
                 LOG.exception("Could not resync snapmirror.")
                 return constants.STATUS_ERROR
