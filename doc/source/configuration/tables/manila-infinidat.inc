@@ -23,4 +23,8 @@
    * - ``infinidat_nas_network_space_name`` = ``None``
      - (String) Name of the NAS network space on the INFINIDAT InfiniBox.
    * - ``infinidat_thin_provision`` = ``True``
-     - (Boolean) Use thin provisioning
+     - (Boolean) Use thin provisioning.
+   * - ``infinidat_snapdir_accessible`` = ``True``
+     - (Boolean) Controls access to the ``.snapshot`` directory. By default, each share allows access to its own ``.snapshot`` directory, which contains files and directories of each snapshot taken. To restrict access to the ``.snapshot`` directory, this option should be set to ``False``.
+   * - ``infinidat_snapdir_visible`` = ``False``
+     - (Boolean) Controls visibility of the ``.snapshot`` directory. By default, each share contains the ``.snapshot`` directory, which is hidden on the client side. To make the ``.snapshot`` directory visible, this option should be set to ``True``.

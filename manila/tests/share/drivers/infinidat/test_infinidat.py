@@ -16,8 +16,10 @@
 
 import copy
 import functools
+import itertools
 from unittest import mock
 
+import ddt
 from oslo_utils import units
 
 from manila.common import constants
@@ -89,27 +91,33 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
     def setUp(self):
         super(InfiniboxDriverTestCaseBase, self).setUp()
 
-        # create mock configuration
-        self.configuration = mock.Mock(spec=configuration.Configuration)
-        self.configuration.infinibox_hostname = 'mockbox'
-        self.configuration.infinidat_pool_name = 'mockpool'
-        self.configuration.infinidat_nas_network_space_name = 'mockspace'
-        self.configuration.infinidat_thin_provision = True
-        self.configuration.infinibox_login = 'user'
-        self.configuration.infinibox_password = 'pass'
-        self.configuration.infinidat_use_ssl = False
-        self.configuration.infinidat_suppress_ssl_warnings = False
-
-        self.configuration.network_config_group = 'test_network_config_group'
-        self.configuration.admin_network_config_group = (
-            'test_admin_network_config_group')
-        self.configuration.reserved_share_percentage = 0
-        self.configuration.reserved_share_from_snapshot_percentage = 0
-        self.configuration.filter_function = None
-        self.configuration.goodness_function = None
-        self.configuration.driver_handles_share_servers = False
-        self.configuration.max_over_subscription_ratio = 2
-        self.mock_object(self.configuration, 'safe_get', self._fake_safe_get)
+        self.configuration = configuration.Configuration(None)
+        self.configuration.append_config_values(
+            infinibox.infinidat_connection_opts)
+        self.configuration.append_config_values(
+            infinibox.infinidat_auth_opts)
+        self.configuration.append_config_values(
+            infinibox.infinidat_general_opts)
+        self.override_config('infinibox_hostname', 'mockbox')
+        self.override_config('infinidat_pool_name', 'mockpool')
+        self.override_config('infinidat_nas_network_space_name', 'mockspace')
+        self.override_config('infinidat_thin_provision', True)
+        self.override_config('infinibox_login', 'user')
+        self.override_config('infinibox_password', 'pass')
+        self.override_config('infinidat_use_ssl', False)
+        self.override_config('infinidat_suppress_ssl_warnings', False)
+        self.override_config('network_config_group',
+                             'test_network_config_group')
+        self.override_config('admin_network_config_group',
+                             'test_admin_network_config_group')
+        self.override_config('reserved_share_percentage', 0)
+        self.override_config('reserved_share_from_snapshot_percentage', 0)
+        self.override_config('filter_function', None)
+        self.override_config('goodness_function', None)
+        self.override_config('driver_handles_share_servers', False)
+        self.override_config('max_over_subscription_ratio', 2)
+        self.override_config('infinidat_snapdir_accessible', True)
+        self.override_config('infinidat_snapdir_visible', False)
 
         self.driver = infinibox.InfiniboxShareDriver(
             configuration=self.configuration)
@@ -171,9 +179,6 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
     def _raise_infinisdk(self, *args, **kwargs):
         raise FakeInfinisdkException()
 
-    def _fake_safe_get(self, value):
-        return getattr(self.configuration, value, None)
-
     def _fake_get_permissions(self):
         return self._mock_export_permissions
 
@@ -189,6 +194,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         return result
 
 
+@ddt.ddt
 class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     def _generate_mock_metadata(self, share):
         return {"system": "openstack",
@@ -212,14 +218,14 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           self.driver.do_setup, None)
 
     def test_no_auth_parameters(self):
-        self.configuration.infinibox_login = None
-        self.configuration.infinibox_password = None
+        self.override_config('infinibox_login', None)
+        self.override_config('infinibox_password', None)
         self.assertRaises(exception.BadConfigurationException,
                           self.driver.do_setup, None)
 
     def test_empty_auth_parameters(self):
-        self.configuration.infinibox_login = ""
-        self.configuration.infinibox_password = ""
+        self.override_config('infinibox_login', '')
+        self.override_config('infinibox_password', '')
         self.assertRaises(exception.BadConfigurationException,
                           self.driver.do_setup, None)
 
@@ -244,10 +250,10 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                 'infinisdk.InfiniBox')
     @mock.patch('requests.packages.urllib3')
     def test_do_setup_ssl_enabled(self, urllib3, infinibox):
+        self.override_config('infinidat_use_ssl', True)
+        self.override_config('infinidat_suppress_ssl_warnings', True)
         auth = (self.configuration.infinibox_login,
                 self.configuration.infinibox_password)
-        self.configuration.infinidat_use_ssl = True
-        self.configuration.infinidat_suppress_ssl_warnings = True
         self.driver.do_setup(None)
         expected = [
             mock.call(urllib3.exceptions.InsecureRequestWarning),
@@ -419,21 +425,28 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           self.driver._get_infinidat_access_level,
                           {'access_level': 'invalid'})
 
-    def test_create_share(self):
-        # This test uses the default infinidat_thin_provision = True setting:
+    @ddt.data(*itertools.product((True, False), (True, False), (True, False)))
+    @ddt.unpack
+    def test_create_share(self, thin_provision, snapdir_accessible,
+                          snapdir_visible):
+        self.override_config('infinidat_thin_provision', thin_provision)
+        self.override_config('infinidat_snapdir_accessible',
+                             snapdir_accessible)
+        self.override_config('infinidat_snapdir_visible', snapdir_visible)
+        if thin_provision:
+            provtype = 'THIN'
+        else:
+            provtype = 'THICK'
+        self.driver.do_setup(None)
         self.driver.create_share(None, test_share)
-        self._system.filesystems.create.assert_called_once()
+        share_name = self.driver._make_share_name(test_share)
+        share_size = test_share.size * self._capacity_module.GiB
+        self._system.filesystems.create.assert_called_once_with(
+            pool=self._mock_pool, name=share_name, size=share_size,
+            provtype=provtype, snapdir_accessible=snapdir_accessible)
         self._validate_metadata(test_share)
         self._mock_filesystem.add_export.assert_called_once_with(
-            permissions=[])
-
-    def test_create_share_thick_provisioning(self):
-        self.configuration.infinidat_thin_provision = False
-        self.driver.create_share(None, test_share)
-        self._system.filesystems.create.assert_called_once()
-        self._validate_metadata(test_share)
-        self._mock_filesystem.add_export.assert_called_once_with(
-            permissions=[])
+            permissions=[], snapdir_visible=snapdir_visible)
 
     def test_create_share_pool_not_found(self):
         self._system.pools.safe_get.return_value = None
@@ -505,12 +518,19 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.ShareBackendException,
                           self.driver.extend_share, test_share, 8)
 
-    def test_create_snapshot(self):
+    @ddt.data(*itertools.product((True, False), (True, False)))
+    @ddt.unpack
+    def test_create_snapshot(self, snapdir_accessible, snapdir_visible):
+        self.override_config('infinidat_snapdir_accessible',
+                             snapdir_accessible)
+        self.override_config('infinidat_snapdir_visible', snapdir_visible)
+        snapshot_name = self.driver._make_snapshot_name(test_snapshot)
         self.driver.create_snapshot(None, test_snapshot)
-        self._mock_filesystem.create_snapshot.assert_called_once()
+        self._mock_filesystem.create_snapshot.assert_called_once_with(
+            name=snapshot_name, snapdir_accessible=snapdir_accessible)
         self._validate_metadata(test_snapshot)
         self._mock_filesystem.add_export.assert_called_once_with(
-            permissions=[])
+            permissions=[], snapdir_visible=snapdir_visible)
 
     def test_create_snapshot_metadata(self):
         self._mock_filesystem.create_snapshot.return_value = (
@@ -537,12 +557,21 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.ShareBackendException,
                           self.driver.create_snapshot, None, test_snapshot)
 
-    def test_create_share_from_snapshot(self):
+    @ddt.data(*itertools.product((True, False), (True, False)))
+    @ddt.unpack
+    def test_create_share_from_snapshot(self, snapdir_accessible,
+                                        snapdir_visible):
+        self.override_config('infinidat_snapdir_accessible',
+                             snapdir_accessible)
+        self.override_config('infinidat_snapdir_visible', snapdir_visible)
+        share_name = self.driver._make_share_name(original_test_clone)
         self.driver.create_share_from_snapshot(None, original_test_clone,
                                                test_snapshot)
-        self._mock_filesystem.create_snapshot.assert_called_once()
+        self._mock_filesystem.create_snapshot.assert_called_once_with(
+            name=share_name, write_protected=False,
+            snapdir_accessible=snapdir_accessible)
         self._mock_filesystem.add_export.assert_called_once_with(
-            permissions=[])
+            permissions=[], snapdir_visible=snapdir_visible)
 
     def test_create_share_from_snapshot_bigger_size(self):
         test_clone = copy.copy(original_test_clone)
@@ -588,17 +617,43 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.ShareBackendException,
                           self.driver.delete_snapshot, None, test_snapshot)
 
-    def test_ensure_share(self):
+    @ddt.data(*itertools.product((True, False), (True, False),
+                                 (True, False), (True, False)))
+    @ddt.unpack
+    def test_ensure_share(self, snapdir_accessible_expected,
+                          snapdir_accessible_actual,
+                          snapdir_visible_expected,
+                          snapdir_visible_actual):
+        self.override_config('infinidat_snapdir_accessible',
+                             snapdir_accessible_expected)
+        self.override_config('infinidat_snapdir_visible',
+                             snapdir_visible_expected)
+        self._mock_filesystem.is_snapdir_accessible.return_value = (
+            snapdir_accessible_actual)
+        self._mock_export.is_snapdir_visible.return_value = (
+            snapdir_visible_actual)
         self.driver.ensure_share(None, test_share)
         self._mock_filesystem.get_exports.assert_called_once()
         self._mock_export.get_export_path.assert_called_once()
+        if snapdir_accessible_actual is not snapdir_accessible_expected:
+            self._mock_filesystem.update_field.assert_called_once_with(
+                'snapdir_accessible', snapdir_accessible_expected)
+        else:
+            self._mock_filesystem.update_field.assert_not_called()
+        if snapdir_visible_actual is not snapdir_visible_expected:
+            self._mock_export.update_snapdir_visible.assert_called_once_with(
+                snapdir_visible_expected)
+        else:
+            self._mock_export.update_snapdir_visible.assert_not_called()
 
-    def test_ensure_share_export_missing(self):
+    @ddt.data(True, False)
+    def test_ensure_share_export_missing(self, snapdir_visible):
+        self.override_config('infinidat_snapdir_visible', snapdir_visible)
         self._mock_filesystem.get_exports.return_value = []
         self.driver.ensure_share(None, test_share)
         self._mock_filesystem.get_exports.assert_called_once()
         self._mock_filesystem.add_export.assert_called_once_with(
-            permissions=[])
+            permissions=[], snapdir_visible=snapdir_visible)
 
     def test_ensure_share_share_doesnt_exist(self):
         self._system.filesystems.safe_get.return_value = None
@@ -616,6 +671,25 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
             self._raise_infinisdk)
         self.assertRaises(exception.ShareBackendException,
                           self.driver.ensure_share, None, test_share)
+
+    def test_ensure_shares(self):
+        test_shares = [test_share]
+        test_updates = self.driver.ensure_shares(None, test_shares)
+        self.assertEqual(len(test_shares), len(test_updates))
+
+    @ddt.data(*itertools.product((True, False), (True, False)))
+    @ddt.unpack
+    def test_get_backend_info(self, snapdir_accessible, snapdir_visible):
+        self.override_config('infinidat_snapdir_accessible',
+                             snapdir_accessible)
+        self.override_config('infinidat_snapdir_visible',
+                             snapdir_visible)
+        expected = {
+            'snapdir_accessible': snapdir_accessible,
+            'snapdir_visible': snapdir_visible
+        }
+        result = self.driver.get_backend_info(None)
+        self.assertEqual(expected, result)
 
     def test_get_network_allocations_number(self):
         # Mostly to increase test coverage. The return value should always be 0

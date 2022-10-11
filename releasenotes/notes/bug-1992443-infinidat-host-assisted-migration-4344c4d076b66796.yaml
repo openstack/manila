@@ -1,0 +1,21 @@
+---
+features:
+  - |
+    The special `.snapshot` directories for shares created by the
+    Infinidat driver can now be controlled through configuration options:
+    `infinidat_snapdir_accessible` and `infinidat_snapdir_visible`.
+    By default, each share allows access to its own `.snapshot` directory,
+    which contains files and directories of each snapshot taken. To restrict
+    access to the `.snapshot` directory, the `infinidat_snapdir_accessible`
+    should be set to `False`. The `infinidat_snapdir_visible` option
+    controls visibility of the `.snapshot` directory. By default, the
+    `.snapshot` directory is hidden. To make the `.snapshot` directory
+    visible on the client side, this option should be set to `True`.
+fixes:
+  - |
+    Infinidat Driver `bug #1992443
+    <https://bugs.launchpad.net/manila/+bug/1992443>`_:
+    Fixed an issue in Infinidat driver to support host assisted migration.
+    The `snapdir_visible` filesystem property must be disabled to hide
+    `.snapshot` directory on the client side. However, this behavior can
+    be changed using the `infinidat_snapdir_visible` configuration option.
