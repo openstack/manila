@@ -2575,12 +2575,20 @@ class NetAppClientCmodeTestCase(test.TestCase):
             self.assertTrue(os.path.exists(cert_pem_path),
                             f'{cert_pem_path} not found')
 
-            with open(cert_pem_path, 'r', encoding='utf-8') as f:
-                cert_pem_data = f.read()
+            try:
+                # expect PEM string
+                with open(cert_pem_path, 'r', encoding='utf-8') as f:
+                    cert_x509 = x509.load_pem_x509_certificate(
+                        bytes(f.read(), encoding='utf-8'))
+            except UnicodeDecodeError as e:
+                # if it is not a string, most likely it is a DER certificate
+                if e.reason == 'invalid start byte':
+                    with open(cert_pem_path, 'rb') as f:
+                        cert_x509 = x509.load_der_x509_certificate(f.read())
+                else:
+                    raise
 
-            cert = x509.load_pem_x509_certificate(
-                bytes(cert_pem_data, encoding='utf-8'))
-            cert_will_expire_at = cert.not_valid_after
+            cert_will_expire_at = cert_x509.not_valid_after
             until_expiry = cert_will_expire_at - datetime.datetime.utcnow()
 
             self.assertTrue(

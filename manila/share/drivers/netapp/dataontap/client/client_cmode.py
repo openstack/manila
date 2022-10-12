@@ -2094,15 +2094,30 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def configure_certificates(self):
+        from cryptography.hazmat.primitives.serialization import Encoding
+        from cryptography import x509
+
         for cert_pem_path in self._cert_pem_paths:
             if not os.path.exists(cert_pem_path):
                 msg = _("Certificate is missing.")
                 raise exception.NetAppException(msg)
-            with open(cert_pem_path, 'r', encoding='utf-8') as f:
-                cert_pem_data = f.read()
+
+            try:
+                # expect PEM string
+                with open(cert_pem_path, 'r', encoding='utf-8') as f:
+                    cert_x509 = x509.load_pem_x509_certificate(
+                        bytes(f.read(), encoding='utf-8'))
+            except UnicodeDecodeError as e:
+                # if it is not a string, most likely it is a DER certificate
+                if e.reason == 'invalid start byte':
+                    with open(cert_pem_path, 'rb') as f:
+                        cert_x509 = x509.load_der_x509_certificate(f.read())
+                else:
+                    raise
 
             api_args = {
-                'certificate': cert_pem_data,
+                'certificate': cert_x509.public_bytes(
+                    Encoding.PEM).decode('utf-8'),
                 'type': 'server_ca'
             }
 
