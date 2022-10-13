@@ -1228,6 +1228,9 @@ class ShareManager(manager.SchedulerDependentManager):
             # NOTE(ganso): Cleaning up error'ed destination share instance from
             # database. It is assumed that driver cleans up leftovers in
             # backend when migration fails.
+            share_types.revert_allocated_share_type_quotas_during_migration(
+                context, src_share_instance,
+                src_share_instance['share_type_id'])
             self._migration_delete_instance(context, dest_share_instance['id'])
             self._restore_migrating_snapshots_status(
                 context, src_share_instance['id'])
@@ -1329,7 +1332,8 @@ class ShareManager(manager.SchedulerDependentManager):
     def migration_driver_continue(self, context):
         """Invokes driver to continue migration of shares."""
 
-        instances = self.db.share_instances_get_all_by_host(context, self.host)
+        instances = self.db.share_instances_get_all_by_host(
+            context, self.host, with_share_data=True)
 
         for instance in instances:
 
@@ -1388,6 +1392,10 @@ class ShareManager(manager.SchedulerDependentManager):
 
                 except Exception:
 
+                    (share_types.
+                        revert_allocated_share_type_quotas_during_migration(
+                            context, src_share_instance,
+                            dest_share_instance['share_type_id']))
                     # NOTE(ganso): Cleaning up error'ed destination share
                     # instance from database. It is assumed that driver cleans
                     # up leftovers in backend when migration fails.
@@ -1651,6 +1659,10 @@ class ShareManager(manager.SchedulerDependentManager):
                                           src_share_instance['id'],
                                           dest_share_instance['id'])
 
+        share_types.revert_allocated_share_type_quotas_during_migration(
+            context, dest_share_instance, src_share_instance['share_type_id'],
+            allow_deallocate_from_current_type=True)
+
         self._migration_delete_instance(context, src_share_instance['id'])
 
     def _migration_complete_instance(self, context, share_ref,
@@ -1736,6 +1748,9 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.db.share_update(
                     context, share_ref['id'],
                     {'task_state': constants.TASK_STATE_MIGRATION_ERROR})
+                # NOTE(carloss): No need to deallocate quotas allocated during
+                # the migration request, since both share instances still exist
+                # even they are set to an error state.
                 raise exception.ShareMigrationFailed(reason=msg)
         else:
             try:
@@ -1746,6 +1761,9 @@ class ShareManager(manager.SchedulerDependentManager):
                 msg = _("Host-assisted migration completion failed for"
                         " share %s.") % share_ref['id']
                 LOG.exception(msg)
+                # NOTE(carloss): No need to deallocate quotas allocated during
+                # the migration request, since both source and destination
+                # instances will still exist
                 self.db.share_update(
                     context, share_ref['id'],
                     {'task_state': constants.TASK_STATE_MIGRATION_ERROR})
@@ -1841,6 +1859,12 @@ class ShareManager(manager.SchedulerDependentManager):
                                           src_share_instance['id'],
                                           dest_share_instance['id'])
 
+        # NOTE(carloss): Won't revert allocated quotas for the share type here
+        # because the delete_instance_and_wait method will end up calling the
+        # delete_share_instance method here in the share manager. When the
+        # share instance deletion is requested in the share manager, Manila
+        # itself will take care of deallocating the existing quotas for the
+        # share instance
         helper.delete_instance_and_wait(src_share_instance)
 
     @utils.require_driver_initialized
@@ -1904,6 +1928,9 @@ class ShareManager(manager.SchedulerDependentManager):
         self.db.share_update(
             context, share_ref['id'],
             {'task_state': constants.TASK_STATE_MIGRATION_CANCELLED})
+
+        share_types.revert_allocated_share_type_quotas_during_migration(
+            context, src_share_instance, dest_share_instance['share_type_id'])
 
         LOG.info("Share Migration for share %s"
                  " was cancelled.", share_ref['id'])

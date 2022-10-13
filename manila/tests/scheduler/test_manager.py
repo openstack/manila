@@ -33,6 +33,7 @@ from manila.scheduler.drivers import base
 from manila.scheduler.drivers import filter
 from manila.scheduler import manager
 from manila.share import rpcapi as share_rpcapi
+from manila.share import share_types
 from manila import test
 from manila.tests import db_utils
 from manila.tests import fake_share as fakes
@@ -281,6 +282,9 @@ class SchedulerManagerTestCase(test.TestCase):
         self.mock_object(base.Scheduler,
                          'host_passes_filters',
                          mock.Mock(return_value=host))
+        self.mock_object(
+            share_types,
+            'revert_allocated_share_type_quotas_during_migration')
 
         self.assertRaises(
             TypeError, self.manager.migrate_share_to_host,
@@ -293,6 +297,8 @@ class SchedulerManagerTestCase(test.TestCase):
         share_rpcapi.ShareAPI.migration_start.assert_called_once_with(
             self.context, share, host.host, False, True, True, False, True,
             'fake_net_id', 'fake_type_id')
+        (share_types.revert_allocated_share_type_quotas_during_migration.
+            assert_called_once_with(self.context, share, 'fake_type_id'))
 
     @ddt.data(exception.NoValidHost(reason='fake'), TypeError)
     def test_migrate_share_to_host_exception(self, exc):
@@ -307,6 +313,9 @@ class SchedulerManagerTestCase(test.TestCase):
             mock.Mock(side_effect=exc))
         self.mock_object(db, 'share_update')
         self.mock_object(db, 'share_instance_update')
+        self.mock_object(
+            share_types,
+            'revert_allocated_share_type_quotas_during_migration')
 
         capture = (exception.NoValidHost if
                    isinstance(exc, exception.NoValidHost) else TypeError)
@@ -325,6 +334,8 @@ class SchedulerManagerTestCase(test.TestCase):
         db.share_instance_update.assert_called_once_with(
             self.context, share.instance['id'],
             {'status': constants.STATUS_AVAILABLE})
+        (share_types.revert_allocated_share_type_quotas_during_migration.
+            assert_called_once_with(self.context, share, 'fake_type_id'))
 
     def test_manage_share(self):
 

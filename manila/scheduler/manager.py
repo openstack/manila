@@ -39,8 +39,10 @@ from manila.message import message_field
 from manila import quota
 from manila import rpc
 from manila.share import rpcapi as share_rpcapi
+from manila.share import share_types
 
 LOG = log.getLogger(__name__)
+QUOTAS = quota.QUOTAS
 
 scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
                                   default='manila.scheduler.drivers.'
@@ -179,6 +181,8 @@ class SchedulerManager(manager.Manager):
                 'migrate_share_to_host',
                 {'task_state': constants.TASK_STATE_MIGRATION_ERROR},
                 context, ex, request_spec)
+            share_types.revert_allocated_share_type_quotas_during_migration(
+                context, share_ref, new_share_type_id)
 
         try:
             tgt_host = self.driver.host_passes_filters(

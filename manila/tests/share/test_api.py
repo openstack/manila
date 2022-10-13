@@ -3374,6 +3374,92 @@ class ShareAPITestCase(test.TestCase):
 
         self.assertEqual(fake_el, out)
 
+    @ddt.data(True, False)
+    def test__modify_quotas_for_share_migration(self, new_replication_type):
+        extra_specs = (
+            {'replication_type': 'readable'} if new_replication_type else {})
+        share = db_utils.create_share()
+        share_type = db_utils.create_share_type(extra_specs=extra_specs)
+
+        expected_deltas = {
+            'project_id': share['project_id'],
+            'user_id': share['user_id'],
+            'shares': 1,
+            'gigabytes': share['size'],
+            'share_type_id': share_type['id']
+        }
+
+        if new_replication_type:
+            expected_deltas.update({
+                'share_replicas': 1,
+                'replica_gigabytes': share['size'],
+            })
+        reservations = 'reservations'
+
+        mock_specs_get = self.mock_object(
+            self.api, 'get_share_attributes_from_share_type',
+            mock.Mock(return_value=extra_specs))
+        mock_reserve = self.mock_object(
+            quota.QUOTAS, 'reserve', mock.Mock(return_value=reservations))
+        mock_commit = self.mock_object(quota.QUOTAS, 'commit')
+
+        self.api._modify_quotas_for_share_migration(
+            self.context, share, share_type)
+
+        mock_specs_get.assert_called_once_with(share_type)
+        mock_reserve.assert_called_once_with(
+            self.context, **expected_deltas)
+        mock_commit.assert_called_once_with(
+            self.context, reservations, project_id=share['project_id'],
+            user_id=share['user_id'], share_type_id=share_type['id'])
+
+    @ddt.data(
+        ('replica_gigabytes', exception.ShareReplicaSizeExceedsAvailableQuota),
+        ('share_replicas', exception.ShareReplicasLimitExceeded),
+        ('gigabytes', exception.ShareSizeExceedsAvailableQuota)
+    )
+    @ddt.unpack
+    def test__modify_quotas_for_share_migration_reservation_failed(
+            self, over_resource, expected_exception):
+        extra_specs = {'replication_type': 'readable'}
+        share = db_utils.create_share()
+        share_type = db_utils.create_share_type(extra_specs=extra_specs)
+        expected_deltas = {
+            'project_id': share['project_id'],
+            'user_id': share['user_id'],
+            'share_replicas': 1,
+            'shares': 1,
+            'gigabytes': share['size'],
+            'replica_gigabytes': share['size'],
+            'share_type_id': share_type['id']
+        }
+        usages = {
+            over_resource: {
+                'reserved': 'fake',
+                'in_use': 'fake'
+            }
+        }
+        quotas = {
+            over_resource: 'fake'
+        }
+
+        effect_exc = exception.OverQuota(
+            overs=[over_resource], usages=usages, quotas=quotas)
+        mock_specs_get = self.mock_object(
+            self.api, 'get_share_attributes_from_share_type',
+            mock.Mock(return_value=extra_specs))
+        mock_reserve = self.mock_object(
+            quota.QUOTAS, 'reserve', mock.Mock(side_effect=effect_exc))
+
+        self.assertRaises(
+            expected_exception,
+            self.api._modify_quotas_for_share_migration,
+            self.context, share, share_type
+        )
+
+        mock_specs_get.assert_called_once_with(share_type)
+        mock_reserve.assert_called_once_with(self.context, **expected_deltas)
+
     @ddt.data({'share_type': True, 'share_net': True, 'dhss': True},
               {'share_type': False, 'share_net': True, 'dhss': True},
               {'share_type': False, 'share_net': False, 'dhss': True},
@@ -3434,6 +3520,7 @@ class ShareAPITestCase(test.TestCase):
         self.mock_object(db_api, 'share_update')
         self.mock_object(db_api, 'service_get_by_args',
                          mock.Mock(return_value=service))
+        self.mock_object(share_api.API, '_modify_quotas_for_share_migration')
 
         if share_type:
             self.api.migration_start(self.context, share, host, False, True,
@@ -3459,6 +3546,9 @@ class ShareAPITestCase(test.TestCase):
         db_api.share_instance_update.assert_called_once_with(
             self.context, share.instance['id'],
             {'status': constants.STATUS_MIGRATING})
+        if share_type:
+            (share_api.API._modify_quotas_for_share_migration.
+                assert_called_once_with(self.context, share, fake_type_2))
 
     def test_migration_start_with_new_share_type_limit(self):
         host = 'fake2@backend#pool'
@@ -3516,6 +3606,7 @@ class ShareAPITestCase(test.TestCase):
         self.mock_object(db_api, 'share_update')
         self.mock_object(db_api, 'service_get_by_args',
                          mock.Mock(return_value=service))
+        self.mock_object(share_api.API, '_modify_quotas_for_share_migration')
 
         self.assertRaises(exception.InvalidShare,
                           self.api.migration_start,
@@ -3582,6 +3673,7 @@ class ShareAPITestCase(test.TestCase):
             host='fake@backend#pool', share_type_id=fake_type['id'])
 
         self.mock_object(utils, 'validate_service_host')
+        self.mock_object(share_api.API, '_modify_quotas_for_share_migration')
 
         self.assertRaises(
             exception.InvalidInput, self.api.migration_start, self.context,

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed the issue of not accounting replica quotas while triggering the
+    migration for a given share. Please refer to the
+    `Launchpad bug #1910752 <https://bugs.launchpad.net/manila/+bug/1910752>`_
+    for more details.
