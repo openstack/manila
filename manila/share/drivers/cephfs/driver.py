@@ -1112,7 +1112,8 @@ class NFSProtocolHelper(NFSProtocolHelperMixin, ganesha.GaneshaNASHelper2):
         return {
             'Name': 'Ceph',
             'User_Id': ceph_auth_id,
-            'Secret_Access_Key': auth_result
+            'Secret_Access_Key': auth_result,
+            'Filesystem': self.volname
         }
 
     def _cleanup_fsal_hook(self, base, share, access):
