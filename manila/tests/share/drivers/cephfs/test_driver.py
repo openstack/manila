@@ -1149,7 +1149,8 @@ class NFSProtocolHelperTestCase(test.TestCase):
         expected_ret = {
             "Name": "Ceph",
             "User_Id": "ganesha-fakeid",
-            "Secret_Access_Key": "ganesha-zorilla"
+            "Secret_Access_Key": "ganesha-zorilla",
+            "Filesystem": self._nfs_helper.volname
         }
 
         driver.rados_command.return_value = 'ganesha-zorilla'
