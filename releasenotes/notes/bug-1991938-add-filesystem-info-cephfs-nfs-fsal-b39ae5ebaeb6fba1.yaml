@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Add the filesystem info in the exports created by the CephFS NFS driver.
+    This fixes inconsistencies when deploying Manila with CephFS NFS with
+    multiple filesystems.
+
