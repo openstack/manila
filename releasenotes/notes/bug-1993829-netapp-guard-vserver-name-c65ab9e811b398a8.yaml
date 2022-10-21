@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp driver: Added a guard on getting share server backend detail vserver
+    name when trying to reuse share server. Please refer to
+    `Launchpad Bug #1993829 <https://bugs.launchpad.net/manila/+bug/1993829>`_.
