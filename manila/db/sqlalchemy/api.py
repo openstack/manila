@@ -4251,6 +4251,8 @@ def share_server_create(context, values):
     values = ensure_model_dict_has_id(values)
 
     server_ref = models.ShareServer()
+    # updated_at is needed for judgement of automatic cleanup
+    server_ref.updated_at = timeutils.utcnow()
     server_ref.update(values)
     session = get_session()
     with session.begin():

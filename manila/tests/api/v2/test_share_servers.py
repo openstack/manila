@@ -147,7 +147,7 @@ class ShareServerControllerTest(test.TestCase):
             'share_server': {
                 'id': share_server['id'],
                 'project_id': 'fake',
-                'updated_at': None,
+                'updated_at': share_server['updated_at'],
                 'status': constants.STATUS_ACTIVE,
                 'host': 'fake_host',
                 'share_network_id':
