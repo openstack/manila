@@ -1177,7 +1177,7 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
         export_ips = []
 
         argdict = {
-            "nfs_cluster_id": nfs_clusterid,
+            "cluster_id": nfs_clusterid,
         }
 
         output = rados_command(self.rados_client, "nfs cluster info", argdict)
@@ -1206,7 +1206,7 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
         """Allow access to the share."""
         export = {
             "path": self._get_export_path(share),
-            "nfs_cluster_id": self.nfs_clusterid,
+            "cluster_id": self.nfs_clusterid,
             "pseudo": self._get_export_pseudo_path(share),
             "squash": "none",
             "security_label": True,
@@ -1220,7 +1220,7 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
         }
 
         argdict = {
-            "nfs_cluster_id": self.nfs_clusterid,
+            "cluster_id": self.nfs_clusterid,
         }
 
         inbuf = json.dumps(export).encode('utf-8')
@@ -1231,7 +1231,7 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
         """Deny access to the share."""
 
         argdict = {
-            "nfs_cluster_id": self.nfs_clusterid,
+            "cluster_id": self.nfs_clusterid,
             "pseudo_path": self._get_export_pseudo_path(share)
         }
 
