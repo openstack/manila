@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp driver has been fixed to the error in `launchpad bug 1995733
+    <https://bugs.launchpad.net/manila/+bug/1995733>`_ preventing share server
+    cleanup with active directory security service.
