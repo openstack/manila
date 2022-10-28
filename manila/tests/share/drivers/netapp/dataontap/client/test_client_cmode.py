@@ -897,9 +897,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'admin-password': fake.CIFS_SECURITY_SERVICE['password'],
             'admin-username': fake.CIFS_SECURITY_SERVICE['user'],
         }
+        cifs_server_delete_force_args = {
+            'force-account-delete': 'true',
+        }
         self.vserver_client.send_request.assert_has_calls([
             mock.call('cifs-server-delete', cifs_server_delete_args),
-            mock.call('cifs-server-delete')])
+            mock.call('cifs-server-delete', cifs_server_delete_force_args)])
         self.assertEqual(0, client_cmode.LOG.error.call_count)
 
     def test_list_cluster_nodes(self):

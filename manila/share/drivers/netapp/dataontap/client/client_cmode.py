@@ -524,7 +524,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                         LOG.error('CIFS server does not exist for '
                                   'Vserver %s.', vserver_name)
                     else:
-                        vserver_client.send_request('cifs-server-delete')
+                        LOG.debug('CIFS server force deleted for '
+                                  'Vserver %s.', vserver_name)
+                        force_args = {
+                            'force-account-delete': 'true'
+                        }
+                        vserver_client.send_request('cifs-server-delete',
+                                                    force_args)
             elif service['type'].lower() == 'kerberos':
                 vserver_client.disable_kerberos(service)
 
