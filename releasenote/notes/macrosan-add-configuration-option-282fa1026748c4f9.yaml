@@ -1,0 +1,5 @@
+---
+upgrade:
+  - Added a new configuration option ``macrosan_ssl_cert_verfiy`` to configure
+    whether the driver should only allow verified ssl certificates. This option
+    defaults to ``False`` to allow backwards compatibility.
