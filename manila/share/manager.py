@@ -2828,6 +2828,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         if replica_state in (constants.REPLICA_STATE_IN_SYNC,
                              constants.REPLICA_STATE_OUT_OF_SYNC,
+                             constants.REPLICA_STATE_SYNC_IN_PROGRESS,
                              constants.STATUS_ERROR):
             self.db.share_replica_update(context, share_replica['id'],
                                          {'replica_state': replica_state})
