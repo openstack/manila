@@ -1746,7 +1746,10 @@ class API(base.Base):
     def get(self, context, share_id):
         rv = self.db.share_get(context, share_id)
         if not rv['is_public']:
-            policy.check_policy(context, 'share', 'get', rv)
+            authorized = policy.check_policy(
+                context, 'share', 'get', rv, do_raise=False)
+            if not authorized:
+                raise exception.NotFound()
         return rv
 
     def get_all(self, context, search_opts=None, sort_key='created_at',

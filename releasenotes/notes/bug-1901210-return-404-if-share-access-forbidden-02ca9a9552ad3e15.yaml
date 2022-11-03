@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The GET /shares/{share_id} API now responds with HTTP 404 (Not Found)
+    for inaccessible resources. See `bug 1901210
+    <https://launchpad.net/bugs/1901210>`_ for further information.
