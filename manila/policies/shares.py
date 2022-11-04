@@ -13,6 +13,7 @@
 from oslo_log import versionutils
 from oslo_policy import policy
 
+from manila.common import constants
 from manila.policies import base
 
 
@@ -458,6 +459,17 @@ shares_policies = [
         check_str=base.ADMIN,
         scope_types=['project'],
         description="Force extend share.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/shares/{share_id}/action',
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % constants.POLICY_EXTEND_BEYOND_MAX_SHARE_SIZE,
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description="Extend share beyond max share size.",
         operations=[
             {
                 'method': 'POST',
