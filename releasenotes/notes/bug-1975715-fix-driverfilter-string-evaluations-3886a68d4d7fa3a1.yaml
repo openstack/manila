@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Goodness_function expects integer or float else raise parseException. This
+    causes example such as "(share.share_proto == 'CIFS') ? 100 : 50" to fail
+    during evaluation. Fix it by adding support of string evalution.
