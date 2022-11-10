@@ -186,13 +186,14 @@ class DataMotionSession(object):
             source_share_obj)
 
         # 1. Create SnapMirror relationship
-        # TODO(ameade): Change the schedule from hourly to a config value
+        config = get_backend_configuration(dest_backend)
+        schedule = config.netapp_snapmirror_schedule
         dest_client.create_snapmirror_vol(src_vserver,
                                           src_volume_name,
                                           dest_vserver,
                                           dest_volume_name,
                                           relationship_type,
-                                          schedule='hourly')
+                                          schedule=schedule)
 
         # 2. Initialize async transfer of the initial data
         dest_client.initialize_snapmirror_vol(src_vserver,
@@ -477,12 +478,13 @@ class DataMotionSession(object):
         # 3. create
         # TODO(ameade): Update the schedule if needed.
         relationship_type = na_utils.get_relationship_type(is_flexgroup)
+        schedule = replica_config.netapp_snapmirror_schedule
         replica_client.create_snapmirror_vol(new_src_vserver,
                                              new_src_volume_name,
                                              replica_vserver,
                                              replica_volume_name,
                                              relationship_type,
-                                             schedule='hourly')
+                                             schedule=schedule)
 
         # 4. resync
         replica_client.resync_snapmirror_vol(new_src_vserver,

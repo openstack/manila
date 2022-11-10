@@ -232,6 +232,11 @@ netapp_data_motion_opts = [
                default=3600,  # One Hour
                help='The maximum time in seconds to wait for a snapmirror '
                     'release when breaking snapmirror relationships.'),
+    cfg.StrOpt('netapp_snapmirror_schedule',
+               default='hourly',  # One Hour
+               help='An interval in either minutes or hours used used to '
+                    'update the SnapMirror relationship. Few valid values '
+                    'are: 5min, 30min, hourly etc.'),
     cfg.IntOpt('netapp_snapmirror_last_transfer_size_limit',
                min=512,
                default=1024,  # One MB
