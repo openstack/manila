@@ -319,7 +319,8 @@ class DataMotionSession(object):
                 source_vserver=source_vserver, dest_vserver=dest_vserver,
                 desired_attributes=['relationship-status', 'mirror-state']
             )[0]
-            if snapmirror.get('relationship-status') != 'quiesced':
+            if snapmirror.get('relationship-status') not in ['quiesced',
+                                                             'paused']:
                 raise exception.ReplicationException(
                     reason="Snapmirror relationship is not quiesced.")
 
@@ -361,7 +362,8 @@ class DataMotionSession(object):
                 source_volume=src_volume, dest_volume=dest_volume,
                 desired_attributes=['relationship-status', 'mirror-state']
             )[0]
-            if snapmirror.get('relationship-status') != 'quiesced':
+            if snapmirror.get('relationship-status') not in ['quiesced',
+                                                             'paused']:
                 raise exception.ReplicationException(
                     reason="Snapmirror relationship is not quiesced.")
 

@@ -3492,6 +3492,7 @@ VOLUME_ITEM_SIMPLE_RESPONSE_REST = {
         "state": "enabled",
         "compression": "true"
     },
+    "state": "online",
 }
 
 VOLUME_LIST_SIMPLE_RESPONSE_REST = {
@@ -3948,6 +3949,50 @@ FAKE_CIFS_RECORDS = {
     "num_records": 2
 }
 
+FAKE_VOL_MOVE_STATUS = {
+    "records": [
+        {
+            "svm": {
+                "_links": {
+                    "self": {
+                        "href": "/api/resourcelink"
+                    }
+                },
+                "name": "fake_svm",
+                "uuid": "02c9e252-41be-11e9-81d5-00a0986138f7"
+            },
+            "uuid": "fake_uuid",
+            "name": "fake_name",
+            "movement": {
+                "state": "success",
+                "percent_complete": 100
+            },
+        }
+    ],
+    "num_records": 1,
+}
+
+REST_SIMPLE_RESPONSE = {
+    "records": [
+        {
+            'uuid': FAKE_UUID
+        }
+    ]
+}
+
+FAKE_GET_VOLUME_CLONE_REST = [
+    {
+        "uuid": FAKE_UUID,
+        "name": VOLUME_NAMES[0],
+        "clone": {
+            "parent_volume": {
+                "name": VOLUME_NAMES[1]
+            }
+        },
+        "num_records": 1,
+    }
+]
+
 VOLUME = {
     "name": "fake_volume_name",
     "uuid": "028baa66-41bd-11e9-81d5-00a0986138f7",
@@ -4002,6 +4047,18 @@ FAKE_SVM_AGGREGATES = {
                     "name": SHARE_AGGREGATE_NAMES_LIST[1],
                     "available_size": 727211110400
                 },
+            ]
+        }
+    ]
+}
+
+FAKE_AGGREGATES_RESPONSE = {
+    "records": [
+        {
+            "aggregates": [
+                {
+                    "name": SHARE_AGGREGATE_NAME
+                }
             ]
         }
     ]
