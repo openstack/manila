@@ -2924,8 +2924,9 @@ class NetAppCmodeFileStorageLibrary(object):
         # one of the in progress transfer states, because the storage will
         # answer with an error.
         in_progress_status = ['preparing', 'transferring', 'finalizing']
-        if (snapmirror.get('relationship-status') in in_progress_status):
-            return constants.REPLICA_STATE_SYNC_IN_PROGRESS
+        if (snapmirror.get('mirror-state') != 'snapmirrored' and
+                snapmirror.get('relationship-status') in in_progress_status):
+            return constants.REPLICA_STATE_OUT_OF_SYNC
 
         if (replica['replica_state'] == constants.REPLICA_STATE_OUT_OF_SYNC or
                 snapmirror.get('mirror-state') != 'snapmirrored'):
@@ -2940,7 +2941,7 @@ class NetAppCmodeFileStorageLibrary(object):
                     snapmirror['source-volume'],
                     vserver,
                     share_name)
-                return constants.REPLICA_STATE_SYNC_IN_PROGRESS
+                return constants.STATUS_ERROR
             except netapp_api.NaApiError:
                 LOG.exception("Could not resync snapmirror.")
                 return constants.STATUS_ERROR
