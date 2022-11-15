@@ -4249,7 +4249,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.VSERVER2, 'fake_volume', fake.VSERVER1, fake.SHARE['name']
         )
 
-        self.assertEqual(constants.STATUS_ERROR, result)
+        self.assertEqual(constants.REPLICA_STATE_OUT_OF_SYNC, result)
 
     def test_update_replica_state_snapmirror_still_initializing(self):
         fake_snapmirror = {
