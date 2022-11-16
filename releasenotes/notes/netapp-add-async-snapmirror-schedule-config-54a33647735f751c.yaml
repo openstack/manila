@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added new config option `netapp_snapmirror_schedule` which allows admin to
+    configure netapp asynchronous snapmirror schedule. Admin must make sure
+    schedule is already created on the backend filer.
