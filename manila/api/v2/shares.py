@@ -472,6 +472,8 @@ class ShareController(wsgi.Controller,
             kwargs['enable_ipv6'] = True
         if req.api_version_request >= api_version.APIVersionRequest("2.45"):
             kwargs['enable_metadata'] = True
+        if req.api_version_request >= api_version.APIVersionRequest("2.74"):
+            kwargs['allow_on_error_state'] = True
         return self._allow_access(*args, **kwargs)
 
     @wsgi.Controller.api_version('2.0', '2.6')
@@ -484,7 +486,11 @@ class ShareController(wsgi.Controller,
     @wsgi.action('deny_access')
     def deny_access(self, req, id, body):
         """Remove share access rule."""
-        return self._deny_access(req, id, body)
+        args = (req, id, body)
+        kwargs = {}
+        if req.api_version_request >= api_version.APIVersionRequest("2.74"):
+            kwargs['allow_on_error_state'] = True
+        return self._deny_access(*args, **kwargs)
 
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-access_list')

@@ -2451,7 +2451,7 @@ class ShareActionsTest(test.TestCase):
         self.assertEqual(expected_access, access['access'])
         share_api.API.allow_access.assert_called_once_with(
             req.environ['manila.context'], share, 'user',
-            'clemsontigers', 'rw', None)
+            'clemsontigers', 'rw', None, False)
 
     @ddt.data(*itertools.product(
         set(['2.28', api_version._MAX_API_VERSION]),
@@ -2498,10 +2498,17 @@ class ShareActionsTest(test.TestCase):
                 {
                     'metadata': {},
                 })
+
+        if api_version.APIVersionRequest(version) >= (
+                api_version.APIVersionRequest("2.74")):
+            allow_on_error_state = True
+        else:
+            allow_on_error_state = False
+
         self.assertEqual(expected_access, access['access'])
         share_api.API.allow_access.assert_called_once_with(
             req.environ['manila.context'], share, 'user',
-            'clemsontigers', 'rw', None)
+            'clemsontigers', 'rw', None, allow_on_error_state)
 
     def test_deny_access(self):
         def _stub_deny_access(*args, **kwargs):

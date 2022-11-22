@@ -188,6 +188,8 @@ REST_API_VERSION_HISTORY = """
     * 2.71 - Added 'updated_at' field in share instance show API output.
     * 2.72 - Added new option ``share-network`` to share replica creare API.
     * 2.73 - Added Share Snapshot Metadata to Metadata API
+    * 2.74 - Allow/deny share access rule even if share replicas are in
+             'error' state.
 
 """
 
@@ -195,7 +197,7 @@ REST_API_VERSION_HISTORY = """
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.73"
+_MAX_API_VERSION = "2.74"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 
