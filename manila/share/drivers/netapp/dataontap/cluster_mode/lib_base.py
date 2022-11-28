@@ -2952,7 +2952,7 @@ class NetAppCmodeFileStorageLibrary(object):
         if (last_update_timestamp and
             (timeutils.is_older_than(
                 datetime.datetime.utcfromtimestamp(last_update_timestamp)
-                .isoformat(), 3600))):
+                .isoformat(), 1200))):
             return constants.REPLICA_STATE_OUT_OF_SYNC
 
         replica_backend = share_utils.extract_host(replica['host'],
