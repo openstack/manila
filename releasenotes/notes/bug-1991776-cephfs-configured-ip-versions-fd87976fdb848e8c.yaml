@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug 1991776 <https://launchpad.net/bugs/1991776>`_ was fixed within the
+    CephFS driver. The driver no longer emits repeated warnings concerning
+    supported IP versions when using the NFS protocol.

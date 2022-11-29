@@ -1096,5 +1096,5 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
                             "a hostname (rather than IP address) was supplied "
                             "in 'cephfs_ganesha_server_ip' or "
                             "in 'cephfs_ganesha_export_ips'.")
-                return [4, 6]
+                self.configured_ip_versions = {4, 6}
         return list(self.configured_ip_versions)
