@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Deployers now can specify ``[glance]endpoint_type`` configuration option
+    (defaults to ``publicURL`` for backward compatibility)
+    so that Manila uses Glance endpoint other than the public one
+    (see `bug 1991396 <https://bugs.launchpad.net/manila/+bug/1991396>`_).
