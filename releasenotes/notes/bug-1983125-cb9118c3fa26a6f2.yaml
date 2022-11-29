@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1983125 <https://bugs.launchpad.net/manila/+bug/1983125>`_: Fixed
+    the remaining reference to a deprecated quota option in code, which was
+    causing a warning message.
