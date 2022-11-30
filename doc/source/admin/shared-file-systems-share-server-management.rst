@@ -211,3 +211,9 @@ their size and amount of built instances.
    If one of these limits is reached during a request that requires a share
    server to be provided, manila will create a new share server to place such
    request.
+
+.. note::
+   The limits can be ignored when placing a new share created from parent
+   snapshot in the same host as the parent. For this scenario, the share server
+   must be the same, so it does not take the limit in account, reusing the
+   share server anyway.
