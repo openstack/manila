@@ -309,3 +309,13 @@ class GaneshaNFSHelper(ganesha.GaneshaNASHelper):
         return {"Hostname": self.gluster_manager.host,
                 "Volume": self.gluster_manager.volume,
                 "Volpath": self.gluster_manager.path}
+
+    def update_access(self, base_path, share, add_rules, delete_rules,
+                      recovery=False):
+        """Update access rules."""
+
+        context = None
+        access_rules = []
+        super(GaneshaNFSHelper, self).update_access(
+            context, share, access_rules, add_rules,
+            delete_rules, share_server=None)
