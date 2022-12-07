@@ -434,7 +434,7 @@ def parse_boolean_extra_spec(extra_spec_key, extra_spec_value):
         raise exception.InvalidExtraSpec(reason=msg)
 
 
-def provision_filter_on_size(context, share_type, size):
+def provision_filter_on_size(context, share_type, size, operation='create'):
     """This function filters share provisioning requests on size limits.
 
     If a share type has provisioning size min/max set, this filter
@@ -443,9 +443,12 @@ def provision_filter_on_size(context, share_type, size):
     """
     if not share_type:
         share_type = get_default_share_type()
-    if share_type:
-        size_int = int(size)
-        extra_specs = share_type.get('extra_specs', {})
+        if not share_type:
+            return
+
+    size_int = int(size)
+    extra_specs = share_type.get('extra_specs', {})
+    if operation in ['create', 'shrink']:
         min_size = extra_specs.get(MIN_SIZE_KEY)
         if min_size and size_int < int(min_size):
             msg = _("Specified share size of '%(req_size)d' is less "
@@ -454,6 +457,7 @@ def provision_filter_on_size(context, share_type, size):
                     ) % {'req_size': size_int, 'min_size': min_size,
                          'sha_type': share_type['name']}
             raise exception.InvalidInput(reason=msg)
+    if operation in ['create']:
         max_size = extra_specs.get(MAX_SIZE_KEY)
         if max_size and size_int > int(max_size):
             msg = _("Specified share size of '%(req_size)d' is "
@@ -462,6 +466,7 @@ def provision_filter_on_size(context, share_type, size):
                     ) % {'req_size': size_int, 'max_size': max_size,
                          'sha_type': share_type['name']}
             raise exception.InvalidInput(reason=msg)
+    if operation in ['extend']:
         max_extend_size = extra_specs.get(MAX_EXTEND_SIZE_KEY)
         if max_extend_size and size_int > int(max_extend_size):
             msg = _("Specified share size of '%(req_size)d' is "

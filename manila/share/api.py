@@ -2271,7 +2271,8 @@ class API(base.Base):
         except (exception.InvalidShareType, exception.ShareTypeNotFound):
             share_type = None
         if not context.is_admin:
-            share_types.provision_filter_on_size(context, share_type, new_size)
+            share_types.provision_filter_on_size(context, share_type, new_size,
+                                                 operation='extend')
 
         replicas = self.db.share_replicas_get_all_by_share(
             context, share['id'])
@@ -2380,7 +2381,8 @@ class API(base.Base):
                 context, share['instance']['share_type_id'])
         except (exception.InvalidShareType, exception.ShareTypeNotFound):
             share_type = None
-        share_types.provision_filter_on_size(context, share_type, new_size)
+        share_types.provision_filter_on_size(context, share_type, new_size,
+                                             operation='shrink')
 
         self.update(context, share, {'status': constants.STATUS_SHRINKING})
         self.share_rpcapi.shrink_share(context, share, new_size)

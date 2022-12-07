@@ -591,6 +591,6 @@ class ShareTypesTestCase(test.TestCase):
         type5 = share_types.get_share_type_by_name(self.context, 'type5')
         self.assertRaises(exception.InvalidInput,
                           share_types.provision_filter_on_size,
-                          self.context, type5, "100")
+                          self.context, type5, "100", operation="extend")
         share_types.provision_filter_on_size(self.context, type5, "99")
         share_types.provision_filter_on_size(self.context, type5, "1")
