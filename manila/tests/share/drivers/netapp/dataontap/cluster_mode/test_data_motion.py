@@ -799,6 +799,7 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
             dest_volume=self.fake_dest_vol_name,
             desired_attributes=['relationship-status',
                                 'mirror-state',
+                                'schedule',
                                 'source-vserver',
                                 'source-volume',
                                 'last-transfer-end-timestamp',

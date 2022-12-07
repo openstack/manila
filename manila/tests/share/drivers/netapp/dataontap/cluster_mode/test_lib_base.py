@@ -3991,6 +3991,19 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         data_motion.get_client_for_backend.assert_called_once_with(
             fake.BACKEND_NAME, vserver_name=fake.VSERVER1)
 
+    @ddt.data({'seconds': 3600, 'schedule': 'hourly'},
+              {'seconds': (5 * 3600), 'schedule': '5hourly'},
+              {'seconds': (30 * 60), 'schedule': '30minute'},
+              {'seconds': (2 * 24 * 3600), 'schedule': '2DAY'},
+              {'seconds': 3600, 'schedule': 'fake_shedule'},
+              {'seconds': 3600, 'schedule': 'fake2'},
+              {'seconds': 3600, 'schedule': '10fake'})
+    @ddt.unpack
+    def test__convert_schedule_to_seconds(self, seconds, schedule):
+        expected_return = seconds
+        actual_return = self.library._convert_schedule_to_seconds(schedule)
+        self.assertEqual(expected_return, actual_return)
+
     def test_update_replica_state_no_snapmirror_share_creating(self):
         vserver_client = mock.Mock()
         self.mock_object(vserver_client, 'volume_exists',
@@ -4209,6 +4222,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_update_replica_state_stale_snapmirror(self):
         fake_snapmirror = {
             'mirror-state': 'snapmirrored',
+            'schedule': self.library.configuration.netapp_snapmirror_schedule,
             'last-transfer-end-timestamp': '%s' % float(
                 timeutils.utcnow_ts() - 10000)
         }
@@ -4224,6 +4238,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_is_readable_replica',
                          mock.Mock(return_value=False))
+        mock_backend_config = fake.get_config_cmode()
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
 
         result = self.library.update_replica_state(None, [fake.SHARE],
                                                    fake.SHARE, None, [],
@@ -4234,6 +4251,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_update_replica_state_in_sync(self):
         fake_snapmirror = {
             'mirror-state': 'snapmirrored',
+            'schedule': self.library.configuration.netapp_snapmirror_schedule,
             'relationship-status': 'idle',
             'last-transfer-end-timestamp': '%s' % float(time.time())
         }
@@ -4276,6 +4294,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_update_replica_state_in_sync_with_snapshots(self):
         fake_snapmirror = {
             'mirror-state': 'snapmirrored',
+            'schedule': self.library.configuration.netapp_snapmirror_schedule,
             'relationship-status': 'idle',
             'last-transfer-end-timestamp': '%s' % float(time.time())
         }
