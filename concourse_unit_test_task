@@ -1,5 +1,5 @@
 export DEBIAN_FRONTEND=noninteractive && \
-export UPPER_CONSTRAINTS_FILE=https://raw.githubusercontent.com/sapcc/requirements/stable/xena-m3/upper-constraints.txt && \
+export TOX_CONSTRAINTS_FILE=https://raw.githubusercontent.com/sapcc/requirements/stable/xena-m3/upper-constraints.txt && \
 apt-get update && \
 apt-get install -y build-essential python3-pip python3-dev git libpcre++-dev gettext && \
 pip3 install tox "six>=1.14.0" && \
