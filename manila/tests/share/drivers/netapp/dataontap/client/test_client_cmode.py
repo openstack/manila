@@ -4859,7 +4859,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertEqual(10, self.client._unmount_volume.call_count)
         self.assertEqual(0, client_cmode.LOG.debug.call_count)
-        self.assertEqual(10, client_cmode.LOG.warning.call_count)
+        self.assertEqual(11, client_cmode.LOG.warning.call_count)
 
     def test_delete_volume(self):
 
