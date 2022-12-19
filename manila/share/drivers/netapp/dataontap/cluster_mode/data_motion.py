@@ -352,6 +352,16 @@ class DataMotionSession(object):
         try:
             wait_for_quiesced()
         except exception.ReplicationException:
+            msg_args = {
+                'timeout': config.netapp_snapmirror_quiesce_timeout,
+                'src_volume': src_volume,
+                'dest_volume': dest_volume,
+            }
+            msg = (
+                'failed to quiesce snapmirror in %(timeout)s seconds: '
+                'abort snapmirror from %(src_volume)s to %(dest_volume)s'
+            ) % msg_args
+            LOG.warning(msg)
             dest_client.abort_snapmirror_vol(src_vserver,
                                              src_volume,
                                              dest_vserver,
