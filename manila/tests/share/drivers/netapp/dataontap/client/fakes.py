@@ -46,6 +46,7 @@ NODE_NAMES = ('fake_node1', 'fake_node2')
 VSERVER_NAME = 'fake_vserver'
 VSERVER_NAME_2 = 'fake_vserver_2'
 VSERVER_PEER_NAME = 'fake_vserver_peer'
+VSERVER_PEER_STATE = 'peered'
 ADMIN_VSERVER_NAME = 'fake_admin_vserver'
 NODE_VSERVER_NAME = 'fake_node_vserver'
 NFS_VERSIONS = ['nfs3', 'nfs4.0']
@@ -546,6 +547,16 @@ LDAP_AD_SECURITY_SERVICE = {
     'server': None,
 }
 
+LDAP_AD_SECURITY_SERVICE_WITH_SERVER = {
+    'id': 'fake_id',
+    'type': 'ldap',
+    'user': 'fake_user',
+    'password': 'fake_password',
+    'domain': None,
+    'ou': 'fake_ou',
+    'dns_ip': 'fake_dns_ip',
+    'server': '10.10.10.1',
+}
 
 KERBEROS_SECURITY_SERVICE = {
     'type': 'kerberos',
@@ -592,7 +603,7 @@ NET_PORT_GET_RESPONSE_NO_VLAN = etree.XML("""
       <net-port-info>
         <administrative-duplex>auto</administrative-duplex>
         <administrative-flowcontrol>full</administrative-flowcontrol>
-        <administrative-speed>auto</administrative-speed>
+        <administrative-speed>auto</administrative-speed>f
         <broadcast-domain>%(domain)s</broadcast-domain>
         <health-status>healthy</health-status>
         <ignore-health-status>false</ignore-health-status>
@@ -1007,6 +1018,18 @@ LIFS = (
 
 NFS_LIFS = [
     {'address': IP_ADDRESS,
+     'home-node': NODE_NAME,
+     'home-port': VLAN_PORT,
+     'interface-name': LIF_NAME,
+     'netmask': NETMASK,
+     'role': 'data',
+     'vserver': VSERVER_NAME,
+     },
+]
+
+NFS_LIFS_REST = [
+    {'uuid': FAKE_UUID,
+     'address': IP_ADDRESS,
      'home-node': NODE_NAME,
      'home-port': VLAN_PORT,
      'interface-name': LIF_NAME,
@@ -3507,10 +3530,14 @@ SVMS_LIST_SIMPLE_RESPONSE_REST = {
         {
             "uuid": "fake_uuid",
             "name": VSERVER_NAME,
+            "subtype": VSERVER_TYPE_DEFAULT,
+            "state": VSERVER_STATE,
         },
         {
             "uuid": "fake_uuid_2",
             "name": VSERVER_NAME_2,
+            "subtype": VSERVER_TYPE_DEFAULT,
+            "state": VSERVER_STATE,
         },
     ],
     "num_records": 2,
@@ -3993,6 +4020,538 @@ FAKE_GET_VOLUME_CLONE_REST = [
     }
 ]
 
+VSERVER_DATA_LIST_RESPONSE_REST = {
+    'records': [
+        {
+            'name': VSERVER_NAME
+        },
+        {
+            'name': VSERVER_NAME_2
+        }
+    ],
+    'num_records': 2,
+}
+
+PERF_COUNTER_LIST_INFO_WAFL_RESPONSE_REST = {
+    'name': 'wafl',
+    'counter_schemas': [
+        {
+            'name': 'cp_phase_times',
+            'description': 'Array of percentage time spent in different phases'
+                           + ' of Consistency Point (CP).',
+            'type': 'percent',
+            'unit': 'percent',
+            'denominator': {
+                'name': 'total_cp_msecs'
+            }
+        }
+    ],
+}
+
+PERF_COUNTER_TOTAL_CP_MSECS_LABELS_REST = [
+    'cp_setup', 'cp_pre_p0', 'cp_p0_snap_del', 'cp_p1_clean', 'cp_p1_quota',
+    'cp_ipu_disk_add', 'cp_p2v_inofile', 'cp_p2v_ino_pub', 'cp_p2v_ino_pri',
+    'cp_p2v_fsinfo', 'cp_p2v_dlog1', 'cp_p2v_dlog2', 'cp_p2v_refcount',
+    'cp_p2v_topaa', 'cp_p2v_df_scores_sub', 'cp_p2v_bm', 'cp_p2v_snap',
+    'cp_p2v_df_scores', 'cp_p2v_volinfo', 'cp_p2v_cont', 'cp_p2a_inofile',
+    'cp_p2a_ino', 'cp_p2a_dlog1', 'cp_p2a_hya', 'cp_p2a_dlog2',
+    'cp_p2a_fsinfo', 'cp_p2a_ipu_bitmap_grow', 'cp_p2a_refcount',
+    'cp_p2a_topaa', 'cp_p2a_hyabc', 'cp_p2a_bm', 'cp_p2a_snap',
+    'cp_p2a_volinfo', 'cp_p2_flush', 'cp_p2_finish', 'cp_p3_wait',
+    'cp_p3v_volinfo', 'cp_p3a_volinfo', 'cp_p3_finish', 'cp_p4_finish',
+    'cp_p5_finish',
+]
+
+PERF_COUNTER_TOTAL_CP_MSECS_LABELS_RESULT = [
+    label[3:] for label in PERF_COUNTER_TOTAL_CP_MSECS_LABELS_REST
+]
+
+PERF_COUNTER_TOTAL_CP_MSECS_VALUES_REST = [
+    0, 3112, 3, 0, 0, 3, 757, 0, 99, 0, 26, 0, 22, 1, 0, 194, 4, 224, 359, 222,
+    0, 0, 0, 0, 0, 0, 82, 0, 0, 0, 0, 0, 0, 62, 0, 133, 16, 35, 334219, 43,
+    2218, 20, 0,
+]
+
+PERF_COUNTER_TABLE_ROWS_WAFL = {
+    'records': [
+        {
+            'id': NODE_NAME + ':wafl',
+            'counters': [
+                {
+                    'name': 'cp_phase_times',
+                    'values': PERF_COUNTER_TOTAL_CP_MSECS_VALUES_REST,
+                    'labels': PERF_COUNTER_TOTAL_CP_MSECS_LABELS_REST
+                }
+            ],
+        }
+    ],
+    'num_records': 1,
+}
+
+PERF_COUNTER_DOMAIN_BUSY_LABELS = [
+    'exempt', 'ha', 'host_os', 'idle', 'kahuna', 'kahuna_legacy', 'none',
+    'nwk_exempt', 'network', 'protocol', 'raid', 'raid_exempt', 'sm_exempt',
+    'ssan_exempt', 'storage', 'target', 'unclassified', 'wafl_exempt',
+    'wafl_mpcleaner', 'xor_exempt', 'ssan_exempt2', 'exempt_ise', 'zombie',
+]
+
+PERF_COUNTER_DOMAIN_BUSY_VALUES_1 = [
+    83071627197, 1334877, 19459898, 588539096, 11516887, 14878622, 18,
+    647698, 20, 229232646, 4310322, 441035, 12946782, 57837913, 38765442,
+    1111004351701, 1497335, 949657, 109890, 768027, 21, 14, 13
+]
+
+PERF_COUNTER_DOMAIN_BUSY_VALUES_2 = [
+    1191129018056, 135991, 22842513, 591213798, 9449562, 15345460, 0,
+    751656, 0, 162605694, 3927323, 511160, 7644403, 29696759, 21787992,
+    3585552592, 1058902, 957296, 87811, 499766, 0, 0, 0
+]
+
+PERF_COUNTER_ELAPSED_TIME_1 = 1199265469753
+PERF_COUNTER_ELAPSED_TIME_2 = 1199265469755
+
+PERF_GET_INSTANCES_PROCESSOR_RESPONSE_REST = {
+    'records': [
+        {
+            'counter_table': {
+                'name': 'processor'
+            },
+            'id': NODE_NAME + ':processor0',
+            'counters': [
+                {
+                    'name': 'domain_busy_percent',
+                    'values': PERF_COUNTER_DOMAIN_BUSY_VALUES_1,
+                    'labels': PERF_COUNTER_DOMAIN_BUSY_LABELS
+                },
+                {
+                    'name': 'elapsed_time',
+                    'value': PERF_COUNTER_ELAPSED_TIME_1,
+                }
+            ],
+        },
+        {
+            'counter_table': {
+                'name': 'processor'
+            },
+            'id': NODE_NAME + ':processor1',
+            'counters': [
+                {
+                    'name': 'domain_busy_percent',
+                    'values': PERF_COUNTER_DOMAIN_BUSY_VALUES_2,
+                    'labels': PERF_COUNTER_DOMAIN_BUSY_LABELS
+                },
+                {
+                    'name': 'elapsed_time',
+                    'value': PERF_COUNTER_ELAPSED_TIME_2,
+                }
+            ],
+        }
+    ],
+    'num_records': 2,
+}
+
+PERF_COUNTERS_PROCESSOR_EXPECTED = [
+    {
+        'instance-name': 'processor',
+        'instance-uuid': NODE_NAME + ':processor0',
+        'node-name': NODE_NAME,
+        'timestamp': mock.ANY,
+        'domain_busy':
+            ','.join([str(v) for v in PERF_COUNTER_DOMAIN_BUSY_VALUES_1])
+    },
+    {
+        'instance-name': 'processor',
+        'instance-uuid': NODE_NAME + ':processor0',
+        'node-name': NODE_NAME,
+        'timestamp': mock.ANY,
+        'processor_elapsed_time': PERF_COUNTER_ELAPSED_TIME_1
+    },
+    {
+        'instance-name': 'processor',
+        'instance-uuid': NODE_NAME + ':processor1',
+        'node-name': NODE_NAME,
+        'timestamp': mock.ANY,
+        'domain_busy':
+            ','.join([str(v) for v in PERF_COUNTER_DOMAIN_BUSY_VALUES_2])
+    },
+    {
+        'instance-name': 'processor',
+        'instance-uuid': NODE_NAME + ':processor1',
+        'node-name': NODE_NAME,
+        'timestamp': mock.ANY,
+        'processor_elapsed_time': PERF_COUNTER_ELAPSED_TIME_2
+    },
+]
+
+DELETED_EXPORT_POLICY_GET_ITER_RESPONSE_REST = {
+    'records': [
+        {
+            'name': DELETED_EXPORT_POLICIES[VSERVER_NAME][0],
+            'svm': {'name': VSERVER_NAME},
+        },
+        {
+            'name': DELETED_EXPORT_POLICIES[VSERVER_NAME][1],
+            'svm': {'name': VSERVER_NAME},
+        },
+        {
+            'name': DELETED_EXPORT_POLICIES[VSERVER_NAME_2][0],
+            'svm': {'name': VSERVER_NAME_2},
+        }
+    ],
+    'num_records': 3
+}
+
+SECUTITY_KEY_MANAGER_SUPPORT_RESPONSE_TRUE_REST = {
+    'records': [
+        {
+            'volume_encryption': {
+                'supported': True,
+                'message': '',
+                'code': 0
+            }
+        }
+    ],
+    'num_records': 1
+}
+
+SECUTITY_KEY_MANAGER_SUPPORT_RESPONSE_FALSE_REST = {
+    'records': [
+        {
+            'volume_encryption': {
+                'supported': False,
+                'message': 'No platform support for volume encryption '
+                           'in following nodes - node1, node2.',
+                'code': 346758
+            }
+        }
+    ],
+    'num_records': 1
+}
+
+NFS_CONFIG_DEFAULT_RESULT_REST = {
+    'records': [
+        {
+            'svm': {
+                'uuid': FAKE_UUID,
+                'name': VSERVER_NAME,
+            },
+            'transport': {
+                'udp_enabled': True,
+                'tcp_enabled': True,
+                'tcp_max_transfer_size': 65536
+            },
+        }
+    ],
+    'num_records': 1,
+}
+
+DNS_REST_RESPONSE = {
+    "domains": [
+        "example.com",
+        "example2.example3.com"
+    ],
+    "dynamic_dns": {
+        "fqdn": "example.com",
+        "time_to_live": "P2D",
+        "use_secure": "true",
+        "enabled": "true"
+    },
+    "servers": [
+        "10.224.65.20",
+        "2001:db08:a0b:12f0::1"
+    ],
+}
+
+SVM_ITEM_SIMPLE_RESPONSE_REST = {
+    "uuid": "fake_uuid",
+    "name": VSERVER_NAME,
+}
+
+LOCAL_USERS_CIFS_RESPONSE = {
+    "sid": "fake_SID",
+    "svm": {
+        "name": "svm1",
+        "uuid": "02c9e252-41be-11e9-81d5-00a0986138f7"
+    }
+}
+
+PREFERRED_DC_REST = {
+    "fqdn": "test.com",
+    "server_ip": "4.4.4.4"
+}
+
+FAKE_VSERVER_PEERS = [{
+    'uuid': 'fake_uuid'
+    }]
+
+
+FAKE_PEER_GET_RESPONSE = {
+    'records': [
+        {
+            'uuid': FAKE_UUID,
+            'svm': {
+                'name': VSERVER_NAME,
+            },
+            'peer': {
+                'svm': {
+                    'name': VSERVER_NAME_2
+                },
+                'cluster': {
+                    'name': CLUSTER_NAME
+                }
+            },
+            'state': VSERVER_PEER_STATE,
+        }
+    ],
+    'num_records': 1
+}
+
+REST_SPEED_SORTED_PORTS = [
+    {'node': NODE_NAME, 'port': 'e0d', 'speed': '10000'},
+    {'node': NODE_NAME, 'port': 'e0c', 'speed': '1000'},
+    {'node': NODE_NAME, 'port': 'e0b', 'speed': '100'},
+]
+
+REST_SPEED_NOT_SORTED_PORTS = [
+    {'node': NODE_NAME, 'port': 'e0b', 'speed': 100},
+    {'node': NODE_NAME, 'port': 'e0c', 'speed': 1000},
+    {'node': NODE_NAME, 'port': 'e0d', 'speed': 10000},
+]
+
+REST_ETHERNET_PORTS = {
+    "records": [
+        {
+            "uuid": "fake_uuid1",
+            "name": "e0a",
+            "type": "physical",
+            "node": {
+                "name": NODE_NAME
+            },
+            "broadcast_domain": {
+                "name": "fake_domain_1",
+                "ipspace": {
+                    "name": "Default"
+                }
+            },
+            "state": "up",
+            "speed": 10,
+        },
+        {
+            "uuid": "fake_uuid2",
+            "name": "e0b",
+            "type": "physical",
+            "node": {
+                "name": NODE_NAME
+            },
+            "broadcast_domain": {
+                "name": "fake_domain_2",
+                "ipspace": {
+                    "name": "Default"
+                }
+            },
+            "state": "up",
+            "speed": 100,
+        },
+        {
+            "uuid": "fake_uuid3",
+            "name": "e0c",
+            "type": "physical",
+            "node": {
+                "name": NODE_NAME
+            },
+            "broadcast_domain": {
+                "name": "fake_domain_3",
+                "ipspace": {
+                    "name": "Default"
+                }
+            },
+            "state": "up",
+            "speed": 1000,
+        },
+        {
+            "uuid": "fake_uuid4",
+            "name": "e0d",
+            "type": "physical",
+            "node": {
+                "name": NODE_NAME
+            },
+            "broadcast_domain": {
+                "name": "fake_domain_4",
+                "ipspace": {
+                    "name": "Default"
+                }
+            },
+            "state": "up",
+            "speed": 10000,
+        }
+    ],
+}
+
+SVM_ITEM_SIMPLE_RESPONSE_REST = {
+    "uuid": "fake_uuid",
+    "name": VSERVER_NAME,
+}
+
+FAKE_GET_BROADCAST_DOMAIN = {
+    'records': [
+        {
+            'ports': [
+                {
+                    'name': PORT,
+                    'node': {'name': NODE_NAME}
+                }
+            ],
+            'name': BROADCAST_DOMAIN,
+            'ipspace': {'name': IPSPACE_NAME}
+        }
+    ]
+}
+
+NFS_CONFIG_RESULT_REST = {
+    'records': [
+        {
+            'svm': {
+                'uuid': FAKE_UUID,
+                'name': VSERVER_NAME,
+            },
+            'transport': {
+                'udp_enabled': True,
+                'tcp_enabled': True,
+                'tcp_max_transfer_size': 65536
+            },
+        }
+    ],
+    'num_records': 1,
+}
+
+SERVICE_POLICIES_REST = {
+    'records': [
+        {
+            'uuid': 'fake_policy_uuid',
+            'name': 'default-data-files',
+            'svm': {
+                'name': VSERVER_NAME
+            },
+            'services': [
+                'data_core',
+                'data_flexcache',
+                'data_fpolicy_client',
+                'management_dns_client',
+                'management_ad_client',
+                'management_ldap_client',
+                'management_nis_client',
+                'data_dns_server'
+            ],
+        },
+    ],
+    'num_records': 1,
+}
+
+GET_SNAPMIRROR_POLICIES_REST = {
+
+    "records": [
+        {
+            "uuid": FAKE_UUID,
+            "name": SNAPMIRROR_POLICY_NAME
+        }],
+    'num_records': 1,
+}
+
+REST_VSERVER_GET_IPSPACE_NAME_RESPONSE = {
+    "records": [
+        {
+            "uuid": FAKE_UUID,
+            "ipspace": {'name': IPSPACE_NAME}
+        }
+    ],
+    'num_records': 1,
+}
+
+BROADCAST_DOMAIN_LIST_SIMPLE_RESPONSE_REST = {
+    "records": [
+        {
+            "ports": [
+                {
+                    "_links": {
+                        "self": {
+                            "href": FAKE_BASE_URL
+                        }
+                    },
+                    "name": "fake_port_name",
+                    "uuid": FAKE_UUID,
+                    "node": {
+                        "name": "fake_node_name"
+                    }
+                }
+            ],
+            "_links": {
+                "self": {
+                    "href": FAKE_BASE_URL
+                }
+            },
+            "name": "fake_broadcast_name",
+            "ipspace": {
+                "_links": {
+                    "self": {
+                        "href": FAKE_BASE_URL
+                    }
+                },
+                "name": IPSPACE_NAME,
+                "uuid": FAKE_UUID
+            },
+            "uuid": FAKE_UUID,
+            "mtu": MTU
+        }
+    ],
+    "_links": {
+        "next": {
+            "href": FAKE_BASE_URL
+        },
+        "self": {
+            "href": FAKE_BASE_URL
+        }
+    },
+    "num_records": 1
+}
+
+GET_IPSPACES_RESPONSE = {
+    'ipspace': IPSPACE_NAME,
+    'uuid': FAKE_UUID,
+    'broadcast-domains': [BROADCAST_DOMAIN],
+    'ports': [PORT],
+    'vservers': [VSERVER_NAME, VSERVER_NAME_2]
+}
+
+IPSPACE_INFO = {
+    'records': [
+        {
+            'name': IPSPACE_NAME,
+            'uuid': FAKE_UUID
+        }
+    ]
+}
+
+REST_SINGLE_PORT = {
+    "records": [
+        {
+            "uuid": "fake_uuid1",
+            "name": "e0a",
+            "type": "physical",
+            "node": {
+                "name": NODE_NAME
+            },
+            "broadcast_domain": {
+                "name": "fake_domain_1",
+                "ipspace": {
+                    "name": "Default"
+                }
+            },
+            "state": "up",
+            "speed": 10,
+        }
+    ]
+}
+
 VOLUME = {
     "name": "fake_volume_name",
     "uuid": "028baa66-41bd-11e9-81d5-00a0986138f7",
@@ -4079,4 +4638,34 @@ FAKE_AGGR_LIST = {
             "name": SHARE_AGGREGATE_NAMES_LIST[0]
         }
     ]
+}
+
+REST_MGMT_INTERFACES = {
+    "records": [
+        {
+            "uuid": "fake-uuid-1",
+            "name": "node_mgmt1",
+            "location": {
+                "port": {
+                    "name": "e0a"
+                }
+            },
+            "service_policy": {
+                "name": "default-management"
+            },
+        },
+        {
+            "uuid": "fake-uuid-2",
+            "name": "cluster_mgmt",
+            "location": {
+                "port": {
+                    "name": "e0a"
+                }
+            },
+            "service_policy": {
+                "name": "default-management"
+            },
+        }
+    ],
+    "num_records": 2,
 }

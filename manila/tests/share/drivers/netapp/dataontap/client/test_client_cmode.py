@@ -2945,7 +2945,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(self.client, 'get_dns_config',
                          mock.Mock(return_value={}))
         mock_dns_ips = ['10.0.0.1', '10.0.0.2', '10.0.0.3']
-        security_service = fake.CIFS_SECURITY_SERVICE
+        security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
         security_service['dns_ip'] = ', '.join(mock_dns_ips)
 
         self.client.configure_dns(security_service)

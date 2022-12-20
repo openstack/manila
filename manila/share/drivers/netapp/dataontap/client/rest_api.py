@@ -44,7 +44,15 @@ EREST_FPOLICY_MODIF_POLICY_DISABLED = '9765029'
 EREST_POLICY_ALREADY_DISABLED = '9764907'
 EREST_ERELATION_EXISTS = '6619637'
 EREST_BREAK_SNAPMIRROR_FAILED = '13303808'
-ESIS_CLONE_NOT_LICENSED = '14956'
+EREST_UPDATE_SNAPMIRROR_FAILED = '13303844'
+EREST_SNAPMIRROR_NOT_INITIALIZED = '13303812'
+EREST_DUPLICATE_ROUTE = '1966345'
+EREST_FAIL_ADD_PORT_BROADCAST = '1967149'
+EREST_KERBEROS_IS_ENABLED_DISABLED = '3276861'
+EREST_INTERFACE_BOUND = '1376858'
+EREST_PORT_IN_USE = '1966189'
+EREST_NFS_V4_0_ENABLED_MIGRATION_FAILURE = '13172940'
+EREST_VSERVER_MIGRATION_TO_NON_AFF_CLUSTER = '13172984'
 
 
 class NaRetryableError(api.NaApiError):
@@ -277,11 +285,6 @@ class RestNaServer(object):
 
         result_error = response.get('error')
         code = result_error.get('code') or 'ESTATUSFAILED'
-        # TODO(felipe_rodrigues): add the correct code number for REST not
-        #  licensed clone error.
-        if code == ESIS_CLONE_NOT_LICENSED:
-            msg = 'Clone operation failed: FlexClone not licensed.'
-        else:
-            msg = (result_error.get('message')
-                   or 'Execution failed due to unknown reason')
+        msg = (result_error.get('message')
+               or 'Execution failed due to unknown reason')
         raise api.NaApiError(code, msg)

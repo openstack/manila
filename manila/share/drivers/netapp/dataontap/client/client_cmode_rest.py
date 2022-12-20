@@ -33,12 +33,19 @@ from manila import utils
 
 LOG = log.getLogger(__name__)
 DELETED_PREFIX = 'deleted_manila_'
+DEFAULT_IPSPACE = 'Default'
 DEFAULT_MAX_PAGE_LENGTH = 10000
 CIFS_USER_GROUP_TYPE = 'windows'
 SNAPSHOT_CLONE_OWNER = 'volume_clone'
 CUTOVER_ACTION_MAP = {
-    'wait': 'cutover_wait',
+    'defer': 'defer_on_failure',
+    'abort': 'abort_on_failure',
+    'force': 'force',
+    'wait': 'wait',
 }
+DEFAULT_TIMEOUT = 15
+DEFAULT_TCP_MAX_XFER_SIZE = 65536
+DEFAULT_UDP_MAX_XFER_SIZE = 32768
 
 
 class NetAppRestClient(object):
@@ -387,7 +394,8 @@ class NetAppRestClient(object):
 
     @na_utils.trace
     def _get_volume_by_args(self, vol_name=None, aggregate_name=None,
-                            vol_path=None, vserver=None, fields=None):
+                            vol_path=None, vserver=None, fields=None,
+                            is_root=None):
         """Get info from a single volume according to the args."""
 
         query = {
@@ -406,6 +414,8 @@ class NetAppRestClient(object):
             query['svm.name'] = vserver
         if fields:
             query['fields'] = fields
+        if is_root is not None:
+            query['is_svm_root'] = is_root
 
         volumes_response = self.send_request(
             '/storage/volumes/', 'get', query=query)
@@ -703,6 +713,20 @@ class NetAppRestClient(object):
                                  body=body)
 
     @na_utils.trace
+    def list_network_interfaces(self):
+        """Get the names of available LIFs."""
+
+        query = {
+            'fields': 'name'
+        }
+
+        result = self.send_request('/network/ip/interfaces', 'get',
+                                   query=query)
+
+        if self._has_records(result):
+            return [lif['name'] for lif in result.get('records', [])]
+
+    @na_utils.trace
     def get_network_interfaces(self, protocols=None):
         """Get available LIFs."""
 
@@ -729,6 +753,7 @@ class NetAppRestClient(object):
         interfaces = []
         for lif_info in result.get('records', []):
             lif = {
+                'uuid': lif_info['uuid'],
                 'address': lif_info['ip']['address'],
                 'home-node': lif_info['location']['home_node']['name'],
                 'home-port': lif_info['location']['home_port']['name'],
@@ -2160,7 +2185,8 @@ class NetAppRestClient(object):
     def _get_snapmirrors(self, source_path=None, dest_path=None,
                          source_vserver=None, source_volume=None,
                          dest_vserver=None, dest_volume=None,
-                         list_destinations_only=None,
+                         list_destinations_only=False,
+                         enable_tunneling=True,
                          desired_attributes=None):
         """Get a list of snapmirrors."""
 
@@ -2186,10 +2212,11 @@ class NetAppRestClient(object):
             query['destination.path'] = query_dst_vserver + ':' + query_dst_vol
 
         if list_destinations_only:
-            query['list_destinations_only'] = list_destinations_only
+            query['list_destinations_only'] = 'true'
 
         response = self.send_request(
-            '/snapmirror/relationships', 'get', query=query)
+            '/snapmirror/relationships', 'get', query=query,
+            enable_tunneling=enable_tunneling)
 
         snapmirrors = []
         for record in response.get('records', []):
@@ -2798,6 +2825,9 @@ class NetAppRestClient(object):
             source_volume=source_volume,
             dest_vserver=dest_vserver,
             dest_volume=dest_volume,
+            # NOTE (nahimsouza): From ONTAP 9.12.1 the snapmirror destinations
+            # can only be retrieved with no tunneling.
+            enable_tunneling=False,
             list_destinations_only=True)
 
         return snapmirrors
@@ -2825,10 +2855,6 @@ class NetAppRestClient(object):
         else:
             query["source_only"] = 'true'
 
-        # NOTE(nahimsouza): This verification is needed because an empty list
-        # is returned in snapmirror_destinations_list when a single share is
-        # created with only one replica and this replica is deleted, thus there
-        # will be no relationship-id in that case.
         if len(snapmirror_destinations_list) == 1:
             uuid = snapmirror_destinations_list[0].get("uuid")
             self.send_request(f'/snapmirror/relationships/{uuid}', 'delete',
@@ -3209,7 +3235,16 @@ class NetAppRestClient(object):
                               wait_on_accepted=False)
         except netapp_api.api.NaApiError as e:
             transfer_in_progress = 'Another transfer is in progress'
-            if not (transfer_in_progress in e.message):
+
+            if (e.code == netapp_api.EREST_SNAPMIRROR_NOT_INITIALIZED and
+                    transfer_in_progress in e.message):
+                # NOTE (nahimsouza): Raise this message to keep compatibility
+                # with ZAPI and avoid change the driver layer.
+                raise netapp_api.api.NaApiError(message='not initialized',
+                                                code=netapp_api.api.EAPIERROR)
+
+            if not (e.code == netapp_api.EREST_UPDATE_SNAPMIRROR_FAILED
+                    and transfer_in_progress in e.message):
                 raise
 
     @na_utils.trace
@@ -3246,6 +3281,14 @@ class NetAppRestClient(object):
         self.send_request('/private/cli/volume/rehost', 'post', body=body)
 
     @na_utils.trace
+    def get_net_options(self):
+        """Retrives the IPv6 support."""
+
+        return {
+            'ipv6-enabled': True,
+        }
+
+    @na_utils.trace
     def set_qos_adaptive_policy_group_for_volume(self, volume_name,
                                                  qos_policy_group_name):
         """Set QoS adaptive policy group for volume."""
@@ -3254,3 +3297,1796 @@ class NetAppRestClient(object):
         # way as normal QoS.
         self.set_qos_policy_group_for_volume(volume_name,
                                              qos_policy_group_name)
+
+    def get_performance_counter_info(self, object_name, counter_name):
+        """Gets info about one or more Data ONTAP performance counters."""
+
+        # NOTE(nahimsouza): This conversion is nedeed because different names
+        # are used in ZAPI and we want to avoid changes in the driver for now.
+        rest_counter_names = {
+            'domain_busy': 'domain_busy_percent',
+            'processor_elapsed_time': 'elapsed_time',
+            'avg_processor_busy': 'average_processor_busy_percent',
+        }
+
+        rest_counter_name = counter_name
+        if counter_name in rest_counter_names:
+            rest_counter_name = rest_counter_names[counter_name]
+
+        # Get counter table info
+        query = {
+            'counter_schemas.name': rest_counter_name,
+            'fields': 'counter_schemas.*'
+        }
+
+        try:
+            table = self.send_request(
+                f'/cluster/counter/tables/{object_name}',
+                'get', query=query)
+
+            name = counter_name  # use the original name (ZAPI compatible)
+            base_counter = table['counter_schemas'][0]['denominator']['name']
+
+            query = {
+                'counters.name': rest_counter_name,
+                'fields': 'counters.*'
+            }
+
+            response = self.send_request(
+                f'/cluster/counter/tables/{object_name}/rows',
+                'get', query=query, enable_tunneling=False)
+
+            table_rows = response.get('records', [])
+            labels = []
+            if len(table_rows) != 0:
+                labels = table_rows[0]['counters'][0].get('labels', [])
+
+                # NOTE(nahimsouza): Values have a different format on REST API
+                # and we want to keep compatibility with ZAPI for a while
+                if object_name == 'wafl' and counter_name == 'cp_phase_times':
+                    # discard the prefix 'cp_'
+                    labels = [label[3:] for label in labels]
+
+            return {
+                'name': name,
+                'labels': labels,
+                'base-counter': base_counter,
+            }
+        except netapp_api.api.NaApiError:
+            raise exception.NotFound(_('Counter %s not found') % counter_name)
+
+    def get_performance_instance_uuids(self, object_name, node_name):
+        """Get UUIDs of performance instances for a cluster node."""
+
+        query = {
+            'id': node_name + ':*',
+        }
+
+        response = self.send_request(
+            f'/cluster/counter/tables/{object_name}/rows',
+            'get', query=query, enable_tunneling=False)
+
+        records = response.get('records', [])
+
+        uuids = []
+        for record in records:
+            uuids.append(record['id'])
+
+        return uuids
+
+    def get_performance_counters(self, object_name, instance_uuids,
+                                 counter_names):
+        """Gets more cDOT performance counters."""
+
+        # NOTE(nahimsouza): This conversion is nedeed because different names
+        # are used in ZAPI and we want to avoid changes in the driver for now.
+        rest_counter_names = {
+            'domain_busy': 'domain_busy_percent',
+            'processor_elapsed_time': 'elapsed_time',
+            'avg_processor_busy': 'average_processor_busy_percent',
+        }
+
+        zapi_counter_names = {
+            'domain_busy_percent': 'domain_busy',
+            'elapsed_time': 'processor_elapsed_time',
+            'average_processor_busy_percent': 'avg_processor_busy',
+        }
+
+        for i in range(len(counter_names)):
+            if counter_names[i] in rest_counter_names:
+                counter_names[i] = rest_counter_names[counter_names[i]]
+
+        query = {
+            'id': '|'.join(instance_uuids),
+            'counters.name': '|'.join(counter_names),
+            'fields': 'id,counter_table.name,counters.*',
+        }
+
+        response = self.send_request(
+            f'/cluster/counter/tables/{object_name}/rows',
+            'get', query=query)
+
+        counter_data = []
+        for record in response.get('records', []):
+            for counter in record['counters']:
+
+                counter_name = counter['name']
+
+                # Reverts the name conversion
+                if counter_name in zapi_counter_names:
+                    counter_name = zapi_counter_names[counter_name]
+
+                counter_value = ''
+                if counter.get('value'):
+                    counter_value = counter.get('value')
+                elif counter.get('values'):
+                    # NOTE(nahimsouza): Conversion made to keep compatibility
+                    # with old ZAPI format
+                    values = counter.get('values')
+                    counter_value = ','.join([str(v) for v in values])
+
+                counter_data.append({
+                    'instance-name': record['counter_table']['name'],
+                    'instance-uuid': record['id'],
+                    'node-name': record['id'].split(':')[0],
+                    'timestamp': int(time.time()),
+                    counter_name: counter_value,
+                })
+
+        return counter_data
+
+    @na_utils.trace
+    def _list_vservers(self):
+        """Get the names of vservers present"""
+        query = {
+            'fields': 'name',
+        }
+        response = self.send_request('/svm/svms', 'get', query=query,
+                                     enable_tunneling=False)
+
+        return [svm['name'] for svm in response.get('records', [])]
+
+    @na_utils.trace
+    def _get_ems_log_destination_vserver(self):
+        """Returns the best vserver destination for EMS messages."""
+
+        # NOTE(nahimsouza): Differently from ZAPI, only 'data' SVMs can be
+        # managed by the SVM REST APIs - that's why the vserver type is not
+        # specified.
+        vservers = self._list_vservers()
+
+        if vservers:
+            return vservers[0]
+
+        raise exception.NotFound("No Vserver found to receive EMS messages.")
+
+    @na_utils.trace
+    def send_ems_log_message(self, message_dict):
+        """Sends a message to the Data ONTAP EMS log."""
+
+        body = {
+            'computer_name': message_dict['computer-name'],
+            'event_source': message_dict['event-source'],
+            'app_version': message_dict['app-version'],
+            'category': message_dict['category'],
+            'severity': 'notice',
+            'autosupport_required': message_dict['auto-support'] == 'true',
+            'event_id': message_dict['event-id'],
+            'event_description': message_dict['event-description'],
+        }
+
+        bkp_connection = copy.copy(self.connection)
+        bkp_timeout = self.connection.get_timeout()
+        bkp_vserver = self.vserver
+
+        self.connection.set_timeout(25)
+        try:
+            # TODO(nahimsouza): Vserver is being set to replicate the ZAPI
+            # behavior, but need to check if this could be removed in REST API
+            self.connection.set_vserver(
+                self._get_ems_log_destination_vserver())
+            self.send_request('/support/ems/application-logs',
+                              'post', body=body)
+            LOG.debug('EMS executed successfully.')
+        except netapp_api.api.NaApiError as e:
+            LOG.warning('Failed to invoke EMS. %s', e)
+        finally:
+            # Restores the data
+            timeout = (
+                bkp_timeout if bkp_timeout is not None else DEFAULT_TIMEOUT)
+            self.connection = copy.copy(bkp_connection)
+            self.connection.set_timeout(timeout)
+            self.connection.set_vserver(bkp_vserver)
+
+    @na_utils.trace
+    def _get_deleted_nfs_export_policies(self):
+        """Get soft deleted NFS export policies."""
+        query = {
+            'name': DELETED_PREFIX + '*',
+            'fields': 'name,svm.name',
+        }
+
+        response = self.send_request('/protocols/nfs/export-policies',
+                                     'get', query=query)
+
+        policy_map = {}
+        for record in response['records']:
+            vserver = record['svm']['name']
+            policies = policy_map.get(vserver, [])
+            policies.append(record['name'])
+            policy_map[vserver] = policies
+
+        return policy_map
+
+    @na_utils.trace
+    def prune_deleted_nfs_export_policies(self):
+        """Delete export policies that were marked for deletion."""
+        deleted_policy_map = self._get_deleted_nfs_export_policies()
+        for vserver in deleted_policy_map:
+            client = copy.copy(self)
+            client.connection = copy.copy(self.connection)
+            client.connection.set_vserver(vserver)
+            for policy in deleted_policy_map[vserver]:
+                try:
+                    client.delete_nfs_export_policy(policy)
+                except netapp_api.api.NaApiError:
+                    LOG.debug('Could not delete export policy %s.', policy)
+
+    @na_utils.trace
+    def get_nfs_config_default(self, desired_args=None):
+        """Gets the default NFS config with the desired params"""
+
+        query = {'fields': 'transport.*'}
+
+        if self.vserver:
+            query['svm.name'] = self.vserver
+
+        response = self.send_request('/protocols/nfs/services/',
+                                     'get', query=query)
+
+        # NOTE(nahimsouza): Default values to replicate ZAPI behavior when
+        # response is empty. Also, REST API does not have an equivalent to
+        # 'udp-max-xfer-size', so the default is always returned.
+        nfs_info = {
+            'tcp-max-xfer-size': DEFAULT_TCP_MAX_XFER_SIZE,
+            'udp-max-xfer-size': DEFAULT_UDP_MAX_XFER_SIZE,
+        }
+        records = response.get('records', [])
+        if records:
+            nfs_info['tcp-max-xfer-size'] = (
+                records[0]['transport']['tcp_max_transfer_size'])
+
+        return nfs_info
+
+    @na_utils.trace
+    def create_kerberos_realm(self, security_service):
+        """Creates Kerberos realm on cluster."""
+
+        body = {
+            'comment': '',
+            'kdc.ip': security_service['server'],
+            'kdc.port': '88',
+            'kdc.vendor': 'other',
+            'name': security_service['domain'].upper(),
+        }
+        try:
+            self.send_request('/protocols/nfs/kerberos/realms', 'post',
+                              body=body)
+        except netapp_api.api.NaApiError as e:
+            if e.code == netapp_api.EREST_DUPLICATE_ENTRY:
+                LOG.debug('Kerberos realm config already exists.')
+            else:
+                msg = _('Failed to create Kerberos realm. %s')
+                raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def configure_kerberos(self, security_service, vserver_name):
+        """Configures Kerberos for NFS on Vserver."""
+
+        self.configure_dns(security_service, vserver_name=vserver_name)
+        spn = self._get_kerberos_service_principal_name(
+            security_service, vserver_name)
+
+        lifs = self.get_network_interfaces()
+
+        if not lifs:
+            msg = _("Cannot set up Kerberos. There are no LIFs configured.")
+            raise exception.NetAppException(msg)
+
+        for lif in lifs:
+            body = {
+                'password': security_service['password'],
+                'user': security_service['user'],
+                'interface.name': lif['interface-name'],
+                'enabled': True,
+                'spn': spn
+            }
+
+            interface_uuid = lif['uuid']
+
+            self.send_request(
+                f'/protocols/nfs/kerberos/interfaces/{interface_uuid}',
+                'patch', body=body)
+
+    @na_utils.trace
+    def _get_kerberos_service_principal_name(self, security_service,
+                                             vserver_name):
+        """Build Kerberos service principal name."""
+        return ('nfs/' + vserver_name.replace('_', '-') + '.' +
+                security_service['domain'] + '@' +
+                security_service['domain'].upper())
+
+    @na_utils.trace
+    def _get_cifs_server_name(self, vserver_name):
+        """Build CIFS server name."""
+        # 'cifs-server' is CIFS Server NetBIOS Name, max length is 15.
+        # Should be unique within each domain (data['domain']).
+        # Cut to 15 char with begin and end, attempt to make valid DNS hostname
+        cifs_server = (vserver_name[0:8] +
+                       '-' +
+                       vserver_name[-6:]).replace('_', '-').upper()
+        return cifs_server
+
+    @na_utils.trace
+    def configure_ldap(self, security_service, timeout=30, vserver_name=None):
+        """Configures LDAP on Vserver."""
+        self._create_ldap_client(security_service, vserver_name=vserver_name)
+
+    @na_utils.trace
+    def configure_active_directory(self, security_service, vserver_name):
+        """Configures AD on Vserver."""
+        self.configure_dns(security_service, vserver_name=vserver_name)
+        self.set_preferred_dc(security_service, vserver_name)
+
+        cifs_server = self._get_cifs_server_name(vserver_name)
+
+        body = {
+            'ad_domain.user': security_service['user'],
+            'ad_domain.password': security_service['password'],
+            'force': 'true',
+            'name': cifs_server,
+            'ad_domain.fqdn': security_service['domain'],
+        }
+
+        if security_service['ou'] is not None:
+            body['ad_domain.organizational_unit'] = security_service['ou']
+
+        try:
+            LOG.debug("Trying to setup CIFS server with data: %s", body)
+            self.send_request('/protocols/cifs/services', 'post', body=body)
+        except netapp_api.api.NaApiError as e:
+            msg = _("Failed to create CIFS server entry. %s")
+            raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def _get_unique_svm_by_name(self, vserver_name=None):
+        """Get the specified SVM UUID."""
+        query = {
+            'name': vserver_name if vserver_name else self.vserver,
+            'fields': 'uuid'
+        }
+        response = self.send_request('/svm/svms', 'get', query=query)
+        if not response.get('records'):
+            msg = ('Vserver %s not found.') % self.vserver
+            raise exception.NetAppException(msg)
+        svm_uuid = response['records'][0]['uuid']
+        return svm_uuid
+
+    @na_utils.trace
+    def get_dns_config(self, vserver_name=None):
+        """Read DNS servers and domains currently configured in the vserver·"""
+        svm_uuid = self._get_unique_svm_by_name(vserver_name)
+        try:
+            result = self.send_request(f'/name-services/dns/{svm_uuid}', 'get')
+        except netapp_api.api.NaApiError as e:
+            if e.code == netapp_api.EREST_ENTRY_NOT_FOUND:
+                return {}
+            msg = ("Failed to retrieve DNS configuration. %s")
+            raise exception.NetAppException(msg % e.message)
+
+        dns_config = {}
+        dns_info = result.get('dynamic_dns', {})
+
+        dns_config['dns-state'] = dns_info.get('enabled', '')
+        dns_config['domains'] = result.get('domains', [])
+        dns_config['dns-ips'] = result.get('servers', [])
+
+        return dns_config
+
+    @na_utils.trace
+    def configure_dns(self, security_service, vserver_name=None):
+        """Configure DNS address and servers for a vserver."""
+        body = {
+            'domains': [],
+            'servers': []
+        }
+        # NOTE(dviroel): Read the current dns configuration and merge with the
+        # new one. This scenario is expected when 2 security services provide
+        # a DNS configuration, like 'active_directory' and 'ldap'.
+        current_dns_config = self.get_dns_config(vserver_name=vserver_name)
+        domains = set(current_dns_config.get('domains', []))
+        dns_ips = set(current_dns_config.get('dns-ips', []))
+
+        svm_uuid = self._get_unique_svm_by_name(vserver_name)
+
+        domains.add(security_service['domain'])
+        for domain in domains:
+            body['domains'].append(domain)
+
+        for dns_ip in security_service['dns_ip'].split(','):
+            dns_ips.add(dns_ip.strip())
+        body['servers'] = []
+        for dns_ip in sorted(dns_ips):
+            body['servers'].append(dns_ip)
+
+        try:
+            if current_dns_config:
+                self.send_request(f'/name-services/dns/{svm_uuid}',
+                                  'patch', body=body)
+            else:
+                self.send_request('/name-services/dns', 'post', body=body)
+        except netapp_api.api.NaApiError as e:
+            msg = _("Failed to configure DNS. %s")
+            raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def setup_security_services(self, security_services, vserver_client,
+                                vserver_name, timeout=30):
+        """Setup SVM security services."""
+        body = {
+            'nsswitch.namemap': ['ldap', 'files'],
+            'nsswitch.group': ['ldap', 'files'],
+            'nsswitch.netgroup': ['ldap', 'files'],
+            'nsswitch.passwd': ['ldap', 'files'],
+        }
+
+        svm_uuid = self._get_unique_svm_by_name(vserver_name)
+
+        self.send_request(f'/svm/svms/{svm_uuid}', 'patch', body=body)
+
+        for security_service in security_services:
+            if security_service['type'].lower() == 'ldap':
+                vserver_client.configure_ldap(security_service,
+                                              timeout=timeout,
+                                              vserver_name=vserver_name)
+
+            elif security_service['type'].lower() == 'active_directory':
+                vserver_client.configure_active_directory(security_service,
+                                                          vserver_name)
+                vserver_client.configure_cifs_options(security_service)
+
+            elif security_service['type'].lower() == 'kerberos':
+                vserver_client.create_kerberos_realm(security_service)
+                vserver_client.configure_kerberos(security_service,
+                                                  vserver_name)
+
+            else:
+                msg = _('Unsupported security service type %s for '
+                        'Data ONTAP driver')
+                raise exception.NetAppException(msg % security_service['type'])
+
+    @na_utils.trace
+    def _create_ldap_client(self, security_service, vserver_name=None):
+        ad_domain = security_service.get('domain')
+        ldap_servers = security_service.get('server')
+        bind_dn = security_service.get('user')
+        ldap_schema = 'RFC-2307'
+
+        if ad_domain:
+            if ldap_servers:
+                msg = _("LDAP client cannot be configured with both 'server' "
+                        "and 'domain' parameters. Use 'server' for Linux/Unix "
+                        "LDAP servers or 'domain' for Active Directory LDAP "
+                        "servers.")
+                LOG.exception(msg)
+                raise exception.NetAppException(msg)
+            # RFC2307bis, for MS Active Directory LDAP server
+            ldap_schema = 'MS-AD-BIS'
+            bind_dn = (security_service.get('user') + '@' + ad_domain)
+        else:
+            if not ldap_servers:
+                msg = _("LDAP client cannot be configured without 'server' "
+                        "or 'domain' parameters. Use 'server' for Linux/Unix "
+                        "LDAP servers or 'domain' for Active Directory LDAP "
+                        "server.")
+                LOG.exception(msg)
+                raise exception.NetAppException(msg)
+
+        if security_service.get('dns_ip'):
+            self.configure_dns(security_service)
+
+        body = {
+            'port': '389',
+            'schema': ldap_schema,
+            'bind_dn': bind_dn,
+            'bind_password': security_service.get('password'),
+            'svm.name': vserver_name
+        }
+
+        if security_service.get('ou'):
+            body['base_dn'] = security_service['ou']
+        if ad_domain:
+            # Active Directory LDAP server
+            body['ad_domain'] = ad_domain
+        else:
+            body['servers'] = []
+            for server in ldap_servers.split(','):
+                body['servers'].append(server.strip())
+
+        self.send_request('/name-services/ldap', 'post',
+                          body=body)
+
+    @na_utils.trace
+    def modify_ldap(self, new_security_service, current_security_service):
+        """Modifies LDAP client on a Vserver."""
+        ad_domain = new_security_service.get('domain')
+        ldap_servers = new_security_service.get('server')
+        bind_dn = new_security_service.get('user')
+        ldap_schema = 'RFC-2307'
+        svm_uuid = self._get_unique_svm_by_name(self.vserver)
+
+        if ad_domain:
+            if ldap_servers:
+                msg = _("LDAP client cannot be configured with both 'server' "
+                        "and 'domain' parameters. Use 'server' for Linux/Unix "
+                        "LDAP servers or 'domain' for Active Directory LDAP "
+                        "servers.")
+                LOG.exception(msg)
+                raise exception.NetAppException(msg)
+            # RFC2307bis, for MS Active Directory LDAP server
+            ldap_schema = 'MS-AD-BIS'
+            bind_dn = (new_security_service.get('user') + '@' + ad_domain)
+        else:
+            if not ldap_servers:
+                msg = _("LDAP client cannot be configured without 'server' "
+                        "or 'domain' parameters. Use 'server' for Linux/Unix "
+                        "LDAP servers or 'domain' for Active Directory LDAP "
+                        "server.")
+                LOG.exception(msg)
+                raise exception.NetAppException(msg)
+
+        body = {
+            'port': '389',
+            'schema': ldap_schema,
+            'bind_dn': bind_dn,
+            'bind_password': new_security_service.get('password')
+        }
+
+        if new_security_service.get('ou'):
+            body['base_dn'] = new_security_service['ou']
+        if ad_domain:
+            # Active Directory LDAP server
+            body['ad_domain'] = ad_domain
+        else:
+            body['servers'] = []
+            for server in ldap_servers.split(','):
+                body['servers'].append(server.strip())
+
+        self.send_request(f'/name-services/ldap/{svm_uuid}', 'patch',
+                          body=body)
+
+    @na_utils.trace
+    def update_kerberos_realm(self, security_service):
+        """Update Kerberos realm info. Only KDC IP can be changed."""
+        realm_name = security_service['domain']
+        svm_uuid = self._get_unique_svm_by_name(self.vserver)
+
+        body = {
+            'kdc-ip': security_service['server'],
+        }
+
+        try:
+            self.send_request(
+                f'/protocols/nfs/kerberos/realms/{svm_uuid}/{realm_name}',
+                'patch', body=body)
+        except netapp_api.api.NaApiError as e:
+            msg = _('Failed to update Kerberos realm. %s')
+            raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def update_dns_configuration(self, dns_ips, domains):
+        """Overrides DNS configuration with the specified IPs and domains."""
+        current_dns_config = self.get_dns_config(vserver_name=self.vserver)
+        body = {
+            'domains': [],
+            'servers': [],
+        }
+        for domain in domains:
+            body['domains'].append(domain)
+
+        for dns_ip in dns_ips:
+            body['servers'].append(dns_ip)
+
+        empty_dns_config = (not body['domains'] and
+                            not body['servers'])
+
+        svm_uuid = self._get_unique_svm_by_name(self.vserver)
+
+        if current_dns_config:
+            endpoint, operation, body = (
+                (f'/name-services/dns/{svm_uuid}',
+                    'delete', {}) if empty_dns_config
+                else (f'/name-services/dns/{svm_uuid}', 'patch', body))
+        else:
+            endpoint, operation, body = '/name-services/dns', 'post', body
+
+        try:
+            self.send_request(endpoint, operation, body)
+        except netapp_api.api.NaApiError as e:
+            msg = ("Failed to update DNS configuration. %s")
+            raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def remove_preferred_dcs(self, security_service, svm_uuid):
+        """Drops all preferred DCs at once."""
+
+        query = {
+            'fqdn': security_service['domain'],
+        }
+
+        records = self.send_request(f'/protocols/cifs/domains/{svm_uuid}/'
+                                    f'preferred-domain-controllers/', 'get')
+
+        fqdn = records.get('fqdn')
+        server_ip = records.get('server_ip')
+
+        try:
+            self.send_request(
+                f'/protocols/cifs/domains/{svm_uuid}/'
+                f'preferred-domain-controllers/{fqdn}/{server_ip}',
+                'delete', query=query)
+        except netapp_api.api.NaApiError as e:
+            msg = _("Failed to unset preferred DCs. %s")
+            raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def modify_active_directory_security_service(
+            self, vserver_name, differring_keys, new_security_service,
+            current_security_service):
+        """Modify Active Directory security service."""
+
+        svm_uuid = self._get_unique_svm_by_name(vserver_name)
+        new_username = new_security_service['user']
+
+        records = self.send_request(
+            f'/protocols/cifs/local-users/{svm_uuid}', 'get')
+        sid = records.get('sid')
+        if 'password' in differring_keys:
+            query = {
+                'password': new_security_service['password']
+            }
+            try:
+                self.send_request(
+                    f'/protocols/cifs/local-users/{svm_uuid}/{sid}',
+                    'patch', query=query
+                )
+            except netapp_api.api.NaApiError as e:
+                msg = _("Failed to modify existing CIFS server password. %s")
+                raise exception.NetAppException(msg % e.message)
+
+        if 'user' in differring_keys:
+            query = {
+                'name': new_username
+            }
+            try:
+                self.send_request(
+                    f'/protocols/cifs/local-users/{svm_uuid}/{sid}',
+                    'patch', query=query
+                )
+            except netapp_api.api.NaApiError as e:
+                msg = _("Failed to modify existing CIFS server user-name. %s")
+                raise exception.NetAppException(msg % e.message)
+
+        if 'server' in differring_keys:
+            if current_security_service['server'] is not None:
+                self.remove_preferred_dcs(current_security_service, svm_uuid)
+
+            if new_security_service['server'] is not None:
+                self.set_preferred_dc(new_security_service, svm_uuid)
+
+    @na_utils.trace
+    def set_preferred_dc(self, security_service, vserver_name):
+        """Set preferred domain controller."""
+
+        # server is optional
+        if not security_service['server']:
+            return
+
+        query = {
+            'server_ip': [],
+            'fqdn': security_service['domain'],
+            'skip_config_validation': 'false',
+        }
+
+        for dc_ip in security_service['server'].split(','):
+            query['server_ip'].append(dc_ip.strip())
+
+        svm_uuid = self._get_unique_svm_by_name(vserver_name)
+
+        try:
+            self.send_request(
+                f'/protocols/cifs/domains/{svm_uuid}'
+                '/preferred-domain-controllers',
+                'post', query=query)
+        except netapp_api.api.NaApiError as e:
+            msg = _("Failed to set preferred DC. %s")
+            raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def create_vserver_peer(self, vserver_name, peer_vserver_name,
+                            peer_cluster_name=None):
+        """Creates a Vserver peer relationship for SnapMirrors."""
+        body = {
+            'svm.name': vserver_name,
+            'peer.svm.name': peer_vserver_name,
+            'applications': ['snapmirror']
+        }
+        if peer_cluster_name:
+            body['peer.cluster.name'] = peer_cluster_name
+
+        self.send_request('/svm/peers', 'post', body=body,
+                          enable_tunneling=False)
+
+    @na_utils.trace
+    def _get_svm_peer_uuid(self, vserver_name, peer_vserver_name):
+        """Get UUID of SVM peer."""
+        query = {
+            'svm.name': vserver_name,
+            'peer.svm.name': peer_vserver_name,
+            'fields': 'uuid'
+        }
+        res = self.send_request('/svm/peers', 'get', query=query)
+        if not res.get('records'):
+            msg = ('Vserver peer not found.')
+            raise exception.NetAppException(msg)
+        peer_uuid = res.get('records')[0]['uuid']
+        return peer_uuid
+
+    @na_utils.trace
+    def accept_vserver_peer(self, vserver_name, peer_vserver_name):
+        """Accepts a pending Vserver peer relationship."""
+        uuid = self._get_svm_peer_uuid(vserver_name, peer_vserver_name)
+        body = {'state': 'peered'}
+        self.send_request(f'/svm/peers/{uuid}', 'patch', body=body,
+                          enable_tunneling=False)
+
+    @na_utils.trace
+    def get_vserver_peers(self, vserver_name=None, peer_vserver_name=None):
+        """Gets one or more Vserver peer relationships."""
+
+        query = {}
+        if peer_vserver_name:
+            query['name'] = peer_vserver_name
+        if vserver_name:
+            query['svm.name'] = vserver_name
+
+        query['fields'] = 'uuid,svm.name,peer.svm.name,state,peer.cluster.name'
+
+        result = self.send_request('/svm/peers', 'get', query=query)
+        if not self._has_records(result):
+            return []
+
+        vserver_peers = []
+        for vserver_peer in result['records']:
+            vserver_peer_info = {
+                'uuid': vserver_peer['uuid'],
+                'vserver': vserver_peer['svm']['name'],
+                'peer-vserver': vserver_peer['peer']['svm']['name'],
+                'peer-state': vserver_peer['state'],
+                'peer-cluster': vserver_peer['peer']['cluster']['name'],
+            }
+            vserver_peers.append(vserver_peer_info)
+
+        return vserver_peers
+
+    @na_utils.trace
+    def delete_vserver_peer(self, vserver_name, peer_vserver_name):
+        """Deletes a Vserver peer relationship."""
+
+        vserver_peer = self.get_vserver_peers(vserver_name, peer_vserver_name)
+        uuid = vserver_peer[0].get('uuid')
+        self.send_request(f'/svm/peers/{uuid}', 'delete',
+                          enable_tunneling=False)
+
+    @na_utils.trace
+    def create_vserver(self, vserver_name, root_volume_aggregate_name,
+                       root_volume_name, aggregate_names, ipspace_name):
+        """Creates new vserver and assigns aggregates."""
+
+        # NOTE(nahimsouza): root_volume_aggregate_name and root_volume_name
+        # were kept due to compatibility issues, but they are not used in
+        # the vserver creation by REST API
+        self._create_vserver(
+            vserver_name, aggregate_names, ipspace_name,
+            name_server_switch=['files'])
+
+    @na_utils.trace
+    def create_vserver_dp_destination(self, vserver_name, aggregate_names,
+                                      ipspace_name):
+        """Creates new 'dp_destination' vserver and assigns aggregates."""
+        self._create_vserver(
+            vserver_name, aggregate_names, ipspace_name,
+            subtype='dp_destination')
+
+    @na_utils.trace
+    def _create_vserver(self, vserver_name, aggregate_names, ipspace_name,
+                        name_server_switch=None, subtype=None):
+        """Creates new vserver and assigns aggregates."""
+        body = {
+            'name': vserver_name,
+        }
+
+        if name_server_switch:
+            body['nsswitch.namemap'] = name_server_switch
+
+        if subtype:
+            body['subtype'] = subtype
+
+        if ipspace_name:
+            body['ipspace.name'] = ipspace_name
+
+        body['aggregates'] = []
+        for aggr_name in aggregate_names:
+            body['aggregates'].append({'name': aggr_name})
+
+        self.send_request('/svm/svms', 'post', body=body)
+
+    @na_utils.trace
+    def list_node_data_ports(self, node):
+        """List data ports from node."""
+        ports = self.get_node_data_ports(node)
+        return [port.get('port') for port in ports]
+
+    @na_utils.trace
+    def _sort_data_ports_by_speed(self, ports):
+        """Sort ports by speed."""
+
+        def sort_key(port):
+            value = port.get('speed')
+            if not (value and isinstance(value, str)):
+                return 0
+            elif value.isdigit():
+                return int(value)
+            elif value == 'auto':
+                return 3
+            elif value == 'undef':
+                return 2
+            else:
+                return 1
+
+        return sorted(ports, key=sort_key, reverse=True)
+
+    @na_utils.trace
+    def get_node_data_ports(self, node):
+        """Get applicable data ports on the node."""
+        query = {
+            'node.name': node,
+            'state': 'up',
+            'type': 'physical',
+            'fields': 'node.name,speed,name'
+        }
+
+        result = self.send_request('/network/ethernet/ports', 'get',
+                                   query=query)
+
+        net_port_info_list = result.get('records', [])
+
+        ports = []
+        if net_port_info_list:
+
+            # NOTE(nahimsouza): This query selects the ports that are
+            # being used for node management
+            query_interfaces = {
+                'service_policy.name': 'default-management',
+                'fields': 'location.port.name'
+            }
+            response = self.send_request('/network/ip/interfaces', 'get',
+                                         query=query_interfaces,
+                                         enable_tunneling=False)
+
+            mgmt_ports = set(
+                [record['location']['port']['name']
+                    for record in response.get('records', [])]
+            )
+
+            for port_info in net_port_info_list:
+                if port_info['name'] not in mgmt_ports:
+                    port = {
+                        'node': port_info['node']['name'],
+                        'port': port_info['name'],
+                        'speed': port_info['speed'],
+                    }
+                    ports.append(port)
+
+            ports = self._sort_data_ports_by_speed(ports)
+
+        return ports
+
+    @na_utils.trace
+    def get_ipspace_name_for_vlan_port(self, vlan_node, vlan_port, vlan_id):
+        """Gets IPSpace name for specified VLAN"""
+
+        port = vlan_port if not vlan_id else '%(port)s-%(id)s' % {
+            'port': vlan_port,
+            'id': vlan_id,
+        }
+        query = {
+            'name': port,
+            'node.name': vlan_node,
+            'fields': 'broadcast_domain.ipspace.name'
+        }
+        result = self.send_request('/network/ethernet/ports/', 'get',
+                                   query=query)
+
+        records = result.get('records', [])
+        if not records:
+            return None
+        ipspace_name = records[0]['broadcast_domain']['ipspace']['name']
+
+        return ipspace_name
+
+    @na_utils.trace
+    def create_ipspace(self, ipspace_name):
+        """Creates an IPspace."""
+        body = {'name': ipspace_name}
+        self.send_request('/network/ipspaces', 'post', body=body)
+
+    @na_utils.trace
+    def create_port_and_broadcast_domain(self, node, port, vlan, mtu, ipspace):
+        """Create port and broadcast domain, if they don't exist."""
+        home_port_name = port
+        if vlan:
+            self._create_vlan(node, port, vlan)
+            home_port_name = '%(port)s-%(tag)s' % {'port': port, 'tag': vlan}
+
+        self._ensure_broadcast_domain_for_port(
+            node, home_port_name, mtu, ipspace=ipspace)
+
+        return home_port_name
+
+    @na_utils.trace
+    def _create_vlan(self, node, port, vlan):
+        """Create VLAN port if it does not exist."""
+        try:
+            body = {
+                'vlan.base_port.name': port,
+                'node.name': node,
+                'vlan.tag': vlan,
+                'type': 'vlan'
+            }
+            self.send_request('/network/ethernet/ports', 'post', body=body)
+        except netapp_api.api.NaApiError as e:
+            if e.code == netapp_api.EREST_DUPLICATE_ENTRY:
+                LOG.debug('VLAN %(vlan)s already exists on port %(port)s',
+                          {'vlan': vlan, 'port': port})
+            else:
+                msg = _('Failed to create VLAN %(vlan)s on '
+                        'port %(port)s. %(err_msg)s')
+                msg_args = {'vlan': vlan, 'port': port, 'err_msg': e.message}
+                raise exception.NetAppException(msg % msg_args)
+
+    @na_utils.trace
+    def _ensure_broadcast_domain_for_port(self, node, port, mtu,
+                                          ipspace=DEFAULT_IPSPACE):
+        """Ensure a port is in a broadcast domain.  Create one if necessary.
+
+        If the IPspace:domain pair match for the given port, which commonly
+        happens in multi-node clusters, then there isn't anything to do.
+        Otherwise, we can assume the IPspace is correct and extant by this
+        point, so the remaining task is to remove the port from any domain it
+        is already in, create the domain for the IPspace if it doesn't exist,
+        and add the port to this domain.
+        """
+
+        # Derive the broadcast domain name from the IPspace name since they
+        # need to be 1-1 and the default for both is the same name, 'Default'.
+        domain = re.sub(r'ipspace', 'domain', ipspace)
+
+        port_info = self._get_broadcast_domain_for_port(node, port)
+
+        # Port already in desired ipspace and broadcast domain.
+        if (port_info['ipspace'] == ipspace
+                and port_info['broadcast-domain'] == domain):
+            self._modify_broadcast_domain(domain, ipspace, mtu)
+            return
+
+        # If desired broadcast domain doesn't exist, create it.
+        if not self._broadcast_domain_exists(domain, ipspace):
+            self._create_broadcast_domain(domain, ipspace, mtu)
+        else:
+            self._modify_broadcast_domain(domain, ipspace, mtu)
+
+        # Move the port into the broadcast domain where it is needed.
+        self._add_port_to_broadcast_domain(node, port, domain, ipspace)
+
+    @na_utils.trace
+    def _get_broadcast_domain_for_port(self, node, port):
+        """Get broadcast domain for a specific port."""
+        query = {
+            'node.name': node,
+            'name': port,
+            'fields': 'broadcast_domain.name,broadcast_domain.ipspace.name'
+        }
+        result = self.send_request(
+            '/network/ethernet/ports', 'get', query=query)
+
+        net_port_info_list = result.get('records', [])
+        port_info = net_port_info_list[0]
+        if not port_info:
+            msg = _('Could not find port %(port)s on node %(node)s.')
+            msg_args = {'port': port, 'node': node}
+            raise exception.NetAppException(msg % msg_args)
+
+        broadcast_domain = port_info.get('broadcast_domain', {})
+        broadcast_domain_name = broadcast_domain.get('name')
+        ipspace_name = broadcast_domain.get('ipspace', {}).get('name')
+        port = {
+            'broadcast-domain': broadcast_domain_name,
+            'ipspace': ipspace_name
+        }
+        return port
+
+    @na_utils.trace
+    def _create_broadcast_domain(self, domain, ipspace, mtu):
+        """Create a broadcast domain."""
+        body = {
+            'ipspace.name': ipspace,
+            'name': domain,
+            'mtu': mtu,
+        }
+        self.send_request(
+            '/network/ethernet/broadcast-domains', 'post', body=body)
+
+    @na_utils.trace
+    def _modify_broadcast_domain(self, domain, ipspace, mtu):
+        """Modify a broadcast domain."""
+        query = {
+            'name': domain
+        }
+
+        body = {
+            'ipspace.name': ipspace,
+            'mtu': mtu,
+        }
+        self.send_request(
+            '/network/ethernet/broadcast-domains', 'patch', body=body,
+            query=query)
+
+    @na_utils.trace
+    def _delete_port_by_ipspace_and_broadcast_domain(self, port,
+                                                     domain, ipspace):
+        query = {
+            'broadcast_domain.ipspace.name': ipspace,
+            'broadcast_domain.name': domain,
+            'name': port
+        }
+        self.send_request('/network/ethernet/ports/', 'delete', query=query)
+
+    @na_utils.trace
+    def _broadcast_domain_exists(self, domain, ipspace):
+        """Check if a broadcast domain exists."""
+        query = {
+            'ipspace.name': ipspace,
+            'name': domain,
+        }
+        result = self.send_request(
+            '/network/ethernet/broadcast-domains',
+            'get', query=query)
+        return self._has_records(result)
+
+    @na_utils.trace
+    def _add_port_to_broadcast_domain(self, node, port, domain, ipspace):
+        """Set a broadcast domain for a given port."""
+        try:
+            query = {
+                'name': port,
+                'node.name': node,
+            }
+            body = {
+                'broadcast_domain.ipspace.name': ipspace,
+                'broadcast_domain.name': domain,
+            }
+            self.send_request('/network/ethernet/ports/', 'patch',
+                              query=query, body=body)
+        except netapp_api.api.NaApiError as e:
+            if e.code == netapp_api.EREST_FAIL_ADD_PORT_BROADCAST:
+                LOG.debug('Port %(port)s already exists in broadcast domain '
+                          '%(domain)s', {'port': port, 'domain': domain})
+            else:
+                msg = _('Failed to add port %(port)s to broadcast domain '
+                        '%(domain)s. %(err_msg)s')
+                msg_args = {
+                    'port': port,
+                    'domain': domain,
+                    'err_msg': e.message,
+                }
+                raise exception.NetAppException(msg % msg_args)
+
+    @na_utils.trace
+    def enable_nfs(self, versions, nfs_config=None):
+        """Enables NFS on Vserver."""
+        svm_id = self._get_unique_svm_by_name()
+
+        body = {
+            'svm.uuid': svm_id,
+            'enabled': 'true',
+        }
+        self.send_request('/protocols/nfs/services/', 'post',
+                          body=body)
+
+        self._enable_nfs_protocols(versions, svm_id)
+
+        if nfs_config:
+            self._configure_nfs(nfs_config, svm_id)
+
+        self._create_default_nfs_export_rules()
+
+    @na_utils.trace
+    def _enable_nfs_protocols(self, versions, svm_id):
+        """Set the enabled NFS protocol versions."""
+        nfs3 = 'true' if 'nfs3' in versions else 'false'
+        nfs40 = 'true' if 'nfs4.0' in versions else 'false'
+        nfs41 = 'true' if 'nfs4.1' in versions else 'false'
+
+        body = {
+            'protocol.v3_enabled': nfs3,
+            'protocol.v40_enabled': nfs40,
+            'protocol.v41_enabled': nfs41,
+            'showmount_enabled': 'true',
+            'windows.v3_ms_dos_client_enabled': 'true',
+            'protocol.v3_features.connection_drop': 'false',
+            'protocol.v3_features.ejukebox_enabled': 'false',
+        }
+        self.send_request(f'/protocols/nfs/services/{svm_id}', 'patch',
+                          body=body)
+
+    @na_utils.trace
+    def _create_default_nfs_export_rules(self):
+        """Create the default export rule for the NFS service."""
+
+        body = {
+            'clients': [{'match': '0.0.0.0/0'}],
+            'ro_rule': [
+                'any',
+            ],
+            'rw_rule': [
+                'never'
+            ],
+        }
+
+        uuid = self.get_unique_export_policy_id('default')
+
+        self.send_request(f'/protocols/nfs/export-policies/{uuid}/rules',
+                          "post", body=body)
+        body['clients'] = [{'match': '::/0'}]
+        self.send_request(f'/protocols/nfs/export-policies/{uuid}/rules',
+                          "post", body=body)
+
+    @na_utils.trace
+    def _configure_nfs(self, nfs_config, svm_id):
+        """Sets the nfs configuraton"""
+        body = {
+            'transport.tcp_max_transfer_size': nfs_config['tcp-max-xfer-size']
+        }
+        self.send_request(f'/protocols/nfs/services/{svm_id}', 'patch',
+                          body=body)
+
+    @na_utils.trace
+    def _get_svm_uuid(self):
+        # Get SVM UUID.
+        query = {
+            'name': self.vserver,
+            'fields': 'uuid'
+        }
+        res = self.send_request('/svm/svms', 'get', query=query)
+        if not res.get('records'):
+            msg = _('Vserver %s not found.') % self.vserver
+            raise exception.NetAppException(msg)
+        svm_id = res.get('records')[0]['uuid']
+        return svm_id
+
+    @na_utils.trace
+    def create_network_interface(self, ip, netmask, node, port,
+                                 vserver_name, lif_name):
+        """Creates LIF on VLAN port."""
+        LOG.debug('Creating LIF %(lif)s for Vserver %(vserver)s '
+                  'node/port %(node)s:%(port)s.',
+                  {'lif': lif_name, 'vserver': vserver_name, 'node': node,
+                   'port': port})
+
+        query = {
+            'name': 'default-data-files',
+            'svm.name': vserver_name,
+            'fields': 'uuid,name,services,svm.name'
+        }
+
+        result = self.send_request('/network/ip/service-policies/', 'get',
+                                   query=query)
+
+        if result.get('records'):
+            policy = result['records'][0]
+
+            # NOTE(nahimsouza): Workaround to add services in the policy
+            # in the case ONTAP does not create it automatically
+            if 'data_nfs' not in policy['services']:
+                policy['services'].append('data_nfs')
+            if 'data_cifs' not in policy['services']:
+                policy['services'].append('data_cifs')
+
+            uuid = policy['uuid']
+            body = {'services': policy['services']}
+            self.send_request(
+                f'/network/ip/service-policies/{uuid}', 'patch',
+                body=body)
+
+        body = {
+            'ip.address': ip,
+            'ip.netmask': netmask,
+            'enabled': 'true',
+            'service_policy.name': 'default-data-files',
+            'location.home_node.name': node,
+            'location.home_port.name': port,
+            'name': lif_name,
+            'svm.name': vserver_name,
+        }
+        self.send_request('/network/ip/interfaces', 'post', body=body)
+
+    @na_utils.trace
+    def network_interface_exists(self, vserver_name, node, port, ip, netmask,
+                                 vlan=None, home_port=None):
+        """Checks if LIF exists."""
+        if not home_port:
+            home_port = port if not vlan else f'{port}-{vlan}'
+
+        query = {
+            'ip.address': ip,
+            'location.home_node.name': node,
+            'location.home_port.name': home_port,
+            'ip.netmask': netmask,
+            'svm.name': vserver_name,
+            'fields': 'name',
+        }
+        result = self.send_request('/network/ip/interfaces',
+                                   'get', query=query)
+        return self._has_records(result)
+
+    @na_utils.trace
+    def create_route(self, gateway, destination=None):
+        """Create a network route."""
+        if not gateway:
+            return
+
+        address = None
+        netmask = None
+        if not destination:
+            if ':' in gateway:
+                destination = '::/0'
+            else:
+                destination = '0.0.0.0/0'
+
+        if '/' in destination:
+            address, netmask = destination.split('/')
+        else:
+            address = destination
+
+        body = {
+            'destination.address': address,
+            'gateway': gateway,
+        }
+
+        if netmask:
+            body['destination.netmask'] = netmask
+
+        try:
+            self.send_request('/network/ip/routes', 'post', body=body)
+        except netapp_api.api.NaApiError as e:
+            if (e.code == netapp_api.EREST_DUPLICATE_ROUTE):
+                LOG.debug('Route to %(destination)s via gateway %(gateway)s '
+                          'exists.',
+                          {'destination': destination, 'gateway': gateway})
+            else:
+                msg = _('Failed to create a route to %(destination)s via '
+                        'gateway %(gateway)s: %(err_msg)s')
+                msg_args = {
+                    'destination': destination,
+                    'gateway': gateway,
+                    'err_msg': e.message,
+                }
+                raise exception.NetAppException(msg % msg_args)
+
+    @na_utils.trace
+    def rename_vserver(self, vserver_name, new_vserver_name):
+        """Rename a vserver."""
+        body = {
+            'name': new_vserver_name
+        }
+
+        svm_uuid = self._get_unique_svm_by_name(vserver_name)
+        self.send_request(f'/svm/svms/{svm_uuid}', 'patch', body=body)
+
+    @na_utils.trace
+    def get_vserver_info(self, vserver_name):
+        """Retrieves Vserver info."""
+        LOG.debug('Retrieving Vserver %s information.', vserver_name)
+
+        query = {
+            'name': vserver_name,
+            'fields': 'state,subtype'
+        }
+
+        response = self.send_request('/svm/svms', 'get', query=query)
+        if not response.get('records'):
+            return
+
+        vserver = response['records'][0]
+        vserver_info = {
+            'name': vserver_name,
+            'subtype': vserver['subtype'],
+            'operational_state': vserver['state'],
+            'state': vserver['state'],
+        }
+        return vserver_info
+
+    @na_utils.trace
+    def get_nfs_config(self, desired_args, vserver):
+        """Gets the NFS config of the given vserver with the desired params"""
+
+        query = {'fields': 'transport.*'}
+        query['svm.name'] = vserver
+
+        nfs_info = {
+            'tcp-max-xfer-size': DEFAULT_TCP_MAX_XFER_SIZE,
+            'udp-max-xfer-size': DEFAULT_UDP_MAX_XFER_SIZE,
+        }
+
+        response = self.send_request('/protocols/nfs/services/',
+                                     'get', query=query)
+        records = response.get('records', [])
+
+        if records:
+            nfs_info['tcp-max-xfer-size'] = (
+                records[0]['transport']['tcp_max_transfer_size'])
+
+        return nfs_info
+
+    @na_utils.trace
+    def get_vserver_ipspace(self, vserver_name):
+        """Get the IPspace of the vserver, or None if not supported."""
+        query = {
+            'name': vserver_name,
+            'fields': 'ipspace.name'
+        }
+
+        try:
+            response = self.send_request('/svm/svms', 'get', query=query)
+        except netapp_api.api.NaApiError:
+            msg = _('Could not determine IPspace for Vserver %s.')
+            raise exception.NetAppException(msg % vserver_name)
+
+        if self._has_records(response):
+            return response['records'][0].get('ipspace', {}).get('name')
+
+        return None
+
+    @na_utils.trace
+    def get_snapmirror_policies(self, vserver_name):
+        """Get all SnapMirror policies associated to a vServer."""
+        query = {
+            'svm.name': vserver_name,
+            'fields': 'name'
+        }
+        response = self.send_request(
+            '/snapmirror/policies', 'get', query=query)
+        records = response.get('records')
+
+        policy_name = []
+        for record in records:
+            policy_name.append(record.get('name'))
+        return policy_name
+
+    @na_utils.trace
+    def delete_snapmirror_policy(self, policy_name):
+        """Deletes a SnapMirror policy."""
+
+        query = {
+            'name': policy_name,
+            'fields': 'uuid,name'
+        }
+        response = self.send_request('/snapmirror/policies',
+                                     'get', query=query)
+        if self._has_records(response):
+            uuid = response['records'][0]['uuid']
+            try:
+                self.send_request(f'/snapmirror/policies/{uuid}', 'delete')
+            except netapp_api.api.NaApiError as e:
+                if e.code != netapp_api.EREST_ENTRY_NOT_FOUND:
+                    raise
+
+    @na_utils.trace
+    def delete_vserver(self, vserver_name, vserver_client,
+                       security_services=None):
+        """Deletes a Vserver.
+
+        Checks if Vserver exists and does not have active shares.
+        Offlines and destroys root volumes.  Deletes Vserver.
+        """
+        vserver_info = self.get_vserver_info(vserver_name)
+        if vserver_info is None:
+            LOG.error("Vserver %s does not exist.", vserver_name)
+            return
+        svm_uuid = self._get_unique_svm_by_name(vserver_name)
+
+        is_dp_destination = vserver_info.get('subtype') == 'dp_destination'
+        root_volume_name = self.get_vserver_root_volume_name(vserver_name)
+        volumes_count = vserver_client.get_vserver_volume_count()
+
+        # NOTE(dviroel): 'dp_destination' vservers don't allow to delete its
+        # root volume. We can just call vserver-destroy directly.
+        if volumes_count == 1 and not is_dp_destination:
+            try:
+                vserver_client.offline_volume(root_volume_name)
+            except netapp_api.api.NaApiError as e:
+                if e.code == netapp_api.EREST_ENTRY_NOT_FOUND:
+                    LOG.error("Cannot delete Vserver %s. "
+                              "Failed to put volumes offline. "
+                              "Entry doesn't exist.", vserver_name)
+                else:
+                    raise
+            vserver_client.delete_volume(root_volume_name)
+
+        elif volumes_count > 1:
+            msg = _("Cannot delete Vserver. Vserver %s has shares.")
+            raise exception.NetAppException(msg % vserver_name)
+
+        if security_services and not is_dp_destination:
+            self._terminate_vserver_services(vserver_name, vserver_client,
+                                             security_services)
+
+        self.send_request(f'/svm/svms/{svm_uuid}', 'delete')
+
+    @na_utils.trace
+    def get_vserver_volume_count(self):
+        """Get number of volumes in SVM."""
+        query = {'return_records': 'false'}
+        response = self.send_request('/storage/volumes', 'get', query=query)
+        return response['num_records']
+
+    @na_utils.trace
+    def _terminate_vserver_services(self, vserver_name, vserver_client,
+                                    security_services):
+        """Terminate SVM security services."""
+        svm_uuid = self._get_unique_svm_by_name(vserver_name)
+
+        for service in security_services:
+            if service['type'].lower() == 'active_directory':
+                body = {
+                    'ad_domain.password': service['password'],
+                    'ad_domain.user': service['user'],
+                }
+
+                body_force = {
+                    'ad_domain.password': service['password'],
+                    'ad_domain.user': service['user'],
+                    'force': True
+                }
+
+                try:
+                    vserver_client.send_request(
+                        f'/protocols/cifs/services/{svm_uuid}', 'delete',
+                        body=body)
+                except netapp_api.api.NaApiError as e:
+                    if e.code == netapp_api.EREST_ENTRY_NOT_FOUND:
+                        LOG.error('CIFS server does not exist for '
+                                  'Vserver %s.', vserver_name)
+                    else:
+                        vserver_client.send_request(
+                            f'/protocols/cifs/services/{svm_uuid}', 'delete',
+                            body=body_force)
+            elif service['type'].lower() == 'kerberos':
+                vserver_client.disable_kerberos(service)
+
+    @na_utils.trace
+    def disable_kerberos(self, security_service):
+        """Disable Kerberos in all Vserver LIFs."""
+
+        lifs = self.get_network_interfaces()
+
+        # NOTE(dviroel): If the Vserver has no LIFs, there are no Kerberos
+        # to be disabled.
+        for lif in lifs:
+            body = {
+                'password': security_service['password'],
+                'user': security_service['user'],
+                'interface.name': lif['interface-name'],
+                'enabled': False
+            }
+
+            interface_uuid = lif['uuid']
+
+            try:
+                self.send_request(
+                    f'/protocols/nfs/kerberos/interfaces/{interface_uuid}',
+                    'patch', body=body)
+            except netapp_api.api.NaApiError as e:
+                disabled_msg = (
+                    "Kerberos is already enabled/disabled on this LIF")
+                if (e.code == netapp_api.EREST_KERBEROS_IS_ENABLED_DISABLED and
+                        disabled_msg in e.message):
+                    # NOTE(dviroel): do not raise an error for 'Kerberos is
+                    # already disabled in this LIF'.
+                    continue
+                msg = ("Failed to disable Kerberos: %s.")
+                raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def get_vserver_root_volume_name(self, vserver_name):
+        """Get the root volume name of the vserver."""
+        unique_volume = self._get_volume_by_args(vserver=vserver_name,
+                                                 is_root=True)
+        return unique_volume['name']
+
+    @na_utils.trace
+    def ipspace_has_data_vservers(self, ipspace_name):
+        """Check whether an IPspace has any data Vservers assigned to it."""
+        query = {'ipspace.name': ipspace_name}
+        result = self.send_request('/svm/svms', 'get', query=query)
+        return self._has_records(result)
+
+    @na_utils.trace
+    def delete_vlan(self, node, port, vlan):
+        """Delete VLAN port if not in use."""
+        query = {
+            'vlan.base_port.name': port,
+            'node.name': node,
+            'vlan.tag': vlan,
+        }
+
+        try:
+            self.send_request('/network/ethernet/ports/', 'delete',
+                              query=query)
+        except netapp_api.api.NaApiError as e:
+            if e.code == netapp_api.EREST_ENTRY_NOT_FOUND:
+                LOG.debug('VLAN %(vlan)s on port %(port)s node %(node)s '
+                          'was not found')
+            if (e.code == netapp_api.EREST_INTERFACE_BOUND or
+                    e.code == netapp_api.EREST_PORT_IN_USE):
+                LOG.debug('VLAN %(vlan)s on port %(port)s node %(node)s '
+                          'still used by LIF and cannot be deleted.',
+                          {'vlan': vlan, 'port': port, 'node': node})
+            else:
+                msg = _('Failed to delete VLAN %(vlan)s on '
+                        'port %(port)s node %(node)s: %(err_msg)s')
+                msg_args = {
+                    'vlan': vlan,
+                    'port': port,
+                    'node': node,
+                    'err_msg': e.message
+                }
+                raise exception.NetAppException(msg % msg_args)
+
+    @na_utils.trace
+    def svm_migration_start(
+            self, source_cluster_name, source_share_server_name,
+            dest_aggregates, dest_ipspace=None, check_only=False):
+        """Send a request to start the SVM migration in the backend.
+
+        :param source_cluster_name: the name of the source cluster.
+        :param source_share_server_name: the name of the source server.
+        :param dest_aggregates: the aggregates where volumes will be placed in
+        the migration.
+        :param dest_ipspace: created IPspace for the migration.
+        :param check_only: If the call will only check the feasibility.
+         deleted after the cutover or not.
+        """
+        body = {
+            "auto_cutover": False,
+            "auto_source_cleanup": True,
+            "check_only": check_only,
+            "source": {
+                "cluster": {"name": source_cluster_name},
+                "svm": {"name": source_share_server_name},
+            },
+            "destination": {
+                "volume_placement": {
+                    "aggregates": dest_aggregates,
+                },
+            },
+        }
+
+        if dest_ipspace:
+            ipspace_data = {
+                "ipspace": {
+                    "name": dest_ipspace,
+                }
+            }
+            body["destination"].update(ipspace_data)
+
+        return self.send_request('/svm/migrations', 'post', body=body,
+                                 wait_on_accepted=False)
+
+    @na_utils.trace
+    def get_migration_check_job_state(self, job_id):
+        """Get the job state of a share server migration.
+
+        :param job_id: id of the job to be searched.
+        """
+        try:
+            job = self.get_job(job_id)
+            return job
+        except netapp_api.api.NaApiError as e:
+            if e.code == netapp_api.EREST_NFS_V4_0_ENABLED_MIGRATION_FAILURE:
+                msg = _(
+                    'NFS v4.0 is not supported while migrating vservers.')
+                LOG.error(msg)
+                raise exception.NetAppException(message=e.message)
+            if e.code == netapp_api.EREST_VSERVER_MIGRATION_TO_NON_AFF_CLUSTER:
+                msg = _('Both source and destination clusters must be AFF '
+                        'systems.')
+                LOG.error(msg)
+                raise exception.NetAppException(message=e.message)
+            msg = (_('Failed to check migration support. Reason: '
+                     '%s' % e.message))
+            raise exception.NetAppException(msg)
+
+    @na_utils.trace
+    def svm_migrate_complete(self, migration_id):
+        """Send a request to complete the SVM migration.
+
+        :param migration_id: the id of the migration provided by the storage.
+        """
+        body = {
+            "action": "cutover"
+        }
+
+        return self.send_request(
+            f'/svm/migrations/{migration_id}', 'patch', body=body,
+            wait_on_accepted=False)
+
+    @na_utils.trace
+    def svm_migrate_cancel(self, migration_id):
+        """Send a request to cancel the SVM migration.
+
+        :param migration_id: the id of the migration provided by the storage.
+        """
+        return self.send_request(f'/svm/migrations/{migration_id}', 'delete',
+                                 wait_on_accepted=False)
+
+    @na_utils.trace
+    def svm_migration_get(self, migration_id):
+        """Send a request to get the progress of the SVM migration.
+
+        :param migration_id: the id of the migration provided by the storage.
+        """
+        return self.send_request(f'/svm/migrations/{migration_id}', 'get')
+
+    @na_utils.trace
+    def svm_migrate_pause(self, migration_id):
+        """Send a request to pause a migration.
+
+        :param migration_id: the id of the migration provided by the storage.
+        """
+        body = {
+            "action": "pause"
+        }
+
+        return self.send_request(
+            f'/svm/migrations/{migration_id}', 'patch', body=body,
+            wait_on_accepted=False)
+
+    @na_utils.trace
+    def delete_network_interface(self, vserver_name, interface_name):
+        """Delete the LIF, disabling it before."""
+        self.disable_network_interface(vserver_name, interface_name)
+
+        query = {
+            'svm.name': vserver_name,
+            'name': interface_name
+        }
+        self.send_request('/network/ip/interfaces', 'delete', query=query)
+
+    @na_utils.trace
+    def disable_network_interface(self, vserver_name, interface_name):
+        """Disable the LIF."""
+        body = {
+            'enabled': 'false'
+        }
+        query = {
+            'svm.name': vserver_name,
+            'name': interface_name
+        }
+        self.send_request('/network/ip/interfaces', 'patch', body=body,
+                          query=query)
+
+    @na_utils.trace
+    def get_ipspaces(self, ipspace_name=None):
+        """Gets one or more IPSpaces."""
+
+        query = {
+            'name': ipspace_name
+        }
+        result = self.send_request('/network/ipspaces', 'get',
+                                   query=query)
+
+        if not self._has_records(result):
+            return []
+
+        ipspace_info = result.get('records')[0]
+
+        query = {
+            'broadcast_domain.ipspace.name': ipspace_name
+        }
+        ports = self.send_request('/network/ethernet/ports',
+                                  'get', query=query)
+
+        query = {
+            'ipspace.name': ipspace_name
+        }
+        vservers = self.send_request('/svm/svms',
+                                     'get', query=query)
+
+        br_domains = self.send_request('/network/ethernet/broadcast-domains',
+                                       'get', query=query)
+
+        ipspace = {
+            'ports': [],
+            'vservers': [],
+            'broadcast-domains': [],
+        }
+
+        for port in ports.get('records'):
+            ipspace['ports'].append(port.get('name'))
+
+        for vserver in vservers.get('records'):
+            ipspace['vservers'].append(vserver.get('name'))
+
+        for broadcast in br_domains.get('records'):
+            ipspace['broadcast-domains'].append(broadcast.get('name'))
+
+        ipspace['ipspace'] = ipspace_info.get('name')
+
+        ipspace['uuid'] = ipspace_info.get('uuid')
+
+        return ipspace
+
+    @na_utils.trace
+    def _delete_port_and_broadcast_domain(self, domain, ipspace):
+        """Delete a broadcast domain and its ports."""
+
+        ipspace_name = ipspace['ipspace']
+        ports = ipspace['ports']
+
+        for port in ports:
+            self._delete_port_by_ipspace_and_broadcast_domain(
+                port,
+                domain,
+                ipspace_name)
+
+        query = {
+            'name': domain,
+            'ipspace.name': ipspace_name
+        }
+
+        self.send_request('/network/ethernet/broadcast-domains', 'delete',
+                          query=query)
+
+    @na_utils.trace
+    def _delete_port_and_broadcast_domains_for_ipspace(self, ipspace_name):
+        """Deletes all broadcast domains in an IPspace."""
+        ipspace = self.get_ipspaces(ipspace_name)
+        if not ipspace:
+            return
+
+        for broadcast_domain_name in ipspace['broadcast-domains']:
+            self._delete_port_and_broadcast_domain(broadcast_domain_name,
+                                                   ipspace)
+
+    @na_utils.trace
+    def delete_ipspace(self, ipspace_name):
+        """Deletes an IPspace and its ports/domains."""
+
+        self._delete_port_and_broadcast_domains_for_ipspace(ipspace_name)
+
+        query = {
+            'name': ipspace_name
+        }
+        self.send_request('/network/ipspaces', 'delete', query=query)
