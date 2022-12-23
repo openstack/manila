@@ -1060,6 +1060,8 @@ class ShareManagerTestCase(test.TestCase):
         mock_share_replica_access_update = self.mock_object(
             self.share_manager.access_helper,
             'get_and_update_share_instance_access_rules_status')
+        mock_share_replica_allow_access = self.mock_object(
+            api.API, 'allow_access_to_instance')
 
         self.share_manager.create_share_replica(self.context, replica)
 
@@ -1067,6 +1069,10 @@ class ShareManagerTestCase(test.TestCase):
         mock_share_replica_access_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             share_instance_id=replica['id'], status=constants.STATUS_ACTIVE)
+        replica_dict = self.share_manager._get_share_instance_dict(
+            self.context, replica)
+        mock_share_replica_allow_access.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), replica_dict)
         self.assertFalse(mock_export_locs_update_call.called)
         self.assertTrue(mock_log_info.called)
         self.assertTrue(mock_log_warning.called)
@@ -1119,6 +1125,8 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=fake_access_rules[0]))
         mock_share_replica_access_update = self.mock_object(
             self.share_manager, '_update_share_instance_access_rules_state')
+        mock_share_replica_allow_access = self.mock_object(
+            api.API, 'allow_access_to_instance')
         driver_call = self.mock_object(
             self.share_manager.driver, 'create_replica',
             mock.Mock(return_value=replica))
@@ -1129,6 +1137,10 @@ class ShareManagerTestCase(test.TestCase):
         mock_replica_update_call.assert_has_calls(mock_calls, any_order=False)
         mock_share_replica_access_update.assert_called_once_with(
             mock.ANY, replica['id'], replica['access_rules_status'])
+        replica_dict = self.share_manager._get_share_instance_dict(
+            self.context, replica)
+        mock_share_replica_allow_access.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), replica_dict)
         self.assertTrue(mock_export_locs_update_call.called)
         self.assertTrue(mock_log_info.called)
         self.assertFalse(mock_log_warning.called)
@@ -1175,6 +1187,8 @@ class ShareManagerTestCase(test.TestCase):
         mock_share_replica_access_update = self.mock_object(
             self.share_manager.access_helper,
             'get_and_update_share_instance_access_rules_status')
+        mock_share_replica_allow_access = self.mock_object(
+            api.API, 'allow_access_to_instance')
         driver_call = self.mock_object(
             self.share_manager.driver, 'create_replica',
             mock.Mock(return_value=replica))
@@ -1191,6 +1205,10 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext),
             share_instance_id=replica['id'],
             status=replica['access_rules_status'])
+        replica_dict = self.share_manager._get_share_instance_dict(
+            self.context, replica)
+        mock_share_replica_allow_access.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), replica_dict)
         self.assertTrue(mock_export_locs_update_call.called)
         self.assertTrue(mock_log_info.called)
         self.assertFalse(mock_log_warning.called)

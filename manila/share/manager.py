@@ -2473,6 +2473,10 @@ class ShareManager(manager.SchedulerDependentManager):
                 context, share_replica['id'],
                 constants.STATUS_ACTIVE)
 
+        if share_access_rules:
+            self.share_api.allow_access_to_instance(
+                context, share_replica)
+
         LOG.info("Share replica %s created successfully.",
                  share_replica['id'])
 
