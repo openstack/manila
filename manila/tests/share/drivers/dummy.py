@@ -584,7 +584,7 @@ class DummyDriver(driver.ShareDriver):
 
     @slow_me_down
     def promote_replica(self, context, replica_list, replica, access_rules,
-                        share_server=None):
+                        share_server=None, quiesce_wait_time=None):
         """Promote a replica to 'active' replica state."""
         return_replica_list = []
         for r in replica_list:

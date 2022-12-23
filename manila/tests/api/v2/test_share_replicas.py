@@ -19,6 +19,7 @@ import copy
 import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+from oslo_utils import strutils
 from webob import exc
 
 from manila.api import common
@@ -38,6 +39,7 @@ CONF = cfg.CONF
 CAST_RULES_READONLY_VERSION = '2.30'
 PRE_GRADUATION_VERSION = '2.55'
 GRADUATION_VERSION = '2.56'
+PROMOTE_QUIESCE_WAIT_VERSION = '2.75'
 
 
 @ddt.ddt
@@ -678,6 +680,42 @@ class ShareReplicasApiTest(test.TestCase):
         self.assertTrue(mock_api_promote_replica_call.called)
         self.mock_policy_check.assert_called_once_with(
             context, self.resource_name, 'promote')
+
+    @ddt.data(('2.74', None),
+              (PROMOTE_QUIESCE_WAIT_VERSION, None),
+              (PROMOTE_QUIESCE_WAIT_VERSION, 10),
+              (PROMOTE_QUIESCE_WAIT_VERSION, 'foobar'),
+              )
+    @ddt.unpack
+    def test_promote_quiesce_wait_time(self, microversion, time):
+        body = {'promote': {'quiesce_wait_time': time}}
+        replica, expected_replica = self._get_fake_replica(
+            replica_state=constants.REPLICA_STATE_IN_SYNC,
+            microversion=microversion)
+        self.mock_object(share_replicas.db, 'share_replica_get',
+                         mock.Mock(return_value=replica))
+        self.mock_object(share_replicas.db, 'share_network_get',
+                         mock.Mock(return_value=self.fake_share_network))
+
+        req = self._get_request(microversion=microversion)
+        allow_quiesce_wait_time = False
+        if (api_version.APIVersionRequest(microversion) >=
+                api_version.APIVersionRequest(PROMOTE_QUIESCE_WAIT_VERSION)):
+            allow_quiesce_wait_time = True
+        if time and allow_quiesce_wait_time:
+            if strutils.is_int_like(time):
+                mock_api_promote_replica_call = self.mock_object(
+                    share.API, 'promote_share_replica',
+                    mock.Mock(return_value=replica))
+                resp = self.controller.promote(req, replica['id'], body)
+                self.assertEqual(expected_replica, resp['share_replica'])
+                self.assertTrue(mock_api_promote_replica_call.called)
+            else:
+                self.assertRaises(exc.HTTPBadRequest,
+                                  self.controller.promote,
+                                  req,
+                                  replica['id'],
+                                  body)
 
     @ddt.data('index', 'detail', '_show', '_create', '_delete_share_replica',
               '_promote', 'reset_replica_state', 'reset_status', '_resync')

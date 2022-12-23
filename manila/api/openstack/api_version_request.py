@@ -190,6 +190,8 @@ REST_API_VERSION_HISTORY = """
     * 2.73 - Added Share Snapshot Metadata to Metadata API
     * 2.74 - Allow/deny share access rule even if share replicas are in
              'error' state.
+    * 2.75 - Added option to specify quiesce wait time in share replica
+             promote API.
 
 """
 
@@ -197,7 +199,7 @@ REST_API_VERSION_HISTORY = """
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.74"
+_MAX_API_VERSION = "2.75"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

@@ -143,10 +143,12 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
                                     replica_snapshots, **kwargs)
 
     def promote_replica(self, context, replica_list, replica, access_rules,
-                        share_server=None):
-        return self.library.promote_replica(context, replica_list, replica,
-                                            access_rules,
-                                            share_server=share_server)
+                        share_server=None, quiesce_wait_time=None):
+        return self.library.promote_replica(
+            context, replica_list, replica,
+            access_rules,
+            share_server=share_server,
+            quiesce_wait_time=quiesce_wait_time)
 
     def update_replica_state(self, context, replica_list, replica,
                              access_rules, replica_snapshots,

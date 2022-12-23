@@ -849,7 +849,8 @@ class API(base.Base):
                                                    share_replica,
                                                    force=force)
 
-    def promote_share_replica(self, context, share_replica):
+    def promote_share_replica(self, context, share_replica,
+                              quiesce_wait_time=None):
 
         if share_replica.get('status') != constants.STATUS_AVAILABLE:
             msg = _("Replica %(replica_id)s must be in %(status)s state to be "
@@ -872,7 +873,9 @@ class API(base.Base):
             context, share_replica['id'],
             {'status': constants.STATUS_REPLICATION_CHANGE})
 
-        self.share_rpcapi.promote_share_replica(context, share_replica)
+        self.share_rpcapi.promote_share_replica(
+            context, share_replica,
+            quiesce_wait_time=quiesce_wait_time)
 
         return self.db.share_replica_get(context, share_replica['id'])
 

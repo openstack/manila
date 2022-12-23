@@ -83,6 +83,7 @@ class ShareAPI(object):
             check_update_share_network_security_service()
         1.23 - Add update_share_server_network_allocations() and
             check_update_share_server_network_allocations()
+        1.24 - Add quiesce_wait_time paramater to promote_share_replica()
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -91,7 +92,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.23')
+        self.client = rpc.get_client(target, version_cap='1.24')
 
     def create_share_instance(self, context, share_instance, host,
                               request_spec, filter_properties,
@@ -374,13 +375,15 @@ class ShareAPI(object):
                           share_id=share_replica['share_id'],
                           force=force)
 
-    def promote_share_replica(self, context, share_replica):
+    def promote_share_replica(self, context, share_replica,
+                              quiesce_wait_time=None):
         host = utils.extract_host(share_replica['host'])
-        call_context = self.client.prepare(server=host, version='1.8')
+        call_context = self.client.prepare(server=host, version='1.24')
         call_context.cast(context,
                           'promote_share_replica',
                           share_replica_id=share_replica['id'],
-                          share_id=share_replica['share_id'])
+                          share_id=share_replica['share_id'],
+                          quiesce_wait_time=quiesce_wait_time)
 
     def update_share_replica(self, context, share_replica):
         host = utils.extract_host(share_replica['host'])

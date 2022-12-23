@@ -110,7 +110,7 @@ class HuaweiBase(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def promote_replica(self, context, replica_list, replica, access_rules,
-                        share_server=None):
+                        share_server=None, quiesce_wait_time=None):
         """Promote a replica to 'active' replica state."""
 
     @abc.abstractmethod

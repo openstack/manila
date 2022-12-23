@@ -17,6 +17,7 @@
 
 from http import client as http_client
 
+from oslo_utils import strutils
 import webob
 from webob import exc
 
@@ -241,14 +242,21 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
     def promote(self, req, id, body):
         return self._promote(req, id, body)
 
-    @wsgi.Controller.api_version(GRADUATION_VERSION)  # noqa
+    @wsgi.Controller.api_version(GRADUATION_VERSION, "2.74")  # noqa
+    @wsgi.response(202)
+    @wsgi.action('promote')
+    def promote(self, req, id, body): # pylint: disable=function-redefined  # noqa F811
+        return self._promote(req, id, body)
+
+    @wsgi.Controller.api_version("2.75")  # noqa
     @wsgi.response(202)
     @wsgi.action('promote')
     def promote(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
-        return self._promote(req, id, body)
+        return self._promote(req, id, body, allow_quiesce_wait_time=True)
 
     @wsgi.Controller.authorize('promote')
-    def _promote(self, req, id, body):
+    def _promote(self, req, id, body,
+                 allow_quiesce_wait_time=False):
         """Promote a replica to active state."""
         context = req.environ['manila.context']
 
@@ -268,8 +276,21 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         if replica_state == constants.REPLICA_STATE_ACTIVE:
             return webob.Response(status_int=http_client.OK)
 
+        quiesce_wait_time = None
+        if allow_quiesce_wait_time:
+            wait_time = body.get('promote', {}).get('quiesce_wait_time')
+            if wait_time:
+                if not strutils.is_int_like(wait_time) or int(wait_time) <= 0:
+                    msg = _("quiesce_wait_time must be an integer and "
+                            "greater than 0.")
+                    raise exc.HTTPBadRequest(explanation=msg)
+                else:
+                    quiesce_wait_time = int(wait_time)
+
         try:
-            replica = self.share_api.promote_share_replica(context, replica)
+            replica = self.share_api.promote_share_replica(
+                context, replica,
+                quiesce_wait_time=quiesce_wait_time)
         except exception.ReplicationException as e:
             raise exc.HTTPBadRequest(explanation=e.message)
         except exception.AdminRequired as e:

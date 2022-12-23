@@ -1127,7 +1127,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
     @ensure_share_server_not_provided
     def promote_replica(self, context, replica_list, replica, access_rules,
-                        share_server=None):
+                        share_server=None, quiesce_wait_time=None):
         """Promotes secondary replica to active and active to secondary."""
         active_replica = self._get_active_replica(replica_list)
         src_dataset_name = self.private_storage.get(

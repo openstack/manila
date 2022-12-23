@@ -317,7 +317,8 @@ class DataMotionSession(object):
                                              dest_vserver,
                                              clear_checkpoint=False)
 
-    def quiesce_then_abort(self, source_share_obj, dest_share_obj):
+    def quiesce_then_abort(self, source_share_obj, dest_share_obj,
+                           quiesce_wait_time=None):
         dest_volume, dest_vserver, dest_backend = (
             self.get_backend_info_for_share(dest_share_obj))
         dest_client = get_client_for_backend(dest_backend,
@@ -333,7 +334,9 @@ class DataMotionSession(object):
                                            dest_volume)
 
         config = get_backend_configuration(dest_backend)
-        retries = config.netapp_snapmirror_quiesce_timeout / 5
+        timeout = (
+            quiesce_wait_time or config.netapp_snapmirror_quiesce_timeout)
+        retries = int(timeout / 5) or 1
 
         @utils.retry(retry_param=exception.ReplicationException,
                      interval=5,
@@ -358,7 +361,8 @@ class DataMotionSession(object):
                                              dest_volume,
                                              clear_checkpoint=False)
 
-    def break_snapmirror(self, source_share_obj, dest_share_obj, mount=True):
+    def break_snapmirror(self, source_share_obj, dest_share_obj, mount=True,
+                         quiesce_wait_time=None):
         """Breaks SnapMirror relationship.
 
         1. Quiesce any ongoing snapmirror transfers
@@ -375,7 +379,8 @@ class DataMotionSession(object):
             source_share_obj)
 
         # 1. Attempt to quiesce, then abort
-        self.quiesce_then_abort(source_share_obj, dest_share_obj)
+        self.quiesce_then_abort(source_share_obj, dest_share_obj,
+                                quiesce_wait_time=quiesce_wait_time)
 
         # 2. Break SnapMirror
         dest_client.break_snapmirror_vol(src_vserver,
