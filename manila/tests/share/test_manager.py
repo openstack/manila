@@ -1084,7 +1084,8 @@ class ShareManagerTestCase(test.TestCase):
     def test_create_share_replica_no_availability_zone(self):
         replica = fake_replica(
             availability_zone=None, share_network='',
-            replica_state=constants.REPLICA_STATE_OUT_OF_SYNC)
+            replica_state=constants.REPLICA_STATE_OUT_OF_SYNC,
+            access_rules_status=None)
         replica_2 = fake_replica(id='fake2')
         self.mock_object(db, 'share_replicas_get_all_by_share',
                          mock.Mock(return_value=[replica, replica_2]))
@@ -1119,8 +1120,12 @@ class ShareManagerTestCase(test.TestCase):
         mock_log_error = self.mock_object(manager.LOG, 'warning')
         self.mock_object(db, 'share_instance_access_get',
                          mock.Mock(return_value=fake_access_rules[0]))
-        mock_share_replica_access_update = self.mock_object(
-            self.share_manager, '_update_share_instance_access_rules_state')
+        mock_share_replica_access_rule_update = self.mock_object(
+            self.share_manager.access_helper,
+            'get_and_update_share_instance_access_rules')
+        mock_share_replica_access_state_update = self.mock_object(
+            self.share_manager,
+            '_update_share_instance_access_rules_state')
         driver_call = self.mock_object(
             self.share_manager.driver, 'create_replica',
             mock.Mock(return_value=replica))
@@ -1129,8 +1134,13 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.create_share_replica(self.context, replica)
 
         mock_replica_update_call.assert_has_calls(mock_calls, any_order=False)
-        mock_share_replica_access_update.assert_called_once_with(
-            mock.ANY, replica['id'], replica['access_rules_status'])
+        mock_share_replica_access_rule_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            share_instance_id=replica['id'],
+            conditionally_change={'queued_to_apply': 'active'})
+        mock_share_replica_access_state_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            replica['id'], constants.STATUS_ACTIVE)
         self.assertTrue(mock_export_locs_update_call.called)
         self.assertTrue(mock_log_info.called)
         self.assertFalse(mock_log_warning.called)
@@ -1140,7 +1150,9 @@ class ShareManagerTestCase(test.TestCase):
     @ddt.data(True, False)
     def test_create_share_replica(self, has_snapshots):
         replica = fake_replica(
-            share_network='', replica_state=constants.REPLICA_STATE_IN_SYNC)
+            share_network='',
+            replica_state=constants.REPLICA_STATE_IN_SYNC,
+            access_rules_status='active')
         replica_2 = fake_replica(id='fake2')
         snapshots = ([fakes.fake_snapshot(create_instance=True)]
                      if has_snapshots else [])
@@ -1174,9 +1186,13 @@ class ShareManagerTestCase(test.TestCase):
         mock_log_error = self.mock_object(manager.LOG, 'warning')
         self.mock_object(db, 'share_instance_access_get',
                          mock.Mock(return_value=fake_access_rules[0]))
-        mock_share_replica_access_update = self.mock_object(
+        mock_share_replica_access_rule_update = self.mock_object(
             self.share_manager.access_helper,
-            'get_and_update_share_instance_access_rules_status')
+            'get_and_update_share_instance_access_rules')
+        mock_share_replica_access_state_update = self.mock_object(
+            self.share_manager,
+            '_update_share_instance_access_rules_state')
+
         driver_call = self.mock_object(
             self.share_manager.driver, 'create_replica',
             mock.Mock(return_value=replica))
@@ -1189,10 +1205,13 @@ class ShareManagerTestCase(test.TestCase):
             {'status': constants.STATUS_AVAILABLE,
              'replica_state': constants.REPLICA_STATE_IN_SYNC,
              'progress': '100%'})
-        mock_share_replica_access_update.assert_called_once_with(
+        mock_share_replica_access_rule_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             share_instance_id=replica['id'],
-            status=replica['access_rules_status'])
+            conditionally_change={'queued_to_apply': 'active'})
+        mock_share_replica_access_state_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            replica['id'], constants.STATUS_ACTIVE)
         self.assertTrue(mock_export_locs_update_call.called)
         self.assertTrue(mock_log_info.called)
         self.assertFalse(mock_log_warning.called)

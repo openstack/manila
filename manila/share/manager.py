@@ -2411,14 +2411,37 @@ class ShareManager(manager.SchedulerDependentManager):
                  'replica_state': replica_ref.get('replica_state'),
                  'progress': '100%'})
 
-        if replica_ref.get('access_rules_status'):
-            self._update_share_instance_access_rules_state(
-                context, share_replica['id'],
-                replica_ref.get('access_rules_status'))
-        else:
+        reported_access_rules_status = replica_ref.get('access_rules_status')
+        if reported_access_rules_status in (None, "active"):
+            # update all rules to "active"
+            conditionally_change = {'queued_to_apply': 'active'}
+            self.access_helper.get_and_update_share_instance_access_rules(
+                context, share_instance_id=share_replica['id'],
+                conditionally_change=conditionally_change)
+            # update "access_rules_status" on the replica
             self._update_share_instance_access_rules_state(
                 context, share_replica['id'],
                 constants.STATUS_ACTIVE)
+        elif replica_ref.get('share_access_rules'):
+            # driver would like to update individual access rules
+            share_access_rules_dict = {
+                rule['id']: rule for rule in share_access_rules}
+            for rule_update in replica_ref.get('share_access_rules'):
+                self.access_helper.get_and_update_share_instance_access_rule(
+                    context,
+                    rule_update['id'],
+                    {'state': rule_update['state']},
+                    share_instance_id=share_replica['id'])
+                share_access_rules_dict.pop(rule_update['id'])
+            for rule_id in share_access_rules_dict:
+                self.access_helper.get_and_update_share_instance_access_rule(
+                    context,
+                    rule_id,
+                    {'state': 'active'},
+                    share_instance_id=share_replica['id'])
+            self._update_share_instance_access_rules_state(
+                context, share_replica['id'],
+                replica_ref.get('access_rules_status'))
 
         LOG.info("Share replica %s created successfully.",
                  share_replica['id'])
