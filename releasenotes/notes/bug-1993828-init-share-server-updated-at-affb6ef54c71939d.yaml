@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    On share server creation initialize the updated_at field with the current
+    timestamp to fix broken automatic cleanup in rare occasions where a share
+    server that would be an automatic cleanup target would be pending in state
+    `creating` forever.
