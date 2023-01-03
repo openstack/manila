@@ -162,6 +162,7 @@ class DataMotionSession(object):
             source_volume=src_volume_name, dest_volume=dest_volume_name,
             desired_attributes=['relationship-status',
                                 'mirror-state',
+                                'schedule',
                                 'source-vserver',
                                 'source-volume',
                                 'last-transfer-end-timestamp',
@@ -411,6 +412,27 @@ class DataMotionSession(object):
                                           src_volume_name,
                                           dest_vserver,
                                           dest_volume_name)
+
+    def modify_snapmirror(self, source_share_obj, dest_share_obj,
+                          schedule=None):
+        """Modify SnapMirror relationship: set schedule"""
+        dest_volume_name, dest_vserver, dest_backend = (
+            self.get_backend_info_for_share(dest_share_obj))
+        dest_client = get_client_for_backend(dest_backend,
+                                             vserver_name=dest_vserver)
+
+        src_volume_name, src_vserver, __ = self.get_backend_info_for_share(
+            source_share_obj)
+
+        if schedule is None:
+            config = get_backend_configuration(dest_backend)
+            schedule = config.netapp_snapmirror_schedule
+
+        dest_client.modify_snapmirror_vol(src_vserver,
+                                          src_volume_name,
+                                          dest_vserver,
+                                          dest_volume_name,
+                                          schedule=schedule)
 
     def resume_snapmirror(self, source_share_obj, dest_share_obj):
         """Resume SnapMirror relationship from a quiesced state."""

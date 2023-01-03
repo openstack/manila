@@ -4331,6 +4331,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_update_replica_state_stale_snapmirror(self):
         fake_snapmirror = {
             'mirror-state': 'snapmirrored',
+            'schedule': self.library.configuration.netapp_snapmirror_schedule,
             'last-transfer-end-timestamp': '%s' % float(
                 timeutils.utcnow_ts() - 10000)
         }
