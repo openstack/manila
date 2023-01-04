@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp driver now checks after sending snapshot-create request that the
+    snapshot has been properly created. If snapshot is not checked, manila
+    assumes that working snapshot is available. But when user tries to access
+    the snapshot, request could fail.
+    `Launchpad bug 1971710 <https://bugs.launchpad.net/manila/+bug/1971710>`_
+    for more details.
