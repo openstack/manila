@@ -4665,7 +4665,7 @@ def network_allocations_get_for_share_server(context, share_server_id,
         share_server_id=share_server_id,
     )
     if label:
-        if label != 'admin':
+        if label == 'user':
             query = query.filter(or_(
                 # NOTE(vponomaryov): we treat None as alias for 'user'.
                 models.NetworkAllocation.label == None,  # noqa
