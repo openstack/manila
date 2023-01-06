@@ -259,7 +259,14 @@ def model_query(context, model, *args, **kwargs):
     :param project_only: if present and context is user-type, then restrict
             query to match the context's project_id.
     """
-    session = kwargs.get('session') or get_session()
+    session = kwargs.get('session')
+
+    if hasattr(context, 'session') and context.session:
+        session = context.session
+
+    if not session:
+        session = get_session()
+
     read_deleted = kwargs.get('read_deleted') or context.read_deleted
     project_only = kwargs.get('project_only')
     kwargs = dict()
@@ -272,7 +279,11 @@ def model_query(context, model, *args, **kwargs):
         kwargs['deleted'] = True
 
     return db_utils.model_query(
-        model=model, session=session, args=args, **kwargs)
+        model=model,
+        session=session,
+        args=args,
+        **kwargs,
+    )
 
 
 def _process_model_like_filter(model, query, filters):
