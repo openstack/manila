@@ -20,12 +20,14 @@
 import copy
 
 from oslo_context import context
+from oslo_db.sqlalchemy import enginefacade
 from oslo_utils import timeutils
 
 from manila.i18n import _
 from manila import policy
 
 
+@enginefacade.transaction_context_provider
 class RequestContext(context.RequestContext):
     """Security context and request information.
 
