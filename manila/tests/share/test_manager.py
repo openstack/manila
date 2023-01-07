@@ -3861,7 +3861,8 @@ class ShareManagerTestCase(test.TestCase):
             cidr='fake_cidr',
             neutron_net_id='fake_neutron_net_id',
             neutron_subnet_id='fake_neutron_subnet_id',
-            network_type='fake_network_type')
+            network_type='fake_network_type',
+            subnet_metadata={'fake_key': 'fake_value'})
         expected = [dict(
             server_id=fake_share_server['id'],
             segmentation_id=fake_share_network_subnet['segmentation_id'],
@@ -3874,7 +3875,8 @@ class ShareManagerTestCase(test.TestCase):
             admin_network_allocations=(
                 fake_network_allocations_get_for_share_server(label='admin')),
             backend_details=fake_share_server['backend_details'],
-            network_type=fake_share_network_subnet['network_type'])]
+            network_type=fake_share_network_subnet['network_type'],
+            subnet_metadata=fake_share_network_subnet['subnet_metadata'])]
 
         network_info = self.share_manager._form_server_setup_info(
             self.context, fake_share_server, fake_share_network,

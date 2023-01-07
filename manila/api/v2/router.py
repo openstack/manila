@@ -403,6 +403,48 @@ class APIRouter(manila.api.openstack.APIRouter):
                            action="index",
                            conditions={"method": ["GET"]})
 
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("subnets_metadata",
+                           "%s/share-networks/{share_network_id}"
+                           "/subnets/{resource_id}/metadata" % path_prefix,
+                           controller=self.resources["share_network_subnets"],
+                           action="create_metadata",
+                           conditions={"method": ["POST"]})
+            mapper.connect("subnets_metadata",
+                           "%s/share-networks/{share_network_id}"
+                           "/subnets/{resource_id}/metadata" % path_prefix,
+                           controller=self.resources["share_network_subnets"],
+                           action="update_all_metadata",
+                           conditions={"method": ["PUT"]})
+            mapper.connect("subnets_metadata",
+                           "%s/share-networks/{share_network_id}"
+                           "/subnets/{resource_id}"
+                           "/metadata/{key}" % path_prefix,
+                           controller=self.resources["share_network_subnets"],
+                           action="update_metadata_item",
+                           conditions={"method": ["POST"]})
+            mapper.connect("subnets_metadata",
+                           "%s/share-networks/{share_network_id}"
+                           "/subnets/{resource_id}/metadata" % path_prefix,
+                           controller=self.resources["share_network_subnets"],
+                           action="index_metadata",
+                           conditions={"method": ["GET"]})
+            mapper.connect("subnets_metadata",
+                           "%s/share-networks/{share_network_id}"
+                           "/subnets/{resource_id}"
+                           "/metadata/{key}" % path_prefix,
+                           controller=self.resources["share_network_subnets"],
+                           action="show_metadata",
+                           conditions={"method": ["GET"]})
+            mapper.connect("subnets_metadata",
+                           "%s/share-networks/{share_network_id}"
+                           "/subnets/{resource_id}"
+                           "/metadata/{key}" % path_prefix,
+                           controller=self.resources["share_network_subnets"],
+                           action="delete_metadata",
+                           conditions={"method": ["DELETE"]})
+
         self.resources["share_servers"] = share_servers.create_resource()
         mapper.resource("share_server",
                         "share-servers",

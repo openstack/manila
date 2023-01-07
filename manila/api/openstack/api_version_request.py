@@ -194,6 +194,7 @@ REST_API_VERSION_HISTORY = """
              promote API.
     * 2.76 - Added 'default_ad_site' field in security service object.
     * 2.77 - Added support for share transfer between different projects.
+    * 2.78 - Added Share Network Subnet Metadata to Metadata API.
 
 """
 
@@ -201,7 +202,7 @@ REST_API_VERSION_HISTORY = """
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.77"
+_MAX_API_VERSION = "2.78"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

@@ -20,6 +20,9 @@ class ViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
     _collection_name = 'share_network_subnets'
+    _detail_version_modifiers = [
+        "add_metadata"
+    ]
 
     def build_share_network_subnet(self, request, share_network_subnet):
         return {
@@ -51,3 +54,7 @@ class ViewBuilder(common.ViewBuilder):
         }
         self.update_versioned_resource_dict(request, sns, share_network_subnet)
         return sns
+
+    @common.ViewBuilder.versioned_method("2.78")
+    def add_metadata(self, context, share_network_subnet_dict, sns):
+        share_network_subnet_dict['metadata'] = sns.get('subnet_metadata')

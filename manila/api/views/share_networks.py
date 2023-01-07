@@ -23,7 +23,8 @@ class ViewBuilder(common.ViewBuilder):
     _detail_version_modifiers = ["add_gateway", "add_mtu", "add_nova_net_id",
                                  "add_subnets",
                                  "add_status_and_sec_service_update_fields",
-                                 "add_network_allocation_update_support_field"]
+                                 "add_network_allocation_update_support_field",
+                                 "add_subnet_with_metadata"]
 
     def build_share_network(self, request, share_network):
         """View of a share network."""
@@ -104,7 +105,7 @@ class ViewBuilder(common.ViewBuilder):
             self.update_versioned_resource_dict(request, sn, share_network)
         return sn
 
-    @common.ViewBuilder.versioned_method("2.51")
+    @common.ViewBuilder.versioned_method("2.51", "2.77")
     def add_subnets(self, context, network_dict, network):
         subnets = [{
             'id': sns.get('id'),
@@ -152,3 +153,28 @@ class ViewBuilder(common.ViewBuilder):
             self, context, network_dict, network):
         network_dict['network_allocation_update_support'] = network.get(
             'network_allocation_update_support')
+
+    @common.ViewBuilder.versioned_method("2.78")
+    def add_subnet_with_metadata(self, context, network_dict, network):
+        subnets = [{
+            'id': sns.get('id'),
+            'availability_zone': sns.get('availability_zone'),
+            'created_at': sns.get('created_at'),
+            'updated_at': sns.get('updated_at'),
+            'segmentation_id': sns.get('segmentation_id'),
+            'neutron_net_id': sns.get('neutron_net_id'),
+            'neutron_subnet_id': sns.get('neutron_subnet_id'),
+            'ip_version': sns.get('ip_version'),
+            'cidr': sns.get('cidr'),
+            'network_type': sns.get('network_type'),
+            'mtu': sns.get('mtu'),
+            'gateway': sns.get('gateway'),
+            'metadata': sns.get('subnet_metadata'),
+        } for sns in network.get('share_network_subnets')]
+
+        network_dict['share_network_subnets'] = subnets
+        attr_to_remove = [
+            'neutron_net_id', 'neutron_subnet_id', 'network_type',
+            'segmentation_id', 'cidr', 'ip_version', 'gateway', 'mtu']
+        for attr in attr_to_remove:
+            network_dict.pop(attr)

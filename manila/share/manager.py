@@ -4209,6 +4209,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 'admin_network_allocations': admin_network_allocations,
                 'backend_details': share_server.get('backend_details'),
                 'network_type': share_network_subnet['network_type'],
+                'subnet_metadata': share_network_subnet['subnet_metadata']
             })
         return network_info
 

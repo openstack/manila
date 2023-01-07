@@ -48,6 +48,24 @@ deprecated_subnet_index = policy.DeprecatedRule(
     deprecated_reason=DEPRECATED_REASON,
     deprecated_since=versionutils.deprecated.WALLABY
 )
+deprecated_update_subnet_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update_metadata',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='ANTELOPE'
+)
+deprecated_delete_subnet_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete_metadata',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='ANTELOPE'
+)
+deprecated_get_subnet_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_metadata',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='ANTELOPE'
+)
 
 
 share_network_subnet_policies = [
@@ -104,6 +122,63 @@ share_network_subnet_policies = [
             }
         ],
         deprecated_rule=deprecated_subnet_index
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'update_metadata',
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Update share network subnet metadata.",
+        operations=[
+            {
+                'method': 'PUT',
+                'path': '/share-networks/{share_network_id}/subnets/'
+                        '{share_network_subnet_id}/metadata',
+            },
+            {
+                'method': 'POST',
+                'path': '/share-networks/{share_network_id}/subnets/'
+                        '{share_network_subnet_id}/metadata/{key}',
+            },
+            {
+                'method': 'POST',
+                'path': '/share-networks/{share_network_id}/subnets/'
+                        '{share_network_subnet_id}/metadata',
+            },
+        ],
+        deprecated_rule=deprecated_update_subnet_metadata
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'delete_metadata',
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Delete share network subnet metadata.",
+        operations=[
+            {
+                'method': 'DELETE',
+                'path': '/share-networks/{share_network_id}/subnets/'
+                        '{share_network_subnet_id}/metadata/{key}',
+            }
+        ],
+        deprecated_rule=deprecated_delete_subnet_metadata
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'get_metadata',
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['system', 'project'],
+        description="Get share network subnet metadata.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/share-networks/{share_network_id}/subnets/'
+                        '{share_network_subnet_id}/metadata',
+            },
+            {
+                'method': 'GET',
+                'path': '/share-networks/{share_network_id}/subnets/'
+                        '{share_network_subnet_id}/metadata/{key}',
+            }
+        ],
+        deprecated_rule=deprecated_get_subnet_metadata
     ),
 ]
 

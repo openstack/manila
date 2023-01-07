@@ -1072,10 +1072,11 @@ def share_network_subnet_update(context, network_subnet_id, values):
     return IMPL.share_network_subnet_update(context, network_subnet_id, values)
 
 
-def share_network_subnet_get(context, network_subnet_id, session=None):
+def share_network_subnet_get(context, network_subnet_id, session=None,
+                             parent_id=None):
     """Get requested share network subnet DB record."""
     return IMPL.share_network_subnet_get(context, network_subnet_id,
-                                         session=session)
+                                         session=session, parent_id=parent_id)
 
 
 def share_network_subnet_get_all_with_same_az(context, network_subnet_id,
@@ -1118,8 +1119,47 @@ def share_network_subnet_get_all_by_share_server_id(context, share_server_id):
     return IMPL.share_network_subnet_get_all_by_share_server_id(
         context, share_server_id)
 
+####################
 
-##################
+
+def share_network_subnet_metadata_get(context, share_network_subnet_id,
+                                      **kwargs):
+    """Get all metadata for a share network subnet."""
+    return IMPL.share_network_subnet_metadata_get(context,
+                                                  share_network_subnet_id,
+                                                  **kwargs)
+
+
+def share_network_subnet_metadata_get_item(context, share_network_subnet_id,
+                                           key):
+    """Get metadata item for a share network subnet."""
+    return IMPL.share_network_subnet_metadata_get_item(context,
+                                                       share_network_subnet_id,
+                                                       key)
+
+
+def share_network_subnet_metadata_delete(context, share_network_subnet_id,
+                                         key):
+    """Delete the given metadata item."""
+    IMPL.share_network_subnet_metadata_delete(context, share_network_subnet_id,
+                                              key)
+
+
+def share_network_subnet_metadata_update(context, share_network_subnet_id,
+                                         metadata, delete):
+    """Update metadata if it exists, otherwise create it."""
+    return IMPL.share_network_subnet_metadata_update(context,
+                                                     share_network_subnet_id,
+                                                     metadata, delete)
+
+
+def share_network_subnet_metadata_update_item(context, share_network_subnet_id,
+                                              metadata):
+    """Update metadata item if it exists, otherwise create it."""
+    return IMPL.share_network_subnet_metadata_update_item(
+        context, share_network_subnet_id, metadata)
+
+###################
 
 
 def network_allocation_create(context, values):

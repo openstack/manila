@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import ddt
 import itertools
 
@@ -145,6 +146,9 @@ class ViewBuilderTestCase(test.TestCase):
         network_allocation_update_support = (
             api_version.APIVersionRequest(microversion) >=
             api_version.APIVersionRequest('2.69'))
+        subnet_metadata_support = (
+            api_version.APIVersionRequest(microversion) >=
+            api_version.APIVersionRequest('2.78'))
 
         req = fakes.HTTPRequest.blank('/share-networks', version=microversion)
         expected_networks_list = []
@@ -158,8 +162,30 @@ class ViewBuilderTestCase(test.TestCase):
                 'description': share_network.get('description'),
             }
             if subnets_support:
-                share_network.update({'share_network_subnets': []})
-                expected_data.update({'share_network_subnets': []})
+                expected_subnet = {
+                    'id': 'fake_subnet_id',
+                    'availability_zone': 'fake_az',
+                    'created_at': share_network.get('created_at'),
+                    'updated_at': share_network.get('updated_at'),
+                    'segmentation_id': share_network.get('segmentation_id'),
+                    'neutron_net_id': share_network.get('neutron_net_id'),
+                    'neutron_subnet_id': share_network.get(
+                        'neutron_subnet_id'),
+                    'ip_version': share_network.get('ip_version'),
+                    'cidr': share_network.get('cidr'),
+                    'network_type': share_network.get('network_type'),
+                    'mtu': share_network.get('mtu'),
+                    'gateway': share_network.get('gateway'),
+                }
+                subnet = expected_subnet
+                if subnet_metadata_support:
+                    subnet = copy.deepcopy(expected_subnet)
+                    expected_subnet['metadata'] = {'fake_key': 'fake_value'}
+                    subnet['subnet_metadata'] = expected_subnet['metadata']
+
+                expected_data.update(
+                    {'share_network_subnets': [expected_subnet]})
+                share_network.update({'share_network_subnets': [subnet]})
             else:
                 if default_net_info_support:
                     network_data = {
