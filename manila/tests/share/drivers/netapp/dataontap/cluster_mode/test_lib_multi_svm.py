@@ -441,6 +441,49 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertListEqual([], result)
 
+    def test__set_network_with_metadata(self):
+        net_info_1 = copy.deepcopy(fake.NETWORK_INFO)
+        net_info_2 = copy.deepcopy(fake.NETWORK_INFO)
+        net_info_2['subnet_metadata'] = {'fake_key': 'fake_value'}
+        net_info_3 = copy.deepcopy(fake.NETWORK_INFO)
+        metadata_vlan = 1
+        net_info_3['subnet_metadata'] = {
+            'set_vlan': metadata_vlan,
+            'set_mtu': '1'
+        }
+        net_info_4 = copy.deepcopy(fake.NETWORK_INFO)
+        metadata_vlan = 1
+        net_info_4['subnet_metadata'] = {
+            'set_vlan': metadata_vlan
+        }
+
+        net_list = [net_info_1, net_info_2, net_info_3, net_info_4]
+        self.library._set_network_with_metadata(net_list)
+
+        net_info = copy.deepcopy(fake.NETWORK_INFO)
+        self.assertEqual(net_info, net_list[0])
+        net_info['subnet_metadata'] = {'fake_key': 'fake_value'}
+        self.assertEqual(net_info, net_list[1])
+        self.assertEqual(metadata_vlan, net_list[2]['segmentation_id'])
+        for allocation in net_list[2]['network_allocations']:
+            self.assertEqual(metadata_vlan, allocation['segmentation_id'])
+            self.assertEqual(1, allocation['mtu'])
+        self.assertEqual(metadata_vlan, net_list[3]['segmentation_id'])
+        for allocation in net_list[3]['network_allocations']:
+            self.assertEqual(metadata_vlan, allocation['segmentation_id'])
+            self.assertEqual(fake.MTU, allocation['mtu'])
+
+    @ddt.data({'set_vlan': '0', 'set_mtu': '1500'},
+              {'set_vlan': '1000', 'set_mtu': '1bla'})
+    def test__set_network_with_metadata_exception(self, metadata):
+        net_info = copy.deepcopy(fake.NETWORK_INFO)
+        net_info['subnet_metadata'] = metadata
+
+        self.assertRaises(
+            exception.NetworkBadConfigurationException,
+            self.library._set_network_with_metadata,
+            [net_info])
+
     @ddt.data({'nfs_config_support': False},
               {'nfs_config_support': True,
                'nfs_config': fake.NFS_CONFIG_UDP_MAX},
@@ -472,6 +515,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library,
             "_get_nfs_config_provisioning_options",
             mock.Mock(return_value=nfs_config))
+        mock_set_with_meta = self.mock_object(
+            self.library, '_set_network_with_metadata')
 
         result = self.library.setup_server(fake.NETWORK_INFO_LIST,
                                            fake.SERVER_METADATA)
@@ -480,6 +525,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         for network_allocation in fake.NETWORK_INFO['network_allocations']:
             ports[network_allocation['id']] = network_allocation['ip_address']
 
+        mock_set_with_meta.assert_called_once_with(fake.NETWORK_INFO_LIST)
         self.assertTrue(mock_validate_network_type.called)
         self.assertTrue(mock_validate_share_network_subnets.called)
         self.assertTrue(mock_get_vserver_name.called)
@@ -524,6 +570,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_validate_share_network_subnets = self.mock_object(
             self.library,
             '_validate_share_network_subnets')
+        self.mock_object(self.library, '_set_network_with_metadata')
 
         self.assertRaises(
             exception.ManilaException,
@@ -555,6 +602,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_validate_network_type')
         self.mock_object(self.library, '_validate_share_network_subnets',
                          mock.Mock(side_effect=invalid_subnet_exception))
+        self.mock_object(self.library, '_set_network_with_metadata')
 
         self.assertRaises(
             exception.NetworkBadConfigurationException,

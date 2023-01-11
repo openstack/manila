@@ -515,6 +515,7 @@ NETWORK_INFO = {
     'neutron_net_id': '4eff22ca-5ad2-454d-a000-aadfd7b40b39',
     'neutron_subnet_id': '62bf1c2c-18eb-421b-8983-48a6d39aafe0',
     'segmentation_id': '1000',
+    'network_type': 'vlan'
 }
 NETWORK_INFO_LIST = [NETWORK_INFO]
 NETWORK_INFO_NETMASK = '255.255.255.0'
