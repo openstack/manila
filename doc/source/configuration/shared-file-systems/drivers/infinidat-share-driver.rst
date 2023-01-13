@@ -133,6 +133,31 @@ Configure the driver back-end section with the parameters below.
 
   This parameter defaults to ``true``.
 
+* Controls access to the ``.snapshot`` directory:
+
+  .. code-block:: ini
+
+    infinidat_snapdir_accessible = true/false
+
+  By default, each share allows access to its own ``.snapshot`` directory,
+  which contains files and directories of each snapshot taken. To restrict
+  access to the ``.snapshot`` directory on the client side, this option
+  should be set to ``false``.
+
+  This parameter defaults to ``true``.
+
+* Controls visibility of the ``.snapshot`` directory:
+
+  .. code-block:: ini
+
+     infinidat_snapdir_visible = true/false
+
+  By default, each share contains the ``.snapshot`` directory, which is
+  hidden on the client side. To make the ``.snapshot`` directory visible,
+  this option should be set to ``true``.
+
+  This parameter defaults to ``false``.
+
 Configuration example
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -153,6 +178,8 @@ Configuration example
    infinidat_pool_name = pool-a
    infinidat_nas_network_space_name = nas_space
    infinidat_thin_provision = true
+   infinidat_snapdir_accessible = true
+   infinidat_snapdir_visible = false
 
 Driver options
 ~~~~~~~~~~~~~~
