@@ -486,6 +486,7 @@ QUOTA_SYNC_FUNCTIONS = {
 ###################
 
 @require_admin_context
+@context_manager.writer
 def share_resources_host_update(context, current_host, new_host):
     """Updates the 'host' attribute of resources"""
 
@@ -496,17 +497,16 @@ def share_resources_host_update(context, current_host, new_host):
     }
     result = {}
 
-    session = get_session()
-    with session.begin():
-        for res_name, res_model in resources.items():
-            host_field = res_model.host
-            query = model_query(
-                context, res_model, session=session, read_deleted="no",
-            ).filter(host_field.like('{}%'.format(current_host)))
-            count = query.update(
-                {host_field: func.replace(host_field, current_host, new_host)},
-                synchronize_session=False)
-            result.update({res_name: count})
+    for res_name, res_model in resources.items():
+        host_field = res_model.host
+        query = model_query(
+            context, res_model, read_deleted="no",
+        ).filter(host_field.like('{}%'.format(current_host)))
+        count = query.update(
+            {host_field: func.replace(host_field, current_host, new_host)},
+            synchronize_session=False,
+        )
+        result.update({res_name: count})
     return result
 
 
