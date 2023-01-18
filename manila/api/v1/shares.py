@@ -450,7 +450,7 @@ class ShareMixin(object):
     @wsgi.Controller.authorize('allow_access')
     def _allow_access(self, req, id, body, enable_ceph=False,
                       allow_on_error_status=False, enable_ipv6=False,
-                      enable_metadata=False):
+                      enable_metadata=False, allow_on_error_state=False):
         """Add share access rule."""
         context = req.environ['manila.context']
         access_data = body.get('allow_access', body.get('os-allow_access'))
@@ -488,7 +488,8 @@ class ShareMixin(object):
         try:
             access = self.share_api.allow_access(
                 context, share, access_type, access_to,
-                access_data.get('access_level'), access_data.get('metadata'))
+                access_data.get('access_level'), access_data.get('metadata'),
+                allow_on_error_state)
         except exception.ShareAccessExists as e:
             raise webob.exc.HTTPBadRequest(explanation=e.msg)
 
@@ -501,7 +502,7 @@ class ShareMixin(object):
         return self._access_view_builder.view(req, access)
 
     @wsgi.Controller.authorize('deny_access')
-    def _deny_access(self, req, id, body):
+    def _deny_access(self, req, id, body, allow_on_error_state=False):
         """Remove share access rule."""
         context = req.environ['manila.context']
 
@@ -528,7 +529,8 @@ class ShareMixin(object):
             share = self.share_api.get(context, id)
         except exception.NotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.message)
-        self.share_api.deny_access(context, share, access)
+        self.share_api.deny_access(context, share, access,
+                                   allow_on_error_state)
         return webob.Response(status_int=http_client.ACCEPTED)
 
     def _access_list(self, req, id, body):

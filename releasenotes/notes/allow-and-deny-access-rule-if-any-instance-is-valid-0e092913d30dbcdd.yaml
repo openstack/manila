@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    With replication setup at least one backend is working and serving the
+    shares. Starting from API version 2.74, allowing and denying access to
+    shares will only fail if any of the instances is in a transitional state.
+    Please refer to
+    `Launchpad bug 1965561 <https://bugs.launchpad.net/manila/+bug/1965561>`_

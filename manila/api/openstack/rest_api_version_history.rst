@@ -406,3 +406,7 @@ ____
 ---------------------
   Added Metadata API methods (GET, PUT, POST, DELETE)
   to Share Snapshots
+
+2.74
+----
+  Allow/deny share access rule even if share replicas are in 'error' state.

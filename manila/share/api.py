@@ -2199,13 +2199,20 @@ class API(base.Base):
         return self.db.share_snapshot_get_latest_for_share(context, share_id)
 
     @staticmethod
-    def _is_invalid_share_instance(instance):
-        return (instance['host'] is None
-                or instance['status'] in constants.
-                INVALID_SHARE_INSTANCE_STATUSES_FOR_ACCESS_RULE_UPDATES)
+    def _any_invalid_share_instance(share, allow_on_error_state=False):
+        invalid_states = (
+            constants.INVALID_SHARE_INSTANCE_STATUSES_FOR_ACCESS_RULE_UPDATES)
+        if not allow_on_error_state:
+            invalid_states += (constants.STATUS_ERROR,)
+
+        for instance in share.instances:
+            if (not instance['host'] or instance['status'] in invalid_states):
+                return True
+        return False
 
     def allow_access(self, ctx, share, access_type, access_to,
-                     access_level=None, metadata=None):
+                     access_level=None, metadata=None,
+                     allow_on_error_state=False):
         """Allow access to share."""
 
         # Access rule validation:
@@ -2221,9 +2228,7 @@ class API(base.Base):
             raise exception.ShareAccessExists(access_type=access_type,
                                               access=access_to)
 
-        # Share instance validation
-        if any(instance for instance in share.instances
-               if self._is_invalid_share_instance(instance)):
+        if self._any_invalid_share_instance(share, allow_on_error_state):
             msg = _("New access rules cannot be applied while the share or "
                     "any of its replicas or migration copies lacks a valid "
                     "host or is in an invalid state.")
@@ -2258,11 +2263,10 @@ class API(base.Base):
             context, conditionally_change=conditionally_change,
             share_instance_id=share_instance['id'])
 
-    def deny_access(self, ctx, share, access):
+    def deny_access(self, ctx, share, access, allow_on_error_state=False):
         """Deny access to share."""
 
-        if any(instance for instance in share.instances if
-               self._is_invalid_share_instance(instance)):
+        if self._any_invalid_share_instance(share, allow_on_error_state):
             msg = _("Access rules cannot be denied while the share, "
                     "any of its replicas or migration copies lacks a valid "
                     "host or is in an invalid state.")
