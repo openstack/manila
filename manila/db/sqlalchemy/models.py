@@ -1202,6 +1202,9 @@ class DriverPrivateData(BASE, ManilaBase):
 class AvailabilityZone(BASE, ManilaBase):
     """Represents a private data as key-value pairs for a driver."""
     __tablename__ = 'availability_zones'
+    __table_args__ = (
+        schema.UniqueConstraint('name', 'deleted', name='az_name_uc'),
+    )
     id = Column(String(36), primary_key=True, nullable=False)
     deleted = Column(String(36), default='False')
     name = Column(String(255), nullable=False)

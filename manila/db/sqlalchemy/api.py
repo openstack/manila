@@ -500,21 +500,22 @@ def share_resources_host_update(context, current_host, new_host):
 
 
 @require_admin_context
+@context_manager.writer
 def service_destroy(context, service_id):
-    session = get_session()
-    with session.begin():
-        service_ref = service_get(context, service_id, session=session)
-        service_ref.soft_delete(session)
+    service_ref = _service_get(context, service_id)
+    service_ref.soft_delete(context.session)
 
 
 @require_admin_context
-def service_get(context, service_id, session=None):
-    result = (model_query(
-        context,
-        models.Service,
-        session=session).
-        filter_by(id=service_id).
-        first())
+def _service_get(context, service_id):
+    result = (
+        model_query(
+            context,
+            models.Service,
+        ).filter_by(
+            id=service_id,
+        ).first()
+    )
     if not result:
         raise exception.ServiceNotFound(service_id=service_id)
 
@@ -522,6 +523,13 @@ def service_get(context, service_id, session=None):
 
 
 @require_admin_context
+@context_manager.reader
+def service_get(context, service_id):
+    return _service_get(context, service_id)
+
+
+@require_admin_context
+@context_manager.reader
 def service_get_all(context, disabled=None):
     query = model_query(context, models.Service)
 
@@ -532,6 +540,7 @@ def service_get_all(context, disabled=None):
 
 
 @require_admin_context
+@context_manager.reader
 def service_get_all_by_topic(context, topic):
     return (model_query(
         context, models.Service, read_deleted="no").
@@ -541,6 +550,7 @@ def service_get_all_by_topic(context, topic):
 
 
 @require_admin_context
+@context_manager.reader
 def service_get_by_host_and_topic(context, host, topic):
     result = (model_query(
         context, models.Service, read_deleted="no").
@@ -554,39 +564,53 @@ def service_get_by_host_and_topic(context, host, topic):
 
 
 @require_admin_context
-def _service_get_all_topic_subquery(context, session, topic, subq, label):
+def _service_get_all_topic_subquery(context, topic, subq, label):
     sort_value = getattr(subq.c, label)
-    return (model_query(context, models.Service,
-                        func.coalesce(sort_value, 0),
-                        session=session, read_deleted="no").
-            filter_by(topic=topic).
-            filter_by(disabled=False).
-            outerjoin((subq, models.Service.host == subq.c.host)).
-            order_by(sort_value).
-            all())
+    return (
+        model_query(
+            context, models.Service,
+            func.coalesce(sort_value, 0),
+            read_deleted="no",
+        ).filter_by(
+            topic=topic,
+        ).filter_by(
+            disabled=False,
+        ).outerjoin(
+            (subq, models.Service.host == subq.c.host)
+        ).order_by(
+            sort_value
+        ).all()
+    )
 
 
 @require_admin_context
+@context_manager.reader
 def service_get_all_share_sorted(context):
-    session = get_session()
-    with session.begin():
-        topic = CONF.share_topic
-        label = 'share_gigabytes'
-        subq = (model_query(context, models.Share,
-                            func.sum(models.Share.size).label(label),
-                            session=session, read_deleted="no").
-                join(models.ShareInstance,
-                     models.ShareInstance.share_id == models.Share.id).
-                group_by(models.ShareInstance.host).
-                subquery())
-        return _service_get_all_topic_subquery(context,
-                                               session,
-                                               topic,
-                                               subq,
-                                               label)
+    topic = CONF.share_topic
+    label = 'share_gigabytes'
+    subq = (
+        model_query(
+            context,
+            models.Share,
+            func.sum(models.Share.size).label(label),
+            read_deleted="no",
+        ).join(
+            models.ShareInstance,
+            models.ShareInstance.share_id == models.Share.id,
+        ).group_by(
+            models.ShareInstance.host
+        ).subquery()
+    )
+    return _service_get_all_topic_subquery(
+        context,
+        topic,
+        subq,
+        label,
+    )
 
 
 @require_admin_context
+@context_manager.reader
 def service_get_by_args(context, host, binary):
     result = (model_query(context, models.Service).
               filter_by(host=host).
@@ -600,32 +624,28 @@ def service_get_by_args(context, host, binary):
 
 
 @require_admin_context
+@context_manager.writer
 def service_create(context, values):
-    session = get_session()
-
-    _ensure_availability_zone_exists(context, values, session)
+    _ensure_availability_zone_exists(context, values)
 
     service_ref = models.Service()
     service_ref.update(values)
     if not CONF.enable_new_services:
         service_ref.disabled = True
 
-    with session.begin():
-        service_ref.save(session)
-        return service_ref
+    service_ref.save(context.session)
+    return service_ref
 
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def service_update(context, service_id, values):
-    session = get_session()
+    _ensure_availability_zone_exists(context, values, strict=False)
 
-    _ensure_availability_zone_exists(context, values, session, strict=False)
-
-    with session.begin():
-        service_ref = service_get(context, service_id, session=session)
-        service_ref.update(values)
-        service_ref.save(session=session)
+    service_ref = _service_get(context, service_id)
+    service_ref.update(values)
+    service_ref.save(context.session)
 
 
 ###################
@@ -5309,7 +5329,9 @@ def share_type_extra_specs_update_or_create(context, share_type_id, specs):
         return specs
 
 
-def _ensure_availability_zone_exists(context, values, session, strict=True):
+def _ensure_availability_zone_exists(
+    context, values, session=None, *, strict=True,
+):
     az_name = values.pop('availability_zone', None)
 
     if strict and not az_name:
@@ -5319,9 +5341,9 @@ def _ensure_availability_zone_exists(context, values, session, strict=True):
         return
 
     if uuidutils.is_uuid_like(az_name):
-        az_ref = availability_zone_get(context, az_name, session=session)
+        az_ref = _availability_zone_get(context, az_name, session=session)
     else:
-        az_ref = availability_zone_create_if_not_exist(
+        az_ref = _availability_zone_create_if_not_exist(
             context, az_name, session=session)
 
     values.update({'availability_zone_id': az_ref['id']})
@@ -5332,6 +5354,11 @@ def availability_zone_get(context, id_or_name, session=None):
     if session is None:
         session = get_session()
 
+    return _availability_zone_get(context, id_or_name, session=session)
+
+
+@require_context
+def _availability_zone_get(context, id_or_name, session=None):
     query = model_query(context, models.AvailabilityZone, session=session)
 
     if uuidutils.is_uuid_like(id_or_name):
@@ -5347,21 +5374,23 @@ def availability_zone_get(context, id_or_name, session=None):
     return result
 
 
+# TODO(stephenfin): Remove the 'session' argument once all callers have been
+# converted
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def availability_zone_create_if_not_exist(context, name, session=None):
-    if session is None:
-        session = get_session()
-
-    az = models.AvailabilityZone()
-    az.update({'id': uuidutils.generate_uuid(), 'name': name})
+def _availability_zone_create_if_not_exist(context, name, session=None):
     try:
-        with session.begin():
-            az.save(session)
-    # NOTE(u_glide): Do not catch specific exception here, because it depends
-    # on concrete backend used by SqlAlchemy
-    except Exception:
-        return availability_zone_get(context, name, session=session)
+        return _availability_zone_get(context, name, session=session)
+    except exception.AvailabilityZoneNotFound:
+        az = models.AvailabilityZone()
+        az.update({'id': uuidutils.generate_uuid(), 'name': name})
+        # TODO(stephenfin): Remove this branch once all callers have been
+        # updated not to pass 'session'
+        if session is not None:
+            with session.begin():
+                az.save(session)
+        else:
+            az.save(context.session)
     return az
 
 

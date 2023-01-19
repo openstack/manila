@@ -3101,8 +3101,10 @@ class ShareNetworkSubnetDatabaseAPITestCase(BaseDatabaseAPITestCase):
             self.assertEqual(1, len(subnets))
 
     def test_get_by_availability_zone_id(self):
-        az = db_api.availability_zone_create_if_not_exist(self.fake_context,
-                                                          'fake_zone_id')
+        with db_api.context_manager.writer.using(self.fake_context):
+            az = db_api._availability_zone_create_if_not_exist(
+                self.fake_context, 'fake_zone_id',
+            )
         self.subnet_dict['availability_zone_id'] = az['id']
         db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
 
@@ -3112,8 +3114,10 @@ class ShareNetworkSubnetDatabaseAPITestCase(BaseDatabaseAPITestCase):
         self._check_fields(expected=self.subnet_dict, actual=result[0])
 
     def test_get_az_subnets(self):
-        az = db_api.availability_zone_create_if_not_exist(self.fake_context,
-                                                          'fake_zone_id')
+        with db_api.context_manager.writer.using(self.fake_context):
+            az = db_api._availability_zone_create_if_not_exist(
+                self.fake_context, 'fake_zone_id',
+            )
         self.subnet_dict['availability_zone_id'] = az['id']
         db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
 
@@ -3716,6 +3720,21 @@ class ServiceDatabaseAPITestCase(test.TestCase):
         self.assertEqual(az.id, service.availability_zone_id)
         self.assertSubDictMatch(self.service_data, service.to_dict())
 
+    def test_create__az_exists(self):
+
+        # there's no public AZ create method so we have to define one ourselves
+        @db_api.context_manager.writer
+        def availability_zone_create(context, name):
+            return db_api._availability_zone_create_if_not_exist(
+                context, name,
+            )
+
+        az = availability_zone_create(self.ctxt, 'fake_zone')
+        service = db_api.service_create(self.ctxt, self.service_data)
+
+        self.assertEqual(az.id, service.availability_zone_id)
+        self.assertSubDictMatch(self.service_data, service.to_dict())
+
     def test_update(self):
         az_name = 'fake_zone2'
         update_data = {"availability_zone": az_name}
@@ -3750,7 +3769,10 @@ class AvailabilityZonesDatabaseAPITestCase(test.TestCase):
 
     def test_az_get(self):
         az_name = 'test_az'
-        az = db_api.availability_zone_create_if_not_exist(self.ctxt, az_name)
+        with db_api.context_manager.writer.using(self.ctxt):
+            az = db_api._availability_zone_create_if_not_exist(
+                self.ctxt, az_name
+            )
 
         az_by_id = db_api.availability_zone_get(self.ctxt, az['id'])
         az_by_name = db_api.availability_zone_get(self.ctxt, az_name)
@@ -3761,9 +3783,11 @@ class AvailabilityZonesDatabaseAPITestCase(test.TestCase):
         self.assertEqual(az['id'], az_by_name['id'])
 
     def test_az_get_all(self):
-        db_api.availability_zone_create_if_not_exist(self.ctxt, 'test1')
-        db_api.availability_zone_create_if_not_exist(self.ctxt, 'test2')
-        db_api.availability_zone_create_if_not_exist(self.ctxt, 'test3')
+        with db_api.context_manager.writer.using(self.ctxt):
+            db_api._availability_zone_create_if_not_exist(self.ctxt, 'test1')
+            db_api._availability_zone_create_if_not_exist(self.ctxt, 'test2')
+            db_api._availability_zone_create_if_not_exist(self.ctxt, 'test3')
+
         db_api.service_create(self.ctxt, {'availability_zone': 'test2'})
 
         actual_result = db_api.availability_zone_get_all(self.ctxt)
