@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    The following aliases of notification drivers are no longer available. Use
+    the driver names in the ``oslo.messaging`` library instead.
+
+    - ``manila.openstack.common.notifier.log_notifier``
+    - ``manila.openstack.common.notifier.no_op_notifier``
+    - ``manila.openstack.common.notifier.rpc_notifier``
+    - ``manila.openstack.common.notifier.rpc_notifier2``
+    - ``manila.openstack.common.notifier.test_notifier``
