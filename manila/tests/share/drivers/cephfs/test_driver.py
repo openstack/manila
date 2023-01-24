@@ -221,34 +221,37 @@ class CephFSDriverTestCase(test.TestCase):
             share_server=None)
 
     def test_ensure_share(self):
-        create_share_prefix = "fs subvolume create"
-        get_path_prefix = "fs subvolume getpath"
-
-        create_share_dict = {
-            "vol_name": self._driver.volname,
-            "sub_name": self._share["id"],
-            "size": self._share["size"] * units.Gi,
-            "namespace_isolated": True,
-            "mode": DEFAULT_VOLUME_MODE,
+        expected_exports = {
+            'path': '1.2.3.4,5.6.7.8:/foo/bar',
+            'is_admin_only': False,
+            'metadata': {},
         }
+        self.mock_object(
+            self._driver, '_get_export_locations',
+            mock.Mock(return_value=expected_exports))
 
-        get_path_dict = {
-            "vol_name": self._driver.volname,
-            "sub_name": self._share["id"],
-        }
+        returned_exports = self._driver.ensure_share(self._context,
+                                                     self._share)
 
-        self._driver.ensure_share(self._context,
-                                  self._share)
+        self._driver._get_export_locations.assert_called_once_with(self._share)
 
-        driver.rados_command.assert_has_calls([
-            mock.call(self._driver.rados_client,
-                      create_share_prefix,
-                      create_share_dict),
-            mock.call(self._driver.rados_client,
-                      get_path_prefix,
-                      get_path_dict)])
+        self.assertEqual(expected_exports, returned_exports)
 
-        self.assertEqual(2, driver.rados_command.call_count)
+    def test_ensure_share_subvolume_not_found(self):
+        message = f"Error ENOENT: subvolume {self._share['id']} does not exist"
+        expected_exception = exception.ShareBackendException(message)
+
+        self.mock_object(
+            self._driver, '_get_export_locations',
+            mock.Mock(side_effect=expected_exception))
+
+        self.assertRaises(
+            exception.ShareResourceNotFound,
+            self._driver.ensure_share,
+            self._context,
+            self._share)
+
+        self._driver._get_export_locations.assert_called_once_with(self._share)
 
     def test_delete_share(self):
         clone_status_prefix = "fs clone status"

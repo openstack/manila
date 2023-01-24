@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Fixed an issue that made the CephFS driver to override the permissions in
+    a share. After `a bugfix <https://tracker.ceph.com/issues/54375>`_, Ceph's
+    idempotent creation of shares had a change on its behavior. If a share
+    mode was modified outside of Manila, or the configuration value for
+    `cephfs_volume_mode` was changed in Manila when shares had already been
+    created, these shares would have their mode changed while Manila attempted
+    to ensure that such share exists using the idempotent creation, potentially
+    breaking clients. The CephFS driver will no longer send create calls to the
+    backend when ensuring a share exists. For more details, please refer to
+    `Bug #2002394 <https://bugs.launchpad.net/manila/+bug/2002394>`_
