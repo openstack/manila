@@ -652,6 +652,7 @@ def service_update(context, service_id, values):
 
 
 @require_context
+@context_manager.reader
 def quota_get_all_by_project_and_user(context, project_id, user_id):
     authorize_project_context(context, project_id)
     user_quotas = model_query(
@@ -671,8 +672,10 @@ def quota_get_all_by_project_and_user(context, project_id, user_id):
 
 
 @require_context
-def quota_get_all_by_project_and_share_type(context, project_id,
-                                            share_type_id):
+@context_manager.reader
+def quota_get_all_by_project_and_share_type(
+    context, project_id, share_type_id,
+):
     authorize_project_context(context, project_id)
     share_type_quotas = model_query(
         context, models.ProjectShareTypeQuota,
@@ -694,6 +697,7 @@ def quota_get_all_by_project_and_share_type(context, project_id,
 
 
 @require_context
+@context_manager.reader
 def quota_get_all_by_project(context, project_id):
     authorize_project_context(context, project_id)
     project_quotas = model_query(
@@ -709,6 +713,7 @@ def quota_get_all_by_project(context, project_id):
 
 
 @require_context
+@context_manager.reader
 def quota_get_all(context, project_id):
     authorize_project_context(context, project_id)
 
@@ -720,8 +725,15 @@ def quota_get_all(context, project_id):
 
 
 @require_admin_context
-def quota_create(context, project_id, resource, limit, user_id=None,
-                 share_type_id=None):
+@context_manager.writer
+def quota_create(
+    context,
+    project_id,
+    resource,
+    limit,
+    user_id=None,
+    share_type_id=None,
+):
     per_user = user_id and resource not in PER_PROJECT_QUOTAS
 
     if per_user:
@@ -752,22 +764,27 @@ def quota_create(context, project_id, resource, limit, user_id=None,
     quota_ref.project_id = project_id
     quota_ref.resource = resource
     quota_ref.hard_limit = limit
-    session = get_session()
-    with session.begin():
-        try:
-            quota_ref.save(session)
-        except Exception as e:
-            if "out of range" in str(e).lower():
-                msg = _("Quota limit should not exceed 2147483647")
-                raise exception.InvalidInput(reason=msg)
-            raise
+    try:
+        quota_ref.save(context.session)
+    except Exception as e:
+        if "out of range" in str(e).lower():
+            msg = _("Quota limit should not exceed 2147483647")
+            raise exception.InvalidInput(reason=msg)
+        raise
     return quota_ref
 
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def quota_update(context, project_id, resource, limit, user_id=None,
-                 share_type_id=None):
+@context_manager.writer
+def quota_update(
+    context,
+    project_id,
+    resource,
+    limit,
+    user_id=None,
+    share_type_id=None,
+):
     per_user = user_id and resource not in PER_PROJECT_QUOTAS
     if per_user:
         query = model_query(context, models.ProjectUserQuota).filter(
