@@ -465,8 +465,9 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             "sub_name": share["id"],
             "size": size,
             "namespace_isolated": True,
-            "mode": self._cephfs_volume_mode,
+            "mode": self._cephfs_volume_mode
         }
+
         if share['share_group_id'] is not None:
             argdict.update({"group_name": share["share_group_id"]})
 
@@ -540,8 +541,14 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             share_server=share_server)
 
     def ensure_share(self, context, share, share_server=None):
-        # Creation is idempotent
-        return self.create_share(context, share, share_server)
+        try:
+            export_location = self._get_export_locations(share)
+        except exception.ShareBackendException as e:
+            if 'does not exist' in str(e).lower():
+                raise exception.ShareResourceNotFound(share_id=share['id'])
+            raise
+
+        return export_location
 
     def extend_share(self, share, new_size, share_server=None):
         # resize FS subvolume/share
