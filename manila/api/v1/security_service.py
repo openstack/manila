@@ -211,19 +211,16 @@ class SecurityServiceController(wsgi.Controller):
                           "service. Valid types are %(types)s") %
                         {'type': security_srv_type,
                          'types': ','.join(allowed_types)}))
-        server = security_service_args.get('server', None)
-        defaultadsite = security_service_args.get('defaultadsite', None)
-        if server and defaultadsite:
+        server = security_service_args.get('server')
+        default_ad_site = (security_service_args.get('default_ad_site') or
+                           security_service_args.get('defaultadsite'))
+
+        if (security_srv_type == 'active_directory' and server and
+                default_ad_site):
             raise exception.InvalidInput(
                 reason=(_("Can not create security service because both "
-                          "server and default AD site is provided, Specify "
-                          "either server or default AD site.")))
-        if security_srv_type == 'active_directory':
-            if not server and not defaultadsite:
-                raise exception.InvalidInput(
-                    reason=(_("Can not create security service because either "
-                              "server or default AD site is needed for Active "
-                              "directory service type.")))
+                          "server and default AD site is provided, "
+                          "Specify either server or default AD site.")))
         security_service_args['project_id'] = context.project_id
         security_service = db.security_service_create(
             context, security_service_args)
