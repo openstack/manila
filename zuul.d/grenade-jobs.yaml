@@ -16,7 +16,8 @@
       - openstack/grenade
       - openstack/manila
       - openstack/python-manilaclient
-      - openstack/manila-tempest-plugin
+      - name: openstack/manila-tempest-plugin
+        override-checkout: 1.8.0
     vars:
       grenade_devstack_localrc:
         shared:
