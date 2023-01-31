@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed an issue that allowed share network subnets to be deleted when they
+    were still related to a share group. An exception will now be raised when
+    Manila identify such existing relationship. For more details, please refer
+    to `Launchpad Bug 2004212 <https://bugs.launchpad.net/manila/+bug/2004212>`_.

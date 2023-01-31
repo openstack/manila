@@ -89,6 +89,15 @@ class ShareNetworkSubnetController(wsgi.Controller):
                 LOG.error(msg)
                 raise exc.HTTPConflict(explanation=msg)
 
+            share_groups = db_api.share_group_get_all_by_share_server(
+                context, share_server['id'])
+            if share_groups:
+                msg = _("Cannot delete share network subnet %(id)s, it has "
+                        "one or more share groups.") % {
+                            'id': share_network_subnet_id}
+                LOG.error(msg)
+                raise exc.HTTPConflict(explanation=msg)
+
         # NOTE(silvacarlose): Do not allow the deletion of any share server
         # if any of them has the flag is_auto_deletable = False
         if not self._all_share_servers_are_auto_deletable(
