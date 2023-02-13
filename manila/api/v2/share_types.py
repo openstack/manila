@@ -207,7 +207,7 @@ class ShareTypesController(wsgi.Controller):
                 context, 'share_type.create', share_type)
 
         except exception.InvalidExtraSpec as e:
-            raise webob.exc.HTTPBadRequest(explanation=e.message)
+            raise webob.exc.HTTPBadRequest(explanation=e.msg)
         except exception.ShareTypeExists as err:
             notifier_err = dict(share_types=share_type,
                                 error_message=err.message)

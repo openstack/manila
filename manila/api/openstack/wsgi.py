@@ -744,10 +744,10 @@ class Resource(wsgi.Application):
                 request.set_api_version_request()
             except exception.InvalidAPIVersionString as e:
                 return Fault(webob.exc.HTTPBadRequest(
-                    explanation=e.message))
+                    explanation=e.msg))
             except exception.InvalidGlobalAPIVersion as e:
                 return Fault(webob.exc.HTTPNotAcceptable(
-                    explanation=e.message))
+                    explanation=e.msg))
 
         # Identify the action, its arguments, and the requested
         # content type

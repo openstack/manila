@@ -77,7 +77,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
             self.share_group_api.delete_share_group_snapshot(
                 context, sg_snapshot)
         except exception.InvalidShareGroupSnapshot as e:
-            raise exc.HTTPConflict(explanation=e.message)
+            raise exc.HTTPConflict(explanation=e.msg)
         return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
@@ -195,9 +195,9 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
             new_snapshot = self.share_group_api.create_share_group_snapshot(
                 context, **kwargs)
         except exception.ShareGroupNotFound as e:
-            raise exc.HTTPBadRequest(explanation=e.message)
+            raise exc.HTTPBadRequest(explanation=e.msg)
         except exception.InvalidShareGroup as e:
-            raise exc.HTTPConflict(explanation=e.message)
+            raise exc.HTTPConflict(explanation=e.msg)
 
         return self._view_builder.detail(req, dict(new_snapshot.items()))
 
