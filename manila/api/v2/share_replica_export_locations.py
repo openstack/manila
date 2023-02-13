@@ -85,7 +85,7 @@ class ShareReplicaExportLocationController(wsgi.Controller):
             return self._view_builder.detail(req, export_location,
                                              replica=True)
         except exception.ExportLocationNotFound as e:
-            raise exc.HTTPNotFound(explanation=e.message)
+            raise exc.HTTPNotFound(explanation=e.msg)
 
 
 def create_resource():

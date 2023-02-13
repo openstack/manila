@@ -50,7 +50,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
             try:
                 share_types.get_valid_required_extra_specs(extra_specs)
             except exception.InvalidExtraSpec as e:
-                raise webob.exc.HTTPBadRequest(explanation=e.message)
+                raise webob.exc.HTTPBadRequest(explanation=e.msg)
 
         def is_valid_string(v):
             return isinstance(v, str) and len(v) in range(1, 256)
@@ -96,7 +96,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
         try:
             self._verify_extra_specs(specs, False)
         except exception.InvalidExtraSpec as e:
-            raise webob.exc.HTTPBadRequest(e.message)
+            raise webob.exc.HTTPBadRequest(e.msg)
 
         self._check_key_names(specs.keys())
         specs = share_types.sanitize_extra_specs(specs)
