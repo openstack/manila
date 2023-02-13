@@ -90,9 +90,9 @@ class ShareMixin(object):
         except exception.NotFound:
             raise exc.HTTPNotFound()
         except exception.InvalidShare as e:
-            raise exc.HTTPForbidden(explanation=e.message)
+            raise exc.HTTPForbidden(explanation=e.msg)
         except exception.Conflict as e:
-            raise exc.HTTPConflict(explanation=e.message)
+            raise exc.HTTPConflict(explanation=e.msg)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
@@ -282,14 +282,14 @@ class ShareMixin(object):
                 availability_zone_id = availability_zone_db.id
                 availability_zone = availability_zone_db.name
             except exception.AvailabilityZoneNotFound as e:
-                raise exc.HTTPNotFound(explanation=e.message)
+                raise exc.HTTPNotFound(explanation=e.msg)
 
         share_group_id = share.get('share_group_id')
         if share_group_id:
             try:
                 share_group = db.share_group_get(context, share_group_id)
             except exception.ShareGroupNotFound as e:
-                raise exc.HTTPNotFound(explanation=e.message)
+                raise exc.HTTPNotFound(explanation=e.msg)
             sg_az_id = share_group['availability_zone_id']
             if availability_zone and availability_zone_id != sg_az_id:
                 msg = _("Share cannot have AZ ('%(s_az)s') different than "

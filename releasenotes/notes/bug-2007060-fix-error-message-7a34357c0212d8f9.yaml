@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed several Manila API error messages with their contents. For more
+    details, please refer to
+    `launchpad bug #2007060 <https://bugs.launchpad.net/manila/+bug/2007060>`_
