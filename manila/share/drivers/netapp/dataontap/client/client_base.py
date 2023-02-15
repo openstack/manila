@@ -56,7 +56,8 @@ class NetAppBaseClient(object):
         if cached:
             return self.connection.get_system_version()
 
-        result = self.send_request('system-get-version')
+        result = self.send_request('system-get-version',
+                                   enable_tunneling=False)
 
         version_tuple = result.get_child_by_name(
             'version-tuple') or netapp_api.NaElement('none')
