@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    In case of NetApp ONTAP driver, user can now set the quiesce timeout
+    during promote and this timeout has precedence over NetApp configuration
+    `netapp_snapsmirror_quiesce_timeout`. For more details, please refer to
+    `launchpad bug 2000171 <https://bugs.launchpad.net/manila/+bug/2000171>`_

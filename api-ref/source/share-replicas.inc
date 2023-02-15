@@ -154,6 +154,7 @@ Request
 
    - project_id: project_id_path
    - share_replica_id: share_replica_id_path
+   - quiesce_wait_time: share_replica_quiesce_wait_time
 
 Request example
 ---------------

@@ -3015,6 +3015,13 @@ share_replica_id:
   in: body
   required: true
   type: string
+share_replica_quiesce_wait_time:
+  description: |
+    The quiesce wait time in seconds used during replica promote.
+  in: body
+  required: false
+  type: integer
+  min_version: 2.75
 share_replica_replica_state:
   description: |
     The replica state of a share replica. List of possible values:

@@ -507,7 +507,8 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
             self.dest_vserver, self.fake_dest_vol_name)
 
         self.dm_session.quiesce_then_abort.assert_called_once_with(
-            self.fake_src_share, self.fake_dest_share)
+            self.fake_src_share, self.fake_dest_share,
+            quiesce_wait_time=None)
 
         self.mock_dest_client.mount_volume.assert_called_once_with(
             self.fake_dest_vol_name)
@@ -524,7 +525,8 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
             self.dest_vserver, self.fake_dest_vol_name)
 
         self.dm_session.quiesce_then_abort.assert_called_once_with(
-            self.fake_src_share, self.fake_dest_share)
+            self.fake_src_share, self.fake_dest_share,
+            quiesce_wait_time=None)
 
         self.assertFalse(self.mock_dest_client.mount_volume.called)
 
@@ -535,7 +537,8 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
                                          self.fake_dest_share)
 
         self.dm_session.quiesce_then_abort.assert_called_once_with(
-            self.fake_src_share, self.fake_dest_share)
+            self.fake_src_share, self.fake_dest_share,
+            quiesce_wait_time=None)
 
         self.mock_dest_client.break_snapmirror_vol.assert_called_once_with(
             self.source_vserver, self.fake_src_vol_name,
@@ -543,6 +546,39 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
 
         self.mock_dest_client.mount_volume.assert_called_once_with(
             self.fake_dest_vol_name)
+
+    @ddt.data(None, 2, 30)
+    def test_quiesce_then_abort_wait_time(self, wait_time):
+        self.mock_object(time, 'sleep')
+        mock_get_snapmirrors = mock.Mock(
+            return_value=[{'relationship-status': "transferring"}])
+        self.mock_object(self.mock_dest_client, 'get_snapmirrors',
+                         mock_get_snapmirrors)
+        mock_backend_config = na_fakes.create_configuration()
+        mock_backend_config.netapp_snapmirror_quiesce_timeout = 10
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
+
+        self.dm_session.quiesce_then_abort(self.fake_src_share,
+                                           self.fake_dest_share,
+                                           quiesce_wait_time=wait_time)
+
+        self.mock_dest_client.get_snapmirrors.assert_called_with(
+            source_vserver=self.source_vserver,
+            dest_vserver=self.dest_vserver,
+            source_volume=self.fake_src_vol_name,
+            dest_volume=self.fake_dest_vol_name,
+            desired_attributes=['relationship-status', 'mirror-state']
+        )
+
+        call_count = self.mock_dest_client.get_snapmirrors.call_count
+        if wait_time:
+            if wait_time > 5:
+                self.assertEqual(wait_time / 5, call_count)
+            else:
+                self.assertEqual(1, call_count)
+        else:
+            self.assertEqual(2, call_count)
 
     def test_quiesce_then_abort_timeout(self):
         self.mock_object(time, 'sleep')

@@ -2068,7 +2068,7 @@ class ShareDriver(object):
         raise NotImplementedError()
 
     def promote_replica(self, context, replica_list, replica, access_rules,
-                        share_server=None):
+                        share_server=None, quiesce_wait_time=None):
         """Promote a replica to 'active' replica state.
 
         .. note::
@@ -2152,6 +2152,8 @@ class ShareDriver(object):
 
         :param share_server: <models.ShareServer> or None
             Share server of the replica to be promoted.
+        :param quiesce_wait_time: time in seconds or None
+            Share replica promote quiesce wait time.
         :return: updated_replica_list or None.
             The driver can return the updated list as in the request
             parameter. Changes that will be updated to the Database are:

@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Starting with microversion 2.75, user can specify quiesce wait time
+    seconds in share replica promote API. Be aware that not all drivers
+    support this parameter, when not supported, the value would be silently
+    ignored.

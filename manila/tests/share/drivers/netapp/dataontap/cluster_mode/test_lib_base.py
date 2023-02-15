@@ -4786,7 +4786,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_dm_session.update_snapmirror.assert_called_once_with(
             self.fake_replica, self.fake_replica_2)
         self.mock_dm_session.break_snapmirror.assert_called_once_with(
-            self.fake_replica, self.fake_replica_2)
+            self.fake_replica, self.fake_replica_2,
+            quiesce_wait_time=None)
 
         self.assertEqual('fake_export_location',
                          replica['export_locations'])
@@ -4814,7 +4815,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_dm_session.update_snapmirror.assert_called_once_with(
             self.fake_replica, self.fake_replica_2)
         self.mock_dm_session.break_snapmirror.assert_called_once_with(
-            self.fake_replica, self.fake_replica_2)
+            self.fake_replica, self.fake_replica_2,
+            quiesce_wait_time=None)
 
         self.assertEqual('fake_export_location',
                          replica['export_locations'])
@@ -4897,7 +4899,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_dm_session.update_snapmirror.assert_called_once_with(
             self.fake_replica, self.fake_replica_2)
         self.mock_dm_session.break_snapmirror.assert_called_once_with(
-            self.fake_replica, self.fake_replica_2)
+            self.fake_replica, self.fake_replica_2,
+            quiesce_wait_time=None)
 
         self.assertEqual('fake_export_location',
                          replica['export_locations'])
@@ -4932,7 +4935,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_dm_session.update_snapmirror.assert_called_once_with(
             self.fake_replica, self.fake_replica_2)
         self.mock_dm_session.break_snapmirror.assert_called_once_with(
-            self.fake_replica, self.fake_replica_2)
+            self.fake_replica, self.fake_replica_2,
+            quiesce_wait_time=None)
 
         fake_helper.assert_has_calls([
             mock.call.set_client(mock.ANY),

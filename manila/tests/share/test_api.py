@@ -4339,7 +4339,7 @@ class ShareAPITestCase(test.TestCase):
             self.context, replica['id'],
             {'status': constants.STATUS_REPLICATION_CHANGE})
         mock_rpcapi_promote_share_replica_call.assert_called_once_with(
-            self.context, replica)
+            self.context, replica, quiesce_wait_time=None)
 
     def test_promote_share_replica(self):
         replica = fakes.fake_replica('FAKE_ID', host='HOSTA@BackendB#PoolC')
@@ -4352,7 +4352,7 @@ class ShareAPITestCase(test.TestCase):
         result = self.api.promote_share_replica(self.context, replica)
 
         mock_sched_rpcapi_call.assert_called_once_with(
-            self.context, replica)
+            self.context, replica, quiesce_wait_time=None)
         self.assertEqual(replica, result)
 
     def test_update_share_replica_no_host(self):

@@ -243,7 +243,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.23'
+    RPC_API_VERSION = '1.24'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -2494,7 +2494,8 @@ class ShareManager(manager.SchedulerDependentManager):
     @add_hooks
     @utils.require_driver_initialized
     @locked_share_replica_operation
-    def promote_share_replica(self, context, share_replica_id, share_id=None):
+    def promote_share_replica(self, context, share_replica_id, share_id=None,
+                              quiesce_wait_time=None):
         """Promote a share replica to active state."""
         context = context.elevated()
         share_replica = self.db.share_replica_get(
@@ -2549,7 +2550,8 @@ class ShareManager(manager.SchedulerDependentManager):
             updated_replica_list = (
                 self.driver.promote_replica(
                     context, replica_list, share_replica, access_rules,
-                    share_server=share_server)
+                    share_server=share_server,
+                    quiesce_wait_time=quiesce_wait_time)
             )
         except Exception as excep:
             with excutils.save_and_reraise_exception():

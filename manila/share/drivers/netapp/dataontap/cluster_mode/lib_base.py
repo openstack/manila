@@ -2683,7 +2683,7 @@ class NetAppCmodeFileStorageLibrary(object):
         return constants.REPLICA_STATE_IN_SYNC
 
     def promote_replica(self, context, replica_list, replica, access_rules,
-                        share_server=None):
+                        share_server=None, quiesce_wait_time=None):
         """Switch SnapMirror relationships and allow r/w ops on replica.
 
         Creates a DataMotion session and switches the direction of the
@@ -2701,6 +2701,7 @@ class NetAppCmodeFileStorageLibrary(object):
         :param replica: Replica to promote to SnapMirror source
         :param access_rules: Access rules to apply to the replica
         :param share_server: ShareServer class instance of replica
+        :param quiesce_wait_time: Wait time in seconds for snapmirror quiesce
         :return: Updated replica_list
         """
         orig_active_replica = self.find_active_replica(replica_list)
@@ -2714,7 +2715,8 @@ class NetAppCmodeFileStorageLibrary(object):
             new_active_replica = (
                 self._convert_destination_replica_to_independent(
                     context, dm_session, orig_active_replica, replica,
-                    access_rules, share_server=share_server))
+                    access_rules, share_server=share_server,
+                    quiesce_wait_time=quiesce_wait_time))
         except exception.StorageCommunicationException:
             LOG.exception("Could not communicate with the backend "
                           "for replica %s during promotion.",
@@ -2842,7 +2844,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     def _convert_destination_replica_to_independent(
             self, context, dm_session, orig_active_replica, replica,
-            access_rules, share_server=None):
+            access_rules, share_server=None, quiesce_wait_time=None):
         """Breaks SnapMirror and allows r/w ops on the destination replica.
 
         For promotion, the existing SnapMirror relationship must be broken
@@ -2855,6 +2857,7 @@ class NetAppCmodeFileStorageLibrary(object):
         :param replica: Replica to promote to SnapMirror source
         :param access_rules: Access rules to apply to the replica
         :param share_server: ShareServer class instance of replica
+        :param quiesce_wait_time: Wait time in seconds for snapmirror quiesce
         :return: Updated replica
         """
         vserver, vserver_client = self._get_vserver(share_server=share_server)
@@ -2869,7 +2872,8 @@ class NetAppCmodeFileStorageLibrary(object):
             # unreachable
             pass
         # 2. Break SnapMirror
-        dm_session.break_snapmirror(orig_active_replica, replica)
+        dm_session.break_snapmirror(orig_active_replica, replica,
+                                    quiesce_wait_time=quiesce_wait_time)
 
         # 3. Setup access rules
         new_active_replica = replica.copy()

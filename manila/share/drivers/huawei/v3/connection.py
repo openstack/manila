@@ -1769,7 +1769,7 @@ class V3StorageConnection(driver.HuaweiBase):
         return self.replica_mgr.get_replica_state(replica_pair_id)
 
     def promote_replica(self, context, replica_list, replica, access_rules,
-                        share_server=None):
+                        share_server=None, quiesce_wait_time=None):
         replica_pair_id = self.private_storage.get(replica['share_id'],
                                                    'replica_pair_id')
         if replica_pair_id is None:
