@@ -3005,9 +3005,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
         vserver_client.snapshot_exists.return_value = True
         vserver_client.volume_has_snapmirror_relationships.return_value = False
-        self.mock_object(
-            na_utils, 'is_style_extended_flexgroup',
-            mock.Mock(return_value=is_flexgroup))
 
         result = self.library.manage_existing_snapshot(
             fake.SNAPSHOT_TO_MANAGE, {}, share_server=fake_vserver)
@@ -3019,20 +3016,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SNAPSHOT_NAME, share_name)
         (vserver_client.volume_has_snapmirror_relationships.
             assert_called_once_with(fake.FLEXVOL_TO_MANAGE))
-        na_utils.is_style_extended_flexgroup.assert_called_once_with(
-            fake.FLEXGROUP_STYLE_EXTENDED)
         expected_result = {'size': 2}
-        if is_flexgroup:
-            vserver_client.rename_snapshot.assert_not_called()
-            self.library.private_storage.update.assert_not_called()
-        else:
-            new_snapshot_name = self.library._get_backend_snapshot_name(
-                fake.SNAPSHOT['id'])
-            vserver_client.rename_snapshot.assert_called_once_with(
-                share_name, fake.SNAPSHOT_NAME, new_snapshot_name)
-            self.library.private_storage.update.assert_called_once_with(
-                fake.SNAPSHOT['id'], {'original_name': fake.SNAPSHOT_NAME})
-            expected_result['provider_location'] = new_snapshot_name
         self.assertEqual(expected_result, result)
 
     def test_manage_existing_snapshot_no_snapshot_name(self):
@@ -3094,24 +3078,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
         vserver_client.snapshot_exists.return_value = True
         vserver_client.volume_has_snapmirror_relationships.return_value = True
-
-        self.assertRaises(exception.ManageInvalidShareSnapshot,
-                          self.library.manage_existing_snapshot,
-                          fake.SNAPSHOT_TO_MANAGE, {})
-
-    def test_manage_existing_snapshot_rename_snapshot_error(self):
-
-        vserver_client = mock.Mock()
-        self.mock_object(self.library,
-                         '_get_vserver',
-                         mock.Mock(return_value=(fake.VSERVER1,
-                                                 vserver_client)))
-        vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
-        vserver_client.volume_has_snapmirror_relationships.return_value = False
-        self.mock_object(
-            na_utils, 'is_style_extended_flexgroup',
-            mock.Mock(return_value=False))
-        vserver_client.rename_snapshot.side_effect = netapp_api.NaApiError
 
         self.assertRaises(exception.ManageInvalidShareSnapshot,
                           self.library.manage_existing_snapshot,
