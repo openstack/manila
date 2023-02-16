@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    From API version 2.76, added 'default_ad_site' field to 'security_service'
+    object. This field can not be used along-with 'server' field of the
+    'security_service'.
