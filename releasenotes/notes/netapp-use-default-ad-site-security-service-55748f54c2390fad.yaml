@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    For Netapp ONTAP driver, the 'default_ad_site' will restrict the Domain
+    controller's discovery mode to 'site' i.e. only Domain Controller's in
+    local site will be discovered.
