@@ -30,6 +30,7 @@ from manila.share import configuration
 from manila.share import driver
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
+from manila.share.drivers.netapp.dataontap.client import client_cmode_rest
 from manila.share.drivers.netapp import options as na_opts
 from manila.share.drivers.netapp import utils as na_utils
 from manila.share import utils as share_utils
@@ -72,15 +73,26 @@ def get_backend_configuration(backend_name):
 
 def get_client_for_backend(backend_name, vserver_name=None):
     config = get_backend_configuration(backend_name)
-    client = client_cmode.NetAppCmodeClient(
-        transport_type=config.netapp_transport_type,
-        ssl_cert_path=config.netapp_ssl_cert_path,
-        username=config.netapp_login,
-        password=config.netapp_password,
-        hostname=config.netapp_server_hostname,
-        port=config.netapp_server_port,
-        vserver=vserver_name or config.netapp_vserver,
-        trace=na_utils.TRACE_API)
+    if config.netapp_use_legacy_client:
+        client = client_cmode.NetAppCmodeClient(
+            transport_type=config.netapp_transport_type,
+            ssl_cert_path=config.netapp_ssl_cert_path,
+            username=config.netapp_login,
+            password=config.netapp_password,
+            hostname=config.netapp_server_hostname,
+            port=config.netapp_server_port,
+            vserver=vserver_name or config.netapp_vserver,
+            trace=na_utils.TRACE_API)
+    else:
+        client = client_cmode_rest.NetAppRestClient(
+            transport_type=config.netapp_transport_type,
+            ssl_cert_path=config.netapp_ssl_cert_path,
+            username=config.netapp_login,
+            password=config.netapp_password,
+            hostname=config.netapp_server_hostname,
+            port=config.netapp_server_port,
+            vserver=vserver_name or config.netapp_vserver,
+            trace=na_utils.TRACE_API)
 
     return client
 

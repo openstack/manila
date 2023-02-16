@@ -40,6 +40,7 @@ from manila.i18n import _
 from manila.message import api as message_api
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
+from manila.share.drivers.netapp.dataontap.client import client_cmode_rest
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import performance
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
@@ -215,20 +216,32 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _get_api_client(self, vserver=None):
 
-        # Use cached value to prevent calls to system-get-ontapi-version.
+        # Use cached value to prevent redo calls during client initialization.
         client = self._clients.get(vserver)
 
         if not client:
-            client = client_cmode.NetAppCmodeClient(
-                transport_type=self.configuration.netapp_transport_type,
-                ssl_cert_path=self.configuration.netapp_ssl_cert_path,
-                username=self.configuration.netapp_login,
-                password=self.configuration.netapp_password,
-                hostname=self.configuration.netapp_server_hostname,
-                port=self.configuration.netapp_server_port,
-                vserver=vserver,
-                trace=na_utils.TRACE_API,
-                api_trace_pattern=na_utils.API_TRACE_PATTERN)
+            if self.configuration.netapp_use_legacy_client:
+                client = client_cmode.NetAppCmodeClient(
+                    transport_type=self.configuration.netapp_transport_type,
+                    ssl_cert_path=self.configuration.netapp_ssl_cert_path,
+                    username=self.configuration.netapp_login,
+                    password=self.configuration.netapp_password,
+                    hostname=self.configuration.netapp_server_hostname,
+                    port=self.configuration.netapp_server_port,
+                    vserver=vserver,
+                    trace=na_utils.TRACE_API,
+                    api_trace_pattern=na_utils.API_TRACE_PATTERN)
+            else:
+                client = client_cmode_rest.NetAppRestClient(
+                    transport_type=self.configuration.netapp_transport_type,
+                    ssl_cert_path=self.configuration.netapp_ssl_cert_path,
+                    username=self.configuration.netapp_login,
+                    password=self.configuration.netapp_password,
+                    hostname=self.configuration.netapp_server_hostname,
+                    port=self.configuration.netapp_server_port,
+                    vserver=vserver,
+                    trace=na_utils.TRACE_API,
+                    api_trace_pattern=na_utils.API_TRACE_PATTERN)
             self._clients[vserver] = client
 
         return client
