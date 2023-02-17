@@ -43,6 +43,8 @@ def stub_security_service(self, version, id):
     )
     if self.is_microversion_ge(version, '2.44'):
         ss_dict['ou'] = 'fake-ou'
+    if self.is_microversion_ge(version, '2.76'):
+        ss_dict['default_ad_site'] = 'fake-default_ad_site'
 
     return ss_dict
 
@@ -53,6 +55,7 @@ class SecurityServicesAPITest(test.TestCase):
         ('2.0'),
         ('2.43'),
         ('2.44'),
+        ('2.76'),
     )
     def test_index(self, version):
         ss = [
@@ -85,3 +88,8 @@ class SecurityServicesAPITest(test.TestCase):
             self.assertIn('ou', ss_keys)
         else:
             self.assertNotIn('ou', ss_keys)
+
+        if self.is_microversion_ge(version, '2.76'):
+            self.assertIn('default_ad_site', ss_keys)
+        else:
+            self.assertNotIn('default_ad_site', ss_keys)

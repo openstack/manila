@@ -3539,6 +3539,7 @@ class ShareManagerTestCase(test.TestCase):
                 'user': 'fake_user' + ss_type,
                 'type': ss_type,
                 'password': 'fake_password' + ss_type,
+                'default_ad_site': 'fake_default_ad_site' + ss_type,
             })
         sec_services = network_info['security_services']
         server_info = {'fake_server_info_key': 'fake_server_info_value'}
@@ -6491,6 +6492,7 @@ class ShareManagerTestCase(test.TestCase):
         ss_data_from_db = {
             'name': ss_from_db['name'],
             'ou': ss_from_db['ou'],
+            'default_ad_site': ss_from_db['default_ad_site'],
             'domain': ss_from_db['domain'],
             'server': ss_from_db['server'],
             'dns_ip': ss_from_db['dns_ip'],
@@ -9515,8 +9517,8 @@ class ShareManagerTestCase(test.TestCase):
         fake_rules = ['fake_rules']
         network_info = {'fake': 'fake'}
         backend_details_keys = [
-            'name', 'ou', 'domain', 'server', 'dns_ip', 'user', 'type',
-            'password']
+            'name', 'ou', 'default_ad_site', 'domain', 'server', 'dns_ip',
+            'user', 'type', 'password']
         backend_details_data = {}
         [backend_details_data.update(
             {key: security_services[0][key]}) for key in backend_details_keys]
@@ -9673,8 +9675,8 @@ class ShareManagerTestCase(test.TestCase):
         new_security_service_id = security_services[1]['id']
         network_info = [{'fake': 'fake'}]
         backend_details_keys = [
-            'name', 'ou', 'domain', 'server', 'dns_ip', 'user', 'type',
-            'password']
+            'name', 'ou', 'default_ad_site', 'domain', 'server', 'dns_ip',
+            'user', 'type', 'password']
         backend_details_data = {}
         [backend_details_data.update(
             {key: security_services[0][key]}) for key in backend_details_keys]

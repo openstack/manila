@@ -192,6 +192,7 @@ REST_API_VERSION_HISTORY = """
              'error' state.
     * 2.75 - Added option to specify quiesce wait time in share replica
              promote API.
+    * 2.76 - Added 'default_ad_site' field in security service object.
 
 """
 
@@ -199,7 +200,7 @@ REST_API_VERSION_HISTORY = """
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.75"
+_MAX_API_VERSION = "2.76"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

@@ -140,6 +140,14 @@ class ShareApiTest(test.TestCase):
         self.assertRaises(exception.InvalidInput, self.controller.create, req,
                           {"security_service": sec_service})
 
+    @ddt.data('2.76')
+    def test_security_service_create_invalid_active_directory(self, version):
+        sec_service = self.ss_active_directory.copy()
+        sec_service['default_ad_site'] = 'fake_default_ad_site'
+        req = fakes.HTTPRequest.blank('/security-services', version=version)
+        self.assertRaises(exception.InvalidInput, self.controller.create, req,
+                          {"security_service": sec_service})
+
     def test_create_security_service_no_body(self):
         body = {}
         req = fakes.HTTPRequest.blank('/security-services')

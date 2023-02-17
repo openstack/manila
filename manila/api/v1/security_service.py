@@ -22,6 +22,7 @@ import webob
 from webob import exc
 
 from manila.api import common
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.views import security_service as security_service_views
 from manila.common import constants
@@ -192,6 +193,21 @@ class SecurityServiceController(wsgi.Controller):
                             "fields are available for update.") % id
                     raise exc.HTTPForbidden(explanation=msg)
 
+        server = security_service_data.get('server')
+        default_ad_site = security_service_data.get('default_ad_site')
+        if default_ad_site:
+            if req.api_version_request < api_version.APIVersionRequest("2.76"):
+                msg = _('"default_ad_site" is only supported from API '
+                        'version 2.76.')
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+
+            if (security_service['type'] == 'active_directory' and server and
+                    default_ad_site):
+                raise exception.InvalidInput(
+                    reason=(_("Cannot create security service because both "
+                              "server and 'default_ad_site' were provided. "
+                              "Specify either server or 'default_ad_site'.")))
+
         policy.check_policy(context, RESOURCE_NAME, 'update', security_service)
         security_service = db.security_service_update(
             context, id, security_service_data)
@@ -214,6 +230,20 @@ class SecurityServiceController(wsgi.Controller):
                           "service. Valid types are %(types)s") %
                         {'type': security_srv_type,
                          'types': ','.join(allowed_types)}))
+        server = security_service_args.get('server')
+        default_ad_site = security_service_args.get('default_ad_site')
+        if default_ad_site:
+            if req.api_version_request < api_version.APIVersionRequest("2.76"):
+                msg = _('"default_ad_site" is only supported from API '
+                        'version 2.76.')
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+
+            if (security_srv_type == 'active_directory' and server and
+                    default_ad_site):
+                raise exception.InvalidInput(
+                    reason=(_("Cannot create security service because both "
+                              "server and 'default_ad_site' were provided, "
+                              "Specify either server or 'default_ad_site'.")))
         security_service_args['project_id'] = context.project_id
         security_service = db.security_service_create(
             context, security_service_args)

@@ -3246,6 +3246,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 data = {
                     'name': security_service['name'],
                     'ou': security_service['ou'],
+                    'default_ad_site': security_service['default_ad_site'],
                     'domain': security_service['domain'],
                     'server': security_service['server'],
                     'dns_ip': security_service['dns_ip'],
@@ -4205,6 +4206,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     'user': security_service['user'],
                     'type': ss_type,
                     'password': security_service['password'],
+                    'default_ad_site': security_service['default_ad_site'],
                 }
                 self.db.share_server_backend_details_set(
                     context, share_server['id'],
@@ -5843,6 +5845,7 @@ class ShareManager(manager.SchedulerDependentManager):
         backend_details_data = {
             'name': new_security_service['name'],
             'ou': new_security_service['ou'],
+            'default_ad_site': new_security_service['default_ad_site'],
             'domain': new_security_service['domain'],
             'server': new_security_service['server'],
             'dns_ip': new_security_service['dns_ip'],

@@ -410,3 +410,11 @@ ____
 2.74
 ----
   Allow/deny share access rule even if share replicas are in 'error' state.
+
+2.75
+----
+  Added option to specify quiesce wait time in share replica promote API.
+
+2.76
+----
+  Added 'default_ad_site' field in security service object.
