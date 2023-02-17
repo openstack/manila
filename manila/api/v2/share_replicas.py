@@ -278,7 +278,11 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         quiesce_wait_time = None
         if allow_quiesce_wait_time:
-            wait_time = body.get('promote', {}).get('quiesce_wait_time')
+            # NOTE(carloss): there is a chance that we receive
+            # {'promote': null}, so we need to prevent that
+            promote_data = body.get('promote', {})
+            promote_data = {} if promote_data is None else promote_data
+            wait_time = promote_data.get('quiesce_wait_time')
             if wait_time:
                 if not strutils.is_int_like(wait_time) or int(wait_time) <= 0:
                     msg = _("quiesce_wait_time must be an integer and "
