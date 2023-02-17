@@ -1,4 +1,4 @@
-# Copyright 2017 Infinidat Ltd.
+# Copyright 2022 Infinidat Ltd.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -97,6 +97,8 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self.configuration.infinidat_thin_provision = True
         self.configuration.infinibox_login = 'user'
         self.configuration.infinibox_password = 'pass'
+        self.configuration.infinidat_use_ssl = False
+        self.configuration.infinidat_suppress_ssl_warnings = False
 
         self.configuration.network_config_group = 'test_network_config_group'
         self.configuration.admin_network_config_group = (
@@ -203,6 +205,11 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.ManilaException,
                           self.driver.do_setup, None)
 
+    @mock.patch("manila.share.drivers.infinidat.infinibox.capacity", None)
+    def test_no_capacity_module(self):
+        self.assertRaises(exception.ManilaException,
+                          self.driver.do_setup, None)
+
     def test_no_auth_parameters(self):
         self.configuration.infinibox_login = None
         self.configuration.infinibox_password = None
@@ -223,12 +230,31 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                 self.configuration.infinibox_password)
 
         self.driver._setup_and_get_system_object(
-            self.configuration.infinibox_hostname, auth)
+            self.configuration.infinibox_hostname, auth,
+            self.configuration.infinidat_use_ssl)
 
         self._system.api.add_auto_retry.assert_called_once()
         self._system.api.set_source_identifier.assert_called_once_with(
             infinibox._INFINIDAT_MANILA_IDENTIFIER)
         self._system.login.assert_called_once()
+
+    @skip_driver_setup
+    @mock.patch('manila.share.drivers.infinidat.infinibox.'
+                'infinisdk.InfiniBox')
+    @mock.patch('requests.packages.urllib3')
+    def test_do_setup_ssl_enabled(self, urllib3, infinibox):
+        auth = (self.configuration.infinibox_login,
+                self.configuration.infinibox_password)
+        self.configuration.infinidat_use_ssl = True
+        self.configuration.infinidat_suppress_ssl_warnings = True
+        self.driver.do_setup(None)
+        expected = [
+            mock.call(urllib3.exceptions.InsecureRequestWarning),
+            mock.call(urllib3.exceptions.InsecurePlatformWarning)]
+        urllib3.disable_warnings.assert_has_calls(expected)
+        infinibox.assert_called_once_with(
+            self.configuration.infinibox_hostname, auth=auth,
+            use_ssl=self.configuration.infinidat_use_ssl)
 
     def test_get_share_stats_refreshes(self):
         self.driver._update_share_stats()
