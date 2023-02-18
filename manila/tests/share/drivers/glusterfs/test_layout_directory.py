@@ -249,7 +249,7 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
 
         ret = self._layout.create_share(self._context, self.share, *extra_args)
 
-        self._layout._get_local_share_path.called_once_with(self.share)
+        self._layout._get_local_share_path.assert_called_once_with(self.share)
         self._layout.gluster_manager.gluster_call.assert_called_once_with(
             'volume', 'quota', 'testvol', 'limit-usage', '/fakename', '1GB')
         privsep_os.mkdir.assert_called_once_with(fake_local_share_path)
@@ -274,7 +274,7 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
             exception.GlusterfsException, self._layout.create_share,
             self._context, self.share)
 
-        self._layout._get_local_share_path.called_once_with(self.share)
+        self._layout._get_local_share_path.assert_called_once_with(self.share)
         privsep_os.mkdir.assert_called_once_with(fake_local_share_path)
         self._layout._cleanup_create_share.assert_called_once_with(
             fake_local_share_path, self.share['name'])
@@ -300,7 +300,7 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
             RuntimeError, self._layout.create_share,
             self._context, self.share)
 
-        self._layout._get_local_share_path.called_once_with(self.share)
+        self._layout._get_local_share_path.assert_called_once_with(self.share)
         privsep_os.mkdir.assert_called_once_with(fake_local_share_path)
         self.assertFalse(self._layout._cleanup_create_share.called)
 
