@@ -167,7 +167,7 @@ class LVMHelperTestCase(test.TestCase):
                               self.LVMHelper.rename_storage,
                               fake_old_share_name, fake_new_share_name)
         mock_try_to_umount.assert_called_once_with(fake_old_device)
-        mock_execute.mock_assert_called_once_with(
+        mock_execute.assert_called_once_with(
             "lvrename", "--autobackup", "n", fake_old_device, fake_new_device,
             run_as_root=True
         )
