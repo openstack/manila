@@ -4114,7 +4114,28 @@ class NetAppCmodeFileStorageLibrary(object):
 
     def ensure_share_server(self, context, share_server, network_info):
         server_details = share_server['backend_details']
-        return self.update_server(server_details, network_info)
+        server_info = None
+
+        try:
+            server_info = self.update_server(server_details, network_info)
+        except (exception.NetAppException,
+                netapp_api.NaApiError) as e:
+            err_msg = e.message
+            msg_args = {
+                'server': share_server['id'],
+                'exception': err_msg,
+            }
+            msg = _('Failed to ensure share server %(server)s: '
+                    '%(exception)s. ') % msg_args
+
+            # SAPCC
+            if err_msg.endswith('is not running.'):
+                msg += ("Check if this is due to an ongoing SVM move "
+                        "(DR or other migration).")
+
+            LOG.error(msg)
+
+        return server_info
 
     def get_share_status(self, share, share_server=None):
         if share['status'] == constants.STATUS_CREATING_FROM_SNAPSHOT:
