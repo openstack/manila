@@ -220,7 +220,6 @@ class ServiceInstanceManager(object):
             raise exception.ServiceInstanceException(
                 _('Service instance user is not specified.'))
         self.admin_context = context.get_admin_context()
-        self._execute = utils.execute
 
         self.image_api = image.API()
         self.compute_api = compute.API()
@@ -493,6 +492,11 @@ class ServiceInstanceManager(object):
                 instance_details.pop(key)
         return instance_details
 
+    def _load_public_key(self, path):
+        with open(path, 'r') as f:
+            public_key = f.read()
+        return public_key
+
     @utils.synchronized("service_instance_get_key", external=True)
     def _get_key(self, context):
         """Get ssh key.
@@ -513,7 +517,7 @@ class ServiceInstanceManager(object):
         if len(keypairs) > 1:
             raise exception.ServiceInstanceException(_('Ambiguous keypairs.'))
 
-        public_key, __ = self._execute('cat', path_to_public_key)
+        public_key = self._load_public_key(path_to_public_key)
         if not keypairs:
             keypair = self.compute_api.keypair_import(
                 context, keypair_name, public_key)

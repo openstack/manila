@@ -137,7 +137,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.mock_object(service_instance, 'NeutronNetworkHelper',
                          mock.Mock(side_effect=FakeNetworkHelper))
         self._manager = service_instance.ServiceInstanceManager(self.config)
-        self._manager._execute = mock.Mock(return_value=('', ''))
+        self._manager._load_public_key = mock.Mock(return_value='')
         self.mock_object(time, 'sleep')
 
     def test_get_config_option_from_driver_config(self):
@@ -645,8 +645,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                          mock.Mock(return_value=[fake_keypair]))
         self.mock_object(self._manager.compute_api, 'keypair_import',
                          mock.Mock(return_value=fake_keypair))
-        self.mock_object(self._manager, '_execute',
-                         mock.Mock(return_value=('fake_public_key', '')))
+        self.mock_object(self._manager, '_load_public_key',
+                         mock.Mock(return_value='fake_public_key'))
 
         result = self._manager._get_key(self._manager.admin_context)
 
@@ -669,8 +669,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.mock_object(self._manager.compute_api, 'keypair_import',
                          mock.Mock(return_value=fake_keypair))
         self.mock_object(self._manager.compute_api, 'keypair_delete')
-        self.mock_object(self._manager, '_execute',
-                         mock.Mock(return_value=('fake_public_key2', '')))
+        self.mock_object(self._manager, '_load_public_key',
+                         mock.Mock(return_value='fake_public_key2'))
 
         result = self._manager._get_key(self._manager.admin_context)
 
