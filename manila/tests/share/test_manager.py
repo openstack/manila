@@ -4043,6 +4043,90 @@ class ShareManagerTestCase(test.TestCase):
                 "fake_project_id", access_rules=rules,
                 share_server=None)
 
+    def test_transfer_accept_driver_cannot_transfer_with_rules(self):
+        shr_obj = db_utils.create_share()
+        self.mock_object(db, 'share_get', mock.Mock(return_value=shr_obj))
+
+        drv_exc = exception.DriverCannotTransferShareWithRules
+        update_access_rules_call = self.mock_object(
+            self.share_manager.access_helper,
+            'update_access_rules')
+        transfer_accept_call = self.mock_object(self.share_manager.driver,
+                                                'transfer_accept',
+                                                mock.Mock(side_effect=drv_exc))
+        rules = [
+            db_utils.create_access(share_id=shr_obj['id']),
+            db_utils.create_access(share_id=shr_obj['id'])
+        ]
+        self.mock_object(self.share_manager.db,
+                         'share_access_get_all_for_share',
+                         mock.Mock(return_value=rules))
+        self.mock_object(self.share_manager.db,
+                         'share_instances_get_all_by_share',
+                         mock.Mock(return_value=[shr_obj['instance']]))
+        self.mock_object(db, 'share_instance_get',
+                         mock.Mock(return_value=shr_obj['instance']))
+        self.mock_object(self.share_manager,
+                         '_get_share_server',
+                         mock.Mock(return_value=None))
+
+        self.assertRaises(exception.DriverCannotTransferShareWithRules,
+                          self.share_manager.transfer_accept,
+                          self.context, shr_obj['id'],
+                          "fake_new_user_id", "fake_new_project_id",
+                          False)
+        transfer_accept_call.assert_called_with(
+            self.context, shr_obj['instance'], "fake_new_user_id",
+            "fake_new_project_id", access_rules=rules,
+            share_server=None)
+        update_access_rules_call.assert_not_called()
+        self.share_manager.message_api.create.assert_called_once_with(
+            self.context,
+            message_field.Action.TRANSFER_ACCEPT,
+            'fake_new_project_id',
+            resource_type=message_field.Resource.SHARE,
+            resource_id=shr_obj['id'],
+            detail=message_field.Detail.DRIVER_FAILED_TRANSFER_ACCEPT)
+
+    def test_transfer_accept_other_driver_exception(self):
+        shr_obj = db_utils.create_share()
+        self.mock_object(db, 'share_get', mock.Mock(return_value=shr_obj))
+
+        drv_exc = exception.ShareBackendException(msg='fake_msg')
+        update_access_rules_call = self.mock_object(
+            self.share_manager.access_helper,
+            'update_access_rules')
+        transfer_accept_call = self.mock_object(self.share_manager.driver,
+                                                'transfer_accept',
+                                                mock.Mock(side_effect=drv_exc))
+        rules = [
+            db_utils.create_access(share_id=shr_obj['id']),
+            db_utils.create_access(share_id=shr_obj['id'])
+        ]
+        self.mock_object(self.share_manager.db,
+                         'share_access_get_all_for_share',
+                         mock.Mock(return_value=rules))
+        self.mock_object(self.share_manager.db,
+                         'share_instances_get_all_by_share',
+                         mock.Mock(return_value=[shr_obj['instance']]))
+        self.mock_object(db, 'share_instance_get',
+                         mock.Mock(return_value=shr_obj['instance']))
+        self.mock_object(self.share_manager,
+                         '_get_share_server',
+                         mock.Mock(return_value=None))
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.share_manager.transfer_accept,
+                          self.context, shr_obj['id'],
+                          "fake_new_user_id", "fake_new_project_id",
+                          False)
+        transfer_accept_call.assert_called_with(
+            self.context, shr_obj['instance'], "fake_new_user_id",
+            "fake_new_project_id", access_rules=rules,
+            share_server=None)
+        update_access_rules_call.assert_not_called()
+        self.share_manager.message_api.create.assert_not_called()
+
     @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
     def test_extend_share_invalid(self, mock_notify):
         share = db_utils.create_share()
