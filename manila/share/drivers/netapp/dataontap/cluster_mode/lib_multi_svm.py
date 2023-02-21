@@ -2014,7 +2014,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                               new_sec_service):
         different_keys = []
 
-        valid_keys = ['dns_ip', 'server', 'domain', 'user', 'password', 'ou']
+        valid_keys = ['dns_ip', 'server', 'domain', 'user', 'password',
+                      'ou', 'default_ad_site']
         for key, value in current_sec_service.items():
             if (current_sec_service[key] != new_sec_service[key]
                     and key in valid_keys):
@@ -2037,6 +2038,15 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                         "'domain' parameters. Use 'server' for Linux/Unix "
                         "LDAP servers or 'domain' for Active Directory LDAP "
                         "server.")
+                LOG.error(msg)
+                return False
+
+        if ss_type == 'active_directory':
+            server = security_service.get('server')
+            default_ad_site = security_service.get('default_ad_site')
+            if server and default_ad_site:
+                msg = _("Active directory security service must not have "
+                        "both 'server' and 'default_ad_site' parameters.")
                 LOG.error(msg)
                 return False
 

@@ -1716,6 +1716,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         if security_service['ou'] is not None:
             api_args['organizational-unit'] = security_service['ou']
+        if security_service.get('default_ad_site'):
+            api_args['default-site'] = security_service['default_ad_site']
 
         try:
             LOG.debug("Trying to setup CIFS server with data: %s", api_args)
@@ -1757,12 +1759,32 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 msg = _("Failed to modify existing CIFS server user-name. %s")
                 raise exception.NetAppException(msg % e.message)
 
+        if 'default_ad_site' in differring_keys:
+            if new_security_service['default_ad_site'] is not None:
+                cifs_server = self._get_cifs_server_name(vserver_name)
+                api_args = {
+                    'admin-username': new_security_service['user'],
+                    'admin-password': new_security_service['password'],
+                    'force-account-overwrite': 'true',
+                    'cifs-server': cifs_server,
+                    'default-site': new_security_service['default_ad_site']
+                }
+                try:
+                    LOG.debug("Trying to modify CIFS server with data: %s",
+                              api_args)
+                    self.send_request('cifs-server-modify', api_args)
+                except netapp_api.NaApiError as e:
+                    msg = _("Failed to modify CIFS server entry. %s")
+                    raise exception.NetAppException(msg % e.message)
+                self.configure_cifs_options(new_security_service)
+
         if 'server' in differring_keys:
             if current_security_service['server'] is not None:
                 self.remove_preferred_dcs(current_security_service)
 
             if new_security_service['server'] is not None:
                 self.set_preferred_dc(new_security_service)
+                self.configure_cifs_options(new_security_service)
 
     @na_utils.trace
     def create_kerberos_realm(self, security_service):
@@ -2007,10 +2029,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def configure_cifs_options(self, security_service):
-        if not security_service['server']:
-            return
+        if security_service.get('server'):
+            api_args = {'mode': 'none'}
+        elif security_service.get('default_ad_site'):
+            api_args = {'mode': 'site'}
+        else:
+            api_args = {'mode': 'all'}
 
-        api_args = {'mode': 'none'}
         try:
             self.send_request(
                 'cifs-domain-server-discovery-mode-modify',
