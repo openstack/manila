@@ -31,6 +31,7 @@ from manila.share import driver  # noqa
 from manila.share.drivers import service_instance
 from manila import test
 from manila.tests import fake_compute
+from manila.tests import fake_image
 from manila.tests import fake_network
 from manila.tests import utils as test_utils
 
@@ -735,13 +736,13 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                 self.assertEqual((None, None), result)
 
     def test_get_service_image(self):
-        fake_image1 = fake_compute.FakeImage(
+        fake_image1 = fake_image.FakeImage(
             name=self._manager.get_config_option('service_image_name'),
             status='active')
-        fake_image2 = fake_compute.FakeImage(
+        fake_image2 = fake_image.FakeImage(
             name='service_image_name',
             status='error')
-        fake_image3 = fake_compute.FakeImage(
+        fake_image3 = fake_image.FakeImage(
             name='another-image',
             status='active')
         self.mock_object(self._manager.image_api, 'image_list',
@@ -760,7 +761,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager._get_service_image, self._manager.admin_context)
 
     def test_get_service_image_not_active(self):
-        fake_error_image = fake_compute.FakeImage(
+        fake_error_image = fake_image.FakeImage(
             name='service_image_name',
             status='error')
         self.mock_object(self._manager.image_api, 'image_list',
@@ -770,10 +771,10 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager._get_service_image, self._manager.admin_context)
 
     def test_get_service_image_ambiguous(self):
-        fake_image = fake_compute.FakeImage(
+        fake_image1 = fake_image.FakeImage(
             name=fake_get_config_option('service_image_name'),
             status='active')
-        fake_images = [fake_image, fake_image]
+        fake_images = [fake_image1, fake_image1]
         self.mock_object(self._manager.image_api, 'image_list',
                          mock.Mock(return_value=fake_images))
         self.assertRaises(
