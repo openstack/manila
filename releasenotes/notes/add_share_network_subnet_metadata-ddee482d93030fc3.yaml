@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Adds share network subnet metadata capabilities including
+    create, update all, update single, show and delete metadata.

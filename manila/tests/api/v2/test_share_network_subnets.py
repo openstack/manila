@@ -62,8 +62,10 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
                                             mock.Mock(return_value=fake_az))
         self.share_network = db_utils.create_share_network(
             name='fake_network', id='fake_sn_id')
+        self.subnet_metadata = {'fake_key': 'fake_value'}
         self.subnet = db_utils.create_share_network_subnet(
-            share_network_id=self.share_network['id'])
+            share_network_id=self.share_network['id'],
+            metadata=self.subnet_metadata)
         self.share_server = db_utils.create_share_server(
             share_network_subnets=[self.subnet])
         self.share = db_utils.create_share()
@@ -212,27 +214,35 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             context, self.resource_name, 'delete')
 
-    def _setup_create_test_request_body(self):
+    def _setup_create_test_request_body(self, metadata=False):
         body = {
             'share_network_id': self.share_network['id'],
             'availability_zone': fake_az['name'],
             'neutron_net_id': 'fake_nn_id',
             'neutron_subnet_id': 'fake_nsn_id'
         }
+        if metadata:
+            body['metadata'] = self.subnet_metadata
         return body
 
     @ddt.data({'version': "2.51", 'has_share_servers': False},
               {'version': "2.70", 'has_share_servers': False},
-              {'version': "2.70", 'has_share_servers': True})
+              {'version': "2.70", 'has_share_servers': True},
+              {'version': "2.78", 'has_share_servers': False})
     @ddt.unpack
     def test_subnet_create(self, version, has_share_servers):
         req = fakes.HTTPRequest.blank('/subnets', version=version)
         multiple_subnet_support = (req.api_version_request >=
                                    api_version.APIVersionRequest("2.70"))
+        metadata_support = (req.api_version_request >=
+                            api_version.APIVersionRequest("2.78"))
+
         context = req.environ['manila.context']
         body = {
-            'share-network-subnet': self._setup_create_test_request_body()
+            'share-network-subnet': self._setup_create_test_request_body(
+                metadata=metadata_support)
         }
+
         sn_id = body['share-network-subnet']['share_network_id']
         expected_subnet = copy.deepcopy(self.subnet)
         if has_share_servers:
@@ -251,6 +261,8 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
         mock_share_network_subnet_get = self.mock_object(
             db_api, 'share_network_subnet_get',
             mock.Mock(return_value=expected_subnet))
+        mock_check_metadata_properties = self.mock_object(
+            common, 'check_metadata_properties')
 
         fake_data = body['share-network-subnet']
         fake_data['share_network_id'] = self.share_network['id']
@@ -273,6 +285,8 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
             'mtu': expected_subnet.get('mtu'),
             'gateway': expected_subnet.get('gateway')
         }
+        if metadata_support:
+            view_subnet['metadata'] = self.subnet_metadata
         self.assertEqual(view_subnet, res['share_network_subnet'])
         mock_share_network_subnet_get.assert_called_once_with(
             context, expected_subnet['id'])
@@ -285,6 +299,8 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
         else:
             mock_subnet_create.assert_called_once_with(
                 context, fake_data)
+        self.assertEqual(metadata_support,
+                         mock_check_metadata_properties.called)
 
     @ddt.data({'exception1': exception.ServiceIsDown(service='fake_srv'),
                'exc_raise': exc.HTTPInternalServerError},
@@ -475,3 +491,87 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
                           req,
                           self.share_network['id'])
         mock_sn_get.assert_called_once_with(context, self.share_network['id'])
+
+    def test_index_metadata(self):
+        req = fakes.HTTPRequest.blank('/subnets/', version="2.78")
+        mock_index = self.mock_object(
+            self.controller, '_index_metadata',
+            mock.Mock(return_value='fake_metadata'))
+
+        result = self.controller.index_metadata(req, self.share_network['id'],
+                                                self.subnet['id'])
+
+        self.assertEqual('fake_metadata', result)
+        mock_index.assert_called_once_with(req, self.subnet['id'],
+                                           parent_id=self.share_network['id'])
+
+    def test_create_metadata(self):
+        req = fakes.HTTPRequest.blank('/subnets/', version="2.78")
+        mock_index = self.mock_object(
+            self.controller, '_create_metadata',
+            mock.Mock(return_value='fake_metadata'))
+
+        body = 'fake_metadata_body'
+        result = self.controller.create_metadata(req, self.share_network['id'],
+                                                 self.subnet['id'], body)
+
+        self.assertEqual('fake_metadata', result)
+        mock_index.assert_called_once_with(req, self.subnet['id'], body,
+                                           parent_id=self.share_network['id'])
+
+    def test_update_all_metadata(self):
+        req = fakes.HTTPRequest.blank('/subnets/', version="2.78")
+        mock_index = self.mock_object(
+            self.controller, '_update_all_metadata',
+            mock.Mock(return_value='fake_metadata'))
+
+        body = 'fake_metadata_body'
+        result = self.controller.update_all_metadata(
+            req, self.share_network['id'], self.subnet['id'], body)
+
+        self.assertEqual('fake_metadata', result)
+        mock_index.assert_called_once_with(req, self.subnet['id'], body,
+                                           parent_id=self.share_network['id'])
+
+    def test_update_metadata_item(self):
+        req = fakes.HTTPRequest.blank('/subnets/', version="2.78")
+        mock_index = self.mock_object(
+            self.controller, '_update_metadata_item',
+            mock.Mock(return_value='fake_metadata'))
+
+        body = 'fake_metadata_body'
+        key = 'fake_key'
+        result = self.controller.update_metadata_item(
+            req, self.share_network['id'], self.subnet['id'], body, key)
+
+        self.assertEqual('fake_metadata', result)
+        mock_index.assert_called_once_with(req, self.subnet['id'], body, key,
+                                           parent_id=self.share_network['id'])
+
+    def test_show_metadata(self):
+        req = fakes.HTTPRequest.blank('/subnets/', version="2.78")
+        mock_index = self.mock_object(
+            self.controller, '_show_metadata',
+            mock.Mock(return_value='fake_metadata'))
+
+        key = 'fake_key'
+        result = self.controller.show_metadata(
+            req, self.share_network['id'], self.subnet['id'], key)
+
+        self.assertEqual('fake_metadata', result)
+        mock_index.assert_called_once_with(req, self.subnet['id'], key,
+                                           parent_id=self.share_network['id'])
+
+    def test_delete_metadata(self):
+        req = fakes.HTTPRequest.blank('/subnets/', version="2.78")
+        mock_index = self.mock_object(
+            self.controller, '_delete_metadata',
+            mock.Mock(return_value='fake_metadata'))
+
+        key = 'fake_key'
+        result = self.controller.delete_metadata(
+            req, self.share_network['id'], self.subnet['id'], key)
+
+        self.assertEqual('fake_metadata', result)
+        mock_index.assert_called_once_with(req, self.subnet['id'], key,
+                                           parent_id=self.share_network['id'])

@@ -16,6 +16,7 @@
 
 import ddt
 
+from manila.api.openstack import api_version_request as api_version
 from manila.api.views import share_network_subnets
 from manila import test
 from manila.tests.api import fakes
@@ -31,11 +32,13 @@ class ViewBuilderTestCase(test.TestCase):
         self.share_network = db_utils.create_share_network(
             name='fake_network', id='fake_sn_id')
 
-    def _validate_is_detail_return(self, result):
+    def _validate_is_detail_return(self, result, metadata_support=False):
         expected_keys = ['id', 'created_at', 'updated_at', 'neutron_net_id',
                          'neutron_subnet_id', 'network_type', 'cidr',
                          'segmentation_id', 'ip_version', 'share_network_id',
                          'availability_zone', 'gateway', 'mtu']
+        if metadata_support:
+            expected_keys.append('metadata')
 
         for key in expected_keys:
             self.assertIn(key, result)
@@ -58,13 +61,19 @@ class ViewBuilderTestCase(test.TestCase):
             result['share_network_subnet']['availability_zone'])
         self._validate_is_detail_return(result['share_network_subnet'])
 
-    def test_build_share_network_subnets(self):
-        req = fakes.HTTPRequest.blank('/subnets', version='2.51')
+    @ddt.data("2.51", "2.78")
+    def test_build_share_network_subnets(self, microversion):
+        metadata_support = (api_version.APIVersionRequest(microversion) >=
+                            api_version.APIVersionRequest('2.78'))
+
+        req = fakes.HTTPRequest.blank('/subnets', version=microversion)
 
         share_network = db_utils.create_share_network(
             name='fake_network', id='fake_sn_id_1')
+
+        expected_metadata = {'fake_key': 'fake_value'}
         subnet = db_utils.create_share_network_subnet(
-            share_network_id=share_network['id'])
+            share_network_id=share_network['id'], metadata=expected_metadata)
 
         result = self.builder.build_share_network_subnets(req, [subnet])
 
@@ -72,4 +81,7 @@ class ViewBuilderTestCase(test.TestCase):
         self.assertEqual(1, len(result['share_network_subnets']))
         subnet_list = result['share_network_subnets']
         for subnet in subnet_list:
-            self._validate_is_detail_return(subnet)
+            self._validate_is_detail_return(subnet,
+                                            metadata_support=metadata_support)
+            if metadata_support:
+                self.assertEqual(expected_metadata, subnet['metadata'])

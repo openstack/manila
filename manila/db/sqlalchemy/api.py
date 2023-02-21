@@ -201,6 +201,20 @@ def require_share_snapshot_exists(f):
     return wrapper
 
 
+def require_share_network_subnet_exists(f):
+    """Decorator to require the specified share network subnet to exist.
+
+    Requires the wrapped function to use context and share_network_subnet_id
+    as their first two arguments.
+    """
+    @wraps(f)
+    def wrapper(context, share_network_subnet_id, *args, **kwargs):
+        share_network_subnet_get(context, share_network_subnet_id)
+        return f(context, share_network_subnet_id, *args, **kwargs)
+    wrapper.__name__ = f.__name__
+    return wrapper
+
+
 def require_share_instance_exists(f):
     """Decorator to require the specified share instance to exist.
 
@@ -4611,12 +4625,16 @@ def _network_subnet_get_query(context, session=None):
     if session is None:
         session = get_session()
     return (model_query(context, models.ShareNetworkSubnet, session=session).
-            options(joinedload('share_servers'), joinedload('share_network')))
+            options(joinedload('share_servers'),
+                    joinedload('share_network'),
+                    joinedload('share_network_subnet_metadata')))
 
 
 @require_context
 def share_network_subnet_create(context, values):
     values = ensure_model_dict_has_id(values)
+    values['share_network_subnet_metadata'] = _metadata_refs(
+        values.pop('metadata', {}), models.ShareNetworkSubnetMetadata)
 
     network_subnet_ref = models.ShareNetworkSubnet()
     network_subnet_ref.update(values)
@@ -4635,6 +4653,8 @@ def share_network_subnet_delete(context, network_subnet_id):
         network_subnet_ref = share_network_subnet_get(context,
                                                       network_subnet_id,
                                                       session=session)
+        session.query(models.ShareNetworkSubnetMetadata).filter_by(
+            share_network_subnet_id=network_subnet_id).soft_delete()
         network_subnet_ref.soft_delete(session=session, update_status=True)
 
 
@@ -4652,9 +4672,13 @@ def share_network_subnet_update(context, network_subnet_id, values):
 
 
 @require_context
-def share_network_subnet_get(context, network_subnet_id, session=None):
+def share_network_subnet_get(context, network_subnet_id, session=None,
+                             parent_id=None):
+    kwargs = {'id': network_subnet_id}
+    if parent_id:
+        kwargs['share_network_id'] = parent_id
     result = (_network_subnet_get_query(context, session)
-              .filter_by(id=network_subnet_id)
+              .filter_by(**kwargs)
               .first())
     if result is None:
         raise exception.ShareNetworkSubnetNotFound(
@@ -4740,8 +4764,124 @@ def share_network_subnet_get_all_by_share_server_id(context, share_server_id):
 
     return result
 
-
 ###################
+
+
+@require_context
+@require_share_network_subnet_exists
+def share_network_subnet_metadata_get(context, share_network_subnet_id):
+    session = get_session()
+    return _share_network_subnet_metadata_get(context, share_network_subnet_id,
+                                              session=session)
+
+
+@require_context
+@require_share_network_subnet_exists
+def share_network_subnet_metadata_delete(context, share_network_subnet_id,
+                                         key):
+    session = get_session()
+    meta_ref = _share_network_subnet_metadata_get_item(
+        context, share_network_subnet_id, key, session=session)
+    meta_ref.soft_delete(session=session)
+
+
+@require_context
+@require_share_network_subnet_exists
+def share_network_subnet_metadata_update(context, share_network_subnet_id,
+                                         metadata, delete):
+    session = get_session()
+    return _share_network_subnet_metadata_update(
+        context, share_network_subnet_id, metadata, delete, session=session)
+
+
+def share_network_subnet_metadata_update_item(context, share_network_subnet_id,
+                                              item):
+    session = get_session()
+    return _share_network_subnet_metadata_update(
+        context, share_network_subnet_id, item, delete=False, session=session)
+
+
+def share_network_subnet_metadata_get_item(context, share_network_subnet_id,
+                                           key):
+
+    session = get_session()
+    row = _share_network_subnet_metadata_get_item(
+        context, share_network_subnet_id, key, session=session)
+
+    result = {row['key']: row['value']}
+    return result
+
+
+def _share_network_subnet_metadata_get_query(context, share_network_subnet_id,
+                                             session=None):
+    session = session or get_session()
+    return (model_query(context, models.ShareNetworkSubnetMetadata,
+                        session=session,
+                        read_deleted="no").
+            filter_by(share_network_subnet_id=share_network_subnet_id).
+            options(joinedload('share_network_subnet')))
+
+
+def _share_network_subnet_metadata_get(context, share_network_subnet_id,
+                                       session=None):
+    session = session or get_session()
+    rows = _share_network_subnet_metadata_get_query(
+        context, share_network_subnet_id, session=session).all()
+
+    result = {}
+    for row in rows:
+        result[row['key']] = row['value']
+    return result
+
+
+def _share_network_subnet_metadata_get_item(context, share_network_subnet_id,
+                                            key, session=None):
+    session = session or get_session()
+    result = (_share_network_subnet_metadata_get_query(
+        context, share_network_subnet_id, session=session).
+        filter_by(key=key).first())
+    if not result:
+        raise exception.MetadataItemNotFound
+    return result
+
+
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def _share_network_subnet_metadata_update(context, share_network_subnet_id,
+                                          metadata, delete, session=None):
+    session = session or get_session()
+    delete = strutils.bool_from_string(delete)
+    with session.begin():
+        if delete:
+            original_metadata = _share_network_subnet_metadata_get(
+                context, share_network_subnet_id, session=session)
+            for meta_key, meta_value in original_metadata.items():
+                if meta_key not in metadata:
+                    meta_ref = _share_network_subnet_metadata_get_item(
+                        context, share_network_subnet_id, meta_key,
+                        session=session)
+                    meta_ref.soft_delete(session=session)
+        meta_ref = None
+        # Now update all existing items with new values, or create new meta
+        # objects.
+        for meta_key, meta_value in metadata.items():
+
+            # update the value whether it exists or not.
+            item = {"value": meta_value}
+            meta_ref = _share_network_subnet_metadata_get_query(
+                context, share_network_subnet_id,
+                session=session).filter_by(
+                key=meta_key).first()
+            if not meta_ref:
+                meta_ref = models.ShareNetworkSubnetMetadata()
+                item.update(
+                    {"key": meta_key,
+                     "share_network_subnet_id": share_network_subnet_id})
+            meta_ref.update(item)
+            meta_ref.save(session=session)
+
+        return metadata
+
+#################################
 
 
 def _server_get_query(context, session=None):

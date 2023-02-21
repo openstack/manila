@@ -134,7 +134,7 @@ class ShareMetadataController(object):
                 _metadata = orig_meta.copy()
                 _metadata.update(metadata_copy)
 
-            api_common._check_metadata_properties(_metadata)
+            api_common.check_metadata_properties(_metadata)
             db.share_metadata_update(context, share['id'],
                                      _metadata, delete)
 

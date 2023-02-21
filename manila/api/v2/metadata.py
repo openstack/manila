@@ -27,36 +27,43 @@ class MetadataController(object):
     resource_get = {
         "share": "share_get",
         "share_snapshot": "share_snapshot_get",
+        "share_network_subnet": "share_network_subnet_get",
     }
 
     resource_metadata_get = {
         "share": "share_metadata_get",
         "share_snapshot": "share_snapshot_metadata_get",
+        "share_network_subnet": "share_network_subnet_metadata_get",
     }
 
     resource_metadata_get_item = {
         "share": "share_metadata_get_item",
         "share_snapshot": "share_snapshot_metadata_get_item",
+        "share_network_subnet": "share_network_subnet_metadata_get_item",
     }
 
     resource_metadata_update = {
         "share": "share_metadata_update",
         "share_snapshot": "share_snapshot_metadata_update",
+        "share_network_subnet": "share_network_subnet_metadata_update",
     }
 
     resource_metadata_update_item = {
         "share": "share_metadata_update_item",
         "share_snapshot": "share_snapshot_metadata_update_item",
+        "share_network_subnet": "share_network_subnet_metadata_update_item",
     }
 
     resource_metadata_delete = {
         "share": "share_metadata_delete",
         "share_snapshot": "share_snapshot_metadata_delete",
+        "share_network_subnet": "share_network_subnet_metadata_delete",
     }
 
     resource_policy_get = {
         'share': 'get',
         'share_snapshot': 'get_snapshot',
+        'share_network_subnet': 'show',
     }
 
     def __init__(self):
@@ -65,7 +72,7 @@ class MetadataController(object):
 
     def _get_resource(self, context, resource_id,
                       for_modification=False, parent_id=None):
-        if self.resource_name in ['share']:
+        if self.resource_name in ['share', 'share_network_subnet']:
             # we would allow retrieving some "public" resources
             # across project namespaces excpet share snaphots,
             # project_only=True is hard coded
@@ -114,7 +121,7 @@ class MetadataController(object):
         context = req.environ['manila.context']
         try:
             metadata = body['metadata']
-            common._check_metadata_properties(metadata)
+            common.check_metadata_properties(metadata)
         except (KeyError, TypeError):
             msg = _("Malformed request body")
             raise exc.HTTPBadRequest(explanation=msg)
@@ -140,7 +147,7 @@ class MetadataController(object):
         context = req.environ['manila.context']
         try:
             meta_item = body['metadata']
-            common._check_metadata_properties(meta_item)
+            common.check_metadata_properties(meta_item)
         except (TypeError, KeyError):
             expl = _('Malformed request body')
             raise exc.HTTPBadRequest(explanation=expl)
@@ -171,7 +178,7 @@ class MetadataController(object):
         context = req.environ['manila.context']
         try:
             metadata = body['metadata']
-            common._check_metadata_properties(metadata)
+            common.check_metadata_properties(metadata)
         except (TypeError, KeyError):
             expl = _('Malformed request body')
             raise exc.HTTPBadRequest(explanation=expl)

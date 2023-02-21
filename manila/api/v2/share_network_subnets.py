@@ -21,8 +21,10 @@ from oslo_log import log
 import webob
 from webob import exc
 
+from manila.api import common as api_common
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
+from manila.api.v2 import metadata as metadata_controller
 from manila.api.views import share_network_subnets as subnet_views
 from manila.db import api as db_api
 from manila import exception
@@ -33,7 +35,8 @@ from manila.share import rpcapi as share_rpcapi
 LOG = log.getLogger(__name__)
 
 
-class ShareNetworkSubnetController(wsgi.Controller):
+class ShareNetworkSubnetController(wsgi.Controller,
+                                   metadata_controller.MetadataController):
     """The Share Network Subnet API controller for the OpenStack API."""
 
     resource_name = 'share_network_subnet'
@@ -116,6 +119,12 @@ class ShareNetworkSubnetController(wsgi.Controller):
             msg = _("Share Network Subnet is missing from the request body.")
             raise exc.HTTPBadRequest(explanation=msg)
         data = body['share-network-subnet']
+
+        if req.api_version_request >= api_version.APIVersionRequest("2.78"):
+            api_common.check_metadata_properties(data.get('metadata'))
+        else:
+            data.pop('metadata', None)
+
         data['share_network_id'] = share_network_id
         multiple_subnet_support = (req.api_version_request >=
                                    api_version.APIVersionRequest("2.70"))
@@ -180,6 +189,49 @@ class ShareNetworkSubnetController(wsgi.Controller):
 
         return self._view_builder.build_share_network_subnet(
             req, share_network_subnet)
+
+    @wsgi.Controller.api_version("2.78")
+    @wsgi.Controller.authorize("get_metadata")
+    def index_metadata(self, req, share_network_id, resource_id):
+        """Returns the list of metadata for a given share network subnet."""
+        return self._index_metadata(req, resource_id,
+                                    parent_id=share_network_id)
+
+    @wsgi.Controller.api_version("2.78")
+    @wsgi.Controller.authorize("update_metadata")
+    def create_metadata(self, req, share_network_id, resource_id, body):
+        """Create metadata for a given share network subnet."""
+        return self._create_metadata(req, resource_id, body,
+                                     parent_id=share_network_id)
+
+    @wsgi.Controller.api_version("2.78")
+    @wsgi.Controller.authorize("update_metadata")
+    def update_all_metadata(self, req, share_network_id, resource_id, body):
+        """Update entire metadata for a given share network subnet."""
+        return self._update_all_metadata(req, resource_id, body,
+                                         parent_id=share_network_id)
+
+    @wsgi.Controller.api_version("2.78")
+    @wsgi.Controller.authorize("update_metadata")
+    def update_metadata_item(self, req, share_network_id, resource_id, body,
+                             key):
+        """Update metadata item for a given share network subnet."""
+        return self._update_metadata_item(req, resource_id, body, key,
+                                          parent_id=share_network_id)
+
+    @wsgi.Controller.api_version("2.78")
+    @wsgi.Controller.authorize("get_metadata")
+    def show_metadata(self, req, share_network_id, resource_id, key):
+        """Show metadata for a given share network subnet."""
+        return self._show_metadata(req, resource_id, key,
+                                   parent_id=share_network_id)
+
+    @wsgi.Controller.api_version("2.78")
+    @wsgi.Controller.authorize("delete_metadata")
+    def delete_metadata(self, req, share_network_id, resource_id, key):
+        """Delete metadata for a given share network subnet."""
+        return self._delete_metadata(req, resource_id, key,
+                                     parent_id=share_network_id)
 
 
 def create_resource():

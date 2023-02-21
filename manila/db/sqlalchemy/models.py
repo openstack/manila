@@ -1001,7 +1001,7 @@ class ShareNetwork(BASE, ManilaBase):
 class ShareNetworkSubnet(BASE, ManilaBase):
     """Represents a share network subnet used by some resources."""
 
-    _extra_keys = ['availability_zone']
+    _extra_keys = ['availability_zone', 'subnet_metadata']
 
     __tablename__ = 'share_network_subnets'
     id = Column(String(36), primary_key=True, nullable=False)
@@ -1055,6 +1055,35 @@ class ShareNetworkSubnet(BASE, ManilaBase):
     @property
     def share_network_name(self):
         return self.share_network['name']
+
+    @property
+    def subnet_metadata(self):
+        metadata_dict = {}
+        metadata_list = (
+            self.share_network_subnet_metadata)  # pylint: disable=no-member
+        for meta in metadata_list:
+            metadata_dict[meta['key']] = meta['value']
+        return metadata_dict
+
+
+class ShareNetworkSubnetMetadata(BASE, ManilaBase):
+    """Represents a metadata key/value pair for a subnet."""
+    __tablename__ = 'share_network_subnet_metadata'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255), nullable=False)
+    value = Column(String(1023), nullable=False)
+    deleted = Column(String(36), default='False')
+    share_network_subnet_id = Column(String(36), ForeignKey(
+        'share_network_subnets.id'), nullable=False)
+
+    share_network_subnet = orm.relationship(
+        ShareNetworkSubnet,
+        backref=orm.backref('share_network_subnet_metadata', lazy='immediate'),
+        foreign_keys=share_network_subnet_id,
+        primaryjoin='and_('
+        'ShareNetworkSubnetMetadata.share_network_subnet_id == '
+        'ShareNetworkSubnet.id,'
+        'ShareNetworkSubnetMetadata.deleted == "False")')
 
 
 class ShareServer(BASE, ManilaBase):

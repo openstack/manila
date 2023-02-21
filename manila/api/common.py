@@ -614,7 +614,7 @@ def validate_subnet_create(context, share_network_id, data,
     return share_network, existing_subnets
 
 
-def _check_metadata_properties(metadata=None):
+def check_metadata_properties(metadata=None):
     if not metadata:
         metadata = {}
 

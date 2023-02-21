@@ -3149,6 +3149,64 @@ class ShareNetworkSubnetDatabaseAPITestCase(BaseDatabaseAPITestCase):
             db_api.share_network_subnet_get_all_by_share_server_id,
             self.fake_context, 'share_server_id')
 
+    def test_share_network_subnet_metadata_get(self):
+        metadata = {'a': 'b', 'c': 'd'}
+
+        subnet_1 = db_api.share_network_subnet_create(
+            self.fake_context, self.subnet_dict)
+        db_api.share_network_subnet_metadata_update(
+            self.fake_context, share_network_subnet_id=subnet_1['id'],
+            metadata=metadata, delete=False)
+        self.assertEqual(
+            metadata, db_api.share_network_subnet_metadata_get(
+                self.fake_context, share_network_subnet_id=subnet_1['id']))
+
+    def test_share_network_subnet_metadata_get_item(self):
+        metadata = {'a': 'b', 'c': 'd'}
+        key = 'a'
+        shouldbe = {'a': 'b'}
+        subnet_1 = db_api.share_network_subnet_create(
+            self.fake_context, self.subnet_dict)
+        db_api.share_network_subnet_metadata_update(
+            self.fake_context, share_network_subnet_id=subnet_1['id'],
+            metadata=metadata, delete=False)
+        self.assertEqual(
+            shouldbe, db_api.share_network_subnet_metadata_get_item(
+                self.fake_context, share_network_subnet_id=subnet_1['id'],
+                key=key))
+
+    def test_share_network_subnet_metadata_update(self):
+        metadata1 = {'a': '1', 'c': '2'}
+        metadata2 = {'a': '3', 'd': '5'}
+        should_be = {'a': '3', 'c': '2', 'd': '5'}
+        subnet_1 = db_api.share_network_subnet_create(
+            self.fake_context, self.subnet_dict)
+        db_api.share_network_subnet_metadata_update(
+            self.fake_context, share_network_subnet_id=subnet_1['id'],
+            metadata=metadata1, delete=False)
+        db_api.share_network_subnet_metadata_update(
+            self.fake_context, share_network_subnet_id=subnet_1['id'],
+            metadata=metadata2, delete=False)
+        self.assertEqual(
+            should_be, db_api.share_network_subnet_metadata_get(
+                self.fake_context, share_network_subnet_id=subnet_1['id']))
+
+    def test_share_network_subnet_metadata_delete(self):
+        key = 'a'
+        metadata = {'a': '1', 'c': '2'}
+        should_be = {'c': '2'}
+        subnet_1 = db_api.share_network_subnet_create(
+            self.fake_context, self.subnet_dict)
+        db_api.share_network_subnet_metadata_update(
+            self.fake_context, share_network_subnet_id=subnet_1['id'],
+            metadata=metadata, delete=False)
+        db_api.share_network_subnet_metadata_delete(
+            self.fake_context, share_network_subnet_id=subnet_1['id'],
+            key=key)
+        self.assertEqual(
+            should_be, db_api.share_network_subnet_metadata_get(
+                self.fake_context, share_network_subnet_id=subnet_1['id']))
+
 
 @ddt.ddt
 class SecurityServiceDatabaseAPITestCase(BaseDatabaseAPITestCase):

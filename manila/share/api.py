@@ -223,7 +223,7 @@ class API(base.Base):
                az_request_multiple_subnet_support_map=None):
         """Create new share."""
 
-        api_common._check_metadata_properties(metadata)
+        api_common.check_metadata_properties(metadata)
 
         if snapshot_id is not None:
             snapshot = self.get_snapshot(context, snapshot_id)
@@ -1449,7 +1449,7 @@ class API(base.Base):
                         force=False, metadata=None):
         policy.check_policy(context, 'share', 'create_snapshot', share)
         if metadata:
-            api_common._check_metadata_properties(metadata)
+            api_common.check_metadata_properties(metadata)
 
         if ((not force) and (share['status'] != constants.STATUS_AVAILABLE)):
             msg = _("Source share status must be "
@@ -2231,7 +2231,7 @@ class API(base.Base):
             msg = _("Invalid share access level: %s.") % access_level
             raise exception.InvalidShareAccess(reason=msg)
 
-        api_common._check_metadata_properties(metadata)
+        api_common.check_metadata_properties(metadata)
         access_exists = self.db.share_access_check_for_existing_access(
             ctx, share['id'], access_type, access_to)
 
@@ -2413,7 +2413,7 @@ class API(base.Base):
     def update_share_access_metadata(self, context, access_id, metadata):
         """Updates share access metadata."""
         try:
-            api_common._check_metadata_properties(metadata)
+            api_common.check_metadata_properties(metadata)
         except exception.InvalidMetadata:
             raise exception.InvalidMetadata()
         except exception.InvalidMetadataSize:

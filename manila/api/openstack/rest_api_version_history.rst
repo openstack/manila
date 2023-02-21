@@ -422,3 +422,8 @@ ____
 2.77
 ----
   Added support for share transfer between different projects.
+
+2.78
+----
+  Added Metadata API methods (GET, PUT, POST, DELETE)
+  to Share Network Subnets.

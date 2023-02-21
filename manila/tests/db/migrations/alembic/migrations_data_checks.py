@@ -3253,3 +3253,58 @@ class AddSnapshotMetadata(BaseMigrationChecks):
     def check_downgrade(self, engine):
         self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
                                     self.new_table_name, engine)
+
+
+@map_to_migration('ac0620cbe74d')
+class AddSubnetMetadata(BaseMigrationChecks):
+    share_subnet_id = uuidutils.generate_uuid()
+    new_table_name = 'share_network_subnet_metadata'
+
+    def setup_upgrade_data(self, engine):
+        # Setup Share network.
+        share_network_data = {
+            'id': uuidutils.generate_uuid(),
+            'user_id': 'fake',
+            'project_id': 'fake'
+        }
+        network_table = utils.load_table('share_networks', engine)
+        engine.execute(network_table.insert(share_network_data))
+
+        # Setup share network subnet.
+        share_network_subnet_data = {
+            'id': self.share_subnet_id,
+            'share_network_id': share_network_data['id']
+        }
+        network_table = utils.load_table('share_network_subnets', engine)
+        engine.execute(network_table.insert(share_network_subnet_data))
+
+    def check_upgrade(self, engine, data):
+        data = {
+            'id': 1,
+            'key': 't' * 255,
+            'value': 'v' * 1023,
+            'share_network_subnet_id': self.share_subnet_id,
+            'deleted': 'False',
+        }
+
+        new_table = utils.load_table(self.new_table_name, engine)
+        engine.execute(new_table.insert(data))
+
+        item = engine.execute(
+            new_table.select().where(new_table.c.id == data['id'])).first()
+        self.test_case.assertTrue(hasattr(item, 'id'))
+        self.test_case.assertEqual(data['id'], item['id'])
+        self.test_case.assertTrue(hasattr(item, 'key'))
+        self.test_case.assertEqual(data['key'], item['key'])
+        self.test_case.assertTrue(hasattr(item, 'value'))
+        self.test_case.assertEqual(data['value'], item['value'])
+        self.test_case.assertTrue(hasattr(item, 'share_network_subnet_id'))
+        self.test_case.assertEqual(self.share_subnet_id,
+                                   item['share_network_subnet_id'])
+        self.test_case.assertTrue(hasattr(item, 'deleted'))
+        self.test_case.assertEqual('False', item['deleted'])
+
+    def check_downgrade(self, engine):
+        self.test_case.assertRaises(sa_exc.NoSuchTableError,
+                                    utils.load_table,
+                                    self.new_table_name, engine)
