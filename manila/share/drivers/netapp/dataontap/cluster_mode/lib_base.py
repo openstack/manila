@@ -1693,8 +1693,6 @@ class NetAppCmodeFileStorageLibrary(object):
             **force_provisioning_options)
 
         hide_snapdir = provisioning_options.pop('hide_snapdir')
-        if split is not None:
-            provisioning_options['split'] = split
 
         LOG.debug('Creating share from snapshot %s', snapshot['id'])
         vserver_client.create_volume_clone(
@@ -1728,6 +1726,10 @@ class NetAppCmodeFileStorageLibrary(object):
             if fpolicy_ext_to_include or fpolicy_ext_to_exclude:
                 self._create_fpolicy_for_share(share, vserver, vserver_client,
                                                **provisioning_options)
+
+        # split at the end: not be blocked by a busy volume
+        if split is not None:
+            vserver_client.split_volume_clone(share_name)
 
     @na_utils.trace
     def _share_exists(self, share_name, vserver_client):
