@@ -242,26 +242,6 @@ class NovaApiTestCase(test.TestCase):
         instance_id = 'instance_id'
         self.assertRaises(manila_e, self.api.server_get, self.ctx, instance_id)
 
-    def test_server_pause(self):
-        self.mock_object(self.novaclient.servers, 'pause')
-        self.api.server_pause(self.ctx, 'id1')
-        self.novaclient.servers.pause.assert_called_once_with('id1')
-
-    def test_server_unpause(self):
-        self.mock_object(self.novaclient.servers, 'unpause')
-        self.api.server_unpause(self.ctx, 'id1')
-        self.novaclient.servers.unpause.assert_called_once_with('id1')
-
-    def test_server_suspend(self):
-        self.mock_object(self.novaclient.servers, 'suspend')
-        self.api.server_suspend(self.ctx, 'id1')
-        self.novaclient.servers.suspend.assert_called_once_with('id1')
-
-    def test_server_resume(self):
-        self.mock_object(self.novaclient.servers, 'resume')
-        self.api.server_resume(self.ctx, 'id1')
-        self.novaclient.servers.resume.assert_called_once_with('id1')
-
     def test_server_reboot_hard(self):
         self.mock_object(self.novaclient.servers, 'reboot')
         self.api.server_reboot(self.ctx, 'id1')
@@ -273,13 +253,6 @@ class NovaApiTestCase(test.TestCase):
         self.api.server_reboot(self.ctx, 'id1', True)
         self.novaclient.servers.reboot.assert_called_once_with(
             'id1', nova_servers.REBOOT_SOFT)
-
-    def test_server_rebuild(self):
-        self.mock_object(self.novaclient.servers, 'rebuild')
-        self.api.server_rebuild(self.ctx, 'id1', 'fake_image')
-        self.novaclient.servers.rebuild.assert_called_once_with('id1',
-                                                                'fake_image',
-                                                                None)
 
     def test_instance_volume_attach(self):
         self.mock_object(self.novaclient.volumes, 'create_server_volume')
@@ -312,18 +285,6 @@ class NovaApiTestCase(test.TestCase):
         self.api.server_update(self.ctx, 'id1', 'new_name')
         self.novaclient.servers.update.assert_called_once_with('id1',
                                                                name='new_name')
-
-    def test_update_server_volume(self):
-        self.mock_object(self.novaclient.volumes, 'update_server_volume')
-        self.api.update_server_volume(self.ctx, 'instance_id', 'att_id',
-                                      'new_vol_id')
-        (self.novaclient.volumes.update_server_volume.
-            assert_called_once_with('instance_id', 'att_id', 'new_vol_id'))
-
-    def test_keypair_create(self):
-        self.mock_object(self.novaclient.keypairs, 'create')
-        self.api.keypair_create(self.ctx, 'keypair_name')
-        self.novaclient.keypairs.create.assert_called_once_with('keypair_name')
 
     def test_keypair_import(self):
         self.mock_object(self.novaclient.keypairs, 'create')
