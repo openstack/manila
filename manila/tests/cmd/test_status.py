@@ -12,8 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_upgradecheck.upgradecheck import Code
-
 from manila.cmd import status
 from manila import test
 
@@ -23,8 +21,3 @@ class TestUpgradeChecks(test.TestCase):
     def setUp(self):
         super(TestUpgradeChecks, self).setUp()
         self.cmd = status.Checks()
-
-    def test__check_placeholder(self):
-        check_result = self.cmd._check_placeholder()
-        self.assertEqual(
-            Code.SUCCESS, check_result.code)
