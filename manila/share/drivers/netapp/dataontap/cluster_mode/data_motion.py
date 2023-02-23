@@ -92,6 +92,7 @@ def get_client_for_backend(backend_name, vserver_name=None):
             hostname=config.netapp_server_hostname,
             port=config.netapp_server_port,
             vserver=vserver_name or config.netapp_vserver,
+            async_rest_timeout=config.netapp_rest_operation_timeout,
             trace=na_utils.TRACE_API)
 
     return client

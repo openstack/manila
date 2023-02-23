@@ -31,7 +31,6 @@ from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
-from oslo_utils import uuidutils
 
 from manila.common import constants
 from manila import coordination
@@ -41,6 +40,7 @@ from manila.message import api as message_api
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.client import client_cmode_rest
+from manila.share.drivers.netapp.dataontap.client import rest_api as rest_api
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import performance
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
@@ -241,6 +241,8 @@ class NetAppCmodeFileStorageLibrary(object):
                     port=self.configuration.netapp_server_port,
                     vserver=vserver,
                     trace=na_utils.TRACE_API,
+                    async_rest_timeout=(
+                        self.configuration.netapp_rest_operation_timeout),
                     api_trace_pattern=na_utils.API_TRACE_PATTERN)
             self._clients[vserver] = client
 
@@ -341,27 +343,7 @@ class NetAppCmodeFileStorageLibrary(object):
         if self._have_cluster_creds:
             return 'snaprestore' in self._licenses
         else:
-            # NOTE: (felipe_rodrigues): workaround to find out whether the
-            # backend has the license: since without cluster credentials it
-            # cannot retrieve the ontap licenses, it sends a fake ONTAP
-            # "snapshot-restore-volume" request which is only available when
-            # the license exists. By the got error, it checks whether license
-            # is installed or not.
-            try:
-                self._client.restore_snapshot(
-                    "fake_%s" % uuidutils.generate_uuid(dashed=False), "")
-            except netapp_api.NaApiError as e:
-                no_license = 'is not licensed'
-                LOG.debug('Fake restore_snapshot request failed: %s', e)
-                return not (e.code == netapp_api.EAPIERROR and
-                            no_license in e.message)
-
-            # since it passed an empty snapshot, it should never get here
-            msg = _("Caught an unexpected behavior: the fake restore to "
-                    "snapshot request using 'fake' volume and empty string "
-                    "snapshot as argument has not failed.")
-            LOG.exception(msg)
-            raise exception.NetAppException(msg)
+            return self._client.check_snaprestore_license()
 
     @na_utils.trace
     def _get_aggregate_node(self, aggregate_name):
@@ -1185,15 +1167,16 @@ class NetAppCmodeFileStorageLibrary(object):
         def _start_create_flexgroup_volume():
             try:
                 return vserver_client.create_volume_async(
-                    aggr_list, share_name, size,
+                    aggr_list, share_name, size, is_flexgroup=True,
                     snapshot_reserve=snapshot_reserve,
                     auto_provisioned=self._is_flexgroup_auto,
                     **provisioning_options)
             except netapp_api.NaApiError as e:
                 with excutils.save_and_reraise_exception() as raise_ctxt:
-                    try_msg = "try the command again"
-                    if (e.code == netapp_api.EAPIERROR and
-                            try_msg in e.message):
+                    try_msg = "try the command again" in e.message
+                    if ((e.code == netapp_api.EAPIERROR or
+                         e.code == rest_api.EREST_ANOTHER_VOLUME_OPERATION)
+                            and try_msg):
                         msg = _("Another volume is currently being "
                                 "provisioned using one or more of the "
                                 "aggregates selected to provision FlexGroup "
@@ -1828,7 +1811,7 @@ class NetAppCmodeFileStorageLibrary(object):
         if not backend_snapshot['busy']:
             vserver_client.delete_snapshot(share_name, snapshot_name)
 
-        elif backend_snapshot['owners'] == {'volume clone'}:
+        elif backend_snapshot['locked_by_clone']:
             # Snapshots are locked by clone(s), so split the clone(s)
             snapshot_children = vserver_client.get_clone_children_for_snapshot(
                 share_name, snapshot_name)
@@ -2014,7 +1997,7 @@ class NetAppCmodeFileStorageLibrary(object):
             policy_name = fpolicy_scope.get('policy-name')
             # Update.
             vserver_client.modify_fpolicy_scope(
-                policy_name, shares_to_include=shares_to_include)
+                share_name, policy_name, shares_to_include=shares_to_include)
 
         # Save original volume info to private storage.
         original_data = {
@@ -3806,7 +3789,9 @@ class NetAppCmodeFileStorageLibrary(object):
                 self.configuration.netapp_fpolicy_default_file_operations)
         requested_file_operations.sort()
 
+        share_name = self._get_backend_share_name(share['id'])
         reusable_scopes = vserver_client.get_fpolicy_scopes(
+            share_name=share_name,
             extensions_to_exclude=fpolicy_extensions_to_exclude,
             extensions_to_include=fpolicy_extensions_to_include,
             shares_to_include=shares_to_include)
@@ -3835,12 +3820,14 @@ class NetAppCmodeFileStorageLibrary(object):
 
         for scope in reusable_scopes[:]:
             fpolicy_policy = vserver_client.get_fpolicy_policies(
+                share_name=share_name,
                 policy_name=scope['policy-name'])
             for policy in fpolicy_policy:
                 event_names = copy.deepcopy(policy.get('events', []))
                 match_event_protocols = []
                 for event_name in event_names:
                     events = vserver_client.get_fpolicy_events(
+                        share_name=share_name,
                         event_name=event_name)
                     for event in events:
                         event_file_ops = copy.deepcopy(
@@ -3872,7 +3859,7 @@ class NetAppCmodeFileStorageLibrary(object):
         @manila_utils.synchronized('netapp-fpolicy-%s' % vserver,
                                    external=True)
         def _create_fpolicy_with_lock():
-
+            nonlocal share_name
             # 1. Try to reuse an existing FPolicy if matches the same
             #  requirements
             reusable_scope = self._find_reusable_fpolicy_scope(
@@ -3887,6 +3874,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 shares_to_include.append(share_name)
                 # Add the new share to the existing policy scope
                 vserver_client.modify_fpolicy_scope(
+                    share_name,
                     reusable_scope.get('policy-name'),
                     shares_to_include=shares_to_include)
 
@@ -3909,7 +3897,9 @@ class NetAppCmodeFileStorageLibrary(object):
             # NOTE(dviroel): ONTAP limit of fpolicies for a vserser is 10.
             #  DHSS==True backends can create new share servers or fail earlier
             #  in choose_share_server_for_share.
-            vserver_policies = vserver_client.get_fpolicy_policies_status()
+            share_name = self._get_backend_share_name(share['id'])
+            vserver_policies = (vserver_client.get_fpolicy_policies_status(
+                                share_name=share_name))
             if len(vserver_policies) >= self.FPOLICY_MAX_VSERVER_POLICIES:
                 msg_args = {'share_id': share['id']}
                 msg = _("Cannot configure a new FPolicy for share "
@@ -3932,29 +3922,28 @@ class NetAppCmodeFileStorageLibrary(object):
                 for protocol in protocols:
                     event_name = self._get_backend_fpolicy_event_name(
                         share['id'], protocol)
-                    vserver_client.create_fpolicy_event(event_name,
+                    vserver_client.create_fpolicy_event(share_name,
+                                                        event_name,
                                                         protocol,
                                                         file_operations)
                     events.append(event_name)
 
-                # 2. Create a fpolicy policy
-                vserver_client.create_fpolicy_policy(policy_name, events)
-
-                # 3. Assign a scope to the fpolicy policy
-                vserver_client.create_fpolicy_scope(
-                    policy_name, share_name,
+                # 2. Create a fpolicy policy and assign a scope
+                vserver_client.create_fpolicy_policy_with_scope(
+                    policy_name, share_name, events,
                     extensions_to_include=fpolicy_extensions_to_include,
                     extensions_to_exclude=fpolicy_extensions_to_exclude)
+
             except Exception:
                 # NOTE(dviroel): Rollback fpolicy policy and events creation
                 #  since they won't be linked to the share, which is made by
                 #  the scope creation.
 
                 # Delete fpolicy policy
-                vserver_client.delete_fpolicy_policy(policy_name)
+                vserver_client.delete_fpolicy_policy(share_name, policy_name)
                 # Delete fpolicy events
                 for event in events:
-                    vserver_client.delete_fpolicy_event(event)
+                    vserver_client.delete_fpolicy_event(share_name, event)
 
                 msg = _("Failed to configure a FPolicy resources for share "
                         "%(share_id)s. ") % {'share_id': share['id']}
@@ -3962,7 +3951,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 raise exception.NetAppException(message=msg)
 
             # 4. Enable fpolicy policy
-            vserver_client.enable_fpolicy_policy(policy_name,
+            vserver_client.enable_fpolicy_policy(share_name, policy_name,
                                                  available_seq_number)
 
         _create_fpolicy_with_lock()
@@ -3976,6 +3965,7 @@ class NetAppCmodeFileStorageLibrary(object):
         @coordination.synchronized('netapp-fpolicy-%s' % vserver)
         def _delete_fpolicy_with_lock():
             fpolicy_scopes = vserver_client.get_fpolicy_scopes(
+                share_name=share_name,
                 shares_to_include=[share_name])
 
             if fpolicy_scopes:
@@ -3986,18 +3976,21 @@ class NetAppCmodeFileStorageLibrary(object):
                 policy_name = fpolicy_scopes[0].get('policy-name')
                 if shares_to_include:
                     vserver_client.modify_fpolicy_scope(
-                        policy_name, shares_to_include=shares_to_include)
+                        share_name, policy_name,
+                        shares_to_include=shares_to_include)
                 else:
                     # Delete an empty fpolicy
                     # 1. Disable fpolicy policy
                     vserver_client.disable_fpolicy_policy(policy_name)
                     # 2. Retrieve fpoliocy info
                     fpolicy_policies = vserver_client.get_fpolicy_policies(
+                        share_name=share_name,
                         policy_name=policy_name)
                     # 3. Delete fpolicy scope
                     vserver_client.delete_fpolicy_scope(policy_name)
                     # 4. Delete fpolicy policy
-                    vserver_client.delete_fpolicy_policy(policy_name)
+                    vserver_client.delete_fpolicy_policy(share_name,
+                                                         policy_name)
                     # 5. Delete fpolicy events
                     for policy in fpolicy_policies:
                         events = policy.get('events', [])

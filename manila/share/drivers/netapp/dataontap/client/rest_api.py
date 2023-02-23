@@ -24,7 +24,7 @@ from oslo_serialization import jsonutils
 import requests
 from requests.adapters import HTTPAdapter
 from requests import auth
-from requests.packages.urllib3.util import retry
+from urllib3.util import retry
 
 from manila.share.drivers.netapp.dataontap.client import api
 from manila.share.drivers.netapp import utils
@@ -32,7 +32,15 @@ from manila.share.drivers.netapp import utils
 
 LOG = log.getLogger(__name__)
 
+EREST_DUPLICATE_ENTRY = '1'
+EREST_ENTRY_NOT_FOUND = '4'
+EREST_NOT_AUTHORIZED = '6'
 ESIS_CLONE_NOT_LICENSED = '14956'
+EREST_SNAPMIRROR_INITIALIZING = '917536'
+EREST_VSERVER_NOT_FOUND = '13434920'
+EREST_ANOTHER_VOLUME_OPERATION = '13107406'
+EREST_LICENSE_NOT_INSTALLED = '1115127'
+EREST_SNAPSHOT_NOT_SPECIFIED = '1638515'
 
 
 class NaRetryableError(api.NaApiError):
@@ -195,7 +203,8 @@ class RestNaServer(object):
             "Accept": "application/json",
             "Content-Type": "application/json"
         }
-        if enable_tunneling:
+        # enable tunneling only if vserver is set by upper layer
+        if enable_tunneling and self.get_vserver:
             headers[RestNaServer.TUNNELING_HEADER_KEY] = self.get_vserver()
 
         return headers

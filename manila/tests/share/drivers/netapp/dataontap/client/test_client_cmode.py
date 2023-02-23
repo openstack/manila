@@ -3220,7 +3220,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 {'aggr-name': fake.SHARE_AGGREGATE_NAME}]
 
         expected_result = {
-            'status': 'in_progress',
             'jobid': '123',
             'error-code': None,
             'error-message': None,
@@ -4863,6 +4862,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume': fake.SHARE_NAME,
             'busy': False,
             'owners': set(),
+            'locked_by_clone': False,
         }
     }, {
         'mock_return': fake.SNAPSHOT_GET_ITER_BUSY_RESPONSE,
@@ -4872,6 +4872,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume': fake.SHARE_NAME,
             'busy': True,
             'owners': {'volume clone'},
+            'locked_by_clone': True,
         }
     })
     @ddt.unpack
@@ -8212,7 +8213,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_create_fpolicy_event(self):
         self.mock_object(self.client, 'send_request')
 
-        self.client.create_fpolicy_event(fake.FPOLICY_EVENT_NAME,
+        self.client.create_fpolicy_event(fake.SHARE_NAME,
+                                         fake.FPOLICY_EVENT_NAME,
                                          fake.FPOLICY_PROTOCOL,
                                          fake.FPOLICY_FILE_OPERATIONS_LIST)
 
@@ -8237,7 +8239,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             send_request_mock = mock.Mock()
         self.mock_object(self.client, 'send_request', send_request_mock)
 
-        self.client.delete_fpolicy_event(fake.FPOLICY_EVENT_NAME)
+        self.client.delete_fpolicy_event(fake.SHARE_NAME,
+                                         fake.FPOLICY_EVENT_NAME)
 
         self.client.send_request.assert_called_once_with(
             'fpolicy-policy-event-delete',
@@ -8250,6 +8253,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertRaises(exception.NetAppException,
                           self.client.delete_fpolicy_event,
+                          fake.SHARE_NAME,
                           fake.FPOLICY_EVENT_NAME)
 
         self.client.send_request.assert_called_once_with(
@@ -8295,6 +8299,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(self.client, 'send_request')
 
         self.client.create_fpolicy_policy(fake.FPOLICY_POLICY_NAME,
+                                          fake.SHARE_NAME,
                                           [fake.FPOLICY_EVENT_NAME],
                                           engine=fake.FPOLICY_ENGINE)
 
@@ -8319,7 +8324,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             send_request_mock = mock.Mock()
         self.mock_object(self.client, 'send_request', send_request_mock)
 
-        self.client.delete_fpolicy_policy(fake.FPOLICY_POLICY_NAME)
+        self.client.delete_fpolicy_policy(
+            fake.SHARE_NAME, fake.FPOLICY_POLICY_NAME)
 
         self.client.send_request.assert_called_once_with(
             'fpolicy-policy-delete',
@@ -8332,6 +8338,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertRaises(exception.NetAppException,
                           self.client.delete_fpolicy_policy,
+                          fake.SHARE_NAME,
                           fake.FPOLICY_POLICY_NAME)
 
         self.client.send_request.assert_called_once_with(
@@ -8345,6 +8352,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_fpolicy_policies(
+            share_name=fake.SHARE_NAME,
             policy_name=fake.FPOLICY_POLICY_NAME,
             engine_name=fake.FPOLICY_ENGINE,
             event_names=[fake.FPOLICY_EVENT_NAME])
@@ -8404,6 +8412,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(self.client, 'send_request')
 
         self.client.modify_fpolicy_scope(
+            fake.SHARE_NAME,
             fake.FPOLICY_POLICY_NAME,
             shares_to_include=[fake.SHARE_NAME],
             extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
@@ -8462,6 +8471,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_fpolicy_scopes(
+            share_name=fake.SHARE_NAME,
             policy_name=fake.FPOLICY_POLICY_NAME,
             extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
             extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
@@ -8501,7 +8511,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_enable_fpolicy_policy(self):
         self.mock_object(self.client, 'send_request')
 
-        self.client.enable_fpolicy_policy(fake.FPOLICY_POLICY_NAME, 10)
+        self.client.enable_fpolicy_policy(
+            fake.SHARE_NAME, fake.FPOLICY_POLICY_NAME, 10)
 
         expected_args = {
             'policy-name': fake.FPOLICY_POLICY_NAME,
@@ -8547,6 +8558,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_fpolicy_policies_status(
+            share_name=fake.SHARE_NAME,
             policy_name=fake.FPOLICY_POLICY_NAME)
 
         expected_args = {
@@ -8980,3 +8992,32 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertRaises(exception.NetAppException,
                           self.client.get_job_state,
                           fake.JOB_ID)
+
+    def test_check_snaprestore_license_svm_scoped_notfound(self):
+        self.mock_object(self.client,
+                         'restore_snapshot',
+                         mock.Mock(side_effect=netapp_api.NaApiError(
+                                   code=netapp_api.EAPIERROR,
+                                   message=fake.NO_SNAPRESTORE_LICENSE)))
+        result = self.client.check_snaprestore_license()
+        self.assertIs(False, result)
+
+    def test_check_snaprestore_license_svm_scoped_found(self):
+        self.mock_object(self.client,
+                         'restore_snapshot',
+                         mock.Mock(side_effect=netapp_api.NaApiError(
+                                   code=netapp_api.EAPIERROR,
+                                   message='Other error')))
+        result = self.client.check_snaprestore_license()
+        self.assertIs(True, result)
+
+    def test_check_snaprestore_license_svm_scoped_found_exception(self):
+        self.mock_object(client_cmode.LOG, 'exception')
+        self.mock_object(self.client,
+                         'restore_snapshot',
+                         mock.Mock(return_value=None))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client.check_snaprestore_license)
+        client_cmode.LOG.exception.assert_called_once()

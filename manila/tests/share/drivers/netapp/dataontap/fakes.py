@@ -19,7 +19,6 @@ from oslo_serialization import jsonutils
 from manila.common import constants
 import manila.tests.share.drivers.netapp.fakes as na_fakes
 
-NO_SNAPRESTORE_LICENSE = '"SnapRestore" is not licensed in the cluster.'
 CLUSTER_NAME = 'fake_cluster'
 CLUSTER_NAME_2 = 'fake_cluster_2'
 BACKEND_NAME = 'fake_backend_name'
@@ -643,6 +642,7 @@ CDOT_SNAPSHOT = {
     'busy': False,
     'owners': set(),
     'access-time': SNAPSHOT_ACCESS_TIME,
+    'locked_by_clone': False,
 }
 
 CDOT_SNAPSHOT_BUSY_VOLUME_CLONE = {
@@ -651,6 +651,7 @@ CDOT_SNAPSHOT_BUSY_VOLUME_CLONE = {
     'busy': True,
     'owners': {'volume clone'},
     'access-time': SNAPSHOT_ACCESS_TIME,
+    'locked_by_clone': True,
 }
 
 CDOT_SNAPSHOT_BUSY_SNAPMIRROR = {
@@ -659,6 +660,7 @@ CDOT_SNAPSHOT_BUSY_SNAPMIRROR = {
     'busy': True,
     'owners': {'snapmirror'},
     'access-time': SNAPSHOT_ACCESS_TIME,
+    'locked_by_clone': False,
 }
 
 CDOT_CLONE_CHILD_1 = 'fake_child_1'

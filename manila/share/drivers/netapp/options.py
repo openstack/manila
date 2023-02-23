@@ -184,7 +184,13 @@ netapp_provisioning_opts = [
                min=60,
                default=360,  # Default to six minutes
                help='Sets time in seconds to wait for a FlexGroup snapshot '
-                    'to not be busy with clones after splitting them.'), ]
+                    'to not be busy with clones after splitting them.'),
+    cfg.IntOpt('netapp_rest_operation_timeout',
+               min=60,
+               default=60,  # Default to one minutes
+               help='Sets maximum amount of time in seconds to wait for a '
+                    'synchronous ONTAP REST API operation to be completed.'),
+]
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',

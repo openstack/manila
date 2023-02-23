@@ -24,6 +24,7 @@ import time
 from oslo_log import log
 from oslo_utils import strutils
 from oslo_utils import units
+from oslo_utils import uuidutils
 
 from manila import exception
 from manila.i18n import _
@@ -2143,7 +2144,6 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         result = self.send_request('volume-create-async', api_args)
         job_info = {
-            'status': result.get_child_content('result-status'),
             'jobid': result.get_child_content('result-jobid'),
             'error-code': result.get_child_content('result-error-code'),
             'error-message': result.get_child_content('result-error-message')
@@ -3298,6 +3298,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             snapshot_owner.get_child_content('owner')
             for snapshot_owner in snapshot_owners_list.get_children()])
         snapshot['owners'] = snapshot_owners
+        snapshot['locked_by_clone'] = snapshot['owners'] == {'volume clone'}
 
         return snapshot
 
@@ -5288,7 +5289,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def is_svm_dr_supported(self):
         return self.features.SVM_DR
 
-    def create_fpolicy_event(self, event_name, protocol, file_operations):
+    def create_fpolicy_event(self, share_name, event_name, protocol,
+                             file_operations):
         """Creates a new fpolicy policy event.
 
         :param event_name: name of the new fpolicy event
@@ -5296,6 +5298,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             values are: 'nfsv3', 'nfsv4' or 'cifs'.
         :param file_operations: name of file operations to be monitored. Values
             should be provided as list of strings.
+        :param share_name: name of share associated with the vserver where the
+            fpolicy event should be added.
         """
         api_args = {
             'event-name': event_name,
@@ -5307,10 +5311,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         self.send_request('fpolicy-policy-event-create', api_args)
 
-    def delete_fpolicy_event(self, event_name):
+    def delete_fpolicy_event(self, share_name, event_name):
         """Deletes a fpolicy policy event.
 
         :param event_name: name of the event to be deleted
+        :param share_name: name of share associated with the vserver where the
+            fpolicy event should be deleted.
         """
         try:
             self.send_request('fpolicy-policy-event-delete',
@@ -5379,10 +5385,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         return fpolicy_events
 
-    def create_fpolicy_policy(self, fpolicy_name, events, engine='native'):
+    def create_fpolicy_policy(self, fpolicy_name, share_name, events,
+                              engine='native'):
         """Creates a fpolicy policy resource.
 
         :param fpolicy_name: name of the fpolicy policy to be created.
+        :param share_name: name of the share to be associated with the new
+            fpolicy policy.
         :param events: list of event names for file access monitoring.
         :param engine: name of the engine to be used.
         """
@@ -5396,7 +5405,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         self.send_request('fpolicy-policy-create', api_args)
 
-    def delete_fpolicy_policy(self, policy_name):
+    def delete_fpolicy_policy(self, share_name, policy_name):
         """Deletes a fpolicy policy event.
 
         :param policy_name: name of the policy to be deleted.
@@ -5412,12 +5421,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             else:
                 raise exception.NetAppException(message=e.message)
 
-    def get_fpolicy_policies(self, policy_name=None, engine_name='native',
-                             event_names=[]):
+    def get_fpolicy_policies(self, share_name, policy_name=None,
+                             engine_name='native', event_names=[]):
         """Retrieve one or more fpolicy policies.
 
         :param policy_name: name of the policy to be retrieved
         :param engine_name: name of the engine
+        :param share_name: name of the share associated with the fpolicy
+            policy.
         :param event_names: list of event names that must be associated to the
             fpolicy policy
         :return: list of fpolicy policies or empty list
@@ -5496,12 +5507,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         self.send_request('fpolicy-policy-scope-create', api_args)
 
-    def modify_fpolicy_scope(self, policy_name, shares_to_include=[],
-                             extensions_to_include=None,
+    def modify_fpolicy_scope(self, share_name, policy_name,
+                             shares_to_include=[], extensions_to_include=None,
                              extensions_to_exclude=None):
         """Modify an existing fpolicy scope.
 
         :param policy_name: name of the policy associated to the scope.
+        :param share_name: name of the share associated with the fpolicy scope.
         :param shares_to_include: list of shares to include for file access
             monitoring.
         :param extensions_to_include: file extensions included for screening.
@@ -5548,11 +5560,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             else:
                 raise exception.NetAppException(message=e.message)
 
-    def get_fpolicy_scopes(self, policy_name=None, extensions_to_include=None,
-                           extensions_to_exclude=None, shares_to_include=None):
+    def get_fpolicy_scopes(self, share_name, policy_name=None,
+                           extensions_to_include=None,
+                           extensions_to_exclude=None,
+                           shares_to_include=None):
         """Retrieve fpolicy scopes.
 
         :param policy_name: name of the policy associated with a scope.
+        :param share_name: name of the share associated with the fpolicy scope.
         :param extensions_to_include: file extensions included for screening.
             Values should be provided as comma separated list
         :param extensions_to_exclude: file extensions excluded for screening.
@@ -5622,10 +5637,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         return fpolicy_scopes
 
-    def enable_fpolicy_policy(self, policy_name, sequence_number):
+    def enable_fpolicy_policy(self, share_name, policy_name, sequence_number):
         """Enables a specific named policy.
 
         :param policy_name: name of the policy to be enabled
+        :param share_name: name of the share associated with the vserver and
+            the fpolicy
         :param sequence_number: policy sequence number
         """
         api_args = {
@@ -5654,7 +5671,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             else:
                 raise exception.NetAppException(message=e.message)
 
-    def get_fpolicy_policies_status(self, policy_name=None, status='true'):
+    def get_fpolicy_policies_status(self, share_name, policy_name=None,
+                                    status='true'):
         policy_status_info = {}
         if policy_name:
             policy_status_info['policy-name'] = policy_name
@@ -5812,6 +5830,45 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             raise exception.NetAppException(msg % msg_args)
 
         return job_info_list[0].get_child_content('job-state')
+
+    @na_utils.trace
+    def create_fpolicy_policy_with_scope(self, fpolicy_name, share_name,
+                                         events, engine='native',
+                                         extensions_to_include=None,
+                                         extensions_to_exclude=None):
+
+        # Create a fpolicy policy
+        self.create_fpolicy_policy(fpolicy_name, share_name, events,
+                                   engine='native')
+        # Assign a scope to the fpolicy policy
+        self.create_fpolicy_scope(fpolicy_name, share_name,
+                                  extensions_to_include,
+                                  extensions_to_exclude)
+
+    @na_utils.trace
+    def check_snaprestore_license(self):
+        """Check SnapRestore license for SVM scoped user."""
+        # NOTE(felipe_rodrigues): workaround to find out whether the
+        # backend has the license: since without cluster credentials it
+        # cannot retrieve the ontap licenses, it sends a fake ONTAP
+        # "snapshot-restore-volume" request which is only available when
+        # the license exists. By the got error, it checks whether license
+        # is installed or not.
+        try:
+            self.restore_snapshot(
+                "fake_%s" % uuidutils.generate_uuid(dashed=False), "")
+        except netapp_api.NaApiError as e:
+            no_license = 'is not licensed'
+            LOG.debug('Fake restore_snapshot request failed: %s', e)
+            return not (e.code == netapp_api.EAPIERROR and
+                        no_license in e.message)
+
+        # since it passed an empty snapshot, it should never get here
+        msg = _("Caught an unexpected behavior: the fake restore to "
+                "snapshot request using 'fake' volume and empty string "
+                "snapshot as argument has not failed.")
+        LOG.exception(msg)
+        raise exception.NetAppException(msg)
 
     # ------------------------ REST CALLS ONLY ------------------------
 
