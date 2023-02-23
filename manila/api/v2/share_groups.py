@@ -78,7 +78,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
         try:
             self.share_group_api.delete(context, share_group)
         except exception.InvalidShareGroup as e:
-            raise exc.HTTPConflict(explanation=e.message)
+            raise exc.HTTPConflict(explanation=e.msg)
         return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
@@ -241,7 +241,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
                 kwargs['availability_zone_id'] = az.id
                 kwargs['availability_zone'] = az.name
             except exception.AvailabilityZoneNotFound as e:
-                raise exc.HTTPNotFound(explanation=e.message)
+                raise exc.HTTPNotFound(explanation=e.msg)
 
         if 'source_share_group_snapshot_id' in share_group:
             source_share_group_snapshot_id = share_group.get(
@@ -277,7 +277,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
         try:
             new_share_group = self.share_group_api.create(context, **kwargs)
         except exception.InvalidShareGroupSnapshot as e:
-            raise exc.HTTPConflict(explanation=e.message)
+            raise exc.HTTPConflict(explanation=e.msg)
         except (exception.ShareGroupSnapshotNotFound,
                 exception.InvalidInput) as e:
             raise exc.HTTPBadRequest(explanation=str(e))
