@@ -3615,7 +3615,7 @@ class ShareManager(manager.SchedulerDependentManager):
                                             new_project,
                                             access_rules=access_rules,
                                             share_server=share_server)
-            except exception.DriverTransferShareWithRules as e:
+            except exception.DriverCannotTransferShareWithRules as e:
                 with excutils.save_and_reraise_exception():
                     self.message_api.create(
                         context,
