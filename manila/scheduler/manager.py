@@ -87,8 +87,10 @@ class SchedulerManager(manager.Manager):
         self.driver = importutils.import_object(scheduler_driver)
         self.message_api = message_api.API()
         super(SchedulerManager, self).__init__(*args, **kwargs)
+        self.service_id = None
 
-    def init_host_with_rpc(self):
+    def init_host_with_rpc(self, service_id=None):
+        self.service_id = service_id
         ctxt = context.get_admin_context()
         self.request_service_capabilities(ctxt)
 

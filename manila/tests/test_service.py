@@ -21,6 +21,8 @@
 Unit Tests for remote procedure calls using queue
 """
 
+from datetime import datetime
+from datetime import timedelta
 from unittest import mock
 
 import ddt
@@ -120,6 +122,7 @@ service_create = {
     'host': host,
     'binary': binary,
     'topic': topic,
+    'state': 'up',
     'report_count': 0,
     'availability_zone': 'nova',
 }
@@ -127,6 +130,7 @@ service_create_other_az = {
     'host': host,
     'binary': binary,
     'topic': topic,
+    'state': 'up',
     'report_count': 0,
     'availability_zone': 'other-zone',
 }
@@ -134,6 +138,16 @@ service_ref = {
     'host': host,
     'binary': binary,
     'topic': topic,
+    'state': 'up',
+    'report_count': 0,
+    'availability_zone': {'name': 'nova'},
+    'id': 1,
+}
+service_ref_stopped = {
+    'host': host,
+    'binary': binary,
+    'topic': topic,
+    'state': 'stopped',
     'report_count': 0,
     'availability_zone': {'name': 'nova'},
     'id': 1,
@@ -192,6 +206,8 @@ class ServiceTestCase(test.TestCase):
     @mock.patch.object(service.db, 'service_update',
                        mock.Mock(return_value=service_ref.
                                  update({'report_count': 1})))
+    @mock.patch.object(utils, 'service_is_up',
+                       mock.Mock(return_value=True))
     def test_report_state_newly_connected(self):
         serv = service.Service(host, binary, topic, CONF.fake_manager)
         serv.start()
@@ -216,6 +232,8 @@ class ServiceTestCase(test.TestCase):
     @mock.patch.object(service.db, 'service_update',
                        mock.Mock(return_value=service_ref.
                                  update({'report_count': 1})))
+    @mock.patch.object(utils, 'service_is_up',
+                       mock.Mock(return_value=True))
     def test_report_state_newly_connected_different_az(self):
         serv = service.Service(host, binary, topic, CONF.fake_manager)
         serv.availability_zone = 'other-zone'
@@ -242,6 +260,8 @@ class ServiceTestCase(test.TestCase):
     @mock.patch.object(service.db, 'service_update',
                        mock.Mock(return_value=service_ref.
                                  update({'report_count': 1})))
+    @mock.patch.object(utils, 'service_is_up',
+                       mock.Mock(return_value=True))
     def test_report_state_newly_connected_not_found(self):
         serv = service.Service(host, binary, topic, CONF.fake_manager)
         serv.start()
@@ -268,7 +288,27 @@ class ServiceTestCase(test.TestCase):
             serv.report_state()
 
             serv.manager.is_service_ready.assert_called_once()
-            mock_db.service_update.assert_not_called()
+
+    @ddt.data(True, False)
+    def test_cleanup_services(self, cleanup_interval_done):
+        with mock.patch.object(service, 'db') as mock_db:
+            mock_db.service_get_all.return_value = [service_ref]
+            serv = service.Service(host, binary, topic, CONF.fake_manager)
+            serv.start()
+            serv.cleanup_services()
+            mock_db.service_destroy.assert_not_called()
+
+            if cleanup_interval_done:
+                service_ref_stopped['updated_at'] = (
+                    datetime.utcnow() - timedelta(minutes=10))
+            else:
+                service_ref_stopped['updated_at'] = datetime.utcnow()
+            mock_db.service_get_all.return_value = [service_ref_stopped]
+            serv.stop()
+            serv.cleanup_services()
+            if cleanup_interval_done:
+                mock_db.service_destroy.assert_called_once_with(
+                    mock.ANY, service_ref_stopped['id'])
 
 
 class TestWSGIService(test.TestCase):

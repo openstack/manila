@@ -63,6 +63,7 @@ class Service(BASE, ManilaBase):
     host = Column(String(255))  # , ForeignKey('hosts.id'))
     binary = Column(String(255))
     topic = Column(String(255))
+    state = Column(String(36))
     report_count = Column(Integer, nullable=False, default=0)
     disabled = Column(Boolean, default=False)
     availability_zone_id = Column(String(36),

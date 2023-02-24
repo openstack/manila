@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    In cluster deployments, where multiple instances of manila services are
+    deployed via PODs, unique hostname is derived from node name. However if
+    pods are deployed again and launched on new hosts/nodes, the old entries
+    of manila service remains as it is. Fixed it by adding per service cleanup
+    function and also introducing 'state' column in 'services' table. The
+    service will be in either of 'up', 'down' or 'stopped' state. Cleanup will
+    delete DB entries of 'stopeed' services. For more details please refer,
+    `Launchpad bug 1990839 <https://bugs.launchpad.net/manila/+bug/1990839>`_

@@ -297,6 +297,7 @@ class ShareManager(manager.SchedulerDependentManager):
             self.driver = profiler.trace_cls("driver")(self.driver)
         self.hooks = []
         self._init_hook_drivers()
+        self.service_id = None
 
     def _init_hook_drivers(self):
         # Try to initialize hook driver(s).
@@ -334,9 +335,10 @@ class ShareManager(manager.SchedulerDependentManager):
         return pool
 
     @add_hooks
-    def init_host(self):
+    def init_host(self, service_id=None):
         """Initialization for a standalone service."""
 
+        self.service_id = service_id
         ctxt = context.get_admin_context()
         driver_host_pair = "{}@{}".format(
             self.driver.__class__.__name__,

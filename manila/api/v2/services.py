@@ -19,7 +19,6 @@ import webob.exc
 from manila.api.openstack import wsgi
 from manila.api.views import services as services_views
 from manila import db
-from manila import utils
 
 
 class ServiceMixin(object):
@@ -47,7 +46,7 @@ class ServiceMixin(object):
                 'host': service['host'],
                 'zone': service['availability_zone']['name'],
                 'status': 'disabled' if service['disabled'] else 'enabled',
-                'state': 'up' if utils.service_is_up(service) else 'down',
+                'state': service['state'],
                 'updated_at': service['updated_at'],
             }
             services.append(service)
