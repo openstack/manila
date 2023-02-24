@@ -5872,6 +5872,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     # ------------------------ REST CALLS ONLY ------------------------
 
+    # NOTE(nahimsouza): For ONTAP 9.12.1 and newer, if the option
+    # `netapp_use_legacy_client` is False, REST API client will be used. This
+    # code was kept here to avoid breaking the SVM migrate feature on older
+    # ONTAP versions. In the future, when ZAPI is deprecated, this code can
+    # also be removed.
+
     @na_utils.trace
     def _format_request(self, request_data, headers={}, query={},
                         url_params={}):
