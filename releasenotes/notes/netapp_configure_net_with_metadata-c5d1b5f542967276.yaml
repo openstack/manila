@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    NetApp driver with DHSS True mode now supports setup the share server
+    network VLAN segmentation through share network subnet metadata.
+    To do so, the field `set_vlan` must be informed with VLAN number.
+    It can set the network MTU passing the metadata field `set_mtu`. If
+    the subnet metadata contains the `set_vlan` without the `set_mtu`
+    field the MTU is configured according to network plugin.

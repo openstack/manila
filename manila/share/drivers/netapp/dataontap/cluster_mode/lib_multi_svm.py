@@ -46,6 +46,8 @@ DEFAULT_MTU = 1500
 CLUSTER_IPSPACES = ('Cluster', 'Default')
 SERVER_MIGRATE_SVM_DR = 'svm_dr'
 SERVER_MIGRATE_SVM_MIGRATE = 'svm_migrate'
+METADATA_VLAN = 'set_vlan'
+METADATA_MTU = 'set_mtu'
 
 
 class NetAppCmodeMultiSVMFileStorageLibrary(
@@ -144,8 +146,48 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 if re.match(pattern, aggr_name)]
 
     @na_utils.trace
+    def _set_network_with_metadata(self, network_info):
+        """Set the subnet metadata information for network_info object."""
+
+        for network in network_info:
+            metadata = network.get('subnet_metadata')
+            if not metadata:
+                continue
+
+            metadata_vlan = metadata.get(METADATA_VLAN)
+            if not metadata_vlan:
+                continue
+
+            if int(metadata_vlan) > 4094 or int(metadata_vlan) < 1:
+                msg = _(
+                    'A segmentation ID %s was specified but is not valid for '
+                    'a VLAN network type; the segmentation ID must be an '
+                    'integer value in the range of [1,4094]')
+                raise exception.NetworkBadConfigurationException(
+                    reason=msg % metadata_vlan)
+
+            if metadata.get(METADATA_MTU) is not None:
+                try:
+                    int(metadata.get(METADATA_MTU))
+                except ValueError:
+                    msg = _('Metadata network MTU must be an integer value.')
+                    raise exception.NetworkBadConfigurationException(msg)
+
+            network['network_type'] = 'vlan'
+            network['segmentation_id'] = metadata_vlan
+            for allocation in network['network_allocations']:
+                allocation['network_type'] = 'vlan'
+                allocation['segmentation_id'] = metadata_vlan
+                allocation['mtu'] = int(metadata.get(METADATA_MTU) or
+                                        allocation['mtu'])
+
+    @na_utils.trace
     def setup_server(self, network_info, metadata=None):
         """Creates and configures new Vserver."""
+
+        # only changes network_info if one of networks has metadata set.
+        self._set_network_with_metadata(network_info)
+
         ports = {}
         server_id = network_info[0]['server_id']
         LOG.debug("Setting up server %s.", server_id)
