@@ -2634,9 +2634,11 @@ class NetAppCmodeFileStorageLibrary(object):
         # NOTE(dviroel): Don't try to resume or resync a SnapMirror that has
         # one of the in progress transfer states, because the storage will
         # answer with an error.
-        in_progress_status = ['preparing', 'transferring', 'finalizing']
+        in_progress_status = ['preparing', 'transferring', 'finalizing',
+                              'synchronizing']
         if (snapmirror.get('mirror-state') != 'snapmirrored' and
-                snapmirror.get('relationship-status') in in_progress_status):
+                (snapmirror.get('relationship-status') in in_progress_status or
+                 snapmirror.get('transferring-state') in in_progress_status)):
             return constants.REPLICA_STATE_OUT_OF_SYNC
 
         if snapmirror.get('mirror-state') != 'snapmirrored':

@@ -15,6 +15,7 @@
 import copy
 from datetime import datetime
 from http import client as http_client
+import math
 import re
 import time
 
@@ -276,11 +277,12 @@ class NetAppRestClient(object):
 
             # NOTE(nahimsouza): SVM scoped account is not authorized to access
             # the /cluster/nodes endpoint, that's why we use /private/cli
+
             response = self.send_request('/private/cli/version', 'get',
                                          query=query)
             # Response is formatted as:
             # 'NetApp Release 9.12.1: Wed Feb 01 01:10:18 UTC 2023'
-            version_full = response['records'][0]['version']
+            version_full = response['records'][0]['version']['full']
             version_parsed = re.findall(r'\d+\.\d+\.\d+', version_full)[0]
             version_splited = version_parsed.split('.')
             return {
@@ -707,8 +709,16 @@ class NetAppRestClient(object):
             'svm.name': vserver,
         }
         if max_throughput:
-            body['fixed.max_throughput_iops'] = (
-                int(''.join(filter(str.isdigit, max_throughput))))
+            value = max_throughput.lower()
+            if 'iops' in max_throughput:
+                value = value.replace('iops', '')
+                value = int(value)
+                body['fixed.max_throughput_iops'] = value
+            else:
+                value = value.replace('b/s', '')
+                value = int(value)
+                body['fixed.max_throughput_mbps'] = math.ceil(value /
+                                                              units.Mi)
         return self.send_request('/storage/qos/policies', 'post',
                                  body=body)
 
@@ -775,7 +785,16 @@ class NetAppRestClient(object):
         """Set NFS the export policy for the specified volume."""
         query = {"name": volume_name}
         body = {'nas.export_policy.name': policy_name}
-        self.send_request('/storage/volumes/', 'patch', query=query, body=body)
+
+        try:
+            self.send_request('/storage/volumes/', 'patch', query=query,
+                              body=body)
+        except netapp_api.api.NaApiError as e:
+            # NOTE(nahimsouza): Since this error is ignored in ZAPI, we are
+            # replicating the behavior here.
+            if e.code == netapp_api.EREST_CANNOT_MODITY_OFFLINE_VOLUME:
+                LOG.debug('Cannot modify offline volume: %s', volume_name)
+                return
 
     @na_utils.trace
     def create_nfs_export_policy(self, policy_name):
@@ -862,15 +881,15 @@ class NetAppRestClient(object):
         volume = {
             'aggregate': aggregate,
             'aggr-list': aggregate_list,
-            'junction-path': volume_infos.get('nas', {}).get('path', ''),
-            'name': volume_infos.get('name', ''),
-            'owning-vserver-name': volume_infos.get('svm', {}).get('name', ''),
-            'type': volume_infos.get('type', ''),
-            'style': volume_infos.get('style', ''),
-            'size': volume_infos.get('space', {}).get('size', ''),
+            'junction-path': volume_infos.get('nas', {}).get('path'),
+            'name': volume_infos.get('name'),
+            'owning-vserver-name': volume_infos.get('svm', {}).get('name'),
+            'type': volume_infos.get('type'),
+            'style': volume_infos.get('style'),
+            'size': volume_infos.get('space', {}).get('size'),
             'qos-policy-group-name': (
-                volume_infos.get('qos', {}).get('policy', {}).get('name', '')),
-            'style-extended': volume_infos.get('style', '')
+                volume_infos.get('qos', {}).get('policy', {}).get('name')),
+            'style-extended': volume_infos.get('style')
         }
         return volume
 
@@ -887,12 +906,11 @@ class NetAppRestClient(object):
         return self._has_records(result)
 
     @na_utils.trace
-    def create_cifs_share(self, share_name):
+    def create_cifs_share(self, share_name, path):
         """Create a CIFS share."""
-        share_path = f'/{share_name}'
         body = {
             'name': share_name,
-            'path': share_path,
+            'path': path,
             'svm.name': self.vserver,
         }
         self.send_request('/protocols/cifs/shares', 'post', body=body)
@@ -1025,8 +1043,15 @@ class NetAppRestClient(object):
             body['qos.policy.name'] = qos_policy_group
         if adaptive_qos_policy_group is not None:
             body['qos.policy.name'] = adaptive_qos_policy_group
+
         if encrypt is True:
-            body['encryption.enabled'] = 'true'
+            if not self.features.FLEXVOL_ENCRYPTION:
+                msg = 'Flexvol encryption is not supported on this backend.'
+                raise exception.NetAppException(msg)
+            else:
+                body['encryption.enabled'] = 'true'
+        else:
+            body['encryption.enabled'] = 'false'
 
         return body
 
@@ -1166,7 +1191,14 @@ class NetAppRestClient(object):
     @na_utils.trace
     def set_volume_snapdir_access(self, volume_name, hide_snapdir):
         """Set volume snapshot directory visibility."""
-        volume = self._get_volume_by_args(vol_name=volume_name)
+
+        try:
+            volume = self._get_volume_by_args(vol_name=volume_name)
+        except exception.NetAppException:
+            msg = _('Could not find volume %s to set snapdir access')
+            LOG.error(msg, volume_name)
+            raise exception.SnapshotResourceNotFound(name=volume_name)
+
         uuid = volume['uuid']
 
         body = {
@@ -1194,6 +1226,7 @@ class NetAppRestClient(object):
         try:
             volume = self._get_volume_by_args(vol_name=share_name)
             svm_uuid = volume['svm']['uuid']
+
         except exception.NetAppException:
             LOG.debug('Could not find fpolicy. Share not found: %s.',
                       share_name)
@@ -1392,7 +1425,7 @@ class NetAppRestClient(object):
         except exception.NetAppException:
             msg = _("FPolicy event %s not found.")
             LOG.debug(msg, event_name)
-
+            return
         try:
             self.send_request(
                 f'/protocols/fpolicy/{svm_uuid}/events/{event_name}', 'delete')
@@ -1415,7 +1448,7 @@ class NetAppRestClient(object):
         except exception.NetAppException:
             msg = _("FPolicy policy %s not found.")
             LOG.debug(msg, policy_name)
-
+            return
         try:
             self.send_request(
                 f'/protocols/fpolicy/{svm_uuid}/policies/{policy_name}',
@@ -1593,9 +1626,7 @@ class NetAppRestClient(object):
                 LOG.debug('Volume %s unmounted.', volume_name)
                 return
             except netapp_api.api.NaApiError as e:
-                # TODO(felipe_rodrigues): test the clone split mount error
-                # code for REST.
-                if (e.code == netapp_api.api.EAPIERROR
+                if (e.code == netapp_api.EREST_UNMOUNT_FAILED_LOCK
                         and 'job ID' in e.message):
                     msg = ('Could not unmount volume %(volume)s due to '
                            'ongoing volume operation: %(exception)s')
@@ -1637,7 +1668,8 @@ class NetAppRestClient(object):
 
         query = {
             'name': qos_policy_group_name,
-            'fields': 'name,object_count,fixed.max_throughput_iops,svm.name',
+            'fields': 'name,object_count,fixed.max_throughput_iops,'
+                      'fixed.max_throughput_mbps,svm.name',
         }
         try:
             res = self.send_request('/storage/qos/policies', 'get',
@@ -1659,10 +1691,21 @@ class NetAppRestClient(object):
         policy_info = {
             'policy-group': qos_policy_group_info.get('name'),
             'vserver': qos_policy_group_info.get('svm', {}).get('name'),
-            'max-throughput': qos_policy_group_info.get('fixed', {}).get(
-                'max_throughput_iops'),
             'num-workloads': int(qos_policy_group_info.get('object_count')),
         }
+
+        iops = qos_policy_group_info.get('fixed', {}).get(
+            'max_throughput_iops')
+        mbps = qos_policy_group_info.get('fixed', {}).get(
+            'max_throughput_mbps')
+
+        if iops:
+            policy_info['max-throughput'] = f'{iops}iops'
+        elif mbps:
+            policy_info['max-throughput'] = f'{mbps * 1024 * 1024}b/s'
+        else:
+            policy_info['max-throughput'] = None
+
         return policy_info
 
     @na_utils.trace
@@ -1735,23 +1778,25 @@ class NetAppRestClient(object):
             self.remove_unused_qos_policy_groups()
 
     @na_utils.trace
-    def _sanitize_qos_spec_value(self, value):
-        value = value.lower()
-        value = value.replace('iops', '').replace('b/s', '')
-        value = int(value)
-        return value
-
-    @na_utils.trace
     def qos_policy_group_modify(self, qos_policy_group_name, max_throughput):
         """Modifies a QoS policy group."""
 
         query = {
             'name': qos_policy_group_name,
         }
-        body = {
-            'fixed.max_throughput_iops':
-                self._sanitize_qos_spec_value(max_throughput)
-        }
+        body = {}
+        value = max_throughput.lower()
+        if 'iops' in value:
+            value = value.replace('iops', '')
+            value = int(value)
+            body['fixed.max_throughput_iops'] = value
+            body['fixed.max_throughput_mbps'] = 0
+        elif 'b/s' in value:
+            value = value.replace('b/s', '')
+            value = int(value)
+            body['fixed.max_throughput_mbps'] = math.ceil(value /
+                                                          units.Mi)
+            body['fixed.max_throughput_iops'] = 0
         res = self.send_request('/storage/qos/policies', 'get', query=query)
         if not res.get('records'):
             msg = ('QoS %s not found.') % qos_policy_group_name
@@ -1839,8 +1884,13 @@ class NetAppRestClient(object):
     @na_utils.trace
     def get_snapshot(self, volume_name, snapshot_name):
         """Gets a single snapshot."""
+        try:
+            volume = self._get_volume_by_args(vol_name=volume_name)
+        except exception.NetAppException:
+            msg = _('Could not find volume %s to get snapshot')
+            LOG.error(msg, volume_name)
+            raise exception.SnapshotResourceNotFound(name=snapshot_name)
 
-        volume = self._get_volume_by_args(vol_name=volume_name)
         uuid = volume['uuid']
         query = {
             'name': snapshot_name,
@@ -1902,7 +1952,12 @@ class NetAppRestClient(object):
     def delete_snapshot(self, volume_name, snapshot_name, ignore_owners=False):
         """Deletes a volume snapshot."""
 
-        volume = self._get_volume_by_args(vol_name=volume_name)
+        try:
+            volume = self._get_volume_by_args(vol_name=volume_name)
+        except exception.NetAppException:
+            msg = _('Could not find volume %s to delete snapshot')
+            LOG.warning(msg, volume_name)
+            return
         uuid = volume['uuid']
 
         query = {
@@ -2118,14 +2173,14 @@ class NetAppRestClient(object):
 
         aggregate = res.get('aggregates')
 
+        if not aggregate:
+            msg = _('Could not find aggregate for volume %s.')
+            raise exception.NetAppException(msg % volume_name)
+
         aggregate_size = len(res.get('aggregates'))
 
         if aggregate_size > 1:
             aggregate = [aggr.get('name') for aggr in res.get('aggregates')]
-
-        if not aggregate:
-            msg = _('Could not find aggregate for volume %s.')
-            raise exception.NetAppException(msg % volume_name)
 
         return aggregate
 
@@ -2193,7 +2248,7 @@ class NetAppRestClient(object):
         fields = ['state', 'source.svm.name', 'source.path',
                   'destination.svm.name', 'destination.path',
                   'transfer.end_time', 'uuid', 'policy.type',
-                  'transfer_schedule.name']
+                  'transfer_schedule.name', 'transfer.state']
 
         query = {}
         query['fields'] = ','.join(fields)
@@ -2222,7 +2277,11 @@ class NetAppRestClient(object):
         snapmirrors = []
         for record in response.get('records', []):
             snapmirrors.append({
-                'relationship-status': record.get('state'),
+                'relationship-status': (
+                    'idle'
+                    if record.get('state') == 'snapmirrored'
+                    else record.get('state')),
+                'transferring-state': record.get('transfer', {}).get('state'),
                 'mirror-state': record.get('state'),
                 'schedule': record['transfer_schedule']['name'],
                 'source-vserver': record['source']['svm']['name'],
@@ -2255,7 +2314,8 @@ class NetAppRestClient(object):
     def get_snapmirrors(self, source_path=None, dest_path=None,
                         source_vserver=None, dest_vserver=None,
                         source_volume=None, dest_volume=None,
-                        desired_attributes=None):
+                        desired_attributes=None, enable_tunneling=None,
+                        list_destinations_only=None):
         """Gets one or more SnapMirror relationships.
 
         Either the source or destination info may be omitted.
@@ -2269,7 +2329,9 @@ class NetAppRestClient(object):
             source_vserver=source_vserver,
             source_volume=source_volume,
             dest_vserver=dest_vserver,
-            dest_volume=dest_volume)
+            dest_volume=dest_volume,
+            enable_tunneling=enable_tunneling,
+            list_destinations_only=list_destinations_only)
 
         return snapmirrors
 
@@ -2752,7 +2814,7 @@ class NetAppRestClient(object):
                           clear_checkpoint=False):
         """Stops ongoing transfers for a SnapMirror relationship."""
 
-        snapmirror = self._get_snapmirrors(
+        snapmirror = self.get_snapmirrors(
             source_path=source_path,
             dest_path=dest_path,
             source_vserver=source_vserver,
@@ -2817,10 +2879,11 @@ class NetAppRestClient(object):
     def get_snapmirror_destinations(self, source_path=None, dest_path=None,
                                     source_vserver=None, source_volume=None,
                                     dest_vserver=None, dest_volume=None,
-                                    desired_attributes=None):
+                                    desired_attributes=None,
+                                    enable_tunneling=None):
         """Gets one or more SnapMirror at source endpoint."""
 
-        snapmirrors = self._get_snapmirrors(
+        snapmirrors = self.get_snapmirrors(
             source_path=source_path,
             dest_path=dest_path,
             source_vserver=source_vserver,
@@ -2964,9 +3027,12 @@ class NetAppRestClient(object):
                               wait_result=True, schedule=None):
         """Change the snapmirror state between two volumes."""
 
-        snapmirror = self.get_snapmirrors(source_path, destination_path,
-                                          source_vserver, destination_vserver,
-                                          source_volume, destination_volume)
+        snapmirror = self.get_snapmirrors(source_path=source_path,
+                                          dest_path=destination_path,
+                                          source_vserver=source_vserver,
+                                          source_volume=source_volume,
+                                          dest_vserver=destination_vserver,
+                                          dest_volume=destination_volume)
 
         if not snapmirror:
             msg = _('Failed to get information about relationship between '
@@ -3069,10 +3135,18 @@ class NetAppRestClient(object):
             'clone.is_flexclone': 'true',
             'svm.name': self.connection.get_vserver(),
         }
-        if qos_policy_group is not None:
-            body['qos.policy.name'] = qos_policy_group
 
         self.send_request('/storage/volumes', 'post', body=body)
+
+        # NOTE(nahimsouza): QoS policy can not be set during the cloning
+        # process, so we need to make a separate request.
+        if qos_policy_group is not None:
+            volume = self._get_volume_by_args(vol_name=volume_name)
+            uuid = volume['uuid']
+            body = {
+                'qos.policy.name': qos_policy_group,
+            }
+            self.send_request(f'/storage/volumes/{uuid}', 'patch', body=body)
 
         if split:
             self.split_volume_clone(volume_name)
@@ -3096,7 +3170,7 @@ class NetAppRestClient(object):
                             source_volume=None, dest_volume=None):
         """Disables future transfers to a SnapMirror destination."""
 
-        snapmirror = self._get_snapmirrors(
+        snapmirror = self.get_snapmirrors(
             source_path=source_path,
             dest_path=dest_path,
             source_vserver=source_vserver,
@@ -3126,25 +3200,38 @@ class NetAppRestClient(object):
                           source_volume=None, dest_volume=None):
         """Breaks a data protection SnapMirror relationship."""
 
-        snapmirror = self._get_snapmirrors(
-            source_path=source_path,
-            dest_path=dest_path,
-            source_vserver=source_vserver,
-            source_volume=source_volume,
-            dest_vserver=dest_vserver,
-            dest_volume=dest_volume)
+        interval = 2
+        retries = (10 / interval)
 
-        if snapmirror:
-            uuid = snapmirror[0]['uuid']
-            body = {'state': 'broken_off'}
-            try:
+        @utils.retry(netapp_api.NaRetryableError, interval=interval,
+                     retries=retries, backoff_rate=1)
+        def _waiter():
+            snapmirror = self.get_snapmirrors(
+                source_path=source_path,
+                dest_path=dest_path,
+                source_vserver=source_vserver,
+                source_volume=source_volume,
+                dest_vserver=dest_vserver,
+                dest_volume=dest_volume)
+
+            snapmirror_state = snapmirror[0].get('transferring-state')
+            if snapmirror_state == 'success':
+                uuid = snapmirror[0]['uuid']
+                body = {'state': 'broken_off'}
                 self.send_request(f'/snapmirror/relationships/{uuid}', 'patch',
                                   body=body)
-            except netapp_api.api.NaApiError as e:
-                transfer_in_progress = 'Another transfer is in progress'
-                if not (e.code == netapp_api.EREST_BREAK_SNAPMIRROR_FAILED
-                        and transfer_in_progress in e.message):
-                    raise
+                return
+            else:
+                message = 'Waiting for transfer state to be SUCCESS.'
+                code = ''
+                raise netapp_api.NaRetryableError(message=message, code=code)
+
+        try:
+            return _waiter()
+        except netapp_api.NaRetryableError:
+            msg = _("Transfer state did not reach the expected state. Retries "
+                    "exhausted. Aborting.")
+            raise na_utils.NetAppDriverException(msg)
 
     @na_utils.trace
     def resume_snapmirror_vol(self, source_vserver, source_volume,
@@ -3169,9 +3256,12 @@ class NetAppRestClient(object):
                            source_vserver=None, dest_vserver=None,
                            source_volume=None, dest_volume=None):
         """Resume a SnapMirror relationship if it is quiesced."""
-        response = self._get_snapmirrors(source_path, dest_path,
-                                         source_vserver, source_volume,
-                                         dest_vserver, dest_volume)
+        response = self.get_snapmirrors(source_path=source_path,
+                                        dest_path=dest_path,
+                                        source_vserver=source_vserver,
+                                        dest_vserver=dest_vserver,
+                                        source_volume=source_volume,
+                                        dest_volume=dest_volume)
 
         if not response:
             # NOTE(nahimsouza): As ZAPI returns this error code, it was kept
@@ -3247,9 +3337,12 @@ class NetAppRestClient(object):
                            source_vserver=None, dest_vserver=None,
                            source_volume=None, dest_volume=None):
         """Update a snapmirror relationship asynchronously."""
-        snapmirrors = self._get_snapmirrors(source_path, dest_path,
-                                            source_vserver, source_volume,
-                                            dest_vserver, dest_volume)
+        snapmirrors = self.get_snapmirrors(source_path=source_path,
+                                           dest_path=dest_path,
+                                           source_vserver=source_vserver,
+                                           dest_vserver=dest_vserver,
+                                           source_volume=source_volume,
+                                           dest_volume=dest_volume)
 
         if not snapmirrors:
             msg = _('Failed to get snapmirror relationship information')
@@ -3578,13 +3671,13 @@ class NetAppRestClient(object):
         # response is empty. Also, REST API does not have an equivalent to
         # 'udp-max-xfer-size', so the default is always returned.
         nfs_info = {
-            'tcp-max-xfer-size': DEFAULT_TCP_MAX_XFER_SIZE,
-            'udp-max-xfer-size': DEFAULT_UDP_MAX_XFER_SIZE,
+            'tcp-max-xfer-size': str(DEFAULT_TCP_MAX_XFER_SIZE),
+            'udp-max-xfer-size': str(DEFAULT_UDP_MAX_XFER_SIZE),
         }
         records = response.get('records', [])
         if records:
             nfs_info['tcp-max-xfer-size'] = (
-                records[0]['transport']['tcp_max_transfer_size'])
+                str(records[0]['transport']['tcp_max_transfer_size']))
 
         return nfs_info
 
@@ -4495,25 +4588,26 @@ class NetAppRestClient(object):
     @na_utils.trace
     def _configure_nfs(self, nfs_config, svm_id):
         """Sets the nfs configuraton"""
+
+        if ('udp-max-xfer-size' in nfs_config and
+                (nfs_config['udp-max-xfer-size']
+                    != str(DEFAULT_UDP_MAX_XFER_SIZE))):
+
+            msg = _('Failed to configure NFS. REST API does not support '
+                    'setting udp-max-xfer-size default value %(default)s '
+                    'is not equal to actual value %(actual)s')
+            msg_args = {
+                'default': DEFAULT_UDP_MAX_XFER_SIZE,
+                'actual': nfs_config['udp-max-xfer-size'],
+            }
+            raise exception.NetAppException(msg % msg_args)
+
+        nfs_config_value = int(nfs_config['tcp-max-xfer-size'])
         body = {
-            'transport.tcp_max_transfer_size': nfs_config['tcp-max-xfer-size']
+            'transport.tcp_max_transfer_size': nfs_config_value
         }
         self.send_request(f'/protocols/nfs/services/{svm_id}', 'patch',
                           body=body)
-
-    @na_utils.trace
-    def _get_svm_uuid(self):
-        # Get SVM UUID.
-        query = {
-            'name': self.vserver,
-            'fields': 'uuid'
-        }
-        res = self.send_request('/svm/svms', 'get', query=query)
-        if not res.get('records'):
-            msg = _('Vserver %s not found.') % self.vserver
-            raise exception.NetAppException(msg)
-        svm_id = res.get('records')[0]['uuid']
-        return svm_id
 
     @na_utils.trace
     def create_network_interface(self, ip, netmask, node, port,
@@ -4665,8 +4759,8 @@ class NetAppRestClient(object):
         query['svm.name'] = vserver
 
         nfs_info = {
-            'tcp-max-xfer-size': DEFAULT_TCP_MAX_XFER_SIZE,
-            'udp-max-xfer-size': DEFAULT_UDP_MAX_XFER_SIZE,
+            'tcp-max-xfer-size': str(DEFAULT_TCP_MAX_XFER_SIZE),
+            'udp-max-xfer-size': str(DEFAULT_UDP_MAX_XFER_SIZE)
         }
 
         response = self.send_request('/protocols/nfs/services/',
@@ -4675,7 +4769,7 @@ class NetAppRestClient(object):
 
         if records:
             nfs_info['tcp-max-xfer-size'] = (
-                records[0]['transport']['tcp_max_transfer_size'])
+                str(records[0]['transport']['tcp_max_transfer_size']))
 
         return nfs_info
 
@@ -4878,8 +4972,8 @@ class NetAppRestClient(object):
             if e.code == netapp_api.EREST_ENTRY_NOT_FOUND:
                 LOG.debug('VLAN %(vlan)s on port %(port)s node %(node)s '
                           'was not found')
-            if (e.code == netapp_api.EREST_INTERFACE_BOUND or
-                    e.code == netapp_api.EREST_PORT_IN_USE):
+            elif (e.code == netapp_api.EREST_INTERFACE_BOUND or
+                  e.code == netapp_api.EREST_PORT_IN_USE):
                 LOG.debug('VLAN %(vlan)s on port %(port)s node %(node)s '
                           'still used by LIF and cannot be deleted.',
                           {'vlan': vlan, 'port': port, 'node': node})
