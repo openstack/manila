@@ -3371,7 +3371,8 @@ class NetAppCmodeFileStorageLibrary(object):
         """Check progress of volume move operation."""
         status = self._get_volume_move_status(source_share, share_server)
         completed_phases = (
-            'cutover_hard_deferred', 'cutover_soft_deferred', 'completed')
+            'cutover_hard_deferred', 'cutover_soft_deferred',
+            'completed', 'success')
 
         move_phase = status['phase'].lower()
         if move_phase == 'failed':
