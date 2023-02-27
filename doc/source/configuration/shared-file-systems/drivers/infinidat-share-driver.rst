@@ -92,7 +92,7 @@ Configure the driver back-end section with the parameters below.
 
   The driver requires an InfiniBox user with administrative privileges.
   We recommend creating a dedicated OpenStack user account
-  that holds an administrative user role.
+  that holds a pool admin user role.
   Refer to the InfiniBox manuals for details on user account management.
   Configure the user credentials by adding the following parameters:
 
