@@ -323,15 +323,14 @@ class Service(service.Service):
         """Remove the stopped services of same topic from the datastore."""
         ctxt = context.get_admin_context()
         try:
-            services = db.service_get_all(ctxt, self.topic)
+            services = db.service_get_all_by_topic(ctxt, self.topic)
         except exception.NotFound:
             LOG.debug('The service database object disappeared,'
                       'Exiting from cleanup.')
             return
 
         for svc in services:
-            if (svc['topic'] == self.topic and
-                svc['state'] == 'stopped' and
+            if (svc['state'] == 'stopped' and
                     not utils.service_is_up(svc)):
                 db.service_destroy(ctxt, svc['id'])
 

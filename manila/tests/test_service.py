@@ -303,7 +303,8 @@ class ServiceTestCase(test.TestCase):
                     datetime.utcnow() - timedelta(minutes=10))
             else:
                 service_ref_stopped['updated_at'] = datetime.utcnow()
-            mock_db.service_get_all.return_value = [service_ref_stopped]
+            mock_db.service_get_all_by_topic.return_value = [
+                service_ref_stopped]
             serv.stop()
             serv.cleanup_services()
             if cleanup_interval_done:
