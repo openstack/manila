@@ -938,8 +938,16 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         backend_name = share_utils.extract_host(share_server['host'],
                                                 level='backend_name')
-        vserver_name, client = self._get_vserver(share_server,
-                                                 backend_name=backend_name)
+        try:
+            vserver_name, client = self._get_vserver(share_server,
+                                                     backend_name=backend_name)
+        except (exception.InvalidInput,
+                exception.VserverNotSpecified,
+                exception.VserverNotFound) as error:
+            LOG.warning("Could not determine vserver for reuse of "
+                        "share server. Share server: %(ss)s - Error: %(err)s",
+                        {'ss': share_server, 'err': error})
+            return False
         vserver_info = client.get_vserver_info(vserver_name)
         if (vserver_info.get('operational_state') != 'running'
                 or vserver_info.get('state') != 'running'
