@@ -64,6 +64,8 @@ FREE_CAPACITY = 10000000000
 TOTAL_CAPACITY = 20000000000
 AGGREGATE = 'manila_aggr_1'
 AGGREGATES = ('manila_aggr_1', 'manila_aggr_2')
+AGGR_POOL_NAME = 'manila_aggr_1'
+FLEXGROUP_POOL_NAME = 'flexgroup_pool'
 ROOT_AGGREGATES = ('root_aggr_1', 'root_aggr_2')
 ROOT_VOLUME_AGGREGATE = 'manila1'
 ROOT_VOLUME = 'root'
@@ -85,6 +87,10 @@ MANILA_HOST_NAME_2 = '%(host)s@%(backend)s#%(pool)s' % {
     'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME_2}
 MANILA_HOST_NAME_3 = '%(host)s@%(backend)s#%(pool)s' % {
     'host': HOST_NAME, 'backend': BACKEND_NAME_2, 'pool': POOL_NAME_2}
+MANILA_HOST_NAME_AGGR = '%(host)s@%(backend)s#%(pool)s' % {
+    'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': AGGR_POOL_NAME}
+MANILA_HOST_NAME_FLEXG_AGGR = '%(host)s@%(backend)s#%(pool)s' % {
+    'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': FLEXGROUP_POOL_NAME}
 SERVER_HOST = '%(host)s@%(backend)s' % {
     'host': HOST_NAME, 'backend': BACKEND_NAME}
 SERVER_HOST_2 = '%(host)s@%(backend)s' % {
@@ -122,6 +128,46 @@ CLIENT_KWARGS = {
 SHARE = {
     'id': SHARE_ID,
     'host': MANILA_HOST_NAME,
+    'project_id': TENANT_ID,
+    'name': SHARE_NAME,
+    'size': SHARE_SIZE,
+    'share_proto': 'fake',
+    'share_type_id': 'fake_share_type_id',
+    'share_network_id': '5dfe0898-e2a1-4740-9177-81c7d26713b0',
+    'share_server_id': '7e6a2cc8-871f-4b1d-8364-5aad0f98da86',
+    'network_info': {
+        'network_allocations': [{'ip_address': 'ip'}]
+    },
+    'replica_state': constants.REPLICA_STATE_ACTIVE,
+    'status': constants.STATUS_AVAILABLE,
+    'share_server': None,
+    'encrypt': False,
+    'share_id': SHARE_ID,
+}
+
+SHARE_2 = {
+    'id': SHARE_ID,
+    'host': MANILA_HOST_NAME_AGGR,
+    'project_id': TENANT_ID,
+    'name': SHARE_NAME,
+    'size': SHARE_SIZE,
+    'share_proto': 'fake',
+    'share_type_id': 'fake_share_type_id',
+    'share_network_id': '5dfe0898-e2a1-4740-9177-81c7d26713b0',
+    'share_server_id': '7e6a2cc8-871f-4b1d-8364-5aad0f98da86',
+    'network_info': {
+        'network_allocations': [{'ip_address': 'ip'}]
+    },
+    'replica_state': constants.REPLICA_STATE_ACTIVE,
+    'status': constants.STATUS_AVAILABLE,
+    'share_server': None,
+    'encrypt': False,
+    'share_id': SHARE_ID,
+}
+
+SHARE_FLEXGROUP = {
+    'id': SHARE_ID,
+    'host': MANILA_HOST_NAME_FLEXG_AGGR,
     'project_id': TENANT_ID,
     'name': SHARE_NAME,
     'size': SHARE_SIZE,
@@ -873,8 +919,6 @@ AGGREGATE_CAPACITIES = {
         'used': 4294967296,       # 4.0 GB
     }
 }
-
-FLEXGROUP_POOL_NAME = 'flexgroup_pool'
 
 FLEXGROUP_POOL_AGGR = [AGGREGATES[0], AGGREGATES[1]]
 

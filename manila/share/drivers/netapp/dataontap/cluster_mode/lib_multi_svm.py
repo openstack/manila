@@ -954,6 +954,18 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 or vserver_info.get('subtype') != 'default'):
             return False
 
+        if share:
+            share_pool = share_utils.extract_host(
+                share['host'], level='pool')
+            if self._is_flexgroup_pool(share_pool):
+                share_pool_list = self._get_flexgroup_aggregate_list(
+                    share_pool)
+            else:
+                share_pool_list = [share_pool]
+            aggr_list = client.list_vserver_aggregates()
+            if not set(share_pool_list).issubset(set(aggr_list)):
+                return False
+
         if self.is_nfs_config_supported:
             # NOTE(felipe_rodrigues): Do not check that the share nfs_config
             # matches with the group nfs_config, because the API guarantees

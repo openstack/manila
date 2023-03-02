@@ -1813,11 +1813,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                  mock_client)))
         self.mock_object(mock_client, 'get_vserver_info',
                          mock.Mock(return_value=fake.VSERVER_INFO))
+        self.mock_object(mock_client, 'list_vserver_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
 
         server = self.library.choose_share_server_compatible_with_share(
-            None, fake.SHARE_SERVERS, fake.SHARE, None, share_group)
+            None, fake.SHARE_SERVERS, fake.SHARE_2, None, share_group)
 
-        mock_get_extra_spec.assert_called_once_with(fake.SHARE)
+        mock_get_extra_spec.assert_called_once_with(fake.SHARE_2)
         mock_get_nfs_config.assert_called_once_with(fake.EXTRA_SPEC)
         self.assertEqual(expected_server, server)
 
@@ -1851,13 +1853,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                  mock_client)))
         self.mock_object(mock_client, 'get_vserver_info',
                          mock.Mock(return_value=fake.VSERVER_INFO))
+        self.mock_object(mock_client, 'list_vserver_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
 
         server = self.library.choose_share_server_compatible_with_share(
-            None, fake.SHARE_SERVERS, fake.SHARE, None, share_group)
+            None, fake.SHARE_SERVERS, fake.SHARE_2, None, share_group)
 
         self.assertEqual(expected_server, server)
         if nfs_config_support:
-            mock_get_extra_spec.assert_called_once_with(fake.SHARE)
+            mock_get_extra_spec.assert_called_once_with(fake.SHARE_2)
             mock_get_nfs_config.assert_called_once_with(fake.EMPTY_EXTRA_SPEC)
 
     @ddt.data(
@@ -1891,13 +1895,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                  mock_client)))
         self.mock_object(mock_client, 'get_vserver_info',
                          mock.Mock(return_value=fake.VSERVER_INFO))
+        self.mock_object(mock_client, 'list_vserver_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
 
         server = self.library.choose_share_server_compatible_with_share(
-            None, fake.SHARE_SERVERS, fake.SHARE)
+            None, fake.SHARE_SERVERS, fake.SHARE_2)
 
         self.assertEqual(expected_server, server)
         if nfs_config_support:
-            mock_get_extra_spec.assert_called_once_with(fake.SHARE)
+            mock_get_extra_spec.assert_called_once_with(fake.SHARE_2)
             mock_get_nfs_config.assert_called_once_with(fake.EXTRA_SPEC)
 
     @ddt.data(
@@ -1934,13 +1940,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                  mock_client)))
         self.mock_object(mock_client, 'get_vserver_info',
                          mock.Mock(return_value=fake.VSERVER_INFO))
+        self.mock_object(mock_client, 'list_vserver_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
 
         server = self.library.choose_share_server_compatible_with_share(
-            None, share_servers, fake.SHARE)
+            None, share_servers, fake.SHARE_2)
 
         self.assertEqual(expected_server, server)
         if nfs_config_support:
-            mock_get_extra_spec.assert_called_once_with(fake.SHARE)
+            mock_get_extra_spec.assert_called_once_with(fake.SHARE_2)
             mock_get_nfs_config.assert_called_once_with(fake.EMPTY_EXTRA_SPEC)
 
     def test_manage_existing_error(self):
@@ -2037,6 +2045,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self, expected_server, nfs_config, share_servers,
             nfs_config_supported=True):
         self.library.is_nfs_config_supported = nfs_config_supported
+        mock_client = mock.Mock()
         self.mock_object(
             share_types, "get_share_type_extra_specs",
             mock.Mock(return_value=fake.EXTRA_SPEC))
@@ -2048,7 +2057,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library,
             '_check_nfs_config_extra_specs_validity',
             mock.Mock())
-        mock_client = mock.Mock()
         self.mock_object(self.library, '_get_vserver',
                          mock.Mock(return_value=('fake_name',
                                                  mock_client)))
@@ -3466,14 +3474,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_provisioning_opts = self.mock_object(
             self.library, '_get_provisioning_options',
             mock.Mock(return_value={}))
+        self.mock_object(mock_client, 'list_vserver_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
 
         result = self.library.choose_share_server_compatible_with_share(
-            None, [fake.SHARE_SERVER], fake.SHARE_INSTANCE,
+            None, [fake.SHARE_SERVER], fake.SHARE_2,
             None, share_group
         )
         expected_result = fake.SHARE_SERVER if compatible else None
         self.assertEqual(expected_result, result)
-        mock_get_extra_spec.assert_called_once_with(fake.SHARE_INSTANCE)
+        mock_get_extra_spec.assert_called_once_with(fake.SHARE_2)
         mock_get_provisioning_opts.assert_called_once_with('fake_extra_specs')
         if (share_group and
                 share_group['share_server_id'] != fake.SHARE_SERVER['id']):
@@ -3507,6 +3517,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                  mock_client)))
         self.mock_object(mock_client, 'get_vserver_info',
                          mock.Mock(return_value=fake.VSERVER_INFO))
+        self.mock_object(mock_client, 'list_vserver_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
         mock_get_policies = self.mock_object(
             mock_client, 'get_fpolicy_policies_status',
             mock.Mock(return_value=policies))
@@ -3515,13 +3527,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=reusable_scope))
 
         result = self.library.choose_share_server_compatible_with_share(
-            None, [fake.SHARE_SERVER], fake.SHARE_INSTANCE,
+            None, [fake.SHARE_SERVER], fake.SHARE_2,
             None, None
         )
 
         expected_result = fake.SHARE_SERVER if compatible else None
         self.assertEqual(expected_result, result)
-        mock_get_extra_spec.assert_called_once_with(fake.SHARE_INSTANCE)
+        mock_get_extra_spec.assert_called_once_with(fake.SHARE_2)
         mock_client.get_vserver_info.assert_called_once_with(
             fake.VSERVER1,
         )
@@ -3531,7 +3543,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_policies.assert_called_once()
         if len(policies) >= self.library.FPOLICY_MAX_VSERVER_POLICIES:
             mock_reusable_scope.assert_called_once_with(
-                fake.SHARE_INSTANCE, mock_client,
+                fake.SHARE_2, mock_client,
                 fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
                 fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
                 fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS)
@@ -3565,6 +3577,71 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_client.get_vserver_info.assert_called_once_with(
             fake.VSERVER1,
         )
+
+    def test_choose_share_server_compatible_with_different_aggrs(self):
+        self.library.is_nfs_config_supported = False
+        mock_client = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 mock_client)))
+        fake_vserver_info = {
+            'operational_state': 'running',
+            'state': 'running',
+            'subtype': 'default'
+        }
+        self.mock_object(mock_client, 'get_vserver_info',
+                         mock.Mock(return_value=fake_vserver_info))
+        mock_get_extra_spec = self.mock_object(
+            share_types, 'get_extra_specs_from_share',
+            mock.Mock(return_value='fake_extra_specs'))
+        mock_get_provisioning_opts = self.mock_object(
+            self.library, '_get_provisioning_options',
+            mock.Mock(return_value={}))
+        self.mock_object(mock_client, 'list_vserver_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+        result = self.library.choose_share_server_compatible_with_share(
+            None, [fake.SHARE_SERVER], fake.SHARE_INSTANCE, None)
+        self.assertIsNone(result)
+        mock_get_extra_spec.assert_called_once_with(fake.SHARE_INSTANCE)
+        mock_get_provisioning_opts.assert_called_once_with('fake_extra_specs')
+
+    def test_choose_share_server_compatible_with_flexgroups(self):
+        self.library.is_nfs_config_supported = False
+        mock_client = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 mock_client)))
+        fake_vserver_info = {
+            'operational_state': 'running',
+            'state': 'running',
+            'subtype': 'default'
+        }
+        self.mock_object(mock_client, 'get_vserver_info',
+                         mock.Mock(return_value=fake_vserver_info))
+        mock_get_extra_spec = self.mock_object(
+            share_types, 'get_extra_specs_from_share',
+            mock.Mock(return_value='fake_extra_specs'))
+        mock_get_provisioning_opts = self.mock_object(
+            self.library, '_get_provisioning_options',
+            mock.Mock(return_value={}))
+        self.mock_object(mock_client, 'list_vserver_aggregates',
+                         mock.Mock(return_value=fake.FLEXGROUP_POOL_AGGR))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library, '_get_flexgroup_aggregate_list',
+                         mock.Mock(return_value=fake.FLEXGROUP_POOL_AGGR))
+        result = self.library.choose_share_server_compatible_with_share(
+            None, [fake.SHARE_SERVER], fake.SHARE_FLEXGROUP, None)
+        expected_result = fake.SHARE_SERVER
+        self.assertEqual(expected_result, result)
+        self.library._get_vserver.assert_called_once_with(
+            fake.SHARE_SERVER, backend_name=fake.BACKEND_NAME
+        )
+        mock_client.get_vserver_info.assert_called_once_with(
+            fake.VSERVER1,
+        )
+        mock_get_extra_spec.assert_called_once_with(fake.SHARE_FLEXGROUP)
+        mock_get_provisioning_opts.assert_called_once_with('fake_extra_specs')
 
     def test__create_port_and_broadcast_domain(self):
         self.mock_object(self.library._client,
