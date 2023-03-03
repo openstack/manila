@@ -2493,6 +2493,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         """Set flexvol file limit."""
         if not allow_decrease:
             alloc_files = self.get_volume_allocated_files(volume_name)
+            if alloc_files is None:
+                # volume is most likely being deleted / offline
+                return
             current_max_files = alloc_files['max']
             if current_max_files is None:
                 # volume is most likely being deleted / offline
