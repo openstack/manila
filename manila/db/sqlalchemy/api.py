@@ -5181,7 +5181,7 @@ def purge_deleted_records(context, age_in_days):
                                 session.delete(record)
                                 deleted_count += 1
                         except db_exc.DBError:
-                            LOG.warning(
+                            LOG.error(
                                 ("Deleting soft-deleted resource %s "
                                  "failed, skipping."), record)
                     if deleted_count != 0:
@@ -5189,8 +5189,8 @@ def purge_deleted_records(context, age_in_days):
                                  "table %(table)s.",
                                  {'count': deleted_count, 'table': table})
             except db_exc.DBError:
-                LOG.warning("Querying table %s's soft-deleted records "
-                            "failed, skipping.", table)
+                LOG.error("Querying table %s's soft-deleted records "
+                          "failed, skipping.", table)
             session.commit()
 
 
