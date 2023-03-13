@@ -1066,6 +1066,10 @@ class ShareNetworkSubnet(BASE, ManilaBase):
             metadata_dict[meta['key']] = meta['value']
         return metadata_dict
 
+    @property
+    def project_id(self):
+        return self.share_network['project_id']
+
 
 class ShareNetworkSubnetMetadata(BASE, ManilaBase):
     """Represents a metadata key/value pair for a subnet."""

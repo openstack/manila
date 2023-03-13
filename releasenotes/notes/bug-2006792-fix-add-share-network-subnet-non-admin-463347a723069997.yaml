@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Share Network Subnet Metadata now can be add by any user, as the
+    project_id used to verify the policy in the case of a non-admin user
+    now is present in the Share Network Subnet db model.
