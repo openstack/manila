@@ -203,7 +203,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def create_vserver(self, vserver_name, root_volume_aggregate_name,
                        root_volume_name, aggregate_names, ipspace_name,
-                       delete_retention_hours, logical_space_reporting):
+                       delete_retention_hours, logical_space_reporting,
+                       security_cert_expire_days):
         """Creates new vserver and assigns aggregates."""
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
@@ -212,6 +213,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             root_volume_security_style='unix',
             name_server_switch='file',
             logical_space_reporting=logical_space_reporting)
+        self._modify_security_cert(vserver_name, security_cert_expire_days)
 
     @na_utils.trace
     def create_vserver_dp_destination(self, vserver_name, aggregate_names,
@@ -276,6 +278,115 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'vserver-name': vserver_name,
         }
         self.send_request('vserver-modify', modify_args)
+
+    @na_utils.trace
+    def _modify_security_cert(self, vserver_name, security_cert_expire_days):
+        """Create new security certificate with given expire days."""
+
+        if security_cert_expire_days == 365:
+            return
+
+        api_args = {
+            'query': {
+                'certificate-info': {
+                    'vserver': vserver_name,
+                    'common-name': vserver_name,
+                    'certificate-authority': vserver_name,
+                    'type': 'server',
+                },
+            },
+            'desired-attributes': {
+                'certificate-info': {
+                    'serial-number': None,
+                },
+            },
+        }
+        result = self.send_iter_request('security-certificate-get-iter',
+                                        api_args)
+        try:
+            old_certificate_info_list = result.get_child_by_name(
+                'attributes-list')
+        except AttributeError:
+            LOG.debug('Could not retrieve certificate-info for vserver '
+                      '%(server)s.', {'server': vserver_name})
+            return
+
+        old_serial_nums = []
+        for certificate_info in old_certificate_info_list.get_children():
+            serial_num = certificate_info.get_child_content('serial-number')
+            old_serial_nums.append(serial_num)
+
+        try:
+            create_args = {
+                'vserver': vserver_name,
+                'common-name': vserver_name,
+                'type': 'server',
+                'expire-days': security_cert_expire_days,
+            }
+            self.send_request('security-certificate-create', create_args)
+        except netapp_api.NaApiError as e:
+            LOG.debug("Failed to create new security certificate: %s - %s",
+                      e.code, e.message)
+            return
+
+        api_args = {
+            'query': {
+                'certificate-info': {
+                    'vserver': vserver_name,
+                    'common-name': vserver_name,
+                    'certificate-authority': vserver_name,
+                    'type': 'server',
+                },
+            },
+            'desired-attributes': {
+                'certificate-info': {
+                    'serial-number': None,
+                },
+            },
+        }
+        result = self.send_iter_request('security-certificate-get-iter',
+                                        api_args)
+        try:
+            new_certificate_info_list = result.get_child_by_name(
+                'attributes-list')
+        except AttributeError:
+            LOG.debug('Could not retrieve certificate-info for vserver '
+                      '%(server)s.', {'server': vserver_name})
+            return
+
+        for certificate_info in new_certificate_info_list.get_children():
+            serial_num = certificate_info.get_child_content('serial-number')
+            if serial_num not in old_serial_nums:
+                try:
+                    ssl_modify_args = {
+                        'certificate-authority': vserver_name,
+                        'common-name': vserver_name,
+                        'certificate-serial-number': serial_num,
+                        'vserver': vserver_name,
+                        'client-authentication-enabled': 'false',
+                        'server-authentication-enabled': 'true',
+                    }
+                    self.send_request('security-ssl-modify', ssl_modify_args)
+                except netapp_api.NaApiError as e:
+                    LOG.debug('Failed to modify SSL for security certificate '
+                              'with serial number %s: %s - %s', serial_num,
+                              e.code, e.message)
+
+        # Delete all old security certificates
+        for certificate_info in old_certificate_info_list.get_children():
+            serial_num = certificate_info.get_child_content('serial-number')
+            delete_args = {
+                'certificate-authority': vserver_name,
+                'common-name': vserver_name,
+                'serial-number': serial_num,
+                'type': 'server',
+                'vserver': vserver_name,
+            }
+            try:
+                self.send_request('security-certificate-delete', delete_args)
+            except netapp_api.NaApiError as e:
+                LOG.debug('Failed to delete security certificate with serial '
+                          'number %s: %s - %s', serial_num, e.code, e.message)
 
     @na_utils.trace
     def get_vserver_info(self, vserver_name):

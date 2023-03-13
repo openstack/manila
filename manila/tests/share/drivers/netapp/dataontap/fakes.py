@@ -69,6 +69,7 @@ AGGREGATE = 'manila_aggr_1'
 AGGREGATES = ('manila_aggr_1', 'manila_aggr_2')
 ROOT_AGGREGATES = ('root_aggr_1', 'root_aggr_2')
 ROOT_VOLUME_AGGREGATE = 'manila1'
+SECURITY_CERT_EXPIRE_DAYS = 2190
 ROOT_VOLUME = 'root'
 CLUSTER_NODE = 'cluster1_01'
 CLUSTER_NODES = ('cluster1_01', 'cluster1_02')

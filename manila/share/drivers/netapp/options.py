@@ -193,7 +193,15 @@ netapp_provisioning_opts = [
                 help='This option enables the logical space reporting on a '
                      'newly created vserver and locical space accounting '
                      'on newly created volumes on this vserver. ',
-                default=False), ]
+                default=False),
+    cfg.IntOpt('netapp_security_cert_expire_days',
+               min=1,
+               max=3652,
+               default=2190,
+               help='Create security certificate while creating vserver with '
+                    'specified expire days.'),
+
+]
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',

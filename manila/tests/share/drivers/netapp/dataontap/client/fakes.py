@@ -45,6 +45,7 @@ VSERVER_PEER_NAME = 'fake_vserver_peer'
 ADMIN_VSERVER_NAME = 'fake_admin_vserver'
 NODE_VSERVER_NAME = 'fake_node_vserver'
 NFS_VERSIONS = ['nfs3', 'nfs4.0']
+SECURITY_CERT_EXPIRE_DAYS = 2190
 ROOT_AGGREGATE_NAMES = ('root_aggr1', 'root_aggr2')
 ROOT_VOLUME_AGGREGATE_NAME = 'fake_root_aggr'
 ROOT_VOLUME_NAME = 'fake_root_volume'
@@ -303,6 +304,18 @@ VSERVER_GET_RESPONSE = etree.XML("""
     'aggr1': SHARE_AGGREGATE_NAMES[0],
     'aggr2': SHARE_AGGREGATE_NAMES[1],
 })
+
+SECURITY_CERT_GET_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <certificate-info>
+        <vserver>%(vserver)s</vserver>
+        <serial-number>12345</serial-number>
+      </certificate-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'vserver': VSERVER_NAME})
 
 VSERVER_DATA_LIST_RESPONSE = etree.XML("""
   <results status="passed">
