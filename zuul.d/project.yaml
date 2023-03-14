@@ -38,9 +38,6 @@
       jobs:
         - manila-tempest-plugin-dummy-no-dhss
         - manila-tempest-plugin-dummy-dhss
-    experimental:
-      jobs:
-        - tripleo-ci-centos-8-scenario004-standalone
 
 - job:
     name: manila-tox-genconfig
