@@ -58,6 +58,7 @@ client_cmode_opts = [
             "/etc/ssl/certs/SAP_Global_Sub_CA_04.pem",
             "/etc/ssl/certs/SAP_Global_Sub_CA_05.pem",
             "/etc/ssl/certs/DigiCert_Global_Root_CA.pem",
+            "/etc/ssl/certs/DigiCert_Global_Root_G2.pem",
             ],
         help="Path to the x509 certificate used for secure ldap "
              "connections.")
