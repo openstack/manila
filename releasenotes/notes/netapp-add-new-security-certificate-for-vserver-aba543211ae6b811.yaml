@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    NetApp ONTAP driver now allows cloud operator to define security
+    certificate expire days for vserver. So instead of using vserver's default
+    security certificate with 365 expire days, cloud operator can ask backend
+    to create new security certificate with given expire days using config
+    option 'netapp_security_cert_expire_days'.

@@ -50,6 +50,8 @@ VSERVER_PEER_STATE = 'peered'
 ADMIN_VSERVER_NAME = 'fake_admin_vserver'
 NODE_VSERVER_NAME = 'fake_node_vserver'
 NFS_VERSIONS = ['nfs3', 'nfs4.0']
+SECURITY_CERT_DEFAULT_EXPIRE_DAYS = 365
+SECURITY_CERT_LARGE_EXPIRE_DAYS = 3652
 ROOT_AGGREGATE_NAMES = ('root_aggr1', 'root_aggr2')
 ROOT_VOLUME_AGGREGATE_NAME = 'fake_root_aggr'
 ROOT_VOLUME_NAME = 'fake_root_volume'
@@ -314,6 +316,18 @@ VSERVER_GET_RESPONSE = etree.XML("""
     'aggr1': SHARE_AGGREGATE_NAMES[0],
     'aggr2': SHARE_AGGREGATE_NAMES[1],
 })
+
+SECURITY_CERT_GET_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <certificate-info>
+        <vserver>%(vserver)s</vserver>
+        <serial-number>12345</serial-number>
+      </certificate-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'vserver': VSERVER_NAME})
 
 VSERVER_DATA_LIST_RESPONSE = etree.XML("""
   <results status="passed">
@@ -4446,6 +4460,46 @@ SERVICE_POLICIES_REST = {
                 'management_nis_client',
                 'data_dns_server'
             ],
+        },
+    ],
+    'num_records': 1,
+}
+
+SECURITY_CERT_GET_RESPONSE_REST = {
+    'records': [
+        {
+            'uuid': 'fake_cert_uuid',
+            'serial_number': 'fake_serial_number',
+            'key_size': 0,
+            'hash_function': "sha256",
+            'common_name': "fake_common_name",
+            'name': "cert1",
+            'ca': 'fake_ca',
+            'expiry_time': 'fake_expiry_time',
+            'svm': {
+                'name': VSERVER_NAME,
+                'uuid': 'fake_uuid',
+            },
+        },
+    ],
+    'num_records': 1,
+}
+
+SECURITY_CERT_POST_RESPONSE_REST = {
+    'records': [
+        {
+            'uuid': 'fake_cert_uuid',
+            'serial_number': 'fake_serial_number',
+            'key_size': 0,
+            'hash_function': "sha256",
+            'common_name': "fake_common_name",
+            'name': "cert1",
+            'ca': 'fake_ca',
+            'expiry_time': 'fake_expiry_time',
+            'svm': {
+                'name': VSERVER_NAME,
+                'uuid': 'fake_uuid',
+            },
         },
     ],
     'num_records': 1,

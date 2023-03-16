@@ -190,6 +190,14 @@ netapp_provisioning_opts = [
                default=60,  # Default to one minutes
                help='Sets maximum amount of time in seconds to wait for a '
                     'synchronous ONTAP REST API operation to be completed.'),
+    cfg.IntOpt('netapp_security_cert_expire_days',
+               min=1,
+               max=3652,
+               default=365,
+               help='Defines the expiration time (in days) for the '
+                    'certificate created during the vserver creation.  This '
+                    'option only applies when the option '
+                    'driver_handles_share_servers is set to True.'),
 ]
 
 netapp_cluster_opts = [

@@ -46,6 +46,7 @@ CUTOVER_ACTION_MAP = {
 DEFAULT_TIMEOUT = 15
 DEFAULT_TCP_MAX_XFER_SIZE = 65536
 DEFAULT_UDP_MAX_XFER_SIZE = 32768
+DEFAULT_SECURITY_CERT_EXPIRE_DAYS = 365
 
 
 class NetAppRestClient(object):
@@ -4120,7 +4121,8 @@ class NetAppRestClient(object):
 
     @na_utils.trace
     def create_vserver(self, vserver_name, root_volume_aggregate_name,
-                       root_volume_name, aggregate_names, ipspace_name):
+                       root_volume_name, aggregate_names, ipspace_name,
+                       security_cert_expire_days):
         """Creates new vserver and assigns aggregates."""
 
         # NOTE(nahimsouza): root_volume_aggregate_name and root_volume_name
@@ -4129,6 +4131,7 @@ class NetAppRestClient(object):
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
             name_server_switch=['files'])
+        self._modify_security_cert(vserver_name, security_cert_expire_days)
 
     @na_utils.trace
     def create_vserver_dp_destination(self, vserver_name, aggregate_names,
@@ -4160,6 +4163,77 @@ class NetAppRestClient(object):
             body['aggregates'].append({'name': aggr_name})
 
         self.send_request('/svm/svms', 'post', body=body)
+
+    @na_utils.trace
+    def _modify_security_cert(self, vserver_name, security_cert_expire_days):
+        """Create new security certificate with given expire days."""
+
+        # Do not modify security certificate if specified expire days are
+        # equal to default security certificate expire days i.e. 365.
+        if security_cert_expire_days == DEFAULT_SECURITY_CERT_EXPIRE_DAYS:
+            return
+
+        query = {
+            'common-name': vserver_name,
+            'ca': vserver_name,
+            'type': 'server',
+            'svm.name': vserver_name,
+        }
+        result = self.send_request('/security/certificates',
+                                   'get', query=query)
+        old_certificate_info_list = result.get('records', [])
+        if not old_certificate_info_list:
+            LOG.warning("Unable to retrieve certificate-info for vserver "
+                        "%(server)s'. Cannot set the certificate expiry to "
+                        "%s(conf)s. ", {'server': vserver_name,
+                                        'conf': security_cert_expire_days})
+            return
+
+        body = {
+            'common-name': vserver_name,
+            'type': 'server',
+            'svm.name': vserver_name,
+            'expiry_time': f'P{security_cert_expire_days}DT',
+        }
+        query = {
+            'return_records': 'true'
+        }
+        result = self.send_request('/security/certificates',
+                                   'post', body=body, query=query)
+        new_certificate_info_list = result.get('records', [])
+        if not new_certificate_info_list:
+            LOG.warning('Failed to create new security certificate for '
+                        'vserver %(server)s.', {'server': vserver_name})
+            return
+
+        for certificate_info in new_certificate_info_list:
+            cert_uuid = certificate_info.get('uuid', None)
+            svm = certificate_info.get('svm', [])
+            svm_uuid = svm.get('uuid', None)
+            if not svm_uuid or not cert_uuid:
+                continue
+
+            try:
+                body = {
+                    'certificate': {
+                        'uuid': cert_uuid,
+                    },
+                    'client_enabled': 'false',
+                }
+                self.send_request(f'/svm/svms/{svm_uuid}', 'patch',
+                                  body=body)
+            except netapp_api.api.NaApiError:
+                LOG.debug('Failed to modify SSL for vserver '
+                          '%(server)s.', {'server': vserver_name})
+
+        # Delete all old security certificates
+        for certificate_info in old_certificate_info_list:
+            uuid = certificate_info.get('uuid', None)
+            try:
+                self.send_request(f'/security/certificates/{uuid}', 'delete')
+            except netapp_api.api.NaApiError:
+                LOG.error("Failed to delete security certificate for vserver "
+                          "%s.", vserver_name)
 
     @na_utils.trace
     def list_node_data_ports(self, node):
