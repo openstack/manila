@@ -30,6 +30,7 @@ LOG = log.getLogger(__name__)
 
 coordination_opts = [
     cfg.StrOpt('backend_url',
+               secret=True,
                default='file://$state_path',
                help='The back end URL to use for distributed coordination.')
 ]
