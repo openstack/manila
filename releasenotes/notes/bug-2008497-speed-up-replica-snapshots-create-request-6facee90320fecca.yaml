@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Share replica snapshot creation was taking considerable time due to db
+    operations and resulted in delay of execution for periodic tasks. Fixed
+    it by fetching replicas without share data or without share server data
+    wherever necessary. For more details, please check
+    `Launchpad bug #2008497 <https://bugs.launchpad.net/manila/+bug/2008497>`_
