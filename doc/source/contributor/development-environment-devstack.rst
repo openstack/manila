@@ -60,14 +60,17 @@ Sample local.conf files that get you started
 Now that you have cloned the devstack repository, you need to
 configure devstack before deploying it.  This is done with a ``local.conf``
 file.  For manila, the local.conf file can also determine which back end(s)
-are set up.
+are set up. The choice of back end(s) is important because there are optional
+API features in Manila `that are not supported by some drivers
+<../admin/share_back_ends_feature_support_mapping.html>`_.
 
 .. caution::
 
     When using devstack with the below configurations, be aware that you will
-    be setting up fake storage. The `LVM`, `Generic`, `ZFSOnLinux` drivers
-    have not been developed for production use. They exist to provide a
-    vanilla development and testing environment for manila contributors.
+    be setting up with node local storage. The `LVM`, `Generic`,
+    `ZFSOnLinux` drivers have not been developed for production use.
+    They exist to provide a vanilla development and testing environment for
+    manila contributors.
 
 DHSS=False (`driver_handles_share_servers=False`) mode:
 `````````````````````````````````````````````````````````
@@ -102,6 +105,22 @@ setup before attempting ``DHSS=True``.
 * :download:`Generic driver <samples/generic_local.conf>`
 * :download:`Container driver <samples/container_local.conf>`
 
+Using a dummy back end driver
+`````````````````````````````
+
+If you're absolutely new to manila code development, you may want to skip a
+real storage driver altogether and attempt a development environment that
+abstracts the back end storage layer. This could also be the situation if
+you're building API integrations such as CLI, UI or SDK clients. Here, you
+probably don't care about restrictions that individual back end choices bring
+you such as their lack of support for optional API features. Manila ships a
+fake backend driver called "Dummy Driver" that supports all API features and
+is capable of operating in both DHSS modes. You may use the following `local
+.conf` sample to bootstrap your devstack with a "Dummy" driver. Do remember
+however that you cannot really *use* the resources that are provisioned by
+this driver.
+
+* :download:`Dummy driver <samples/dummy_local.conf>`
 
 Building your devstack
 ----------------------
