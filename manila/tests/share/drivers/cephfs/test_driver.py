@@ -1070,7 +1070,8 @@ class NFSProtocolHelperTestCase(test.TestCase):
             [{
                 'path': '1.2.3.4:/foo/bar',
                 'is_admin_only': False,
-                'metadata': {}
+                'metadata': {},
+                'preferred': False
             }], ret)
 
     def test_get_export_locations_with_export_ips_configured(self):
@@ -1099,16 +1100,19 @@ class NFSProtocolHelperTestCase(test.TestCase):
                     'path': '127.0.0.1:/foo/bar',
                     'is_admin_only': False,
                     'metadata': {},
+                    'preferred': False
                 },
                 {
                     'path': '[fd3f:c057:1192:1::1]:/foo/bar',
                     'is_admin_only': False,
                     'metadata': {},
+                    'preferred': False
                 },
                 {
                     'path': '[::1]:/foo/bar',
                     'is_admin_only': False,
                     'metadata': {},
+                    'preferred': False
                 },
             ], ret)
 
@@ -1394,11 +1398,83 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
             'path': '10.0.0.10:/foo/bar',
             'is_admin_only': False,
             'metadata': {},
+            'preferred': True
         }, {
             'path': '10.0.0.11:/foo/bar',
             'is_admin_only': False,
             'metadata': {},
+            'preferred': True
         }]
+
+        export_locations = (
+            self._nfscluster_protocol_helper.get_export_locations(
+                self._share, fake_cephfs_subvolume_path))
+
+        driver.rados_command.assert_called_once_with(
+            self._rados_client,
+            cluster_info_prefix, cluster_info_dict)
+
+        self.assertEqual(expected_export_locations, export_locations)
+
+    @ddt.data(
+        ('cephfs_ganesha_server_ip', '10.0.0.1'),
+        ('cephfs_ganesha_export_ips', ['10.0.0.2, 10.0.0.3'])
+    )
+    @ddt.unpack
+    def test_get_export_locations_ganesha_still_configured(self, opt, val):
+        cluster_info_prefix = "nfs cluster info"
+        nfs_clusterid = self._nfscluster_protocol_helper.nfs_clusterid
+        self.fake_conf.set_default(opt, val)
+
+        cluster_info_dict = {
+            "cluster_id": nfs_clusterid,
+        }
+
+        cluster_info = {"fs-manila": {
+            "virtual_ip": None,
+            "backend": [
+                {"hostname": "fake-ceph-node-1",
+                 "ip": "10.0.0.10",
+                 "port": "1010"},
+                {"hostname": "fake-ceph-node-2",
+                 "ip": "10.0.0.11",
+                 "port": "1011"}
+            ]
+        }}
+
+        driver.rados_command.return_value = json.dumps(cluster_info)
+
+        fake_cephfs_subvolume_path = "/foo/bar"
+        expected_export_locations = [{
+            'path': '10.0.0.10:/foo/bar',
+            'is_admin_only': False,
+            'metadata': {},
+            'preferred': True
+        }, {
+            'path': '10.0.0.11:/foo/bar',
+            'is_admin_only': False,
+            'metadata': {},
+            'preferred': True
+        }]
+        if isinstance(val, list):
+            for ip in val:
+                expected_export_locations.append(
+                    {
+                        'path': f'{ip}:/foo/bar',
+                        'is_admin_only': False,
+                        'metadata': {},
+                        'preferred': False
+                    }
+                )
+        else:
+            expected_export_locations.append(
+                {
+                    'path': f'{val}:/foo/bar',
+                    'is_admin_only': False,
+                    'metadata': {},
+                    'preferred': False
+                }
+            )
 
         export_locations = (
             self._nfscluster_protocol_helper.get_export_locations(
