@@ -2777,7 +2777,7 @@ share_group_type_is_public:
   description: |
     The level of visibility for the share group type. Set to
     ``true`` to make share group type public. Set to ``false`` to
-    make it private. Default value is ``false``.
+    make it private. Default value is ``true``.
   in: body
   required: true
   type: boolean
