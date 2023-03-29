@@ -35,6 +35,7 @@ shared file system storage resources.
 .. include:: share-replica-export-locations.inc
 .. include:: share-networks.inc
 .. include:: share-network-subnets.inc
+.. include:: share-network-subnets-metadata.inc
 .. include:: security-services.inc
 .. include:: share-servers.inc
 .. include:: share-instances.inc

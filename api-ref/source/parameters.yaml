@@ -1711,24 +1711,6 @@ metadata:
   in: body
   required: true
   type: object
-metadata_2:
-  description: |
-    One or more metadata key-value pairs, as a
-    dictionary of strings. For example, ``"project": "my_test", "aim":
-    "testing"``. The share server does not respect case-sensitive key
-    names. For example, ``"key": "v1"`` and ``"KEY": "V1"`` are
-    equivalent. If you specify both key-value pairs, the server sets
-    and returns only the ``"KEY": "V1"`` key-value pair.
-  in: body
-  required: true
-  type: object
-metadata_3:
-  description: |
-    One or more metadata key and value pairs as a
-    dictionary of strings.
-  in: body
-  required: true
-  type: object
 metadata_item:
   description: |
     A single metadata key and value pair.
@@ -1738,8 +1720,19 @@ metadata_item:
 metadata_key_request:
   description: |
     The key of a metadata item. For example, if the metadata on an existing
-    share or access rule is as follows: ``"project": "my_test",
+    resource is as follows: ``"project": "my_test",
     "aim": "testing"``, the keys are "project" and "aim".
+  in: body
+  required: true
+  type: object
+metadata_request:
+  description: |
+    One or more metadata key-value pairs, as a
+    dictionary of strings. For example, ``"project": "my_test", "aim":
+    "testing"``. The share server does not respect case-sensitive key
+    names. For example, ``"key": "v1"`` and ``"KEY": "V1"`` are
+    equivalent. If you specify both key-value pairs, the server sets
+    and returns only the ``"KEY": "V1"`` key-value pair.
   in: body
   required: true
   type: object
