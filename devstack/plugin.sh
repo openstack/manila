@@ -926,26 +926,11 @@ function update_tempest {
         fi
 
         TEMPEST_CONFIG=${TEMPEST_CONFIG:-$TEMPEST_DIR/etc/tempest.conf}
-        ADMIN_TENANT_NAME=${ADMIN_TENANT_NAME:-"admin"}
-        ADMIN_DOMAIN_NAME=${ADMIN_DOMAIN_NAME:-"Default"}
-        ADMIN_PASSWORD=${ADMIN_PASSWORD:-"secretadmin"}
 
         if [ $(trueorfalse False MANILA_USE_SERVICE_INSTANCE_PASSWORD) == True ]; then
             iniset $TEMPEST_CONFIG share image_password $MANILA_SERVICE_INSTANCE_PASSWORD
         fi
         iniset $TEMPEST_CONFIG share image_with_share_tools $MANILA_SERVICE_IMAGE_NAME
-        iniset $TEMPEST_CONFIG auth admin_username ${ADMIN_USERNAME:-"admin"}
-        iniset $TEMPEST_CONFIG auth admin_password ${ADMIN_PASSWORD:-"secretadmin"}
-        iniset $TEMPEST_CONFIG auth admin_tenant_name $ADMIN_TENANT_NAME
-        iniset $TEMPEST_CONFIG auth admin_domain_name $ADMIN_DOMAIN_NAME
-        iniset $TEMPEST_CONFIG identity username ${TEMPEST_USERNAME:-"demo"}
-        iniset $TEMPEST_CONFIG identity password $ADMIN_PASSWORD
-        iniset $TEMPEST_CONFIG identity tenant_name ${TEMPEST_TENANT_NAME:-"demo"}
-        iniset $TEMPEST_CONFIG identity domain_name $ADMIN_DOMAIN_NAME
-        iniset $TEMPEST_CONFIG identity alt_username ${ALT_USERNAME:-"alt_demo"}
-        iniset $TEMPEST_CONFIG identity alt_password $ADMIN_PASSWORD
-        iniset $TEMPEST_CONFIG identity alt_tenant_name ${ALT_TENANT_NAME:-"alt_demo"}
-        iniset $TEMPEST_CONFIG identity alt_domain_name $ADMIN_DOMAIN_NAME
         iniset $TEMPEST_CONFIG enforce_scope manila "$MANILA_ENFORCE_SCOPE"
 
         # If testing a stable branch, we need to ensure we're testing with supported
