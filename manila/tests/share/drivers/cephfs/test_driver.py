@@ -235,38 +235,53 @@ class CephFSDriverTestCase(test.TestCase):
             self._context, self._share, access_rules, add_rules, delete_rules,
             share_server=None)
 
-    def test_ensure_share(self):
-        expected_exports = {
-            'path': '1.2.3.4,5.6.7.8:/foo/bar',
-            'is_admin_only': False,
-            'metadata': {},
+    def test_ensure_shares(self):
+        self._driver.protocol_helper.reapply_rules_while_ensuring_shares = True
+        shares = [
+            fake_share.fake_share(share_id='123', share_proto='NFS'),
+            fake_share.fake_share(share_id='456', share_proto='NFS'),
+            fake_share.fake_share(share_id='789', share_proto='NFS')
+        ]
+        export_locations = [
+            {
+                'path': '1.2.3.4,5.6.7.8:/foo/bar',
+                'is_admin_only': False,
+                'metadata': {},
+            },
+            {
+                'path': '1.2.3.4,5.6.7.8:/foo/quz',
+                'is_admin_only': False,
+                'metadata': {},
+            },
+
+        ]
+        expected_updates = {
+            shares[0]['id']: {
+                'status': constants.STATUS_ERROR,
+                'reapply_access_rules': True,
+            },
+            shares[1]['id']: {
+                'export_locations': export_locations[0],
+                'reapply_access_rules': True,
+            },
+            shares[2]['id']: {
+                'export_locations': export_locations[1],
+                'reapply_access_rules': True,
+            }
         }
+        err_message = (f"Error ENOENT: subvolume {self._share['id']} does "
+                       f"not exist")
+        expected_exception = exception.ShareBackendException(err_message)
         self.mock_object(
             self._driver, '_get_export_locations',
-            mock.Mock(return_value=expected_exports))
+            mock.Mock(side_effect=[expected_exception] + export_locations))
 
-        returned_exports = self._driver.ensure_share(self._context,
-                                                     self._share)
+        actual_updates = self._driver.ensure_shares(self._context, shares)
 
-        self._driver._get_export_locations.assert_called_once_with(self._share)
-
-        self.assertEqual(expected_exports, returned_exports)
-
-    def test_ensure_share_subvolume_not_found(self):
-        message = f"Error ENOENT: subvolume {self._share['id']} does not exist"
-        expected_exception = exception.ShareBackendException(message)
-
-        self.mock_object(
-            self._driver, '_get_export_locations',
-            mock.Mock(side_effect=expected_exception))
-
-        self.assertRaises(
-            exception.ShareResourceNotFound,
-            self._driver.ensure_share,
-            self._context,
-            self._share)
-
-        self._driver._get_export_locations.assert_called_once_with(self._share)
+        self.assertEqual(3, self._driver._get_export_locations.call_count)
+        self._driver._get_export_locations.assert_has_calls([
+            mock.call(shares[0]), mock.call(shares[1]), mock.call(shares[2])])
+        self.assertEqual(expected_updates, actual_updates)
 
     def test_delete_share(self):
         clone_status_prefix = "fs clone status"
