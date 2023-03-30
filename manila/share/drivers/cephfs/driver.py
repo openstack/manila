@@ -138,6 +138,13 @@ cephfs_opts = [
     cfg.StrOpt('cephfs_filesystem_name',
                help="The name of the filesystem to use, if there are "
                     "multiple filesystems in the cluster."),
+    cfg.StrOpt('cephfs_ensure_all_shares_salt',
+               default="manila_cephfs_reef_bobcat",
+               help="Provide a unique string value to make the driver "
+                    "ensure all of the shares it has created during "
+                    "startup. Ensuring would re-export shares and this "
+                    "action isn't always required, unless something has "
+                    "been administratively modified on CephFS.")
 ]
 
 cephfsnfs_opts = [
@@ -540,15 +547,31 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             context, share, access_rules, add_rules, delete_rules,
             share_server=share_server)
 
-    def ensure_share(self, context, share, share_server=None):
-        try:
-            export_location = self._get_export_locations(share)
-        except exception.ShareBackendException as e:
-            if 'does not exist' in str(e).lower():
-                raise exception.ShareResourceNotFound(share_id=share['id'])
-            raise
+    def get_backend_info(self, context):
+        return self.protocol_helper.get_backend_info(context)
 
-        return export_location
+    def ensure_shares(self, context, shares):
+        share_updates = {}
+        for share in shares:
+            share_updates[share['id']] = {
+                'reapply_access_rules':
+                    self.protocol_helper.reapply_rules_while_ensuring_shares,
+            }
+            try:
+                share_updates[share['id']].update({
+                    'export_locations': self._get_export_locations(share),
+                })
+            except exception.ShareBackendException as e:
+                if 'does not exist' in str(e).lower():
+                    msg = ("Share instance %(si)s belonging to share "
+                           "%(share)s cannot be found on the backend.")
+                    msg_payload = {'si': share['id'],
+                                   'share': share['share_id']}
+                    LOG.exception(msg, msg_payload)
+                    share_updates[share['id']] = {
+                        'status': constants.STATUS_ERROR,
+                    }
+        return share_updates
 
     def extend_share(self, share, new_size, share_server=None):
         # resize FS subvolume/share
@@ -778,6 +801,7 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
     supported_access_types = (CEPHX_ACCESS_TYPE, )
     supported_access_levels = (constants.ACCESS_LEVEL_RW,
                                constants.ACCESS_LEVEL_RO)
+    reapply_rules_while_ensuring_shares = False
 
     def __init__(self, execute, config, **kwargs):
         self.rados_client = kwargs.pop('rados_client')
@@ -802,6 +826,12 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
             result.append(ip_port)
 
         return result
+
+    def get_backend_info(self, context):
+        return {
+            "cephfs_ensure_all_shares_salt":
+                self.configuration.cephfs_ensure_all_shares_salt,
+        }
 
     def get_export_locations(self, share, subvolume_path):
         # To mount this you need to know the mon IPs and the path to the volume
@@ -1055,6 +1085,7 @@ class NFSProtocolHelper(NFSProtocolHelperMixin, ganesha.GaneshaNASHelper2):
 
     shared_data = {}
     supported_protocols = ('NFS',)
+    reapply_rules_while_ensuring_shares = True
 
     def __init__(self, execute, config_object, **kwargs):
         if config_object.cephfs_ganesha_server_is_remote:
@@ -1151,12 +1182,22 @@ class NFSProtocolHelper(NFSProtocolHelperMixin, ganesha.GaneshaNASHelper2):
 
         return export_ips
 
+    def get_backend_info(self, context):
+        backend_info = {
+            "cephfs_ganesha_export_ips": self.config.cephfs_ganesha_export_ips,
+            "cephfs_ganesha_server_ip": self.config.cephfs_ganesha_server_ip,
+            "cephfs_ensure_all_shares_salt":
+                self.configuration.cephfs_ensure_all_shares_salt,
+        }
+        return backend_info
+
 
 class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
 
     supported_access_types = ('ip', )
     supported_access_levels = (constants.ACCESS_LEVEL_RW,
                                constants.ACCESS_LEVEL_RO)
+    reapply_rules_while_ensuring_shares = True
 
     def __init__(self, execute, config_object, **kwargs):
         self.rados_client = kwargs.pop('rados_client')
@@ -1308,3 +1349,15 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
             self._deny_access(share)
 
         return rule_state_map
+
+    def get_backend_info(self, context):
+        backend_info = {
+            "cephfs_ganesha_export_ips":
+                self.configuration.cephfs_ganesha_export_ips,
+            "cephfs_ganesha_server_ip":
+                self.configuration.cephfs_ganesha_server_ip,
+            "cephfs_nfs_cluster_id": self.nfs_clusterid,
+            "cephfs_ensure_all_shares_salt":
+                self.configuration.cephfs_ensure_all_shares_salt,
+        }
+        return backend_info
