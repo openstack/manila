@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Internal sqlalchemy model_query has been fixed to honor the options of the
+    `read_deleted` parameter. For more details, please refer to
+    `launchpad bug #2015094 <https://bugs.launchpad.net/manila/+bug/2015094>`_
