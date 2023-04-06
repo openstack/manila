@@ -1442,26 +1442,29 @@ def reservation_rollback(context, reservations, project_id=None, user_id=None,
 
 
 @require_admin_context
+@context_manager.writer
 def quota_destroy_all_by_project_and_user(context, project_id, user_id):
-    session = get_session()
-    with session.begin():
-        (model_query(context, models.ProjectUserQuota, session=session,
-                     read_deleted="no").
-         filter_by(project_id=project_id).
-         filter_by(user_id=user_id).soft_delete(synchronize_session=False))
+    model_query(
+        context, models.ProjectUserQuota, read_deleted="no",
+    ).filter_by(
+        project_id=project_id,
+    ).filter_by(user_id=user_id).soft_delete(synchronize_session=False)
 
-        (model_query(context, models.QuotaUsage,
-                     session=session, read_deleted="no").
-         filter_by(project_id=project_id).
-         filter_by(user_id=user_id).soft_delete(synchronize_session=False))
+    model_query(
+        context, models.QuotaUsage, read_deleted="no",
+    ).filter_by(
+        project_id=project_id,
+    ).filter_by(user_id=user_id).soft_delete(synchronize_session=False)
 
-        (model_query(context, models.Reservation,
-                     session=session, read_deleted="no").
-         filter_by(project_id=project_id).
-         filter_by(user_id=user_id).soft_delete(synchronize_session=False))
+    model_query(
+        context, models.Reservation, read_deleted="no",
+    ).filter_by(
+        project_id=project_id,
+    ).filter_by(user_id=user_id).soft_delete(synchronize_session=False)
 
 
 @require_admin_context
+@context_manager.writer
 def quota_destroy_all_by_share_type(context, share_type_id, project_id=None):
     """Soft deletes all quotas, usages and reservations.
 
@@ -1472,80 +1475,84 @@ def quota_destroy_all_by_share_type(context, share_type_id, project_id=None):
         reservations under. If not provided, share type quotas for all
         projects will be acted upon.
     """
-    session = get_session()
-    with session.begin():
-        share_type_quotas = model_query(
-            context, models.ProjectShareTypeQuota, session=session,
-            read_deleted="no",
-        ).filter_by(share_type_id=share_type_id)
+    share_type_quotas = model_query(
+        context, models.ProjectShareTypeQuota,
+        read_deleted="no",
+    ).filter_by(share_type_id=share_type_id)
 
-        share_type_quota_usages = model_query(
-            context, models.QuotaUsage, session=session, read_deleted="no",
-        ).filter_by(share_type_id=share_type_id)
+    share_type_quota_usages = model_query(
+        context, models.QuotaUsage, read_deleted="no",
+    ).filter_by(share_type_id=share_type_id)
 
-        share_type_quota_reservations = model_query(
-            context, models.Reservation, session=session, read_deleted="no",
-        ).filter_by(share_type_id=share_type_id)
+    share_type_quota_reservations = model_query(
+        context, models.Reservation, read_deleted="no",
+    ).filter_by(share_type_id=share_type_id)
 
-        if project_id is not None:
-            share_type_quotas = share_type_quotas.filter_by(
-                project_id=project_id)
-            share_type_quota_usages = share_type_quota_usages.filter_by(
-                project_id=project_id)
-            share_type_quota_reservations = (
-                share_type_quota_reservations.filter_by(project_id=project_id))
+    if project_id is not None:
+        share_type_quotas = share_type_quotas.filter_by(
+            project_id=project_id,
+        )
+        share_type_quota_usages = share_type_quota_usages.filter_by(
+            project_id=project_id,
+        )
+        share_type_quota_reservations = (
+            share_type_quota_reservations.filter_by(project_id=project_id)
+        )
 
-        share_type_quotas.soft_delete(synchronize_session=False)
-        share_type_quota_usages.soft_delete(synchronize_session=False)
-        share_type_quota_reservations.soft_delete(synchronize_session=False)
+    share_type_quotas.soft_delete(synchronize_session=False)
+    share_type_quota_usages.soft_delete(synchronize_session=False)
+    share_type_quota_reservations.soft_delete(synchronize_session=False)
 
 
 @require_admin_context
+@context_manager.writer
 def quota_destroy_all_by_project(context, project_id):
-    session = get_session()
-    with session.begin():
-        (model_query(context, models.Quota, session=session,
-                     read_deleted="no").
-         filter_by(project_id=project_id).
-         soft_delete(synchronize_session=False))
+    model_query(
+        context, models.Quota, read_deleted="no",
+    ).filter_by(
+        project_id=project_id,
+    ).soft_delete(synchronize_session=False)
 
-        (model_query(context, models.ProjectUserQuota, session=session,
-                     read_deleted="no").
-         filter_by(project_id=project_id).
-         soft_delete(synchronize_session=False))
+    model_query(
+        context, models.ProjectUserQuota, read_deleted="no",
+    ).filter_by(
+        project_id=project_id,
+    ).soft_delete(synchronize_session=False)
 
-        (model_query(context, models.QuotaUsage,
-                     session=session, read_deleted="no").
-         filter_by(project_id=project_id).
-         soft_delete(synchronize_session=False))
+    model_query(
+        context, models.QuotaUsage, read_deleted="no",
+    ).filter_by(
+        project_id=project_id,
+    ).soft_delete(synchronize_session=False)
 
-        (model_query(context, models.Reservation,
-                     session=session, read_deleted="no").
-         filter_by(project_id=project_id).
-         soft_delete(synchronize_session=False))
+    model_query(
+        context, models.Reservation, read_deleted="no",
+    ).filter_by(
+        project_id=project_id,
+    ).soft_delete(synchronize_session=False)
 
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def reservation_expire(context):
-    session = get_session()
-    with session.begin():
-        current_time = timeutils.utcnow()
-        reservation_query = (model_query(
-            context, models.Reservation,
-            session=session, read_deleted="no").
-            filter(models.Reservation.expire < current_time))
+    current_time = timeutils.utcnow()
+    reservation_query = model_query(
+        context, models.Reservation,
+        read_deleted="no"
+    ).filter(models.Reservation.expire < current_time)
 
-        for reservation in reservation_query.all():
-            if reservation.delta >= 0:
-                quota_usage = model_query(context, models.QuotaUsage,
-                                          session=session,
-                                          read_deleted="no").filter(
-                    models.QuotaUsage.id == reservation.usage_id).first()
-                quota_usage.reserved -= reservation.delta
-                session.add(quota_usage)
+    for reservation in reservation_query.all():
+        if reservation.delta >= 0:
+            quota_usage = model_query(
+                context, models.QuotaUsage, read_deleted="no",
+            ).filter(
+                models.QuotaUsage.id == reservation.usage_id,
+            ).first()
+            quota_usage.reserved -= reservation.delta
+            context.session.add(quota_usage)
 
-        reservation_query.soft_delete(synchronize_session=False)
+    reservation_query.soft_delete(synchronize_session=False)
 
 
 ################
