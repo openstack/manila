@@ -5255,53 +5255,55 @@ def driver_private_data_delete(context, entity_id, key=None,
 
 
 @require_context
+@context_manager.writer
 def network_allocation_create(context, values):
     values = ensure_model_dict_has_id(values)
     alloc_ref = models.NetworkAllocation()
     alloc_ref.update(values)
-    session = get_session()
-    with session.begin():
-        alloc_ref.save(session=session)
+    alloc_ref.save(session=context.session)
     return alloc_ref
 
 
 @require_context
+@context_manager.writer
 def network_allocation_delete(context, id):
-    session = get_session()
-    with session.begin():
-        alloc_ref = network_allocation_get(context, id, session=session)
-        alloc_ref.soft_delete(session)
+    alloc_ref = _network_allocation_get(context, id)
+    alloc_ref.soft_delete(session=context.session)
 
 
 @require_context
-def network_allocation_get(context, id, session=None, read_deleted="no"):
-    if session is None:
-        session = get_session()
-    result = (model_query(context, models.NetworkAllocation, session=session,
-                          read_deleted=read_deleted).
-              filter_by(id=id).first())
+@context_manager.reader
+def network_allocation_get(context, id, read_deleted="no"):
+    return _network_allocation_get(context, id, read_deleted=read_deleted)
+
+
+@require_context
+def _network_allocation_get(context, id, read_deleted="no"):
+    result = model_query(
+        context, models.NetworkAllocation,
+        read_deleted=read_deleted,
+    ).filter_by(id=id).first()
     if result is None:
         raise exception.NotFound()
     return result
 
 
 @require_context
+@context_manager.reader
 def network_allocations_get_by_ip_address(context, ip_address):
-    session = get_session()
-    result = (model_query(context, models.NetworkAllocation, session=session).
-              filter_by(ip_address=ip_address).all())
+    result = model_query(
+        context, models.NetworkAllocation,
+    ).filter_by(ip_address=ip_address).all()
     return result or []
 
 
 @require_context
-def network_allocations_get_for_share_server(context, share_server_id,
-                                             session=None, label=None,
-                                             subnet_id=None):
-    if session is None:
-        session = get_session()
-
+@context_manager.reader
+def network_allocations_get_for_share_server(
+    context, share_server_id, label=None, subnet_id=None,
+):
     query = model_query(
-        context, models.NetworkAllocation, session=session,
+        context, models.NetworkAllocation,
     ).filter_by(
         share_server_id=share_server_id,
     )
@@ -5323,14 +5325,12 @@ def network_allocations_get_for_share_server(context, share_server_id,
 
 
 @require_context
+@context_manager.writer
 def network_allocation_update(context, id, values, read_deleted=None):
-    session = get_session()
-    with session.begin():
-        alloc_ref = network_allocation_get(context, id, session=session,
-                                           read_deleted=read_deleted)
-        alloc_ref.update(values)
-        alloc_ref.save(session=session)
-        return alloc_ref
+    alloc_ref = _network_allocation_get(context, id, read_deleted=read_deleted)
+    alloc_ref.update(values)
+    alloc_ref.save(session=context.session)
+    return alloc_ref
 
 
 ###################

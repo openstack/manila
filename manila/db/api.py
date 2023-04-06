@@ -1171,19 +1171,18 @@ def network_allocation_update(context, id, values, read_deleted=None):
                                           read_deleted=read_deleted)
 
 
-def network_allocation_get(context, id, session=None, read_deleted=None):
+def network_allocation_get(context, id, read_deleted=None):
     """Get a network allocation DB record."""
-    return IMPL.network_allocation_get(context, id, session,
-                                       read_deleted=read_deleted)
+    return IMPL.network_allocation_get(context, id, read_deleted=read_deleted)
 
 
-def network_allocations_get_for_share_server(context, share_server_id,
-                                             session=None, label=None,
-                                             subnet_id=None):
+def network_allocations_get_for_share_server(
+    context, share_server_id, label=None, subnet_id=None,
+):
     """Get network allocations for share server."""
     return IMPL.network_allocations_get_for_share_server(
-        context, share_server_id, label=label, session=session,
-        subnet_id=subnet_id)
+        context, share_server_id, label=label, subnet_id=subnet_id,
+    )
 
 
 def network_allocations_get_by_ip_address(context, ip_address):
