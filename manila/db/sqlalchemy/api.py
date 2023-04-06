@@ -1466,6 +1466,13 @@ def quota_destroy_all_by_project_and_user(context, project_id, user_id):
 @require_admin_context
 @context_manager.writer
 def quota_destroy_all_by_share_type(context, share_type_id, project_id=None):
+    return _quota_destroy_all_by_share_type(
+        context, share_type_id, project_id=project_id,
+    )
+
+
+@require_admin_context
+def _quota_destroy_all_by_share_type(context, share_type_id, project_id=None):
     """Soft deletes all quotas, usages and reservations.
 
     :param context: request context for queries, updates and logging
@@ -5349,6 +5356,7 @@ def _dict_with_specs(inst_type_query, specs_key='extra_specs'):
 
 
 @require_admin_context
+@context_manager.writer
 def share_type_create(context, values, projects=None):
     """Create a new share type.
 
@@ -5360,36 +5368,36 @@ def share_type_create(context, values, projects=None):
 
     projects = projects or []
 
-    session = get_session()
-    with session.begin():
-        try:
-            values['extra_specs'] = _metadata_refs(values.get('extra_specs'),
-                                                   models.ShareTypeExtraSpecs)
-            share_type_ref = models.ShareTypes()
-            share_type_ref.update(values)
-            share_type_ref.save(session=session)
-        except db_exception.DBDuplicateEntry:
-            raise exception.ShareTypeExists(id=values['name'])
-        except Exception as e:
-            raise db_exception.DBError(e)
+    try:
+        values['extra_specs'] = _metadata_refs(
+            values.get('extra_specs'),
+            models.ShareTypeExtraSpecs,
+        )
+        share_type_ref = models.ShareTypes()
+        share_type_ref.update(values)
+        share_type_ref.save(session=context.session)
+    except db_exception.DBDuplicateEntry:
+        raise exception.ShareTypeExists(id=values['name'])
+    except Exception as e:
+        raise db_exception.DBError(e)
 
-        for project in set(projects):
-            access_ref = models.ShareTypeProjects()
-            access_ref.update({"share_type_id": share_type_ref.id,
-                               "project_id": project})
-            access_ref.save(session=session)
+    for project in set(projects):
+        access_ref = models.ShareTypeProjects()
+        access_ref.update(
+            {"share_type_id": share_type_ref.id, "project_id": project},
+        )
+        access_ref.save(session=context.session)
 
-        return share_type_ref
+    return share_type_ref
 
 
-def _share_type_get_query(context, session=None, read_deleted=None,
-                          expected_fields=None):
+def _share_type_get_query(context, read_deleted=None, expected_fields=None):
     expected_fields = expected_fields or []
-    query = (model_query(context,
-                         models.ShareTypes,
-                         session=session,
-                         read_deleted=read_deleted).
-             options(joinedload('extra_specs')))
+    query = model_query(
+        context,
+        models.ShareTypes,
+        read_deleted=read_deleted,
+    ).options(joinedload('extra_specs'))
 
     if 'projects' in expected_fields:
         query = query.options(joinedload('projects'))
@@ -5407,7 +5415,7 @@ def _share_type_get_query(context, session=None, read_deleted=None,
 
 @handle_db_data_error
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def _type_update(context, type_id, values, is_group):
+def _share_type_update(context, type_id, values, is_group):
 
     if values.get('name') is None:
         values.pop('name', None)
@@ -5421,30 +5429,30 @@ def _type_update(context, type_id, values, is_group):
         exists_exc = exception.ShareTypeExists
         exists_args = {'id': values.get('name')}
 
-    session = get_session()
-    with session.begin():
-        query = model_query(context, model, session=session)
+    query = model_query(context, model)
 
-        try:
-            result = query.filter_by(id=type_id).update(values)
-        except db_exception.DBDuplicateEntry:
-            # This exception only occurs if there's a non-deleted
-            # share/group type which has the same name as the name being
-            # updated.
-            raise exists_exc(**exists_args)
+    try:
+        result = query.filter_by(id=type_id).update(values)
+    except db_exception.DBDuplicateEntry:
+        # This exception only occurs if there's a non-deleted
+        # share/group type which has the same name as the name being
+        # updated.
+        raise exists_exc(**exists_args)
 
-        if not result:
-            if is_group:
-                raise exception.ShareGroupTypeNotFound(type_id=type_id)
-            else:
-                raise exception.ShareTypeNotFound(share_type_id=type_id)
+    if not result:
+        if is_group:
+            raise exception.ShareGroupTypeNotFound(type_id=type_id)
+        else:
+            raise exception.ShareTypeNotFound(share_type_id=type_id)
 
 
+@context_manager.writer
 def share_type_update(context, share_type_id, values):
-    _type_update(context, share_type_id, values, is_group=False)
+    _share_type_update(context, share_type_id, values, is_group=False)
 
 
 @require_context
+@context_manager.reader
 def share_type_get_all(context, inactive=False, filters=None):
     """Returns a dict describing all share_types with name as key."""
     filters = filters or {}
@@ -5489,14 +5497,12 @@ def _share_type_get_id_from_share_type(context, id, session=None):
     return result['id']
 
 
-def _share_type_get(context, id, session=None, inactive=False,
-                    expected_fields=None):
+def _share_type_get(context, id, inactive=False, expected_fields=None):
     expected_fields = expected_fields or []
     read_deleted = "yes" if inactive else "no"
-    result = (_share_type_get_query(
-              context, session, read_deleted, expected_fields).
-              filter_by(id=id).
-              first())
+    result = _share_type_get_query(
+        context, read_deleted, expected_fields,
+    ).filter_by(id=id).first()
 
     if not result:
         # The only way that id could be None is if the default share type is
@@ -5514,18 +5520,16 @@ def _share_type_get(context, id, session=None, inactive=False,
 
 
 @require_context
+@context_manager.reader
 def share_type_get(context, id, inactive=False, expected_fields=None):
     """Return a dict describing specific share_type."""
     return _share_type_get(context, id,
-                           session=None,
                            inactive=inactive,
                            expected_fields=expected_fields)
 
 
-def _share_type_get_by_name(context, name, session=None):
-    result = (_share_type_get_query(context, session=session).
-              filter_by(name=name).
-              first())
+def _share_type_get_by_name(context, name):
+    result = _share_type_get_query(context).filter_by(name=name).first()
 
     if not result:
         raise exception.ShareTypeNotFoundByName(share_type_name=name)
@@ -5534,12 +5538,14 @@ def _share_type_get_by_name(context, name, session=None):
 
 
 @require_context
+@context_manager.reader
 def share_type_get_by_name(context, name):
     """Return a dict describing specific share_type."""
     return _share_type_get_by_name(context, name)
 
 
 @require_context
+@context_manager.reader
 def share_type_get_by_name_or_id(context, name_or_id):
     """Return a dict describing specific share_type using its name or ID.
 
@@ -5556,49 +5562,51 @@ def share_type_get_by_name_or_id(context, name_or_id):
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def share_type_destroy(context, id):
-    session = get_session()
-    with session.begin():
-        _share_type_get(context, id, session)
-        shares_count = model_query(
-            context,
-            models.ShareInstance,
-            read_deleted="no",
-            session=session,
-        ).filter_by(share_type_id=id).count()
-        share_group_types_count = model_query(
-            context,
-            models.ShareGroupTypeShareTypeMapping,
-            read_deleted="no",
-            session=session,
-        ).filter_by(share_type_id=id).count()
-        if shares_count or share_group_types_count:
-            msg = ("Deletion of share type %(stype)s failed; it in use by "
-                   "%(shares)d shares and %(gtypes)d share group types")
-            msg_args = {'stype': id,
-                        'shares': shares_count,
-                        'gtypes': share_group_types_count}
-            LOG.error(msg, msg_args)
-            raise exception.ShareTypeInUse(share_type_id=id)
+    _share_type_get(context, id)
+    shares_count = model_query(
+        context,
+        models.ShareInstance,
+        read_deleted="no",
+    ).filter_by(share_type_id=id).count()
+    share_group_types_count = model_query(
+        context,
+        models.ShareGroupTypeShareTypeMapping,
+        read_deleted="no",
+    ).filter_by(share_type_id=id).count()
+    if shares_count or share_group_types_count:
+        msg = ("Deletion of share type %(stype)s failed; it in use by "
+               "%(shares)d shares and %(gtypes)d share group types")
+        msg_args = {'stype': id,
+                    'shares': shares_count,
+                    'gtypes': share_group_types_count}
+        LOG.error(msg, msg_args)
+        raise exception.ShareTypeInUse(share_type_id=id)
 
-        model_query(
-            context, models.ShareTypeExtraSpecs, session=session
-        ).filter_by(
-            share_type_id=id
-        ).soft_delete()
-        model_query(
-            context, models.ShareTypeProjects, session=session
-        ).filter_by(
-            share_type_id=id,
-        ).soft_delete()
-        model_query(
-            context, models.ShareTypes, session=session
-        ).filter_by(
-            id=id
-        ).soft_delete()
+    model_query(
+        context, models.ShareTypeExtraSpecs,
+    ).filter_by(
+        share_type_id=id
+    ).soft_delete()
+    model_query(
+        context, models.ShareTypeProjects,
+    ).filter_by(
+        share_type_id=id,
+    ).soft_delete()
+    model_query(
+        context, models.ShareTypes,
+    ).filter_by(
+        id=id
+    ).soft_delete()
+
+    # NOTE(stephenfin): commit changes before we do anything with quotas
+
+    context.session.commit()
+    context.session.begin()
 
     # Destroy any quotas, usages and reservations for the share type:
-    quota_destroy_all_by_share_type(context, id)
+    _quota_destroy_all_by_share_type(context, id)
 
 
 def _share_type_access_query(context, session=None):
