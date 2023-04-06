@@ -327,12 +327,16 @@ class SchedulerManager(manager.Manager):
 
         share = db.share_get(context, share_id)
         try:
+            size_increase = int(new_size) - share['size']
+            if filter_properties:
+                filter_properties['size_increase'] = size_increase
+            else:
+                filter_properties = {'size_increase': size_increase}
             target_host = self.driver.host_passes_filters(
                 context,
                 share['host'],
                 request_spec, filter_properties)
-            target_host.consume_from_share(
-                {'size': int(new_size) - share['size']})
+            target_host.consume_from_share({'size': size_increase})
             share_rpcapi.ShareAPI().extend_share(context, share, new_size,
                                                  reservations)
         except exception.NoValidHost as ex:

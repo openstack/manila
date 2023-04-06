@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Launchpad bug 1968891 <https://bugs.launchpad.net/manila/+bug/1968891>`_
+    has been fixed. scheduler will use size increase rather than share size
+    to calculate provisioned_ratio when extending share.
