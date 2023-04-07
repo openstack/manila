@@ -28,7 +28,10 @@
             voting: false
         - manila-grenade:
             voting: false
-        - manila-grenade-skip-level:
+        # NOTE: this job needs to be voting in SLURP release and option to
+        # voting in non SLURP. But keeping it voting in non SLURP also will
+        # help us to know any upgrade break in advance.
+        - manila-grenade-skip-level-always:
             voting: false
         - manila-rally-no-ss:
             voting: false
