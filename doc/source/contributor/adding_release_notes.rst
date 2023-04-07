@@ -70,7 +70,7 @@ environment in manila:
 
 .. code-block:: console
 
-    $ tox -e newnote slug-goes-here
+    $ tox -e newnote -- slug-goes-here
 
 .. note::
 
