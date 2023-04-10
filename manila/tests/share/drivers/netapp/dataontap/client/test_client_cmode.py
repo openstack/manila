@@ -5139,10 +5139,11 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.mock_object(self.client, 'send_request')
 
-        self.client.create_cifs_share(fake.SHARE_NAME)
+        self.client.create_cifs_share(
+            fake.SHARE_NAME, fake.VOLUME_JUNCTION_PATH)
 
         cifs_share_create_args = {
-            'path': '/%s' % fake.SHARE_NAME,
+            'path': fake.VOLUME_JUNCTION_PATH,
             'share-name': fake.SHARE_NAME
         }
 

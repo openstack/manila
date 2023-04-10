@@ -46,12 +46,13 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
         """
 
         cifs_exist = self._client.cifs_share_exists(share_name)
+        export_path = self._client.get_volume_junction_path(share_name)
         if ensure_share_already_exists and not cifs_exist:
             msg = _("The expected CIFS share %(share_name)s was not found.")
             msg_args = {'share_name': share_name}
             raise exception.NetAppException(msg % msg_args)
         elif not cifs_exist:
-            self._client.create_cifs_share(share_name)
+            self._client.create_cifs_share(share_name, export_path)
             self._client.remove_cifs_share_access(share_name, 'Everyone')
 
         # Ensure 'ntfs' security style for RW volume. DP volumes cannot set it.
@@ -61,8 +62,8 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
 
         # Return a callback that may be used for generating export paths
         # for this share.
-        return (lambda export_address, share_name=share_name:
-                r'\\%s\%s' % (export_address, share_name))
+        return (lambda export_address, export_path=export_path:
+                r'\\%s%s' % (export_address, export_path.replace('/', '\\')))
 
     @na_utils.trace
     def delete_share(self, share, share_name):
@@ -75,6 +76,7 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
     def update_access(self, share, share_name, rules):
         """Replaces the list of access rules known to the backend storage."""
 
+        _, cifs_share_name = self._get_export_location(share)
         # Ensure rules are valid
         for rule in rules:
             self._validate_access_rule(rule)
@@ -82,13 +84,13 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
         new_rules = {rule['access_to']: rule['access_level'] for rule in rules}
 
         # Get rules from share
-        existing_rules = self._get_access_rules(share, share_name)
+        existing_rules = self._get_access_rules(share, cifs_share_name)
 
         # Update rules in an order that will prevent transient disruptions
-        self._handle_added_rules(share_name, existing_rules, new_rules)
-        self._handle_ro_to_rw_rules(share_name, existing_rules, new_rules)
-        self._handle_rw_to_ro_rules(share_name, existing_rules, new_rules)
-        self._handle_deleted_rules(share_name, existing_rules, new_rules)
+        self._handle_added_rules(cifs_share_name, existing_rules, new_rules)
+        self._handle_ro_to_rw_rules(cifs_share_name, existing_rules, new_rules)
+        self._handle_rw_to_ro_rules(cifs_share_name, existing_rules, new_rules)
+        self._handle_deleted_rules(cifs_share_name, existing_rules, new_rules)
 
     @na_utils.trace
     def _validate_access_rule(self, rule):
@@ -170,8 +172,10 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
     @na_utils.trace
     def get_share_name_for_share(self, share):
         """Returns the flexvol name that hosts a share."""
-        _, share_name = self._get_export_location(share)
-        return share_name
+        _, volume_junction_path = self._get_export_location(share)
+        volume = self._client.get_volume_at_junction_path(
+            f"/{volume_junction_path}")
+        return volume.get('name') if volume else None
 
     @na_utils.trace
     def _get_export_location(self, share):
