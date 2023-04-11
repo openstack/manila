@@ -1065,18 +1065,20 @@ def share_network_subnet_update(context, network_subnet_id, values):
     return IMPL.share_network_subnet_update(context, network_subnet_id, values)
 
 
-def share_network_subnet_get(context, network_subnet_id, session=None,
-                             parent_id=None):
+def share_network_subnet_get(context, network_subnet_id, parent_id=None):
     """Get requested share network subnet DB record."""
-    return IMPL.share_network_subnet_get(context, network_subnet_id,
-                                         session=session, parent_id=parent_id)
+    return IMPL.share_network_subnet_get(
+        context,
+        network_subnet_id,
+        parent_id=parent_id,
+    )
 
 
-def share_network_subnet_get_all_with_same_az(context, network_subnet_id,
-                                              session=None):
+def share_network_subnet_get_all_with_same_az(context, network_subnet_id):
     """Get requested az share network subnets DB record."""
     return IMPL.share_network_subnet_get_all_with_same_az(
-        context, network_subnet_id, session=session)
+        context, network_subnet_id,
+    )
 
 
 def share_network_subnet_get_all(context):
@@ -1085,8 +1087,9 @@ def share_network_subnet_get_all(context):
 
 
 def share_network_subnets_get_all_by_availability_zone_id(
-        context, share_network_id, availability_zone_id,
-        fallback_to_default=True):
+    context, share_network_id, availability_zone_id,
+    fallback_to_default=True,
+):
     """Get the share network subnets DB record in a given AZ.
 
     This method returns list of subnets DB record for a given share network id
@@ -1098,19 +1101,22 @@ def share_network_subnets_get_all_by_availability_zone_id(
     """
     return IMPL.share_network_subnets_get_all_by_availability_zone_id(
         context, share_network_id, availability_zone_id,
-        fallback_to_default=fallback_to_default)
+        fallback_to_default=fallback_to_default,
+    )
 
 
 def share_network_subnet_get_default_subnets(context, share_network_id):
     """Get the default share network subnets DB records."""
-    return IMPL.share_network_subnet_get_default_subnets(context,
-                                                         share_network_id)
+    return IMPL.share_network_subnet_get_default_subnets(
+        context, share_network_id,
+    )
 
 
 def share_network_subnet_get_all_by_share_server_id(context, share_server_id):
     """Get the subnets that are being used by the share server."""
     return IMPL.share_network_subnet_get_all_by_share_server_id(
-        context, share_server_id)
+        context, share_server_id,
+    )
 
 ####################
 
