@@ -5741,13 +5741,13 @@ def _ensure_availability_zone_exists(
 
 
 @require_context
-def availability_zone_get(context, id_or_name, session=None):
-    if session is None:
-        session = get_session()
-
-    return _availability_zone_get(context, id_or_name, session=session)
+@context_manager.reader
+def availability_zone_get(context, id_or_name):
+    return _availability_zone_get(context, id_or_name)
 
 
+# TODO(stephenfin): Remove the 'session' argument once all callers have been
+# converted
 @require_context
 def _availability_zone_get(context, id_or_name, session=None):
     query = model_query(context, models.AvailabilityZone, session=session)
@@ -5786,18 +5786,17 @@ def _availability_zone_create_if_not_exist(context, name, session=None):
 
 
 @require_context
+@context_manager.reader
 def availability_zone_get_all(context):
-    session = get_session()
-
     enabled_services = model_query(
         context, models.Service,
         models.Service.availability_zone_id,
-        session=session,
         read_deleted="no"
     ).filter_by(disabled=False).distinct()
 
-    return model_query(context, models.AvailabilityZone, session=session,
-                       read_deleted="no").filter(
+    return model_query(
+        context, models.AvailabilityZone, read_deleted="no",
+    ).filter(
         models.AvailabilityZone.id.in_(enabled_services)
     ).all()
 
