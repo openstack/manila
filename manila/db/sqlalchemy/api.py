@@ -3938,19 +3938,34 @@ def share_snapshot_instance_export_locations_update(
 #################################
 
 
+def _share_metadata_get_query(context, share_id):
+    return model_query(
+        context, models.ShareMetadata, read_deleted="no",
+    ).filter_by(share_id=share_id).options(joinedload('share'))
+
+
 @require_context
 @require_share_exists
+@context_manager.reader
 def share_metadata_get(context, share_id):
     return _share_metadata_get(context, share_id)
 
 
+def _share_metadata_get(context, share_id):
+    rows = _share_metadata_get_query(context, share_id).all()
+    result = {}
+    for row in rows:
+        result[row['key']] = row['value']
+
+    return result
+
+
 @require_context
 @require_share_exists
-def share_metadata_get_item(context, share_id, key, session=None):
-    session = session or get_session()
+@context_manager.reader
+def share_metadata_get_item(context, share_id, key):
     try:
-        row = _share_metadata_get_item(context, share_id, key,
-                                       session=session)
+        row = _share_metadata_get_item(context, share_id, key)
     except exception.MetadataItemNotFound:
         raise exception.MetadataItemNotFound()
 
@@ -3962,85 +3977,67 @@ def share_metadata_get_item(context, share_id, key, session=None):
 
 @require_context
 @require_share_exists
+@context_manager.writer
 def share_metadata_delete(context, share_id, key):
-    (_share_metadata_get_query(context, share_id).
-        filter_by(key=key).soft_delete())
+    _share_metadata_get_query(
+        context, share_id,
+    ).filter_by(key=key).soft_delete()
 
 
 @require_context
 @require_share_exists
+@context_manager.writer
 def share_metadata_update(context, share_id, metadata, delete):
     return _share_metadata_update(context, share_id, metadata, delete)
 
 
 @require_context
 @require_share_exists
-def share_metadata_update_item(context, share_id, item, session=None):
+@context_manager.writer
+def share_metadata_update_item(context, share_id, item):
     return _share_metadata_update(context, share_id, item, delete=False)
 
 
-def _share_metadata_get_query(context, share_id, session=None):
-    return (model_query(context, models.ShareMetadata, session=session,
-                        read_deleted="no").
-            filter_by(share_id=share_id).
-            options(joinedload('share')))
-
-
-def _share_metadata_get(context, share_id, session=None):
-    rows = _share_metadata_get_query(context, share_id,
-                                     session=session).all()
-    result = {}
-    for row in rows:
-        result[row['key']] = row['value']
-
-    return result
-
-
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def _share_metadata_update(context, share_id, metadata, delete, session=None):
-    if not session:
-        session = get_session()
+def _share_metadata_update(context, share_id, metadata, delete):
+    # Set existing metadata to deleted if delete argument is True
+    delete = strutils.bool_from_string(delete)
+    if delete:
+        original_metadata = _share_metadata_get(context, share_id)
+        for meta_key, meta_value in original_metadata.items():
+            if meta_key not in metadata:
+                meta_ref = _share_metadata_get_item(
+                    context, share_id, meta_key,
+                )
+                meta_ref.soft_delete(session=context.session)
 
-    with session.begin():
-        # Set existing metadata to deleted if delete argument is True
-        delete = strutils.bool_from_string(delete)
-        if delete:
-            original_metadata = _share_metadata_get(context, share_id,
-                                                    session=session)
-            for meta_key, meta_value in original_metadata.items():
-                if meta_key not in metadata:
-                    meta_ref = _share_metadata_get_item(context, share_id,
-                                                        meta_key,
-                                                        session=session)
-                    meta_ref.soft_delete(session=session)
+    meta_ref = None
 
-        meta_ref = None
+    # Now update all existing items with new values, or create new meta
+    # objects
+    for meta_key, meta_value in metadata.items():
 
-        # Now update all existing items with new values, or create new meta
-        # objects
-        for meta_key, meta_value in metadata.items():
+        # update the value whether it exists or not
+        item = {"value": meta_value}
 
-            # update the value whether it exists or not
-            item = {"value": meta_value}
+        try:
+            meta_ref = _share_metadata_get_item(
+                context, share_id, meta_key,
+            )
+        except exception.MetadataItemNotFound:
+            meta_ref = models.ShareMetadata()
+            item.update({"key": meta_key, "share_id": share_id})
 
-            try:
-                meta_ref = _share_metadata_get_item(context, share_id,
-                                                    meta_key,
-                                                    session=session)
-            except exception.MetadataItemNotFound:
-                meta_ref = models.ShareMetadata()
-                item.update({"key": meta_key, "share_id": share_id})
+        meta_ref.update(item)
+        meta_ref.save(session=context.session)
 
-            meta_ref.update(item)
-            meta_ref.save(session=session)
-
-        return metadata
+    return metadata
 
 
-def _share_metadata_get_item(context, share_id, key, session=None):
-    result = (_share_metadata_get_query(context, share_id, session=session).
-              filter_by(key=key).
-              first())
+def _share_metadata_get_item(context, share_id, key):
+    result = _share_metadata_get_query(
+        context, share_id,
+    ).filter_by(key=key).first()
 
     if not result:
         raise exception.MetadataItemNotFound()
