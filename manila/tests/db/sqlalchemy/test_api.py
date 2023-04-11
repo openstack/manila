@@ -4790,7 +4790,7 @@ class ShareResourcesAPITestCase(test.TestCase):
             self.context, filters={'share_id': share_id})
         share_groups = db_api.share_group_get_all(
             self.context, filters={'share_network_id': share_network_id})
-        share_servers = db_api._server_get_query(self.context).filter(
+        share_servers = db_api._share_server_get_query(self.context).filter(
             models.ShareServer.share_network_subnets.any(
                 id=share_net_subnets[0]['id'])).all()
         self.assertEqual(3, len(share_instances))
@@ -4882,7 +4882,7 @@ class ShareResourcesAPITestCase(test.TestCase):
             self.context, filters={'share_id': share_id})
         share_groups = db_api.share_group_get_all(
             self.context, filters={'share_network_id': share_network_id})
-        share_servers = db_api._server_get_query(self.context).filter(
+        share_servers = db_api._share_server_get_query(self.context).filter(
             models.ShareServer.share_network_subnets.any(
                 id=share_net_subnets[0]['id'])).all()
 

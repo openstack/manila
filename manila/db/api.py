@@ -1208,31 +1208,34 @@ def share_server_update(context, id, values):
     return IMPL.share_server_update(context, id, values)
 
 
-def share_server_get(context, id, session=None):
+def share_server_get(context, id):
     """Get share server DB record by ID."""
-    return IMPL.share_server_get(context, id, session=session)
+    return IMPL.share_server_get(context, id)
 
 
-def share_server_search_by_identifier(context, identifier, session=None):
+def share_server_search_by_identifier(context, identifier):
     """Search for share servers based on given identifier."""
     return IMPL.share_server_search_by_identifier(
-        context, identifier, session=session)
+        context, identifier,
+    )
 
 
-def share_server_get_all_by_host_and_share_subnet_valid(context, host,
-                                                        share_subnet_id,
-                                                        session=None):
+def share_server_get_all_by_host_and_share_subnet_valid(
+    context, host, share_subnet_id,
+):
     """Get share server DB records by host and share net not error."""
     return IMPL.share_server_get_all_by_host_and_share_subnet_valid(
-        context, host, share_subnet_id, session=session)
+        context, host, share_subnet_id,
+    )
 
 
-def share_server_get_all_by_host_and_share_subnet(context, host,
-                                                  share_subnet_id,
-                                                  session=None):
+def share_server_get_all_by_host_and_share_subnet(
+    context, host, share_subnet_id,
+):
     """Get share server DB records by host and share net."""
     return IMPL.share_server_get_all_by_host_and_share_subnet(
-        context, host, share_subnet_id, session=session)
+        context, host, share_subnet_id,
+    )
 
 
 def share_server_get_all(context):
