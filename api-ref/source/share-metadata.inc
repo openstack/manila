@@ -40,7 +40,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_3
+   - metadata: metadata
 
 Response example
 ----------------
@@ -127,7 +127,7 @@ Request
 
    - project_id: project_id_path
    - share_id: share_id
-   - metadata: metadata_2
+   - metadata: metadata_request
 
 
 Request example
@@ -180,7 +180,7 @@ Request
 
    - project_id: project_id_path
    - share_id: share_id
-   - metadata: metadata_2
+   - metadata: metadata_request
 
 
 Request example
@@ -194,7 +194,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_3
+   - metadata: metadata
 
 Response example
 ----------------
