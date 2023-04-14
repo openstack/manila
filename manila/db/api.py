@@ -1047,13 +1047,6 @@ def share_network_update_security_service(context, id,
         context, id, current_security_service_id, new_security_service_id)
 
 
-def count_share_networks(context, project_id, user_id=None,
-                         share_type_id=None, session=None):
-    return IMPL.count_share_networks(
-        context, project_id, user_id=user_id, share_type_id=share_type_id,
-        session=session,
-    )
-
 ##################
 
 

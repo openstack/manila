@@ -403,70 +403,68 @@ def ensure_model_dict_has_id(model_dict):
     return model_dict
 
 
-def _sync_shares(context, project_id, user_id, session, share_type_id=None):
-    (shares, gigs) = share_data_get_for_project(
+def _sync_shares(context, project_id, user_id, share_type_id=None):
+    shares, _ = _share_data_get_for_project(
         context, project_id, user_id, share_type_id=share_type_id,
-        session=session)
+    )
     return {'shares': shares}
 
 
-def _sync_snapshots(context, project_id, user_id, session, share_type_id=None):
-    (snapshots, gigs) = snapshot_data_get_for_project(
+def _sync_snapshots(context, project_id, user_id, share_type_id=None):
+    snapshots, _ = _snapshot_data_get_for_project(
         context, project_id, user_id, share_type_id=share_type_id,
-        session=session)
+    )
     return {'snapshots': snapshots}
 
 
-def _sync_gigabytes(context, project_id, user_id, session, share_type_id=None):
-    _junk, share_gigs = share_data_get_for_project(
+def _sync_gigabytes(context, project_id, user_id, share_type_id=None):
+    _, share_gigs = _share_data_get_for_project(
         context, project_id, user_id, share_type_id=share_type_id,
-        session=session)
-    return {"gigabytes": share_gigs}
+    )
+    return {'gigabytes': share_gigs}
 
 
-def _sync_snapshot_gigabytes(context, project_id, user_id, session,
-                             share_type_id=None):
-    _junk, snapshot_gigs = snapshot_data_get_for_project(
+def _sync_snapshot_gigabytes(context, project_id, user_id, share_type_id=None):
+    _, snapshot_gigs = _snapshot_data_get_for_project(
         context, project_id, user_id, share_type_id=share_type_id,
-        session=session)
-    return {"snapshot_gigabytes": snapshot_gigs}
+    )
+    return {'snapshot_gigabytes': snapshot_gigs}
 
 
-def _sync_share_networks(context, project_id, user_id, session,
-                         share_type_id=None):
-    share_networks_count = count_share_networks(
+def _sync_share_networks(context, project_id, user_id, share_type_id=None):
+    share_networks_count = _count_share_networks(
         context, project_id, user_id, share_type_id=share_type_id,
-        session=session)
+    )
     return {'share_networks': share_networks_count}
 
 
-def _sync_share_groups(context, project_id, user_id, session,
-                       share_type_id=None):
-    share_groups_count = count_share_groups(
+def _sync_share_groups(context, project_id, user_id, share_type_id=None):
+    share_groups_count = _count_share_groups(
         context, project_id, user_id, share_type_id=share_type_id,
-        session=session)
+    )
     return {'share_groups': share_groups_count}
 
 
-def _sync_share_group_snapshots(context, project_id, user_id, session,
-                                share_type_id=None):
-    share_group_snapshots_count = count_share_group_snapshots(
+def _sync_share_group_snapshots(
+    context, project_id, user_id, share_type_id=None,
+):
+    share_group_snapshots_count = _count_share_group_snapshots(
         context, project_id, user_id, share_type_id=share_type_id,
-        session=session)
+    )
     return {'share_group_snapshots': share_group_snapshots_count}
 
 
-def _sync_share_replicas(context, project_id, user_id, session,
-                         share_type_id=None):
-    share_replicas_count, _junk = share_replica_data_get_for_project(
-        context, project_id, user_id, session, share_type_id=share_type_id)
+def _sync_share_replicas(context, project_id, user_id, share_type_id=None):
+    share_replicas_count, _ = _share_replica_data_get_for_project(
+        context, project_id, user_id, share_type_id=share_type_id,
+    )
     return {'share_replicas': share_replicas_count}
 
 
-def _sync_replica_gigabytes(context, project_id, user_id, session,
-                            share_type_id=None):
-    _junk, replica_gigs = share_replica_data_get_for_project(
-        context, project_id, user_id, session, share_type_id=share_type_id)
+def _sync_replica_gigabytes(context, project_id, user_id, share_type_id=None):
+    _, replica_gigs = _share_replica_data_get_for_project(
+        context, project_id, user_id, share_type_id=share_type_id,
+    )
     return {'replica_gigabytes': replica_gigs}
 
 
@@ -981,11 +979,8 @@ def quota_usage_get_all_by_project_and_share_type(context, project_id,
         context, project_id, share_type_id=share_type_id)
 
 
-# TODO(stephenfin): Remove session argument once all callers have been
-# converted
 def _quota_usage_create(context, project_id, user_id, resource, in_use,
-                        reserved, until_refresh, share_type_id=None,
-                        session=None):
+                        reserved, until_refresh, share_type_id=None):
     quota_usage_ref = models.QuotaUsage()
     if share_type_id:
         quota_usage_ref.share_type_id = share_type_id
@@ -999,7 +994,7 @@ def _quota_usage_create(context, project_id, user_id, resource, in_use,
     # updated_at is needed for judgement of max_age
     quota_usage_ref.updated_at = timeutils.utcnow()
 
-    quota_usage_ref.save(session=session)
+    quota_usage_ref.save(session=context.session)
 
     return quota_usage_ref
 
@@ -1017,7 +1012,6 @@ def quota_usage_create(context, project_id, user_id, resource, in_use,
         reserved,
         until_refresh,
         share_type_id=share_type_id,
-        session=context.session,
     )
 
 
@@ -1049,7 +1043,7 @@ def quota_usage_update(context, project_id, user_id, resource,
 
 
 def _reservation_create(context, uuid, usage, project_id, user_id, resource,
-                        delta, expire, share_type_id=None, session=None):
+                        delta, expire, share_type_id=None):
     reservation_ref = models.Reservation()
     reservation_ref.uuid = uuid
     reservation_ref.usage_id = usage['id']
@@ -1061,7 +1055,7 @@ def _reservation_create(context, uuid, usage, project_id, user_id, resource,
     reservation_ref.resource = resource
     reservation_ref.delta = delta
     reservation_ref.expire = expire
-    reservation_ref.save(session=session)
+    reservation_ref.save(session=context.session)
     return reservation_ref
 
 
@@ -1073,9 +1067,9 @@ def _reservation_create(context, uuid, usage, project_id, user_id, resource,
 # code always acquires the lock on quota_usages before acquiring the lock
 # on reservations.
 
-def _get_share_type_quota_usages(context, session, project_id, share_type_id):
+def _get_share_type_quota_usages(context, project_id, share_type_id):
     rows = model_query(
-        context, models.QuotaUsage, read_deleted="no", session=session,
+        context, models.QuotaUsage, read_deleted="no",
     ).filter(
         models.QuotaUsage.project_id == project_id,
         models.QuotaUsage.share_type_id == share_type_id,
@@ -1083,27 +1077,29 @@ def _get_share_type_quota_usages(context, session, project_id, share_type_id):
     return {row.resource: row for row in rows}
 
 
-def _get_user_quota_usages(context, session, project_id, user_id):
+def _get_user_quota_usages(context, project_id, user_id):
     # Broken out for testability
-    rows = (model_query(context, models.QuotaUsage,
-                        read_deleted="no",
-                        session=session).
-            filter_by(project_id=project_id).
-            filter(or_(models.QuotaUsage.user_id == user_id,
-                       models.QuotaUsage.user_id is None)).
-            with_for_update().
-            all())
+    rows = model_query(
+        context, models.QuotaUsage, read_deleted="no",
+    ).filter_by(
+        project_id=project_id,
+    ).filter(
+        or_(
+            models.QuotaUsage.user_id == user_id,
+            models.QuotaUsage.user_id is None,
+        )
+    ).with_for_update().all()
     return {row.resource: row for row in rows}
 
 
-def _get_project_quota_usages(context, session, project_id):
-    rows = (model_query(context, models.QuotaUsage,
-                        read_deleted="no",
-                        session=session).
-            filter_by(project_id=project_id).
-            filter(models.QuotaUsage.share_type_id is None).
-            with_for_update().
-            all())
+def _get_project_quota_usages(context, project_id):
+    rows = model_query(
+        context, models.QuotaUsage, read_deleted="no",
+    ).filter_by(
+        project_id=project_id,
+    ).filter(
+        models.QuotaUsage.share_type_id is None,
+    ).with_for_update().all()
     result = dict()
     # Get the total count of in_use,reserved
     for row in rows:
@@ -1112,12 +1108,17 @@ def _get_project_quota_usages(context, session, project_id):
             result[row.resource]['reserved'] += row.reserved
             result[row.resource]['total'] += (row.in_use + row.reserved)
         else:
-            result[row.resource] = dict(in_use=row.in_use,
-                                        reserved=row.reserved,
-                                        total=row.in_use + row.reserved)
+            result[row.resource] = dict(
+                in_use=row.in_use,
+                reserved=row.reserved,
+                total=row.in_use + row.reserved,
+            )
     return result
 
 
+# NOTE(stephenfin): We intentionally don't wrap the outer function here since
+# we call the innter function multiple times and want each call to be in a
+# separate transaction
 @require_context
 def quota_reserve(context, resources, project_quotas, user_quotas,
                   share_type_quotas, deltas, expire, until_refresh,
@@ -1135,8 +1136,10 @@ def quota_reserve(context, resources, project_quotas, user_quotas,
                 share_type_id=share_type_id,
                 overquota_allowed=overquota_allowed)
         except exception.OverQuota:
+            # rollback previous reservations
             with excutils.save_and_reraise_exception():
-                # rollback previous reservations
+                # We call a public method since we haven't wrapped this, the
+                # caller, and we want to run in a different transaction
                 reservation_rollback(
                     context, user_reservations,
                     project_id=project_id, user_id=user_id)
@@ -1144,212 +1147,222 @@ def quota_reserve(context, resources, project_quotas, user_quotas,
     return user_reservations
 
 
+# NOTE(stephenfin): Per above, we wrap the inner method here
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def _quota_reserve(context, resources, project_quotas, user_or_st_quotas,
                    deltas, expire, until_refresh,
                    max_age, project_id=None, user_id=None, share_type_id=None,
                    overquota_allowed=False):
     elevated = context.elevated()
-    session = get_session()
-    with session.begin():
 
-        if project_id is None:
-            project_id = context.project_id
-        if share_type_id:
-            user_or_st_usages = _get_share_type_quota_usages(
-                context, session, project_id, share_type_id)
-        else:
-            user_id = user_id if user_id else context.user_id
-            user_or_st_usages = _get_user_quota_usages(
-                context, session, project_id, user_id)
+    if project_id is None:
+        project_id = context.project_id
+    if share_type_id:
+        user_or_st_usages = _get_share_type_quota_usages(
+            context, project_id, share_type_id,
+        )
+    else:
+        user_id = user_id if user_id else context.user_id
+        user_or_st_usages = _get_user_quota_usages(
+            context, project_id, user_id,
+        )
 
-        # Get the current usages
-        project_usages = _get_project_quota_usages(
-            context, session, project_id)
+    # Get the current usages
+    project_usages = _get_project_quota_usages(context, project_id)
 
-        # Handle usage refresh
-        work = set(deltas.keys())
-        while work:
-            resource = work.pop()
+    # Handle usage refresh
+    work = set(deltas.keys())
+    while work:
+        resource = work.pop()
 
-            # Do we need to refresh the usage?
-            refresh = False
-            if ((resource not in PER_PROJECT_QUOTAS) and
-                    (resource not in user_or_st_usages)):
-                user_or_st_usages[resource] = _quota_usage_create(
-                    elevated,
-                    project_id,
-                    user_id,
-                    resource,
-                    0, 0,
-                    until_refresh or None,
-                    share_type_id=share_type_id,
-                    session=session)
+        # Do we need to refresh the usage?
+        refresh = False
+        if ((resource not in PER_PROJECT_QUOTAS) and
+                (resource not in user_or_st_usages)):
+            user_or_st_usages[resource] = _quota_usage_create(
+                elevated,
+                project_id,
+                user_id,
+                resource,
+                0, 0,
+                until_refresh or None,
+                share_type_id=share_type_id,
+            )
+            refresh = True
+        elif ((resource in PER_PROJECT_QUOTAS) and
+                (resource not in user_or_st_usages)):
+            user_or_st_usages[resource] = _quota_usage_create(
+                elevated,
+                project_id,
+                None,
+                resource,
+                0, 0,
+                until_refresh or None,
+                share_type_id=share_type_id,
+            )
+            refresh = True
+        elif user_or_st_usages[resource].in_use < 0:
+            # Negative in_use count indicates a desync, so try to
+            # heal from that...
+            refresh = True
+        elif user_or_st_usages[resource].until_refresh is not None:
+            user_or_st_usages[resource].until_refresh -= 1
+            if user_or_st_usages[resource].until_refresh <= 0:
                 refresh = True
-            elif ((resource in PER_PROJECT_QUOTAS) and
-                    (resource not in user_or_st_usages)):
-                user_or_st_usages[resource] = _quota_usage_create(
-                    elevated,
-                    project_id,
-                    None,
-                    resource,
-                    0, 0,
-                    until_refresh or None,
-                    share_type_id=share_type_id,
-                    session=session)
-                refresh = True
-            elif user_or_st_usages[resource].in_use < 0:
-                # Negative in_use count indicates a desync, so try to
-                # heal from that...
-                refresh = True
-            elif user_or_st_usages[resource].until_refresh is not None:
-                user_or_st_usages[resource].until_refresh -= 1
-                if user_or_st_usages[resource].until_refresh <= 0:
-                    refresh = True
-            elif max_age and (user_or_st_usages[resource].updated_at -
-                              timeutils.utcnow()).seconds >= max_age:
-                refresh = True
+        elif max_age and (user_or_st_usages[resource].updated_at -
+                          timeutils.utcnow()).seconds >= max_age:
+            refresh = True
 
-            # OK, refresh the usage
-            if refresh:
-                # Grab the sync routine
-                sync = QUOTA_SYNC_FUNCTIONS[resources[resource].sync]
+        # OK, refresh the usage
+        if refresh:
+            # Grab the sync routine
+            sync = QUOTA_SYNC_FUNCTIONS[resources[resource].sync]
 
-                updates = sync(
-                    elevated, project_id, user_id,
-                    share_type_id=share_type_id, session=session)
-                for res, in_use in updates.items():
-                    # Make sure we have a destination for the usage!
-                    if ((res not in PER_PROJECT_QUOTAS) and
-                            (res not in user_or_st_usages)):
-                        user_or_st_usages[res] = _quota_usage_create(
-                            elevated,
-                            project_id,
-                            user_id,
-                            res,
-                            0, 0,
-                            until_refresh or None,
-                            share_type_id=share_type_id,
-                            session=session)
-                    if ((res in PER_PROJECT_QUOTAS) and
-                            (res not in user_or_st_usages)):
-                        user_or_st_usages[res] = _quota_usage_create(
-                            elevated,
-                            project_id,
-                            None,
-                            res,
-                            0, 0,
-                            until_refresh or None,
-                            share_type_id=share_type_id,
-                            session=session)
+            updates = sync(
+                elevated,
+                project_id,
+                user_id,
+                share_type_id=share_type_id,
+            )
+            for res, in_use in updates.items():
+                # Make sure we have a destination for the usage!
+                if ((res not in PER_PROJECT_QUOTAS) and
+                        (res not in user_or_st_usages)):
+                    user_or_st_usages[res] = _quota_usage_create(
+                        elevated,
+                        project_id,
+                        user_id,
+                        res,
+                        0, 0,
+                        until_refresh or None,
+                        share_type_id=share_type_id,
+                    )
+                if ((res in PER_PROJECT_QUOTAS) and
+                        (res not in user_or_st_usages)):
+                    user_or_st_usages[res] = _quota_usage_create(
+                        elevated,
+                        project_id,
+                        None,
+                        res,
+                        0, 0,
+                        until_refresh or None,
+                        share_type_id=share_type_id,
+                    )
 
-                    if user_or_st_usages[res].in_use != in_use:
-                        LOG.debug(
-                            'quota_usages out of sync, updating. '
-                            'project_id: %(project_id)s, '
-                            'user_id: %(user_id)s, '
-                            'share_type_id: %(share_type_id)s, '
-                            'resource: %(res)s, '
-                            'tracked usage: %(tracked_use)s, '
-                            'actual usage: %(in_use)s',
-                            {'project_id': project_id,
-                             'user_id': user_id,
-                             'share_type_id': share_type_id,
-                             'res': res,
-                             'tracked_use': user_or_st_usages[res].in_use,
-                             'in_use': in_use})
+                if user_or_st_usages[res].in_use != in_use:
+                    LOG.debug(
+                        'quota_usages out of sync, updating. '
+                        'project_id: %(project_id)s, '
+                        'user_id: %(user_id)s, '
+                        'share_type_id: %(share_type_id)s, '
+                        'resource: %(res)s, '
+                        'tracked usage: %(tracked_use)s, '
+                        'actual usage: %(in_use)s',
+                        {'project_id': project_id,
+                         'user_id': user_id,
+                         'share_type_id': share_type_id,
+                         'res': res,
+                         'tracked_use': user_or_st_usages[res].in_use,
+                         'in_use': in_use})
 
-                    # Update the usage
-                    user_or_st_usages[res].in_use = in_use
-                    user_or_st_usages[res].until_refresh = (
-                        until_refresh or None)
+                # Update the usage
+                user_or_st_usages[res].in_use = in_use
+                user_or_st_usages[res].until_refresh = (
+                    until_refresh or None)
 
-                    # Because more than one resource may be refreshed
-                    # by the call to the sync routine, and we don't
-                    # want to double-sync, we make sure all refreshed
-                    # resources are dropped from the work set.
-                    work.discard(res)
+                # Because more than one resource may be refreshed
+                # by the call to the sync routine, and we don't
+                # want to double-sync, we make sure all refreshed
+                # resources are dropped from the work set.
+                work.discard(res)
 
-                    # NOTE(Vek): We make the assumption that the sync
-                    #            routine actually refreshes the
-                    #            resources that it is the sync routine
-                    #            for.  We don't check, because this is
-                    #            a best-effort mechanism.
+                # NOTE(Vek): We make the assumption that the sync
+                #            routine actually refreshes the
+                #            resources that it is the sync routine
+                #            for.  We don't check, because this is
+                #            a best-effort mechanism.
 
-        # Check for deltas that would go negative
-        unders = [res for res, delta in deltas.items()
-                  if delta < 0 and
-                  delta + user_or_st_usages[res].in_use < 0]
+    # Check for deltas that would go negative
+    unders = [res for res, delta in deltas.items()
+              if delta < 0 and
+              delta + user_or_st_usages[res].in_use < 0]
 
-        # Now, let's check the quotas
-        # NOTE(Vek): We're only concerned about positive increments.
-        #            If a project has gone over quota, we want them to
-        #            be able to reduce their usage without any
-        #            problems.
-        for key, value in user_or_st_usages.items():
-            if key not in project_usages:
-                project_usages[key] = value
-        overs = [res for res, delta in deltas.items()
-                 if user_or_st_quotas[res] >= 0 and delta >= 0 and
-                 (0 <= project_quotas[res] < delta +
-                  project_usages[res]['total'] or
-                  user_or_st_quotas[res] < delta +
-                  user_or_st_usages[res].total)]
+    # Now, let's check the quotas
+    # NOTE(Vek): We're only concerned about positive increments.
+    #            If a project has gone over quota, we want them to
+    #            be able to reduce their usage without any
+    #            problems.
+    for key, value in user_or_st_usages.items():
+        if key not in project_usages:
+            project_usages[key] = value
+    overs = [res for res, delta in deltas.items()
+             if user_or_st_quotas[res] >= 0 and delta >= 0 and
+             (0 <= project_quotas[res] < delta +
+              project_usages[res]['total'] or
+              user_or_st_quotas[res] < delta +
+              user_or_st_usages[res].total)]
 
-        # NOTE(carloss): If OverQuota is allowed, there is no problem to exceed
-        # the quotas, so we reset the overs list and LOG it.
-        if overs and overquota_allowed:
-            msg = _("The service has identified one or more exceeded "
-                    "quotas. Please check the quotas for project "
-                    "%(project_id)s, user %(user_id)s and share type "
-                    "%(share_type_id)s, and adjust them if "
-                    "necessary.") % {
-                "project_id": project_id,
-                "user_id": user_id,
-                "share_type_id": share_type_id
-            }
-            LOG.warning(msg)
-            overs = []
+    # NOTE(carloss): If OverQuota is allowed, there is no problem to exceed
+    # the quotas, so we reset the overs list and LOG it.
+    if overs and overquota_allowed:
+        msg = _("The service has identified one or more exceeded "
+                "quotas. Please check the quotas for project "
+                "%(project_id)s, user %(user_id)s and share type "
+                "%(share_type_id)s, and adjust them if "
+                "necessary.") % {
+            "project_id": project_id,
+            "user_id": user_id,
+            "share_type_id": share_type_id
+        }
+        LOG.warning(msg)
+        overs = []
 
-        # NOTE(Vek): The quota check needs to be in the transaction,
-        #            but the transaction doesn't fail just because
-        #            we're over quota, so the OverQuota raise is
-        #            outside the transaction.  If we did the raise
-        #            here, our usage updates would be discarded, but
-        #            they're not invalidated by being over-quota.
+    # NOTE(Vek): The quota check needs to be in the transaction,
+    #            but the transaction doesn't fail just because
+    #            we're over quota, so the OverQuota raise is
+    #            outside the transaction.  If we did the raise
+    #            here, our usage updates would be discarded, but
+    #            they're not invalidated by being over-quota.
 
-        # Create the reservations
-        if not overs:
-            reservations = []
-            for res, delta in deltas.items():
-                reservation = _reservation_create(elevated,
-                                                  uuidutils.generate_uuid(),
-                                                  user_or_st_usages[res],
-                                                  project_id,
-                                                  user_id,
-                                                  res, delta, expire,
-                                                  share_type_id=share_type_id,
-                                                  session=session)
-                reservations.append(reservation.uuid)
+    # Create the reservations
+    if not overs:
+        reservations = []
+        for res, delta in deltas.items():
+            reservation = _reservation_create(
+                elevated,
+                uuidutils.generate_uuid(),
+                user_or_st_usages[res],
+                project_id,
+                user_id,
+                res, delta, expire,
+                share_type_id=share_type_id,
+            )
+            reservations.append(reservation.uuid)
 
-                # Also update the reserved quantity
-                # NOTE(Vek): Again, we are only concerned here about
-                #            positive increments.  Here, though, we're
-                #            worried about the following scenario:
-                #
-                #            1) User initiates resize down.
-                #            2) User allocates a new instance.
-                #            3) Resize down fails or is reverted.
-                #            4) User is now over quota.
-                #
-                #            To prevent this, we only update the
-                #            reserved value if the delta is positive.
-                if delta > 0:
-                    user_or_st_usages[res].reserved += delta
+            # Also update the reserved quantity
+            # NOTE(Vek): Again, we are only concerned here about
+            #            positive increments.  Here, though, we're
+            #            worried about the following scenario:
+            #
+            #            1) User initiates resize down.
+            #            2) User allocates a new instance.
+            #            3) Resize down fails or is reverted.
+            #            4) User is now over quota.
+            #
+            #            To prevent this, we only update the
+            #            reserved value if the delta is positive.
+            if delta > 0:
+                user_or_st_usages[res].reserved += delta
 
-        # Apply updates to the usages table
-        for usage_ref in user_or_st_usages.values():
-            session.add(usage_ref)
+    # Apply updates to the usages table
+    for usage_ref in user_or_st_usages.values():
+        context.session.add(usage_ref)
+
+    # NOTE(stephenfin): commit changes before we raise any exceptions
+
+    context.session.commit()
+    context.session.begin()
 
     if unders:
         LOG.warning("Change will make usage less than 0 for the following "
@@ -1367,70 +1380,65 @@ def _quota_reserve(context, resources, project_quotas, user_or_st_quotas,
     return reservations
 
 
-def _quota_reservations_query(session, context, reservations):
+def _quota_reservations_query(context, reservations):
     """Return the relevant reservations."""
-
-    # Get the listed reservations
-    return (model_query(context, models.Reservation,
-                        read_deleted="no",
-                        session=session).
-            filter(models.Reservation.uuid.in_(reservations)).
-            with_for_update())
+    return model_query(
+        context, models.Reservation,
+        read_deleted="no",
+    ).filter(
+        models.Reservation.uuid.in_(reservations),
+    ).with_for_update()
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def reservation_commit(context, reservations, project_id=None, user_id=None,
                        share_type_id=None):
-    session = get_session()
-    with session.begin():
-        if share_type_id:
-            st_usages = _get_share_type_quota_usages(
-                context, session, project_id, share_type_id)
-        else:
-            st_usages = {}
-        user_usages = _get_user_quota_usages(
-            context, session, project_id, user_id)
+    if share_type_id:
+        st_usages = _get_share_type_quota_usages(
+            context, project_id, share_type_id,
+        )
+    else:
+        st_usages = {}
+    user_usages = _get_user_quota_usages(context, project_id, user_id)
 
-        reservation_query = _quota_reservations_query(
-            session, context, reservations)
-        for reservation in reservation_query.all():
-            if reservation['share_type_id']:
-                usages = st_usages
-            else:
-                usages = user_usages
-            usage = usages[reservation.resource]
-            if reservation.delta >= 0:
-                usage.reserved -= reservation.delta
-            usage.in_use += reservation.delta
-        reservation_query.soft_delete(synchronize_session=False)
+    reservation_query = _quota_reservations_query(context, reservations)
+    for reservation in reservation_query.all():
+        if reservation['share_type_id']:
+            usages = st_usages
+        else:
+            usages = user_usages
+        usage = usages[reservation.resource]
+        if reservation.delta >= 0:
+            usage.reserved -= reservation.delta
+        usage.in_use += reservation.delta
+    reservation_query.soft_delete(synchronize_session=False)
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def reservation_rollback(context, reservations, project_id=None, user_id=None,
                          share_type_id=None):
-    session = get_session()
-    with session.begin():
-        if share_type_id:
-            st_usages = _get_share_type_quota_usages(
-                context, session, project_id, share_type_id)
-        else:
-            st_usages = {}
-        user_usages = _get_user_quota_usages(
-            context, session, project_id, user_id)
+    if share_type_id:
+        st_usages = _get_share_type_quota_usages(
+            context, project_id, share_type_id,
+        )
+    else:
+        st_usages = {}
+    user_usages = _get_user_quota_usages(context, project_id, user_id)
 
-        reservation_query = _quota_reservations_query(
-            session, context, reservations)
-        for reservation in reservation_query.all():
-            if reservation['share_type_id']:
-                usages = st_usages
-            else:
-                usages = user_usages
-            usage = usages[reservation.resource]
-            if reservation.delta >= 0:
-                usage.reserved -= reservation.delta
-        reservation_query.soft_delete(synchronize_session=False)
+    reservation_query = _quota_reservations_query(context, reservations)
+    for reservation in reservation_query.all():
+        if reservation['share_type_id']:
+            usages = st_usages
+        else:
+            usages = user_usages
+        usage = usages[reservation.resource]
+        if reservation.delta >= 0:
+            usage.reserved -= reservation.delta
+    reservation_query.soft_delete(synchronize_session=False)
 
 
 @require_admin_context
@@ -2214,14 +2222,15 @@ def share_create(context, share_values, create_share_instance=True):
 
 
 @require_admin_context
-def share_data_get_for_project(context, project_id, user_id,
-                               share_type_id=None, session=None):
-    query = (model_query(context, models.Share,
-                         func.count(models.Share.id),
-                         func.sum(models.Share.size),
-                         read_deleted="no",
-                         session=session).
-             filter_by(project_id=project_id))
+def _share_data_get_for_project(
+    context, project_id, user_id, share_type_id=None,
+):
+    query = model_query(
+        context, models.Share,
+        func.count(models.Share.id),
+        func.sum(models.Share.size),
+        read_deleted="no",
+    ).filter_by(project_id=project_id)
     if share_type_id:
         query = query.join("instances").filter_by(share_type_id=share_type_id)
     elif user_id:
@@ -3254,15 +3263,15 @@ def share_snapshot_create(context, create_values,
 
 
 @require_admin_context
-def snapshot_data_get_for_project(context, project_id, user_id,
-                                  share_type_id=None, session=None):
-    query = (model_query(context, models.ShareSnapshot,
-                         func.count(models.ShareSnapshot.id),
-                         func.sum(models.ShareSnapshot.size),
-                         read_deleted="no",
-                         session=session).
-             filter_by(project_id=project_id))
-
+def _snapshot_data_get_for_project(
+    context, project_id, user_id, share_type_id=None,
+):
+    query = model_query(
+        context, models.ShareSnapshot,
+        func.count(models.ShareSnapshot.id),
+        func.sum(models.ShareSnapshot.size),
+        read_deleted="no",
+    ).filter_by(project_id=project_id)
     if share_type_id:
         query = query.join(
             models.ShareInstance,
@@ -4602,13 +4611,14 @@ def share_network_update_security_service(context, id,
 
 
 @require_context
-def count_share_networks(context, project_id, user_id=None,
-                         share_type_id=None, session=None):
+def _count_share_networks(
+    context, project_id, user_id=None, share_type_id=None,
+):
     query = model_query(
         context, models.ShareNetwork,
         func.count(models.ShareNetwork.id),
         read_deleted="no",
-        session=session).filter_by(project_id=project_id)
+    ).filter_by(project_id=project_id)
     if share_type_id:
         query = query.join("share_instances").filter_by(
             share_type_id=share_type_id)
@@ -5996,13 +6006,12 @@ def get_all_shares_by_share_group(context, share_group_id):
 
 
 @require_context
-def count_share_groups(context, project_id, user_id=None,
-                       share_type_id=None, session=None):
+def _count_share_groups(context, project_id, user_id=None, share_type_id=None):
     query = model_query(
         context, models.ShareGroup,
         func.count(models.ShareGroup.id),
         read_deleted="no",
-        session=session).filter_by(project_id=project_id)
+    ).filter_by(project_id=project_id)
     if share_type_id:
         query = query.join("share_group_share_type_mappings").filter_by(
             share_type_id=share_type_id)
@@ -6012,13 +6021,14 @@ def count_share_groups(context, project_id, user_id=None,
 
 
 @require_context
-def count_share_group_snapshots(context, project_id, user_id=None,
-                                share_type_id=None, session=None):
+def _count_share_group_snapshots(
+    context, project_id, user_id=None, share_type_id=None,
+):
     query = model_query(
         context, models.ShareGroupSnapshot,
         func.count(models.ShareGroupSnapshot.id),
         read_deleted="no",
-        session=session).filter_by(project_id=project_id)
+    ).filter_by(project_id=project_id)
     if share_type_id:
         query = query.join(
             "share_group"
@@ -6031,20 +6041,22 @@ def count_share_group_snapshots(context, project_id, user_id=None,
 
 
 @require_context
-@context_manager.reader
-def share_replica_data_get_for_project(context, project_id, user_id=None,
-                                       session=None, share_type_id=None):
-    session = session or get_session()
+def _share_replica_data_get_for_project(
+    context, project_id, user_id=None, share_type_id=None,
+):
     query = model_query(
         context, models.ShareInstance,
         func.count(models.ShareInstance.id),
         func.sum(models.Share.size),
         read_deleted="no",
-        session=session).join(
+    ).join(
         models.Share,
-        models.ShareInstance.share_id == models.Share.id).filter(
-        models.Share.project_id == project_id).filter(
-        models.ShareInstance.replica_state.isnot(None))
+        models.ShareInstance.share_id == models.Share.id
+    ).filter(
+        models.Share.project_id == project_id
+    ).filter(
+        models.ShareInstance.replica_state.isnot(None)
+    )
 
     if share_type_id:
         query = query.filter(

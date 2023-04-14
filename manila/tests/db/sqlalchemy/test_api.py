@@ -4072,20 +4072,22 @@ class ReservationDatabaseAPITest(test.TestCase):
         quota_usage = db_api.quota_usage_create(self.context, 'fake_project',
                                                 'fake_user', 'fake_resource',
                                                 0, 12, until_refresh=None)
-        session = db_api.get_session()
-        for time_s in (-1, 1):
-            reservation = db_api._reservation_create(
-                self.context, 'fake_uuid',
-                quota_usage, 'fake_project',
-                'fake_user', 'fake_resource', 10,
-                timeutils.utcnow() +
-                datetime.timedelta(days=time_s),
-                session=session)
+        with db_api.context_manager.writer.using(self.context):
+            for time_s in (-1, 1):
+                reservation = db_api._reservation_create(
+                    self.context, 'fake_uuid',
+                    quota_usage, 'fake_project',
+                    'fake_user', 'fake_resource', 10,
+                    timeutils.utcnow() +
+                    datetime.timedelta(days=time_s),
+                )
 
         db_api.reservation_expire(self.context)
 
-        reservations = db_api._quota_reservations_query(session, self.context,
-                                                        ['fake_uuid']).all()
+        with db_api.context_manager.reader.using(self.context):
+            reservations = db_api._quota_reservations_query(
+                self.context, ['fake_uuid'],
+            ).all()
         quota_usage = db_api.quota_usage_get(self.context, 'fake_project',
                                              'fake_resource')
         self.assertEqual(1, len(reservations))
@@ -4315,9 +4317,10 @@ class ShareTypeAPITestCase(test.TestCase):
                 project_quotas, deltas, expire, False, 30,
                 project_id='fake-project-id', share_type_id=share_type['id'])
 
-            db_session = db_api.get_session()
-            q_reservations = db_api._quota_reservations_query(
-                db_session, self.ctxt, reservation_uuids).all()
+            with db_api.context_manager.reader.using(self.ctxt):
+                q_reservations = db_api._quota_reservations_query(
+                    self.ctxt, reservation_uuids,
+                ).all()
             # There should be 2 "user" reservations and 2 "share-type"
             # quota reservations
             self.assertEqual(4, len(q_reservations))
@@ -4374,8 +4377,10 @@ class ShareTypeAPITestCase(test.TestCase):
                                  'share_type_id': share_type['id']}
             self.assertDictEqual(expected_q_usages, q_usages)
         if reservations:
-            q_reservations = db_api._quota_reservations_query(
-                db_session, self.ctxt, reservation_uuids).all()
+            with db_api.context_manager.reader.using(self.ctxt):
+                q_reservations = db_api._quota_reservations_query(
+                    self.ctxt, reservation_uuids,
+                ).all()
             # just "user" quota reservations should be left, since we didn't
             # clean them up.
             self.assertEqual(2, len(q_reservations))
@@ -4424,9 +4429,11 @@ class ShareTypeAPITestCase(test.TestCase):
         if share_type_id:
             kwargs.update({'share_type_id': share_type_id})
 
-        total_amount, total_size = db_api.share_replica_data_get_for_project(
-            self.ctxt, project_id, **kwargs)
-        self.assertEqual(expected_result, total_amount)
+        with db_api.context_manager.reader.using(self.ctxt):
+            total_amt, total_size = db_api._share_replica_data_get_for_project(
+                self.ctxt, project_id, **kwargs,
+            )
+        self.assertEqual(expected_result, total_amt)
         self.assertEqual(expected_result, total_size)
 
     def test_share_type_get_by_name_or_id_found_by_id(self):
