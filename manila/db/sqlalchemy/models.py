@@ -27,6 +27,7 @@ from sqlalchemy import Column, Integer, String, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import orm
 from sqlalchemy import ForeignKey, DateTime, Boolean, Enum
+from sqlalchemy_utils import generic_repr
 
 from manila.common import constants
 
@@ -35,6 +36,7 @@ BASE = declarative_base()
 LOG = log.getLogger(__name__)
 
 
+@generic_repr
 class ManilaBase(models.ModelBase,
                  models.TimestampMixin,
                  models.SoftDeleteMixin):
