@@ -1,0 +1,98 @@
+{
+    "name": "Env8-SP-SW_SSD-1",
+    "rebuildIoPriorityPolicy": "limitNumOfConcurrentIos",
+    "rebalanceIoPriorityPolicy": "favorAppIos",
+    "vtreeMigrationIoPriorityPolicy": "favorAppIos",
+    "protectedMaintenanceModeIoPriorityPolicy": "limitNumOfConcurrentIos",
+    "rebuildIoPriorityNumOfConcurrentIosPerDevice": 1,
+    "rebalanceIoPriorityNumOfConcurrentIosPerDevice": 1,
+    "vtreeMigrationIoPriorityNumOfConcurrentIosPerDevice": 1,
+    "protectedMaintenanceModeIoPriorityNumOfConcurrentIosPerDevice": 1,
+    "rebuildIoPriorityBwLimitPerDeviceInKbps": 10240,
+    "rebalanceIoPriorityBwLimitPerDeviceInKbps": 10240,
+    "vtreeMigrationIoPriorityBwLimitPerDeviceInKbps": 10240,
+    "protectedMaintenanceModeIoPriorityBwLimitPerDeviceInKbps": 10240,
+    "rebuildIoPriorityAppIopsPerDeviceThreshold": null,
+    "rebalanceIoPriorityAppIopsPerDeviceThreshold": null,
+    "vtreeMigrationIoPriorityAppIopsPerDeviceThreshold": null,
+    "protectedMaintenanceModeIoPriorityAppIopsPerDeviceThreshold": null,
+    "rebuildIoPriorityAppBwPerDeviceThresholdInKbps": null,
+    "rebalanceIoPriorityAppBwPerDeviceThresholdInKbps": null,
+    "zeroPaddingEnabled": true,
+    "vtreeMigrationIoPriorityAppBwPerDeviceThresholdInKbps": null,
+    "protectedMaintenanceModeIoPriorityAppBwPerDeviceThresholdInKbps": null,
+    "rebuildIoPriorityQuietPeriodInMsec": null,
+    "rebalanceIoPriorityQuietPeriodInMsec": null,
+    "vtreeMigrationIoPriorityQuietPeriodInMsec": null,
+    "protectedMaintenanceModeIoPriorityQuietPeriodInMsec": null,
+    "useRmcache": false,
+    "backgroundScannerMode": "DataComparison",
+    "backgroundScannerBWLimitKBps": 3072,
+    "fglAccpId": null,
+    "fglMetadataSizeXx100": null,
+    "fglNvdimmWriteCacheSizeInMb": null,
+    "fglNvdimmMetadataAmortizationX100": null,
+    "mediaType": "SSD",
+    "rmcacheWriteHandlingMode": "Cached",
+    "checksumEnabled": false,
+    "rebalanceEnabled": true,
+    "fragmentationEnabled": true,
+    "numOfParallelRebuildRebalanceJobsPerDevice": 2,
+    "bgScannerCompareErrorAction": "ReportAndFix",
+    "bgScannerReadErrorAction": "ReportAndFix",
+    "externalAccelerationType": "None",
+    "compressionMethod": "Invalid",
+    "fglExtraCapacity": null,
+    "fglOverProvisioningFactor": null,
+    "fglWriteAtomicitySize": null,
+    "fglMaxCompressionRatio": null,
+    "fglPerfProfile": null,
+    "replicationCapacityMaxRatio": 35,
+    "persistentChecksumEnabled": true,
+    "persistentChecksumState": "Protected",
+    "persistentChecksumBuilderLimitKb": 3072,
+    "protectionDomainId": "95c5a8b100000000",
+    "rebuildEnabled": true,
+    "dataLayout": "MediumGranularity",
+    "persistentChecksumValidateOnRead": false,
+    "spClass": "Nas",
+    "addressSpaceUsage": "Normal",
+    "useRfcache": false,
+    "sparePercentage": 34,
+    "capacityAlertHighThreshold": 66,
+    "capacityAlertCriticalThreshold": 83,
+    "capacityUsageState": "Normal",
+    "addressSpaceUsageType": "DeviceCapacityLimit",
+    "capacityUsageType": "NetCapacity",
+    "id": "28515fee00000000",
+    "links": [
+        {
+            "rel": "self",
+            "href": "/api/instances/StoragePool::28515fee00000000"
+        },
+        {
+            "rel": "/api/StoragePool/relationship/Statistics",
+            "href": "/api/instances/StoragePool::28515fee00000000/relationships/Statistics"
+        },
+        {
+            "rel": "/api/StoragePool/relationship/SpSds",
+            "href": "/api/instances/StoragePool::28515fee00000000/relationships/SpSds"
+        },
+        {
+            "rel": "/api/StoragePool/relationship/Volume",
+            "href": "/api/instances/StoragePool::28515fee00000000/relationships/Volume"
+        },
+        {
+            "rel": "/api/StoragePool/relationship/Device",
+            "href": "/api/instances/StoragePool::28515fee00000000/relationships/Device"
+        },
+        {
+            "rel": "/api/StoragePool/relationship/VTree",
+            "href": "/api/instances/StoragePool::28515fee00000000/relationships/VTree"
+        },
+        {
+            "rel": "/api/parent/relationship/protectionDomainId",
+            "href": "/api/instances/ProtectionDomain::95c5a8b100000000"
+        }
+    ]
+}

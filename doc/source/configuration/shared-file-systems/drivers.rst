@@ -12,6 +12,7 @@ Share drivers
 
    drivers/generic-driver.rst
    drivers/cephfs-native-driver.rst
+   drivers/dell-emc-powerflex-driver.rst
    drivers/dell-emc-powermax-driver.rst
    drivers/dell-emc-unity-driver.rst
    drivers/dell-emc-vnx-driver.rst

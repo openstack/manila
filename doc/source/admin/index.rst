@@ -86,6 +86,7 @@ each back end.
    emc_vnx_driver
    ../configuration/shared-file-systems/drivers/dell-emc-unity-driver
    ../configuration/shared-file-systems/drivers/dell-emc-powerstore-driver
+   ../configuration/shared-file-systems/drivers/dell-emc-powerflex-driver
    generic_driver
    glusterfs_driver
    glusterfs_native_driver

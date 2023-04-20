@@ -1,0 +1,20 @@
+{
+    "id": "6433a2b2-6d60-f737-9f3b-2a50fb1ccff3",
+    "file_system_id": "6432b79e-1cc3-0414-3ffd-2a50fb1ccff3",
+    "name": "Manila-UT-filesystem",
+    "path": "/Manila-UT-filesystem",
+    "description": null,
+    "default_access": "NO_ACCESS",
+    "min_security": "SYS",
+    "nfs_owner_username": "root",
+    "no_access_hosts": [],
+    "read_only_hosts": [],
+    "read_only_root_hosts": [],
+    "read_write_hosts": [],
+    "read_write_root_hosts": [],
+    "anonymous_UID": -2,
+    "anonymous_GID": -2,
+    "is_no_SUID": false,
+    "default_access_l10n": null,
+    "min_security_l10n": null
+}

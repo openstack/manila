@@ -42,7 +42,7 @@ EMC_NAS_OPTS = [
     cfg.StrOpt('emc_share_backend',
                ignore_case=True,
                choices=['isilon', 'vnx', 'unity', 'vmax', 'powermax',
-                        'powerstore'],
+                        'powerstore', 'powerflex'],
                help='Share backend.'),
     cfg.StrOpt('emc_nas_root_dir',
                help='The root directory where shares will be located.'),
@@ -82,9 +82,11 @@ class EMCShareDriver(driver.ShareDriver):
                         "OpenStack. After that, only "
                         "'emc_share_backend=powermax' will be excepted.")
             self.backend_name = 'powermax'
+        LOG.info("BACKEND IS: %s", self.backend_name)
         self.plugin = self.plugin_manager.load_plugin(
             self.backend_name,
             configuration=self.configuration)
+        LOG.info(f"PLUGIN HAS: {self.plugin.__dict__}")
         super(EMCShareDriver, self).__init__(
             self.plugin.driver_handles_share_servers, *args, **kwargs)
 
@@ -284,6 +286,7 @@ class EMCShareDriver(driver.ShareDriver):
             revert_to_snapshot_support=self.revert_to_snap_support)
         self.plugin.update_share_stats(data)
         super(EMCShareDriver, self)._update_share_stats(data)
+        LOG.info(f"Updated share stats: {self._stats}")
 
     def get_network_allocations_number(self):
         """Returns number of network allocations for creating VIFs."""

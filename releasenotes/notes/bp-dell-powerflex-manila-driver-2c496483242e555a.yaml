@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added a new Manila driver to support Dell PowerFlex storage backend.
+    It supports the minimum set of Manila features.
