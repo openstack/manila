@@ -6821,3 +6821,37 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             '/storage/volumes/', 'get', query=fake_query)
 
         self.assertEqual(expected, result)
+
+    @ddt.data(fake.CIFS_SECURITY_SERVICE, fake.CIFS_SECURITY_SERVICE_3)
+    def test_configure_active_directory_credential_error(self,
+                                                         security_service):
+        msg = "could not authenticate"
+        fake_security = copy.deepcopy(security_service)
+
+        self.mock_object(self.client, 'configure_dns')
+        self.mock_object(self.client, 'set_preferred_dc')
+        self.mock_object(self.client, '_get_cifs_server_name')
+        self.mock_object(self.client, 'send_request',
+                         self._mock_api_error(code=netapp_api.api.EAPIERROR,
+                                              message=msg))
+        self.assertRaises(exception.SecurityServiceFailedAuth,
+                          self.client.configure_active_directory,
+                          fake_security,
+                          fake.VSERVER_NAME)
+
+    @ddt.data(fake.CIFS_SECURITY_SERVICE, fake.CIFS_SECURITY_SERVICE_3)
+    def test_configure_active_directory_user_privilege_error(self,
+                                                             security_service):
+        msg = "insufficient access"
+        fake_security = copy.deepcopy(security_service)
+
+        self.mock_object(self.client, 'configure_dns')
+        self.mock_object(self.client, 'set_preferred_dc')
+        self.mock_object(self.client, '_get_cifs_server_name')
+        self.mock_object(self.client, 'send_request',
+                         self._mock_api_error(code=netapp_api.api.EAPIERROR,
+                                              message=msg))
+        self.assertRaises(exception.SecurityServiceFailedAuth,
+                          self.client.configure_active_directory,
+                          fake_security,
+                          fake.VSERVER_NAME)

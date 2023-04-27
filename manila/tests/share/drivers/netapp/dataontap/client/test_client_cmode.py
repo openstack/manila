@@ -9113,3 +9113,29 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'svm-migration-get-progress', api_args=api_args, use_zapi=False)
 
         self.assertEqual(expected, result)
+
+    def test_configure_active_directory_credential_error(self):
+        msg = "could not authenticate"
+        self.mock_object(self.client, 'send_request',
+                         self._mock_api_error(code=netapp_api.EAPIERROR,
+                                              message=msg))
+        self.mock_object(self.client, 'configure_dns')
+        self.mock_object(self.client, 'set_preferred_dc')
+        self.mock_object(self.client, '_get_cifs_server_name')
+        self.assertRaises(exception.SecurityServiceFailedAuth,
+                          self.client.configure_active_directory,
+                          fake.CIFS_SECURITY_SERVICE,
+                          fake.VSERVER_NAME)
+
+    def test_configure_active_directory_user_privilege_error(self):
+        msg = "insufficient access"
+        self.mock_object(self.client, 'send_request',
+                         self._mock_api_error(code=netapp_api.EAPIERROR,
+                                              message=msg))
+        self.mock_object(self.client, 'configure_dns')
+        self.mock_object(self.client, 'set_preferred_dc')
+        self.mock_object(self.client, '_get_cifs_server_name')
+        self.assertRaises(exception.SecurityServiceFailedAuth,
+                          self.client.configure_active_directory,
+                          fake.CIFS_SECURITY_SERVICE,
+                          fake.VSERVER_NAME)

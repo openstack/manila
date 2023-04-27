@@ -1839,6 +1839,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             LOG.debug("Trying to setup CIFS server with data: %s", api_args)
             self.send_request('cifs-server-create', api_args)
         except netapp_api.NaApiError as e:
+            credential_msg = "could not authenticate"
+            privilege_msg = "insufficient access"
+            if (e.code == netapp_api.EAPIERROR and (
+                    credential_msg in e.message.lower() or
+                    privilege_msg in e.message.lower())):
+                auth_msg = _("Failed to create CIFS server entry. "
+                             "Please double check your user credentials "
+                             "or privileges. %s")
+                raise exception.SecurityServiceFailedAuth(auth_msg % e.message)
             msg = _("Failed to create CIFS server entry. %s")
             raise exception.NetAppException(msg % e.message)
 
