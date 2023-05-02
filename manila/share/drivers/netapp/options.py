@@ -189,6 +189,11 @@ netapp_provisioning_opts = [
                      'The total size is calculated as (size * 100) divided by '
                      '(100 - netapp_volume_snapshot_reserve_percent)',
                 default=False),
+    cfg.StrOpt('netapp_hardware_state',
+               help='NetApp Hardware state, that will be reported as pool '
+                    'property. Valid values are `in_build`, `live`, '
+                    '`in_decom` and `replacing_decom`',
+               default='live'),
     cfg.BoolOpt('netapp_enable_logical_space_reporting',
                 help='This option enables the logical space reporting on a '
                      'newly created vserver and locical space accounting '
