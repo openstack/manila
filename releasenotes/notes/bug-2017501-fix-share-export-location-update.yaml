@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed share export location update when subnet is added to a network
+    containing shares. Please refer to the
+    `Launchpad bug #2017501 <https://bugs.launchpad.net/manila/+bug/2017501>`_
+    for more details.
