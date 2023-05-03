@@ -2362,7 +2362,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         updated_export_locations = {}
         for share in shares:
-            if share['replica_state'] == constants.REPLICA_STATE_ACTIVE:
+            if share["replica_state"] in (None,
+                                          constants.REPLICA_STATE_ACTIVE):
                 host = share['host']
                 export_locations = self._create_export(
                     share, share_server, vserver_name, vserver_client,
