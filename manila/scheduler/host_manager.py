@@ -418,15 +418,7 @@ class PoolState(HostState):
 
     def _estimate_provisioned_capacity(self, host_name, context=None):
         """Estimate provisioned capacity from share sizes on backend."""
-        provisioned_capacity = 0
-
-        instances = db.share_instances_get_all_by_host(
-            context, host_name, with_share_data=True)
-
-        for instance in instances:
-            # Size of share instance that's still being created, will be None.
-            provisioned_capacity += instance['size'] or 0
-        return provisioned_capacity
+        return db.share_instance_sizes_sum_by_host(context, host_name)
 
     def update_from_share_capability(
             self, capability, service=None, context=None):
