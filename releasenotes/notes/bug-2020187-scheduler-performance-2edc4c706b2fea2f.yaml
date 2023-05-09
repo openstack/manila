@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Improve scheduler performance to estimate the allocated capacity for thin
+    provisioning hosts.
