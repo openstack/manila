@@ -529,7 +529,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         vserver_client = self._get_api_client(vserver=vserver)
         self._create_vserver_routes(vserver_client, network_info)
         vserver_client.enable_nfs(
-            self.configuration.netapp_enabled_share_protocols)
+            self.configuration.netapp_enabled_share_protocols,
+            create_default_nfs_export_rules=False)
         security_services = network_info.get('security_services')
         if security_services:
             for security_service in security_services:
