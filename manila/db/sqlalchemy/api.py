@@ -5483,15 +5483,10 @@ def share_type_get_all(context, inactive=False, filters=None):
     return result
 
 
-def _share_type_get_id_from_share_type_query(context, id, session=None):
-    return (model_query(
-            context, models.ShareTypes, read_deleted="no", session=session).
-            filter_by(id=id))
-
-
-def _share_type_get_id_from_share_type(context, id, session=None):
-    result = _share_type_get_id_from_share_type_query(
-        context, id, session=session).first()
+def _share_type_get_id_from_share_type(context, id):
+    result = model_query(
+        context, models.ShareTypes, read_deleted="no",
+    ).filter_by(id=id).first()
     if not result:
         raise exception.ShareTypeNotFound(share_type_id=id)
     return result['id']
@@ -5609,49 +5604,57 @@ def share_type_destroy(context, id):
     _quota_destroy_all_by_share_type(context, id)
 
 
-def _share_type_access_query(context, session=None):
-    return model_query(context, models.ShareTypeProjects, session=session,
-                       read_deleted="no")
+def _share_type_access_query(context):
+    return model_query(context, models.ShareTypeProjects, read_deleted="no")
 
 
 @require_admin_context
+@context_manager.reader
 def share_type_access_get_all(context, type_id):
     share_type_id = _share_type_get_id_from_share_type(context, type_id)
-    return (_share_type_access_query(context).
-            filter_by(share_type_id=share_type_id).all())
+    return _share_type_access_query(
+        context,
+    ).filter_by(share_type_id=share_type_id).all()
 
 
 @require_admin_context
+@context_manager.writer
 def share_type_access_add(context, type_id, project_id):
     """Add given tenant to the share type access list."""
     share_type_id = _share_type_get_id_from_share_type(context, type_id)
 
     access_ref = models.ShareTypeProjects()
-    access_ref.update({"share_type_id": share_type_id,
-                       "project_id": project_id})
+    access_ref.update(
+        {"share_type_id": share_type_id, "project_id": project_id},
+    )
 
-    session = get_session()
-    with session.begin():
-        try:
-            access_ref.save(session=session)
-        except db_exception.DBDuplicateEntry:
-            raise exception.ShareTypeAccessExists(share_type_id=type_id,
-                                                  project_id=project_id)
-        return access_ref
+    try:
+        access_ref.save(session=context.session)
+    except db_exception.DBDuplicateEntry:
+        raise exception.ShareTypeAccessExists(
+            share_type_id=type_id, project_id=project_id,
+        )
+    return access_ref
 
 
 @require_admin_context
+@context_manager.writer
 def share_type_access_remove(context, type_id, project_id):
     """Remove given tenant from the share type access list."""
     share_type_id = _share_type_get_id_from_share_type(context, type_id)
 
-    count = (_share_type_access_query(context).
-             filter_by(share_type_id=share_type_id).
-             filter_by(project_id=project_id).
-             soft_delete(synchronize_session=False))
+    count = _share_type_access_query(
+        context,
+    ).filter_by(
+        share_type_id=share_type_id,
+    ).filter_by(
+        project_id=project_id,
+    ).soft_delete(synchronize_session=False)
+
     if count == 0:
         raise exception.ShareTypeAccessNotFound(
-            share_type_id=type_id, project_id=project_id)
+            share_type_id=type_id, project_id=project_id,
+        )
 
 ####################
 
