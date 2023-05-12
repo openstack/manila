@@ -217,11 +217,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def create_vserver_dp_destination(self, vserver_name, aggregate_names,
-                                      ipspace_name, delete_retention_hours):
+                                      ipspace_name, delete_retention_hours,
+                                      logical_space_reporting=False):
         """Creates new 'dp_destination' vserver and assigns aggregates."""
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
-            delete_retention_hours, subtype='dp_destination')
+            delete_retention_hours, subtype='dp_destination',
+            logical_space_reporting=logical_space_reporting)
 
     @na_utils.trace
     def _create_vserver(self, vserver_name, aggregate_names, ipspace_name,
@@ -255,8 +257,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 create_args['ipspace'] = ipspace_name
 
         if logical_space_reporting:
-            create_args['is-space-reporting-logical'] = True
-            create_args['is-space-enforcement-logical'] = True
+            create_args['is-space-reporting-logical'] = 'true'
+            create_args['is-space-enforcement-logical'] = 'true'
+        else:
+            create_args['is-space-reporting-logical'] = 'false'
+            create_args['is-space-enforcement-logical'] = 'false'
 
         LOG.debug('Creating Vserver %(vserver)s with create args '
                   '%(args)s', {'vserver': vserver_name, 'args': create_args})
@@ -2482,8 +2487,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         # SAPCC Ignore when logical_space_reporting is None. The attribue
         # will be the same of its parent vserver.
         if logical_space_reporting in (True, False):
-            api_args['is-space-reporting-logical'] = logical_space_reporting
-            api_args['is-space-enforcement-logical'] = logical_space_reporting
+            if logical_space_reporting:
+                api_args['is-space-reporting-logical'] = 'true'
+                api_args['is-space-enforcement-logical'] = 'true'
+            else:
+                api_args['is-space-reporting-logical'] = 'false'
+                api_args['is-space-enforcement-logical'] = 'false'
 
         return api_args
 

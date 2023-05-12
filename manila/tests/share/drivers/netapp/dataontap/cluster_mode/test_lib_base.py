@@ -806,6 +806,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
+        self.mock_object(
+            share_types,
+            'get_share_type',
+            mock.Mock(return_value={'name': fake.SHARE_TYPE_NAME}))
         mock_allocate_container = self.mock_object(self.library,
                                                    '_allocate_container')
         mock_create_export = self.mock_object(

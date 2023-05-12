@@ -427,7 +427,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'root-volume-security-style': 'unix',
             'root-volume-aggregate': fake.ROOT_VOLUME_AGGREGATE_NAME,
             'root-volume': fake.ROOT_VOLUME_NAME,
-            'name-server-switch': {'nsswitch': 'file'}
+            'name-server-switch': {'nsswitch': 'file'},
+            'is-space-reporting-logical': 'false',
+            'is-space-enforcement-logical': 'false',
         }
         vserver_modify_args = {
             'aggr-list': [{'aggr-name': aggr_name} for aggr_name
@@ -503,6 +505,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'root-volume': fake.ROOT_VOLUME_NAME,
             'name-server-switch': {'nsswitch': 'file'},
             'ipspace': fake.IPSPACE_NAME,
+            'is-space-reporting-logical': 'false',
+            'is-space-enforcement-logical': 'false',
         }
         vserver_modify_args = {
             'aggr-list': [{'aggr-name': aggr_name} for aggr_name
@@ -575,6 +579,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'vserver-name': fake.VSERVER_NAME,
             'ipspace': fake.IPSPACE_NAME,
             'vserver-subtype': fake.VSERVER_TYPE_DP_DEST,
+            'is-space-reporting-logical': 'false',
+            'is-space-enforcement-logical': 'false',
         }
         vserver_modify_args = {
             'aggr-list': [{'aggr-name': aggr_name} for aggr_name
@@ -3334,6 +3340,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             reserve, volume_type, fake.VOLUME_COMMENT, qos_name, encrypt,
             qos_adaptive_name, logical_space_reporting)
 
+        logical_space_reporting = (
+            'true' if logical_space_reporting else 'false')
         expected_api_args = {
             'volume-type': volume_type,
             'volume-comment': fake.VOLUME_COMMENT,
@@ -3369,6 +3377,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             reserve, volume_type, volume_comment, qos_name, encrypt,
             qos_adaptive_name, logical_space_reporting)
 
+        logical_space_reporting = (
+            'true' if logical_space_reporting else 'false')
         expected_api_args = {
             'encrypt': 'false',
             'volume-type': volume_type,

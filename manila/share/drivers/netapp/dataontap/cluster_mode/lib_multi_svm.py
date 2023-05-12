@@ -275,7 +275,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 vserver_name,
                 aggregate_names,
                 ipspace_name,
-                self.configuration.netapp_delete_retention_hours)
+                self.configuration.netapp_delete_retention_hours,
+                self.configuration.netapp_enable_logical_space_reporting)
             # Set up port and broadcast domain for the current ipspace
             self._create_port_and_broadcast_domain(ipspace_name, network_info)
         else:

@@ -676,7 +676,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 fake.NETWORK_INFO)
         create_server_mock = self.library._client.create_vserver_dp_destination
         create_server_mock.assert_called_once_with(
-            vserver_name, fake.AGGREGATES, fake.IPSPACE, 12)
+            vserver_name, fake.AGGREGATES, fake.IPSPACE, 12, False)
         self.library._create_port_and_broadcast_domain.assert_called_once_with(
             fake.IPSPACE, fake.NETWORK_INFO)
         self.library._get_flexgroup_aggr_set.assert_not_called()

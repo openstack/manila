@@ -196,7 +196,7 @@ netapp_provisioning_opts = [
                default='live'),
     cfg.BoolOpt('netapp_enable_logical_space_reporting',
                 help='This option enables the logical space reporting on a '
-                     'newly created vserver and locical space accounting '
+                     'newly created vserver and logical space accounting '
                      'on newly created volumes on this vserver. ',
                 default=False),
     cfg.IntOpt('netapp_security_cert_expire_days',
