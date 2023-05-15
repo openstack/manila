@@ -5813,6 +5813,7 @@ def availability_zone_get_all(context):
 
 
 @require_admin_context
+@context_manager.writer
 def purge_deleted_records(context, age_in_days):
     """Purge soft-deleted records older than(and equal) age from tables."""
 
@@ -5823,42 +5824,42 @@ def purge_deleted_records(context, age_in_days):
 
     metadata = MetaData()
     metadata.reflect(get_engine())
-    session = get_session()
-    session.begin()
     deleted_age = timeutils.utcnow() - datetime.timedelta(days=age_in_days)
 
     for table in reversed(metadata.sorted_tables):
-        if 'deleted' in table.columns.keys():
-            try:
-                mds = [m for m in models.__dict__.values() if
-                       (hasattr(m, '__tablename__') and
-                        m.__tablename__ == str(table))]
-                if len(mds) > 0:
-                    # collect all soft-deleted records
-                    with session.begin_nested():
-                        model = mds[0]
-                        s_deleted_records = session.query(model).filter(
-                            model.deleted_at <= deleted_age)
-                    deleted_count = 0
-                    # delete records one by one,
-                    # skip the records which has FK constraints
-                    for record in s_deleted_records:
-                        try:
-                            with session.begin_nested():
-                                session.delete(record)
-                                deleted_count += 1
-                        except db_exc.DBError:
-                            LOG.warning(
-                                ("Deleting soft-deleted resource %s "
-                                 "failed, skipping."), record)
-                    if deleted_count != 0:
-                        LOG.info("Deleted %(count)s records in "
-                                 "table %(table)s.",
-                                 {'count': deleted_count, 'table': table})
-            except db_exc.DBError:
-                LOG.warning("Querying table %s's soft-deleted records "
-                            "failed, skipping.", table)
-    session.commit()
+        if 'deleted' not in table.columns.keys():
+            continue
+
+        try:
+            mds = [m for m in models.__dict__.values() if
+                   (hasattr(m, '__tablename__') and
+                    m.__tablename__ == str(table))]
+            if len(mds) > 0:
+                # collect all soft-deleted records
+                with context.session.begin_nested():
+                    model = mds[0]
+                    s_deleted_records = context.session.query(
+                        model,
+                    ).filter(model.deleted_at <= deleted_age)
+                deleted_count = 0
+                # delete records one by one,
+                # skip the records which has FK constraints
+                for record in s_deleted_records:
+                    try:
+                        with context.session.begin_nested():
+                            context.session.delete(record)
+                            deleted_count += 1
+                    except db_exc.DBError:
+                        LOG.warning(
+                            ("Deleting soft-deleted resource %s "
+                             "failed, skipping."), record)
+                if deleted_count != 0:
+                    LOG.info("Deleted %(count)s records in "
+                             "table %(table)s.",
+                             {'count': deleted_count, 'table': table})
+        except db_exc.DBError:
+            LOG.warning("Querying table %s's soft-deleted records "
+                        "failed, skipping.", table)
 
 
 ####################
