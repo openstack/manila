@@ -200,7 +200,12 @@ netapp_cluster_opts = [
                      'option should only be specified when the option '
                      'driver_handles_share_servers is set to False (i.e. the '
                      'driver is managing shares on a single pre-configured '
-                     'Vserver).')), ]
+                     'Vserver).')),
+    cfg.StrOpt('netapp_cluster_name',
+               help=('This option specifies the Cluster Name on which '
+                     'provisioning of file storage shares should occur. '
+                     'If not set, the driver will try to discover by '
+                     'API call.')), ]
 
 netapp_support_opts = [
     cfg.StrOpt('netapp_trace_flags',

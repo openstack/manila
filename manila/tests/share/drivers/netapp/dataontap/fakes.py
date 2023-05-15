@@ -956,6 +956,7 @@ FLEXGROUP_POOL = {
     'qos': True,
     'security_service_update_support': True,
     'netapp_flexgroup': True,
+    'netapp_cluster_name': 'fake_cluster_name',
 }
 
 FLEXGROUP_AGGR_SET = set(FLEXGROUP_POOL_OPT[FLEXGROUP_POOL_NAME])
@@ -1038,6 +1039,7 @@ POOLS = [
         'security_service_update_support': True,
         'share_server_multiple_subnet_support': True,
         'netapp_flexgroup': False,
+        'netapp_cluster_name': 'fake_cluster_name',
     },
     {
         'pool_name': AGGREGATES[1],
@@ -1066,6 +1068,7 @@ POOLS = [
         'security_service_update_support': True,
         'share_server_multiple_subnet_support': True,
         'netapp_flexgroup': False,
+        'netapp_cluster_name': 'fake_cluster_name',
     },
 ]
 
@@ -1074,6 +1077,7 @@ POOLS_VSERVER_CREDS = [
         'pool_name': AGGREGATES[0],
         'filter_function': None,
         'goodness_function': None,
+        'netapp_cluster_name': '',
         'netapp_aggregate': AGGREGATES[0],
         'total_capacity_gb': 'unknown',
         'free_capacity_gb': 1.1,

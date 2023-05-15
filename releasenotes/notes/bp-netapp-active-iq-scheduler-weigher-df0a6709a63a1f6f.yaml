@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Added the ``NetAppAIQWeigher`` scheduler weigher that relies on the
+    `NetApp Active IQ <https://www.netapp.com/services/support/active-iq/>`_
+    to weigh the hosts. It only works with NetApp backends. When other
+    backends exist, the weigher is skipped. Added a new NetApp specific
+    pool information called ``netapp_cluster_name`` that contains the name
+    of the cluster where the pool is located, it can be set by a new
+    NetApp configuration option.
