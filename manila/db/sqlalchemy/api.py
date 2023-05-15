@@ -5659,18 +5659,18 @@ def share_type_access_remove(context, type_id, project_id):
 ####################
 
 
-def _share_type_extra_specs_query(context, share_type_id, session=None):
-    return (model_query(context, models.ShareTypeExtraSpecs, session=session,
-                        read_deleted="no").
-            filter_by(share_type_id=share_type_id).
-            options(joinedload('share_type')))
+def _share_type_extra_specs_query(context, share_type_id):
+    return model_query(
+        context, models.ShareTypeExtraSpecs, read_deleted="no",
+    ).filter_by(
+        share_type_id=share_type_id,
+    ).options(joinedload('share_type'))
 
 
 @require_context
+@context_manager.reader
 def share_type_extra_specs_get(context, share_type_id):
-    rows = (_share_type_extra_specs_query(context, share_type_id).
-            all())
-
+    rows = _share_type_extra_specs_query(context, share_type_id).all()
     result = {}
     for row in rows:
         result[row['key']] = row['value']
@@ -5679,46 +5679,53 @@ def share_type_extra_specs_get(context, share_type_id):
 
 
 @require_context
+@context_manager.writer
 def share_type_extra_specs_delete(context, share_type_id, key):
-    session = get_session()
-    with session.begin():
-        _share_type_extra_specs_get_item(context, share_type_id, key, session)
-        (_share_type_extra_specs_query(context, share_type_id, session).
-            filter_by(key=key).soft_delete())
+    _share_type_extra_specs_get_item(context, share_type_id, key)
+    _share_type_extra_specs_query(
+        context, share_type_id,
+    ).filter_by(key=key).soft_delete()
 
 
-def _share_type_extra_specs_get_item(context, share_type_id, key,
-                                     session=None):
+def _share_type_extra_specs_get_item(context, share_type_id, key):
     result = _share_type_extra_specs_query(
-        context, share_type_id, session=session
+        context, share_type_id,
     ).filter_by(key=key).options(joinedload('share_type')).first()
 
     if not result:
         raise exception.ShareTypeExtraSpecsNotFound(
             extra_specs_key=key,
-            share_type_id=share_type_id)
+            share_type_id=share_type_id,
+        )
 
     return result
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def share_type_extra_specs_update_or_create(context, share_type_id, specs):
-    session = get_session()
-    with session.begin():
-        spec_ref = None
-        for key, value in specs.items():
-            try:
-                spec_ref = _share_type_extra_specs_get_item(
-                    context, share_type_id, key, session)
-            except exception.ShareTypeExtraSpecsNotFound:
-                spec_ref = models.ShareTypeExtraSpecs()
-            spec_ref.update({"key": key, "value": value,
-                             "share_type_id": share_type_id,
-                             "deleted": 0})
-            spec_ref.save(session=session)
+    spec_ref = None
+    for key, value in specs.items():
+        try:
+            spec_ref = _share_type_extra_specs_get_item(
+                context, share_type_id, key,
+            )
+        except exception.ShareTypeExtraSpecsNotFound:
+            spec_ref = models.ShareTypeExtraSpecs()
+        spec_ref.update(
+            {
+                "key": key,
+                "value": value,
+                "share_type_id": share_type_id,
+                "deleted": 0,
+            }
+        )
+        spec_ref.save(session=context.session)
 
-        return specs
+    return specs
+
+####################
 
 
 def _ensure_availability_zone_exists(
@@ -5801,6 +5808,8 @@ def availability_zone_get_all(context):
                        read_deleted="no").filter(
         models.AvailabilityZone.id.in_(enabled_services)
     ).all()
+
+####################
 
 
 @require_admin_context
