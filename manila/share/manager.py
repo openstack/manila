@@ -2048,6 +2048,23 @@ class ShareManager(manager.SchedulerDependentManager):
                         share_group=share_group_ref,
                     )
                 )
+            except exception.PortLimitExceeded:
+                with excutils.save_and_reraise_exception():
+                    error = ("Creation of share instance %s failed: "
+                             "failed to allocate network")
+                    LOG.error(error, share_instance_id)
+                    self.db.share_instance_update(
+                        context, share_instance_id,
+                        {'status': constants.STATUS_ERROR}
+                    )
+                    self.message_api.create(
+                        context,
+                        message_field.Action.CREATE,
+                        share['project_id'],
+                        resource_type=message_field.Resource.SHARE,
+                        resource_id=share_id,
+                        detail=(message_field.Detail
+                                .SHARE_NETWORK_PORT_QUOTA_LIMIT_EXCEEDED))
             except exception.SecurityServiceFailedAuth:
                 with excutils.save_and_reraise_exception():
                     error = ("Provision of share server failed: "
