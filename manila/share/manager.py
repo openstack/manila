@@ -587,7 +587,13 @@ class ShareManager(manager.SchedulerDependentManager):
                     ctxt, share_instance['id'], update_export_location,
                     reexport=True)
 
-            share_server = self._get_share_server(ctxt, share_instance)
+            try:
+                share_server = self._get_share_server(ctxt, share_instance)
+            except exception.ShareServerNotFound:
+                LOG.warning("Share server corresponding to share instance "
+                            " %s not found. Continuing to next share "
+                            "instance ", share_instance['id'])
+                continue
 
             if share_instance['access_rules_status'] != (
                     constants.STATUS_ACTIVE):
