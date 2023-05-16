@@ -141,6 +141,13 @@ class Detail(object):
     DRIVER_FAILED_TRANSFER_ACCEPT = (
         '026',
         _("Share transfer cannot be accepted without clearing access rules."))
+    SHARE_NETWORK_PORT_QUOTA_LIMIT_EXCEEDED = (
+        '027',
+        _("Failed to create a new network port on the share network subnet. "
+          "The limit of the number of ports has been exceeded. You may "
+          "increase the network port quotas or free up some ports and retry. "
+          "If this doesn't work, contact your administrator to troubleshoot "
+          "issues with your network."))
 
     ALL = (
         UNKNOWN_ERROR,
@@ -169,6 +176,7 @@ class Detail(object):
         NO_DEFAULT_SHARE_TYPE,
         MISSING_SECURITY_SERVICE,
         DRIVER_FAILED_TRANSFER_ACCEPT,
+        SHARE_NETWORK_PORT_QUOTA_LIMIT_EXCEEDED,
     )
 
     # Exception and detail mappings

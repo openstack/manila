@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    When share creation fails due to missing ports quota, error message
+    propogated to user is not useful. So reported PortLimitExceeded error to
+    user instead of generic error. For more details, please refer
+    (`launchpad bug 2019846 <https://bugs.launchpad.net/manila/+bug/2019846>`_).
