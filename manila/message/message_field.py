@@ -144,6 +144,12 @@ class Detail(object):
           "ticket."))
     FILTER_AFFINITY = ('027', FILTER_MSG % 'AffinityFilter')
     FILTER_ANTI_AFFINITY = ('028', FILTER_MSG % 'AntiAffinityFilter')
+    SHARE_NETWORK_PORT_QUOTA_LIMIT_EXCEEDED = (
+        '029',
+        _("Share Driver failed to create share server on share network "
+          "due to port limit exceeded. You may increase quota of network "
+          "ports and retry your request. If this doesn't work, contact your "
+          "administrator to troubleshoot issues with your network."))
 
     ALL = (
         UNKNOWN_ERROR,
@@ -173,7 +179,8 @@ class Detail(object):
         MISSING_SECURITY_SERVICE,
         DRIVER_FAILED_DELETE_SHARE_SNAPMIRROR,
         FILTER_AFFINITY,
-        FILTER_ANTI_AFFINITY
+        FILTER_ANTI_AFFINITY,
+        SHARE_NETWORK_PORT_QUOTA_LIMIT_EXCEEDED
     )
 
     # Exception and detail mappings
