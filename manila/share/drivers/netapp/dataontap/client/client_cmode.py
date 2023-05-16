@@ -2952,7 +2952,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'volume-space-attributes'][
                     'is-space-enforcement-logical'] = logical_space_reporting
 
-        self.send_request('volume-modify-iter', api_args)
+        result = self.send_request('volume-modify-iter', api_args)
+        failures = result.get_child_content('num-failed')
+        if failures and int(failures) > 0:
+            failure_list = result.get_child_by_name(
+                'failure-list') or netapp_api.NaElement('none')
+            errors = failure_list.get_children()
+            if errors:
+                raise netapp_api.NaApiError(
+                    errors[0].get_child_content('error-code'),
+                    errors[0].get_child_content('error-message'))
 
         if not replica:
             # Efficiency options must be handled separately
@@ -3031,7 +3040,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        self.send_request('volume-modify-iter', api_args)
+        result = self.send_request('volume-modify-iter', api_args)
+        failures = result.get_child_content('num-failed')
+        if failures and int(failures) > 0:
+            failure_list = result.get_child_by_name(
+                'failure-list') or netapp_api.NaElement('none')
+            errors = failure_list.get_children()
+            if errors:
+                raise netapp_api.NaApiError(
+                    errors[0].get_child_content('error-code'),
+                    errors[0].get_child_content('error-message'))
 
     @na_utils.trace
     def volume_exists(self, volume_name):
@@ -4223,7 +4241,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        self.send_request('volume-modify-iter', api_args)
+        result = self.send_request('volume-modify-iter', api_args)
+        failures = result.get_child_content('num-failed')
+        if failures and int(failures) > 0:
+            failure_list = result.get_child_by_name(
+                'failure-list') or netapp_api.NaElement('none')
+            errors = failure_list.get_children()
+            if errors:
+                raise netapp_api.NaApiError(
+                    errors[0].get_child_content('error-code'),
+                    errors[0].get_child_content('error-message'))
 
     @na_utils.trace
     def set_qos_policy_group_for_volume(self, volume_name,
@@ -4244,7 +4271,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        self.send_request('volume-modify-iter', api_args)
+        result = self.send_request('volume-modify-iter', api_args)
+        failures = result.get_child_content('num-failed')
+        if failures and int(failures) > 0:
+            failure_list = result.get_child_by_name(
+                'failure-list') or netapp_api.NaElement('none')
+            errors = failure_list.get_children()
+            if errors:
+                raise netapp_api.NaApiError(
+                    errors[0].get_child_content('error-code'),
+                    errors[0].get_child_content('error-message'))
 
     @na_utils.trace
     def set_qos_adaptive_policy_group_for_volume(self, volume_name,
@@ -4269,7 +4305,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        self.send_request('volume-modify-iter', api_args)
+        result = self.send_request('volume-modify-iter', api_args)
+        failures = result.get_child_content('num-failed')
+        if failures and int(failures) > 0:
+            failure_list = result.get_child_by_name(
+                'failure-list') or netapp_api.NaElement('none')
+            errors = failure_list.get_children()
+            if errors:
+                raise netapp_api.NaApiError(
+                    errors[0].get_child_content('error-code'),
+                    errors[0].get_child_content('error-message'))
 
     @na_utils.trace
     def get_nfs_export_policy_for_volume(self, volume_name):

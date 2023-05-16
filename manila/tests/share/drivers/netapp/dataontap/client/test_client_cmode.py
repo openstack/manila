@@ -3696,8 +3696,11 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     @ddt.data(True, False)
     def test_modify_volume_no_optional_args(self, is_flexgroup):
+        api_response = netapp_api.NaElement(fake.VOLUME_MODIFY_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
 
-        self.mock_object(self.client, 'send_request')
         mock_update_volume_efficiency_attributes = self.mock_object(
             self.client, 'update_volume_efficiency_attributes')
 
@@ -3750,7 +3753,10 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_modify_volume_all_optional_args(self, qos_group,
                                              adaptive_qos_group):
         self.client.features.add_feature('ADAPTIVE_QOS')
-        self.mock_object(self.client, 'send_request')
+        api_response = netapp_api.NaElement(fake.VOLUME_MODIFY_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
         mock_update_volume_efficiency_attributes = self.mock_object(
             self.client, 'update_volume_efficiency_attributes')
 
@@ -5637,7 +5643,10 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_set_nfs_export_policy_for_volume(self):
 
-        self.mock_object(self.client, 'send_request')
+        api_response = netapp_api.NaElement(fake.VOLUME_MODIFY_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
 
         self.client.set_nfs_export_policy_for_volume(fake.SHARE_NAME,
                                                      fake.EXPORT_POLICY_NAME)
@@ -5663,7 +5672,10 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_set_qos_policy_group_for_volume(self):
 
-        self.mock_object(self.client, 'send_request')
+        api_response = netapp_api.NaElement(fake.VOLUME_MODIFY_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
 
         self.client.set_qos_policy_group_for_volume(fake.SHARE_NAME,
                                                     fake.QOS_POLICY_GROUP_NAME)
@@ -7806,8 +7818,10 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_set_qos_adaptive_policy_group_for_volume(self):
 
         self.client.features.add_feature('ADAPTIVE_QOS')
-
-        self.mock_object(self.client, 'send_request')
+        api_response = netapp_api.NaElement(fake.VOLUME_MODIFY_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
 
         self.client.set_qos_adaptive_policy_group_for_volume(
             fake.SHARE_NAME,
