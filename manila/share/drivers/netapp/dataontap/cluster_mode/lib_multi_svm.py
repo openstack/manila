@@ -2025,10 +2025,41 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         LOG.info('Share server migration was cancelled.')
 
+    @na_utils.trace
     def share_server_migration_get_progress(self, context, src_share_server,
                                             dest_share_server, shares,
                                             snapshots):
-        # TODO(dviroel): get snapmirror info to infer the progress
+        """Compare source SVM total shares size with the destination SVM.
+
+        1. Gets the total size of the source SVM shares
+        2. Gets the total size of the destination SVM shares
+        3. Return the progress up to 99%, because 100% migration will be
+        returned when SVM migration phase 1 is finished.
+        """
+
+        # Get the total size of the source share server shares.
+        src_shares_total_size = 0
+        for instance in shares:
+            src_shares_total_size = (
+                src_shares_total_size + instance.get('size', 0))
+
+        if src_shares_total_size > 0:
+            # Destination share server has the same name as the source share
+            # server.
+            dest_share_server_name = self._get_vserver_name(
+                dest_share_server['source_share_server_id'])
+
+            # Get current volume total size in the destination SVM.
+            dest_shares_total_size = self._client.get_svm_volumes_total_size(
+                dest_share_server_name)
+
+            # The 100% progress will be return only when the SVM migration
+            # phase 1 is completed. 99% is an arbitrary number.
+            total_progress = (
+                (99 * dest_shares_total_size) / src_shares_total_size)
+
+            return {'total_progress': round(total_progress)}
+
         return {'total_progress': 0}
 
     def _update_share_attributes_after_server_migration(

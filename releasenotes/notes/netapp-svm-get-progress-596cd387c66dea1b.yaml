@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    NetApp driver is now able to inform the migration percentage of a share
+    server migration.

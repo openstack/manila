@@ -5214,3 +5214,29 @@ class NetAppRestClient(object):
             'name': ipspace_name
         }
         self.send_request('/network/ipspaces', 'delete', query=query)
+
+    @na_utils.trace
+    def get_svm_volumes_total_size(self, svm_name):
+        """Gets volumes sizes sum (GB) from all volumes in SVM by svm_name"""
+
+        query = {
+            'svm.name': svm_name,
+            'fields': 'size'
+        }
+
+        response = self.send_request('/storage/volumes/', 'get', query=query)
+
+        svm_volumes = response.get('records', [])
+
+        if len(svm_volumes) > 0:
+            total_volumes_size = 0
+            for volume in svm_volumes:
+                # Root volumes are not taking account because they are part of
+                # SVM creation.
+                if volume['name'] != 'root':
+                    total_volumes_size = total_volumes_size + volume['size']
+        else:
+            return 0
+
+        # Convert Bytes to GBs.
+        return (total_volumes_size / 1024**3)

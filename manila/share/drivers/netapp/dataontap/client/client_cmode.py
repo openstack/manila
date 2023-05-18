@@ -6041,3 +6041,34 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         return self.send_request(
             'get-job', api_args=api_args, use_zapi=False)
+
+    @na_utils.trace
+    def get_svm_volumes_total_size(self, svm_name):
+        """Gets volumes sizes sum (GB) from all volumes in SVM by svm_name"""
+
+        request = {}
+
+        query = {
+            'svm.name': svm_name,
+            'fields': 'size'
+        }
+
+        api_args = self._format_request(request, query=query)
+
+        response = self.send_request(
+            'svm-migration-get-progress', api_args=api_args, use_zapi=False)
+
+        svm_volumes = response.get('records', [])
+
+        if len(svm_volumes) > 0:
+            total_volumes_size = 0
+            for volume in svm_volumes:
+                # Root volumes are not taking account because they are part of
+                # SVM creation.
+                if volume['name'] != 'root':
+                    total_volumes_size = total_volumes_size + volume['size']
+        else:
+            return 0
+
+        # Convert Bytes to GBs.
+        return (total_volumes_size / 1024**3)

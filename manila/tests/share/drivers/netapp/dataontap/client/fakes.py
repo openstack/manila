@@ -4764,3 +4764,13 @@ FAKE_ROOT_AGGREGATES_RESPONSE = {
         }
     ]
 }
+
+FAKE_GET_VOLUME = {
+    "records": [
+        {
+            "uuid": FAKE_UUID,
+            "name": "share_6cb5b3f4_35d0_40b8_a106_d35262ac17c7",
+            "size": 1024**3,
+        }
+    ],
+}

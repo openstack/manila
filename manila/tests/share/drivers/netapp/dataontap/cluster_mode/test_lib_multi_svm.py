@@ -3433,12 +3433,24 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                     []))
 
     def test_share_server_migration_get_progress(self):
-        expected_result = {'total_progress': 0}
+        fake_vserver_name = fake.VSERVER1
+        expected_result = {'total_progress': 50}
+
+        self.mock_object(self.library._client, 'get_svm_volumes_total_size',
+                         mock.Mock(return_value=5))
+
+        self.mock_object(self.library, '_get_vserver_name',
+                         mock.Mock(return_value=fake_vserver_name))
 
         result = self.library.share_server_migration_get_progress(
-            None, None, None, None, None
+            None, self.fake_src_share_server, self.fake_dest_share_server,
+            [self.fake_src_share], None
         )
 
+        self.library._client.get_svm_volumes_total_size.assert_called_once_with
+        (fake_vserver_name)
+        self.library._get_vserver_name.assert_called_once_with
+        (self.fake_dest_share_server['source_share_server_id'])
         self.assertEqual(expected_result, result)
 
     @ddt.data({'subtype': 'default',
