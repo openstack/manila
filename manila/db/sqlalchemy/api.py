@@ -4908,16 +4908,18 @@ def _share_network_subnet_metadata_update(context, share_network_subnet_id,
 #################################
 
 
-def _server_get_query(context, session=None):
-    if session is None:
-        session = get_session()
-    return (model_query(context, models.ShareServer, session=session).
-            options(joinedload('share_instances'),
-                    joinedload('network_allocations'),
-                    joinedload('share_network_subnets')))
+def _share_server_get_query(context):
+    return model_query(
+        context, models.ShareServer,
+    ).options(
+        joinedload('share_instances'),
+        joinedload('network_allocations'),
+        joinedload('share_network_subnets'),
+    )
 
 
 @require_context
+@context_manager.writer
 def share_server_create(context, values):
     values = ensure_model_dict_has_id(values)
 
@@ -4925,82 +4927,83 @@ def share_server_create(context, values):
     # updated_at is needed for judgement of automatic cleanup
     server_ref.updated_at = timeutils.utcnow()
     server_ref.update(values)
-    session = get_session()
-    with session.begin():
-        server_ref.save(session=session)
-        # NOTE(u_glide): Do so to prevent errors with relationships
-        return share_server_get(context, server_ref['id'], session=session)
+    server_ref.save(session=context.session)
+    # NOTE(u_glide): Do so to prevent errors with relationships
+    return _share_server_get(context, server_ref['id'])
 
 
 @require_context
+@context_manager.writer
 def share_server_delete(context, id):
-    session = get_session()
-    with session.begin():
-        server_ref = share_server_get(context, id, session=session)
-        model_query(
-            context, models.ShareServerShareNetworkSubnetMapping,
-            session=session
-        ).filter_by(
-            share_server_id=id,
-        ).soft_delete()
-        share_server_backend_details_delete(context, id, session=session)
-        server_ref.soft_delete(session=session, update_status=True)
+    server_ref = _share_server_get(context, id)
+    model_query(
+        context, models.ShareServerShareNetworkSubnetMapping,
+    ).filter_by(
+        share_server_id=id,
+    ).soft_delete()
+    _share_server_backend_details_delete(context, id)
+    server_ref.soft_delete(session=context.session, update_status=True)
 
 
 @require_context
+@context_manager.writer
 def share_server_update(context, id, values):
-    session = get_session()
-    with session.begin():
-        server_ref = share_server_get(context, id, session=session)
-        server_ref.update(values)
-        server_ref.save(session=session)
-        return server_ref
+    server_ref = _share_server_get(context, id)
+    server_ref.update(values)
+    server_ref.save(session=context.session)
+    return server_ref
 
 
 @require_context
-def share_server_get(context, server_id, session=None):
-    result = (_server_get_query(context, session).filter_by(id=server_id)
-              .first())
+@context_manager.reader
+def share_server_get(context, server_id):
+    return _share_server_get(context, server_id)
+
+
+@require_context
+def _share_server_get(context, server_id):
+    result = _share_server_get_query(context).filter_by(id=server_id).first()
     if result is None:
         raise exception.ShareServerNotFound(share_server_id=server_id)
     return result
 
 
 @require_context
-def share_server_search_by_identifier(context, identifier, session=None):
+@context_manager.reader
+def share_server_search_by_identifier(context, identifier):
 
     identifier_field = models.ShareServer.identifier
 
     # try if given identifier is a substring of existing entry's identifier
-    result = (_server_get_query(context, session).filter(
+    result = (_share_server_get_query(context).filter(
         identifier_field.like('%{}%'.format(identifier))).all())
 
     if not result:
         # repeat it with underscores instead of hyphens
-        result = (_server_get_query(context, session).filter(
+        result = (_share_server_get_query(context).filter(
             identifier_field.like('%{}%'.format(
                 identifier.replace("-", "_")))).all())
 
     if not result:
         # repeat it with hypens instead of underscores
-        result = (_server_get_query(context, session).filter(
+        result = (_share_server_get_query(context).filter(
             identifier_field.like('%{}%'.format(
                 identifier.replace("_", "-")))).all())
 
     if not result:
         # try if an existing identifier is a substring of given identifier
-        result = (_server_get_query(context, session).filter(
+        result = (_share_server_get_query(context).filter(
             literal(identifier).contains(identifier_field)).all())
 
     if not result:
         # repeat it with underscores instead of hyphens
-        result = (_server_get_query(context, session).filter(
+        result = (_share_server_get_query(context).filter(
             literal(identifier.replace("-", "_")).contains(
                 identifier_field)).all())
 
     if not result:
         # repeat it with hypens instead of underscores
-        result = (_server_get_query(context, session).filter(
+        result = (_share_server_get_query(context).filter(
             literal(identifier.replace("_", "-")).contains(
                 identifier_field)).all())
 
@@ -5011,16 +5014,21 @@ def share_server_search_by_identifier(context, identifier, session=None):
 
 
 @require_context
-def share_server_get_all_by_host_and_share_subnet_valid(context, host,
-                                                        share_subnet_id,
-                                                        session=None):
-    result = (_server_get_query(context, session)
-              .filter_by(host=host)
-              .filter(models.ShareServer.share_network_subnets.any(
-                      id=share_subnet_id))
-              .filter(models.ShareServer.status.in_(
-                      (constants.STATUS_CREATING,
-                       constants.STATUS_ACTIVE))).all())
+@context_manager.reader
+def share_server_get_all_by_host_and_share_subnet_valid(
+    context, host, share_subnet_id,
+):
+    result = _share_server_get_query(
+        context,
+    ).filter_by(
+        host=host,
+    ).filter(
+        models.ShareServer.share_network_subnets.any(id=share_subnet_id)
+    ).filter(
+        models.ShareServer.status.in_(
+            (constants.STATUS_CREATING, constants.STATUS_ACTIVE),
+        )
+    ).all()
 
     if not result:
         filters_description = ('share_network_subnet_id is '
@@ -5033,40 +5041,53 @@ def share_server_get_all_by_host_and_share_subnet_valid(context, host,
             'status_act': constants.STATUS_ACTIVE,
         }
         raise exception.ShareServerNotFoundByFilters(
-            filters_description=filters_description)
+            filters_description=filters_description,
+        )
     return result
 
 
 @require_context
-def share_server_get_all_by_host_and_share_subnet(context, host,
-                                                  share_subnet_id,
-                                                  session=None):
-    result = (_server_get_query(context, session)
-              .filter_by(host=host)
-              .filter(models.ShareServer.share_network_subnets.any(
-                      id=share_subnet_id)).all())
+@context_manager.reader
+def share_server_get_all_by_host_and_share_subnet(
+    context, host, share_subnet_id,
+):
+    result = _share_server_get_query(
+        context,
+    ).filter_by(
+        host=host,
+    ).filter(
+        models.ShareServer.share_network_subnets.any(id=share_subnet_id)
+    ).all()
 
     if not result:
-        filters_description = ('share_network_subnet_id is '
-                               '"%(share_subnet_id)s" and host is '
-                               '"%(host)s".') % {
+        filters_description = (
+            'share_network_subnet_id is "%(share_subnet_id)s" and host is '
+            '"%(host)s".'
+        ) % {
             'share_subnet_id': share_subnet_id,
             'host': host,
         }
         raise exception.ShareServerNotFoundByFilters(
-            filters_description=filters_description)
+            filters_description=filters_description,
+        )
     return result
 
 
 @require_context
+@context_manager.reader
 def share_server_get_all(context):
-    return _server_get_query(context).all()
+    return _share_server_get_query(context).all()
 
 
 @require_context
+@context_manager.reader
 def share_server_get_all_with_filters(context, filters):
+    return _share_server_get_all_with_filters(context, filters)
 
-    query = _server_get_query(context)
+
+@require_context
+def _share_server_get_all_with_filters(context, filters):
+    query = _share_server_get_query(context)
 
     if filters.get('host'):
         query = query.filter_by(host=filters.get('host'))
@@ -5091,22 +5112,24 @@ def share_server_get_all_with_filters(context, filters):
 
 
 @require_context
+@context_manager.reader
 def share_server_get_all_by_host(context, host, filters=None):
     if filters:
         filters.update({'host': host})
     else:
         filters = {'host': host}
-    return share_server_get_all_with_filters(context, filters=filters)
+    return _share_server_get_all_with_filters(context, filters=filters)
 
 
 @require_context
+@context_manager.reader
 def share_server_get_all_unused_deletable(context, host, updated_before):
     valid_server_status = (
         constants.STATUS_INACTIVE,
         constants.STATUS_ACTIVE,
         constants.STATUS_ERROR,
     )
-    result = (_server_get_query(context)
+    result = (_share_server_get_query(context)
               .filter_by(is_auto_deletable=True)
               .filter_by(host=host)
               .filter(~models.ShareServer.share_groups.any())
@@ -5117,8 +5140,9 @@ def share_server_get_all_unused_deletable(context, host, updated_before):
 
 
 @require_context
+@context_manager.writer
 def share_server_backend_details_set(context, share_server_id, server_details):
-    share_server_get(context, share_server_id)
+    _share_server_get(context, share_server_id)
 
     for meta_key, meta_value in server_details.items():
         meta_ref = models.ShareServerBackendDetails()
@@ -5127,36 +5151,34 @@ def share_server_backend_details_set(context, share_server_id, server_details):
             'value': meta_value,
             'share_server_id': share_server_id
         })
-        session = get_session()
-        with session.begin():
-            meta_ref.save(session)
+        meta_ref.save(session=context.session)
     return server_details
 
 
 @require_context
-def share_server_backend_details_delete(context, share_server_id,
-                                        session=None):
-    if not session:
-        session = get_session()
-    share_server_details = (model_query(context,
-                                        models.ShareServerBackendDetails,
-                                        session=session)
-                            .filter_by(share_server_id=share_server_id).all())
-    for item in share_server_details:
-        item.soft_delete(session)
+@context_manager.writer
+def share_server_backend_details_delete(context, share_server_id):
+    return _share_server_backend_details_delete(context, share_server_id)
 
 
 @require_context
-def share_servers_update(
-        context, share_server_ids, values, session=None):
-    session = session or get_session()
+def _share_server_backend_details_delete(context, share_server_id):
+    share_server_details = model_query(
+        context,
+        models.ShareServerBackendDetails,
+    ).filter_by(share_server_id=share_server_id).all()
+    for item in share_server_details:
+        item.soft_delete(session=context.session)
 
-    result = (
-        model_query(
-            context, models.ShareServer, read_deleted="no",
-            session=session).filter(
-            models.ShareServer.id.in_(share_server_ids)).update(
-            values, synchronize_session=False))
+
+@require_context
+@context_manager.writer
+def share_servers_update(context, share_server_ids, values):
+    result = model_query(
+        context, models.ShareServer, read_deleted="no",
+    ).filter(
+        models.ShareServer.id.in_(share_server_ids),
+    ).update(values, synchronize_session=False)
     return result
 
 
