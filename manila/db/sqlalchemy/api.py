@@ -4339,81 +4339,90 @@ def export_location_metadata_update(context, export_location_uuid, metadata,
 ###################################
 
 
+# TODO(stephenfin): Remove the 'session' argument once all callers have been
+# converted
+def _security_service_get_query(context, project_only=False, session=None):
+    return model_query(
+        context, models.SecurityService, project_only=project_only,
+        session=session,
+    )
+
+
 @require_context
+@context_manager.writer
 def security_service_create(context, values):
     values = ensure_model_dict_has_id(values)
 
     security_service_ref = models.SecurityService()
     security_service_ref.update(values)
-    session = get_session()
-
-    with session.begin():
-        security_service_ref.save(session=session)
+    security_service_ref.save(session=context.session)
 
     return security_service_ref
 
 
 @require_context
+@context_manager.writer
 def security_service_delete(context, id):
-    session = get_session()
-    with session.begin():
-        security_service_ref = security_service_get(context,
-                                                    id,
-                                                    session=session)
-        security_service_ref.soft_delete(session)
+    security_service_ref = _security_service_get(context, id)
+    security_service_ref.soft_delete(session=context.session)
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def security_service_update(context, id, values):
-    session = get_session()
-    with session.begin():
-        security_service_ref = security_service_get(context,
-                                                    id,
-                                                    session=session)
-        security_service_ref.update(values)
-        security_service_ref.save(session=session)
-        return security_service_ref
+    security_service_ref = _security_service_get(context, id)
+    security_service_ref.update(values)
+    security_service_ref.save(session=context.session)
+    return security_service_ref
 
 
 @require_context
-def security_service_get(context, id, session=None, **kwargs):
-    result = (_security_service_get_query(context, session=session,
-                                          **kwargs).
-              filter_by(id=id).first())
+@context_manager.reader
+def security_service_get(context, id, **kwargs):
+    return _security_service_get(context, id, **kwargs)
 
+
+# TODO(stephenfin): Remove the 'session' argument once all callers have been
+# converted
+@require_context
+def _security_service_get(context, id, session=None, **kwargs):
+    result = _security_service_get_query(
+        context,
+        session=session,
+        **kwargs,
+    ).filter_by(id=id).first()
     if result is None:
         raise exception.SecurityServiceNotFound(security_service_id=id)
     return result
 
 
 @require_context
+@context_manager.reader
 def security_service_get_all(context):
     return _security_service_get_query(context).all()
 
 
 @require_context
+@context_manager.reader
 def security_service_get_all_by_project(context, project_id):
-    return (_security_service_get_query(context).
-            filter_by(project_id=project_id).all())
-
-
-def _security_service_get_query(context, session=None, project_only=False):
-    if session is None:
-        session = get_session()
-    return model_query(context, models.SecurityService, session=session,
-                       project_only=project_only)
+    return _security_service_get_query(context).filter_by(
+        project_id=project_id,
+    ).all()
 
 
 @require_context
+@context_manager.reader
 def security_service_get_all_by_share_network(context, share_network_id):
-    session = get_session()
-    return (model_query(context, models.SecurityService, session=session).
-            join(models.ShareNetworkSecurityServiceAssociation,
-            models.SecurityService.id ==
-            models.ShareNetworkSecurityServiceAssociation.security_service_id).
-            filter_by(share_network_id=share_network_id, deleted=0)
-            .all())
+    return model_query(
+        context, models.SecurityService,
+    ).join(
+        models.ShareNetworkSecurityServiceAssociation,
+        models.SecurityService.id ==
+        models.ShareNetworkSecurityServiceAssociation.security_service_id,
+    ).filter_by(
+        share_network_id=share_network_id, deleted=0,
+    ).all()
 
 
 ###################
@@ -4536,9 +4545,9 @@ def share_network_add_security_service(context, id, security_service_id):
                 reason=msg)
 
         share_nw_ref = share_network_get(context, id, session=session)
-        security_service_ref = security_service_get(context,
-                                                    security_service_id,
-                                                    session=session)
+        security_service_ref = _security_service_get(
+            context, security_service_id, session=session,
+        )
         share_nw_ref.security_services += [security_service_ref]
         share_nw_ref.save(session=session)
 
@@ -4566,7 +4575,7 @@ def share_network_remove_security_service(context, id, security_service_id):
 
     with session.begin():
         share_nw_ref = share_network_get(context, id, session=session)
-        security_service_get(context, security_service_id, session=session)
+        _security_service_get(context, security_service_id, session=session)
 
         assoc_ref = (model_query(
             context,
@@ -4596,10 +4605,12 @@ def share_network_update_security_service(context, id,
     with session.begin():
         share_nw_ref = share_network_get(context, id, session=session)
         # Check if the old security service exists
-        security_service_get(context, current_security_service_id,
-                             session=session)
-        new_security_service_ref = security_service_get(
-            context, new_security_service_id, session=session)
+        _security_service_get(
+            context, current_security_service_id, session=session,
+        )
+        new_security_service_ref = _security_service_get(
+            context, new_security_service_id, session=session,
+        )
 
         assoc_ref = (model_query(
             context,
