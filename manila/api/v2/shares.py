@@ -240,6 +240,7 @@ class ShareController(wsgi.Controller,
 
     @wsgi.Controller.api_version('2.7')
     @wsgi.action('reset_status')
+    @wsgi.Controller.authorize('reset_status')
     def share_reset_status(self, req, id, body):
         context = req.environ['manila.context']
         try:
@@ -264,6 +265,7 @@ class ShareController(wsgi.Controller,
 
     @wsgi.Controller.api_version('2.69')
     @wsgi.action('soft_delete')
+    @wsgi.Controller.authorize('soft_delete')
     def share_soft_delete(self, req, id, body):
         """Soft delete a share."""
         context = req.environ['manila.context']
@@ -286,6 +288,7 @@ class ShareController(wsgi.Controller,
 
     @wsgi.Controller.api_version('2.69')
     @wsgi.action('restore')
+    @wsgi.Controller.authorize("restore")
     def share_restore(self, req, id, body):
         """Restore a share from recycle bin."""
         context = req.environ['manila.context']
@@ -569,6 +572,7 @@ class ShareController(wsgi.Controller,
         return self._revert(req, id, body)
 
     @wsgi.Controller.api_version("2.0")
+    @wsgi.Controller.authorize("get_all")
     def index(self, req):
         """Returns a summary list of shares."""
         if req.api_version_request < api_version.APIVersionRequest("2.35"):
@@ -589,6 +593,7 @@ class ShareController(wsgi.Controller,
         return self._get_shares(req, is_detail=False)
 
     @wsgi.Controller.api_version("2.0")
+    @wsgi.Controller.authorize("get_all")
     def detail(self, req):
         """Returns a detailed list of shares."""
         if req.api_version_request < api_version.APIVersionRequest("2.35"):
