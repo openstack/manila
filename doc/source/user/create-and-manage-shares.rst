@@ -307,6 +307,65 @@ Create a share
      | 908e5a28-c5ea-4627-b17c-1cfeb894ccd1 | 10.0.0.11:/sharevolumes_10034/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd | True      |
      +--------------------------------------+---------------------------------------------------------------------------------------------------------------+-----------+
 
+* Create a share using scheduler hints to specify the host.
+
+  With scheduler hints, you can optionally specify the affinity and anti-affinity rules in relation to other shares.
+  The scheduler will enforce these rules when determining where to create the share.
+  Possible keys are ``same_host`` and ``different_host``, and the value must be the share name or id.
+
+  .. code-block:: console
+
+     $ manila create NFS 1 \
+         --name myshare2 \
+         --description "My Manila share - Different Host" \
+         --share-network mysharenetwork \
+         --share-type dhss_true \
+         --scheduler-hints different_host=myshare
+
+     +---------------------------------------+-----------------------------------------------------------------------+
+     | Property                              | Value                                                                 |
+     +---------------------------------------+-----------------------------------------------------------------------+
+     | id                                    | 40de4f4c-4588-4d9c-844b-f74d8951053a                                  |
+     | size                                  | 1                                                                     |
+     | availability_zone                     | None                                                                  |
+     | created_at                            | 2020-08-07T05:24:14.000000                                            |
+     | status                                | creating                                                              |
+     | name                                  | myshare2                                                              |
+     | description                           | My Manila share - Different Host                                      |
+     | project_id                            | d9932a60d9ee4087b6cff9ce6e9b4e3b                                      |
+     | snapshot_id                           | None                                                                  |
+     | share_network_id                      | c4bfdd5e-7502-4a65-8876-0ce8b9914a64                                  |
+     | share_proto                           | NFS                                                                   |
+     | metadata                              | {'__affinity_different_host': '83b0772b-00ad-4e45-8fad-106b9d4f1719'} |
+     | share_type                            | af7b64ec-cdb3-4a5f-93c9-51672d72e172                                  |
+     | is_public                             | False                                                                 |
+     | snapshot_support                      | True                                                                  |
+     | task_state                            | None                                                                  |
+     | share_type_name                       | dhss_true                                                             |
+     | access_rules_status                   | active                                                                |
+     | replication_type                      | None                                                                  |
+     | has_replicas                          | False                                                                 |
+     | user_id                               | 2cebd96a794f431caa06ce5215e0da21                                      |
+     | create_share_from_snapshot_support    | True                                                                  |
+     | revert_to_snapshot_support            | True                                                                  |
+     | share_group_id                        | None                                                                  |
+     | source_share_group_snapshot_member_id | None                                                                  |
+     | mount_snapshot_support                | True                                                                  |
+     | progress                              | None                                                                  |
+     +---------------------------------------+-----------------------------------------------------------------------+
+
+   Share is created in a different host.
+
+   .. code-block:: console
+
+     $ manila list
+     +--------------------------------------+-----------+------+-------------+-----------+-----------+-----------------+-----------------------------+-------------------+
+     | ID                                   | Name      | Size | Share Proto | Status    | Is Public | Share Type Name | Host                        | Availability Zone |
+     +--------------------------------------+-----------+------+-------------+-----------+-----------+-----------------+-----------------------------+-------------------+
+     | 83b0772b-00ad-4e45-8fad-106b9d4f1719 | myshare   | 1    | NFS         | available | False     | default         | nosb-devstack@london#LONDON | nova              |
+     | 40de4f4c-4588-4d9c-844b-f74d8951053a | myshare2  | 1    | NFS         | available | False     | default         | nosb-devstack@lisboa#LISBOA | nova              |
+     +--------------------------------------+-----------+------+-------------+-----------+-----------+-----------------+-----------------------------+-------------------+
+
 Allow read-write access
 ~~~~~~~~~~~~~~~~~~~~~~~
 
