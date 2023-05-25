@@ -51,6 +51,7 @@ class ShareMixin(object):
     def _delete(self, *args, **kwargs):
         return self.share_api.delete(*args, **kwargs)
 
+    @wsgi.Controller.authorize('get')
     def show(self, req, id):
         """Return data about the given share."""
         context = req.environ['manila.context']
@@ -62,6 +63,7 @@ class ShareMixin(object):
 
         return self._view_builder.detail(req, share)
 
+    @wsgi.Controller.authorize
     def delete(self, req, id):
         """Delete a share."""
         context = req.environ['manila.context']
@@ -96,6 +98,7 @@ class ShareMixin(object):
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
+    @wsgi.Controller.authorize("get_all")
     def index(self, req):
         """Returns a summary list of shares."""
         req.GET.pop('export_location_id', None)
@@ -106,6 +109,7 @@ class ShareMixin(object):
         req.GET.pop('with_count', None)
         return self._get_shares(req, is_detail=False)
 
+    @wsgi.Controller.authorize("get_all")
     def detail(self, req):
         """Returns a detailed list of shares."""
         req.GET.pop('export_location_id', None)
@@ -540,6 +544,7 @@ class ShareMixin(object):
 
         return self._access_view_builder.list_view(req, access_rules)
 
+    @wsgi.Controller.authorize("extend")
     def _extend(self, req, id, body):
         """Extend size of a share."""
         context = req.environ['manila.context']
@@ -560,6 +565,7 @@ class ShareMixin(object):
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
+    @wsgi.Controller.authorize("shrink")
     def _shrink(self, req, id, body):
         """Shrink size of a share."""
         context = req.environ['manila.context']
