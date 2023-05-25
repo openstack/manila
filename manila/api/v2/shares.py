@@ -207,6 +207,7 @@ class ShareController(shares.ShareMixin,
 
     @wsgi.Controller.api_version('2.7')
     @wsgi.action('reset_status')
+    @wsgi.Controller.authorize('reset_status')
     def share_reset_status(self, req, id, body):
         return self._reset_status(req, id, body)
 
@@ -444,6 +445,7 @@ class ShareController(shares.ShareMixin,
         return self._revert(req, id, body)
 
     @wsgi.Controller.api_version("2.0")
+    @wsgi.Controller.authorize("get_all")
     def index(self, req):
         """Returns a summary list of shares."""
         if req.api_version_request < api_version.APIVersionRequest("2.35"):
@@ -461,6 +463,7 @@ class ShareController(shares.ShareMixin,
         return self._get_shares(req, is_detail=False)
 
     @wsgi.Controller.api_version("2.0")
+    @wsgi.Controller.authorize("get_all")
     def detail(self, req):
         """Returns a detailed list of shares."""
         if req.api_version_request < api_version.APIVersionRequest("2.35"):

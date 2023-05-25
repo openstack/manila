@@ -1830,8 +1830,6 @@ class API(base.Base):
 
     def _get_all(self, context, search_opts=None, sort_key='created_at',
                  sort_dir='desc', show_count=False):
-        policy.check_policy(context, 'share', 'get_all')
-
         if search_opts is None:
             search_opts = {}
 
@@ -2154,7 +2152,7 @@ class API(base.Base):
         return self.db.share_network_get(context, share_net_id)
 
     def extend(self, context, share, new_size):
-        policy.check_policy(context, 'share', 'extend')
+        policy.check_policy(context, 'share', 'extend', share)
 
         if share['status'] != constants.STATUS_AVAILABLE:
             msg_params = {
@@ -2253,8 +2251,6 @@ class API(base.Base):
                  resource=share)
 
     def shrink(self, context, share, new_size):
-        policy.check_policy(context, 'share', 'shrink')
-
         status = six.text_type(share['status']).lower()
         valid_statuses = (constants.STATUS_AVAILABLE,
                           constants.STATUS_SHRINKING_POSSIBLE_DATA_LOSS_ERROR)
