@@ -23,6 +23,10 @@ Provides quotas management support.
     - ``replica_gigabytes`` (since API version 2.53)
     - ``per_share_gigabytes`` (since API version 2.62)
 
+    In order to manipulate share type quotas, the requests will be similar
+    to the examples below, except that the ``user_id={user_id}`` must be
+    replaced by ``share_type={share_type_name_or_id}`` in the request path.
+
     Share groups and share group snapshots were added to quota management
     APIs in API version 2.40.
 
