@@ -46,6 +46,7 @@ deployment.
    shared-file-systems-key-concepts.rst
    shared-file-systems-share-management.rst
    shared-file-systems-share-types.rst
+   shared-file-systems-quotas.rst
    shared-file-systems-share-group-types.rst
    shared-file-systems-share-groups.rst
    shared-file-systems-snapshots.rst
