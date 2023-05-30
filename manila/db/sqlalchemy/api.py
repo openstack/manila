@@ -4651,16 +4651,18 @@ def _count_share_networks(
 
 
 @require_context
-def _network_subnet_get_query(context, session=None):
-    if session is None:
-        session = get_session()
-    return (model_query(context, models.ShareNetworkSubnet, session=session).
-            options(joinedload('share_servers'),
-                    joinedload('share_network'),
-                    joinedload('share_network_subnet_metadata')))
+def _share_network_subnet_get_query(context):
+    return model_query(
+        context, models.ShareNetworkSubnet,
+    ).options(
+        joinedload('share_servers'),
+        joinedload('share_network'),
+        joinedload('share_network_subnet_metadata'),
+    )
 
 
 @require_context
+@context_manager.writer
 def share_network_subnet_create(context, values):
     values = ensure_model_dict_has_id(values)
     values['share_network_subnet_metadata'] = _metadata_refs(
@@ -4668,87 +4670,98 @@ def share_network_subnet_create(context, values):
 
     network_subnet_ref = models.ShareNetworkSubnet()
     network_subnet_ref.update(values)
-    session = get_session()
-    with session.begin():
-        network_subnet_ref.save(session=session)
-        return share_network_subnet_get(
-            context, network_subnet_ref['id'], session=session)
+    network_subnet_ref.save(session=context.session)
+    return _share_network_subnet_get(
+        context, network_subnet_ref['id'],
+    )
 
 
 @require_context
+@context_manager.writer
 def share_network_subnet_delete(context, network_subnet_id):
-
-    session = get_session()
-    with session.begin():
-        network_subnet_ref = share_network_subnet_get(context,
-                                                      network_subnet_id,
-                                                      session=session)
-        session.query(models.ShareNetworkSubnetMetadata).filter_by(
-            share_network_subnet_id=network_subnet_id).soft_delete()
-        network_subnet_ref.soft_delete(session=session, update_status=True)
+    network_subnet_ref = _share_network_subnet_get(context, network_subnet_id)
+    context.session.query(models.ShareNetworkSubnetMetadata).filter_by(
+        share_network_subnet_id=network_subnet_id,
+    ).soft_delete()
+    network_subnet_ref.soft_delete(session=context.session, update_status=True)
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def share_network_subnet_update(context, network_subnet_id, values):
-    session = get_session()
-    with session.begin():
-        network_subnet_ref = share_network_subnet_get(context,
-                                                      network_subnet_id,
-                                                      session=session)
-        network_subnet_ref.update(values)
-        network_subnet_ref.save(session=session)
-        return network_subnet_ref
+    network_subnet_ref = _share_network_subnet_get(context, network_subnet_id)
+    network_subnet_ref.update(values)
+    network_subnet_ref.save(session=context.session)
+    return network_subnet_ref
 
 
 @require_context
-def share_network_subnet_get(context, network_subnet_id, session=None,
-                             parent_id=None):
+@context_manager.reader
+def share_network_subnet_get(context, network_subnet_id, parent_id=None):
+    return _share_network_subnet_get(
+        context, network_subnet_id, parent_id=parent_id,
+    )
+
+
+@require_context
+def _share_network_subnet_get(context, network_subnet_id, parent_id=None):
     kwargs = {'id': network_subnet_id}
     if parent_id:
         kwargs['share_network_id'] = parent_id
-    result = (_network_subnet_get_query(context, session)
-              .filter_by(**kwargs)
-              .first())
+    result = _share_network_subnet_get_query(
+        context,
+    ).filter_by(**kwargs).first()
     if result is None:
         raise exception.ShareNetworkSubnetNotFound(
-            share_network_subnet_id=network_subnet_id)
+            share_network_subnet_id=network_subnet_id,
+        )
     return result
 
 
 @require_context
-def share_network_subnet_get_all_with_same_az(context, network_subnet_id,
-                                              session=None):
-    subnet = (_network_subnet_get_query(context, session)
-              .filter_by(id=network_subnet_id).subquery())
-    result = (_network_subnet_get_query(context, session)
-              .join(subnet, subnet.c.share_network_id ==
-                    models.ShareNetworkSubnet.share_network_id)
-              .filter(func.coalesce(subnet.c.availability_zone_id, '0') ==
-                      func.coalesce(
-                          models.ShareNetworkSubnet.availability_zone_id, '0'))
-              .all())
+@context_manager.reader
+def share_network_subnet_get_all_with_same_az(context, network_subnet_id):
+    subnet = _share_network_subnet_get_query(
+        context,
+    ).filter_by(id=network_subnet_id).subquery()
+    result = _share_network_subnet_get_query(
+        context,
+    ).join(
+        subnet,
+        subnet.c.share_network_id ==
+        models.ShareNetworkSubnet.share_network_id,
+    ).filter(
+        func.coalesce(subnet.c.availability_zone_id, '0') ==
+        func.coalesce(models.ShareNetworkSubnet.availability_zone_id, '0')
+    ).all()
     if not result:
         raise exception.ShareNetworkSubnetNotFound(
-            share_network_subnet_id=network_subnet_id)
+            share_network_subnet_id=network_subnet_id,
+        )
     return result
 
 
 @require_context
+@context_manager.reader
 def share_network_subnet_get_all(context):
-    return _network_subnet_get_query(context).all()
+    return _share_network_subnet_get_query(context).all()
 
 
 @require_context
+@context_manager.reader
 def share_network_subnet_get_all_by_share_network(context, network_id):
-    return _network_subnet_get_query(context).filter_by(
-        share_network_id=network_id).all()
+    return _share_network_subnet_get_query(context).filter_by(
+        share_network_id=network_id,
+    ).all()
 
 
 @require_context
+@context_manager.reader
 def share_network_subnets_get_all_by_availability_zone_id(
-        context, share_network_id, availability_zone_id,
-        fallback_to_default=True):
+    context, share_network_id, availability_zone_id,
+    fallback_to_default=True,
+):
     """Get the share network subnets DB records in a given AZ.
 
     This method returns list of subnets DB record for a given share network id
@@ -4765,32 +4778,50 @@ def share_network_subnets_get_all_by_availability_zone_id(
                                 given AZ, it will return the "default" subnets.
     :return: the list of share network subnets in the AZ and share network.
     """
-    result = (_network_subnet_get_query(context).filter_by(
+    return _share_network_subnets_get_all_by_availability_zone_id(
+        context, share_network_id, availability_zone_id,
+        fallback_to_default=fallback_to_default,
+    )
+
+
+@require_context
+def _share_network_subnets_get_all_by_availability_zone_id(
+    context, share_network_id, availability_zone_id,
+    fallback_to_default=True,
+):
+    result = _share_network_subnet_get_query(context).filter_by(
         share_network_id=share_network_id,
-        availability_zone_id=availability_zone_id).all())
+        availability_zone_id=availability_zone_id,
+    ).all()
     # If a specific subnet wasn't found, try get the default one
     if availability_zone_id and not result and fallback_to_default:
-        return (_network_subnet_get_query(context).filter_by(
+        return _share_network_subnet_get_query(context).filter_by(
             share_network_id=share_network_id,
-            availability_zone_id=None).all())
+            availability_zone_id=None,
+        ).all()
     return result
 
 
 @require_context
+@context_manager.reader
 def share_network_subnet_get_default_subnets(context, share_network_id):
-    return share_network_subnets_get_all_by_availability_zone_id(
-        context, share_network_id, availability_zone_id=None)
+    return _share_network_subnets_get_all_by_availability_zone_id(
+        context, share_network_id, availability_zone_id=None,
+    )
 
 
 @require_context
+@context_manager.reader
 def share_network_subnet_get_all_by_share_server_id(context, share_server_id):
-    result = (_network_subnet_get_query(context)
-              .filter(models.ShareNetworkSubnet.share_servers.any(
-                      id=share_server_id))
-              .all())
+    result = _share_network_subnet_get_query(context).filter(
+        models.ShareNetworkSubnet.share_servers.any(
+            id=share_server_id,
+        )
+    ).all()
     if not result:
         raise exception.ShareNetworkSubnetNotFoundByShareServer(
-            share_server_id=share_server_id)
+            share_server_id=share_server_id,
+        )
 
     return result
 
