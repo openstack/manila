@@ -4828,66 +4828,27 @@ def share_network_subnet_get_all_by_share_server_id(context, share_server_id):
 ###################
 
 
+def _share_network_subnet_metadata_get_query(context, share_network_subnet_id):
+    return model_query(
+        context, models.ShareNetworkSubnetMetadata,
+        read_deleted="no",
+    ).filter_by(
+        share_network_subnet_id=share_network_subnet_id,
+    ).options(joinedload('share_network_subnet'))
+
+
 @require_context
 @require_share_network_subnet_exists
+@context_manager.reader
 def share_network_subnet_metadata_get(context, share_network_subnet_id):
-    session = get_session()
-    return _share_network_subnet_metadata_get(context, share_network_subnet_id,
-                                              session=session)
+    return _share_network_subnet_metadata_get(context, share_network_subnet_id)
 
 
 @require_context
-@require_share_network_subnet_exists
-def share_network_subnet_metadata_delete(context, share_network_subnet_id,
-                                         key):
-    session = get_session()
-    meta_ref = _share_network_subnet_metadata_get_item(
-        context, share_network_subnet_id, key, session=session)
-    meta_ref.soft_delete(session=session)
-
-
-@require_context
-@require_share_network_subnet_exists
-def share_network_subnet_metadata_update(context, share_network_subnet_id,
-                                         metadata, delete):
-    session = get_session()
-    return _share_network_subnet_metadata_update(
-        context, share_network_subnet_id, metadata, delete, session=session)
-
-
-def share_network_subnet_metadata_update_item(context, share_network_subnet_id,
-                                              item):
-    session = get_session()
-    return _share_network_subnet_metadata_update(
-        context, share_network_subnet_id, item, delete=False, session=session)
-
-
-def share_network_subnet_metadata_get_item(context, share_network_subnet_id,
-                                           key):
-
-    session = get_session()
-    row = _share_network_subnet_metadata_get_item(
-        context, share_network_subnet_id, key, session=session)
-
-    result = {row['key']: row['value']}
-    return result
-
-
-def _share_network_subnet_metadata_get_query(context, share_network_subnet_id,
-                                             session=None):
-    session = session or get_session()
-    return (model_query(context, models.ShareNetworkSubnetMetadata,
-                        session=session,
-                        read_deleted="no").
-            filter_by(share_network_subnet_id=share_network_subnet_id).
-            options(joinedload('share_network_subnet')))
-
-
-def _share_network_subnet_metadata_get(context, share_network_subnet_id,
-                                       session=None):
-    session = session or get_session()
+def _share_network_subnet_metadata_get(context, share_network_subnet_id):
     rows = _share_network_subnet_metadata_get_query(
-        context, share_network_subnet_id, session=session).all()
+        context, share_network_subnet_id,
+    ).all()
 
     result = {}
     for row in rows:
@@ -4895,52 +4856,99 @@ def _share_network_subnet_metadata_get(context, share_network_subnet_id,
     return result
 
 
-def _share_network_subnet_metadata_get_item(context, share_network_subnet_id,
-                                            key, session=None):
-    session = session or get_session()
-    result = (_share_network_subnet_metadata_get_query(
-        context, share_network_subnet_id, session=session).
-        filter_by(key=key).first())
+@require_context
+@require_share_network_subnet_exists
+@context_manager.writer
+def share_network_subnet_metadata_delete(
+    context, share_network_subnet_id, key,
+):
+    meta_ref = _share_network_subnet_metadata_get_item(
+        context, share_network_subnet_id, key,
+    )
+    meta_ref.soft_delete(session=context.session)
+
+
+@require_context
+@require_share_network_subnet_exists
+@context_manager.writer
+def share_network_subnet_metadata_update(
+    context, share_network_subnet_id, metadata, delete,
+):
+    return _share_network_subnet_metadata_update(
+        context, share_network_subnet_id, metadata, delete,
+    )
+
+
+@require_context
+@context_manager.writer
+def share_network_subnet_metadata_update_item(
+    context, share_network_subnet_id, item,
+):
+    return _share_network_subnet_metadata_update(
+        context, share_network_subnet_id, item, delete=False,
+    )
+
+
+@require_context
+@context_manager.reader
+def share_network_subnet_metadata_get_item(
+    context, share_network_subnet_id, key,
+):
+    row = _share_network_subnet_metadata_get_item(
+        context, share_network_subnet_id, key,
+    )
+    result = {row['key']: row['value']}
+    return result
+
+
+def _share_network_subnet_metadata_get_item(
+    context, share_network_subnet_id, key,
+):
+    result = _share_network_subnet_metadata_get_query(
+        context, share_network_subnet_id,
+    ).filter_by(key=key).first()
     if not result:
         raise exception.MetadataItemNotFound
     return result
 
 
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def _share_network_subnet_metadata_update(context, share_network_subnet_id,
-                                          metadata, delete, session=None):
-    session = session or get_session()
+def _share_network_subnet_metadata_update(
+    context, share_network_subnet_id, metadata, delete,
+):
     delete = strutils.bool_from_string(delete)
-    with session.begin():
-        if delete:
-            original_metadata = _share_network_subnet_metadata_get(
-                context, share_network_subnet_id, session=session)
-            for meta_key, meta_value in original_metadata.items():
-                if meta_key not in metadata:
-                    meta_ref = _share_network_subnet_metadata_get_item(
-                        context, share_network_subnet_id, meta_key,
-                        session=session)
-                    meta_ref.soft_delete(session=session)
-        meta_ref = None
-        # Now update all existing items with new values, or create new meta
-        # objects.
-        for meta_key, meta_value in metadata.items():
+    if delete:
+        original_metadata = _share_network_subnet_metadata_get(
+            context, share_network_subnet_id,
+        )
+        for meta_key, meta_value in original_metadata.items():
+            if meta_key not in metadata:
+                meta_ref = _share_network_subnet_metadata_get_item(
+                    context, share_network_subnet_id, meta_key,
+                )
+                meta_ref.soft_delete(session=context.session)
+    meta_ref = None
+    # Now update all existing items with new values, or create new meta
+    # objects.
+    for meta_key, meta_value in metadata.items():
 
-            # update the value whether it exists or not.
-            item = {"value": meta_value}
-            meta_ref = _share_network_subnet_metadata_get_query(
-                context, share_network_subnet_id,
-                session=session).filter_by(
-                key=meta_key).first()
-            if not meta_ref:
-                meta_ref = models.ShareNetworkSubnetMetadata()
-                item.update(
-                    {"key": meta_key,
-                     "share_network_subnet_id": share_network_subnet_id})
-            meta_ref.update(item)
-            meta_ref.save(session=session)
+        # update the value whether it exists or not.
+        item = {"value": meta_value}
+        meta_ref = _share_network_subnet_metadata_get_query(
+            context, share_network_subnet_id,
+        ).filter_by(key=meta_key).first()
+        if not meta_ref:
+            meta_ref = models.ShareNetworkSubnetMetadata()
+            item.update(
+                {
+                    "key": meta_key,
+                    "share_network_subnet_id": share_network_subnet_id,
+                }
+            )
+        meta_ref.update(item)
+        meta_ref.save(session=context.session)
 
-        return metadata
+    return metadata
 
 #################################
 
