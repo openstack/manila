@@ -2,6 +2,7 @@
 # or extra rules in policy file, it is strongly
 # recommended to switch to new rules.
 "context_is_admin": "role:admin"
+"context_is_host_admin": "role:admin and project_id:%(project_id)s"
 "admin_api": "is_admin:True"
 "admin_or_owner": "is_admin:True or project_id:%(project_id)s"
 "default": "rule:admin_or_owner"

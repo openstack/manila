@@ -967,7 +967,7 @@ class API(base.Base):
                                               export_location_path)
 
         request_spec = self._get_request_spec_dict(
-            share, share_type, context, size=0,
+            context, share, share_type, size=0,
             share_proto=share_data['share_proto'],
             host=share_data['host'])
 
@@ -979,7 +979,7 @@ class API(base.Base):
 
         return self.db.share_get(context, share['id'])
 
-    def _get_request_spec_dict(self, share, share_type, context, **kwargs):
+    def _get_request_spec_dict(self, context, share, share_type, **kwargs):
 
         if share is None:
             share = {'instance': {}}
@@ -1793,9 +1793,9 @@ class API(base.Base):
             raise exception.InvalidShare(reason=msg % payload)
 
         request_spec = self._get_request_spec_dict(
+            context,
             share,
             share_type,
-            context,
             availability_zone_id=service['availability_zone_id'],
             share_network_id=new_share_network_id)
 
@@ -2528,8 +2528,8 @@ class API(base.Base):
         else:
             share_type = share_types.get_share_type(
                 context, share['instance']['share_type_id'])
-            request_spec = self._get_request_spec_dict(share, share_type,
-                                                       context)
+            request_spec = self._get_request_spec_dict(context, share,
+                                                       share_type)
             request_spec.update({'is_share_extend': True})
             self.scheduler_rpcapi.extend_share(context, share['id'], new_size,
                                                reservations, request_spec)
@@ -2680,8 +2680,8 @@ class API(base.Base):
         for share_instance in share_instances:
             share_type_id = share_instance['share_type_id']
             share_type = share_types.get_share_type(context, share_type_id)
-            req_spec = self._get_request_spec_dict(share_instance,
-                                                   share_type, context,
+            req_spec = self._get_request_spec_dict(context, share_instance,
+                                                   share_type,
                                                    **kwargs)
             shares_req_spec.append(req_spec)
 

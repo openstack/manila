@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from manila import policy
 from manila.scheduler.filters import base_host
 
 
@@ -21,7 +22,7 @@ class OnlyHostFilter(base_host.BaseHostFilter):
 
     def host_passes(self, host_state, filter_properties):
         context = filter_properties['context']
-        if not context.is_admin:
+        if not policy.check_is_host_admin(context):
             return True
         hints = filter_properties.get('scheduler_hints')
         if hints is None:

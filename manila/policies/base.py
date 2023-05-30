@@ -86,6 +86,13 @@ rules = [
         deprecated_rule=DEPRECATED_CONTEXT_IS_ADMIN,
         scope_types=['project']),
 
+    policy.RuleDefault(
+        name='context_is_host_admin',
+        check_str='role:admin and '
+                  'project_id:%(project_id)s',
+        description='Privileged user who can select host during scheduling',
+        scope_types=['project']),
+
     # ***Legacy/deprecated unscoped rules*** #
     # can be removed after "enforce_scope" defaults to True in oslo.policy
     policy.RuleDefault(

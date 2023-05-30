@@ -2451,7 +2451,7 @@ scheduler_hints:
     One or more scheduler_hints key and value pairs as a dictionary of
     strings. Accepted hints are:
     - ``same_host`` or ``different_host``: values must be a comma separated list of Share IDs
-    - ``only_host``: value must be a manage-share service host in ``host@backend#POOL`` format (admin only)
+    - ``only_host``: value must be a manage-share service host in ``host@backend#POOL`` format (admin only). Only available in and beyond API version 2.67
   in: body
   required: false
   type: object

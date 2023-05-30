@@ -223,6 +223,15 @@ def check_is_admin(context):
     return authorize(context, 'context_is_admin', target, do_raise=False)
 
 
+def check_is_host_admin(context):
+    """Whether or not user is host admin according to policy setting.
+
+    """
+    # the target is user-self
+    target = default_target(context)
+    return authorize(context, 'context_is_host_admin', target, do_raise=False)
+
+
 def wrap_check_policy(resource):
     """Check policy corresponding to the wrapped methods prior to execution."""
     def check_policy_wraper(func):
