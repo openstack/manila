@@ -760,8 +760,12 @@ class NetAppCmodeFileStorageLibrary(object):
                 src_volume.get('is-space-reporting-logical')
         }
 
-    def _get_efficiency_options(self, vserver_client, share_name):
+    def _get_efficiency_options(self, vserver_client, share_name,
+                                extra_logging=False):
         status = vserver_client.get_volume_efficiency_status(share_name)
+        if extra_logging:
+            LOG.debug(f"volume_efficiency_status of share '{share_name}'"
+                      f"is '{status}'")
         cross_dedup_disabled = (status.get('policy') == 'inline-only'
                                 and status.get('cross_dedup_disabled'))
         provisioning_opts = {
@@ -3054,7 +3058,8 @@ class NetAppCmodeFileStorageLibrary(object):
             orig_active_vserver_client, orig_active_replica_name)
         is_logical_space_reporting = logical_opts['logical_space_reporting']
         effi_opts = self._get_efficiency_options(orig_active_vserver_client,
-                                                 orig_active_replica_name)
+                                                 orig_active_replica_name,
+                                                 extra_logging=True)
 
         new_replica_list = []
 
@@ -3136,19 +3141,37 @@ class NetAppCmodeFileStorageLibrary(object):
                 new_active_replica['id'])
             __, vserver_client = self._get_vserver(
                 share_server=share_server)
-            vserver_client.set_volume_max_files(new_active_replica_share_name,
-                                                max_files)
+            try:
+                vserver_client.set_volume_max_files(
+                    new_active_replica_share_name,
+                    max_files)
+            except Exception as e:
+                LOG.exception(
+                    f"Could not apply max_files '{max_files}' to the promoted "
+                    f"replica. {e}")
 
         # SAPCC update new replica
         _, new_active_vserver_client = self._get_vserver(
             share_server=share_server)
         new_active_replica_name = self._get_backend_share_name(
             new_active_replica['id'])
-        new_active_vserver_client.update_volume_space_attributes(
-            new_active_replica_name, is_logical_space_reporting)
+        try:
+            new_active_vserver_client.update_volume_space_attributes(
+                new_active_replica_name, is_logical_space_reporting)
+        except Exception as e:
+            LOG.exception(
+                f"Could not apply is_logical_space_reporting "
+                f"'{is_logical_space_reporting}' to the promoted replica. {e}")
         if effi_opts['cross_dedup_disabled']:
-            new_active_vserver_client.update_volume_efficiency_attributes(
-                new_active_replica_name, True, True, cross_dedup_disabled=True)
+            try:
+                new_active_vserver_client.update_volume_efficiency_attributes(
+                    new_active_replica_name, True, True,
+                    cross_dedup_disabled=True)
+            except Exception as e:
+                LOG.exception(
+                    f"With efficiency options '{effi_opts}'"
+                    f"could not apply cross_dedup_disabled to the promoted "
+                    f"replica. {e}")
 
         return new_replica_list
 
