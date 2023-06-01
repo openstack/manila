@@ -39,7 +39,7 @@ DB_ROOT_PW=${POSTGRES_ROOT_PW:-insecure_slave}
 
 # Setup user
 root_roles=$(sudo -H -u postgres psql -t -c "
-   SELECT 'HERE' from pg_roles where rolname='$DB_USER'")
+    SELECT 'HERE' from pg_roles where rolname='$DB_USER'")
 if [[ ${root_roles} == *HERE ]];then
     sudo -H -u postgres psql -c "ALTER ROLE $DB_USER WITH SUPERUSER LOGIN PASSWORD '$DB_PW'"
 else

@@ -17,4 +17,4 @@ upgrade:
       ``emc_nas_server_container``, ``emc_nas_pool_names`` and
       ``emc_interface_ports`` can no longer be used. They must be replaced by
       ``powermax_server_container``, ``powermax_share_data_pools`` and
-      ``powermax_ethernet_ports`` respectively. 
+      ``powermax_ethernet_ports`` respectively.

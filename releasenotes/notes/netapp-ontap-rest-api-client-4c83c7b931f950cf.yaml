@@ -7,8 +7,8 @@ features:
     approach and new REST client. It is default to `True`, meaning that the
     drivers will keep working as before using ZAPI operations. If desired, this
     option can be set to `False` connecting with new REST client that performs
-    REST API operations if it is available, otherwise falls back to ZAPI. 
-    
+    REST API operations if it is available, otherwise falls back to ZAPI.
+
     Also, an option called `netapp_rest_operation_timeout` was added to allow
     the user to set the maximum amount of time expected to get an output from
     a synchronous operation when using REST API. By default, the timeout value
