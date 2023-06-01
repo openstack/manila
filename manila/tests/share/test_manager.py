@@ -215,8 +215,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(side_effect=[instances[0], instances[2],
                                                 instances[4]]))
-        self.mock_object(self.share_manager.db,
-                         'share_export_locations_update')
+        self.mock_object(self.share_manager.db, 'export_locations_update')
         mock_ensure_shares = self.mock_object(
             self.share_manager.driver, 'ensure_shares',
             mock.Mock(return_value=fake_update_instances))
@@ -236,7 +235,7 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.ensure_driver_resources(self.context)
 
-        exports_update = self.share_manager.db.share_export_locations_update
+        exports_update = self.share_manager.db.export_locations_update
         mock_backend_info_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             self.share_manager.host,
@@ -456,7 +455,7 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(side_effect=[instances[0], instances[2],
                                                 instances[4]]))
         self.mock_object(self.share_manager.db,
-                         'share_export_locations_update')
+                         'export_locations_update')
         mock_ensure_shares = self.mock_object(
             self.share_manager.driver, 'ensure_shares',
             mock.Mock(return_value=fake_update_instances))
@@ -482,7 +481,7 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.init_host()
 
         # verification of call
-        exports_update = self.share_manager.db.share_export_locations_update
+        exports_update = self.share_manager.db.export_locations_update
         self.share_manager.driver.do_setup.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext))
         (self.share_manager.driver.check_for_setup_error.
@@ -1100,7 +1099,7 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=[]))
         mock_replica_update_call = self.mock_object(db, 'share_replica_update')
         mock_export_locs_update_call = self.mock_object(
-            db, 'share_export_locations_update')
+            db, 'export_locations_update')
         mock_log_error = self.mock_object(manager.LOG, 'error')
         mock_log_info = self.mock_object(manager.LOG, 'info')
         self.mock_object(db, 'share_instance_access_get',
@@ -1163,7 +1162,7 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=[]))
         mock_replica_update_call = self.mock_object(db, 'share_replica_update')
         mock_export_locs_update_call = self.mock_object(
-            db, 'share_export_locations_update')
+            db, 'export_locations_update')
         mock_log_info = self.mock_object(manager.LOG, 'info')
         mock_log_warning = self.mock_object(manager.LOG, 'warning')
         mock_log_error = self.mock_object(manager.LOG, 'error')
@@ -1227,7 +1226,7 @@ class ShareManagerTestCase(test.TestCase):
                        'progress': '100%'}),
         ]
         mock_export_locs_update_call = self.mock_object(
-            db, 'share_export_locations_update')
+            db, 'export_locations_update')
         mock_log_info = self.mock_object(manager.LOG, 'info')
         mock_log_warning = self.mock_object(manager.LOG, 'warning')
         mock_log_error = self.mock_object(manager.LOG, 'warning')
@@ -1293,7 +1292,7 @@ class ShareManagerTestCase(test.TestCase):
 
         mock_replica_update_call = self.mock_object(db, 'share_replica_update')
         mock_export_locs_update_call = self.mock_object(
-            db, 'share_export_locations_update')
+            db, 'export_locations_update')
         mock_log_info = self.mock_object(manager.LOG, 'info')
         mock_log_warning = self.mock_object(manager.LOG, 'warning')
         mock_log_error = self.mock_object(manager.LOG, 'warning')
@@ -1632,7 +1631,7 @@ class ShareManagerTestCase(test.TestCase):
             db, 'share_snapshot_instance_update')
         mock_info_log = self.mock_object(manager.LOG, 'info')
         mock_export_locs_update = self.mock_object(
-            db, 'share_export_locations_update')
+            db, 'export_locations_update')
         mock_replica_update = self.mock_object(db, 'share_replica_update')
         call_1 = mock.call(mock.ANY, replica['id'],
                            {'status': constants.STATUS_AVAILABLE,
@@ -1704,7 +1703,7 @@ class ShareManagerTestCase(test.TestCase):
             mock.Mock(return_value=updated_replica_list))
         mock_info_log = self.mock_object(manager.LOG, 'info')
         mock_export_locs_update = self.mock_object(
-            db, 'share_export_locations_update')
+            db, 'export_locations_update')
         mock_replica_update = self.mock_object(db, 'share_replica_update')
         reset_replication_change_updates = {
             'replica_state': constants.STATUS_ACTIVE,
@@ -3277,9 +3276,9 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(share_types, 'provision_filter_on_size', mock.Mock())
         self.mock_object(
             self.share_manager.db,
-            'share_export_locations_update',
+            'export_locations_update',
             mock.Mock(side_effect=(
-                self.share_manager.db.share_export_locations_update)))
+                self.share_manager.db.export_locations_update)))
         self.mock_object(share_types,
                          'get_share_type_extra_specs',
                          mock.Mock(return_value=str(dhss)))
@@ -3319,13 +3318,13 @@ class ShareManagerTestCase(test.TestCase):
         else:
             mock_manage.assert_called_once_with(mock.ANY, driver_options)
         if export_locations:
-            (self.share_manager.db.share_export_locations_update.
+            (self.share_manager.db.export_locations_update.
                 assert_called_once_with(
                     utils.IsAMatcher(context.RequestContext),
                     share.instance['id'], export_locations, delete=True))
         else:
             self.assertFalse(
-                self.share_manager.db.share_export_locations_update.called)
+                self.share_manager.db.export_locations_update.called)
         valid_share_data = {
             'status': constants.STATUS_AVAILABLE, 'launched_at': mock.ANY}
         if replication_type:
@@ -5051,7 +5050,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.db, 'share_group_update')
         self.mock_object(self.share_manager.db, 'share_instance_update')
         self.mock_object(self.share_manager.db,
-                         'share_export_locations_update')
+                         'export_locations_update')
 
         fake_share_update = {'id': fake_share['id'],
                              'foo': 'bar',
@@ -5074,7 +5073,7 @@ class ShareManagerTestCase(test.TestCase):
             {'foo': 'bar',
              'status': share_status or constants.STATUS_AVAILABLE,
              'progress': exp_progress})
-        self.share_manager.db.share_export_locations_update.assert_any_call(
+        self.share_manager.db.export_locations_update.assert_any_call(
             mock.ANY, 'fake_share_id', fake_export_locations)
         self.share_manager.db.share_group_update.assert_any_call(
             mock.ANY, 'fake_id', {
@@ -6349,7 +6348,7 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.db, 'share_access_get_all_for_instance',
             mock.Mock(return_value=fake_rules))
         self.mock_object(
-            self.share_manager.db, 'share_export_locations_update')
+            self.share_manager.db, 'export_locations_update')
         self.mock_object(self.share_manager.driver, 'migration_complete',
                          mock.Mock(return_value=fake_return_data))
         self.mock_object(
@@ -6383,7 +6382,7 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_server_get.assert_has_calls([
             mock.call(self.context, 'fake_src_server_id'),
             mock.call(self.context, 'fake_dest_server_id')])
-        (self.share_manager.db.share_export_locations_update.
+        (self.share_manager.db.export_locations_update.
          assert_called_once_with(self.context, dest_instance['id'],
                                  'fake_export_locations'))
         self.share_manager.driver.migration_complete.assert_called_once_with(
@@ -8442,7 +8441,7 @@ class ShareManagerTestCase(test.TestCase):
         db_si_update = self.mock_object(self.share_manager.db,
                                         'share_instance_update')
         db_el_update = self.mock_object(self.share_manager.db,
-                                        'share_export_locations_update')
+                                        'export_locations_update')
 
         in_progress_instances = [x for x in instances
                                  if x['status'] ==
@@ -9550,7 +9549,7 @@ class ShareManagerTestCase(test.TestCase):
         mock_service_get_by_args = self.mock_object(
             db, 'service_get_by_args', mock.Mock(return_value=fake_service))
         mock_instance_update = self.mock_object(db, 'share_instance_update')
-        mock_el_update = self.mock_object(db, 'share_export_locations_update')
+        mock_el_update = self.mock_object(db, 'export_locations_update')
         mock_snap_el_update = self.mock_object(
             db, 'share_snapshot_instance_export_locations_update')
         mock_reset_access_rules = self.mock_object(
@@ -10331,7 +10330,7 @@ class ShareManagerTestCase(test.TestCase):
         mock_db_backend_details_set = self.mock_object(
             self.share_manager.db, 'share_server_backend_details_set')
         mock_db_export_share_update = self.mock_object(
-            self.share_manager.db, 'share_export_locations_update')
+            self.share_manager.db, 'export_locations_update')
         mock_db_snapshot_update = self.mock_object(
             self.share_manager.db, 'share_snapshot_instance_update')
         mock_db_export_snap_update = self.mock_object(

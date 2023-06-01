@@ -1149,7 +1149,7 @@ class ShareAPITestCase(test.TestCase):
         self.mock_object(self.scheduler_rpcapi, 'manage_share')
         self.mock_object(db_api, 'share_create',
                          mock.Mock(return_value=share))
-        self.mock_object(db_api, 'share_export_locations_update')
+        self.mock_object(db_api, 'export_locations_update')
         self.mock_object(db_api, 'share_get',
                          mock.Mock(return_value=share))
         self.mock_object(share_types, 'get_share_type',
@@ -1197,7 +1197,7 @@ class ShareAPITestCase(test.TestCase):
             self.context, filters=filters)
         db_api.share_create.assert_called_once_with(self.context, share_data)
         db_api.share_get.assert_called_once_with(self.context, share['id'])
-        db_api.share_export_locations_update.assert_called_once_with(
+        db_api.export_locations_update.assert_called_once_with(
             self.context, share.instance['id'], export_location)
         self.scheduler_rpcapi.manage_share.assert_called_once_with(
             self.context, share['id'], driver_options, expected_request_spec)

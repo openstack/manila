@@ -60,7 +60,7 @@ class ShareReplicaExportLocationsAPITest(test.TestCase):
             {'path': 'myshare.mydomain/active-replica-exp2',
              'is_admin_only': False},
         ]
-        db.share_export_locations_update(
+        db.export_locations_update(
             self.ctxt, self.active_replica_id, exports)
 
         # Replicas
@@ -82,9 +82,9 @@ class ShareReplicaExportLocationsAPITest(test.TestCase):
             {'path': 'myshare.mydomain/outofsync-replica-exp2',
              'is_admin_only': False}
         ]
-        db.share_export_locations_update(
+        db.export_locations_update(
             self.ctxt, self.share_replica2.id, replica2_exports)
-        db.share_export_locations_update(
+        db.export_locations_update(
             self.ctxt, self.share_replica3.id, replica3_exports)
 
     @ddt.data(('user', '2.47'), ('admin', GRADUATION_VERSION))
@@ -155,8 +155,8 @@ class ShareReplicaExportLocationsAPITest(test.TestCase):
             {'path': 'myshare.mydomain/non-replicated-share-2',
              'is_admin_only': False},
         ]
-        db.share_export_locations_update(self.ctxt, instance_id, exports)
-        updated_exports = db.share_export_locations_get_by_share_id(
+        db.export_locations_update(self.ctxt, instance_id, exports)
+        updated_exports = db.export_location_get_all_by_share_id(
             self.ctxt, non_replicated_share.id)
 
         self.assertRaises(exc.HTTPNotFound, self.controller.index, self.req,

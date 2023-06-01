@@ -1862,7 +1862,7 @@ def share_instance_delete(context, instance_id, session=None,
         session = get_session()
 
     with session.begin():
-        share_export_locations_update(context, instance_id, [], delete=True)
+        export_locations_update(context, instance_id, [], delete=True)
         instance_ref = share_instance_get(context, instance_id,
                                           session=session)
         is_replica = instance_ref['replica_state'] is not None
@@ -4143,9 +4143,11 @@ def _share_metadata_get_item(context, share_id, key):
 # Export locations functions
 ############################
 
-def _share_export_locations_get(context, share_instance_ids,
-                                include_admin_only=True,
-                                ignore_secondary_replicas=False, session=None):
+def _export_location_get_all(
+    context, share_instance_ids,
+    include_admin_only=True,
+    ignore_secondary_replicas=False, session=None,
+):
     session = session or get_session()
 
     if not isinstance(share_instance_ids, (set, list, tuple)):
@@ -4179,17 +4181,19 @@ def _share_export_locations_get(context, share_instance_ids,
 
 @require_context
 @require_share_exists
-def share_export_locations_get_by_share_id(context, share_id,
-                                           include_admin_only=True,
-                                           ignore_migration_destination=False,
-                                           ignore_secondary_replicas=False):
+def export_location_get_all_by_share_id(
+    context, share_id,
+    include_admin_only=True,
+    ignore_migration_destination=False,
+    ignore_secondary_replicas=False,
+):
     share = share_get(context, share_id)
     if ignore_migration_destination:
         ids = [instance.id for instance in share.instances
                if instance['status'] != constants.STATUS_MIGRATING_TO]
     else:
         ids = [instance.id for instance in share.instances]
-    rows = _share_export_locations_get(
+    rows = _export_location_get_all(
         context, ids, include_admin_only=include_admin_only,
         ignore_secondary_replicas=ignore_secondary_replicas)
     return rows
@@ -4197,31 +4201,32 @@ def share_export_locations_get_by_share_id(context, share_id,
 
 @require_context
 @require_share_instance_exists
-def share_export_locations_get_by_share_instance_id(context,
-                                                    share_instance_id,
-                                                    include_admin_only=True):
-    rows = _share_export_locations_get(
+def export_location_get_all_by_share_instance_id(
+    context, share_instance_id, include_admin_only=True,
+):
+    rows = _export_location_get_all(
         context, [share_instance_id], include_admin_only=include_admin_only)
     return rows
 
 
 @require_context
 @require_share_exists
-def share_export_locations_get(context, share_id):
+def export_location_get_all(context, share_id):
     # NOTE(vponomaryov): this method is kept for compatibility with
-    # old approach. New one uses 'share_export_locations_get_by_share_id'.
+    # old approach. New one uses 'export_location_get_all_by_share_id'.
     # Which returns list of dicts instead of list of strings, as this one does.
     share = share_get(context, share_id)
-    rows = _share_export_locations_get(
+    rows = _export_location_get_all(
         context, share.instance.id, context.is_admin)
 
     return [location['path'] for location in rows]
 
 
 @require_context
-def share_export_location_get_by_uuid(context, export_location_uuid,
-                                      ignore_secondary_replicas=False,
-                                      session=None):
+def export_location_get_by_uuid(
+    context, export_location_uuid, ignore_secondary_replicas=False,
+    session=None,
+):
     session = session or get_session()
 
     query = model_query(
@@ -4249,8 +4254,9 @@ def share_export_location_get_by_uuid(context, export_location_uuid,
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def share_export_locations_update(context, share_instance_id, export_locations,
-                                  delete):
+def export_locations_update(
+    context, share_instance_id, export_locations, delete,
+):
     # NOTE(u_glide):
     # Backward compatibility code for drivers,
     # which return single export_location as string
@@ -4279,7 +4285,7 @@ def share_export_locations_update(context, share_instance_id, export_locations,
 
     session = get_session()
 
-    current_el_rows = _share_export_locations_get(
+    current_el_rows = _export_location_get_all(
         context, share_instance_id, session=session)
 
     def get_path_list_from_rows(rows):
@@ -4334,7 +4340,7 @@ def share_export_locations_update(context, share_instance_id, export_locations,
         export_location_metadata_update(
             context, location_ref['uuid'], el.get('metadata'), session=session)
 
-    return get_path_list_from_rows(_share_export_locations_get(
+    return get_path_list_from_rows(_export_location_get_all(
         context, share_instance_id, session=session))
 
 
@@ -4345,7 +4351,7 @@ def share_export_locations_update(context, share_instance_id, export_locations,
 def _export_location_metadata_get_query(context, export_location_uuid,
                                         session=None):
     session = session or get_session()
-    export_location_id = share_export_location_get_by_uuid(
+    export_location_id = export_location_get_by_uuid(
         context, export_location_uuid).id
 
     return model_query(
@@ -4395,7 +4401,7 @@ def export_location_metadata_update(context, export_location_uuid, metadata,
             export_location_metadata_delete(
                 context, export_location_uuid, keys=keys_for_deletion)
 
-    el = share_export_location_get_by_uuid(context, export_location_uuid)
+    el = export_location_get_by_uuid(context, export_location_uuid)
     for meta_key, meta_value in metadata.items():
         # NOTE(vponomaryov): we should use separate session
         # for each meta_ref because of autoincrement of integer primary key

@@ -557,13 +557,12 @@ class ShareDatabaseAPITestCase(test.TestCase):
     def test_share_instance_get_all_by_export_location(self, type):
         share = db_utils.create_share()
         initial_location = ['fake_export_location']
-        db_api.share_export_locations_update(self.ctxt, share.instance['id'],
-                                             initial_location, False)
+        db_api.export_locations_update(
+            self.ctxt, share.instance['id'], initial_location, False)
 
         if type == 'id':
-            export_location = (
-                db_api.share_export_locations_get_by_share_id(self.ctxt,
-                                                              share['id']))
+            export_location = db_api.export_location_get_all_by_share_id(
+                self.ctxt, share['id'])
             value = export_location[0]['uuid']
         else:
             value = 'fake_export_location'
@@ -631,10 +630,10 @@ class ShareDatabaseAPITestCase(test.TestCase):
     def test_share_get_all_by_export_location(self, type):
         share = db_utils.create_share()
         initial_location = ['fake_export_location']
-        db_api.share_export_locations_update(self.ctxt, share.instance['id'],
-                                             initial_location, False)
+        db_api.export_locations_update(
+            self.ctxt, share.instance['id'], initial_location, False)
         if type == 'id':
-            export_location = db_api.share_export_locations_get_by_share_id(
+            export_location = db_api.export_location_get_all_by_share_id(
                 self.ctxt, share['id'])
             value = export_location[0]['uuid']
         else:
@@ -650,8 +649,8 @@ class ShareDatabaseAPITestCase(test.TestCase):
     def test_share_get_all_by_export_location_not_exist(self, type):
         share = db_utils.create_share()
         initial_location = ['fake_export_location']
-        db_api.share_export_locations_update(self.ctxt, share.instance['id'],
-                                             initial_location, False)
+        db_api.export_locations_update(
+            self.ctxt, share.instance['id'], initial_location, False)
         filter = {'export_location_' + type: 'export_location_not_exist'}
         actual_result = db_api.share_get_all(self.ctxt, filters=filter)
 
@@ -2215,13 +2214,13 @@ class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
         update_locations = ['fake4/4', 'fake2/2', 'fake3/3']
 
         # add initial locations
-        db_api.share_export_locations_update(self.ctxt, share.instance['id'],
-                                             initial_locations, False)
+        db_api.export_locations_update(
+            self.ctxt, share.instance['id'], initial_locations, False)
         # update locations
-        db_api.share_export_locations_update(self.ctxt, share.instance['id'],
-                                             update_locations, True)
-        actual_result = db_api.share_export_locations_get(self.ctxt,
-                                                          share['id'])
+        db_api.export_locations_update(
+            self.ctxt, share.instance['id'], update_locations, True)
+        actual_result = db_api.export_location_get_all(
+            self.ctxt, share['id'])
 
         # actual result should contain locations in exact same order
         self.assertEqual(actual_result, update_locations)
@@ -2230,10 +2229,10 @@ class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
         share = db_utils.create_share()
         initial_location = 'fake1/1/'
 
-        db_api.share_export_locations_update(self.ctxt, share.instance['id'],
-                                             initial_location, False)
-        actual_result = db_api.share_export_locations_get(self.ctxt,
-                                                          share['id'])
+        db_api.export_locations_update(
+            self.ctxt, share.instance['id'], initial_location, False)
+        actual_result = db_api.export_location_get_all(
+            self.ctxt, share['id'])
 
         self.assertEqual(actual_result, [initial_location])
 
@@ -2247,13 +2246,13 @@ class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
             {'path': 'fake3/3/', 'is_admin_only': True},
         ]
 
-        db_api.share_export_locations_update(
+        db_api.export_locations_update(
             self.ctxt, share.instance['id'], locations, delete=False)
 
-        user_result = db_api.share_export_locations_get(ctxt_user, share['id'])
+        user_result = db_api.export_location_get_all(ctxt_user, share['id'])
         self.assertEqual([], user_result)
 
-        admin_result = db_api.share_export_locations_get(
+        admin_result = db_api.export_location_get_all(
             self.ctxt, share['id'])
         self.assertEqual(3, len(admin_result))
         for location in locations:
@@ -2269,15 +2268,15 @@ class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
             {'path': 'fake3/3/', 'is_admin_only': False},
         ]
 
-        db_api.share_export_locations_update(
+        db_api.export_locations_update(
             self.ctxt, share.instance['id'], locations, delete=False)
 
-        user_result = db_api.share_export_locations_get(ctxt_user, share['id'])
+        user_result = db_api.export_location_get_all(ctxt_user, share['id'])
         self.assertEqual(3, len(user_result))
         for location in locations:
             self.assertIn(location['path'], user_result)
 
-        admin_result = db_api.share_export_locations_get(
+        admin_result = db_api.export_location_get_all(
             self.ctxt, share['id'])
         self.assertEqual(3, len(admin_result))
         for location in locations:
@@ -2289,13 +2288,13 @@ class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
         share = db_utils.create_share()
         locations = ['fake1/1/', 'fake2/2', 'fake3/3']
 
-        db_api.share_export_locations_update(
+        db_api.export_locations_update(
             self.ctxt, share.instance['id'], locations, delete=False)
 
-        user_result = db_api.share_export_locations_get(ctxt_user, share['id'])
+        user_result = db_api.export_location_get_all(ctxt_user, share['id'])
         self.assertEqual(locations, user_result)
 
-        admin_result = db_api.share_export_locations_get(
+        admin_result = db_api.export_location_get_all(
             self.ctxt, share['id'])
         self.assertEqual(locations, admin_result)
 
@@ -2325,12 +2324,12 @@ class ShareInstanceExportLocationsMetadataDatabaseAPITestCase(test.TestCase):
         self.initial_locations = ['/fake/foo/', '/fake/bar', '/fake/quuz']
         self.shown_locations = ['/fake/foo/', '/fake/bar']
         for i in range(0, 3):
-            db_api.share_export_locations_update(
+            db_api.export_locations_update(
                 self.ctxt, instances[i]['id'], self.initial_locations[i],
                 delete=False)
 
     def _get_export_location_uuid_by_path(self, path):
-        els = db_api.share_export_locations_get_by_share_id(
+        els = db_api.export_location_get_all_by_share_id(
             self.ctxt, self.share.id)
         export_location_uuid = None
         for el in els:
@@ -2340,21 +2339,21 @@ class ShareInstanceExportLocationsMetadataDatabaseAPITestCase(test.TestCase):
         return export_location_uuid
 
     def test_get_export_locations_by_share_id(self):
-        els = db_api.share_export_locations_get_by_share_id(
+        els = db_api.export_location_get_all_by_share_id(
             self.ctxt, self.share.id)
         self.assertEqual(3, len(els))
         for path in self.shown_locations:
             self.assertTrue(any([path in el.path for el in els]))
 
     def test_get_export_locations_by_share_id_ignore_migration_dest(self):
-        els = db_api.share_export_locations_get_by_share_id(
+        els = db_api.export_location_get_all_by_share_id(
             self.ctxt, self.share.id, ignore_migration_destination=True)
         self.assertEqual(2, len(els))
         for path in self.shown_locations:
             self.assertTrue(any([path in el.path for el in els]))
 
     def test_get_export_locations_by_share_instance_id(self):
-        els = db_api.share_export_locations_get_by_share_instance_id(
+        els = db_api.export_location_get_all_by_share_instance_id(
             self.ctxt, self.share.instance.id)
         self.assertEqual(1, len(els))
         for path in [self.shown_locations[1]]:

@@ -49,7 +49,7 @@ class ShareExportLocationController(wsgi.Controller):
             'ignore_migration_destination': True,
             'ignore_secondary_replicas': ignore_secondary_replicas,
         }
-        export_locations = db_api.share_export_locations_get_by_share_id(
+        export_locations = db_api.export_location_get_all_by_share_id(
             context, share_id, **kwargs)
         return self._view_builder.summary_list(req, export_locations)
 
@@ -59,7 +59,7 @@ class ShareExportLocationController(wsgi.Controller):
         context = req.environ['manila.context']
         self._verify_share(context, share_id)
         try:
-            export_location = db_api.share_export_location_get_by_uuid(
+            export_location = db_api.export_location_get_by_uuid(
                 context, export_location_uuid,
                 ignore_secondary_replicas=ignore_secondary_replicas)
         except exception.ExportLocationNotFound:

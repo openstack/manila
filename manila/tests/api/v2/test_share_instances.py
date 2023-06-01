@@ -87,7 +87,7 @@ class ShareInstancesAPITest(test.TestCase):
         ]
         test_instances = other_instances + last_instance
 
-        db.share_export_locations_update(
+        db.export_locations_update(
             self.admin_context, test_instances[0]['id'],
             '/admin/export/location', False)
 
