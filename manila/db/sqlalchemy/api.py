@@ -1663,7 +1663,7 @@ def share_and_snapshot_instances_status_update(
     with session.begin():
         if current_expected_status and share_instance_ids:
             filters = {'instance_ids': share_instance_ids}
-            share_instances = share_instances_get_all(
+            share_instances = share_instance_get_all(
                 context, filters=filters, session=session)
             all_instances_are_compliant = all(
                 instance['status'] == current_expected_status
@@ -1691,7 +1691,7 @@ def share_and_snapshot_instances_status_update(
                 raise exception.InvalidShareSnapshotInstance(reason=msg)
 
         if share_instance_ids:
-            updated_share_instances = share_instances_status_update(
+            updated_share_instances = share_instance_status_update(
                 context, share_instance_ids, values, session=session)
 
         if snapshot_instance_ids:
@@ -1703,7 +1703,7 @@ def share_and_snapshot_instances_status_update(
 
 
 @require_context
-def share_instances_status_update(
+def share_instance_status_update(
         context, share_instance_ids, values, session=None):
     session = session or get_session()
 
@@ -1748,7 +1748,7 @@ def share_instance_get(context, share_instance_id, session=None,
 
 
 @require_admin_context
-def share_instances_get_all(context, filters=None, session=None):
+def share_instance_get_all(context, filters=None, session=None):
     session = session or get_session()
     query = model_query(
         context, models.ShareInstance, session=session, read_deleted="no",
@@ -1896,8 +1896,8 @@ def _set_instances_share_data(context, instances, session):
 
 
 @require_admin_context
-def share_instances_get_all_by_host(context, host, with_share_data=False,
-                                    status=None, session=None):
+def share_instance_get_all_by_host(context, host, with_share_data=False,
+                                   status=None, session=None):
     """Retrieves all share instances hosted on a host."""
     session = session or get_session()
     instances = (
@@ -1919,7 +1919,7 @@ def share_instances_get_all_by_host(context, host, with_share_data=False,
 
 
 @require_context
-def share_instances_get_all_by_share_network(context, share_network_id):
+def share_instance_get_all_by_share_network(context, share_network_id):
     """Returns list of share instances that belong to given share network."""
     result = (
         model_query(context, models.ShareInstance).filter(
@@ -1930,8 +1930,8 @@ def share_instances_get_all_by_share_network(context, share_network_id):
 
 
 @require_context
-def share_instances_get_all_by_share_server(context, share_server_id,
-                                            with_share_data=False):
+def share_instance_get_all_by_share_server(context, share_server_id,
+                                           with_share_data=False):
     """Returns list of share instance with given share server."""
     session = get_session()
     result = (
@@ -1947,7 +1947,7 @@ def share_instances_get_all_by_share_server(context, share_server_id,
 
 
 @require_context
-def share_instances_get_all_by_share(context, share_id):
+def share_instance_get_all_by_share(context, share_id):
     """Returns list of share instances that belong to given share."""
     result = (
         model_query(context, models.ShareInstance).filter(
@@ -1958,7 +1958,7 @@ def share_instances_get_all_by_share(context, share_id):
 
 
 @require_context
-def share_instances_get_all_by_share_group_id(context, share_group_id):
+def share_instance_get_all_by_share_group_id(context, share_group_id):
     """Returns list of share instances that belong to given share group."""
     result = (
         model_query(context, models.Share).filter(

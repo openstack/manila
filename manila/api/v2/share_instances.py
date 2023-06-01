@@ -70,7 +70,7 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         req.GET.pop('export_location_id', None)
         req.GET.pop('export_location_path', None)
-        instances = db.share_instances_get_all(context)
+        instances = db.share_instance_get_all(context)
         return self._view_builder.detail_list(req, instances)
 
     @wsgi.Controller.api_version("2.35", "2.68")  # noqa
@@ -82,7 +82,7 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
         common.remove_invalid_options(
             context, filters, ('export_location_id', 'export_location_path'))
 
-        instances = db.share_instances_get_all(context, filters)
+        instances = db.share_instance_get_all(context, filters)
         return self._view_builder.detail_list(req, instances)
 
     @wsgi.Controller.api_version("2.69")  # noqa
@@ -99,7 +99,7 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
                 'is_soft_deleted', filters)
             filters['is_soft_deleted'] = is_soft_deleted
 
-        instances = db.share_instances_get_all(context, filters)
+        instances = db.share_instance_get_all(context, filters)
         return self._view_builder.detail_list(req, instances)
 
     @wsgi.Controller.api_version("2.3")

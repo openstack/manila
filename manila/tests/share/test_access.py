@@ -799,7 +799,7 @@ class ShareInstanceAccessTestCase(test.TestCase):
 
     def test_update_share_instances_access_rules_status(self):
         mock_db_instances_update = self.mock_object(
-            db, 'share_instances_status_update')
+            db, 'share_instance_status_update')
         share_instances = ['fake_instance_id', 'fake_instance_id_2']
 
         self.access_helper.update_share_instances_access_rules_status(

@@ -91,9 +91,8 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
         except exception.ShareNetworkNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
 
-        share_instances = (
-            db_api.share_instances_get_all_by_share_network(context, id)
-        )
+        share_instances = db_api.share_instance_get_all_by_share_network(
+            context, id)
         if share_instances:
             msg = _("Can not delete share network %(id)s, it has "
                     "%(len)s share(s).") % {'id': id,

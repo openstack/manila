@@ -327,7 +327,7 @@ class ShareNetworkAPITest(test.TestCase):
         share_nw['share_network_subnets'] = [subnet]
         self.mock_object(db_api, 'share_network_get',
                          mock.Mock(return_value=share_nw))
-        self.mock_object(db_api, 'share_instances_get_all_by_share_network',
+        self.mock_object(db_api, 'share_instance_get_all_by_share_network',
                          mock.Mock(return_value=[]))
         self.mock_object(self.controller.share_rpcapi, 'delete_share_server')
         self.mock_object(self.controller,
@@ -339,7 +339,7 @@ class ShareNetworkAPITest(test.TestCase):
 
         db_api.share_network_get.assert_called_once_with(
             self.req.environ['manila.context'], share_nw['id'])
-        (db_api.share_instances_get_all_by_share_network.
+        (db_api.share_instance_get_all_by_share_network.
             assert_called_once_with(self.req.environ['manila.context'],
                                     share_nw['id']))
         self.controller.share_rpcapi.delete_share_server.assert_has_calls([
@@ -368,7 +368,7 @@ class ShareNetworkAPITest(test.TestCase):
 
         self.mock_object(db_api, 'share_network_get',
                          mock.Mock(return_value=share_nw))
-        self.mock_object(db_api, 'share_instances_get_all_by_share_network',
+        self.mock_object(db_api, 'share_instance_get_all_by_share_network',
                          mock.Mock(return_value=[]))
         self.mock_object(self.controller,
                          '_all_share_servers_are_auto_deletable',
@@ -384,7 +384,7 @@ class ShareNetworkAPITest(test.TestCase):
         db_api.share_network_get.assert_called_once_with(
             self.req.environ['manila.context'], share_nw['id'])
 
-        (db_api.share_instances_get_all_by_share_network.
+        (db_api.share_instance_get_all_by_share_network.
             assert_called_once_with(self.req.environ['manila.context'],
                                     share_nw['id']))
 
@@ -405,7 +405,7 @@ class ShareNetworkAPITest(test.TestCase):
         share_nw = fake_share_network.copy()
         self.mock_object(db_api, 'share_network_get',
                          mock.Mock(return_value=share_nw))
-        self.mock_object(db_api, 'share_instances_get_all_by_share_network',
+        self.mock_object(db_api, 'share_instance_get_all_by_share_network',
                          mock.Mock(return_value=['foo', 'bar']))
 
         self.assertRaises(webob_exc.HTTPConflict,
@@ -415,7 +415,7 @@ class ShareNetworkAPITest(test.TestCase):
 
         db_api.share_network_get.assert_called_once_with(
             self.req.environ['manila.context'], share_nw['id'])
-        (db_api.share_instances_get_all_by_share_network.
+        (db_api.share_instance_get_all_by_share_network.
             assert_called_once_with(self.req.environ['manila.context'],
                                     share_nw['id']))
 
@@ -455,7 +455,7 @@ class ShareNetworkAPITest(test.TestCase):
         share_nw = fake_share_network.copy()
         self.mock_object(db_api, 'share_network_get',
                          mock.Mock(return_value=share_nw))
-        self.mock_object(db_api, 'share_instances_get_all_by_share_network',
+        self.mock_object(db_api, 'share_instance_get_all_by_share_network',
                          mock.Mock(return_value=None))
         self.mock_object(db_api, 'count_share_groups_in_share_network',
                          mock.Mock(return_value=None))
@@ -469,7 +469,7 @@ class ShareNetworkAPITest(test.TestCase):
 
         db_api.share_network_get.assert_called_once_with(
             self.context, share_nw['id'])
-        (db_api.share_instances_get_all_by_share_network
+        (db_api.share_instance_get_all_by_share_network
             .assert_called_once_with(self.context, share_nw['id']))
         db_api.count_share_groups_in_share_network.assert_called_once_with(
             self.context, share_nw['id']

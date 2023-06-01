@@ -108,7 +108,7 @@ class ShareInstanceAccessDatabaseMixin(object):
         """
         updates = {'access_rules_status': status}
 
-        self.db.share_instances_status_update(
+        self.db.share_instance_status_update(
             context, share_instance_ids, updates)
 
     @locked_access_rules_operation
