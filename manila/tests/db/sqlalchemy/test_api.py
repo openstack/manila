@@ -428,7 +428,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
                                       share_network_id=share_network['id'],
                                       is_soft_deleted=True)
 
-        actual_result = db_api.get_shares_in_recycle_bin_by_share_server(
+        actual_result = db_api.share_get_all_soft_deleted(
             self.ctxt, share_server['id'])
 
         self.assertEqual(1, len(actual_result))
@@ -441,7 +441,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
                                       share_network_id=share_network['id'],
                                       is_soft_deleted=True)
 
-        actual_result = db_api.get_shares_in_recycle_bin_by_network(
+        actual_result = db_api.share_get_all_soft_deleted_by_network(
             self.ctxt, share_network['id'])
 
         self.assertEqual(1, len(actual_result))
@@ -755,7 +755,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
                                        is_soft_deleted=True,
                                        scheduled_to_be_deleted_at=time2)
         shares = [share1, share2, share3]
-        result = db_api.get_all_expired_shares(self.ctxt)
+        result = db_api.share_get_all_expired(self.ctxt)
         self.assertEqual(1, len(result))
         self.assertEqual(shares[2]['id'], result[0]['id'])
 
@@ -5289,20 +5289,20 @@ class TransfersTestCase(test.TestCase):
         share_id = share['id']
         self._create_transfer(resource_id=share_id)
 
-    def test_share_transfer_get(self):
+    def test_transfer_get(self):
         share_id = db_utils.create_share(size=1, user_id=self.user_id,
                                          project_id=self.project_id)['id']
         transfer_id = self._create_transfer(resource_id=share_id)
 
-        transfer = db_api.share_transfer_get(self.ctxt, transfer_id)
+        transfer = db_api.transfer_get(self.ctxt, transfer_id)
         self.assertEqual(share_id, transfer['resource_id'])
 
         new_ctxt = context.RequestContext(user_id='new_user_id',
                                           project_id='new_project_id')
         self.assertRaises(exception.TransferNotFound,
-                          db_api.share_transfer_get, new_ctxt, transfer_id)
+                          db_api.transfer_get, new_ctxt, transfer_id)
 
-        transfer = db_api.share_transfer_get(new_ctxt.elevated(), transfer_id)
+        transfer = db_api.transfer_get(new_ctxt.elevated(), transfer_id)
         self.assertEqual(share_id, transfer['resource_id'])
 
     def test_transfer_get_all(self):
@@ -5360,7 +5360,7 @@ class TransfersTestCase(test.TestCase):
         new_ctxt = context.RequestContext(user_id='new_user_id',
                                           project_id='new_project_id')
 
-        transfer = db_api.share_transfer_get(new_ctxt.elevated(), transfer_id)
+        transfer = db_api.transfer_get(new_ctxt.elevated(), transfer_id)
         self.assertEqual(share['project_id'], transfer['source_project_id'])
         self.assertFalse(transfer['accepted'])
         self.assertIsNone(transfer['destination_project_id'])

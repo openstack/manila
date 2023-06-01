@@ -454,11 +454,10 @@ def share_get_all_by_share_server(context, share_server_id, filters=None,
         sort_dir=sort_dir)
 
 
-def get_shares_in_recycle_bin_by_share_server(
-        context, share_server_id, filters=None,
-        sort_key=None, sort_dir=None):
+def share_get_all_soft_deleted(
+        context, share_server_id, filters=None, sort_key=None, sort_dir=None):
     """Returns all shares in recycle bin with given share server ID."""
-    return IMPL.get_shares_in_recycle_bin_by_share_server(
+    return IMPL.share_get_all_soft_deleted(
         context, share_server_id, filters=filters, sort_key=sort_key,
         sort_dir=sort_dir)
 
@@ -471,11 +470,10 @@ def share_get_all_by_share_server_with_count(
         sort_dir=sort_dir)
 
 
-def get_shares_in_recycle_bin_by_network(
-        context, share_network_id, filters=None,
-        sort_key=None, sort_dir=None):
+def share_get_all_soft_deleted_by_network(
+        context, share_network_id, filters=None, sort_key=None, sort_dir=None):
     """Returns all shares in recycle bin with given share network ID."""
-    return IMPL.get_shares_in_recycle_bin_by_network(
+    return IMPL.share_get_all_soft_deleted_by_network(
         context, share_network_id, filters=filters, sort_key=sort_key,
         sort_dir=sort_dir)
 
@@ -497,9 +495,9 @@ def share_restore(context, share_id):
 ###################
 
 
-def share_transfer_get(context, transfer_id):
+def transfer_get(context, transfer_id):
     """Get a share transfer record or raise if it does not exist."""
-    return IMPL.share_transfer_get(context, transfer_id)
+    return IMPL.transfer_get(context, transfer_id)
 
 
 def transfer_get_all(context, limit=None, sort_key=None,
@@ -518,6 +516,11 @@ def transfer_get_all_by_project(context, project_id,
                                             limit=limit, sort_key=sort_key,
                                             sort_dir=sort_dir,
                                             filters=filters, offset=offset)
+
+
+def transfer_get_all_expired(context):
+    """Get all expired transfers DB records."""
+    return IMPL.transfer_get_all_expired(context)
 
 
 def transfer_create(context, values):
@@ -1292,14 +1295,9 @@ def share_server_get_all_unused_deletable(context, host, updated_before):
                                                       updated_before)
 
 
-def get_all_expired_shares(context):
+def share_get_all_expired(context):
     """Get all expired share DB records."""
-    return IMPL.get_all_expired_shares(context)
-
-
-def get_all_expired_transfers(context):
-    """Get all expired transfers DB records."""
-    return IMPL.get_all_expired_transfers(context)
+    return IMPL.share_get_all_expired(context)
 
 
 def share_server_backend_details_set(context, share_server_id, server_details):

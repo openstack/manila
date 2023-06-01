@@ -3611,7 +3611,7 @@ class ShareManager(manager.SchedulerDependentManager):
     @utils.require_driver_initialized
     def delete_expired_share(self, ctxt):
         LOG.debug("Check for expired share in recycle bin to delete.")
-        expired_shares = self.db.get_all_expired_shares(ctxt)
+        expired_shares = self.db.share_get_all_expired(ctxt)
 
         for share in expired_shares:
             if share['status'] == constants.STATUS_ERROR_DELETING:
@@ -3629,7 +3629,7 @@ class ShareManager(manager.SchedulerDependentManager):
         spacing=CONF.check_for_expired_transfers)
     def delete_expired_transfers(self, ctxt):
         LOG.info("Checking for expired transfers.")
-        expired_transfers = self.db.get_all_expired_transfers(ctxt)
+        expired_transfers = self.db.transfer_get_all_expired(ctxt)
 
         for transfer in expired_transfers:
             LOG.debug("Transfer %s has expired, will be destroyed.",

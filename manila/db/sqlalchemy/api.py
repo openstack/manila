@@ -2375,7 +2375,7 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
 
 
 @require_admin_context
-def get_all_expired_shares(context):
+def share_get_all_expired(context):
     query = (
         _share_get_query(context).join(
             models.ShareInstance,
@@ -2468,7 +2468,7 @@ def share_get_all_by_share_server(context, share_server_id, filters=None,
 
 
 @require_context
-def get_shares_in_recycle_bin_by_share_server(
+def share_get_all_soft_deleted(
         context, share_server_id, filters=None, sort_key=None, sort_dir=None):
     """Returns list of shares in recycle bin with given share server."""
     if filters is None:
@@ -2491,7 +2491,7 @@ def share_get_all_by_share_server_with_count(
 
 
 @require_context
-def get_shares_in_recycle_bin_by_network(
+def share_get_all_soft_deleted_by_network(
         context, share_network_id, filters=None, sort_key=None, sort_dir=None):
     """Returns list of shares in recycle bin with given share network."""
     if filters is None:
@@ -2580,7 +2580,7 @@ def _transfer_get(context, transfer_id, resource_type='share',
 
 
 @context_manager.reader
-def share_transfer_get(context, transfer_id, read_deleted=False):
+def transfer_get(context, transfer_id, read_deleted=False):
     return _transfer_get(context, transfer_id, read_deleted=read_deleted)
 
 
@@ -2624,6 +2624,19 @@ def transfer_get_all_by_project(context, project_id,
                              filters=filters, offset=offset)
 
 
+@require_admin_context
+def transfer_get_all_expired(context):
+    session = get_session()
+    with session.begin():
+        query = model_query(context, models.Transfer, session=session)
+        expires_at_attr = getattr(models.Transfer, 'expires_at', None)
+        now_time = timeutils.utcnow()
+        query = query.filter(expires_at_attr.op('<=')(now_time))
+        result = query.all()
+
+        return result
+
+
 @require_context
 @handle_db_data_error
 def transfer_create(context, values):
@@ -2655,7 +2668,7 @@ def transfer_destroy(context, transfer_id,
     session = get_session()
     with session.begin():
         update = {'status': constants.STATUS_AVAILABLE}
-        transfer = share_transfer_get(context, transfer_id)
+        transfer = transfer_get(context, transfer_id)
         if transfer['resource_type'] == 'share':
             if update_share_status:
                 share_update(context, transfer['resource_id'], update)
@@ -2671,7 +2684,7 @@ def transfer_accept(context, transfer_id, user_id, project_id,
                     accept_snapshots=False):
     session = get_session()
     with session.begin():
-        share_id = share_transfer_get(context, transfer_id)['resource_id']
+        share_id = transfer_get(context, transfer_id)['resource_id']
         update = {'status': constants.STATUS_AVAILABLE,
                   'user_id': user_id,
                   'project_id': project_id,
@@ -2700,7 +2713,7 @@ def transfer_accept_rollback(context, transfer_id, user_id,
                              project_id, rollback_snap=False):
     session = get_session()
     with session.begin():
-        share_id = share_transfer_get(
+        share_id = transfer_get(
             context, transfer_id, read_deleted=True)['resource_id']
         update = {'status': constants.STATUS_AWAITING_TRANSFER,
                   'user_id': user_id,
@@ -2725,18 +2738,6 @@ def transfer_accept_rollback(context, transfer_id, user_id,
                       'destination_project_id': None,
                       'accepted': 0})
 
-
-@require_admin_context
-def get_all_expired_transfers(context):
-    session = get_session()
-    with session.begin():
-        query = model_query(context, models.Transfer, session=session)
-        expires_at_attr = getattr(models.Transfer, 'expires_at', None)
-        now_time = timeutils.utcnow()
-        query = query.filter(expires_at_attr.op('<=')(now_time))
-        result = query.all()
-
-        return result
 
 ###################
 

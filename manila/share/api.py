@@ -2797,9 +2797,8 @@ class API(base.Base):
         shares = self.db.share_get_all_by_share_server(
             context, share_server['id'])
 
-        shares_in_recycle_bin = (
-            self.db.get_shares_in_recycle_bin_by_share_server(
-                context, share_server['id']))
+        shares_in_recycle_bin = self.db.share_get_all_soft_deleted(
+            context, share_server['id'])
 
         if len(shares) == 0:
             msg = _("Share server %s does not have shares."
@@ -3273,7 +3272,7 @@ class API(base.Base):
                 utils.validate_service_host(admin_ctx, backend_host)
 
             shares_in_recycle_bin = (
-                self.db.get_shares_in_recycle_bin_by_network(
+                self.db.share_get_all_soft_deleted_by_network(
                     context, share_network['id']))
             if shares_in_recycle_bin:
                 msg = _("Some shares with share network %(sn_id)s have "

@@ -66,12 +66,12 @@ class API(base.Base):
         super().__init__()
 
     def get(self, context, transfer_id):
-        transfer = self.db.share_transfer_get(context, transfer_id)
+        transfer = self.db.transfer_get(context, transfer_id)
         return transfer
 
     def delete(self, context, transfer_id):
         """Delete a share transfer."""
-        transfer = self.db.share_transfer_get(context, transfer_id)
+        transfer = self.db.transfer_get(context, transfer_id)
         policy.check_policy(context, 'share_transfer', 'delete', target_obj={
             'project_id': transfer['source_project_id']})
         update_share_status = True
@@ -331,7 +331,7 @@ class API(base.Base):
         """Accept a share that has been offered for transfer."""
         # We must use an elevated context to make sure we can find the
         # transfer.
-        transfer = self.db.share_transfer_get(context.elevated(), transfer_id)
+        transfer = self.db.transfer_get(context.elevated(), transfer_id)
 
         crypt_hash = self._get_crypt_hash(transfer['salt'], auth_key)
         if crypt_hash != transfer['crypt_hash']:

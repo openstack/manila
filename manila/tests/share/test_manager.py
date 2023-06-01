@@ -4215,13 +4215,13 @@ class ShareManagerTestCase(test.TestCase):
 
     @ddt.data("available", "error_deleting")
     def test_delete_expired_share(self, share_status):
-        self.mock_object(db, 'get_all_expired_shares',
+        self.mock_object(db, 'share_get_all_expired',
                          mock.Mock(return_value=[{"id": "share1",
                                                   "status": share_status}, ]))
         self.mock_object(db, 'share_update')
         self.mock_object(api.API, 'delete')
         self.share_manager.delete_expired_share(self.context)
-        db.get_all_expired_shares.assert_called_once_with(self.context)
+        db.share_get_all_expired.assert_called_once_with(self.context)
         share1 = {"id": "share1", "status": share_status}
         if share1["status"] == "error_deleting":
             db.share_update.assert_called_once_with(
@@ -4230,12 +4230,12 @@ class ShareManagerTestCase(test.TestCase):
             self.context, share1)
 
     def test_delete_expired_transfers(self):
-        self.mock_object(db, 'get_all_expired_transfers',
+        self.mock_object(db, 'transfer_get_all_expired',
                          mock.Mock(return_value=[{"id": "transfer1",
                                                   "name": "test_tr"}, ]))
         self.mock_object(transfer_api.API, 'delete')
         self.share_manager.delete_expired_transfers(self.context)
-        db.get_all_expired_transfers.assert_called_once_with(self.context)
+        db.transfer_get_all_expired.assert_called_once_with(self.context)
         transfer1 = {"id": "transfer1", "name": "test_tr"}
         transfer_api.API.delete.assert_called_once_with(
             self.context, transfer_id=transfer1["id"])
