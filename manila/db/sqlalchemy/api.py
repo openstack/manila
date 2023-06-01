@@ -1685,7 +1685,7 @@ def _share_instance_update(context, share_instance_id, values, session=None):
     share_instance_ref = _share_instance_get(
         context, share_instance_id, session=session)
     share_instance_ref.update(values)
-    share_instance_ref.save(session=session)
+    share_instance_ref.save(session=session or context.session)
     return share_instance_ref
 
 
@@ -2328,7 +2328,7 @@ def _share_update(context, share_id, update_values, session=None):
         session=session)
 
     share_ref.update(share_values)
-    share_ref.save(session=session)
+    share_ref.save(session=session or context.session)
     return share_ref
 
 
@@ -2613,19 +2613,24 @@ def share_restore(context, share_id):
 ###################
 
 
-@context_manager.reader
-def _transfer_get(context, transfer_id, resource_type='share',
-                  session=None, read_deleted=False):
+# TODO(stephenfin): Remove the 'session' argument once all callers have been
+# converted
+def _transfer_get(
+    context, transfer_id, resource_type='share', read_deleted=False,
+    session=None,
+):
     """resource_type can be share or network(TODO network transfer)"""
-    query = model_query(context, models.Transfer,
-                        session=session,
-                        read_deleted=read_deleted).filter_by(id=transfer_id)
+    query = model_query(
+        context, models.Transfer, read_deleted=read_deleted, session=session,
+    ).filter_by(id=transfer_id)
 
     if not is_admin_context(context):
         if resource_type == 'share':
             share = models.Share
-            query = query.filter(models.Transfer.resource_id == share.id,
-                                 share.project_id == context.project_id)
+            query = query.filter(
+                models.Transfer.resource_id == share.id,
+                share.project_id == context.project_id,
+            )
 
     result = query.first()
     if not result:
@@ -2641,26 +2646,31 @@ def transfer_get(context, transfer_id, read_deleted=False):
 
 def _transfer_get_all(context, limit=None, sort_key=None,
                       sort_dir=None, filters=None, offset=None):
-    session = get_session()
     sort_key = sort_key or 'created_at'
     sort_dir = sort_dir or 'desc'
-    with session.begin():
-        query = model_query(context, models.Transfer, session=session)
 
-        if filters:
-            legal_filter_keys = ('display_name', 'display_name~',
-                                 'id', 'resource_type', 'resource_id',
-                                 'source_project_id', 'destination_project_id')
-            query = exact_filter(query, models.Transfer,
-                                 filters, legal_filter_keys)
-            query = utils.paginate_query(query, models.Transfer, limit,
-                                         sort_key=sort_key,
-                                         sort_dir=sort_dir,
-                                         offset=offset)
-        return query.all()
+    query = model_query(context, models.Transfer)
+
+    if filters:
+        legal_filter_keys = (
+            'display_name', 'display_name~',
+            'id', 'resource_type', 'resource_id',
+            'source_project_id', 'destination_project_id',
+        )
+        query = exact_filter(
+            query, models.Transfer, filters, legal_filter_keys,
+        )
+        query = utils.paginate_query(
+            query, models.Transfer, limit,
+            sort_key=sort_key,
+            sort_dir=sort_dir,
+            offset=offset,
+        )
+    return query.all()
 
 
 @require_admin_context
+@context_manager.reader
 def transfer_get_all(context, limit=None, sort_key=None,
                      sort_dir=None, filters=None, offset=None):
     return _transfer_get_all(context, limit=limit,
@@ -2669,6 +2679,7 @@ def transfer_get_all(context, limit=None, sort_key=None,
 
 
 @require_context
+@context_manager.reader
 def transfer_get_all_by_project(context, project_id,
                                 limit=None, sort_key=None,
                                 sort_dir=None, filters=None, offset=None):
@@ -2680,66 +2691,65 @@ def transfer_get_all_by_project(context, project_id,
 
 
 @require_admin_context
+@context_manager.reader
 def transfer_get_all_expired(context):
-    session = get_session()
-    with session.begin():
-        query = model_query(context, models.Transfer, session=session)
-        expires_at_attr = getattr(models.Transfer, 'expires_at', None)
-        now_time = timeutils.utcnow()
-        query = query.filter(expires_at_attr.op('<=')(now_time))
-        result = query.all()
+    query = model_query(context, models.Transfer)
+    expires_at_attr = getattr(models.Transfer, 'expires_at', None)
+    now_time = timeutils.utcnow()
+    query = query.filter(expires_at_attr.op('<=')(now_time))
+    result = query.all()
 
-        return result
+    return result
 
 
 @require_context
 @handle_db_data_error
+@context_manager.writer
 def transfer_create(context, values):
     if not values.get('id'):
         values['id'] = uuidutils.generate_uuid()
 
     resource_id = values['resource_id']
     now_time = timeutils.utcnow()
-    time_delta = datetime.timedelta(
-        seconds=CONF.transfer_retention_time)
+    time_delta = datetime.timedelta(seconds=CONF.transfer_retention_time)
     transfer_timeout = now_time + time_delta
     values['expires_at'] = transfer_timeout
 
-    session = get_session()
-    with session.begin():
-        transfer = models.Transfer()
-        transfer.update(values)
-        transfer.save(session=session)
-        update = {'status': constants.STATUS_AWAITING_TRANSFER}
-        if values['resource_type'] == 'share':
-            share_update(context, resource_id, update)
-        return transfer
+    transfer = models.Transfer()
+    transfer.update(values)
+    transfer.save(session=context.session)
+    update = {'status': constants.STATUS_AWAITING_TRANSFER}
+    if values['resource_type'] == 'share':
+        _share_update(context, resource_id, update)
+    return transfer
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def transfer_destroy(context, transfer_id,
-                     update_share_status=True):
-    session = get_session()
-    with session.begin():
-        update = {'status': constants.STATUS_AVAILABLE}
-        transfer = transfer_get(context, transfer_id)
-        if transfer['resource_type'] == 'share':
-            if update_share_status:
-                share_update(context, transfer['resource_id'], update)
-        transfer_query = model_query(context, models.Transfer,
-                                     session=session).filter_by(id=transfer_id)
+@context_manager.writer
+def transfer_destroy(context, transfer_id, update_share_status=True):
+    update = {'status': constants.STATUS_AVAILABLE}
+    transfer = _transfer_get(context, transfer_id)
+    if transfer['resource_type'] == 'share':
+        if update_share_status:
+            _share_update(context, transfer['resource_id'], update)
 
-        transfer_query.soft_delete()
+    transfer_query = model_query(
+        context, models.Transfer,
+    ).filter_by(
+        id=transfer_id,
+    )
+    transfer_query.soft_delete()
 
 
+# TODO(stephenfin): Convert these once we convert the 'share_snapshot*' APIs
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def transfer_accept(context, transfer_id, user_id, project_id,
                     accept_snapshots=False):
     session = get_session()
     with session.begin():
-        share_id = transfer_get(context, transfer_id)['resource_id']
+        share_id = _transfer_get(context, transfer_id, session)['resource_id']
         update = {'status': constants.STATUS_AVAILABLE,
                   'user_id': user_id,
                   'project_id': project_id,
@@ -2763,13 +2773,15 @@ def transfer_accept(context, transfer_id, user_id, project_id,
                       'accepted': True})
 
 
+# TODO(stephenfin): Convert these once we convert the 'share_*' APIs
 @require_context
 def transfer_accept_rollback(context, transfer_id, user_id,
                              project_id, rollback_snap=False):
     session = get_session()
     with session.begin():
-        share_id = transfer_get(
-            context, transfer_id, read_deleted=True)['resource_id']
+        share_id = _transfer_get(
+            context, transfer_id, read_deleted=True, session=session,
+        )['resource_id']
         update = {'status': constants.STATUS_AWAITING_TRANSFER,
                   'user_id': user_id,
                   'project_id': project_id,
