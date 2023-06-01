@@ -1,0 +1,5 @@
+---
+features:
+  - Admin-only ability to add maximum share extend size restrictions which can
+    be set on a per share-type granularity. Added new extra spec
+    'provisioning:max_share_extend_size'.

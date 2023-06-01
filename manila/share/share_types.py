@@ -37,6 +37,7 @@ QUOTAS = quota.QUOTAS
 
 MIN_SIZE_KEY = "provisioning:min_share_size"
 MAX_SIZE_KEY = "provisioning:max_share_size"
+MAX_EXTEND_SIZE_KEY = "provisioning:max_share_extend_size"
 
 
 def create(context, name, extra_specs=None, is_public=True,
@@ -356,7 +357,8 @@ def is_valid_optional_extra_spec(key, value):
     elif key == constants.ExtraSpecs.AVAILABILITY_ZONES:
         return is_valid_csv(value)
     elif key in [constants.ExtraSpecs.PROVISIONING_MAX_SHARE_SIZE,
-                 constants.ExtraSpecs.PROVISIONING_MIN_SHARE_SIZE]:
+                 constants.ExtraSpecs.PROVISIONING_MIN_SHARE_SIZE,
+                 constants.ExtraSpecs.PROVISIONING_MAX_SHARE_EXTEND_SIZE]:
         try:
             common.validate_integer(value, 'share_size', min_value=1)
             return True
@@ -433,7 +435,7 @@ def parse_boolean_extra_spec(extra_spec_key, extra_spec_value):
         raise exception.InvalidExtraSpec(reason=msg)
 
 
-def provision_filter_on_size(context, share_type, size):
+def provision_filter_on_size(context, share_type, size, operation='create'):
     """This function filters share provisioning requests on size limits.
 
     If a share type has provisioning size min/max set, this filter
@@ -442,9 +444,12 @@ def provision_filter_on_size(context, share_type, size):
     """
     if not share_type:
         share_type = get_default_share_type()
-    if share_type:
-        size_int = int(size)
-        extra_specs = share_type.get('extra_specs', {})
+        if not share_type:
+            return
+
+    size_int = int(size)
+    extra_specs = share_type.get('extra_specs', {})
+    if operation in ['create', 'shrink']:
         min_size = extra_specs.get(MIN_SIZE_KEY)
         if min_size and size_int < int(min_size):
             msg = _("Specified share size of '%(req_size)d' is less "
@@ -453,12 +458,23 @@ def provision_filter_on_size(context, share_type, size):
                     ) % {'req_size': size_int, 'min_size': min_size,
                          'sha_type': share_type['name']}
             raise exception.InvalidInput(reason=msg)
+    if operation in ['create', 'extend']:
         max_size = extra_specs.get(MAX_SIZE_KEY)
         if max_size and size_int > int(max_size):
             msg = _("Specified share size of '%(req_size)d' is "
                     "greater than the maximum allowable size of "
                     "'%(max_size)s' for share type '%(sha_type)s'."
                     ) % {'req_size': size_int, 'max_size': max_size,
+                         'sha_type': share_type['name']}
+            raise exception.InvalidInput(reason=msg)
+    if operation in ['admin-extend']:
+        max_extend_size = extra_specs.get(MAX_EXTEND_SIZE_KEY)
+        if max_extend_size and size_int > int(max_extend_size):
+            msg = _("Specified share size of '%(req_size)d' is "
+                    "greater than the maximum allowable extend size of "
+                    "'%(max_extend_size)s' for share type '%(sha_type)s'."
+                    ) % {'req_size': size_int,
+                         'max_extend_size': max_extend_size,
                          'sha_type': share_type['name']}
             raise exception.InvalidInput(reason=msg)
 
