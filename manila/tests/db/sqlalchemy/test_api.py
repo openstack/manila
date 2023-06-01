@@ -3871,6 +3871,7 @@ class ServiceDatabaseAPITestCase(test.TestCase):
                              'availability_zone': "fake_zone"}
 
     def test_create(self):
+        """Ensure we create a new AZ if necessary."""
         service = db_api.service_create(self.ctxt, self.service_data)
         az = db_api.availability_zone_get(self.ctxt, "fake_zone")
 
@@ -3878,7 +3879,7 @@ class ServiceDatabaseAPITestCase(test.TestCase):
         self.assertSubDictMatch(self.service_data, service.to_dict())
 
     def test_create__az_exists(self):
-
+        """Ensure we use an AZ is it already exists."""
         # there's no public AZ create method so we have to define one ourselves
         @db_api.context_manager.writer
         def availability_zone_create(context, name):
@@ -3892,15 +3893,30 @@ class ServiceDatabaseAPITestCase(test.TestCase):
         self.assertEqual(az.id, service.availability_zone_id)
         self.assertSubDictMatch(self.service_data, service.to_dict())
 
+    def test_create__az_missing(self):
+        """Ensure we fail if AZ info is missing."""
+        self.service_data.pop('availability_zone')
+        exc = self.assertRaises(
+            ValueError,
+            db_api.service_create,
+            self.ctxt,
+            self.service_data,
+        )
+        self.assertIn(
+            "Values dict should have 'availability_zone' field.",
+            str(exc),
+        )
+
     def test_update(self):
         az_name = 'fake_zone2'
         update_data = {"availability_zone": az_name}
 
         service = db_api.service_create(self.ctxt, self.service_data)
         db_api.service_update(self.ctxt, service['id'], update_data)
-        service = db_api.service_get(self.ctxt, service['id'])
 
+        service = db_api.service_get(self.ctxt, service['id'])
         az = db_api.availability_zone_get(self.ctxt, az_name)
+
         self.assertEqual(az.id, service.availability_zone_id)
         valid_values = self.service_data
         valid_values.update(update_data)
@@ -3918,11 +3934,9 @@ class AvailabilityZonesDatabaseAPITestCase(test.TestCase):
 
     @ddt.data({'fake': 'fake'}, {}, {'fakeavailability_zone': 'fake'},
               {'availability_zone': None}, {'availability_zone': ''})
-    def test__ensure_availability_zone_exists_invalid(self, test_values):
-        session = db_api.get_session()
-
-        self.assertRaises(ValueError, db_api._ensure_availability_zone_exists,
-                          self.ctxt, test_values, session)
+    def test_ensure_availability_zone_exists_invalid(self, test_values):
+        self.assertRaises(ValueError, db_api.ensure_availability_zone_exists,
+                          self.ctxt, test_values)
 
     def test_az_get(self):
         az_name = 'test_az'

@@ -229,6 +229,33 @@ def require_share_instance_exists(f):
     return wrapper
 
 
+def require_availability_zone_exists(*, strict: bool):
+    """Decorator to require the specified availability zone to exist.
+
+    Requires the wrapped function to use context as their first argument and
+    values as either their second (for create) or third (for update) argument.
+
+    .. note::
+
+       This has a side-effect of updating the provided values dict, replacing
+       ``availability_zone`` with ``availability_zone_id``
+
+    :param strict: If true, ``values`` must contain an ``availability_zone``
+        key
+    """
+    def inner(f):
+        @wraps(f)
+        def wrapper(context, *args, **kwargs):
+            values = args[0]
+            if not isinstance(args[0], dict):
+                values = args[1]
+            ensure_availability_zone_exists(context, values, strict=strict)
+            return f(context, *args, **kwargs)
+        wrapper.__name__ = f.__name__
+        return wrapper
+    return inner
+
+
 def apply_sorting(model, query, sort_key, sort_dir):
     if sort_dir.lower() not in ('desc', 'asc'):
         msg = _("Wrong sorting data provided: sort key is '%(sort_key)s' "
@@ -650,10 +677,9 @@ def service_get_by_args(context, host, binary):
 
 
 @require_admin_context
+@require_availability_zone_exists(strict=True)
 @context_manager.writer
 def service_create(context, values):
-    _ensure_availability_zone_exists(context, values)
-
     service_ref = models.Service()
     service_ref.update(values)
     if not CONF.enable_new_services:
@@ -664,11 +690,10 @@ def service_create(context, values):
 
 
 @require_admin_context
+@require_availability_zone_exists(strict=False)
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def service_update(context, service_id, values):
-    _ensure_availability_zone_exists(context, values, strict=False)
-
     service_ref = _service_get(context, service_id)
     service_ref.update(values)
     service_ref.save(context.session)
@@ -1592,7 +1617,7 @@ def _extract_subdict_by_fields(source_dict, fields):
 def _extract_share_instance_values(values):
     share_instance_model_fields = [
         'status', 'host', 'scheduled_at', 'launched_at', 'terminated_at',
-        'share_server_id', 'share_network_id', 'availability_zone',
+        'share_server_id', 'share_network_id', 'availability_zone_id',
         'replica_state', 'share_type_id', 'share_type', 'access_rules_status',
     ]
     share_instance_values, share_values = (
@@ -1639,10 +1664,10 @@ def _share_instance_create(context, share_id, values, session):
 
 
 @require_context
+@require_availability_zone_exists(strict=False)
 def share_instance_update(context, share_instance_id, values,
                           with_share_data=False):
     session = get_session()
-    _ensure_availability_zone_exists(context, values, session, strict=False)
     with session.begin():
         instance_ref = _share_instance_update(
             context, share_instance_id, values, session
@@ -2093,6 +2118,7 @@ def share_replica_get(context, replica_id, with_share_data=False,
 
 
 @require_context
+@require_availability_zone_exists(strict=False)
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_replica_update(context, share_replica_id, values,
                          with_share_data=False, session=None):
@@ -2100,8 +2126,6 @@ def share_replica_update(context, share_replica_id, values,
     session = session or get_session()
 
     with session.begin():
-        _ensure_availability_zone_exists(context, values, session,
-                                         strict=False)
         updated_share_replica = _share_instance_update(
             context, share_replica_id, values, session=session)
 
@@ -2236,6 +2260,7 @@ def _metadata_refs(metadata_dict, meta_class):
 
 
 @require_context
+@require_availability_zone_exists(strict=False)
 def share_create(context, share_values, create_share_instance=True):
     values = copy.deepcopy(share_values)
     values = ensure_model_dict_has_id(values)
@@ -2245,8 +2270,6 @@ def share_create(context, share_values, create_share_instance=True):
     share_ref = models.Share()
     share_instance_values, share_values = _extract_share_instance_values(
         values)
-    _ensure_availability_zone_exists(context, share_instance_values, session,
-                                     strict=False)
     share_ref.update(share_values)
 
     with session.begin():
@@ -2279,6 +2302,7 @@ def _share_data_get_for_project(
 
 
 @require_context
+@require_availability_zone_exists(strict=False)
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_update(context, share_id, update_values):
     session = get_session()
@@ -2286,8 +2310,6 @@ def share_update(context, share_id, update_values):
 
     share_instance_values, share_values = _extract_share_instance_values(
         values)
-    _ensure_availability_zone_exists(context, share_instance_values, session,
-                                     strict=False)
 
     with session.begin():
         share_ref = share_get(context, share_id, session=session)
@@ -5965,22 +5987,22 @@ def share_type_extra_specs_update_or_create(context, share_type_id, specs):
 ####################
 
 
-def _ensure_availability_zone_exists(
-    context, values, session=None, *, strict=True,
+@context_manager.writer
+def ensure_availability_zone_exists(
+    context, values, *, strict=True,
 ):
     az_name = values.pop('availability_zone', None)
 
-    if strict and not az_name:
-        msg = _("Values dict should have 'availability_zone' field.")
-        raise ValueError(msg)
-    elif not az_name:
+    if not az_name:
+        if strict:
+            msg = _("Values dict should have 'availability_zone' field.")
+            raise ValueError(msg)
         return
 
     if uuidutils.is_uuid_like(az_name):
-        az_ref = _availability_zone_get(context, az_name, session=session)
+        az_ref = _availability_zone_get(context, az_name)
     else:
-        az_ref = _availability_zone_create_if_not_exist(
-            context, az_name, session=session)
+        az_ref = _availability_zone_create_if_not_exist(context, az_name)
 
     values.update({'availability_zone_id': az_ref['id']})
 
@@ -7171,12 +7193,12 @@ def share_backup_create(context, share_id, values):
 
 
 @require_context
+@require_availability_zone_exists(strict=True)
 @context_manager.writer
 def _share_backup_create(context, share_id, values):
     if not values.get('id'):
         values['id'] = uuidutils.generate_uuid()
     values.update({'share_id': share_id})
-    _ensure_availability_zone_exists(context, values)
 
     share_backup_ref = models.ShareBackup()
     share_backup_ref.update(values)
@@ -7274,9 +7296,9 @@ def _backup_data_get_for_project(context, project_id, user_id):
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@require_availability_zone_exists(strict=False)
 @context_manager.writer
 def share_backup_update(context, backup_id, values):
-    _ensure_availability_zone_exists(context, values, strict=False)
     backup_ref = share_backup_get(context, backup_id)
     backup_ref.update(values)
     backup_ref.save(session=context.session)
