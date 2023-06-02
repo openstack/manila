@@ -2613,15 +2613,12 @@ def share_restore(context, share_id):
 ###################
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
 def _transfer_get(
     context, transfer_id, resource_type='share', read_deleted=False,
-    session=None,
 ):
     """resource_type can be share or network(TODO network transfer)"""
     query = model_query(
-        context, models.Transfer, read_deleted=read_deleted, session=session,
+        context, models.Transfer, read_deleted=read_deleted,
     ).filter_by(id=transfer_id)
 
     if not is_admin_context(context):
@@ -2745,65 +2742,81 @@ def transfer_destroy(context, transfer_id, update_share_status=True):
 # TODO(stephenfin): Convert these once we convert the 'share_snapshot*' APIs
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def transfer_accept(context, transfer_id, user_id, project_id,
-                    accept_snapshots=False):
-    session = get_session()
-    with session.begin():
-        share_id = _transfer_get(context, transfer_id, session)['resource_id']
-        update = {'status': constants.STATUS_AVAILABLE,
-                  'user_id': user_id,
-                  'project_id': project_id,
-                  'updated_at': timeutils.utcnow()}
-        share_update(context, share_id, update)
+@context_manager.writer
+def transfer_accept(
+    context, transfer_id, user_id, project_id, accept_snapshots=False,
+):
+    share_id = _transfer_get(context, transfer_id)['resource_id']
+    update = {
+        'status': constants.STATUS_AVAILABLE,
+        'user_id': user_id,
+        'project_id': project_id,
+        'updated_at': timeutils.utcnow(),
+    }
+    _share_update(context, share_id, update)
 
-        # Update snapshots for transfer snapshots with share.
-        if accept_snapshots:
-            snapshots = share_snapshot_get_all_for_share(context, share_id)
-            for snapshot in snapshots:
-                LOG.debug('Begin to transfer snapshot: %s', snapshot['id'])
-                update = {'user_id': user_id,
-                          'project_id': project_id,
-                          'updated_at': timeutils.utcnow()}
-                share_snapshot_update(context, snapshot['id'], update)
-        query = session.query(models.Transfer).filter_by(id=transfer_id)
-        query.update({'deleted': True,
-                      'deleted_at': timeutils.utcnow(),
-                      'updated_at': timeutils.utcnow(),
-                      'destination_project_id': project_id,
-                      'accepted': True})
+    # Update snapshots for transfer snapshots with share.
+    if accept_snapshots:
+        snapshots = _share_snapshot_get_all_for_share(context, share_id)
+        for snapshot in snapshots:
+            LOG.debug('Begin to transfer snapshot: %s', snapshot['id'])
+            update = {
+                'user_id': user_id,
+                'project_id': project_id,
+                'updated_at': timeutils.utcnow(),
+            }
+            _share_snapshot_update(context, snapshot['id'], update)
+    query = context.session.query(models.Transfer).filter_by(id=transfer_id)
+    query.update(
+        {
+            'deleted': True,
+            'deleted_at': timeutils.utcnow(),
+            'updated_at': timeutils.utcnow(),
+            'destination_project_id': project_id,
+            'accepted': True,
+        }
+    )
 
 
 # TODO(stephenfin): Convert these once we convert the 'share_*' APIs
 @require_context
-def transfer_accept_rollback(context, transfer_id, user_id,
-                             project_id, rollback_snap=False):
-    session = get_session()
-    with session.begin():
-        share_id = _transfer_get(
-            context, transfer_id, read_deleted=True, session=session,
-        )['resource_id']
-        update = {'status': constants.STATUS_AWAITING_TRANSFER,
-                  'user_id': user_id,
-                  'project_id': project_id,
-                  'updated_at': timeutils.utcnow()}
-        share_update(context, share_id, update)
+@context_manager.writer
+def transfer_accept_rollback(
+    context, transfer_id, user_id, project_id, rollback_snap=False,
+):
+    share_id = _transfer_get(
+        context, transfer_id, read_deleted=True,
+    )['resource_id']
+    update = {
+        'status': constants.STATUS_AWAITING_TRANSFER,
+        'user_id': user_id,
+        'project_id': project_id,
+        'updated_at': timeutils.utcnow(),
+    }
+    _share_update(context, share_id, update)
 
-        # rollback snapshots for transfer snapshots with share.
-        if rollback_snap:
-            snapshots = share_snapshot_get_all_for_share(context, share_id)
-            for snapshot in snapshots:
-                LOG.debug('Begin to rollback snapshot: %s', snapshot['id'])
-                update = {'user_id': user_id,
-                          'project_id': project_id,
-                          'updated_at': timeutils.utcnow()}
-                share_snapshot_update(context, snapshot['id'], update)
+    # rollback snapshots for transfer snapshots with share.
+    if rollback_snap:
+        snapshots = _share_snapshot_get_all_for_share(context, share_id)
+        for snapshot in snapshots:
+            LOG.debug('Begin to rollback snapshot: %s', snapshot['id'])
+            update = {
+                'user_id': user_id,
+                'project_id': project_id,
+                'updated_at': timeutils.utcnow(),
+            }
+            _share_snapshot_update(context, snapshot['id'], update)
 
-        query = session.query(models.Transfer).filter_by(id=transfer_id)
-        query.update({'deleted': 'False',
-                      'deleted_at': None,
-                      'updated_at': timeutils.utcnow(),
-                      'destination_project_id': None,
-                      'accepted': 0})
+    query = context.session.query(models.Transfer).filter_by(id=transfer_id)
+    query.update(
+        {
+            'deleted': 'False',
+            'deleted_at': None,
+            'updated_at': timeutils.utcnow(),
+            'destination_project_id': None,
+            'accepted': 0,
+        }
+    )
 
 
 ###################
@@ -3421,6 +3434,12 @@ def _snapshot_data_get_for_project(
 
 @require_context
 def share_snapshot_get(context, snapshot_id, project_only=True, session=None):
+    return _share_snapshot_get(
+        context, snapshot_id, project_only=project_only, session=session,
+    )
+
+
+def _share_snapshot_get(context, snapshot_id, project_only=True, session=None):
     result = (model_query(context, models.ShareSnapshot, session=session,
                           project_only=project_only).
               filter_by(id=snapshot_id).
@@ -3573,8 +3592,17 @@ def share_snapshot_get_all_by_project_with_count(context, project_id,
 
 
 @require_context
-def share_snapshot_get_all_for_share(context, share_id, filters=None,
-                                     sort_key=None, sort_dir=None):
+def share_snapshot_get_all_for_share(
+    context, share_id, filters=None, sort_key=None, sort_dir=None,
+):
+    return _share_snapshot_get_all_for_share(
+        context, share_id, filters=None, sort_key=None, sort_dir=None,
+    )
+
+
+def _share_snapshot_get_all_for_share(
+    context, share_id, filters=None, sort_key=None, sort_dir=None,
+):
     return _share_snapshot_get_all_with_filters(
         context, share_id=share_id,
         filters=filters, sort_key=sort_key, sort_dir=sort_dir,
@@ -3594,22 +3622,28 @@ def share_snapshot_get_latest_for_share(context, share_id):
 def share_snapshot_update(context, snapshot_id, values):
     session = get_session()
     with session.begin():
-        snapshot_ref = share_snapshot_get(context, snapshot_id,
-                                          session=session)
+        return _share_snapshot_update(context, snapshot_id, values,
+                                      session=session)
 
-        instance_values, snapshot_values = (
-            _extract_snapshot_instance_values(values)
-        )
 
-        if snapshot_values:
-            snapshot_ref.update(snapshot_values)
-            snapshot_ref.save(session=session)
+# TODO(stephenfin): Remove the 'session' argument once all callers have been
+# converted
+def _share_snapshot_update(context, snapshot_id, values, session=None):
+    snapshot_ref = _share_snapshot_get(context, snapshot_id, session=session)
 
-        if instance_values:
-            snapshot_ref.instance.update(instance_values)
-            snapshot_ref.instance.save(session=session)
+    instance_values, snapshot_values = (
+        _extract_snapshot_instance_values(values)
+    )
 
-        return snapshot_ref
+    if snapshot_values:
+        snapshot_ref.update(snapshot_values)
+        snapshot_ref.save(session=session or context.session)
+
+    if instance_values:
+        snapshot_ref.instance.update(instance_values)
+        snapshot_ref.instance.save(session=session or context.session)
+
+    return snapshot_ref
 
 
 @require_context
