@@ -146,7 +146,7 @@ Network configurations
 If using ``DHSS=True``, there are two possible network configurations that can
 be chosen for share provisioning using this driver:
 
-- Service VM has one NIC connected to a network that connects to a public
+- Service VM (SVM) has one NIC connected to a network that connects to a public
   router. This is, the service VM will be connected to a static administrative
   network created beforehand by an administrator. This approach is valid in
   'flat' network topologies, where a single Neutron network is defined for
@@ -232,6 +232,23 @@ Known restrictions
 - Modifying network-related configuration options, such as
   ``service_network_cidr`` or ``service_network_division_mask``, after manila
   has already created some shares using those options is not supported.
+
+- One of the limitations that severely affects availability in the cloud is the
+  Single Point of Failure (SPOF) issue. The driver uses a Nova VM as its NAS
+  (NFS/CIFS) server. If/When the server goes down, there is no way to continue
+  serving data. Due to this SPOF, today's open source SVM solutions for
+  multi-tenant manila service do not really constitute a viable alternative to
+  using proprietary, vendor-supplied storage arrays or appliances that combine
+  per-tenant virtualization and solid HA recovery mechanisms. They are useful
+  as objects of reference and study but are not acceptable to operators of real
+  life clouds whose customers will not tolerate having to wait for manual
+  intervention to recover from unpredictable storage data path outages.
+
+- The generic driver assumes the manila-share service is running on a node
+  where there is an integration bridge where it can plug in the service VM
+  (nova instance in this case). This condition does not hold in a common
+  deployment topology where manila-share is run on a controller node and
+  networking services are run on a separate dedicated node.
 
 Using Windows instances
 ~~~~~~~~~~~~~~~~~~~~~~~
