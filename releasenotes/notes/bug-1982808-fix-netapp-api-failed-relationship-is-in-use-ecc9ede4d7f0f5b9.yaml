@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #1982808
+    <https://bugs.launchpad.net/manila/+bug/1982808>`_: Fixed issue
+    to add the retry logic to delete and release the snapmirror relationship.
+    Delete the vserver pairing when there is no snapmirror relationship exist
+    on source and destination cluster.
