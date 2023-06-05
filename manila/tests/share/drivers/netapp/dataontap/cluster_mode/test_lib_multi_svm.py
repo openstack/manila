@@ -1477,6 +1477,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=(self.fake_vserver,
                                                  self.fake_new_vserver_name)))
         self.mock_object(base_class, 'delete_replica')
+        self.mock_object(self.library, '_get_snapmirrors_destinations',
+                         mock.Mock(return_value=[]))
         self.mock_object(self.library, '_get_snapmirrors',
                          mock.Mock(return_value=[]))
         self.mock_object(self.library, '_get_vserver_peers',
@@ -1489,6 +1491,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.library._get_vservers_from_replicas.assert_called_once_with(
             None, [self.fake_replica], self.fake_new_replica
+        )
+        self.library._get_snapmirrors_destinations.assert_has_calls(
+            [mock.call(self.fake_vserver, self.fake_new_vserver_name),
+             mock.call(self.fake_new_vserver_name, self.fake_vserver)]
         )
         base_class.delete_replica.assert_called_once_with(
             None, [self.fake_replica], self.fake_new_replica, []
@@ -1601,6 +1607,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         class FakeDBObj(dict):
             def to_dict(self):
                 return self
+
         fake_parent_share = copy.deepcopy(fake.SHARE)
         fake_parent_share['id'] = fake.SHARE_ID2
         fake_parent_share['host'] = fake.MANILA_HOST_NAME_2
@@ -1825,11 +1832,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     @ddt.data(
         {'expected_server': fake.SHARE_SERVER_NO_NFS_NONE,
-         'share_group': {'share_server_id':
-                         fake.SHARE_SERVER_NO_NFS_NONE['id']}},
+         'share_group': {
+             'share_server_id': fake.SHARE_SERVER_NO_NFS_NONE['id']}},
         {'expected_server': fake.SHARE_SERVER_NO_DETAILS,
-         'share_group': {'share_server_id':
-                         fake.SHARE_SERVER_NO_DETAILS['id']}},
+         'share_group': {
+             'share_server_id': fake.SHARE_SERVER_NO_DETAILS['id']}},
         {'expected_server': fake.SHARE_SERVER_NO_DETAILS,
          'share_group': {
              'share_server_id': fake.SHARE_SERVER_NO_DETAILS['id']},
@@ -2856,7 +2863,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     @ddt.data({'mirror_state': 'snapmirrored', 'status': 'idle'},
               {'mirror_state': 'uninitialized', 'status': 'transferring'},
-              {'mirror_state': 'snapmirrored', 'status': 'quiescing'},)
+              {'mirror_state': 'snapmirrored', 'status': 'quiescing'}, )
     @ddt.unpack
     def test_share_server_migration_continue_svm_dr(self, mirror_state,
                                                     status):
