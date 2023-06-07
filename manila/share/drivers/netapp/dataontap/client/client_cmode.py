@@ -1711,10 +1711,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             nfs_service_modify_args['is-nfsv40-enabled'] = 'true'
         if 'nfs4.1' in versions:
             nfs41_opts = {
-                'is-nfsv41-pnfs-enabled': 'true',
-                'is-nfsv41-acl-enabled': 'true',
-                'is-nfsv41-read-delegation-enabled': 'true',
-                'is-nfsv41-write-delegation-enabled': 'true',
+                # 'is-nfsv41-pnfs-enabled': 'false',               # default false, use default on new vservers, don't touch old vservers  # noqa: E501
+                # 'nfsv4-lease-seconds': 30                        # default 30, HANA multiple host systems would like 10 better  # noqa: E501
+                'is-nfsv41-acl-enabled': 'false',               # default false
+                'is-nfsv41-read-delegation-enabled': 'false',   # default false
+                'is-nfsv41-write-delegation-enabled': 'false',  # default false
             }
 
             nfs_service_modify_args.update(nfs41_opts)

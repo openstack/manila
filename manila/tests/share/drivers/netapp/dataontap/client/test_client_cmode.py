@@ -2614,10 +2614,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
             nfs_service_modify_args['is-nfsv40-enabled'] = 'true'
         if v41:
             nfs41_opts = {
-                'is-nfsv41-pnfs-enabled': 'true',
-                'is-nfsv41-acl-enabled': 'true',
-                'is-nfsv41-read-delegation-enabled': 'true',
-                'is-nfsv41-write-delegation-enabled': 'true',
+                'is-nfsv41-acl-enabled': 'false',
+                'is-nfsv41-read-delegation-enabled': 'false',
+                'is-nfsv41-write-delegation-enabled': 'false',
             }
 
             nfs_service_modify_args.update(nfs41_opts)
