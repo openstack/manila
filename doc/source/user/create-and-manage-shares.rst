@@ -895,4 +895,81 @@ Share revert to snapshot
 
      $ manila revert-to-snapshot mysnapshot
 
+Share Transfer
+~~~~~~~~~~~~~~
+
+* Transfer a share to a different project
+
+  .. note::
+
+   -  Share transfer is available for ``driver_handles_share_servers=False``,
+      only supports transferring shares that are not created with a share
+      network.
+   -  Shares that are in transitional states, or possessing replicas, or
+      within share groups cannot be transferred.
+
+  .. code-block:: console
+
+     $ manila share-transfer-create myshare --name mytransfer
+     +------------------------+--------------------------------------+
+     | Property               | Value                                |
+     +------------------------+--------------------------------------+
+     | id                     | 1c56314e-7e97-455a-bbde-83828db038d4 |
+     | created_at             | 2023-05-25T14:37:11.178869           |
+     | name                   | mytransfer                           |
+     | resource_type          | share                                |
+     | resource_id            | 5573c214-ef79-4fb7-83f8-8c01fbe847f7 |
+     | source_project_id      | 88b1f2cf8f554edaa8dd92892d1eabf7     |
+     | destination_project_id | None                                 |
+     | accepted               | False                                |
+     | expires_at             | 2023-05-25T14:42:11.176049           |
+     | auth_key               | af429e22e0abc31d                     |
+     +------------------------+--------------------------------------+
+
+* Accept share transfer
+
+  .. note::
+
+   -  Accept share transfer is performed by a user in a different project.
+
+  .. code-block:: console
+
+     $ manila share-transfer-accept 1c56314e-7e97-455a-bbde-83828db038d4  af429e22e0abc31d
+
+* Delete a transfer
+
+  .. code-block:: console
+
+     $ manila share-transfer-delete 1c56314e-7e97-455a-bbde-83828db038d4
+
+* List transfers
+
+  .. code-block:: console
+
+     $ manila share-transfer-list
+     +--------------------------------------+------------+---------------+--------------------------------------+
+     | ID                                   | Name       | Resource Type | Resource Id                          |
+     +--------------------------------------+------------+---------------+--------------------------------------+
+     | 1c56314e-7e97-455a-bbde-83828db038d4 | mytransfer | share         | 5573c214-ef79-4fb7-83f8-8c01fbe847f7 |
+     +--------------------------------------+------------+---------------+--------------------------------------+
+
+* Show a share transfer
+
+  .. code-block:: console
+
+     $ manila share-transfer-show 1c56314e-7e97-455a-bbde-83828db038d4
+     +------------------------+--------------------------------------+
+     | Property               | Value                                |
+     +------------------------+--------------------------------------+
+     | id                     | 1c56314e-7e97-455a-bbde-83828db038d4 |
+     | created_at             | 2023-05-25T14:37:11.178869           |
+     | name                   | mytransfer                           |
+     | resource_type          | share                                |
+     | resource_id            | 5573c214-ef79-4fb7-83f8-8c01fbe847f7 |
+     | source_project_id      | 88b1f2cf8f554edaa8dd92892d1eabf7     |
+     | destination_project_id | None                                 |
+     | accepted               | False                                |
+     | expires_at             | 2023-05-25T14:42:11.176049           |
+     +------------------------+--------------------------------------+
+
 
