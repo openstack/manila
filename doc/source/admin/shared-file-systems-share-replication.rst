@@ -285,11 +285,14 @@ Create a share replica
 
 Use the :command:`manila share-replica-create` command to create a share
 replica. Specify the share ID or name as a parameter. You may
-optionally provide the `availability_zone`.
+optionally provide the `availability_zone` or the `scheduler_hints`.
+
+For the scheduler hints, the value of ``only_host`` parameter must be a
+manila-share service host in ``host@backend#POOL`` format.
 
 .. code-block:: console
 
-   $ manila share-replica-create my_share --az availability_zone_2
+   $ manila share-replica-create my_share --az availability_zone_2 --scheduler_hints only_host=openstack4@zfsonlinux_2#beta
    +-------------------+--------------------------------------+
    | Property          | Value                                |
    +-------------------+--------------------------------------+
@@ -313,6 +316,9 @@ See details of the newly created share replica
    type with specification ``driver_handles_share_servers=True``, users must
    ensure that the share network has a subnet in the availability zone that
    they desire the share replica to be created in.
+
+.. note::
+   Scheduler hints are available only for API version >= 2.67.
 
 Use the :command:`manila share-replica-show` command to see details
 of the newly created share replica. Specify the share replica's ID as a
