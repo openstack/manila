@@ -1,0 +1,12 @@
+{
+    "messages": [
+        {
+            "code": "0xE08010080449",
+            "severity": "Error",
+            "message_l10n": "The new size for the file system is below the file system's current size used (5222 MB).",
+            "arguments": [
+                "5222"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,11 @@
+[
+    {
+        "smb_servers": [
+            {
+                "is_standalone": true,
+                "domain": null,
+                "netbios_name": "OPENSTACK"
+            }
+        ]
+    }
+]

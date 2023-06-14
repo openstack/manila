@@ -15,6 +15,7 @@ Share drivers
    drivers/dell-emc-powermax-driver.rst
    drivers/dell-emc-unity-driver.rst
    drivers/dell-emc-vnx-driver.rst
+   drivers/dell-emc-powerstore-driver.rst
    drivers/glusterfs-driver.rst
    drivers/glusterfs-native-driver.rst
    drivers/hdfs-native-driver.rst
