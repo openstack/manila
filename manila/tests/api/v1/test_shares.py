@@ -449,6 +449,30 @@ class ShareAPITest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], self.resource_name, 'create')
 
+    @ddt.data(
+        {'name': 'name1', 'description': 'x' * 256},
+        {'name': 'x' * 256, 'description': 'description1'},
+    )
+    @ddt.unpack
+    def test_share_create_invalid_input(self, name, description):
+        self.mock_object(share_api.API, 'create')
+        shr = {
+            "size": 100,
+            "name": name,
+            "description": description,
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+        }
+        body = {"share": shr}
+        req = fakes.HTTPRequest.blank('/v1/fake/shares')
+
+        self.assertRaises(exception.InvalidInput,
+                          self.controller.create,
+                          req,
+                          body)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
+
     @ddt.data("1.0", "2.0")
     def test_share_create_from_snapshot_not_supported(self, microversion):
         # This create operation should work, because the 1.0 API doesn't check

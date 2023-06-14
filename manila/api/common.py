@@ -258,6 +258,16 @@ def check_share_network_is_active(share_network):
         raise webob.exc.HTTPBadRequest(explanation=msg)
 
 
+def check_display_field_length(field, field_name):
+    if field:
+        length = len(field)
+        if length > constants.DB_DISPLAY_FIELDS_MAX_LENGTH:
+            raise exception.InvalidInput(
+                reason=("Please use %(field_name)s up to %(len)d characters."
+                        % {'field_name': field_name,
+                           'len': constants.DB_DISPLAY_FIELDS_MAX_LENGTH}))
+
+
 class ViewBuilder(object):
     """Model API responses as dictionaries."""
 
