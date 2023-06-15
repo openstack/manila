@@ -23,6 +23,7 @@ from manila.api.v1 import share_snapshots
 from manila.common import constants
 from manila import context
 from manila import db
+from manila import exception
 from manila.share import api as share_api
 from manila import test
 from manila.tests.api.contrib import stubs
@@ -88,6 +89,32 @@ class ShareSnapshotAPITest(test.TestCase):
         expected = fake_share.expected_snapshot(id=200)
 
         self.assertEqual(expected, res_dict)
+
+    @ddt.data(
+        {'name': 'name1', 'description': 'x' * 256},
+        {'name': 'x' * 256, 'description': 'description1'},
+    )
+    @ddt.unpack
+    def test_snapshot_create_invalid_input(self, name, description):
+        self.mock_object(share_api.API, 'create_snapshot')
+        self.mock_object(
+            share_api.API,
+            'get',
+            mock.Mock(return_value={'snapshot_support': True,
+                                    'is_soft_deleted': False}))
+        body = {
+            'snapshot': {
+                'share_id': 200,
+                'force': False,
+                'name': name,
+                'description': description,
+            }
+        }
+        req = fakes.HTTPRequest.blank('/fake/snapshots')
+
+        self.assertRaises(
+            exception.InvalidInput,
+            self.controller.create, req, body)
 
     @ddt.data(0, False)
     def test_snapshot_create_no_support(self, snapshot_support):

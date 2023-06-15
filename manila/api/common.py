@@ -267,6 +267,16 @@ def check_share_network_is_active(share_network):
         raise webob.exc.HTTPBadRequest(explanation=msg)
 
 
+def check_display_field_length(field, field_name):
+    if field:
+        length = len(field)
+        if length > constants.DB_DISPLAY_FIELDS_MAX_LENGTH:
+            raise exception.InvalidInput(
+                reason=("%(field_name)s can only be %(len)d characters long."
+                        % {'field_name': field_name,
+                           'len': constants.DB_DISPLAY_FIELDS_MAX_LENGTH}))
+
+
 def parse_is_public(is_public):
     """Parse is_public into something usable.
 

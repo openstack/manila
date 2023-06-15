@@ -186,6 +186,11 @@ class ShareSnapshotMixin(object):
                        for key in valid_update_keys
                        if key in snapshot_data}
 
+        common.check_display_field_length(
+            update_dict.get('display_name'), 'display_name')
+        common.check_display_field_length(
+            update_dict.get('display_description'), 'display_description')
+
         try:
             snapshot = self.share_api.get_snapshot(context, id)
         except exception.NotFound:
@@ -230,12 +235,16 @@ class ShareSnapshotMixin(object):
         # NOTE(rushiagr): v2 API allows name instead of display_name
         if 'name' in snapshot:
             snapshot['display_name'] = snapshot.get('name')
+            common.check_display_field_length(
+                snapshot['display_name'], 'name')
             del snapshot['name']
 
         # NOTE(rushiagr): v2 API allows description instead of
         #                display_description
         if 'description' in snapshot:
             snapshot['display_description'] = snapshot.get('description')
+            common.check_display_field_length(
+                snapshot['display_description'], 'description')
             del snapshot['description']
 
         kwargs = {}

@@ -218,6 +218,11 @@ class ShareMixin(object):
                        for key in valid_update_keys
                        if key in share_data}
 
+        common.check_display_field_length(
+            update_dict.get('display_name'), 'display_name')
+        common.check_display_field_length(
+            update_dict.get('display_description'), 'display_description')
+
         try:
             share = self.share_api.get(context, id)
         except exception.NotFound:
@@ -258,12 +263,15 @@ class ShareMixin(object):
         # NOTE(rushiagr): Manila API allows 'name' instead of 'display_name'.
         if share.get('name'):
             share['display_name'] = share.get('name')
+            common.check_display_field_length(share['display_name'], 'name')
             del share['name']
 
         # NOTE(rushiagr): Manila API allows 'description' instead of
         #                 'display_description'.
         if share.get('description'):
             share['display_description'] = share.get('description')
+            common.check_display_field_length(
+                share['display_description'], 'description')
             del share['description']
 
         size = share['size']

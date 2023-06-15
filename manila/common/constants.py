@@ -16,6 +16,9 @@
 # The maximum value a signed INT type may have
 DB_MAX_INT = 0x7FFFFFFF
 
+# The maximum length a display field may have
+DB_DISPLAY_FIELDS_MAX_LENGTH = 255
+
 # SHARE AND GENERAL STATUSES
 STATUS_CREATING = 'creating'
 STATUS_CREATING_FROM_SNAPSHOT = 'creating_from_snapshot'

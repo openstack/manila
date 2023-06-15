@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    During share/snapshot create/update API calls, if display name or
+    description is above max db limit i.e. 255, Manila throws error. But in
+    this case, end user message is not meaningful. Fixed it by adding valid
+    error message. For more details, please check
+    `Launchpad Bug #2023964 <https://bugs.launchpad.net/manila/+bug/2023964>`_
