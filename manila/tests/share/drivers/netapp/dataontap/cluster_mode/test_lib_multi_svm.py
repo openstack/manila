@@ -929,7 +929,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result = self.library._create_ipspace(fake.NETWORK_INFO)
 
         expected = self.library._get_valid_ipspace_name(
-            fake.NETWORK_INFO['neutron_subnet_id'])
+            fake.NETWORK_INFO['neutron_net_id'])
         self.assertEqual(expected, result)
         self.library._client.create_ipspace.assert_called_once_with(expected)
 

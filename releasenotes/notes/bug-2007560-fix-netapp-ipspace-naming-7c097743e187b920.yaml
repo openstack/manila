@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp driver: Fixed NetApp ipspace naming to follow the neutron network id,
+    instead of the neutron subnet id as before. For more details please refer to
+    `launchpad bug #2007560 <https://bugs.launchpad.net/manila/+bug/2007560>`.
