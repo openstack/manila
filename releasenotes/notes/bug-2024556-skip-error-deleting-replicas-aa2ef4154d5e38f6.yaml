@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Share replicas in state `error_deleting` are now skipped during periodic
+    updates. For more details, please refer to
+    `launchpad bug #2024556 <https://bugs.launchpad.net/manila/+bug/2024556>`_
