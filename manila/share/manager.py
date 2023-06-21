@@ -2815,6 +2815,7 @@ class ShareManager(manager.SchedulerDependentManager):
         # We don't poll for replicas that are busy in some operation,
         # or if they are the 'active' instance.
         if (share_replica['status'] in constants.TRANSITIONAL_STATUSES
+            or share_replica['status'] == constants.STATUS_ERROR_DELETING
             or share_replica['replica_state'] ==
                 constants.REPLICA_STATE_ACTIVE):
             return
