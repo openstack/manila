@@ -4488,19 +4488,42 @@ def share_server_get_all_unused_deletable(context, host, updated_before):
     return result
 
 
+def _share_server_backend_details_get_item(context,
+                                           share_server_id,
+                                           key, session=None):
+    result = (_share_server_backend_details_get_query(
+        context, share_server_id, session=session).filter_by(key=key).first())
+    if not result:
+        raise exception.ShareServerBackendDetailsNotFound()
+    return result
+
+
+def _share_server_backend_details_get_query(context,
+                                            share_server_id,
+                                            session=None):
+    return (model_query(
+        context, models.ShareServerBackendDetails, session=session,
+        read_deleted="no").
+        filter_by(share_server_id=share_server_id))
+
+
 @require_context
 def share_server_backend_details_set(context, share_server_id, server_details):
     share_server_get(context, share_server_id)
 
-    for meta_key, meta_value in server_details.items():
-        meta_ref = models.ShareServerBackendDetails()
-        meta_ref.update({
-            'key': meta_key,
-            'value': meta_value,
-            'share_server_id': share_server_id
-        })
-        session = get_session()
-        with session.begin():
+    session = get_session()
+    with session.begin():
+        for meta_key, meta_value in server_details.items():
+            # update the value whether it exists or not
+            item = {"value": meta_value}
+            try:
+                meta_ref = _share_server_backend_details_get_item(
+                    context, share_server_id, meta_key, session=session)
+            except exception.ShareServerBackendDetailsNotFound:
+                meta_ref = models.ShareServerBackendDetails()
+                item.update({"key": meta_key,
+                             "share_server_id": share_server_id})
+            meta_ref.update(item)
             meta_ref.save(session)
     return server_details
 

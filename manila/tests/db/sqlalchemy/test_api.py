@@ -3195,6 +3195,14 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
             db_api.share_server_get(self.ctxt, server['id'])['backend_details']
         )
 
+        details.update({'value2': '4'})
+        db_api.share_server_backend_details_set(self.ctxt, server['id'],
+                                                details)
+        self.assertDictEqual(
+            details,
+            db_api.share_server_get(self.ctxt, server['id'])['backend_details']
+        )
+
     def test_backend_details_set_not_found(self):
         fake_id = 'FAKE_UUID'
         self.assertRaises(exception.ShareServerNotFound,

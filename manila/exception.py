@@ -296,6 +296,10 @@ class ShareServerNotReady(ManilaException):
                 "within %(time)s seconds.")
 
 
+class ShareServerBackendDetailsNotFound(NotFound):
+    message = _("Share server backend details does not exist.")
+
+
 class ServiceNotFound(NotFound):
     message = _("Service %(service_id)s could not be found.")
 
