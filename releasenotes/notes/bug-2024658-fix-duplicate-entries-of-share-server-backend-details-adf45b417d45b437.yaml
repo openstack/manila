@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Share server backend details set function adds db records without
+    checking existing entries. This results in duplicate records for the
+    combination of given share server id and key. Fixed it by updating records
+    if already exist else creating new. See the `launchpad bug 2024658
+    <https://bugs.launchpad.net/manila/+bug/2024658>`_ for more details.
