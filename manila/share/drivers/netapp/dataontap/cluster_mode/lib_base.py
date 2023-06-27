@@ -4173,7 +4173,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 msg += ("Check if this is due to an ongoing SVM move "
                         "(DR or other migration).")
 
-            LOG.error(msg)
+            LOG.exception(msg)
 
         return server_info
 
