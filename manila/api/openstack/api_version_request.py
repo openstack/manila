@@ -198,14 +198,14 @@ REST_API_VERSION_HISTORY = """
     * 2.79 - Added ``with_count`` in share snapshot list API to get total
              count info.
     * 2.80 - Added share backup APIs.
-
+    * 2.81 - Added API methods, endpoint /resource-locks.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.80"
+_MAX_API_VERSION = "2.81"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

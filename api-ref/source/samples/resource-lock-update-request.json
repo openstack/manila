@@ -1,0 +1,5 @@
+{
+    "resource_lock": {
+        "lock_reason": "This is a protected share"
+    }
+}

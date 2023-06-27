@@ -45,3 +45,23 @@ def stub_message(id, **kwargs):
 
 def stub_message_get(self, context, message_id):
     return stub_message(message_id)
+
+
+def stub_lock(id, **kwargs):
+    lock = {
+        'id': id,
+        'project_id': 'f63f7a159f404cfc8604b7065c609691',
+        'user_id': 'e78f4294e3534e00ae176bd989d6a682',
+        'resource_id': 'c474badd-f06e-4ff9-ae26-daa00e19867b',
+        'resource_action': 'delete',
+        'resource_type': 'share',
+        'lock_context': 'user',
+        'lock_reason': 'for the tests',
+        'updated_at': datetime.datetime(2023, 8, 10, 20, 4, 39,
+                                        tzinfo=iso8601.UTC),
+        'created_at': datetime.datetime(2023, 1, 10, 15, 3, 1,
+                                        tzinfo=iso8601.UTC),
+    }
+
+    lock.update(kwargs)
+    return lock

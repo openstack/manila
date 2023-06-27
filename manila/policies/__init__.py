@@ -21,6 +21,7 @@ from manila.policies import base
 from manila.policies import message
 from manila.policies import quota_class_set
 from manila.policies import quota_set
+from manila.policies import resource_lock
 from manila.policies import scheduler_stats
 from manila.policies import security_service
 from manila.policies import service
@@ -66,6 +67,7 @@ def list_rules():
         service.list_rules(),
         quota_set.list_rules(),
         quota_class_set.list_rules(),
+        resource_lock.list_rules(),
         share_group_types_spec.list_rules(),
         share_group_type.list_rules(),
         share_group_snapshot.list_rules(),

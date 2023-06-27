@@ -19,6 +19,7 @@
 """
 Handles all requests relating to shares.
 """
+import functools
 import json
 
 from oslo_config import cfg
@@ -126,6 +127,55 @@ class API(base.Base):
         self.share_rpcapi = share_rpcapi.ShareAPI()
         self.access_helper = access.ShareInstanceAccess(self.db, None)
         coordination.LOCK_COORDINATOR.start()
+
+    def prevent_locked_action_on_share(arg):
+        """Decorator for preventing a locked method from executing on a share.
+
+        Add this decorator to any API method which takes a RequestContext
+        object as a first  parameter and a share object as the second
+        parameter.
+
+        Can be used in any of the following forms
+        @prevent_locked_action_on_share
+        @prevent_locked_action_on_share('my_action_name')
+
+        :param arg: Can either be the function being decorated or a str
+        containing the 'action' that we need to check resource locks for.
+        If no action name is provided, the function name is assumed to be
+        the action name.
+        """
+        action_name = None
+
+        def check_for_locks(f):
+            @functools.wraps(f)
+            def wrapper(self, context, share, *args, **kwargs):
+                action = action_name or f.__name__
+                resource_locks, __ = (
+                    self.db.resource_lock_get_all(
+                        context.elevated(),
+                        filters={'resource_id': share['id'],
+                                 'resource_action': action,
+                                 'all_projects': True},
+                    )
+                )
+                if resource_locks:
+                    msg_payload = {
+                        'locks': ', '.join(
+                            [lock['id'] for lock in resource_locks]
+                        ),
+                        'action': action,
+                    }
+                    msg = (f"Resource lock/s [{msg_payload['locks']}] "
+                           f"prevent {action} action.")
+                    raise exception.InvalidShare(msg)
+                return f(self, context, share, *args, **kwargs)
+            return wrapper
+
+        if callable(arg):
+            return check_for_locks(arg)
+        else:
+            action_name = arg
+            return check_for_locks
 
     def _get_all_availability_zones_with_subnets(self, context,
                                                  share_network_id):
@@ -1044,6 +1094,7 @@ class API(base.Base):
         }
         return request_spec
 
+    @prevent_locked_action_on_share('delete')
     def unmanage(self, context, share):
         policy.check_policy(context, 'share', 'unmanage')
 
@@ -1239,6 +1290,7 @@ class API(base.Base):
             context, share, snapshot, active_replica['host'], reservations)
 
     @policy.wrap_check_policy('share')
+    @prevent_locked_action_on_share('delete')
     def soft_delete(self, context, share):
         """Soft delete share."""
         share_id = share['id']
@@ -1291,6 +1343,7 @@ class API(base.Base):
         self.db.share_restore(context, share_id)
 
     @policy.wrap_check_policy('share')
+    @prevent_locked_action_on_share
     def delete(self, context, share, force=False):
         """Delete share."""
         share = self.db.share_get(context, share['id'])

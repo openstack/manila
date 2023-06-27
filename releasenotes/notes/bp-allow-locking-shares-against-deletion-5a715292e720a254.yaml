@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added new API endpoints and methods to create, retrieve, update and
+    delete resource locks. Resource locks can be used to restrict certain
+    actions from occurring on the resource. Currently users can prevent
+    deletion of a share (including soft-deletion, transfer and unmanage
+    operations) by creating a resource lock against the share. In future
+    releases, more resource actions may be supported by this feature.

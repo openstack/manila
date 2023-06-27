@@ -1455,6 +1455,31 @@ class Message(BASE, ManilaBase):
     deleted = Column(String(36), default='False')
 
 
+class ResourceLock(BASE, ManilaBase):
+    """Represents a resource lock.
+
+    Resource locks are held by users (or on behalf of users) and prevent
+    actions to be performed on resources while the lock is present.
+    """
+    __tablename__ = 'resource_locks'
+    id = Column(String(36), primary_key=True, nullable=False)
+    user_id = Column(String(255), nullable=False)
+    project_id = Column(String(255), nullable=False)
+    # If the lock is held on behalf of the user, but created by 'service' or
+    # 'admin' users, as opposed to the user themselves ('project')
+    lock_context = Column(String(10), nullable=False)
+    # The uuid of the resource being locked.
+    resource_id = Column(String(36), nullable=False)
+    # The resource type, a constant dict will hold possible values
+    resource_type = Column(Enum(*constants.RESOURCE_LOCK_RESOURCE_TYPES),
+                           default=constants.SHARE_RESOURCE_TYPE)
+    # Action that lock prevents, a constant dict will hold possible values
+    resource_action = Column(Enum(*constants.RESOURCE_LOCK_RESOURCE_ACTIONS),
+                             default=constants.RESOURCE_ACTION_DELETE)
+    lock_reason = Column(String(1023), nullable=True)
+    deleted = Column(String(36), default='False')
+
+
 class BackendInfo(BASE, ManilaBase):
     """Represent Backend Info."""
     __tablename__ = "backend_info"

@@ -254,6 +254,16 @@ REPLICATION_TYPE_DR = 'dr'
 
 POLICY_EXTEND_BEYOND_MAX_SHARE_SIZE = 'extend_beyond_max_share_size_spec'
 
+RESOURCE_ACTION_DELETE = 'delete'  # delete, soft-delete, unmanage
+
+RESOURCE_LOCK_RESOURCE_TYPES = (
+    SHARE_RESOURCE_TYPE,
+)
+
+RESOURCE_LOCK_RESOURCE_ACTIONS = (
+    RESOURCE_ACTION_DELETE,
+)
+
 
 class ExtraSpecs(object):
 

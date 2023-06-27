@@ -1,0 +1,24 @@
+{
+  "resource_lock": {
+    "id": "118750ee-b62b-4cae-9a94-7da29a4f831f",
+    "user_id": "89de351d3b5744b9853ec4829aa0e714",
+    "project_id": "db2e72fef7864bbbbf210f22da7f1158",
+    "lock_context": "user",
+    "resource_type": "share",
+    "resource_id": "4c0b4d35-4ea8-4811-a1e2-a065c64225a8",
+    "resource_action": "delete",
+    "lock_reason": "This is a protected share",
+    "created_at": "2023-07-17T22:53:18.894553",
+    "updated_at": "2023-07-17T23:18:44.284565",
+    "links": [
+      {
+        "rel": "self",
+        "href": "http://203.0.113.30/share/v2/resource_locks/118750ee-b62b-4cae-9a94-7da29a4f831f"
+      },
+      {
+        "rel": "bookmark",
+        "href": "http://203.0.113.30/share/resource_locks/118750ee-b62b-4cae-9a94-7da29a4f831f"
+      }
+    ]
+  }
+}
