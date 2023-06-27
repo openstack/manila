@@ -427,3 +427,7 @@ ____
 ---------------------------------
   Added Metadata API methods (GET, PUT, POST, DELETE)
   to Share Network Subnets.
+
+2.79
+------------------------
+  Added ``with_count`` in share snapshot list API to get total count info.

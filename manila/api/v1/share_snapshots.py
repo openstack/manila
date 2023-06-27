@@ -30,6 +30,7 @@ from manila import db
 from manila import exception
 from manila.i18n import _
 from manila import share
+from manila import utils
 
 LOG = log.getLogger(__name__)
 
@@ -100,6 +101,13 @@ class ShareSnapshotMixin(object):
         # Remove keys that are not related to share attrs
         search_opts.pop('limit', None)
         search_opts.pop('offset', None)
+
+        show_count = False
+        if 'with_count' in search_opts:
+            show_count = utils.get_bool_from_api_params(
+                'with_count', search_opts)
+            search_opts.pop('with_count')
+
         sort_key, sort_dir = common.get_sort_params(search_opts)
         key_dict = {"name": "display_name",
                     "description": "display_description"}
@@ -137,19 +145,23 @@ class ShareSnapshotMixin(object):
         common.remove_invalid_options(context, search_opts,
                                       self._get_snapshots_search_options())
 
-        snapshots = self.share_api.get_all_snapshots(
-            context,
-            search_opts=search_opts,
-            limit=limit,
-            offset=offset,
-            sort_key=sort_key,
-            sort_dir=sort_dir,
-        )
+        total_count = None
+        if show_count:
+            count, snapshots = self.share_api.get_all_snapshots_with_count(
+                context, search_opts=search_opts, limit=limit, offset=offset,
+                sort_key=sort_key, sort_dir=sort_dir)
+            total_count = count
+        else:
+            snapshots = self.share_api.get_all_snapshots(
+                context, search_opts=search_opts, limit=limit, offset=offset,
+                sort_key=sort_key, sort_dir=sort_dir)
 
         if is_detail:
-            snapshots = self._view_builder.detail_list(req, snapshots)
+            snapshots = self._view_builder.detail_list(
+                req, snapshots, total_count)
         else:
-            snapshots = self._view_builder.summary_list(req, snapshots)
+            snapshots = self._view_builder.summary_list(
+                req, snapshots, total_count)
         return snapshots
 
     def _get_snapshots_search_options(self):

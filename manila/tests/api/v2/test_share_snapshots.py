@@ -196,6 +196,10 @@ class ShareSnapshotAPITest(test.TestCase):
                 api_version.APIVersionRequest('2.36')):
             search_opts.pop('name')
             search_opts['display_name~'] = 'fake_name'
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.79')):
+            search_opts.update({'with_count': 'true'})
+
         # fake_key should be filtered for non-admin
         url = '/v2/fake/snapshots?fake_key=fake_value'
         for k, v in search_opts.items():
@@ -203,14 +207,21 @@ class ShareSnapshotAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             url, use_admin_context=use_admin_context, version=version)
 
+        method = 'get_all_snapshots'
         db_snapshots = [
             {'id': 'id1', 'display_name': 'n1', 'status': 'fake_status', },
             {'id': 'id2', 'display_name': 'n2', 'status': 'fake_status', },
             {'id': 'id3', 'display_name': 'n3', 'status': 'fake_status', },
         ]
-        snapshots = [db_snapshots[1]]
-        self.mock_object(share_api.API, 'get_all_snapshots',
-                         mock.Mock(return_value=snapshots))
+
+        mock_action = {'return_value': [db_snapshots[1]]}
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.79')):
+            method = 'get_all_snapshots_with_count'
+            mock_action = {'side_effect': [(1, [db_snapshots[1]])]}
+
+        mock_get_all_snapshots = (
+            self.mock_object(share_api.API, method, mock.Mock(**mock_action)))
 
         result = self.controller.index(req)
 
@@ -225,7 +236,8 @@ class ShareSnapshotAPITest(test.TestCase):
             search_opts_expected['display_name'] = search_opts['name']
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
-        share_api.API.get_all_snapshots.assert_called_once_with(
+
+        mock_get_all_snapshots.assert_called_once_with(
             req.environ['manila.context'],
             limit=int(search_opts['limit']),
             offset=int(search_opts['offset']),
@@ -234,14 +246,19 @@ class ShareSnapshotAPITest(test.TestCase):
             search_opts=search_opts_expected,
         )
         self.assertEqual(1, len(result['snapshots']))
-        self.assertEqual(snapshots[0]['id'], result['snapshots'][0]['id'])
+        self.assertEqual(db_snapshots[1]['id'], result['snapshots'][0]['id'])
         self.assertEqual(
-            snapshots[0]['display_name'], result['snapshots'][0]['name'])
+            db_snapshots[1]['display_name'], result['snapshots'][0]['name'])
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.79')):
+            self.assertEqual(1, result['count'])
 
     @ddt.data({'version': '2.35', 'use_admin_context': True},
               {'version': '2.36', 'use_admin_context': True},
+              {'version': '2.79', 'use_admin_context': True},
               {'version': '2.35', 'use_admin_context': False},
-              {'version': '2.36', 'use_admin_context': False})
+              {'version': '2.36', 'use_admin_context': False},
+              {'version': '2.79', 'use_admin_context': False})
     @ddt.unpack
     def test_snapshot_list_summary_with_search_opts(self, version,
                                                     use_admin_context):
@@ -288,14 +305,20 @@ class ShareSnapshotAPITest(test.TestCase):
         self.assertEqual(1, len(result['snapshots']))
         self.assertEqual(snapshots[0]['id'], result['snapshots'][0]['id'])
 
-    def _snapshot_list_detail_with_search_opts(self, use_admin_context):
+    def _snapshot_list_detail_with_search_opts(self, version,
+                                               use_admin_context):
         search_opts = fake_share.search_opts()
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.79')):
+            search_opts.update({'with_count': 'true'})
+
         # fake_key should be filtered for non-admin
         url = '/v2/fake/shares/detail?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
         req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
 
+        method = 'get_all_snapshots'
         db_snapshots = [
             {
                 'id': 'id1',
@@ -317,10 +340,14 @@ class ShareSnapshotAPITest(test.TestCase):
                 'aggregate_status': 'fake_status',
             },
         ]
-        snapshots = [db_snapshots[1]]
+        mock_action = {'return_value': [db_snapshots[1]]}
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.79')):
+            method = 'get_all_snapshots_with_count'
+            mock_action = {'side_effect': [(1, [db_snapshots[1]])]}
 
-        self.mock_object(share_api.API, 'get_all_snapshots',
-                         mock.Mock(return_value=snapshots))
+        mock_get_all_snapshots = (
+            self.mock_object(share_api.API, method, mock.Mock(**mock_action)))
 
         result = self.controller.detail(req)
 
@@ -331,7 +358,7 @@ class ShareSnapshotAPITest(test.TestCase):
         }
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
-        share_api.API.get_all_snapshots.assert_called_once_with(
+        mock_get_all_snapshots.assert_called_once_with(
             req.environ['manila.context'],
             limit=int(search_opts['limit']),
             offset=int(search_opts['offset']),
@@ -340,19 +367,27 @@ class ShareSnapshotAPITest(test.TestCase):
             search_opts=search_opts_expected,
         )
         self.assertEqual(1, len(result['snapshots']))
-        self.assertEqual(snapshots[0]['id'], result['snapshots'][0]['id'])
+        self.assertEqual(db_snapshots[1]['id'], result['snapshots'][0]['id'])
         self.assertEqual(
-            snapshots[0]['display_name'], result['snapshots'][0]['name'])
+            db_snapshots[1]['display_name'], result['snapshots'][0]['name'])
         self.assertEqual(
-            snapshots[0]['aggregate_status'], result['snapshots'][0]['status'])
+            db_snapshots[1]['aggregate_status'],
+            result['snapshots'][0]['status'])
         self.assertEqual(
-            snapshots[0]['share_id'], result['snapshots'][0]['share_id'])
+            db_snapshots[1]['share_id'], result['snapshots'][0]['share_id'])
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.79')):
+            self.assertEqual(1, result['count'])
 
-    def test_snapshot_list_detail_with_search_opts_by_non_admin(self):
-        self._snapshot_list_detail_with_search_opts(use_admin_context=False)
-
-    def test_snapshot_list_detail_with_search_opts_by_admin(self):
-        self._snapshot_list_detail_with_search_opts(use_admin_context=True)
+    @ddt.data({'version': '2.78', 'use_admin_context': True},
+              {'version': '2.78', 'use_admin_context': False},
+              {'version': '2.79', 'use_admin_context': True},
+              {'version': '2.79', 'use_admin_context': False})
+    @ddt.unpack
+    def test_snapshot_list_detail_with_search_opts(self, version,
+                                                   use_admin_context):
+        self._snapshot_list_detail_with_search_opts(
+            version=version, use_admin_context=use_admin_context)
 
     @ddt.data('2.0', '2.16', '2.17')
     def test_snapshot_list_detail(self, version):

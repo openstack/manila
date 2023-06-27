@@ -70,6 +70,7 @@ Request
    - all_tenants: all_tenants_query
    - name~: name_inexact_query
    - description~: description_inexact_query
+   - with_count: with_count_snapshot_query
 
 Response parameters
 -------------------
@@ -114,6 +115,7 @@ Request
    - all_tenants: all_tenants_query
    - name~: name_inexact_query
    - description~: description_inexact_query
+   - with_count: with_count_snapshot_query
 
 Response parameters
 -------------------

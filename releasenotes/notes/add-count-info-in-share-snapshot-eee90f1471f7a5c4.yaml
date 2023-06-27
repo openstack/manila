@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added total count info in Manila's /snapshots and /snapshots/detail APIs.

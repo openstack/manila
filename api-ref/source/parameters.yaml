@@ -653,11 +653,18 @@ user_id_query:
   type: string
 with_count_query:
   description: |
-    Whether to show ``count`` in API response or not, default is ``False``.
+    Whether to show ``count`` in share list API response or not, default is ``False``.
   in: query
   required: false
   type: boolean
   min_version: 2.42
+with_count_snapshot_query:
+  description: |
+    Whether to show ``count`` in share snapshot list API response or not, default is ``False``.
+  in: query
+  required: false
+  type: boolean
+  min_version: 2.79
 
 # variables in body
 accepted:
