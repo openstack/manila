@@ -30,6 +30,7 @@ shared file system storage resources.
 .. include:: share-metadata.inc
 .. include:: share-actions.inc
 .. include:: snapshots.inc
+.. include:: snapshot-metadata.inc
 .. include:: snapshot-instances.inc
 .. include:: share-replicas.inc
 .. include:: share-replica-export-locations.inc
