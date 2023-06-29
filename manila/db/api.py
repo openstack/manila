@@ -624,11 +624,30 @@ def share_snapshot_get_all(context, filters=None, limit=None, offset=None,
         sort_key=sort_key, sort_dir=sort_dir)
 
 
+def share_snapshot_get_all_with_count(context, filters=None, limit=None,
+                                      offset=None, sort_key=None,
+                                      sort_dir=None):
+    """Get all snapshots."""
+    return IMPL.share_snapshot_get_all_with_count(
+        context, filters=filters, limit=limit, offset=offset,
+        sort_key=sort_key, sort_dir=sort_dir)
+
+
 def share_snapshot_get_all_by_project(context, project_id, filters=None,
                                       limit=None, offset=None, sort_key=None,
                                       sort_dir=None):
     """Get all snapshots belonging to a project."""
     return IMPL.share_snapshot_get_all_by_project(
+        context, project_id, filters=filters, limit=limit, offset=offset,
+        sort_key=sort_key, sort_dir=sort_dir)
+
+
+def share_snapshot_get_all_by_project_with_count(context, project_id,
+                                                 filters=None, limit=None,
+                                                 offset=None, sort_key=None,
+                                                 sort_dir=None):
+    """Get all snapshots belonging to a project."""
+    return IMPL.share_snapshot_get_all_by_project_with_count(
         context, project_id, filters=filters, limit=limit, offset=offset,
         sort_key=sort_key, sort_dir=sort_dir)
 

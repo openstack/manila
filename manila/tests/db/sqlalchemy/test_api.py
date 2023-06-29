@@ -3305,6 +3305,42 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
             self.ctxt, host, updated_before)
         self.assertEqual(expected_len, len(unused_deletable))
 
+    @ddt.data(
+        ({'with_count': True}, 3, 3),
+        ({'with_count': True, 'limit': 2}, 3, 2)
+    )
+    @ddt.unpack
+    def test_share_snapshot_get_all_with_count(self, filters,
+                                               amount_of_share_snapshots,
+                                               expected_share_snapshots_len):
+        share = db_utils.create_share(size=1)
+        values = {
+            'share_id': share['id'],
+            'size': share['size'],
+            'user_id': share['user_id'],
+            'project_id': share['project_id'],
+            'status': constants.STATUS_CREATING,
+            'progress': '0%',
+            'share_size': share['size'],
+            'display_description': 'fake_count_test',
+            'share_proto': share['share_proto'],
+        }
+
+        # consider only shares created in this function
+        filters.update({'share_id': share['id']})
+
+        for i in range(amount_of_share_snapshots):
+            tmp_values = copy.deepcopy(values)
+            tmp_values['display_name'] = 'fake_name_%s' % str(i)
+            db_api.share_snapshot_create(self.ctxt, tmp_values)
+
+        limit = filters.get('limit')
+        count, share_snapshots = db_api.share_snapshot_get_all_with_count(
+            self.ctxt, filters=filters, limit=limit)
+
+        self.assertEqual(count, amount_of_share_snapshots)
+        self.assertEqual(expected_share_snapshots_len, len(share_snapshots))
+
     @ddt.data({'host': 'fakepool@fakehost'},
               {'status': constants.STATUS_SERVER_MIGRATING_TO},
               {'source_share_server_id': 'fake_ss_id'},

@@ -25,13 +25,13 @@ class ViewBuilder(common.ViewBuilder):
         "add_project_and_user_ids",
     ]
 
-    def summary_list(self, request, snapshots):
+    def summary_list(self, request, snapshots, count=None):
         """Show a list of share snapshots without many details."""
-        return self._list_view(self.summary, request, snapshots)
+        return self._list_view(self.summary, request, snapshots, count)
 
-    def detail_list(self, request, snapshots):
+    def detail_list(self, request, snapshots, count=None):
         """Detailed view of a list of share snapshots."""
-        return self._list_view(self.detail, request, snapshots)
+        return self._list_view(self.detail, request, snapshots, count)
 
     def summary(self, request, snapshot):
         """Generic, non-detailed view of an share snapshot."""
@@ -74,7 +74,7 @@ class ViewBuilder(common.ViewBuilder):
         snapshot_dict['user_id'] = snapshot.get('user_id')
         snapshot_dict['project_id'] = snapshot.get('project_id')
 
-    def _list_view(self, func, request, snapshots):
+    def _list_view(self, func, request, snapshots, count=None):
         """Provide a view for a list of share snapshots."""
         snapshots_list = [func(request, snapshot)['snapshot']
                           for snapshot in snapshots]
@@ -83,6 +83,8 @@ class ViewBuilder(common.ViewBuilder):
                                                      self._collection_name)
         snapshots_dict = {self._collection_name: snapshots_list}
 
+        if count is not None:
+            snapshots_dict['count'] = count
         if snapshots_links:
             snapshots_dict['share_snapshots_links'] = snapshots_links
 

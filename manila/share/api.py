@@ -1938,6 +1938,21 @@ class API(base.Base):
 
     def get_all_snapshots(self, context, search_opts=None, limit=None,
                           offset=None, sort_key='share_id', sort_dir='desc'):
+        return self._get_all_snapshots(context, search_opts=search_opts,
+                                       limit=limit, offset=offset,
+                                       sort_key=sort_key, sort_dir=sort_dir)
+
+    def get_all_snapshots_with_count(self, context, search_opts=None,
+                                     limit=None, offset=None,
+                                     sort_key='share_id', sort_dir='desc'):
+        return self._get_all_snapshots(context, search_opts=search_opts,
+                                       limit=limit, offset=offset,
+                                       sort_key=sort_key, sort_dir=sort_dir,
+                                       show_count=True)
+
+    def _get_all_snapshots(self, context, search_opts=None, limit=None,
+                           offset=None, sort_key='share_id', sort_dir='desc',
+                           show_count=False):
         policy.check_policy(context, 'share_snapshot', 'get_all_snapshots')
 
         search_opts = search_opts or {}
@@ -1954,17 +1969,32 @@ class API(base.Base):
                         "'%(v)s'.") % {'k': k, 'v': string_args[k]}
                 raise exception.InvalidInput(reason=msg)
 
+        get_methods = {
+            'get_all': (
+                self.db.share_snapshot_get_all_with_count
+                if show_count else self.db.share_snapshot_get_all),
+            'get_all_by_project': (
+                self.db.share_snapshot_get_all_by_project_with_count
+                if show_count else self.db.share_snapshot_get_all_by_project)}
+
         if context.is_admin and all_tenants:
-            snapshots = self.db.share_snapshot_get_all(
+            result = get_methods['get_all'](
                 context, filters=search_opts, limit=limit, offset=offset,
                 sort_key=sort_key, sort_dir=sort_dir)
         else:
-            snapshots = self.db.share_snapshot_get_all_by_project(
+            result = get_methods['get_all_by_project'](
                 context, context.project_id, filters=search_opts,
                 limit=limit, offset=offset, sort_key=sort_key,
                 sort_dir=sort_dir)
 
-        return snapshots
+        if show_count:
+            count = result[0]
+            snapshots = result[1]
+        else:
+            snapshots = result
+
+        result = (count, snapshots) if show_count else snapshots
+        return result
 
     def get_latest_snapshot_for_share(self, context, share_id):
         """Get the newest snapshot of a share."""
