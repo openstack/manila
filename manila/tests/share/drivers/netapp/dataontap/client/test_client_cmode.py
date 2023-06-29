@@ -57,7 +57,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(client_base.NetAppBaseClient,
                          'get_system_version',
                          mock.Mock(return_value={
-                             'version-tuple': (8, 3, 0),
+                             'version-tuple': fake.VERSION_TUPLE,
                              'version': fake.VERSION,
                          }))
 
@@ -1272,7 +1272,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_request.assert_has_calls([
             mock.call('net-vlan-create', vlan_create_args)])
-        self.assertEqual(1, client_cmode.LOG.debug.call_count)
+        self.assertEqual(3, client_cmode.LOG.debug.call_count)
 
     def test_create_vlan_api_error(self):
 
@@ -1319,7 +1319,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_request.assert_has_calls([
             mock.call('net-vlan-delete', vlan_delete_args)])
-        self.assertEqual(1, client_cmode.LOG.debug.call_count)
+        self.assertEqual(3, client_cmode.LOG.debug.call_count)
 
     def test_delete_vlan_api_error(self):
 
@@ -2841,7 +2841,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_request.assert_has_calls([
             mock.call('kerberos-realm-create', kerberos_realm_create_args)])
-        self.assertEqual(1, client_cmode.LOG.debug.call_count)
+        self.assertEqual(3, client_cmode.LOG.debug.call_count)
 
     def test_create_kerberos_realm_api_error(self):
         self.client.features.add_feature('KERBEROS_VSERVER')
@@ -4913,7 +4913,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client._unmount_volume.assert_called_once_with(fake.SHARE_NAME,
                                                             force=False)
-        self.assertEqual(1, client_cmode.LOG.debug.call_count)
+        self.assertEqual(3, client_cmode.LOG.debug.call_count)
         self.assertEqual(0, client_cmode.LOG.warning.call_count)
 
     def test_unmount_volume_api_error(self):
@@ -4927,7 +4927,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.SHARE_NAME)
 
         self.assertEqual(1, self.client._unmount_volume.call_count)
-        self.assertEqual(0, client_cmode.LOG.debug.call_count)
+        self.assertEqual(2, client_cmode.LOG.debug.call_count)
         self.assertEqual(0, client_cmode.LOG.warning.call_count)
 
     def test_unmount_volume_with_retries(self):
@@ -4943,7 +4943,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.unmount_volume(fake.SHARE_NAME)
 
         self.assertEqual(6, self.client._unmount_volume.call_count)
-        self.assertEqual(1, client_cmode.LOG.debug.call_count)
+        self.assertEqual(3, client_cmode.LOG.debug.call_count)
         self.assertEqual(5, client_cmode.LOG.warning.call_count)
 
     def test_unmount_volume_with_max_retries(self):
@@ -4960,7 +4960,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.SHARE_NAME)
 
         self.assertEqual(10, self.client._unmount_volume.call_count)
-        self.assertEqual(0, client_cmode.LOG.debug.call_count)
+        self.assertEqual(2, client_cmode.LOG.debug.call_count)
         self.assertEqual(11, client_cmode.LOG.warning.call_count)
 
     def test_delete_volume(self):
@@ -5995,7 +5995,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_request.assert_has_calls([
             mock.call('ems-autosupport-log', fake.EMS_MESSAGE)])
-        self.assertEqual(1, client_cmode.LOG.debug.call_count)
+        self.assertEqual(3, client_cmode.LOG.debug.call_count)
 
     def test_send_ems_log_message_api_error(self):
 

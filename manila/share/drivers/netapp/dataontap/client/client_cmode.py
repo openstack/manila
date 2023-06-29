@@ -89,6 +89,37 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         super(NetAppCmodeClient, self)._init_features()
 
         ontapi_version = self.get_ontapi_version(cached=True)
+        system_version = self.get_system_version(cached=True)
+
+        ontap_patch_level = 0
+        # match something like
+        # NetApp Release 9.12.1P2: Wed Apr 05 19:57:43 UTC 2023
+        # NetApp Release 9.8P12: Fri May 13 00:04:00 UTC 2022
+        # NetApp Release 8.2.1 Cluster-Mode: Fri Mar 21 14:25:07 PDT 2014
+        m = re.match(r"NetApp Release (?P<generation>\d+)\.(?P<major>\d+)"
+                     r"\.?(?P<minor>\d+)?(?P<patch>P\d+)?.*",
+                     system_version['version'])
+
+        if m:
+            if m['patch']:
+                # 'P2' -> 2
+                ontap_patch_level = int(m['patch'][1:])
+
+            if (system_version['version-tuple'] !=
+                    (int(m['generation']),
+                     int(m['major']),
+                     int(m['minor'] or 0))):
+                msg = f'Version parsing err: {system_version} != {m.groups()}'
+                LOG.error(msg)
+            else:
+                msg = (f"Version parsed: {m.groups()} from "
+                       f"{system_version['version']}")
+                LOG.debug(msg)
+
+        else:
+            msg = f'Version parsing err: {system_version} not matched'
+            LOG.error(msg)
+
         ontapi_1_20 = ontapi_version >= (1, 20)
         ontapi_1_2x = (1, 20) <= ontapi_version < (1, 30)
         ontapi_1_30 = ontapi_version >= (1, 30)
@@ -99,8 +130,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontapi_1_170 = ontapi_version >= (1, 170)
         ontapi_1_180 = ontapi_version >= (1, 180)
         ontapi_1_191 = ontapi_version >= (1, 191)
-        ontap_9_10 = self.get_system_version()['version-tuple'] >= (9, 10, 0)
-        ontap_9_10_1 = self.get_system_version()['version-tuple'] >= (9, 10, 1)
+        ontap_9_10 = system_version['version-tuple'] >= (9, 10, 0)
+        exact_ontap_9_10_1 = system_version['version-tuple'] == (9, 10, 1)
+        ontap_9_10_1_p12 = exact_ontap_9_10_1 and ontap_patch_level >= 12
+        exact_ontap_9_12_1 = system_version['version-tuple'] == (9, 12, 1)
+        ontap_9_12_1_p2 = exact_ontap_9_12_1 and ontap_patch_level >= 2
+        ontap_9_13 = system_version['version-tuple'] >= (9, 13, 0)
 
         self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
         self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
@@ -127,7 +162,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.features.add_feature('SVM_MIGRATE', supported=ontap_9_10)
         self.features.add_feature('CIFS_LARGE_MTU', supported=ontapi_1_170)
         self.features.add_feature('CIFS_CHANNEL_BINDING',
-                                  supported=ontap_9_10_1)
+                                  supported=(ontap_9_10_1_p12 or
+                                             ontap_9_12_1_p2 or
+                                             ontap_9_13))
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
