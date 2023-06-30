@@ -24,6 +24,7 @@ import time
 
 from manila import exception
 from manila.i18n import _
+from manila import ssh_utils
 from manila import utils as mutils
 
 LOG = log.getLogger(__name__)
@@ -633,12 +634,12 @@ class HNASSSHBackend(object):
         commands = ' '.join(commands)
 
         if not self.sshpool:
-            self.sshpool = mutils.SSHPool(ip=self.ip,
-                                          port=self.port,
-                                          conn_timeout=None,
-                                          login=self.user,
-                                          password=self.password,
-                                          privatekey=self.priv_key)
+            self.sshpool = ssh_utils.SSHPool(ip=self.ip,
+                                             port=self.port,
+                                             conn_timeout=None,
+                                             login=self.user,
+                                             password=self.password,
+                                             privatekey=self.priv_key)
         with self.sshpool.item() as ssh:
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             try:

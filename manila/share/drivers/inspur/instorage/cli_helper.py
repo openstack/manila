@@ -28,6 +28,7 @@ from oslo_utils import excutils
 
 from manila import exception
 from manila.i18n import _
+from manila import ssh_utils
 from manila import utils as manila_utils
 
 LOG = log.getLogger(__name__)
@@ -55,7 +56,7 @@ class SSHRunner(object):
         command = ' '.join(cmd_list)
         if not self.sshpool:
             try:
-                self.sshpool = manila_utils.SSHPool(
+                self.sshpool = ssh_utils.SSHPool(
                     self.host,
                     self.port,
                     self.ssh_conn_timeout,
