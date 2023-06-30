@@ -24,7 +24,9 @@ from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila.share import utils as share_utils
+from manila import ssh_utils
 from manila import utils as manila_utils
+
 
 LOG = log.getLogger(__name__)
 
@@ -120,21 +122,21 @@ class InfortrendNAS(object):
 
     def _init_connect(self):
         if not (self.sshpool and self.ssh):
-            self.sshpool = manila_utils.SSHPool(ip=self.nas_ip,
-                                                port=self.port,
-                                                conn_timeout=None,
-                                                login=self.username,
-                                                password=self.password,
-                                                privatekey=self.ssh_key)
+            self.sshpool = ssh_utils.SSHPool(ip=self.nas_ip,
+                                             port=self.port,
+                                             conn_timeout=None,
+                                             login=self.username,
+                                             password=self.password,
+                                             privatekey=self.ssh_key)
             self.ssh = self.sshpool.create()
 
         if not self.ssh.get_transport().is_active():
-            self.sshpool = manila_utils.SSHPool(ip=self.nas_ip,
-                                                port=self.port,
-                                                conn_timeout=None,
-                                                login=self.username,
-                                                password=self.password,
-                                                privatekey=self.ssh_key)
+            self.sshpool = ssh_utils.SSHPool(ip=self.nas_ip,
+                                             port=self.port,
+                                             conn_timeout=None,
+                                             login=self.username,
+                                             password=self.password,
+                                             privatekey=self.ssh_key)
             self.ssh = self.sshpool.create()
 
         LOG.debug('NAScmd [%s@%s] start!', self.username, self.nas_ip)

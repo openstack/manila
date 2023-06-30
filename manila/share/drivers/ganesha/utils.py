@@ -21,6 +21,7 @@ from oslo_log import log
 
 from manila import exception
 from manila.i18n import _
+from manila import ssh_utils
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -63,7 +64,7 @@ class SSHExecutor(object):
     """Callable encapsulating exec through ssh."""
 
     def __init__(self, *args, **kwargs):
-        self.pool = utils.SSHPool(*args, **kwargs)
+        self.pool = ssh_utils.SSHPool(*args, **kwargs)
 
     def __call__(self, *args, **kwargs):
         # argument with identifier 'run_as_root=' is not accepted by
