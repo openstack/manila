@@ -26,7 +26,7 @@ from manila import exception
 from manila.i18n import _
 from manila.share.drivers.dell_emc.common.enas import constants
 from manila.share.drivers.dell_emc.common.enas import utils as enas_utils
-from manila import utils
+from manila import ssh_utils
 
 LOG = log.getLogger(__name__)
 
@@ -140,11 +140,11 @@ class SSHConnector(object):
         self.password = configuration.emc_nas_password
         self.debug = debug
 
-        self.sshpool = utils.SSHPool(ip=self.storage_ip,
-                                     port=22,
-                                     conn_timeout=None,
-                                     login=self.username,
-                                     password=self.password)
+        self.sshpool = ssh_utils.SSHPool(ip=self.storage_ip,
+                                         port=22,
+                                         conn_timeout=None,
+                                         login=self.username,
+                                         password=self.password)
 
     def run_ssh(self, cmd_list, check_exit_code=False):
         command = ' '.join(pipes.quote(cmd_arg) for cmd_arg in cmd_list)
