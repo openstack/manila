@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 from oslo_utils import strutils
 
 from manila.api import common
@@ -25,6 +27,7 @@ class ViewBuilder(common.ViewBuilder):
 
     _detail_version_modifiers = [
         'add_preferred_path_attribute',
+        'add_metadata_attribute',
     ]
 
     def _get_export_location_view(self, request, export_location,
@@ -87,3 +90,11 @@ class ViewBuilder(common.ViewBuilder):
                                      export_location):
         view_dict['preferred'] = strutils.bool_from_string(
             export_location['el_metadata'].get('preferred'))
+
+    @common.ViewBuilder.versioned_method('2.87')
+    def add_metadata_attribute(self, context, view_dict,
+                               export_location):
+        metadata = export_location.get('el_metadata')
+        meta_copy = copy.copy(metadata)
+        meta_copy.pop('preferred', None)
+        view_dict['metadata'] = meta_copy

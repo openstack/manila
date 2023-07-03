@@ -34,6 +34,30 @@ deprecated_export_location_show = policy.DeprecatedRule(
     deprecated_reason=DEPRECATED_REASON,
     deprecated_since=versionutils.deprecated.WALLABY
 )
+deprecated_update_export_location_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update_metadata',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2024.2/Dalmatian'
+)
+deprecated_delete_export_location_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete_metadata',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2024.2/Dalmatian'
+)
+deprecated_get_export_location_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_metadata',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2024.2/Dalmatian'
+)
+deprecated_update_admin_only_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update_admin_only_metadata',
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since="2024.2/Dalmatian"
+)
 
 
 share_export_location_policies = [
@@ -63,6 +87,79 @@ share_export_location_policies = [
             }
         ],
         deprecated_rule=deprecated_export_location_show
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'update_metadata',
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
+        description="Update share export location metadata.",
+        operations=[
+            {
+                'method': 'PUT',
+                'path': ('/shares/{share_id}/export_locations/'
+                         '{export_location_id}/metadata'),
+            },
+            {
+                'method': 'POST',
+                'path': ('/shares/{share_id}/export_locations/'
+                         '{export_location_id}/metadata/{key}')
+            },
+            {
+                'method': 'POST',
+                'path': ('/shares/{share_id}/export_locations/'
+                         '{export_location_id}/metadata'),
+            },
+        ],
+        deprecated_rule=deprecated_update_export_location_metadata
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'delete_metadata',
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
+        description="Delete share export location metadata",
+        operations=[
+            {
+                'method': 'DELETE',
+                'path': ('/shares/{share_id}/export_locations/'
+                         '{export_location_id}/metadata/{key}')
+            },
+        ],
+        deprecated_rule=deprecated_delete_export_location_metadata
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'get_metadata',
+        check_str=base.ADMIN_OR_PROJECT_READER,
+        scope_types=['project'],
+        description='Get share export location metadata',
+        operations=[
+            {
+                'method': "GET",
+                'path': ('/shares/{share_id}/export_locations/'
+                         '{export_location_id}/metadata')
+            },
+            {
+                'method': 'GET',
+                'path': ('/shares/{share_id}/export_locations/'
+                         '{export_location_id}/metadata/{key}')
+            },
+        ],
+        deprecated_rule=deprecated_get_export_location_metadata
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'update_admin_only_metadata',
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description=(
+            "Update metadata items that are considered \"admin only\" "
+            "by the service."),
+        operations=[
+            {
+                'method': 'PUT',
+                'path': '/shares/{share_id}/export_locations/'
+                        '{export_location_id}/metadata',
+            }
+        ],
+        deprecated_rule=deprecated_update_admin_only_metadata
     ),
 ]
 

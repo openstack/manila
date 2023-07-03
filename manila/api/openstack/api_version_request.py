@@ -204,13 +204,14 @@ REST_API_VERSION_HISTORY = """
     * 2.84 - Added mount_point_name to shares.
     * 2.85 - Added backup_type field to share backups.
     * 2.86 - Add ensure share API.
+    * 2.87 - Added Share export location metadata API
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.86"
+_MAX_API_VERSION = "2.87"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

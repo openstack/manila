@@ -2481,7 +2481,6 @@ class ShareInstanceExportLocationsMetadataDatabaseAPITestCase(test.TestCase):
         self.assertEqual({}, result)
 
     def test_export_location_metadata_update_get(self):
-
         # Write metadata for target export location
         export_location_uuid = self._get_export_location_uuid_by_path(
             self.initial_locations[0])
@@ -2513,6 +2512,29 @@ class ShareInstanceExportLocationsMetadataDatabaseAPITestCase(test.TestCase):
             self.ctxt, export_location_uuid)
 
         self.assertEqual(updated_metadata, result)
+
+    def test_export_location_metadata_get_item(self):
+        export_location_uuid = self._get_export_location_uuid_by_path(
+            self.initial_locations[0])
+        metadata = {'foo_key': 'foo_value', 'bar_key': 'bar_value'}
+        db_api.export_location_metadata_update(
+            self.ctxt, export_location_uuid, metadata, False)
+        result = db_api.export_location_metadata_get_item(
+            self.ctxt, export_location_uuid, 'foo_key')
+        self.assertEqual(
+            {'foo_key': 'foo_value'}, result)
+
+    def test_export_location_metadata_get_item_invalid(self):
+        export_location_uuid = self._get_export_location_uuid_by_path(
+            self.initial_locations[0])
+        metadata = {'foo_key': 'foo_value', 'bar_key': 'bar_value'}
+        db_api.export_location_metadata_update(
+            self.ctxt, export_location_uuid, metadata, False)
+        self.assertRaises(exception.MetadataItemNotFound,
+                          db_api.export_location_metadata_get_item,
+                          self.ctxt,
+                          export_location_uuid,
+                          'foo')
 
     @ddt.data(
         ("k", "v"),

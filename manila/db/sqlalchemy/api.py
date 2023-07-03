@@ -4698,6 +4698,33 @@ def _export_location_metadata_update(
     return metadata
 
 
+@require_context
+@context_manager.reader
+def export_location_metadata_get_item(context, export_location_uuid, key):
+
+    row = _export_location_metadata_get_item(
+        context, export_location_uuid, key)
+    result = {row['key']: row['value']}
+
+    return result
+
+
+@require_context
+@context_manager.writer
+def export_location_metadata_update_item(context, export_location_uuid,
+                                         item):
+    return _export_location_metadata_update(context, export_location_uuid,
+                                            item, delete=False)
+
+
+def _export_location_metadata_get_item(context, export_location_uuid, key):
+    result = _export_location_metadata_get_query(
+        context, export_location_uuid,
+    ).filter_by(key=key).first()
+    if not result:
+        raise exception.MetadataItemNotFound()
+    return result
+
 ###################################
 
 
