@@ -4180,7 +4180,11 @@ class NetAppCmodeFileStorageLibrary(object):
                 msg += ("Check if this is due to an ongoing SVM move "
                         "(DR or other migration).")
 
-            LOG.exception(msg)
+            if err_msg.startswith('Operation is not allowed when Vserver '
+                                  'migrate operation'):
+                LOG.debug(msg)
+            else:
+                LOG.exception(msg)
 
         return server_info
 
