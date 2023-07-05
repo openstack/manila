@@ -559,6 +559,11 @@ def share_access_get(context, access_id):
     return IMPL.share_access_get(context, access_id)
 
 
+def share_access_get_with_context(context, access_id):
+    """Get share access rule."""
+    return IMPL.share_access_get_with_context(context, access_id)
+
+
 def share_access_get_all_for_share(context, share_id, filters=None):
     """Get all access rules for given share."""
     return IMPL.share_access_get_all_for_share(context, share_id,

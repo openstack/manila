@@ -34,6 +34,13 @@ class ViewBuilder(common.ViewBuilder):
         return {'access_list': [self.summary_view(request, access)['access']
                                 for access in accesses]}
 
+    def _redact_restricted_fields(self, access, access_dict):
+        if access.get('restricted', False):
+            fields_to_redact = ['access_key', 'access_to']
+            for field in fields_to_redact:
+                access_dict[field] = '******'
+        return access_dict
+
     def summary_view(self, request, access):
         """Summarized view of a single share access."""
         access_dict = {
@@ -45,6 +52,7 @@ class ViewBuilder(common.ViewBuilder):
         }
         self.update_versioned_resource_dict(
             request, access_dict, access)
+        access_dict = self._redact_restricted_fields(access, access_dict)
         return {'access': access_dict}
 
     def view(self, request, access):
@@ -59,6 +67,7 @@ class ViewBuilder(common.ViewBuilder):
         }
         self.update_versioned_resource_dict(
             request, access_dict, access)
+        access_dict = self._redact_restricted_fields(access, access_dict)
         return {'access': access_dict}
 
     def view_metadata(self, request, metadata):

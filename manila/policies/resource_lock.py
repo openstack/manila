@@ -57,7 +57,16 @@ deprecated_lock_delete = policy.DeprecatedRule(
     deprecated_reason=DEPRECATED_REASON,
     deprecated_since='2023.2/Bobcat',
 )
+deprecated_bypass_locked_show_action = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'bypass_locked_show_action',
+    check_str=base.RULE_ADMIN_OR_OWNER_USER,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2023.2/Bobcat',
+)
 
+# We anticipate bypassing is desirable only for resource visibility locks.
+# Without a bypass, the lock would have to be set aside each time the lock
+# owner wants to view the resource.
 
 lock_policies = [
     policy.DocumentedRuleDefault(
@@ -146,6 +155,24 @@ lock_policies = [
             }
         ],
         deprecated_rule=deprecated_lock_delete,
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'bypass_locked_show_action',
+        check_str=base.ADMIN_OR_SERVICE_OR_OWNER_USER,
+        scope_types=['project'],
+        description="Bypass a visibility lock placed in a resource.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/share-access-rules/{share_access_id}'
+            },
+            {
+                'method': 'GET',
+                'path': ('/share-access-rules?share_id={share_id}'
+                         '&key1=value1&key2=value2')
+            },
+        ],
+        deprecated_rule=deprecated_bypass_locked_show_action,
     ),
 ]
 

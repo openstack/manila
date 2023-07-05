@@ -213,6 +213,10 @@ class ResourceLockNotFound(NotFound):
     message = _("Resource lock %(lock_id)s could not be found.")
 
 
+class ResourceVisibilityLockExists(ManilaException):
+    message = _("Resource %(resource_id)s is already locked.")
+
+
 class Found(ManilaException):
     message = _("Resource was found.")
     code = 302

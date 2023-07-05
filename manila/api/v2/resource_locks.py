@@ -45,13 +45,17 @@ class ResourceLocksController(wsgi.Controller):
     _view_builder_class = resource_locks_view.ViewBuilder
     resource_name = 'resource_lock'
 
-    def _check_body(self, body, for_update=False):
+    def _check_body(self, body, lock_to_update=None):
         if 'resource_lock' not in body:
             raise exc.HTTPBadRequest(
                 explanation="Malformed request body.")
         lock_data = body['resource_lock']
+        resource_type = (
+            lock_to_update['resource_type']
+            if lock_to_update
+            else lock_data.get('resource_type', constants.SHARE_RESOURCE_TYPE)
+        )
         resource_id = lock_data.get('resource_id') or ''
-        resource_type = lock_data.get('resource_type') or ''
         resource_action = (lock_data.get('resource_action') or
                            constants.RESOURCE_ACTION_DELETE)
         lock_reason = lock_data.get('lock_reason') or ''
@@ -59,12 +63,20 @@ class ResourceLocksController(wsgi.Controller):
         if len(lock_reason) > 1023:
             msg = _("'lock_reason' can contain a maximum of 1023 characters.")
             raise exc.HTTPBadRequest(explanation=msg)
-        if resource_action not in constants.RESOURCE_LOCK_RESOURCE_ACTIONS:
+        if resource_type not in constants.RESOURCE_LOCK_RESOURCE_TYPES:
+            msg = _("'resource_type' is required and must be one "
+                    "of %(resource_types)s") % {
+                'resource_types': constants.RESOURCE_LOCK_RESOURCE_TYPES
+            }
+            raise exc.HTTPBadRequest(explanation=msg)
+        resource_type_lock_actions = (
+            constants.RESOURCE_LOCK_ACTIONS_MAPPING[resource_type])
+        if resource_action not in resource_type_lock_actions:
             msg = _("'resource_action' can only be one of %(actions)s" %
-                    {'actions': constants.RESOURCE_LOCK_RESOURCE_ACTIONS})
+                    {'actions': resource_type_lock_actions})
             raise exc.HTTPBadRequest(explanation=msg)
 
-        if for_update:
+        if lock_to_update:
             if set(lock_data.keys()) - {'resource_action', 'lock_reason'}:
                 msg = _("Only 'resource_action' and 'lock_reason' "
                         "can be updated.")
@@ -72,10 +84,6 @@ class ResourceLocksController(wsgi.Controller):
         else:
             if not uuidutils.is_uuid_like(resource_id):
                 msg = _("Resource ID is required and must be in uuid format.")
-                raise exc.HTTPBadRequest(explanation=msg)
-            if resource_type not in constants.RESOURCE_LOCK_RESOURCE_TYPES:
-                msg = _("'resource_type' is required and must be one "
-                        "of %s" % constants.RESOURCE_LOCK_RESOURCE_TYPES)
                 raise exc.HTTPBadRequest(explanation=msg)
 
     def __init__(self):
@@ -165,6 +173,9 @@ class ResourceLocksController(wsgi.Controller):
                 explanation="No such resource found.")
         except exception.InvalidInput as error:
             raise exc.HTTPConflict(explanation=error.msg)
+        except exception.ResourceVisibilityLockExists:
+            raise exc.HTTPConflict(
+                "Resource's visibility is already locked by other user.")
         return self._view_builder.detail(req, resource_lock)
 
     @wsgi.Controller.api_version(RESOURCE_LOCKS_MIN_API_VERSION)
@@ -172,14 +183,21 @@ class ResourceLocksController(wsgi.Controller):
     def update(self, req, id, body):
         """Update an existing resource lock."""
         context = req.environ['manila.context']
-        self._check_body(body, for_update=True)
-        lock_data = body['resource_lock']
+        try:
+            resource_lock = self.resource_locks_api.get(context, id)
+        except exception.NotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
 
-        resource_lock = self.resource_locks_api.update(
-            context,
-            id,
-            lock_data,
-        )
+        self._check_body(body, lock_to_update=resource_lock)
+        lock_data = body['resource_lock']
+        try:
+            resource_lock = self.resource_locks_api.update(
+                context,
+                resource_lock,
+                lock_data,
+            )
+        except exception.InvalidInput as e:
+            raise exc.HTTPBadRequest(explanation=e.msg)
         return self._view_builder.detail(req, resource_lock)
 
 

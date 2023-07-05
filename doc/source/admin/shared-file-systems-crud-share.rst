@@ -740,6 +740,17 @@ Allow access to the share with ``user`` access type:
    features support mapping <https://docs.openstack.org/manila/latest/admin
    /share_back_ends_feature_support_mapping.html>`_.
 
+.. tip::
+
+  Starting from the 2023.2 (Bobcat) release, in case you want to restrict the
+  visibility of the sensitive fields (``access_to`` and ``access_key``), or
+  avoid the access rule being deleted by other users, you can specify
+  ``--lock-visibility`` and ``--lock-deletion`` in the Manila OpenStack command
+  for creating access rules. A reason (``--lock-reason``) can also be provided.
+  Only the user that placed the lock, system administrators and services will
+  be able to view sensitive fields of, or manipulate such access rules by
+  virtue of default RBAC.
+
 To verify that the access rules (ACL) were configured correctly for a share,
 you list permissions for a share:
 
@@ -766,3 +777,10 @@ access rule list:
    +--------------------------------------+-------------+-----------+--------------+-------+
    | 4f391c6b-fb4f-47f5-8b4b-88c5ec9d568a | user        | demo      | rw           | error |
    +--------------------------------------+-------------+-----------+--------------+-------+
+
+.. note::
+
+  Starting from the 2023.2 (Bobcat) release, it is possible to prevent the
+  deletion of an access rule. In case the deletion was locked, the
+  ``--unrestrict`` argument from the Manila's OpenStack Client must be used
+  in the request to revoke the access.

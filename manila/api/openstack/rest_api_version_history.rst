@@ -439,3 +439,8 @@ ____
 ----
   Introduce resource locks as a way users can restrict certain actions on
   resources. Only share deletion can be prevented at this version.
+
+2.82
+----
+  Introduce the ability to lock access rules and restrict the visibility of
+  sensitive fields.

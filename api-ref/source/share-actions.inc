@@ -59,6 +59,13 @@ methods:
 
   IPv6 based access is only supported with API version 2.38 and beyond.
 
+.. note::
+  Starting from API version 2.82, it is possible to lock the deletion,
+  restrict the visibility of sensible fields of the access rules, and specify a
+  reason for such locks while invoking the grant access API through the
+  parameters ``lock_deletion``, ``lock_visibility`` and ``lock_reason``
+  respectively.
+
 - ``cert``. Authenticates an instance through a TLS certificate.
   Specify the TLS identity as the IDENTKEY. A valid value is any
   string up to 64 characters long in the common name (CN) of the
@@ -99,6 +106,9 @@ Request
    - access_type: access_type
    - access_to: access_to
    - metadata: access_metadata_grant_access
+   - lock_visibility: lock_visibility
+   - lock_deletion: lock_deletion
+   - lock_reason: resource_lock_lock_reason
 
 Request example
 ---------------
@@ -138,6 +148,10 @@ The shared file systems service stores each access rule in its database and
 assigns it a unique ID. This ID can be used to revoke access after access
 has been requested.
 
+.. note::
+  In case the access rule had its deletion locked, it will be necessary to
+  provide the ``unrestrict`` parameter in the revoke access request.
+
 Response codes
 --------------
 
@@ -161,6 +175,7 @@ Request
    - share_id: share_id
    - deny_access: deny_access
    - access_id: access_id
+   - unrestrict: unrestrict_access
 
 
 Request example

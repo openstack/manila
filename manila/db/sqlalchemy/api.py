@@ -2909,6 +2909,21 @@ def share_access_get(context, access_id, session=None):
 
 
 @require_context
+def share_access_get_with_context(context, access_id, session=None):
+    """Get access record."""
+    session = session or get_session()
+
+    access = _share_access_get_query(
+        context, session,
+        {'id': access_id}).options(joinedload('share')).first()
+    if access:
+        access['project_id'] = access['share']['project_id']
+        return access
+    else:
+        raise exception.NotFound()
+
+
+@require_context
 def share_instance_access_get(context, access_id, instance_id,
                               with_share_access_data=True):
     """Get access record."""
@@ -2930,15 +2945,22 @@ def share_access_get_all_for_share(context, share_id, filters=None,
                                    session=None):
     filters = filters or {}
     session = session or get_session()
+    share_access_mapping = models.ShareAccessMapping
     query = (_share_access_get_query(
         context, session, {'share_id': share_id}).filter(
         models.ShareAccessMapping.instance_mappings.any()))
+
+    legal_filter_keys = ('id', 'access_type', 'access_key',
+                         'access_to', 'access_level')
 
     if 'metadata' in filters:
         for k, v in filters['metadata'].items():
             query = query.filter(
                 or_(models.ShareAccessMapping.
                     share_access_rules_metadata.any(key=k, value=v)))
+
+    query = exact_filter(
+        query, share_access_mapping, filters, legal_filter_keys)
 
     return query.all()
 
@@ -3056,6 +3078,19 @@ def share_instance_access_delete(context, mapping_id):
 
         if not mapping:
             exception.NotFound()
+
+        filters = {
+            'resource_id': mapping['access_id'],
+            'all_projects': True
+        }
+        locks, __ = resource_lock_get_all(
+            context.elevated(), filters=filters
+        )
+        if locks:
+            for lock in locks:
+                resource_lock_delete(
+                    context.elevated(), lock['id']
+                )
 
         mapping.soft_delete(session, update_status=True,
                             status_field_name='state')

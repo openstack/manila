@@ -33,6 +33,7 @@ from manila.common import constants
 from manila import db
 from manila import exception
 from manila.i18n import _
+from manila.lock import api as resource_locks
 from manila import policy
 from manila import share
 from manila import utils
@@ -53,6 +54,7 @@ class ShareController(wsgi.Controller,
     def __init__(self):
         super(ShareController, self).__init__()
         self.share_api = share.API()
+        self.resource_locks_api = resource_locks.API()
         self._access_view_builder = share_access_views.ViewBuilder()
         self._migration_view_builder = share_migration_views.ViewBuilder()
 
@@ -474,6 +476,13 @@ class ShareController(wsgi.Controller,
             kwargs['enable_metadata'] = True
         if req.api_version_request >= api_version.APIVersionRequest("2.74"):
             kwargs['allow_on_error_state'] = True
+        if req.api_version_request >= api_version.APIVersionRequest("2.82"):
+            access_data = body.get('allow_access')
+            kwargs['lock_visibility'] = access_data.get(
+                'lock_visibility', False)
+            kwargs['lock_deletion'] = access_data.get('lock_deletion', False)
+            kwargs['lock_reason'] = access_data.get('lock_reason')
+
         return self._allow_access(*args, **kwargs)
 
     @wsgi.Controller.api_version('2.0', '2.6')

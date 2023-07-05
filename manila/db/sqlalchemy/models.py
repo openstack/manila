@@ -577,6 +577,15 @@ class ShareAccessMapping(BASE, ManilaBase):
             'ShareInstanceAccessMapping.deleted == "False")'
         )
     )
+    share = orm.relationship(
+        "Share",
+        primaryjoin=(
+            'and_('
+            'ShareAccessMapping.share_id == '
+            'Share.id, '
+            'Share.deleted == "False")'
+            )
+    )
 
 
 class ShareAccessRulesMetadata(BASE, ManilaBase):

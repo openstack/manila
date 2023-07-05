@@ -6,6 +6,9 @@
         "metadata":{
             "key1": "value1",
             "key2": "value2"
-        }
+        },
+        "lock_visibility": false,
+        "lock_deletion": true,
+        "lock_reason": "Locked for deletion until year end audit."
     }
 }

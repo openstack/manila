@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Added the possibility to lock the deletion of access rules, as well as the
+    visibility of the sensitive fields `access_to` and `access_type` while
+    creating share access rules. When the visibility is restricted, only the
+    owner or more privileged users will be able to visualize the context of
+    the sensitive fields.
+    Both locks can also be imposed by the recently introduced resource locks
+    APIs.
+  - |
+    It is now possible to filter access rules based on the `access_to`,
+    `access_type`, `access_key` and `access_level` keys.

@@ -330,6 +330,23 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
             metadata = {}
         self.assertEqual(new_metadata, metadata)
 
+    def test_share_access_get_with_context(self):
+        ctxt = context.RequestContext('demo', 'fake', False)
+        share = db_utils.create_share(project_id=ctxt.project_id)
+        rules = [db_utils.create_access(share_id=share['id'])]
+
+        result = db_api.share_access_get_with_context(ctxt, rules[0]['id'])
+
+        self.assertEqual(result['project_id'], ctxt.project_id)
+
+    def test_share_access_get_with_context_not_found(self):
+
+        self.assertRaises(
+            exception.NotFound,
+            db_api.share_access_get_with_context,
+            self.ctxt,
+            'fake_rule_id')
+
 
 @ddt.ddt
 class ShareDatabaseAPITestCase(test.TestCase):
