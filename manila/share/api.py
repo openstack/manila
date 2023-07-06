@@ -238,9 +238,9 @@ class API(base.Base):
                              az=availability_zone,
                              source_az=source_share_az))
                 LOG.error(error_msg)
-                # msg = _("The specified availability zone must be the same "
-                #         "as the parent share when creating from snapshot.")
-                # raise exception.InvalidInput(reason=msg)
+                msg = _("The specified availability zone must be the same "
+                        "as the parent share when creating from snapshot.")
+                raise exception.InvalidInput(reason=msg)
             if share_type is None:
                 # Grab the source share's share_type if no new share type
                 # has been provided.
