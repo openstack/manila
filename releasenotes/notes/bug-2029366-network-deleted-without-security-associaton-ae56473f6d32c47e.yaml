@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed cleanup of share network security service associations at network delete. See `Launchpad bug 2029366
+    <https://bugs.launchpad.net/manila/+bug/2029366>` for more details.
