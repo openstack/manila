@@ -1997,13 +1997,37 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
     def test_share_snapshot_instance_access_get_all(self):
         access = db_utils.create_snapshot_access(
             share_snapshot_id=self.snapshot_1['id'])
-        values = {'share_snapshot_instance_id': self.snapshot_instances[0].id,
-                  'access_id': access['id']}
 
-        rules = db_api.share_snapshot_instance_access_get_all(
-            self.ctxt, access['id'])
+        # NOTE(zzzeek) the create_snapshot_access routine iterates through the
+        # ShareSnapshot.instances collection and creates a new
+        # ShareSnapshotInstanceAccessMapping for each ShareSnapshotInstance.
+        # however, this collection is unordered and does not have any guarantee
+        # that its ordering would match that of our self.snapshot_instances
+        # collection. Therefore key the fixture values and the resulting
+        # ShareSnapshotInstanceAccessMapping objects by share_snapshot_id
+        # and compare individually.
 
-        self.assertSubDictMatch(values, rules[0].to_dict())
+        values_by_sid = {
+            snapshot_instance.id: {
+                'share_snapshot_instance_id': snapshot_instance.id,
+                'access_id': access['id']
+            }
+            for snapshot_instance in self.snapshot_instances
+            if "fake" not in snapshot_instance.id
+        }
+
+        rules_by_sid = {
+            rule.share_snapshot_instance_id: rule
+            for rule in db_api.share_snapshot_instance_access_get_all(
+                self.ctxt, access['id']
+            )
+        }
+
+        for sid in values_by_sid:
+            self.assertSubDictMatch(
+                values_by_sid[sid],
+                rules_by_sid[sid].to_dict()
+            )
 
     def test_share_snapshot_access_get(self):
         access = db_utils.create_snapshot_access(
