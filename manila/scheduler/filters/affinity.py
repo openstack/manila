@@ -22,9 +22,6 @@ from manila.share import utils as share_utils
 
 LOG = log.getLogger(__name__)
 
-AFFINITY_FILTER = 'same_host'
-ANTI_AFFINITY_FILTER = 'different_host'
-
 
 class AffinityBaseFilter(base_host.BaseHostFilter):
     """Base class of affinity filters"""
@@ -126,10 +123,11 @@ class AntiAffinityFilter(AffinityBaseFilter):
             filter_properties['scheduler_hints'][self._filter_type]
         host_name = share_utils.extract_host(host_state.host, level='host')
 
+        # Do not pass the host if there is a host_name match
         for forbidden_host in forbidden_hosts:
-            if host_name in share_utils.extract_host(forbidden_host,
-                                                     level='host'):
-                # do not pass the host if there is a host_name match:
+            forbidden_host_name = \
+                share_utils.extract_host(forbidden_host, level='host')
+            if host_name == forbidden_host_name:
                 return None
 
         return host_state.host
