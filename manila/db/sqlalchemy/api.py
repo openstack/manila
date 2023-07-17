@@ -289,8 +289,10 @@ def model_query(context, model, *args, **kwargs):
         kwargs['project_id'] = context.project_id
     if read_deleted in ('no', 'n', False):
         kwargs['deleted'] = False
-    elif read_deleted in ('yes', 'y', True):
+    elif read_deleted == 'only':
         kwargs['deleted'] = True
+    elif read_deleted in ('yes', 'y', True):
+        pass
 
     return db_utils.model_query(
         model=model,
