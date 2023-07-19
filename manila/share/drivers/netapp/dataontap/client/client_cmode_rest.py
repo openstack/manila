@@ -1938,7 +1938,7 @@ class NetAppRestClient(object):
                 for volume in result.get('records', [])]
 
     @na_utils.trace
-    def split_volume_clone(self, volume_name):
+    def volume_clone_split_start(self, volume_name):
         """Begins splitting a clone from its parent."""
 
         volume = self._get_volume_by_args(vol_name=volume_name)
@@ -1948,6 +1948,45 @@ class NetAppRestClient(object):
         }
         self.send_request(f'/storage/volumes/{uuid}', 'patch',
                           body=body, wait_on_accepted=False)
+
+    @na_utils.trace
+    def volume_clone_split_status(self, volume_name):
+        """Status of splitting a clone from its parent."""
+
+        query = {
+            'name': volume_name,
+            'fields': 'clone.split_complete_percent'
+        }
+
+        try:
+            res = self.send_request('/storage/volumes/', 'get', query=query)
+            percent = res.get('clone.split_complete_percent')
+            if not percent:
+                return 100
+            return percent
+        except netapp_api.NaApiError:
+            msg = ("Failed to get clone split status for volume %s ")
+            LOG.warning(msg, volume_name)
+            return 100
+
+    @na_utils.trace
+    def volume_clone_split_stop(self, volume_name):
+        """Stops splitting a clone from its parent."""
+
+        volume = self._get_volume_by_args(vol_name=volume_name)
+        uuid = volume['uuid']
+        body = {
+            'clone.split_initiated': 'false',
+        }
+        try:
+            self.send_request(f'/storage/volumes/{uuid}', 'patch',
+                              body=body, wait_on_accepted=False)
+        except netapp_api.NaApiError as e:
+            if e.code in (netapp_api.EVOLUMEDOESNOTEXIST,
+                          netapp_api.EVOLNOTCLONE,
+                          netapp_api.EVOLOPNOTUNDERWAY):
+                return
+            raise
 
     @na_utils.trace
     def delete_snapshot(self, volume_name, snapshot_name, ignore_owners=False):
@@ -3150,7 +3189,7 @@ class NetAppRestClient(object):
             self.send_request(f'/storage/volumes/{uuid}', 'patch', body=body)
 
         if split:
-            self.split_volume_clone(volume_name)
+            self.volume_clone_split_start(volume_name)
 
         if adaptive_qos_policy_group is not None:
             self.set_qos_adaptive_policy_group_for_volume(

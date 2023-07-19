@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    On NetApp ONTAP backend, if share created from snapshot is deleted while
+    clone split job is in progress, the deletion fails due to unmount error.
+    Fixed this issue by stopping clone split if its in progress and then move
+    to unmount of share. For more details, please check
+    `Launchpad Bug #1960239 <https://bugs.launchpad.net/manila/+bug/1960239>`_

@@ -1961,7 +1961,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         mock_get_records.assert_called_once_with(
             '/storage/volumes', query=query)
 
-    def test_split_volume_clone(self):
+    def test_volume_clone_split_start(self):
         fake_resp_vol = fake.REST_SIMPLE_RESPONSE["records"][0]
         fake_uuid = fake_resp_vol['uuid']
         mock_get_unique_volume = self.mock_object(
@@ -1972,10 +1972,30 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             self.client, 'send_request',
             mock.Mock(return_value=fake.VOLUME_LIST_SIMPLE_RESPONSE_REST))
 
-        self.client.split_volume_clone(fake.VOLUME_NAMES[0])
+        self.client.volume_clone_split_start(fake.VOLUME_NAMES[0])
         mock_get_unique_volume.assert_called_once()
         body = {
             'clone.split_initiated': 'true',
+        }
+        mock_send_request.assert_called_once_with(
+            f'/storage/volumes/{fake_uuid}', 'patch', body=body,
+            wait_on_accepted=False)
+
+    def test_volume_clone_split_stop(self):
+        fake_resp_vol = fake.REST_SIMPLE_RESPONSE["records"][0]
+        fake_uuid = fake_resp_vol['uuid']
+        mock_get_unique_volume = self.mock_object(
+            self.client, "_get_volume_by_args",
+            mock.Mock(return_value=fake_resp_vol)
+            )
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=fake.VOLUME_LIST_SIMPLE_RESPONSE_REST))
+
+        self.client.volume_clone_split_stop(fake.VOLUME_NAMES[0])
+        mock_get_unique_volume.assert_called_once()
+        body = {
+            'clone.split_initiated': 'false',
         }
         mock_send_request.assert_called_once_with(
             f'/storage/volumes/{fake_uuid}', 'patch', body=body,
@@ -3177,7 +3197,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             self.mock_object(self.client,
                              '_get_volume_by_args',
                              mock.Mock(return_value=volume))
-        self.mock_object(self.client, 'split_volume_clone')
+        self.mock_object(self.client, 'volume_clone_split_start')
         self.mock_object(
             self.client.connection, 'get_vserver',
             mock.Mock(return_value='fake_svm'))
@@ -3217,13 +3237,12 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         else:
             self.client.send_request.assert_called_once_with(
                 '/storage/volumes', 'post', body=body)
-
-        self.assertFalse(self.client.split_volume_clone.called)
+            self.assertFalse(self.client.volume_clone_split_start.called)
 
     @ddt.data(True, False)
     def test_create_volume_split(self, split):
         self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, 'split_volume_clone')
+        self.mock_object(self.client, 'volume_clone_split_start')
         self.mock_object(
             self.client.connection, 'get_vserver',
             mock.Mock(return_value='fake_svm'))
@@ -3243,10 +3262,10 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             split=split)
 
         if split:
-            self.client.split_volume_clone.assert_called_once_with(
+            self.client.volume_clone_split_start.assert_called_once_with(
                 fake.SHARE_NAME)
         else:
-            self.assertFalse(self.client.split_volume_clone.called)
+            self.assertFalse(self.client.volume_clone_split_start.called)
 
         self.client.send_request.assert_called_once_with(
             '/storage/volumes', 'post', body=body)
