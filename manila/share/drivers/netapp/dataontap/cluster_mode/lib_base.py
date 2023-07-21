@@ -1748,7 +1748,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # split at the end: not be blocked by a busy volume
         if split is not None:
-            vserver_client.split_volume_clone(share_name)
+            vserver_client.volume_clone_split_start(share_name)
 
     @na_utils.trace
     def _share_exists(self, share_name, vserver_client):
@@ -1767,6 +1767,8 @@ class NetAppCmodeFileStorageLibrary(object):
         if force_delete_sec > 0 and duration_sec < force_delete_sec:
             force_delete = True
         if self._share_exists(share_name, vserver_client):
+            if vserver_client.volume_clone_split_status(share_name) != 100:
+                vserver_client.volume_clone_split_stop(share_name)
             if remove_export:
                 self._remove_export(share, vserver_client)
             self._deallocate_container(share_name, vserver_client,
@@ -2016,7 +2018,7 @@ class NetAppCmodeFileStorageLibrary(object):
             snapshot_children = vserver_client.get_clone_children_for_snapshot(
                 share_name, snapshot_name)
             for snapshot_child in snapshot_children:
-                vserver_client.split_volume_clone(snapshot_child['name'])
+                vserver_client.volume_clone_split_start(snapshot_child['name'])
 
             if is_flexgroup:
                 # NOTE(felipe_rodrigues): ONTAP does not allow rename a

@@ -3592,20 +3592,55 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('volume-clone-create', api_args)
 
         if split:
-            self.split_volume_clone(volume_name)
+            self.volume_clone_split_start(volume_name)
 
         if adaptive_qos_policy_group is not None:
             self.set_qos_adaptive_policy_group_for_volume(
                 volume_name, adaptive_qos_policy_group)
 
     @na_utils.trace
-    def split_volume_clone(self, volume_name):
+    def volume_clone_split_start(self, volume_name):
         """Begins splitting a clone from its parent."""
         try:
             api_args = {'volume': volume_name}
             self.send_request('volume-clone-split-start', api_args)
         except netapp_api.NaApiError as e:
             if e.code == netapp_api.EVOL_CLONE_BEING_SPLIT:
+                return
+            raise
+
+    @na_utils.trace
+    def volume_clone_split_status(self, volume_name):
+        """Status of splitting a clone from its parent."""
+        try:
+            api_args = {'volume': volume_name}
+            result = self.send_request('volume-clone-split-status', api_args)
+        except netapp_api.NaApiError:
+            # any exception in status is considered either clone split is
+            # completed or not triggred on this volume
+            return 100
+
+        clone_split_details = result.get_child_by_name(
+            'clone-split-details') or netapp_api.NaElement('none')
+        for clone_split_details_info in clone_split_details.get_children():
+            percentage = clone_split_details_info.get_child_content(
+                'block-percentage-complete')
+            try:
+                return int(percentage)
+            except Exception:
+                return 100
+        return 100
+
+    @na_utils.trace
+    def volume_clone_split_stop(self, volume_name):
+        """Stop splitting a clone from its parent."""
+        try:
+            api_args = {'volume': volume_name}
+            self.send_request('volume-clone-split-stop', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code in (netapp_api.EVOLUMEDOESNOTEXIST,
+                          netapp_api.EVOLNOTCLONE,
+                          netapp_api.EVOLOPNOTUNDERWAY):
                 return
             raise
 

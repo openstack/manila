@@ -2595,7 +2595,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.delete_snapshot.assert_called_once_with(
             fake.SHARE_NAME, fake.SNAPSHOT_NAME)
         self.assertFalse(vserver_client.get_clone_children_for_snapshot.called)
-        self.assertFalse(vserver_client.split_volume_clone.called)
+        self.assertFalse(vserver_client.volume_clone_split_start.called)
         self.assertFalse(vserver_client.soft_delete_snapshot.called)
 
     @ddt.data(True, False)
@@ -2617,7 +2617,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertFalse(vserver_client.delete_snapshot.called)
         vserver_client.get_clone_children_for_snapshot.assert_called_once_with(
             fake.SHARE_NAME, fake.SNAPSHOT_NAME)
-        vserver_client.split_volume_clone.assert_has_calls([
+        vserver_client.volume_clone_split_start.assert_has_calls([
             mock.call(fake.CDOT_CLONE_CHILD_1),
             mock.call(fake.CDOT_CLONE_CHILD_2),
         ])
@@ -2646,7 +2646,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertFalse(vserver_client.delete_snapshot.called)
         self.assertFalse(vserver_client.get_clone_children_for_snapshot.called)
-        self.assertFalse(vserver_client.split_volume_clone.called)
+        self.assertFalse(vserver_client.volume_clone_split_start.called)
         self.assertFalse(mock_is_flexgroup_share.called)
         self.assertFalse(vserver_client.soft_delete_snapshot.called)
 

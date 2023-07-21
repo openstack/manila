@@ -4619,7 +4619,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                  adaptive_qos_policy_group_name):
         self.client.features.add_feature('ADAPTIVE_QOS')
         self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, 'split_volume_clone')
+        self.mock_object(self.client, 'volume_clone_split_start')
         set_qos_adapt_mock = self.mock_object(
             self.client,
             'set_qos_adaptive_policy_group_for_volume')
@@ -4647,13 +4647,13 @@ class NetAppClientCmodeTestCase(test.TestCase):
             )
         self.client.send_request.assert_has_calls([
             mock.call('volume-clone-create', volume_clone_create_args)])
-        self.assertFalse(self.client.split_volume_clone.called)
+        self.assertFalse(self.client.volume_clone_split_start.called)
 
     @ddt.data(True, False)
     def test_create_volume_clone_split(self, split):
 
         self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, 'split_volume_clone')
+        self.mock_object(self.client, 'volume_clone_split_start')
 
         self.client.create_volume_clone(fake.SHARE_NAME,
                                         fake.PARENT_SHARE_NAME,
@@ -4670,35 +4670,51 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('volume-clone-create', volume_clone_create_args)])
         if split:
-            self.client.split_volume_clone.assert_called_once_with(
+            self.client.volume_clone_split_start.assert_called_once_with(
                 fake.SHARE_NAME)
         else:
-            self.assertFalse(self.client.split_volume_clone.called)
+            self.assertFalse(self.client.volume_clone_split_start.called)
 
     @ddt.data(None,
               mock.Mock(side_effect=netapp_api.NaApiError(
                   code=netapp_api.EVOL_CLONE_BEING_SPLIT)))
-    def test_split_volume_clone(self, side_effect):
+    def test_volume_clone_split_start(self, side_effect):
 
         self.mock_object(
             self.client, 'send_request',
             mock.Mock(side_effect=side_effect))
 
-        self.client.split_volume_clone(fake.SHARE_NAME)
+        self.client.volume_clone_split_start(fake.SHARE_NAME)
 
         volume_clone_split_args = {'volume': fake.SHARE_NAME}
 
         self.client.send_request.assert_has_calls([
             mock.call('volume-clone-split-start', volume_clone_split_args)])
 
-    def test_split_volume_clone_api_error(self):
+    @ddt.data(None,
+              mock.Mock(side_effect=netapp_api.NaApiError(
+                  code=netapp_api.EVOLOPNOTUNDERWAY)))
+    def test_volume_clone_split_stop(self, side_effect):
+
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=side_effect))
+
+        self.client.volume_clone_split_stop(fake.SHARE_NAME)
+
+        volume_clone_split_args = {'volume': fake.SHARE_NAME}
+
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-clone-split-stop', volume_clone_split_args)])
+
+    def test_volume_clone_split_start_api_error(self):
 
         self.mock_object(self.client,
                          'send_request',
                          mock.Mock(side_effect=self._mock_api_error()))
 
         self.assertRaises(netapp_api.NaApiError,
-                          self.client.split_volume_clone,
+                          self.client.volume_clone_split_start,
                           fake.SHARE_NAME)
 
     def test_get_clone_children_for_snapshot(self):
