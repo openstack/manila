@@ -3837,7 +3837,81 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             msg_args = {'volume': volume_name, 'error': err_msg}
             LOG.warning(msg, msg_args)
         # Fallback in-case force-delete fails or delete without force_delete
-        self.send_request('volume-destroy', {'name': volume_name})
+        self.soft_delete_volume(volume_name)
+
+    @na_utils.trace
+    def rename_volume(self, volume_name, new_volume_name):
+        """Renames a volume."""
+        api_args = {'volume': volume_name, 'new-volume-name': new_volume_name}
+        self.send_request('volume-rename', api_args)
+        msg = _('Soft-deleted volume %(volume)s.')
+        msg_args = {'volume': volume_name}
+        LOG.info(msg, msg_args)
+
+    @na_utils.trace
+    def soft_delete_volume(self, volume_name):
+        "Delete volume or rename it if it has clones."
+        try:
+            self.send_request('volume-destroy', {'name': volume_name})
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EVOLDEL_NOT_ALLOW_BY_CLONE:
+                LOG.warning('Delete volume %s failed', volume_name)
+                self.rename_volume(volume_name, DELETED_PREFIX + volume_name)
+
+    @na_utils.trace
+    def prune_deleted_volumes(self):
+        """Prunes deleted volumes."""
+        LOG.debug('Checking for deleted volumes to prune.')
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': DELETED_PREFIX + '*',
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': None,
+                    },
+                    'volume-state-attributes': {
+                        'state': None,
+                    },
+                },
+            },
+        }
+        result = self.send_request('volume-get-iter', api_args)
+        if result.get_child_content('num-records') == '0':
+            return
+
+        attributes_list = result.get_child_by_name('attributes-list')
+        if not attributes_list:
+            return
+
+        for volume_info in attributes_list.get_children():
+            volume_name = \
+                (volume_info
+                    .get_child_by_name('volume-id-attributes')
+                    .get_child_content('name'))
+            volume_state = \
+                (volume_info
+                    .get_child_by_name('volume-state-attributes')
+                    .get_child_content('state'))
+            vserver = \
+                (volume_info
+                    .get_child_by_name('volume-id-attributes')
+                    .get_child_content('owning-vserver-name'))
+
+            if volume_state == 'offline':
+                client = copy.deepcopy(self)
+                client.set_vserver(vserver)
+                try:
+                    client.send_request(
+                        'volume-destroy', {'name': volume_name})
+                except netapp_api.NaApiError:
+                    LOG.error(
+                        'Pruning soft-deleted volume %s failed', volume_name)
 
     @na_utils.trace
     def create_snapshot(self, volume_name, snapshot_name):
