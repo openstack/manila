@@ -4961,7 +4961,9 @@ class ShareAPITestCase(test.TestCase):
         self.assertEqual(filtered_server['id'], server['id'])
         mock_get_all.assert_called_once_with(self.context, filters=filters)
 
-    def test_share_server_migration_get_destination_no_share_server(self):
+    def test_share_server_migration_get_destination_no_share_server(
+            self):
+
         fake_source_server_id = 'fake_source_id'
         server_data = {
             'id': 'fake',
@@ -6038,6 +6040,39 @@ class ShareAPITestCase(test.TestCase):
                                                 'fake_src_server_id')
         mock_get_destination.assert_called_once_with(
             self.context, 'fake_src_server_id', status=constants.STATUS_ACTIVE)
+
+    def test_share_server_migration_get_progress_not_determinated(self):
+        fake_service_host = 'host@backend'
+        fake_share_server = db_utils.create_share_server(
+            status=constants.STATUS_SERVER_MIGRATING,
+            task_state=None,
+            host=fake_service_host)
+        mock_server_get = self.mock_object(
+            db_api, 'share_server_get',
+            mock.Mock(return_value=fake_share_server))
+        mock_get_destination = self.mock_object(
+            self.api, 'share_server_migration_get_destination',
+            mock.Mock(side_effect=exception.InvalidShareServer(reason='')))
+        mock_get_progress_state = self.mock_object(
+            self.api, '_migration_get_progress_state',
+            mock.Mock(return_value={'total_progress': 0}))
+
+        result = self.api.share_server_migration_get_progress(
+            self.context, 'fake_source_server_id')
+
+        expected = {
+            'total_progress': 0,
+            'destination_share_server_id': '',
+            'task_state': '',
+        }
+
+        self.assertEqual(expected, result)
+        mock_server_get.assert_called_once_with(self.context,
+                                                'fake_source_server_id')
+        mock_get_destination.assert_called_once_with(
+            self.context, fake_share_server['id'],
+            status=constants.STATUS_SERVER_MIGRATING_TO)
+        mock_get_progress_state.assert_called_once_with(fake_share_server)
 
     def test_migration_get_progress_race(self):
 

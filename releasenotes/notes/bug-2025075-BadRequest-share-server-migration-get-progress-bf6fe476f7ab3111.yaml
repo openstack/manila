@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix BadRequest error from share-server-migration-get-progress.
+    For more details please refer to
+    `launchpad bug #2025075 <https://bugs.launchpad.net/manila/+bug/2025075>`

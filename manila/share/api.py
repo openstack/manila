@@ -2750,6 +2750,8 @@ class API(base.Base):
 
     def share_server_migration_get_destination(self, context, source_server_id,
                                                status=None):
+        """Returns destination share server for a share server migration."""
+
         filters = {'source_share_server_id': source_server_id}
         if status:
             filters.update({'status': status})
@@ -3153,10 +3155,25 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidShareServer(reason=msg)
 
-        dest_share_server = self.share_server_migration_get_destination(
-            context, share_server['id'],
-            status=constants.STATUS_SERVER_MIGRATING_TO
-        )
+        try:
+            dest_share_server = self.share_server_migration_get_destination(
+                context, share_server['id'],
+                status=constants.STATUS_SERVER_MIGRATING_TO
+            )
+        except Exception:
+            msg = ("Migration progress of share server %s cannot be "
+                   "determined yet. Please retry the migration get "
+                   "progress operation.") % share_server['id']
+            LOG.info(msg)
+
+            result = {
+                'destination_share_server_id': '',
+                'task_state': ''
+                }
+
+            result.update(self._migration_get_progress_state(share_server))
+
+            return result
 
         if (share_server['task_state'] ==
                 constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS):
