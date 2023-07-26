@@ -2086,7 +2086,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake_share_inst, fake.VSERVER1, vserver_client=vserver_client)
         vserver_client.create_volume_clone.assert_called_once_with(
             share_name, parent_share_name, parent_snapshot_name,
-            **provisioning_options)
+            split=False, **provisioning_options)
         if size > original_snapshot_size:
             vserver_client.set_volume_size.assert_called_once_with(
                 share_name, size, snapshot_reserve_percent=8,
