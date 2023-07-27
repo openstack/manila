@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    While creating share replicas, the rules that are copied from source share
+    would hang in 'queued_to_apply' forever. Fixed it by checking status of
+    access_rule of the created replica and conditionally changed from
+    'queued_to_apply' to 'active'. For more details check
+    `Launchpad bug 2000253 <https://bugs.launchpad.net/manila/+bug/2000253>`_
