@@ -94,8 +94,8 @@ class ShareServerController(wsgi.Controller):
         except exception.ShareServerNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
         except exception.ShareNetworkNotFound:
-            msg = _("Share server %s could not be found. Its associated "
-                    "share network does not "
+            msg = _("Share server could not be found. Its "
+                    "associated share network %s does not "
                     "exist.") % server.share_network_subnet['share_network_id']
             raise exc.HTTPNotFound(explanation=msg)
         return self._view_builder.build_share_server(req, server)
