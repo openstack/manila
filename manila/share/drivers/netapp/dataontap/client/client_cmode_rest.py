@@ -2192,7 +2192,8 @@ class NetAppRestClient(object):
 
         fields = ['state', 'source.svm.name', 'source.path',
                   'destination.svm.name', 'destination.path',
-                  'transfer.end_time', 'uuid', 'policy.type']
+                  'transfer.end_time', 'uuid', 'policy.type',
+                  'transfer_schedule.name']
 
         query = {}
         query['fields'] = ','.join(fields)
@@ -2223,6 +2224,7 @@ class NetAppRestClient(object):
             snapmirrors.append({
                 'relationship-status': record.get('state'),
                 'mirror-state': record.get('state'),
+                'schedule': record['transfer_schedule']['name'],
                 'source-vserver': record['source']['svm']['name'],
                 'source-volume': (record['source']['path'].split(':')[1] if
                                   record.get('source') else None),
@@ -2959,7 +2961,7 @@ class NetAppRestClient(object):
     def _set_snapmirror_state(self, state, source_path, destination_path,
                               source_vserver, source_volume,
                               destination_vserver, destination_volume,
-                              wait_result=True):
+                              wait_result=True, schedule=None):
         """Change the snapmirror state between two volumes."""
 
         snapmirror = self.get_snapmirrors(source_path, destination_path,
@@ -2978,7 +2980,12 @@ class NetAppRestClient(object):
             raise na_utils.NetAppDriverException(msg)
 
         uuid = snapmirror[0]['uuid']
-        body = {'state': state}
+        body = {}
+        if state:
+            body.update({'state': state})
+        if schedule:
+            body.update({"transfer_schedule": {'name': schedule}})
+
         result = self.send_request(f'/snapmirror/relationships/{uuid}',
                                    'patch', body=body,
                                    wait_on_accepted=wait_result)
@@ -3022,6 +3029,29 @@ class NetAppRestClient(object):
             'snapmirrored', source_path, dest_path,
             source_vserver, source_volume,
             dest_vserver, dest_volume, wait_result=False)
+
+    @na_utils.trace
+    def modify_snapmirror_vol(self, source_vserver, source_volume,
+                              dest_vserver, dest_volume,
+                              schedule=None, policy=None, tries=None,
+                              max_transfer_rate=None):
+        """Modifies a SnapMirror relationship between volumes."""
+        return self._modify_snapmirror(
+            source_vserver=source_vserver, dest_vserver=dest_vserver,
+            source_volume=source_volume, dest_volume=dest_volume,
+            schedule=schedule)
+
+    @na_utils.trace
+    def _modify_snapmirror(self, source_path=None, dest_path=None,
+                           source_vserver=None, dest_vserver=None,
+                           source_volume=None, dest_volume=None,
+                           schedule=None):
+        """Modifies a SnapMirror relationship."""
+        return self._set_snapmirror_state(
+            None, source_path, dest_path,
+            source_vserver, source_volume,
+            dest_vserver, dest_volume, wait_result=False,
+            schedule=schedule)
 
     @na_utils.trace
     def create_volume_clone(self, volume_name, parent_volume_name,

@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver fixed to consider timestamp delta calculated from
+    `netapp_snapmirror_schedule` config option instead of fixed one hour
+    value. Delta is calculated as twice the time of the option. Also, ensure
+    periodically that existent snapmirrors have the schedule property
+    according to the `netapp_snapmirror_schedule` configuration value. For
+    more details, please refer
+    `Launchpad bug #1996859 <https://bugs.launchpad.net/manila/+bug/1996859>`_

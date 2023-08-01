@@ -2185,7 +2185,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'destination.path': (fake.SM_DEST_VSERVER +
                                  ':' + fake.SM_DEST_VOLUME),
             'fields': 'state,source.svm.name,source.path,destination.svm.name,'
-                      'destination.path,transfer.end_time,uuid,policy.type'
+                      'destination.path,transfer.end_time,uuid,policy.type,'
+                      'transfer_schedule.name'
         }
 
         mock_send_request.assert_called_once_with('/snapmirror/relationships',
@@ -2216,7 +2217,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'destination.path': (fake.SM_DEST_VSERVER +
                                  ':' + fake.SM_DEST_VOLUME),
             'fields': 'state,source.svm.name,source.path,destination.svm.name,'
-                      'destination.path,transfer.end_time,uuid,policy.type'
+                      'destination.path,transfer.end_time,uuid,policy.type,'
+                      'transfer_schedule.name'
         }
 
         mock_send_request.assert_called_once_with('/snapmirror/relationships',
@@ -2243,7 +2245,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'destination.path': (fake.SM_DEST_VSERVER +
                                  ':' + fake.SM_DEST_VOLUME),
             'fields': 'state,source.svm.name,source.path,destination.svm.name,'
-                      'destination.path,transfer.end_time,uuid,policy.type'
+                      'destination.path,transfer.end_time,uuid,policy.type,'
+                      'transfer_schedule.name'
         }
 
         mock_send_request.assert_called_once_with('/snapmirror/relationships',
@@ -2941,6 +2944,34 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             fake.SM_SOURCE_VSERVER, fake.SM_SOURCE_VOLUME,
             fake.SM_DEST_VSERVER, fake.SM_DEST_VOLUME,
             wait_result=False)
+
+        self.assertEqual(expected_job, result)
+
+    def test_modify_snapmirror_vol(self):
+
+        expected_job = {
+            'operation-id': None,
+            'status': None,
+            'jobid': fake.FAKE_UUID,
+            'error-code': None,
+            'error-message': None,
+        }
+
+        mock_set_snapmirror_state = self.mock_object(
+            self.client,
+            '_set_snapmirror_state',
+            mock.Mock(return_value=expected_job))
+
+        result = self.client.modify_snapmirror_vol(
+            fake.SM_SOURCE_VSERVER, fake.SM_SOURCE_VOLUME,
+            fake.SM_DEST_VSERVER, fake.SM_DEST_VOLUME,
+            None)
+
+        mock_set_snapmirror_state.assert_called_once_with(
+            None, None, None,
+            fake.SM_SOURCE_VSERVER, fake.SM_SOURCE_VOLUME,
+            fake.SM_DEST_VSERVER, fake.SM_DEST_VOLUME,
+            wait_result=False, schedule=None)
 
         self.assertEqual(expected_job, result)
 
