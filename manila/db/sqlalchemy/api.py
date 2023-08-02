@@ -1698,7 +1698,7 @@ def share_instance_get(context, share_instance_id, session=None,
     ).filter_by(
         id=share_instance_id,
     ).options(
-        joinedload('export_locations'),
+        joinedload('export_locations').joinedload('_el_metadata_bare'),
         joinedload('share_type'),
     ).first()
     if result is None:
