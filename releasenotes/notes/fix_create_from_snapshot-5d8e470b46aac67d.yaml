@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Netapp driver: Fix Netapp driver create from snapshot accross pools using
+    SVM scoped account.  For more details please refer to
+    `launchpad bug #1922512 <https://bugs.launchpad.net/manila/+bug/1922512>`_

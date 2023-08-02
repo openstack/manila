@@ -899,8 +899,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.mock_dm_session, 'create_snapmirror')
         self.mock_storage_update = self.mock_object(
             self.library.private_storage, 'update')
-        self.mock_object(self.library, '_have_cluster_creds',
-                         mock.Mock(return_value=True))
+        self.mock_generate_uuid = self.mock_object(
+            uuidutils, 'generate_uuid', mock.Mock(return_value=fake.SHARE_ID5))
 
         # Parent share on MANILA_HOST_2
         self.parent_share = copy.copy(fake.SHARE)
@@ -917,13 +917,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'share_server': self.parent_share_server or None
         }
 
-    @ddt.data({'dest_cluster': fake.CLUSTER_NAME, 'is_flexgroup': False},
-              {'dest_cluster': fake.CLUSTER_NAME, 'is_flexgroup': True},
-              {'dest_cluster': fake.CLUSTER_NAME_2, 'is_flexgroup': False},
-              {'dest_cluster': fake.CLUSTER_NAME_2, 'is_flexgroup': True})
+    @ddt.data({'dest_cluster': fake.CLUSTER_NAME, 'is_flexgroup': False,
+              'have_cluster_creds': False},
+              {'dest_cluster': fake.CLUSTER_NAME, 'is_flexgroup': False,
+              'have_cluster_creds': True},
+              {'dest_cluster': fake.CLUSTER_NAME, 'is_flexgroup': True,
+              'have_cluster_creds': False},
+              {'dest_cluster': fake.CLUSTER_NAME_2, 'is_flexgroup': False,
+              'have_cluster_creds': False},
+              {'dest_cluster': fake.CLUSTER_NAME_2, 'is_flexgroup': False,
+              'have_cluster_creds': True},
+              )
     @ddt.unpack
     def test_create_share_from_snapshot_another_host(self, dest_cluster,
-                                                     is_flexgroup):
+                                                     is_flexgroup,
+                                                     have_cluster_creds):
+        self.library._have_cluster_creds = have_cluster_creds
         self._setup_mocks_for_create_share_from_snapshot(
             dest_cluster=dest_cluster, is_flexgroup=is_flexgroup)
         mock_get_backend_shr_name = self.mock_object(
@@ -942,9 +951,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_dm_backend.assert_called_once_with(self.parent_share)
         self.mock_dm_get_src_client.assert_called_once_with(
             fake.BACKEND_NAME, vserver_name=fake.VSERVER1)
-        self.mock_get_src_cluster.assert_called_once()
+
         self.mock_get_vserver.assert_called_once_with(self.fake_share_server)
-        self.mock_get_dest_cluster.assert_called_once()
+        if have_cluster_creds:
+            self.mock_get_dest_cluster.assert_called_once()
+            self.mock_get_src_cluster.assert_called_once()
+        else:
+            self.mock_get_dest_cluster.assert_not_called()
+            self.mock_get_src_cluster.assert_not_called()
         mock_get_backend_shr_name.assert_called_once()
         self.mock_is_flexgroup_share.assert_called_once()
         self.mock_is_flexgroup_pool.assert_called_once()
@@ -953,9 +967,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual(is_flexgroup,
                          self.mock_get_flexgroup_aggregate_list.called)
 
-        if dest_cluster != fake.CLUSTER_NAME or is_flexgroup:
+        if (dest_cluster != fake.CLUSTER_NAME
+                or is_flexgroup or not have_cluster_creds):
+            temp_share = copy.deepcopy(self.fake_share)
+            temp_share["id"] = fake.SHARE_ID5
             self.mock_allocate_container_from_snapshot.assert_called_once_with(
-                self.fake_share, fake.SNAPSHOT, fake.VSERVER1,
+                temp_share, fake.SNAPSHOT, fake.VSERVER1,
                 self.src_vserver_client, split=False, create_fpolicy=False)
             self.mock_allocate_container.assert_called_once_with(
                 self.fake_share, fake.VSERVER2,
@@ -970,19 +987,24 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 self.src_vserver_client, split=True)
             state = self.library.STATE_SPLITTING_VOLUME_CLONE
 
-        self.temp_src_share['aggregate'] = ([fake.POOL_NAME] if is_flexgroup
-                                            else fake.POOL_NAME)
-        self.temp_src_share['internal_state'] = state
-        self.temp_src_share['status'] = constants.STATUS_ACTIVE
-        str_temp_src_share = json.dumps(self.temp_src_share)
-        self.mock_storage_update.assert_called_once_with(
-            self.fake_share['id'], {
-                'source_share': str_temp_src_share
-            })
-        expected_return = {'status': constants.STATUS_CREATING_FROM_SNAPSHOT}
-        self.assertEqual(expected_return, result)
+            self.temp_src_share['aggregate'] = ([fake.POOL_NAME]
+                                                if is_flexgroup
+                                                else fake.POOL_NAME)
+            self.temp_src_share['internal_state'] = state
+            self.temp_src_share['status'] = constants.STATUS_ACTIVE
+            str_temp_src_share = json.dumps(self.temp_src_share)
+            self.mock_storage_update.assert_called_once_with(
+                self.fake_share['id'], {
+                    'source_share': str_temp_src_share
+                })
+            expected_return = {'status':
+                               constants.STATUS_CREATING_FROM_SNAPSHOT}
+            self.assertEqual(expected_return, result)
 
-    def test_create_share_from_snapshot_another_host_driver_error(self):
+    @ddt.data(True, False)
+    def test_create_share_from_snapshot_another_host_driver_error(
+            self, have_cluster_creds):
+        self.library._have_cluster_creds = have_cluster_creds
         self._setup_mocks_for_create_share_from_snapshot(
             allocate_attr=mock.Mock(side_effect=exception.NetAppException))
         mock_delete_snapmirror = self.mock_object(
@@ -1005,14 +1027,29 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_dm_backend.assert_called_once_with(self.parent_share)
         self.mock_dm_get_src_client.assert_called_once_with(
             fake.BACKEND_NAME, vserver_name=fake.VSERVER1)
-        self.mock_get_src_cluster.assert_called_once()
         self.mock_get_vserver.assert_called_once_with(self.fake_share_server)
-        self.mock_get_dest_cluster.assert_called_once()
-        self.mock_allocate_container_from_snapshot.assert_called_once_with(
-            self.fake_share, fake.SNAPSHOT, fake.VSERVER1,
-            self.src_vserver_client, split=True)
-        mock_delete_snapmirror.assert_called_once_with(self.temp_src_share,
-                                                       self.fake_share)
+        if have_cluster_creds:
+            self.mock_get_dest_cluster.assert_called_once()
+            self.mock_get_src_cluster.assert_called_once()
+        else:
+            self.mock_get_dest_cluster.assert_not_called()
+            self.mock_get_src_cluster.assert_not_called()
+
+        if have_cluster_creds:
+            self.mock_allocate_container_from_snapshot.assert_called_once_with(
+                self.fake_share, fake.SNAPSHOT, fake.VSERVER1,
+                self.src_vserver_client, split=True)
+        else:
+            self.mock_generate_uuid.assert_called_once()
+            temp_share = copy.deepcopy(self.fake_share)
+            temp_share["id"] = fake.SHARE_ID5
+            self.mock_allocate_container_from_snapshot.assert_called_once_with(
+                temp_share, fake.SNAPSHOT, fake.VSERVER1,
+                self.src_vserver_client, split=False, create_fpolicy=False)
+
+        mock_delete_snapmirror.assert_called_once_with(
+            self.temp_src_share, self.fake_share)
+
         mock_delete_share.assert_called_once_with(
             self.temp_src_share, fake.VSERVER1, self.src_vserver_client,
             remove_export=False)

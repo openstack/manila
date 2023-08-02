@@ -32,6 +32,7 @@ from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
+from oslo_utils import uuidutils
 
 from manila.common import constants
 from manila import coordination
@@ -755,11 +756,15 @@ class NetAppCmodeFileStorageLibrary(object):
             dm_session.get_backend_info_for_share(parent_share))
         src_vserver_client = data_motion.get_client_for_backend(
             src_backend, vserver_name=src_vserver)
-        src_cluster_name = src_vserver_client.get_cluster_name()
 
         # Destination host info
         dest_vserver, dest_vserver_client = self._get_vserver(share_server)
-        dest_cluster_name = dest_vserver_client.get_cluster_name()
+
+        src_cluster_name = None
+        dest_cluster_name = None
+        if self._have_cluster_creds:
+            src_cluster_name = src_vserver_client.get_cluster_name()
+            dest_cluster_name = dest_vserver_client.get_cluster_name()
 
         # the parent share and new share must reside on same pool type: either
         # FlexGroup or FlexVol.
@@ -808,13 +813,17 @@ class NetAppCmodeFileStorageLibrary(object):
             # NOTE(felipe_rodrigues): no support to move volumes that are
             # FlexGroup or without the cluster credential. So, performs the
             # workaround using snapmirror even being in the same cluster.
+
             if (src_cluster_name != dest_cluster_name or dest_is_flexgroup or
                     not self._have_cluster_creds):
                 # 1. Create a clone on source (temporary volume). We don't need
                 # to split from clone in order to replicate data. We don't need
                 # to create fpolicies since this copy will be deleted.
+                temp_share = copy.deepcopy(dest_share)
+                temp_uuid = uuidutils.generate_uuid()
+                temp_share['id'] = str(temp_uuid)
                 self._allocate_container_from_snapshot(
-                    dest_share, snapshot, src_vserver, src_vserver_client,
+                    temp_share, snapshot, src_vserver, src_vserver_client,
                     split=False, create_fpolicy=False)
                 # 2. Create a replica in destination host.
                 self._allocate_container(
@@ -825,6 +834,7 @@ class NetAppCmodeFileStorageLibrary(object):
                     constants.REPLICA_STATE_ACTIVE)
                 relationship_type = na_utils.get_relationship_type(
                     dest_is_flexgroup)
+                src_share_instance["id"] = temp_share['id']
                 dm_session.create_snapmirror(
                     src_share_instance,
                     dest_share,
