@@ -3575,7 +3575,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def create_volume_clone(self, volume_name, parent_volume_name,
-                            parent_snapshot_name=None, split=False,
+                            parent_snapshot_name=None,
                             qos_policy_group=None,
                             adaptive_qos_policy_group=None, **options):
         """Clones a volume."""
@@ -3590,9 +3590,6 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             api_args['qos-policy-group-name'] = qos_policy_group
 
         self.send_request('volume-clone-create', api_args)
-
-        if split:
-            self.volume_clone_split_start(volume_name)
 
         if adaptive_qos_policy_group is not None:
             self.set_qos_adaptive_policy_group_for_volume(
