@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `bug #2025649
+    <https://bugs.launchpad.net/manila/+bug/2025649>`_: Fixed share
+    server API error message.
