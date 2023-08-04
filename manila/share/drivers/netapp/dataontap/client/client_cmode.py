@@ -2180,6 +2180,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(msg)
             else:
                 api_args['encrypt'] = 'true'
+        else:
+            api_args['encrypt'] = 'false'
 
         return api_args
 

@@ -3179,6 +3179,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume-type': 'rw',
             'junction-path': '/%s' % fake.SHARE_NAME,
             'space-reserve': ('none' if thin_provisioned else 'volume'),
+            'encrypt': 'false'
         }
 
         self.client.send_request.assert_called_once_with('volume-create',
@@ -3291,6 +3292,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         expected_api_args = {
             'volume-type': volume_type,
             'space-reserve': 'volume',
+            'encrypt': 'false'
         }
         self.assertEqual(expected_api_args, result_api_args)
 
