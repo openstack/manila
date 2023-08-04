@@ -2081,6 +2081,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake_snapshot,
             vserver,
             vserver_client,
+            split=split,
             create_fpolicy=create_fpolicy)
 
         share_name = self.library._get_backend_share_name(
@@ -2112,6 +2113,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 **provisioning_options)
         else:
             mock_create_fpolicy.assert_not_called()
+
+        if split is None:
+            vserver_client.volume_clone_split_start.assert_called_once_with(
+                fake.SHARE_INSTANCE_NAME)
+        if split:
+            vserver_client.volume_clone_split_start.assert_called_once_with(
+                fake.SHARE_INSTANCE_NAME)
+        if split is False:
+            vserver_client.volume_clone_split_start.assert_not_called()
 
     def test_share_exists(self):
 
