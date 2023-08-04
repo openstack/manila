@@ -4619,7 +4619,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                  adaptive_qos_policy_group_name):
         self.client.features.add_feature('ADAPTIVE_QOS')
         self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, 'volume_clone_split_start')
         set_qos_adapt_mock = self.mock_object(
             self.client,
             'set_qos_adaptive_policy_group_for_volume')
@@ -4645,35 +4644,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
             set_qos_adapt_mock.assert_called_once_with(
                 fake.SHARE_NAME, fake.ADAPTIVE_QOS_POLICY_GROUP_NAME
             )
-        self.client.send_request.assert_has_calls([
-            mock.call('volume-clone-create', volume_clone_create_args)])
-        self.assertFalse(self.client.volume_clone_split_start.called)
-
-    @ddt.data(True, False)
-    def test_create_volume_clone_split(self, split):
-
-        self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, 'volume_clone_split_start')
-
-        self.client.create_volume_clone(fake.SHARE_NAME,
-                                        fake.PARENT_SHARE_NAME,
-                                        fake.PARENT_SNAPSHOT_NAME,
-                                        split=split)
-
-        volume_clone_create_args = {
-            'volume': fake.SHARE_NAME,
-            'parent-volume': fake.PARENT_SHARE_NAME,
-            'parent-snapshot': fake.PARENT_SNAPSHOT_NAME,
-            'junction-path': '/%s' % fake.SHARE_NAME
-        }
-
-        self.client.send_request.assert_has_calls([
-            mock.call('volume-clone-create', volume_clone_create_args)])
-        if split:
-            self.client.volume_clone_split_start.assert_called_once_with(
-                fake.SHARE_NAME)
-        else:
-            self.assertFalse(self.client.volume_clone_split_start.called)
 
     @ddt.data(None,
               mock.Mock(side_effect=netapp_api.NaApiError(

@@ -1713,16 +1713,16 @@ class NetAppCmodeFileStorageLibrary(object):
 
         hide_snapdir = provisioning_options.pop('hide_snapdir')
 
-        # sapcc: Override split option from share type specs. Also clone split
-        # is postponed to last step, to avoid busy volume error.
-        split = provisioning_options.pop('split', split)
+        # split in args takes precedence over split in provisioning_options
+        if split is None:
+            split = provisioning_options.pop('split')
 
         LOG.debug('Creating share from snapshot %s', snapshot['id'])
         vserver_client.create_volume_clone(
-            share_name, parent_share_name, parent_snapshot_name, split=False,
+            share_name, parent_share_name, parent_snapshot_name,
             **provisioning_options)
 
-        # sapcc: set share comment
+        # ccloud: set share comment
         vserver_client.modify_volume(aggregate_name, share_name,
                                      comment=share_comment,
                                      **provisioning_options)
