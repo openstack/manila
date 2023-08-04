@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2029467
+    <https://bugs.launchpad.net/manila/+bug/2029467>`_:
+    When creating a share from a snapshot, the clone split operation is delayed
+    until the share creation is complete. This ensures that the share creation
+    operation is not blocked by the clone split operation.
+
