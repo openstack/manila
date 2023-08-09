@@ -268,31 +268,39 @@ class ShareManagerTestCase(test.TestCase):
         self.assertFalse(self.share_manager.driver.initialized)
 
     def _setup_init_mocks(self, setup_access_rules=True):
+        share_type = db_utils.create_share_type()
         instances = [
             db_utils.create_share(id='fake_id_1',
+                                  share_type_id=share_type['id'],
                                   status=constants.STATUS_AVAILABLE,
                                   display_name='fake_name_1').instance,
             db_utils.create_share(id='fake_id_2',
+                                  share_type_id=share_type['id'],
                                   status=constants.STATUS_ERROR,
                                   display_name='fake_name_2').instance,
             db_utils.create_share(id='fake_id_3',
+                                  share_type_id=share_type['id'],
                                   status=constants.STATUS_AVAILABLE,
                                   display_name='fake_name_3').instance,
             db_utils.create_share(
                 id='fake_id_4',
+                share_type_id=share_type['id'],
                 status=constants.STATUS_MIGRATING,
                 task_state=constants.TASK_STATE_MIGRATION_IN_PROGRESS,
                 display_name='fake_name_4').instance,
             db_utils.create_share(id='fake_id_5',
+                                  share_type_id=share_type['id'],
                                   status=constants.STATUS_AVAILABLE,
                                   display_name='fake_name_5').instance,
             db_utils.create_share(
                 id='fake_id_6',
+                share_type_id=share_type['id'],
                 status=constants.STATUS_MIGRATING,
                 task_state=constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS,
                 display_name='fake_name_6').instance,
             db_utils.create_share(
-                id='fake_id_7', status=constants.STATUS_CREATING_FROM_SNAPSHOT,
+                id='fake_id_7', share_type_id=share_type['id'],
+                status=constants.STATUS_CREATING_FROM_SNAPSHOT,
                 display_name='fake_name_7').instance,
         ]
 
@@ -743,7 +751,8 @@ class ShareManagerTestCase(test.TestCase):
             backend_details=dict(fake='fake'))
         parent_share = db_utils.create_share(share_network_id='net-id',
                                              share_server_id=server['id'])
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
         share_id = share['id']
         snapshot = db_utils.create_snapshot(share_id=parent_share['id'])
         snapshot_id = snapshot['id']
@@ -761,7 +770,8 @@ class ShareManagerTestCase(test.TestCase):
         """Test creation from snapshot fails if server not found."""
         parent_share = db_utils.create_share(share_network_id='net-id',
                                              share_server_id='fake-id')
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
         share_id = share['id']
         snapshot = db_utils.create_snapshot(share_id=parent_share['id'])
         snapshot_id = snapshot['id']
@@ -778,7 +788,8 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_create_share_instance_from_snapshot_status_creating(self):
         """Test share can be created from snapshot in asynchronous mode."""
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
         share_id = share['id']
         snapshot = db_utils.create_snapshot(share_id=share_id)
         snapshot_id = snapshot['id']
@@ -802,7 +813,8 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_create_share_instance_from_snapshot_invalid_status(self):
         """Test share can't be created from snapshot with 'creating' status."""
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
         share_id = share['id']
         snapshot = db_utils.create_snapshot(share_id=share_id)
         snapshot_id = snapshot['id']
@@ -824,7 +836,8 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_create_share_instance_from_snapshot_export_locations_only(self):
         """Test share can be created from snapshot on old driver interface."""
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
         share_id = share['id']
         snapshot = db_utils.create_snapshot(share_id=share_id)
         snapshot_id = snapshot['id']
@@ -845,7 +858,8 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_create_share_instance_from_snapshot(self):
         """Test share can be created from snapshot."""
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
         share_id = share['id']
         snapshot = db_utils.create_snapshot(share_id=share_id)
         snapshot_id = snapshot['id']
@@ -862,7 +876,9 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_create_share_instance_for_share_with_replication_support(self):
         """Test update call is made to update replica_state."""
-        share = db_utils.create_share(replication_type='writable')
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(replication_type='writable',
+                                      share_type_id=share_type['id'])
         share_id = share['id']
 
         self.share_manager.create_share_instance(self.context,
@@ -2128,7 +2144,10 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.driver.configuration, 'safe_get',
             mock.Mock(return_value=False))
         share_network_id = 'fake_sn'
-        share = db_utils.create_share(share_network_id=share_network_id)
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(
+            share_network_id=share_network_id,
+            share_type_id=share_type['id'])
         share_instance = share.instance
         self.mock_object(
             self.share_manager.db, 'share_instance_get',
@@ -2164,7 +2183,10 @@ class ShareManagerTestCase(test.TestCase):
             share_network_id=share_net['id'],
             availability_zone_id=None,
         )
-        share = db_utils.create_share(share_network_id=share_net['id'])
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(
+            share_network_id=share_net['id'],
+            share_type_id=share_type['id'])
         share_id = share['id']
 
         def fake_setup_server(context, share_network, *args, **kwargs):
@@ -2187,8 +2209,10 @@ class ShareManagerTestCase(test.TestCase):
         share_net_subnet = db_utils.create_share_network_subnet(
             id='fake_sns_id', share_network_id=share_network['id']
         )
+        share_type = db_utils.create_share_type()
         fake_share = db_utils.create_share(
-            share_network_id=share_network['id'], size=1)
+            share_network_id=share_network['id'], size=1,
+            share_type_id=share_type['id'])
         fake_metadata = {
             'request_host': 'fake_host',
             'share_type_id': 'fake_share_type_id',
@@ -2250,8 +2274,12 @@ class ShareManagerTestCase(test.TestCase):
         share_net_subnet = db_utils.create_share_network_subnet(
             id='fake_sns_id', share_network_id=share_network['id']
         )
+        share_type = db_utils.create_share_type()
         fake_share = db_utils.create_share(
-            share_network_id=share_network['id'], size=1)
+            share_network_id=share_network['id'],
+            share_type_id=share_type['id'],
+            size=1
+        )
         fake_metadata = {
             'request_host': 'fake_host',
             'share_type_id': 'fake_share_type_id',
@@ -2325,7 +2353,9 @@ class ShareManagerTestCase(test.TestCase):
 
         self.mock_object(manager.LOG, 'error')
 
-        share = db_utils.create_share(share_network_id='fake-net-id')
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_network_id='fake-net-id',
+                                      share_type_id=share_type['id'])
         share_id = share['id']
         self.assertRaises(
             exception.ShareNetworkSubnetNotFound,
@@ -2372,9 +2402,11 @@ class ShareManagerTestCase(test.TestCase):
         db.share_network_add_security_service(context.get_admin_context(),
                                               share_net['id'],
                                               security_service['id'])
+        share_type = db_utils.create_share_type()
         share = db_utils.create_share(
             share_network_id=share_net['id'],
             share_proto='fake_proto',
+            share_type_id=share_type['id'],
         )
         db_utils.create_share_server(
             share_network_subnet_id=share_net_subnet['id'],
@@ -2558,7 +2590,9 @@ class ShareManagerTestCase(test.TestCase):
             share_network_id=share_net['id'],
             availability_zone_id=None,
         )
-        share = db_utils.create_share(share_network_id=share_net['id'])
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_network_id=share_net['id'],
+                                      share_type_id=share_type['id'])
         share_srv = db_utils.create_share_server(
             share_network_subnets=[share_net_subnet],
             host=self.share_manager.host)
@@ -2592,7 +2626,8 @@ class ShareManagerTestCase(test.TestCase):
     @ddt.data('export_location', 'export_locations')
     def test_create_share_instance_with_error_in_driver(self, details_key):
         """Test db updates if share creation fails in driver."""
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
         share_id = share['id']
         some_data = 'fake_location'
         self.share_manager.driver = mock.Mock()
@@ -2621,7 +2656,9 @@ class ShareManagerTestCase(test.TestCase):
         share_net_subnet = db_utils.create_share_network_subnet(
             share_network_id=share_net['id'],
             availability_zone_id=None)
+        share_type = db_utils.create_share_type()
         share = db_utils.create_share(share_network_id=share_net['id'],
+                                      share_type_id=share_type['id'],
                                       availability_zone=None)
         db_utils.create_share_server(
             share_network_subnet_id=share_net_subnet['id'],
@@ -2664,7 +2701,9 @@ class ShareManagerTestCase(test.TestCase):
             share_network_id=share_net['id'],
             availability_zone_id=None
         )
+        share_type = db_utils.create_share_type()
         share = db_utils.create_share(share_network_id=share_net['id'],
+                                      share_type_id=share_type['id'],
                                       replication_type='dr',
                                       availability_zone=None)
         db_utils.create_share_server(
@@ -2708,7 +2747,8 @@ class ShareManagerTestCase(test.TestCase):
     @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
     def test_create_delete_share_instance(self, mock_notify):
         """Test share can be created and deleted."""
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
 
         mock_notify.assert_not_called()
 
@@ -2744,7 +2784,8 @@ class ShareManagerTestCase(test.TestCase):
                 self.share_manager.access_helper, "update_access_rules",
                 mock.Mock(side_effect=_raise_exception))
 
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
         share_id = share['id']
         self.assertRaises(exception.ManilaException,
                           self.share_manager.create_share_instance,
@@ -2771,7 +2812,9 @@ class ShareManagerTestCase(test.TestCase):
                 share_server=None)
 
     def test_create_share_instance_update_availability_zone(self):
-        share = db_utils.create_share(availability_zone=None)
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(availability_zone=None,
+                                      share_type_id=share_type['id'])
         share_id = share['id']
 
         self.share_manager.create_share_instance(
@@ -3450,8 +3493,10 @@ class ShareManagerTestCase(test.TestCase):
                 share_network_subnets=[share_network_subnet])
             db.share_server_backend_details_set(
                 context.get_admin_context(), share_srv['id'], backend_details)
+        share_type = db_utils.create_share_type()
         share = db_utils.create_share(share_network_id=share_net['id'],
-                                      share_server_id=share_srv['id'])
+                                      share_server_id=share_srv['id'],
+                                      share_type_id=share_type['id'])
         mock_access_helper_call = self.mock_object(
             self.share_manager.access_helper, 'update_access_rules')
         self.share_manager.driver = mock.Mock()
@@ -3481,8 +3526,10 @@ class ShareManagerTestCase(test.TestCase):
             host=self.share_manager.host,
             share_network_subnets=[share_network_subnet]
         )
+        share_type = db_utils.create_share_type()
         share = db_utils.create_share(share_network_id=share_net['id'],
-                                      share_server_id=share_srv['id'])
+                                      share_server_id=share_srv['id'],
+                                      share_type_id=share_type['id'])
         share_srv = db.share_server_get(self.context, share_srv['id'])
         mock_access_helper_call = self.mock_object(
             self.share_manager.access_helper, 'update_access_rules')
@@ -3509,8 +3556,10 @@ class ShareManagerTestCase(test.TestCase):
     def test_delete_share_instance_last_on_server_deletion_disabled(self):
         share_net = db_utils.create_share_network()
         share_srv = db_utils.create_share_server(host=self.share_manager.host)
+        share_type = db_utils.create_share_type()
         share = db_utils.create_share(share_network_id=share_net['id'],
-                                      share_server_id=share_srv['id'])
+                                      share_server_id=share_srv['id'],
+                                      share_type_id=share_type['id'])
         share_srv = db.share_server_get(self.context, share_srv['id'])
 
         manager.CONF.delete_share_server_with_last_share = False
@@ -3533,8 +3582,10 @@ class ShareManagerTestCase(test.TestCase):
         share_srv = db_utils.create_share_server(
             host=self.share_manager.host
         )
+        share_type = db_utils.create_share_type()
         share = db_utils.create_share(share_network_id=share_net['id'],
-                                      share_server_id=share_srv['id'])
+                                      share_server_id=share_srv['id'],
+                                      share_type_id=share_type['id'])
         db_utils.create_share(share_network_id=share_net['id'],
                               share_server_id=share_srv['id'])
         share_srv = db.share_server_get(self.context, share_srv['id'])
@@ -3559,8 +3610,10 @@ class ShareManagerTestCase(test.TestCase):
         share_net = db_utils.create_share_network()
         share_srv = db_utils.create_share_server(
             host=self.share_manager.host)
+        share_type = db_utils.create_share_type()
         share = db_utils.create_share(share_network_id=share_net['id'],
-                                      share_server_id=share_srv['id'])
+                                      share_server_id=share_srv['id'],
+                                      share_type_id=share_type['id'])
         access = db_utils.create_access(share_id=share['id'])
         db_utils.create_share(share_network_id=share_net['id'],
                               share_server_id=share_srv['id'])
@@ -4213,7 +4266,8 @@ class ShareManagerTestCase(test.TestCase):
 
     @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
     def test_extend_share_invalid(self, mock_notify):
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
         share_id = share['id']
         reservations = {}
 
@@ -4234,12 +4288,13 @@ class ShareManagerTestCase(test.TestCase):
             reservations,
             project_id=str(share['project_id']),
             user_id=str(share['user_id']),
-            share_type_id=None,
+            share_type_id=share_type['id'],
         )
 
     @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
     def test_extend_share(self, mock_notify):
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
         share_id = share['id']
         new_size = 123
         shr_update = {
@@ -4272,7 +4327,7 @@ class ShareManagerTestCase(test.TestCase):
         )
         quota.QUOTAS.commit.assert_called_once_with(
             mock.ANY, reservations, project_id=share['project_id'],
-            user_id=share['user_id'], share_type_id=None)
+            user_id=share['user_id'], share_type_id=share_type['id'])
         manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id, shr_update
         )
@@ -4282,7 +4337,8 @@ class ShareManagerTestCase(test.TestCase):
                                    ['INFO', 'share.extend.end']))
 
     def test_shrink_share_not_supported(self):
-        share = db_utils.create_share(size=2)
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(size=2, share_type_id=share_type['id'])
         new_size = 1
         share_id = share['id']
 
@@ -4311,11 +4367,11 @@ class ShareManagerTestCase(test.TestCase):
 
         quota.QUOTAS.reserve.assert_called_once_with(
             mock.ANY, gigabytes=-1, project_id=share['project_id'],
-            share_type_id=None, user_id=share['user_id'],
+            share_type_id=share_type['id'], user_id=share['user_id'],
         )
         quota.QUOTAS.rollback.assert_called_once_with(
             mock.ANY, mock.ANY, project_id=share['project_id'],
-            share_type_id=None, user_id=share['user_id'],
+            share_type_id=share_type['id'], user_id=share['user_id'],
         )
         self.assertTrue(self.share_manager.db.share_get.called)
 
@@ -4333,7 +4389,9 @@ class ShareManagerTestCase(test.TestCase):
                                       replicas_list):
         size = 5
         new_size = 1
-        share = db_utils.create_share(size=size)
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(size=size,
+                                      share_type_id=share_type['id'])
         share_id = share['id']
 
         self.mock_object(self.share_manager.db, 'share_update')
@@ -4355,7 +4413,7 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY,
             project_id=str(share['project_id']),
             user_id=str(share['user_id']),
-            share_type_id=None,
+            share_type_id=share_type['id'],
             gigabytes=new_size - size,
             **deltas
         )
@@ -4369,7 +4427,8 @@ class ShareManagerTestCase(test.TestCase):
                'status': constants.STATUS_AVAILABLE})
     @ddt.unpack
     def test_shrink_share_invalid(self, exc, status):
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
         new_size = 1
         share_id = share['id']
         size_decrease = int(share['size']) - new_size
@@ -4396,11 +4455,11 @@ class ShareManagerTestCase(test.TestCase):
         )
         quota.QUOTAS.reserve.assert_called_once_with(
             mock.ANY, gigabytes=-size_decrease, project_id=share['project_id'],
-            share_type_id=None, user_id=share['user_id'],
+            share_type_id=share_type['id'], user_id=share['user_id'],
         )
         quota.QUOTAS.rollback.assert_called_once_with(
             mock.ANY, mock.ANY, project_id=share['project_id'],
-            share_type_id=None, user_id=share['user_id'],
+            share_type_id=share_type['id'], user_id=share['user_id'],
         )
         self.assertTrue(self.share_manager.db.share_get.called)
 
@@ -4415,7 +4474,8 @@ class ShareManagerTestCase(test.TestCase):
 
     @ddt.data(True, False)
     def test_shrink_share(self, supports_replication):
-        share = db_utils.create_share()
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'])
         share_id = share['id']
         new_size = 123
         shr_update = {
@@ -4448,7 +4508,7 @@ class ShareManagerTestCase(test.TestCase):
         reservation_params = {
             'gigabytes': -size_decrease,
             'project_id': share['project_id'],
-            'share_type_id': None,
+            'share_type_id': share_type['id'],
             'user_id': share['user_id'],
         }
         if supports_replication:
@@ -4468,7 +4528,7 @@ class ShareManagerTestCase(test.TestCase):
         )
         quota.QUOTAS.commit.assert_called_once_with(
             mock.ANY, mock.ANY, project_id=share['project_id'],
-            share_type_id=None, user_id=share['user_id'],
+            share_type_id=share_type['id'], user_id=share['user_id'],
         )
         manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id, shr_update

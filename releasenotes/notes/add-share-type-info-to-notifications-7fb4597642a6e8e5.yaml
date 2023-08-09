@@ -1,0 +1,5 @@
+---
+features:
+  - Added share type information to Ceilometer notifications.
+    It is useful for billing to be able to charge customers
+    differently for shares of different types.

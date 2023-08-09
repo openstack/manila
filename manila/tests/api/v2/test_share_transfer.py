@@ -61,15 +61,15 @@ class ShareTransferAPITestCase(test.TestCase):
                       size=1,
                       project_id='fake_project_id',
                       user_id='fake_user_id',
-                      share_type_id='fake_type_id',
                       share_network_id=None):
         """Create a share object."""
+        share_type = db_utils.create_share_type()
         share = db_utils.create_share(display_name=display_name,
                                       display_description=display_description,
                                       status=status, size=size,
                                       project_id=project_id,
                                       user_id=user_id,
-                                      share_type_id=share_type_id,
+                                      share_type_id=share_type['id'],
                                       share_network_id=share_network_id
                                       )
         share_id = share['id']
