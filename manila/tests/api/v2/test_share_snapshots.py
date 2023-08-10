@@ -777,7 +777,8 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
         {},
         {'snapshots': {}},
         {'snapshot': get_fake_manage_body(share_id='xxxxxxxx')},
-        {'snapshot': get_fake_manage_body(provider_location='xxxxxxxx')}
+        {'snapshot': get_fake_manage_body(provider_location='xxxxxxxx')},
+        {'snapshot': {'provider_location': {'x': 'y'}, 'share_id': 'xyzzy'}},
     )
     def test_snapshot_manage_invalid_body(self, body):
         self.mock_policy_check = self.mock_object(
