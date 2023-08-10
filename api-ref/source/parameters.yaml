@@ -3406,6 +3406,16 @@ snapshot_provider_location:
   in: body
   required: true
   type: string
+snapshot_provider_location_optional:
+  description: |
+    Provider location of the snapshot on the backend. This parameter is only
+    available to users with an "administrator" role by virtue of default
+    RBAC. This behavior can be modified by overriding the
+    ``context_is_admin`` policy via a custom ``policy.yaml``.
+  in: body
+  required: false
+  type: string
+  min_version: 2.12
 snapshot_provider_location_request:
   description: |
     Provider location of the snapshot on the backend.
