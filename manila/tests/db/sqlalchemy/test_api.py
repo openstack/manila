@@ -145,6 +145,10 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
         self.assertEqual(constants.STATUS_ERROR,
                          instance_access_mapping['state'])
         self.assertEqual('watson4heisman', access['access_key'])
+        self.assertIsNotNone(access['updated_at'])
+        time_now = timeutils.utcnow()
+        self.assertTrue(access['updated_at'] < time_now)
+        self.assertTrue(instance_access_mapping['updated_at'] < time_now)
 
     @ddt.data(True, False)
     def test_share_access_get_all_for_instance_with_share_access_data(
@@ -1970,6 +1974,9 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
             {'state': constants.STATUS_ACTIVE})
 
         self.assertSubDictMatch(values, actual_result.to_dict())
+        self.assertIsNotNone(actual_result['updated_at'])
+        time_now = timeutils.utcnow()
+        self.assertTrue(actual_result['updated_at'] < time_now)
 
     def test_share_snapshot_instance_access_get(self):
         access = db_utils.create_snapshot_access(

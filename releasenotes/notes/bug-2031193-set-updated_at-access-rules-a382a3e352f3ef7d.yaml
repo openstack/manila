@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    The ``updated_at`` field is correctly set on share and snapshot access
+    rules when an update has been made on the database.
