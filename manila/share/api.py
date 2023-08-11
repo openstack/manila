@@ -229,17 +229,16 @@ class API(base.Base):
                 availability_zone = source_share_az
             elif (availability_zone != source_share_az
                   and not CONF.use_scheduler_creating_share_from_snapshot):
-                error_msg = (_("az: %(az)s, source:  %(source_az)s."
-                               "The specified availability zone must be the "
-                               "same as parent share when you have the "
-                               "configuration option "
-                               "'use_scheduler_creating_share_from_snapshot' "
-                               "set to False.") % dict(
+                msg = ("The specified availability zone must be the same "
+                       "as the parent share when creating from snapshot.")
+                error_msg = (("az: %(az)s, source:  %(source_az)s. %(msg)s"
+                              "You have the configuration option "
+                              "'use_scheduler_creating_share_from_snapshot' "
+                              "set to False.") % dict(
+                             msg=msg,
                              az=availability_zone,
                              source_az=source_share_az))
                 LOG.error(error_msg)
-                msg = _("The specified availability zone must be the same "
-                        "as the parent share when creating from snapshot.")
                 raise exception.InvalidInput(reason=msg)
             if share_type is None:
                 # Grab the source share's share_type if no new share type
