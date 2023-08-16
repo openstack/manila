@@ -3152,6 +3152,10 @@ class ShareManageTest(test.TestCase):
                 api_version.APIVersionRequest('2.8')):
             share['is_public'] = data['share']['is_public']
 
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.80')):
+            share['source_backup_id'] = None
+
         req = fakes.HTTPRequest.blank('/v2/fake/shares/manage',
                                       version=version,
                                       use_admin_context=True)

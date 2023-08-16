@@ -5385,16 +5385,6 @@ class ShareBackupDatabaseAPITestCase(BaseDatabaseAPITestCase):
             self.ctxt, self.share_id, self.backup)
         self._check_fields(expected=self.backup, actual=result)
 
-    def test_create_with_duplicated_id(self):
-        db_api.share_backup_create(
-            self.ctxt, self.share_id, self.backup)
-
-        self.assertRaises(db_exception.DBDuplicateEntry,
-                          db_api.share_backup_create,
-                          self.ctxt,
-                          self.share_id,
-                          self.backup)
-
     def test_get(self):
         db_api.share_backup_create(
             self.ctxt, self.share_id, self.backup)

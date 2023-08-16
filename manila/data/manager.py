@@ -394,6 +394,8 @@ class DataManager(manager.Manager):
         share = self.db.share_get(context, share_id)
         backup = self.db.share_backup_get(context, backup_id)
 
+        self.db.share_backup_update(context, backup_id, {'host': self.host})
+
         LOG.info('Create backup started, backup: %(backup_id)s '
                  'share: %(share_id)s.',
                  {'backup_id': backup_id, 'share_id': share_id})
@@ -410,13 +412,21 @@ class DataManager(manager.Manager):
                 self.db.share_backup_update(
                     context, backup_id,
                     {'status': constants.STATUS_ERROR, 'fail_reason': err})
+        self.db.share_update(
+            context, share_id, {'status': constants.STATUS_AVAILABLE})
+        self.db.share_backup_update(
+            context, backup_id,
+            {'status': constants.STATUS_AVAILABLE, 'progress': '100'})
+        LOG.info("Created share backup %s successfully.", backup_id)
 
     @periodic_task.periodic_task(
         spacing=CONF.backup_continue_update_interval)
     def create_backup_continue(self, context):
-        filters = {'status': constants.STATUS_CREATING,
-                   'host': self.host,
-                   'topic': CONF.data_topic}
+        filters = {
+            'status': constants.STATUS_CREATING,
+            'host': self.host,
+            'topic': CONF.data_topic
+        }
         backups = self.db.share_backups_get_all(context, filters)
 
         for backup in backups:
@@ -426,17 +436,16 @@ class DataManager(manager.Manager):
             try:
                 result = self.data_copy_get_progress(context, share_id)
                 progress = result.get('total_progress', '0')
-                self.db.share_backup_update(context, backup_id,
-                                            {'progress': progress})
+                backup_values = {'progress': progress}
                 if progress == '100':
                     self.db.share_update(
                         context, share_id,
                         {'status': constants.STATUS_AVAILABLE})
-                    self.db.share_backup_update(
-                        context, backup_id,
+                    backup_values.update(
                         {'status': constants.STATUS_AVAILABLE})
                     LOG.info("Created share backup %s successfully.",
                              backup_id)
+                self.db.share_backup_update(context, backup_id, backup_values)
             except Exception:
                 LOG.warning("Failed to get progress of share %(share)s "
                             "backing up in share_backup %(backup).",
@@ -624,19 +633,29 @@ class DataManager(manager.Manager):
                     {'status': constants.STATUS_BACKUP_RESTORING_ERROR})
                 self.db.share_backup_update(
                     context, backup_id,
-                    {'status': constants.STATUS_ERROR})
+                    {'status': constants.STATUS_AVAILABLE})
+        self.db.share_update(
+            context, share_id, {'status': constants.STATUS_AVAILABLE})
+        self.db.share_backup_update(
+            context, backup_id,
+            {'status': constants.STATUS_AVAILABLE, 'restore_progress': '100'})
+        LOG.info("Share backup %s restored successfully.", backup_id)
 
     @periodic_task.periodic_task(
         spacing=CONF.restore_continue_update_interval)
     def restore_backup_continue(self, context):
-        filters = {'status': constants.STATUS_RESTORING,
-                   'host': self.host,
-                   'topic': CONF.data_topic}
+        filters = {
+            'status': constants.STATUS_RESTORING,
+            'host': self.host,
+            'topic': CONF.data_topic
+        }
         backups = self.db.share_backups_get_all(context, filters)
         for backup in backups:
             backup_id = backup['id']
             try:
-                filters = {'source_backup_id': backup_id}
+                filters = {
+                    'source_backup_id': backup_id,
+                }
                 shares = self.db.share_get_all(context, filters)
             except Exception:
                 LOG.warning('Failed to get shares for backup %s', backup_id)
@@ -651,21 +670,21 @@ class DataManager(manager.Manager):
                 try:
                     result = self.data_copy_get_progress(context, share_id)
                     progress = result.get('total_progress', '0')
-                    self.db.share_backup_update(context, backup_id,
-                                                {'restore_progress': progress})
+                    backup_values = {'restore_progress': progress}
                     if progress == '100':
                         self.db.share_update(
                             context, share_id,
                             {'status': constants.STATUS_AVAILABLE})
-                        self.db.share_backup_update(
-                            context, backup_id,
+                        backup_values.update(
                             {'status': constants.STATUS_AVAILABLE})
                         LOG.info("Share backup %s restored successfully.",
                                  backup_id)
+                    self.db.share_backup_update(context, backup_id,
+                                                backup_values)
                 except Exception:
-                    LOG.warning("Failed to get progress of share_backup "
-                                "%(backup)s restoring in share %(share).",
-                                {'share': share_id, 'backup': backup_id})
+                    LOG.exception("Failed to get progress of share_backup "
+                                  "%(backup)s restoring in share %(share).",
+                                  {'share': share_id, 'backup': backup_id})
                     self.db.share_update(
                         context, share_id,
                         {'status': constants.STATUS_BACKUP_RESTORING_ERROR})

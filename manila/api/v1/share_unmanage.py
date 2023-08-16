@@ -64,6 +64,13 @@ class ShareUnmanageMixin(object):
                         "'%(amount)s' dependent snapshot(s).") % {
                             's_id': id, 'amount': len(snapshots)}
                 raise exc.HTTPForbidden(explanation=msg)
+            filters = {'share_id': id}
+            backups = self.share_api.db.share_backups_get_all(context, filters)
+            if backups:
+                msg = _("Share '%(s_id)s' can not be unmanaged because it has "
+                        "'%(amount)s' dependent backup(s).") % {
+                            's_id': id, 'amount': len(backups)}
+                raise exc.HTTPForbidden(explanation=msg)
             self.share_api.unmanage(context, share)
         except exception.NotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)

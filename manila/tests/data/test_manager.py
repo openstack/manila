@@ -522,12 +522,19 @@ class DataManagerTestCase(test.TestCase):
 
         # mocks
         self.mock_object(db, 'share_update')
+        self.mock_object(db, 'share_backup_update')
         self.mock_object(db, 'share_get', mock.Mock(return_value=share_info))
         self.mock_object(db, 'share_backup_get',
                          mock.Mock(return_value=backup_info))
         self.mock_object(self.manager, '_run_backup',
                          mock.Mock(side_effect=None))
         self.manager.create_backup(self.context, backup_info)
+        db.share_update.assert_called_with(
+            self.context, share_info['id'],
+            {'status': constants.STATUS_AVAILABLE})
+        db.share_backup_update.assert_called_with(
+            self.context, backup_info['id'],
+            {'status': constants.STATUS_AVAILABLE, 'progress': '100'})
 
     def test_create_share_backup_exception(self):
         share_info = db_utils.create_share(status=constants.STATUS_AVAILABLE)
@@ -550,7 +557,7 @@ class DataManagerTestCase(test.TestCase):
         db.share_update.assert_called_with(
             self.context, share_info['id'],
             {'status': constants.STATUS_AVAILABLE})
-        db.share_backup_update.assert_called_once()
+        db.share_backup_update.assert_called()
 
     @ddt.data('90', '100')
     def test_create_share_backup_continue(self, progress):
@@ -571,7 +578,7 @@ class DataManagerTestCase(test.TestCase):
         if progress == '100':
             db.share_backup_update.assert_called_with(
                 self.context, backup_info['id'],
-                {'status': constants.STATUS_AVAILABLE})
+                {'status': constants.STATUS_AVAILABLE, 'progress': '100'})
             db.share_update.assert_called_with(
                 self.context, share_info['id'],
                 {'status': constants.STATUS_AVAILABLE})
@@ -678,11 +685,18 @@ class DataManagerTestCase(test.TestCase):
 
         # mocks
         self.mock_object(db, 'share_update')
+        self.mock_object(db, 'share_backup_update')
         self.mock_object(db, 'share_get', mock.Mock(return_value=share_info))
         self.mock_object(db, 'share_backup_get',
                          mock.Mock(return_value=backup_info))
         self.mock_object(self.manager, '_run_restore')
         self.manager.restore_backup(self.context, backup_info, share_id)
+        db.share_update.assert_called_with(
+            self.context, share_info['id'],
+            {'status': constants.STATUS_AVAILABLE})
+        db.share_backup_update.assert_called_with(
+            self.context, backup_info['id'],
+            {'status': constants.STATUS_AVAILABLE, 'restore_progress': '100'})
 
     def test_restore_share_backup_exception(self):
         share_info = db_utils.create_share(status=constants.STATUS_AVAILABLE)
@@ -730,7 +744,8 @@ class DataManagerTestCase(test.TestCase):
         if progress == '100':
             db.share_backup_update.assert_called_with(
                 self.context, backup_info['id'],
-                {'status': constants.STATUS_AVAILABLE})
+                {'status': constants.STATUS_AVAILABLE,
+                 'restore_progress': '100'})
             db.share_update.assert_called_with(
                 self.context, share_info['id'],
                 {'status': constants.STATUS_AVAILABLE})

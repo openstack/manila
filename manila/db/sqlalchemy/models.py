@@ -1504,6 +1504,11 @@ class ShareBackup(BASE, ManilaBase):
     def name(self):
         return CONF.share_backup_name_template % self.id
 
+    @property
+    def availability_zone(self):
+        if self._availability_zone:
+            return self._availability_zone['name']
+
     deleted = Column(String(36), default='False')
     user_id = Column(String(255), nullable=False)
     project_id = Column(String(255), nullable=False)
@@ -1512,13 +1517,26 @@ class ShareBackup(BASE, ManilaBase):
     size = Column(Integer)
     host = Column(String(255))
     topic = Column(String(255))
-    availability_zone = Column(String(255))
     display_name = Column(String(255))
     display_description = Column(String(255))
     progress = Column(String(32))
     restore_progress = Column(String(32))
     status = Column(String(255))
     fail_reason = Column(String(1023))
+    availability_zone_id = Column(String(36),
+                                  ForeignKey('availability_zones.id'),
+                                  nullable=True)
+
+    _availability_zone = orm.relationship(
+        "AvailabilityZone",
+        lazy='immediate',
+        primaryjoin=(
+            'and_('
+            'ShareBackup.availability_zone_id == '
+            'AvailabilityZone.id, '
+            'AvailabilityZone.deleted == \'False\')'
+        )
+    )
 
 
 def register_models():

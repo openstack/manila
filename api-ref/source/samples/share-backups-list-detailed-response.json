@@ -1,0 +1,30 @@
+{
+    "share_backups": [
+        {
+            "id": "1125c47a-0216-4ee0-a517-0460d63301a6",
+            "share_id": "112dffd-f033-4248-a315-319ca2bd70c8",
+            "status": "available",
+            "name": "backup3",
+            "description": null,
+            "size": 1,
+            "created_at": "2023-08-16T12:34:57.000000",
+            "updated_at": "2023-08-17T12:14:15.000000",
+            "availability_zone": null,
+            "progress": "100",
+            "restore_progress": "0"
+        },
+        {
+            "id": "c1cdc0ce-4ddc-4018-9796-505d2e26fcc7",
+            "share_id": "7b11dd53-546e-43cd-af0e-875434238c30",
+            "status": "creating",
+            "name": "backup1",
+            "description": null,
+            "size": 1,
+            "created_at": "2023-08-16T13:03:59.020692",
+            "updated_at": "2023-08-16T13:13:15.000002",
+            "availability_zone": null,
+            "progress": "0",
+            "restore_progress": "0"
+        }
+    ]
+}

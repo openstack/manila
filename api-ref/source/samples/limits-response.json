@@ -15,7 +15,11 @@
             "maxTotalShareReplicas": 100,
             "maxTotalReplicaGigabytes": 1000,
             "totalShareReplicasUsed": 0,
-            "totalReplicaGigabytesUsed": 0
+            "totalReplicaGigabytesUsed": 0,
+            "maxTotalShareBackups": 100,
+            "maxTotalBackupGigabytes": 1000,
+            "totalShareBackupsUsed": 0,
+            "totalBackupGigabytesUsed": 0
         }
     }
 }
