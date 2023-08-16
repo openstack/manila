@@ -70,6 +70,8 @@
       rally_task: rally-jobs/rally-manila-no-ss.yaml
       devstack_plugins:
         rally-openstack: https://opendev.org/openstack/rally-openstack
+      devstack_localrc:
+        GLOBAL_VENV: false
     required-projects:
       - openstack/rally-openstack
 
@@ -81,5 +83,7 @@
       rally_task: rally-jobs/rally-manila.yaml
       devstack_plugins:
         rally-openstack: https://opendev.org/openstack/rally-openstack
+      devstack_localrc:
+        GLOBAL_VENV: false
     required-projects:
       - openstack/rally-openstack
