@@ -2353,7 +2353,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'network_allocations':
                 self.fake_src_share_server['network_allocations'],
             'neutron_subnet_id':
-                self.fake_src_share_server['share_network_subnet'].get(
+                self.fake_src_share_server['share_network_subnets'][0].get(
                     'neutron_subnet_id')
         }
         self.mock_object(self.library._client, 'list_cluster_nodes',
@@ -2400,7 +2400,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'network_allocations':
                 self.fake_src_share_server['network_allocations'],
             'neutron_subnet_id':
-                self.fake_src_share_server['share_network_subnet'].get(
+                self.fake_src_share_server['share_network_subnets'][0].get(
                     'neutron_subnet_id')
         }
 
@@ -2689,8 +2689,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'network_allocations':
                 server_to_get_network_info['network_allocations'],
             'neutron_subnet_id':
-                server_to_get_network_info['share_network_subnet'][
-                    'neutron_subnet_id']
+                server_to_get_network_info['share_network_subnets'][0].get(
+                    'neutron_subnet_id')
         }
 
         mock_list_cluster_nodes = self.mock_object(
@@ -2756,8 +2756,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'network_allocations':
                 server_to_get_network_info['network_allocations'],
             'neutron_subnet_id':
-                server_to_get_network_info['share_network_subnet'][
-                    'neutron_subnet_id']
+                server_to_get_network_info['share_network_subnets'][0].get(
+                    'neutron_subnet_id')
         }
 
         mock_list_cluster_nodes = self.mock_object(

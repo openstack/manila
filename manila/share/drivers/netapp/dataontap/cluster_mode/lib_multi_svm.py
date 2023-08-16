@@ -1200,7 +1200,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             'network_allocations':
                 source_share_server['network_allocations'],
             'neutron_subnet_id':
-                source_share_server['share_network_subnet'].get(
+                source_share_server['share_network_subnets'][0].get(
                     'neutron_subnet_id')
         }
 
@@ -1339,6 +1339,15 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             LOG.error(msg)
             return not_compatible
 
+        # Blocking multiple subnets
+        new_subnets = new_share_network.get('share_network_subnets', [])
+        old_subnets = old_share_network.get('share_network_subnets', [])
+        if (len(new_subnets) != 1) or (len(old_subnets) != 1):
+            msg = _("Cannot perform server migration for share network"
+                    "with multiple subnets.")
+            LOG.error(msg)
+            return not_compatible
+
         pools = self._get_pools()
 
         # NOTE(dviroel): These clients can only be used for non-tunneling
@@ -1468,17 +1477,17 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         # Manila haven't made new allocations, we can just get allocation data
         # from the source share server.
         if not dest_share_server['network_allocations']:
-            share_server_to_get_network_info = source_share_server
+            share_server_network_info = source_share_server
         else:
-            share_server_to_get_network_info = dest_share_server
+            share_server_network_info = dest_share_server
 
         # Reuse network information from the source share server in the SVM
         # Migrate if the there was no share network changes.
         network_info = {
             'network_allocations':
-                share_server_to_get_network_info['network_allocations'],
+                share_server_network_info['network_allocations'],
             'neutron_subnet_id':
-                share_server_to_get_network_info['share_network_subnet'].get(
+                share_server_network_info['share_network_subnets'][0].get(
                     'neutron_subnet_id')
         }
 

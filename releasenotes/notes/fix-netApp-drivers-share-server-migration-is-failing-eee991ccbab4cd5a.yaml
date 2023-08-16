@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Netapp driver: Fix Netapp share server migration with multiple subnets.
+    For more details please refer to
+    `launchpad bug #2018300 <https://bugs.launchpad.net/manila/+bug/2018300>`
