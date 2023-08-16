@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Now the ``manila-wsgi`` WSGI application records all options and loaded
+    values to its log file, when debug log is enabled.

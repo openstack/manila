@@ -22,10 +22,10 @@ from manila.wsgi import wsgi
 class WSGITestCase(test.TestCase):
 
     def test_initialize_application(self):
-        self.mock_object(wsgi.log, 'register_options')
+        self.mock_object(wsgi.logging, 'register_options')
         self.mock_object(wsgi.cfg.ConfigOpts, '__call__')
         self.mock_object(wsgi.config, 'verify_share_protocols')
-        self.mock_object(wsgi.log, 'setup')
+        self.mock_object(wsgi.logging, 'setup')
         self.mock_object(wsgi.rpc, 'init')
         self.mock_object(wsgi.wsgi, 'Loader')
         wsgi.sys.argv = ['--verbose', '--debug']
@@ -34,11 +34,11 @@ class WSGITestCase(test.TestCase):
 
         self.assertEqual(
             wsgi.wsgi.Loader.return_value.load_app.return_value, result)
-        wsgi.log.register_options.assert_called_once_with(mock.ANY)
+        wsgi.logging.register_options.assert_called_once_with(mock.ANY)
         wsgi.cfg.ConfigOpts.__call__.assert_called_once_with(
             mock.ANY, project="manila", version=wsgi.version.version_string())
         wsgi.config.verify_share_protocols.assert_called_once_with()
-        wsgi.log.setup.assert_called_once_with(mock.ANY, "manila")
+        wsgi.logging.setup.assert_called_once_with(mock.ANY, "manila")
         wsgi.rpc.init.assert_called_once_with(mock.ANY)
         wsgi.wsgi.Loader.assert_called_once_with(mock.ANY)
         wsgi.wsgi.Loader.return_value.load_app.assert_called_once_with(
