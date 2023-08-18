@@ -133,6 +133,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontap_9_10 = system_version['version-tuple'] >= (9, 10, 0)
         exact_ontap_9_10_1 = system_version['version-tuple'] == (9, 10, 1)
         ontap_9_10_1_p12 = exact_ontap_9_10_1 and ontap_patch_level >= 12
+        ontap_9_12 = system_version['version-tuple'] >= (9, 12, 0)
         exact_ontap_9_12_1 = system_version['version-tuple'] == (9, 12, 1)
         ontap_9_12_1_p2 = exact_ontap_9_12_1 and ontap_patch_level >= 2
         ontap_9_13 = system_version['version-tuple'] >= (9, 13, 0)
@@ -165,6 +166,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                   supported=(ontap_9_10_1_p12 or
                                              ontap_9_12_1_p2 or
                                              ontap_9_13))
+        self.features.add_feature('FORCE_DELETE', supported=ontap_9_12)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -3371,6 +3373,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                         'type': None,
                         'style': None,
                         'style-extended': None,
+                        'instance-uuid': None,
                     },
                     'volume-qos-attributes': {
                         'policy-group-name': None,
@@ -3429,7 +3432,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'qos-policy-group-name': volume_qos_attributes.get_child_content(
                 'policy-group-name'),
             'style-extended': volume_id_attributes.get_child_content(
-                'style-extended')
+                'style-extended'),
+            'instance-uuid': volume_id_attributes.get_child_content(
+                'instance-uuid'),
         }
         volume.update({
             'is-space-reporting-logical':
@@ -3818,21 +3823,38 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def delete_volume(self, volume_name, force_delete):
         """Deletes a volume."""
         if force_delete:
-            res = self.send_request(
-                'system-cli', [{'priv': 'advanced'}, {'args': [
-                    {'arg': 'volume'}, {'arg': 'destroy'},
-                    {'arg': '-vserver'}, {'arg': self.vserver},
-                    {'arg': '-volume'}, {'arg': volume_name},
-                    {'arg': '-force'}, {'arg': 'True'}
-                    ]}], enable_tunneling=False)
-            if res.get_child_content('cli-result-value') == '1':
-                return
-            # result value of 0x0 means failure, log warning
-            err_msg = res.get_child_content('cli-output')
-            msg = _('Failed to force delete volume %(volume)s '
-                    'Cli-output: %(error)s.')
-            msg_args = {'volume': volume_name, 'error': err_msg}
-            LOG.warning(msg, msg_args)
+            if self.features.FORCE_DELETE:
+                # Get volume UUID.
+                volume = self.get_volume(volume_name)
+                volume_uuid = volume['instance-uuid']
+                request = {
+                    "force": "true"
+                }
+                url_params = {
+                    "volume_uuid": volume_uuid
+                }
+                api_args = self._format_request(request, url_params=url_params)
+                try:
+                    return self.send_request(
+                        'volume-destroy', api_args=api_args, use_zapi=False)
+                except netapp_api.NaApiError as e:
+                    LOG.exception(e)
+            else:
+                res = self.send_request(
+                    'system-cli', [{'priv': 'advanced'}, {'args': [
+                        {'arg': 'volume'}, {'arg': 'destroy'},
+                        {'arg': '-vserver'}, {'arg': self.vserver},
+                        {'arg': '-volume'}, {'arg': volume_name},
+                        {'arg': '-force'}, {'arg': 'True'}
+                        ]}], enable_tunneling=False)
+                if res.get_child_content('cli-result-value') == '1':
+                    return
+                # result value of 0x0 means failure, log warning
+                err_msg = res.get_child_content('cli-output')
+                msg = _('Failed to force delete volume %(volume)s '
+                        'Cli-output: %(error)s.')
+                msg_args = {'volume': volume_name, 'error': err_msg}
+                LOG.warning(msg, msg_args)
         # Fallback in-case force-delete fails or delete without force_delete
         self.soft_delete_volume(volume_name)
 
