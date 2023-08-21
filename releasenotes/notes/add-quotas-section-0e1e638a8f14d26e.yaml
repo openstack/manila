@@ -6,9 +6,9 @@ deprecations:
     the ``[DEFAULT]`` section. The existing options in the ``[DEFAULT]``
     section have been deprecated and will be removed in a future release.
     Options that have changed in this releases are:
- 
-    - ``[quota]/shares`` - previously ``[DEFAULT]/shares_quota`` 
-    - ``[quota]/snapshots`` - previously ``[DEFAULT]/snapshots_quota`` 
+
+    - ``[quota]/shares`` - previously ``[DEFAULT]/shares_quota``
+    - ``[quota]/snapshots`` - previously ``[DEFAULT]/snapshots_quota``
     - ``[quota]/gigabytes`` - previously ``[DEFAULT]/quota_gigabytes``
     - ``[quota]/per_share_gigabytes`` - previously ``[DEFAULT]/quota_per_share_gigabytes``
     - ``[quota]/snapshot_gigabytes`` - previously ``[DEFAULT]/quota_snapshot_gigabytes``

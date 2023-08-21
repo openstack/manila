@@ -2390,7 +2390,7 @@ required_extra_specs:
   description: |
     The required extra specifications for the share
     type: ``driver_handles_share_servers``. ``snapshot_support`` was
-    treated as a required extra-specification until 
+    treated as a required extra-specification until
     api version 2.24.
   in: body
   required: true

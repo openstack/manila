@@ -992,6 +992,7 @@ test_create_nfs_share_batch:
   nfs_share: &nfs_share__test_create_nfs_share_batch
     _properties:
       name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      size: 151081080
 
   unity:
     _methods:
@@ -1004,11 +1005,6 @@ test_create_nfs_share_batch:
   nas_server:
     _properties:
       <<: *nas_server_prop
-
-  nfs_share:
-    _properties:
-      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
-      size: 151081080
 
 test_get_share_with_invalid_proto:
   share:
