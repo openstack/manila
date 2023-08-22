@@ -9024,3 +9024,28 @@ class NetAppClientCmodeTestCase(test.TestCase):
             exception.NetAppException,
             self.client.check_snaprestore_license)
         client_cmode.LOG.exception.assert_called_once()
+
+    def test_get_svm_volumes_total_size(self):
+        expected = 1
+
+        request = {}
+
+        api_args = {
+            'svm.name': fake.VSERVER_NAME,
+            'fields': 'size'
+        }
+
+        self.mock_object(self.client, '_format_request',
+                         mock.Mock(return_value=api_args))
+
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=fake.FAKE_GET_VOLUME))
+
+        result = self.client.get_svm_volumes_total_size(fake.VSERVER_NAME)
+
+        self.client._format_request.assert_called_once_with(request,
+                                                            query=api_args)
+        self.client.send_request.assert_called_once_with(
+            'svm-migration-get-progress', api_args=api_args, use_zapi=False)
+
+        self.assertEqual(expected, result)

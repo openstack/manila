@@ -583,6 +583,7 @@ SHARE_SERVER = {
 
 SHARE_SERVER_2 = {
     'id': 'fake_id_2',
+    'source_share_server_id': 'fake_src_share_server_id_2',
     'share_network_id': 'c5b3a865-56d0-4d88-abe5-879965e099c9',
     'backend_details': {
         'vserver_name': VSERVER2

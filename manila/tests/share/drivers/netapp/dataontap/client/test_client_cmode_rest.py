@@ -6747,3 +6747,21 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.assertRaises(netapp_utils.NetAppDriverException,
                           self.client._break_snapmirror)
+
+    def test_get_svm_volumes_total_size(self):
+        expected = 1
+
+        fake_query = {
+            'svm.name': fake.VSERVER_NAME,
+            'fields': 'size'
+        }
+
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=fake.FAKE_GET_VOLUME))
+
+        result = self.client.get_svm_volumes_total_size(fake.VSERVER_NAME)
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/volumes/', 'get', query=fake_query)
+
+        self.assertEqual(expected, result)
