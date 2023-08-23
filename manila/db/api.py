@@ -1822,3 +1822,30 @@ def share_backups_get_all(context, filters=None, limit=None, offset=None,
 def share_backup_delete(context, backup_id):
     """Deletes backup with the specified ID."""
     return IMPL.share_backup_delete(context, backup_id)
+
+#####################
+
+
+def resource_lock_create(context, values):
+    """Create a resource lock."""
+    return IMPL.resource_lock_create(context, values)
+
+
+def resource_lock_update(context, lock_id, values):
+    """Update a resource lock."""
+    return IMPL.resource_lock_update(context, lock_id, values)
+
+
+def resource_lock_delete(context, lock_id):
+    """Delete a resource lock."""
+    return IMPL.resource_lock_delete(context, lock_id)
+
+
+def resource_lock_get(context, lock_id):
+    """Retrieve a resource lock."""
+    return IMPL.resource_lock_get(context, lock_id)
+
+
+def resource_lock_get_all(context, **kwargs):
+    """Retrieve all resource locks."""
+    return IMPL.resource_lock_get_all(context, **kwargs)

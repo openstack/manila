@@ -564,6 +564,13 @@ class ManilaExceptionResponseCode404(test.TestCase):
         self.assertEqual(404, e.code)
         self.assertIn(share_id, e.msg)
 
+    def test_resource_lock_not_found(self):
+        # verify response code for exception.ResourceLockNotFound
+        lock_id = "fake_lock_id"
+        e = exception.ResourceLockNotFound(lock_id=lock_id)
+        self.assertEqual(404, e.code)
+        self.assertIn(lock_id, e.msg)
+
 
 class ManilaExceptionResponseCode413(test.TestCase):
 

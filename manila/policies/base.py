@@ -25,6 +25,12 @@ from oslo_policy import policy
 # snapshots).
 ADMIN = 'rule:context_is_admin'
 
+# This check string is reserved for actions performed by a "service" or the
+# "admin" super user. Service users act on behalf of other users and can
+# perform privileged service-specific actions.
+ADMIN_OR_SERVICE = 'rule:admin_or_service_api'
+
+
 # This check string is the primary use case for typical end-users, who are
 # working with resources that belong within a project (e.g., managing shares or
 # share replicas). These users don't require all the authorization that
@@ -37,13 +43,25 @@ PROJECT_MEMBER = 'rule:project-member'
 # needs access for auditing or even support.
 PROJECT_READER = 'rule:project-reader'
 
+# This check string should used to protect user specific resources such as
+# resource locks, or access rule restrictions. Users are expendable
+# resources, so ensure that other resources can also perform actions to
+# avoid orphan resources when users are decommissioned.
+OWNER_USER = 'rule:owner-user'
+
 ADMIN_OR_PROJECT_MEMBER = f'({ADMIN}) or ({PROJECT_MEMBER})'
 ADMIN_OR_PROJECT_READER = f'({ADMIN}) or ({PROJECT_READER})'
+ADMIN_OR_SERVICE_OR_PROJECT_READER = (f'({ADMIN_OR_SERVICE}) or '
+                                      f'({PROJECT_READER})')
+ADMIN_OR_SERVICE_OR_PROJECT_MEMBER = (f'({ADMIN_OR_SERVICE}) or '
+                                      f'({PROJECT_MEMBER})')
+ADMIN_OR_SERVICE_OR_OWNER_USER = f'({OWNER_USER} or {ADMIN_OR_SERVICE})'
 
 # Old, "unscoped", deprecated check strings to be removed. Do not use these
 # in default RBAC any longer. These can be removed after "enforce_scope"
 # defaults to True in oslo.policy
 RULE_ADMIN_OR_OWNER = 'rule:admin_or_owner'
+RULE_ADMIN_OR_OWNER_USER = 'rule:admin_or_owner_user'
 RULE_ADMIN_API = 'rule:admin_api'
 RULE_DEFAULT = 'rule:default'
 
@@ -77,6 +95,18 @@ rules = [
                   'project_id:%(project_id)s',
         description='Project scoped Reader',
         scope_types=['project']),
+    policy.RuleDefault(
+        name='owner-user',
+        check_str='user_id:%(user_id)s and '
+                  'project_id:%(project_id)s',
+        description='Project scoped user that owns a user specific resource',
+        scope_types=['project']),
+    policy.RuleDefault(
+        "admin_or_service_api",
+        "role:admin or role:service",
+        description="A service user or an administrator user.",
+        scope_types=['project'],
+    ),
 
     # ***Special personas for Manila*** #
     policy.RuleDefault(
@@ -99,6 +129,11 @@ rules = [
         name='admin_or_owner',
         check_str='is_admin:True or project_id:%(project_id)s',
         description='Administrator or Member of the project'),
+    policy.RuleDefault(
+        name='admin_or_owner_user',
+        check_str='is_admin:True or '
+                  'project_id:%(project_id)s and user_id:%(user_id)s',
+        description='Administrator or owner user of a resource'),
     policy.RuleDefault(
         name='default',
         check_str=RULE_ADMIN_OR_OWNER,

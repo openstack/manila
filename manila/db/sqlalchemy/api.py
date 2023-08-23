@@ -7181,3 +7181,108 @@ def share_backup_update(context, backup_id, values):
 def share_backup_delete(context, backup_id):
     backup_ref = share_backup_get(context, backup_id)
     backup_ref.soft_delete(session=context.session, update_status=True)
+
+###############################
+
+
+@require_context
+def _resource_lock_get(context, lock_id):
+    query = model_query(context,
+                        models.ResourceLock,
+                        read_deleted="no",
+                        project_only="yes")
+    result = query.filter_by(id=lock_id).first()
+    if not result:
+        raise exception.ResourceLockNotFound(lock_id=lock_id)
+    return result
+
+
+@require_context
+@context_manager.writer
+def resource_lock_create(context, kwargs):
+    """Create a resource lock."""
+    values = copy.deepcopy(kwargs)
+    lock_ref = models.ResourceLock()
+    if not values.get('id'):
+        values['id'] = uuidutils.generate_uuid()
+    lock_ref.update(values)
+
+    context.session.add(lock_ref)
+
+    return _resource_lock_get(context, lock_ref['id'])
+
+
+@require_context
+@context_manager.writer
+def resource_lock_update(context, lock_id, kwargs):
+    """Update a resource lock."""
+    lock_ref = _resource_lock_get(context, lock_id)
+    lock_ref.update(kwargs)
+    lock_ref.save(session=context.session)
+    return lock_ref
+
+
+@require_context
+@context_manager.writer
+def resource_lock_delete(context, lock_id):
+    """Delete a resource lock."""
+    lock_ref = _resource_lock_get(context, lock_id)
+    lock_ref.soft_delete(session=context.session)
+
+
+@require_context
+@context_manager.reader
+def resource_lock_get(context, lock_id):
+    """Retrieve a resource lock."""
+    return _resource_lock_get(context, lock_id)
+
+
+@require_context
+@context_manager.reader
+def resource_lock_get_all(context, filters=None, limit=None, offset=None,
+                          sort_key='created_at', sort_dir='desc',
+                          show_count=False):
+    """Retrieve all resource locks.
+
+    If no sort parameters are specified then the returned locks are
+    sorted by the 'created_at' key in descending order.
+
+    :param context: context to query under
+    :param limit: maximum number of items to return
+    :param offset: the number of items to skip from the marker or from the
+                    first element.
+    :param sort_key: attributes by which results should be sorted.
+    :param sort_dir: directions in which results should be sorted.
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see exact_filter function for
+                    more information
+    :returns: list of matching resource locks
+    """
+    locks = models.ResourceLock
+
+    # add policy check to allow: all_projects, project_id filters
+    filters = filters or {}
+
+    query = model_query(context, locks, read_deleted="no")
+
+    project_id = filters.get('project_id')
+    all_projects = filters.get('all_projects') or filters.get('all_tenants')
+    if project_id is None and not all_projects:
+        filters['project_id'] = context.project_id
+
+    legal_filter_keys = ('id', 'user_id', 'resource_id', 'resource_type',
+                         'lock_context', 'resource_action', 'created_since',
+                         'created_before', 'lock_reason', 'lock_reason~',
+                         'project_id')
+
+    query = exact_filter(query, locks, filters, legal_filter_keys)
+
+    count = query.count() if show_count else None
+
+    query = utils.paginate_query(query, locks, limit,
+                                 sort_key=sort_key,
+                                 sort_dir=sort_dir,
+                                 offset=offset)
+
+    return query.all(), count

@@ -32,6 +32,7 @@ from manila.api.v2 import availability_zones
 from manila.api.v2 import messages
 from manila.api.v2 import quota_class_sets
 from manila.api.v2 import quota_sets
+from manila.api.v2 import resource_locks
 from manila.api.v2 import services
 from manila.api.v2 import share_access_metadata
 from manila.api.v2 import share_accesses
@@ -651,3 +652,7 @@ class APIRouter(manila.api.openstack.APIRouter):
                         controller=self.resources['share-backups'],
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
+
+        self.resources["resource_locks"] = resource_locks.create_resource()
+        mapper.resource("resource-lock", "resource-locks",
+                        controller=self.resources["resource_locks"])

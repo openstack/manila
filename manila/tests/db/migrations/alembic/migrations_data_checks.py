@@ -3341,3 +3341,34 @@ class AddServiceState(BaseMigrationChecks):
         s_table = utils.load_table('services', engine)
         for s in engine.execute(s_table.select()):
             self.test_case.assertFalse(hasattr(s, 'state'))
+
+
+@map_to_migration('cb20f743ca7b')
+class AddResourceLocks(BaseMigrationChecks):
+
+    def setup_upgrade_data(self, engine):
+        pass
+
+    def check_upgrade(self, engine, data):
+        lock_data = {
+            'id': uuidutils.generate_uuid(),
+            'project_id': uuidutils.generate_uuid(dashed=False),
+            'user_id': uuidutils.generate_uuid(dashed=False),
+            'resource_id': uuidutils.generate_uuid(),
+            'created_at': datetime.datetime(2023, 7, 18, 12, 6, 30),
+            'updated_at': None,
+            'deleted_at': None,
+            'deleted': 'False',
+            'resource_type': 'share',
+            'resource_action': 'delete',
+            'lock_reason': 'xyzzy' * 200,
+            'lock_context': 'user',
+        }
+
+        locks_table = utils.load_table('resource_locks', engine)
+        engine.execute(locks_table.insert(lock_data))
+
+    def check_downgrade(self, engine):
+        self.test_case.assertRaises(sa_exc.NoSuchTableError,
+                                    utils.load_table,
+                                    'resource_locks', engine)

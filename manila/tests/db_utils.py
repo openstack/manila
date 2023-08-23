@@ -15,6 +15,8 @@
 
 import copy
 
+from oslo_utils import uuidutils
+
 from manila.common import constants
 from manila import context
 from manila import db
@@ -326,3 +328,16 @@ def create_backup(share_id, **kwargs):
     backup.update(kwargs)
     return db.share_backup_create(
         context.get_admin_context(), share_id, backup)
+
+
+def create_lock(**kwargs):
+    lock = {
+        'resource_id': uuidutils.generate_uuid(),
+        'user_id': uuidutils.generate_uuid(dashed=False),
+        'project_id': uuidutils.generate_uuid(dashed=False),
+        'lock_context': 'user',
+        'lock_reason': 'for the tests',
+        'resource_type': 'share',
+        'resource_action': 'delete',
+    }
+    return _create_db_row(db.resource_lock_create, lock, kwargs)

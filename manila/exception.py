@@ -209,6 +209,10 @@ class MessageNotFound(NotFound):
     message = _("Message %(message_id)s could not be found.")
 
 
+class ResourceLockNotFound(NotFound):
+    message = _("Resource lock %(lock_id)s could not be found.")
+
+
 class Found(ManilaException):
     message = _("Resource was found.")
     code = 302

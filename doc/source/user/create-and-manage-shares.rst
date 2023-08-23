@@ -1031,4 +1031,76 @@ Share Transfer
      | expires_at             | 2023-05-25T14:42:11.176049           |
      +------------------------+--------------------------------------+
 
+Resource locks
+~~~~~~~~~~~~~~
 
+* Prevent a share from being deleted by creating a ``resource lock``:
+
+  .. code-block:: console
+
+    $ openstack share lock create myshare share
+    +-----------------+--------------------------------------+
+    | Field           | Value                                |
+    +-----------------+--------------------------------------+
+    | created_at      | 2023-07-18T05:11:56.626667           |
+    | id              | dc7ec691-a505-47d0-b2ec-8eb7fb9270e4 |
+    | lock_context    | user                                 |
+    | lock_reason     | None                                 |
+    | project_id      | db2e72fef7864bbbbf210f22da7f1158     |
+    | resource_action | delete                               |
+    | resource_id     | 4c0b4d35-4ea8-4811-a1e2-a065c64225a8 |
+    | resource_type   | share                                |
+    | updated_at      | None                                 |
+    | user_id         | 89de351d3b5744b9853ec4829aa0e714     |
+    +-----------------+--------------------------------------+
+
+  .. note::
+
+    A ``delete`` (deletion) lock on a share would prevent deletion and other
+    actions on a share that are similar to deletion. Similar actions include
+    moving a share to the recycle bin for deferred deletion (``soft
+    deletion``) or removing a share from the Shared File Systems service
+    (``unmanage``).
+
+
+
+* Get details of a resource lock:
+
+  .. code-block:: console
+
+    $ openstack share lock list --resource myshare --resource-type share
+    +--------------------------------------+--------------------------------------+---------------+-----------------+
+    | ID                                   | Resource Id                          | Resource Type | Resource Action |
+    +--------------------------------------+--------------------------------------+---------------+-----------------+
+    | dc7ec691-a505-47d0-b2ec-8eb7fb9270e4 | 4c0b4d35-4ea8-4811-a1e2-a065c64225a8 | share         | delete          |
+    +--------------------------------------+--------------------------------------+---------------+-----------------+
+
+    $ openstack share lock show dc7ec691-a505-47d0-b2ec-8eb7fb9270e4
+    +-----------------+--------------------------------------+
+    | Field           | Value                                |
+    +-----------------+--------------------------------------+
+    | ID              | dc7ec691-a505-47d0-b2ec-8eb7fb9270e4 |
+    | Resource Id     | 4c0b4d35-4ea8-4811-a1e2-a065c64225a8 |
+    | Resource Type   | share                                |
+    | Resource Action | delete                               |
+    | Lock Context    | user                                 |
+    | User Id         | 89de351d3b5744b9853ec4829aa0e714     |
+    | Project Id      | db2e72fef7864bbbbf210f22da7f1158     |
+    | Created At      | 2023-07-18T05:11:56.626667           |
+    | Updated At      | None                                 |
+    | Lock Reason     | None                                 |
+    +-----------------+--------------------------------------+
+
+* Resource lock in action:
+
+  .. code-block:: console
+
+    $ openstack share delete myshare
+    Failed to delete share with name or ID 'myshare': Resource lock/s [dc7ec691-a505-47d0-b2ec-8eb7fb9270e4] prevent delete action. (HTTP 403) (Request-ID: req-331a8e31-e02a-40b2-accf-0f6dae1b6178)
+    1 of 1 shares failed to delete.
+
+* Delete a resource lock:
+
+  .. code-block:: console
+
+    $ openstack share lock delete dc7ec691-a505-47d0-b2ec-8eb7fb9270e4

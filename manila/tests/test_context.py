@@ -35,6 +35,13 @@ class ContextTestCase(test.TestCase):
                                       roles=['admin', 'weasel'])
         self.assertTrue(ctxt.is_admin)
 
+    def test_request_context_sets_is_service(self):
+        ctxt = context.RequestContext('111',
+                                      '222',
+                                      roles=['service', 'admin'],
+                                      service_roles=['service'])
+        self.assertTrue(ctxt.is_service)
+
     def test_request_context_sets_is_admin_upcase(self):
         ctxt = context.RequestContext('111',
                                       '222',

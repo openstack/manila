@@ -1,0 +1,8 @@
+{
+    "resource_lock": {
+        "resource_id": "5a313549-d346-44b6-9650-738ce08a9fee",
+        "resource_type": "share",
+        "resource_action": "delete",
+        "lock_reason": "Locked for deletion until year end audit."
+    }
+}

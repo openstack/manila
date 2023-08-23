@@ -58,6 +58,8 @@ class RequestContext(context.RequestContext):
             self.is_admin = policy.check_is_admin(self)
         elif self.is_admin and 'admin' not in self.roles:
             self.roles.append('admin')
+        # a "service" user's token will contain "service_roles"
+        self.is_service = kwargs.get('service_roles') or False
         self.read_deleted = read_deleted
         self.remote_address = remote_address
         if not timestamp:

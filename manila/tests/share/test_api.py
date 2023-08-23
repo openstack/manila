@@ -113,6 +113,8 @@ class ShareAPITestCase(test.TestCase):
         self.scheduler_rpcapi = mock.Mock()
         self.share_rpcapi = mock.Mock()
         self.api = share.API()
+        self.mock_object(self.api.db, 'resource_lock_get_all',
+                         mock.Mock(return_value=([], None)))
         self.mock_object(self.api, 'scheduler_rpcapi', self.scheduler_rpcapi)
         self.mock_object(self.api, 'share_rpcapi', self.share_rpcapi)
         self.mock_object(quota.QUOTAS, 'reserve',
@@ -1516,6 +1518,31 @@ class ShareAPITestCase(test.TestCase):
         self.assertRaises(exception.ShareBusyException, self.api.unmanage,
                           self.context, share)
 
+    def test_unmanage_locked_share(self):
+        self.mock_object(
+            self.api.db,
+            'resource_lock_get_all',
+            mock.Mock(return_value=([{'id': 'l1'}, {'id': 'l2'}], None))
+        )
+        share = db_utils.create_share(
+            id='fakeid',
+            host='fake',
+            size='1',
+            status=constants.STATUS_AVAILABLE,
+            user_id=self.context.user_id,
+            project_id=self.context.project_id,
+            task_state=None)
+        self.mock_object(db_api, 'share_update', mock.Mock())
+
+        self.assertRaises(exception.InvalidShare,
+                          self.api.unmanage,
+                          self.context,
+                          share)
+
+        # lock check decorator executed first, nothing else is invoked
+        self.share_rpcapi.unmanage_share.assert_not_called()
+        db_api.share_update.assert_not_called()
+
     @mock.patch.object(quota.QUOTAS, 'reserve',
                        mock.Mock(return_value='reservation'))
     @mock.patch.object(quota.QUOTAS, 'commit', mock.Mock())
@@ -2600,6 +2627,23 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(side_effect=exception.QuotaError('fake')))
 
         self.api.delete(self.context, share)
+
+    def test_delete_locked_share(self):
+        self.mock_object(
+            self.api.db,
+            'resource_lock_get_all',
+            mock.Mock(return_value=([{'id': 'l1'}, {'id': 'l2'}], None))
+        )
+        share = self._setup_delete_mocks('available')
+
+        self.assertRaises(exception.InvalidShare,
+                          self.api.delete,
+                          self.context,
+                          share)
+
+        # lock check decorator executed first, nothing else is invoked
+        self.api.delete_instance.assert_not_called()
+        db_api.share_snapshot_get_all_for_share.assert_not_called()
 
     @ddt.data({'status': constants.STATUS_AVAILABLE, 'force': False},
               {'status': constants.STATUS_ERROR, 'force': True})
@@ -6629,6 +6673,24 @@ class ShareAPITestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidShare,
                           self.api.soft_delete, self.context, share)
+
+    def test_soft_delete_locked_share(self):
+        self.mock_object(
+            self.api.db,
+            'resource_lock_get_all',
+            mock.Mock(return_value=([{'id': 'l1'}, {'id': 'l2'}], None))
+        )
+        share = self._setup_delete_mocks('available')
+        self.mock_object(db_api, 'share_soft_delete')
+
+        self.assertRaises(exception.InvalidShare,
+                          self.api.soft_delete,
+                          self.context,
+                          share)
+
+        # lock check decorator executed first, nothing else is invoked
+        db_api.share_soft_delete.assert_not_called()
+        db_api.share_snapshot_get_all_for_share.assert_not_called()
 
     def test_soft_delete_share(self):
         share = fakes.fake_share(id='fake_id',

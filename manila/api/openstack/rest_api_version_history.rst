@@ -434,3 +434,8 @@ ____
 2.80
 ----
   Added share backup APIs.
+
+2.81
+----
+  Introduce resource locks as a way users can restrict certain actions on
+  resources. Only share deletion can be prevented at this version.
