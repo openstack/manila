@@ -1,0 +1,10 @@
+{
+    "current_preferred_IPv4_interface_id": "6423d586-4070-f752-c4da-1a9efb93188b",
+    "current_preferred_IPv6_interface_id": null,
+    "file_interfaces": [
+        {
+            "id": "6423d586-4070-f752-c4da-1a9efb93188b",
+            "ip_address": "192.168.11.23"
+        }
+    ]
+}

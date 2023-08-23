@@ -41,7 +41,8 @@ EMC_NAS_OPTS = [
                 help='Use secure connection to server.'),
     cfg.StrOpt('emc_share_backend',
                ignore_case=True,
-               choices=['isilon', 'vnx', 'unity', 'vmax', 'powermax'],
+               choices=['isilon', 'vnx', 'unity', 'vmax', 'powermax',
+                        'powerstore'],
                help='Share backend.'),
     cfg.StrOpt('emc_nas_root_dir',
                help='The root directory where shares will be located.'),
@@ -258,8 +259,8 @@ class EMCShareDriver(driver.ShareDriver):
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
         """Update access to the share."""
-        self.plugin.update_access(context, share, access_rules, add_rules,
-                                  delete_rules, share_server)
+        return self.plugin.update_access(context, share, access_rules,
+                                         add_rules, delete_rules, share_server)
 
     def check_for_setup_error(self):
         """Check for setup error."""

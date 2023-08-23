@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added a new Manila driver to support Dell PowerStore storage backend.
+    It supports NFS and CIFS shares operations, and snapshot operations.
