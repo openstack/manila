@@ -133,6 +133,7 @@ Response parameters
    - size: snapshot_size
    - project_id: snapshot_project_id
    - user_id: snapshot_user_id
+   - provider_location: snapshot_provider_location_optional
 
 Response example
 ----------------
@@ -185,6 +186,7 @@ Response parameters
    - size: snapshot_size
    - project_id: snapshot_project_id
    - user_id: snapshot_user_id
+   - provider_location: snapshot_provider_location_optional
 
 Response example
 ----------------
@@ -248,7 +250,7 @@ Response parameters
    - created_at: created_at
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
-   - provider_location: snapshot_provider_location
+   - provider_location: snapshot_provider_location_optional
    - size: snapshot_size
    - project_id: snapshot_project_id
    - user_id: snapshot_user_id
