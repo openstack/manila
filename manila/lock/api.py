@@ -91,9 +91,9 @@ class API(base.Base):
                 'get_all_projects',
                 do_raise=False
             )
-            LOG.warning("User %s not allowed to query locks across "
-                        "all projects.", context.user_id)
             if not allow_all_projects:
+                LOG.warning("User %s not allowed to query locks "
+                            "across all projects.", context.user_id)
                 search_opts.pop('all_projects')
                 search_opts.pop('project_id', None)
 
