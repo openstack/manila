@@ -30,6 +30,7 @@ from oslo_utils import netutils
 from manila.common import constants as const
 from manila import compute
 from manila import context
+from manila import coordination
 from manila import exception
 from manila.i18n import _
 from manila import image
@@ -813,7 +814,7 @@ class NeutronNetworkHelper(BaseNetworkhelper):
         net = self.neutron_api.get_network(network_info['neutron_net_id'])
         return net['name']
 
-    @utils.synchronized("service_instance_get_service_network", external=True)
+    @coordination.synchronized("service_instance_get_service_network")
     def _get_service_network_id(self):
         """Finds existing or creates new service network."""
         service_network_name = self.get_config_option("service_network_name")
