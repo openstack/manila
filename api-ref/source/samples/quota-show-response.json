@@ -10,6 +10,8 @@
         "share_group_snapshots": 10,
         "share_replicas": 100,
         "replica_gigabytes": 1000,
-        "per_share_gigabytes": -1
+        "per_share_gigabytes": -1,
+        "backups": 50,
+        "backup_gigabytes": 1000
     }
 }

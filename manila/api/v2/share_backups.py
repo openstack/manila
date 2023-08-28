@@ -21,6 +21,7 @@ from manila.api.views import share_backups as backup_view
 from manila import db
 from manila import exception
 from manila.i18n import _
+from manila import policy
 from manila import share
 
 
@@ -72,6 +73,31 @@ class ShareBackupController(wsgi.Controller, wsgi.AdminActionsMixin):
             if sort_key == key:
                 sort_key = key_dict[key]
 
+        if 'name' in search_opts:
+            search_opts['display_name'] = search_opts.pop('name')
+        if 'description' in search_opts:
+            search_opts['display_description'] = search_opts.pop(
+                'description')
+
+        # like filter
+        for key, db_key in (('name~', 'display_name~'),
+                            ('description~', 'display_description~')):
+            if key in search_opts:
+                search_opts[db_key] = search_opts.pop(key)
+
+        common.remove_invalid_options(context, search_opts,
+                                      self._get_backups_search_options())
+
+        # Read and remove key 'all_tenants' if was provided
+        search_opts['project_id'] = context.project_id
+        all_tenants = search_opts.pop('all_tenants',
+                                      search_opts.pop('all_projects', None))
+        if all_tenants:
+            allowed_to_list_all_tenants = policy.check_policy(
+                context, 'share_backup', 'get_all_project', do_raise=False)
+            if allowed_to_list_all_tenants:
+                search_opts.pop('project_id')
+
         share_id = req.params.get('share_id')
         if share_id:
             try:
@@ -93,6 +119,11 @@ class ShareBackupController(wsgi.Controller, wsgi.AdminActionsMixin):
             backups = self._view_builder.summary_list(req, backups)
 
         return backups
+
+    def _get_backups_search_options(self):
+        """Return share backup search options allowed by non-admin."""
+        return ('display_name', 'status', 'share_id', 'topic', 'display_name~',
+                'display_description~', 'display_description')
 
     @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
     @wsgi.Controller.authorize('get')
@@ -190,7 +221,7 @@ class ShareBackupController(wsgi.Controller, wsgi.AdminActionsMixin):
 
     @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
     @wsgi.Controller.authorize
-    @wsgi.response(202)
+    @wsgi.response(200)
     def update(self, req, id, body):
         """Update a backup."""
         context = req.environ['manila.context']
@@ -216,6 +247,11 @@ class ShareBackupController(wsgi.Controller, wsgi.AdminActionsMixin):
         backup = self.share_api.update_share_backup(context, backup,
                                                     update_dict)
         return self._view_builder.detail(req, backup)
+
+    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
+    @wsgi.action('reset_status')
+    def backup_reset_status(self, req, id, body):
+        return self._reset_status(req, id, body)
 
 
 def create_resource():

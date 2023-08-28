@@ -234,6 +234,14 @@ function configure_manila {
         iniset $MANILA_CONF DEFAULT server_migration_driver_continue_update_interval $MANILA_SERVER_MIGRATION_PERIOD_TASK_INTERVAL
     fi
 
+    if ! [[ -z $MANILA_CREATE_BACKUP_CONTINUE_TASK_INTERVAL ]]; then
+        iniset $MANILA_CONF DEFAULT driver_backup_continue_update_interval $MANILA_CREATE_BACKUP_CONTINUE_TASK_INTERVAL
+    fi
+
+    if ! [[ -z $MANILA_RESTORE_BACKUP_CONTINUE_TASK_INTERVAL ]]; then
+        iniset $MANILA_CONF DEFAULT driver_restore_continue_update_interval $MANILA_RESTORE_BACKUP_CONTINUE_TASK_INTERVAL
+    fi
+
     if ! [[ -z $MANILA_DATA_COPY_CHECK_HASH ]]; then
         iniset $MANILA_CONF DEFAULT check_hash $MANILA_DATA_COPY_CHECK_HASH
     fi

@@ -72,6 +72,8 @@ Response parameters
    - maxTotalShareNetworks: maxTotalShareNetworks
    - maxTotalShareReplicas: maxTotalShareReplicas
    - maxTotalReplicaGigabytes: maxTotalReplicaGigabytes
+   - maxTotalShareBackups: maxTotalShareBackups
+   - maxTotalBackupGigabytes: maxTotalBackupGigabytes
    - totalSharesUsed: totalSharesUsed
    - totalShareSnapshotsUsed: totalShareSnapshotsUsed
    - totalShareNetworksUsed: totalShareNetworksUsed
@@ -79,6 +81,8 @@ Response parameters
    - totalSnapshotGigabytesUsed: totalSnapshotGigabytesUsed
    - totalShareReplicasUsed: totalShareReplicasUsed
    - totalReplicaGigabytesUsed: totalReplicaGigabytesUsed
+   - totalShareBackupsUsed: totalShareBackupsUsed
+   - totalBackupGigabytesUsed: totalBackupGigabytesUsed
    - uri: uri
    - regex: regex
    - value: value

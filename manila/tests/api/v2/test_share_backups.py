@@ -68,21 +68,23 @@ class ShareBackupsApiTest(test.TestCase):
     def _get_fake_backup(self, admin=False, summary=False, **values):
         backup = fake_share.fake_backup(**values)
         backup['updated_at'] = '2016-06-12T19:57:56.506805'
-        expected_keys = {'id', 'share_id', 'backup_state'}
+        expected_keys = {'id', 'share_id', 'status'}
         expected_backup = {key: backup[key] for key in backup if key
                            in expected_keys}
+        expected_backup.update({'name': backup.get('display_name')})
 
         if not summary:
             expected_backup.update({
                 'id': backup.get('id'),
-                'size': backup.get('size'),
                 'share_id': backup.get('share_id'),
-                'availability_zone': backup.get('availability_zone'),
-                'created_at': backup.get('created_at'),
-                'backup_state': backup.get('status'),
-                'updated_at': backup.get('updated_at'),
-                'name': backup.get('display_name'),
+                'status': backup.get('status'),
                 'description': backup.get('display_description'),
+                'size': backup.get('size'),
+                'created_at': backup.get('created_at'),
+                'updated_at': backup.get('updated_at'),
+                'availability_zone': backup.get('availability_zone'),
+                'progress': backup.get('progress'),
+                'restore_progress': backup.get('restore_progress'),
             })
             if admin:
                 expected_backup.update({
@@ -102,7 +104,7 @@ class ShareBackupsApiTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.member_context, self.resource_name, 'get_all')
 
-    def test_list_share_backups_summary(self):
+    def test_list_backups_summary_with_share_id(self):
         fake_backup, expected_backup = self._get_fake_backup(summary=True)
         self.mock_object(share.API, 'get',
                          mock.Mock(return_value={'id': 'FAKE_SHAREID'}))
@@ -379,10 +381,10 @@ class ShareBackupsApiTest(test.TestCase):
     def test_delete_exception(self):
         fake_backup_1 = self._get_fake_backup(
             share_id='FAKE_SHARE_ID',
-            backup_state=constants.STATUS_BACKUP_CREATING)[0]
+            status=constants.STATUS_BACKUP_CREATING)[0]
         fake_backup_2 = self._get_fake_backup(
             share_id='FAKE_SHARE_ID',
-            backup_state=constants.STATUS_BACKUP_CREATING)[0]
+            status=constants.STATUS_BACKUP_CREATING)[0]
         exception_type = exception.InvalidBackup(reason='xyz')
         self.mock_object(share_backups.db, 'share_backup_get',
                          mock.Mock(return_value=fake_backup_1))
@@ -398,7 +400,7 @@ class ShareBackupsApiTest(test.TestCase):
     def test_delete(self):
         fake_backup = self._get_fake_backup(
             share_id='FAKE_SHARE_ID',
-            backup_state=constants.STATUS_AVAILABLE)[0]
+            status=constants.STATUS_AVAILABLE)[0]
         self.mock_object(share_backups.db, 'share_backup_get',
                          mock.Mock(return_value=fake_backup))
         self.mock_object(share.API, 'delete_share_backup')
@@ -424,7 +426,7 @@ class ShareBackupsApiTest(test.TestCase):
         body = {'restore': {'share_id': 'fake_id'}}
         fake_backup = self._get_fake_backup(
             share_id='FAKE_SHARE_ID',
-            backup_state=constants.STATUS_AVAILABLE)[0]
+            status=constants.STATUS_AVAILABLE)[0]
         self.mock_object(share_backups.db, 'share_backup_get',
                          mock.Mock(return_value=fake_backup))
 
@@ -447,7 +449,7 @@ class ShareBackupsApiTest(test.TestCase):
     def test_update(self):
         fake_backup = self._get_fake_backup(
             share_id='FAKE_SHARE_ID',
-            backup_state=constants.STATUS_AVAILABLE)[0]
+            status=constants.STATUS_AVAILABLE)[0]
         self.mock_object(share_backups.db, 'share_backup_get',
                          mock.Mock(return_value=fake_backup))
 

@@ -60,6 +60,9 @@ class ShareUnmanageTest(test.TestCase):
         self.mock_object(
             self.controller.share_api.db, 'share_snapshot_get_all_for_share',
             mock.Mock(return_value=[]))
+        self.mock_object(
+            self.controller.share_api.db, 'share_backups_get_all',
+            mock.Mock(return_value=[]))
 
         actual_result = self.controller.unmanage(self.request, share['id'])
 
@@ -67,6 +70,10 @@ class ShareUnmanageTest(test.TestCase):
         (self.controller.share_api.db.share_snapshot_get_all_for_share.
             assert_called_once_with(
                 self.request.environ['manila.context'], share['id']))
+        filters = {'share_id': 'foo_id'}
+        (self.controller.share_api.db.share_backups_get_all.
+            assert_called_once_with(
+                self.request.environ['manila.context'], filters))
         self.controller.share_api.get.assert_called_once_with(
             self.request.environ['manila.context'], share['id'])
         share_api.API.unmanage.assert_called_once_with(
@@ -99,6 +106,32 @@ class ShareUnmanageTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'unmanage')
 
+    def test_unmanage_share_that_has_backups(self):
+        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
+                     instance={})
+        backups = ['foo', 'bar']
+        self.mock_object(self.controller.share_api, 'unmanage')
+        self.mock_object(
+            self.controller.share_api.db, 'share_backups_get_all',
+            mock.Mock(return_value=backups))
+        self.mock_object(
+            self.controller.share_api, 'get',
+            mock.Mock(return_value=share))
+
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller.unmanage, self.request, share['id'])
+
+        self.assertFalse(self.controller.share_api.unmanage.called)
+        filters = {'share_id': 'foo_id'}
+        (self.controller.share_api.db.share_backups_get_all.
+            assert_called_once_with(
+                self.request.environ['manila.context'], filters))
+        self.controller.share_api.get.assert_called_once_with(
+            self.request.environ['manila.context'], share['id'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'unmanage')
+
     def test_unmanage_share_that_has_replicas(self):
         share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
                      instance={}, has_replicas=True)
@@ -106,6 +139,8 @@ class ShareUnmanageTest(test.TestCase):
                                              'unmanage')
         mock_db_snapshots_get = self.mock_object(
             self.controller.share_api.db, 'share_snapshot_get_all_for_share')
+        mock_db_backups_get = self.mock_object(
+            self.controller.share_api.db, 'share_backups_get_all')
         self.mock_object(
             self.controller.share_api, 'get',
             mock.Mock(return_value=share))
@@ -116,6 +151,7 @@ class ShareUnmanageTest(test.TestCase):
 
         self.assertFalse(mock_api_unmanage.called)
         self.assertFalse(mock_db_snapshots_get.called)
+        self.assertFalse(mock_db_backups_get.called)
         self.controller.share_api.get.assert_called_once_with(
             self.request.environ['manila.context'], share['id'])
         self.mock_policy_check.assert_called_once_with(

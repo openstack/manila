@@ -1,0 +1,15 @@
+{
+    "share_backup": {
+        "id": "c1cdc0ce-4ddc-4018-9796-505d2e26fcc7",
+        "share_id": "7b11dd53-546e-43cd-af0e-875434238c30",
+        "status": "creating",
+        "name": "backup1",
+        "description": null,
+        "size": 1,
+        "created_at": "2023-08-16T13:03:59.020692",
+        "updated_at": "2023-08-16T13:03:59.020692",
+        "availability_zone": null,
+        "progress": "0",
+        "restore_progress": "0"
+    }
+}

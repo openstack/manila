@@ -25,6 +25,12 @@ api_version:
   type: string
   description: >
     The API version as returned in the links from the ``GET /`` call.
+backup_id_request_path:
+  description: |
+    The UUID of the share backup.
+  in: path
+  required: true
+  type: string
 export_location_id_path:
   description: |
     The UUID of the export location.
@@ -224,6 +230,34 @@ backend_query:
   in: query
   required: false
   type: string
+backup_host_query:
+  description: |
+    The host name of the backup to query with. Querying by hostname is a
+    privileged operation. If restricted by API policy, this query parameter
+    may be silently ignored by the server.
+  in: query
+  required: false
+  type: string
+backup_share_id_query:
+  description: |
+    The UUID of the share that the backup pertains to.
+  in: query
+  required: false
+  type: string
+backup_status_query:
+  description: |
+    Filters by a backup status. A valid filter value can be one of 'creating',
+    'error', 'available', 'restoring'.
+  in: query
+  required: false
+  type: string
+backup_topic_query:
+  description: |
+    Filters by a backup topic. A valid filter value can be one of
+    'manila-data', 'manila-share'.
+  in: query
+  required: false
+  type: string
 cidr_query:
   description: |
     The CIDR to filter share networks.
@@ -292,6 +326,12 @@ description_inexact_query:
   required: false
   type: string
   min_version: 2.36
+description_inexact_query_versionless:
+  description: |
+    The description pattern that can be used to filter share backups.
+  in: query
+  required: false
+  type: string
 description_query:
   description: |
     The user defined description text that can be used to filter resources.
@@ -386,7 +426,7 @@ is_soft_deleted_query:
   min_version: 2.69
 limit:
   description: |
-    The maximum number of shares to return.
+    The maximum number of resource records to return.
   in: query
   required: false
   type: integer
@@ -417,6 +457,12 @@ name_inexact_query:
   required: false
   type: string
   min_version: 2.36
+name_inexact_query_versionless:
+  description: |
+    The name pattern that can be used to filter share backups.
+  in: query
+  required: false
+  type: string
 name_query:
   description: |
     The user defined name of the resource to filter resources by.
@@ -688,6 +734,15 @@ sort_key:
   in: query
   required: false
   type: string
+sort_key_backup:
+  description: |
+    The key to sort a list of share backups. A valid value
+    is ``id``, ``status``, ``size``, ``host``, ``share_id``
+    ``availability_zone``, ``created_at``, ``updated_at``, ``display_name``,
+    ``topic``, ``progress`` and ``restore_progress``
+  in: query
+  required: false
+  type: string
 sort_key_messages:
   description: |
     The key to sort a list of messages. A valid value
@@ -712,6 +767,12 @@ sort_key_transfer:
     is ``id``, ``name``, ``resource_type``, ``resource_id``,
     ``source_project_id``, ``destination_project_id``, ``created_at``,
     ``expires_at``.
+  in: query
+  required: false
+  type: string
+source_backup_id_query:
+  description: |
+    The UUID of the share's backup  to filter the request based on.
   in: query
   required: false
   type: string
@@ -986,6 +1047,63 @@ backend_name:
     - ``POOL``. The pool name for the back end.
   in: body
   required: true
+  type: string
+backup_az:
+  description: |
+    The availability zone.
+  in: body
+  required: true
+  type: string
+backup_id_response:
+  description: |
+    The UUID of the share backup.
+  in: body
+  required: true
+  type: string
+backup_options_request:
+  description: |
+    One or more backup options key and value pairs as a
+    url encoded dictionary of strings.
+  in: body
+  required: false
+  type: object
+backup_progress:
+  description: |
+    The progress of the backup creation in percentange.
+  in: body
+  required: true
+  type: string
+backup_restore_progress:
+  description: |
+    The progress of the backup restoration in percentage.
+  in: body
+  required: true
+  type: string
+backup_share_id:
+  description: |
+    The UUID of the share that the backup pertains to.
+  in: body
+  required: true
+  type: string
+backup_size:
+  description: |
+    The share backup size, in GiBs.
+  in: body
+  required: true
+  type: integer
+backup_status:
+  description: |
+    The status of backup which can be one of ``creating``, ``error``,
+    ``available``, ``restoring``.
+  in: body
+  required: true
+  type: string
+backup_status_request:
+  description: |
+    The backup status, which can be ``available``,
+    ``error``, ``creating``, ``deleting``, ``restoring``.
+  in: body
+  required: false
   type: string
 capabilities:
   description: |
@@ -1671,6 +1789,22 @@ managed_share_user_id:
   required: true
   type: string
   min_version: 2.16
+maxTotalBackupGigabytes:
+  description: |
+    The total maximum number of backup gigabytes
+    that are allowed in a project.
+  in: body
+  required: true
+  type: integer
+  min_version: 2.80
+maxTotalBackupGigabytesOptional:
+  description: |
+    The total maximum number of backup gigabytes
+    that are allowed in a project.
+  in: body
+  required: false
+  type: integer
+  min_version: 2.80
 maxTotalReplicaGigabytes:
     description: |
       The maximum number of replica gigabytes that are allowed in a project.
@@ -1689,6 +1823,22 @@ maxTotalReplicaGigabytesOptional:
     required: false
     type: integer
     min_version: 2.53
+maxTotalShareBackups:
+  description: |
+    The total maximum number of share backups that
+    are allowed in a project.
+  in: body
+  required: true
+  type: integer
+  min_version: 2.80
+maxTotalShareBackupsOptional:
+  description: |
+    The total maximum number of share backups that
+    are allowed in a project.
+  in: body
+  required: false
+  type: integer
+  min_version: 2.80
 maxTotalShareGigabytes:
   description: |
     The total maximum number of share gigabytes that
@@ -2177,6 +2327,51 @@ protocol:
   in: body
   required: true
   type: string
+quota_backup_gigabytes:
+  description: |
+    The number of gigabytes for the backups allowed for each project.
+  in: body
+  min_version: 2.80
+  required: true
+  type: integer
+quota_backup_gigabytes_detail:
+  description: |
+    The limit, in_use, reserved number of gigabytes for the
+    backups allowed for each project.
+  in: body
+  min_version: 2.80
+  required: true
+  type: object
+quota_backup_gigabytes_request:
+  description: |
+    The number of gigabytes for the backups for the
+    project.
+  in: body
+  min_version: 2.80
+  required: false
+  type: integer
+quota_backups:
+  description: |
+    The number of backups allowed for each project.
+  in: body
+  min_version: 2.80
+  required: true
+  type: integer
+quota_backups_detail:
+  description: |
+    The limit, in_use, reserved number of backups allowed
+    for each project.
+  in: body
+  min_version: 2.80
+  required: true
+  type: object
+quota_backups_request:
+  description: |
+    The number of backups for the project.
+  in: body
+  min_version: 2.80
+  required: false
+  type: integer
 quota_class_id:
   description: |
     A ``quota_class_set`` id.
@@ -3729,6 +3924,13 @@ snapshot_user_id:
   required: true
   type: string
   min_version: 2.17
+source_backup_id_shares_response:
+  description: |
+    The UUID of the backup that was restored in the share.
+  in: body
+  required: true
+  type: string
+  min_version: 2.80
 source_share_group_snapshot_id:
   description: |
     The source share group snapshot ID to create the
@@ -3831,10 +4033,24 @@ total_progress_server_migration:
   in: body
   required: true
   type: integer
+totalBackupGigabytesUsed:
+  description: |
+    The total number of gigabytes used in a project
+    by backups.
+  in: body
+  required: true
+  type: integer
 totalReplicaGigabytesUsed:
   description: |
     The total number of replica gigabytes used in a
     project by share replicas.
+  in: body
+  required: true
+  type: integer
+totalShareBackupsUsed:
+  description: |
+    The total number of created share backups in a
+    project.
   in: body
   required: true
   type: integer

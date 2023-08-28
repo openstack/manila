@@ -36,8 +36,9 @@ class BackupViewBuilder(common.ViewBuilder):
 
         backup_dict = {
             'id': backup.get('id'),
+            'name': backup.get('display_name'),
             'share_id': backup.get('share_id'),
-            'backup_state': backup.get('status'),
+            'status': backup.get('status'),
         }
         return {'share_backup': backup_dict}
 
@@ -55,14 +56,16 @@ class BackupViewBuilder(common.ViewBuilder):
         context = request.environ['manila.context']
         backup_dict = {
             'id': backup.get('id'),
-            'size': backup.get('size'),
+            'name': backup.get('display_name'),
             'share_id': backup.get('share_id'),
-            'availability_zone': backup.get('availability_zone'),
+            'status': backup.get('status'),
+            'description': backup.get('display_description'),
+            'size': backup.get('size'),
             'created_at': backup.get('created_at'),
             'updated_at': backup.get('updated_at'),
-            'backup_state': backup.get('status'),
-            'name': backup.get('display_name'),
-            'description': backup.get('display_description'),
+            'availability_zone': backup.get('availability_zone'),
+            'progress': backup.get('progress'),
+            'restore_progress': backup.get('restore_progress'),
         }
 
         if policy.check_is_host_admin(context):

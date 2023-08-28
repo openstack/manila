@@ -39,6 +39,12 @@ deprecated_backup_get_all = policy.DeprecatedRule(
     deprecated_reason=DEPRECATED_REASON,
     deprecated_since='2023.2/Bobcat',
 )
+deprecated_get_all_project = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_all_project',
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2023.2/Bobcat',
+)
 deprecated_backup_restore = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'restore',
     check_str=base.RULE_ADMIN_OR_OWNER,
@@ -54,6 +60,12 @@ deprecated_backup_update = policy.DeprecatedRule(
 deprecated_backup_delete = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'delete',
     check_str=base.RULE_ADMIN_OR_OWNER,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2023.2/Bobcat',
+)
+deprecated_backup_reset_status = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'reset_status',
+    check_str=base.RULE_ADMIN_API,
     deprecated_reason=DEPRECATED_REASON,
     deprecated_since='2023.2/Bobcat',
 )
@@ -108,6 +120,24 @@ share_backup_policies = [
         deprecated_rule=deprecated_backup_get_all,
     ),
     policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'get_all_project',
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description="Get share backups of all projects.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/share-backups?all_tenants=1'
+            },
+            {
+                'method': 'GET',
+                'path': '/share-backups/detail?all_tenants=1'
+            }
+        ],
+        deprecated_rule=deprecated_get_all_project
+    ),
+
+    policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'restore',
         check_str=base.ADMIN_OR_PROJECT_MEMBER,
         scope_types=['project'],
@@ -119,6 +149,19 @@ share_backup_policies = [
             }
         ],
         deprecated_rule=deprecated_backup_restore,
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'reset_status',
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description="Reset status.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-backups/{backup_id}/action',
+            }
+        ],
+        deprecated_rule=deprecated_backup_reset_status
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'update',

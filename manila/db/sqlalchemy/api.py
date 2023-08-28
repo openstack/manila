@@ -7119,6 +7119,7 @@ def _share_backup_create(context, share_id, values):
     if not values.get('id'):
         values['id'] = uuidutils.generate_uuid()
     values.update({'share_id': share_id})
+    _ensure_availability_zone_exists(context, values)
 
     share_backup_ref = models.ShareBackup()
     share_backup_ref.update(values)
@@ -7218,6 +7219,7 @@ def _backup_data_get_for_project(context, project_id, user_id):
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_backup_update(context, backup_id, values):
+    _ensure_availability_zone_exists(context, values, strict=False)
     backup_ref = share_backup_get(context, backup_id)
     backup_ref.update(values)
     backup_ref.save(session=context.session)

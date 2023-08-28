@@ -36,6 +36,12 @@ A share has one of these status values:
 +----------------------------------------+--------------------------------------------------------+
 | Status                                 | Description                                            |
 +----------------------------------------+--------------------------------------------------------+
+| ``backup_creating``                    | The share is being backed up.                          |
++----------------------------------------+--------------------------------------------------------+
+| ``backup_restoring``                   | The share is being restored from backup.               |
++----------------------------------------+--------------------------------------------------------+
+| ``backup_restoring_error``             | An error occurred during share backup restore.         |
++----------------------------------------+--------------------------------------------------------+
 | ``creating``                           | The share is being created.                            |
 +----------------------------------------+--------------------------------------------------------+
 | ``creating_from_snapshot``             | The share is being created from a parent snapshot.     |
@@ -122,6 +128,7 @@ Request
    - extra_specs: extra_specs_query
    - share_type_id: share_type_id_query
    - snapshot_id: snapshot_id_query
+   - source_backup_id: source_backup_id_query
    - host: host_query
    - share_network_id: share_network_id_query
    - project_id: project_id_query
@@ -191,6 +198,7 @@ Request
    - share_type_id: share_type_id_query
    - name: name_query
    - snapshot_id: snapshot_id_query
+   - source_backup_id: source_backup_id_query
    - host: host_query
    - share_network_id: share_network_id_query
    - project_id: project_id_query
@@ -221,6 +229,7 @@ Response parameters
    - description: description
    - project_id: project_id
    - snapshot_id: snapshot_id_shares_response
+   - source_backup_id: source_backup_id_shares_response
    - share_network_id: share_network_id
    - share_proto: share_proto
    - metadata: metadata

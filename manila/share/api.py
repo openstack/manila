@@ -3867,6 +3867,7 @@ class API(base.Base):
                     raise exception.BackupLimitExceeded(
                         allowed=quotas[over])
 
+        backup_ref = {}
         try:
             backup_ref = self.db.share_backup_create(
                 context, share['id'],
@@ -3879,6 +3880,7 @@ class API(base.Base):
                     'display_description': backup.get('description'),
                     'display_name': backup.get('name'),
                     'size': share['size'],
+                    'availability_zone': share['instance']['availability_zone']
                 }
             )
             QUOTAS.commit(context, reservations)
@@ -3891,15 +3893,16 @@ class API(base.Base):
             {'status': constants.STATUS_BACKUP_CREATING})
 
         backup_ref['backup_options'] = backup.get('backup_options', {})
+        backup_values = {}
         if backup_ref['backup_options']:
             topic = CONF.share_topic
+            backup_ref['host'] = share_utils.extract_host(share['host'])
+            backup_values.update({'host': backup_ref['host']})
         else:
             topic = CONF.data_topic
 
-        backup_ref['host'] = share['host']
-        self.db.share_backup_update(
-            context, backup_ref['id'],
-            {'host': backup_ref['host'], 'topic': topic})
+        backup_values.update({'topic': topic})
+        self.db.share_backup_update(context, backup_ref['id'], backup_values)
 
         if topic == CONF.share_topic:
             self.share_rpcapi.create_backup(context, backup_ref)
