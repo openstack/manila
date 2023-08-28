@@ -7,7 +7,7 @@ Create and manage shares
 .. contents:: :local:
 
 General Concepts
-~~~~~~~~~~~~~~~~
+----------------
 
 A ``share`` is filesystem storage that you can create with manila. You can pick
 a network protocol for the underlying storage, manage access and perform
@@ -97,7 +97,7 @@ important terms:
 
 
 Usage and Limits
-~~~~~~~~~~~~~~~~
+----------------
 
 * List the resource limits and usages that apply to your project
 
@@ -124,7 +124,7 @@ Usage and Limits
      +----------------------------+-------+
 
 Share types
-~~~~~~~~~~~
+-----------
 
 * List share types
 
@@ -149,7 +149,7 @@ Share types
      +--------------------------------------+-----------------------------------+------------+------------+--------------------------------------+--------------------------------------------+---------------------------------------------------------+
 
 Share networks
-~~~~~~~~~~~~~~
+--------------
 
 * Create a share network.
 
@@ -191,7 +191,7 @@ Share networks
      +--------------------------------------+----------------+
 
 Create a share
-~~~~~~~~~~~~~~
+--------------
 
 * Create a share
 
@@ -366,6 +366,19 @@ Create a share
      | 40de4f4c-4588-4d9c-844b-f74d8951053a | myshare2  | 1    | NFS         | available | False     | default         | nosb-devstack@lisboa#LISBOA | nova              |
      +--------------------------------------+-----------+------+-------------+-----------+-----------+-----------------+-----------------------------+-------------------+
 
+Grant and revoke share access
+-----------------------------
+
+.. tip::
+
+  Starting from the 2023.2 (Bobcat) release, in case you want to restrict the
+  visibility of the sensitive fields (``access_to`` and ``access_key``), or
+  avoid the access rule being deleted by other users, you can specify
+  ``--lock-visibility`` and ``--lock-deletion`` in the Manila OpenStack command
+  for creating access rules. A reason (``--lock-reason``) can also be provided.
+  Only the user that placed the lock, system administrators and services will
+  be able to manipulate such access rules.
+
 Allow read-write access
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -448,8 +461,14 @@ Allow read-only access
 
   Another access rule is created.
 
+.. note::
+
+  In case one or more access rules had its visibility locked, you might not be
+  able to see the content of the fields containing sensitive information
+  (``access_to`` and ``access_key``).
+
 Update access rules metadata
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------
 
 #. Add a new metadata.
 
@@ -494,7 +513,7 @@ Update access rules metadata
       +--------------+--------------------------------------+
 
 Deny access
-~~~~~~~~~~~
+-----------
 
 * Deny access.
 
@@ -502,6 +521,13 @@ Deny access
 
      $ manila access-deny myshare 45b0a030-306a-4305-9e2a-36aeffb2d5b7
      $ manila access-deny myshare e30bde96-9217-4f90-afdc-27c092af1c77
+
+.. note::
+
+  Starting from the 2023.2 (Bobcat) release, it is possible to prevent the
+  deletion of an access rule. In case you have placed a deletion lock during
+  the access rule creation, the ``--unrestrict`` argument from the Manila's
+  OpenStack Client must be used in the request to revoke the access.
 
 * List access.
 
@@ -516,7 +542,7 @@ Deny access
   The access rules are removed.
 
 Create snapshot
-~~~~~~~~~~~~~~~
+---------------
 
 * Create a snapshot.
 
@@ -556,7 +582,7 @@ Create snapshot
      +--------------------------------------+--------------------------------------+-----------+------------+------------+
 
 Create share from snapshot
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 
 * Create a share from a snapshot.
 
@@ -661,7 +687,7 @@ Create share from snapshot
      +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
 
 Delete share
-~~~~~~~~~~~~
+------------
 
 * Delete a share.
 
@@ -684,7 +710,7 @@ Delete share
   The share is being deleted.
 
 Delete snapshot
-~~~~~~~~~~~~~~~
+---------------
 
 * Delete a snapshot.
 
@@ -706,7 +732,7 @@ Delete snapshot
   The snapshot is deleted.
 
 Extend share
-~~~~~~~~~~~~
+------------
 
 * Extend share.
 
@@ -803,7 +829,7 @@ Extend share
      +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
 
 Shrink share
-~~~~~~~~~~~~
+------------
 
 * Shrink a share.
 
@@ -900,7 +926,7 @@ Shrink share
      +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
 
 Share metadata
-~~~~~~~~~~~~~~
+--------------
 
 * Set metadata items on your share
 
@@ -938,7 +964,7 @@ Share metadata
      $ manila metadata myshare unset year_started
 
 Share revert to snapshot
-~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------
 
 * Share revert to snapshot
 
@@ -955,7 +981,7 @@ Share revert to snapshot
      $ manila revert-to-snapshot mysnapshot
 
 Share Transfer
-~~~~~~~~~~~~~~
+--------------
 
 * Transfer a share to a different project
 
@@ -1032,7 +1058,7 @@ Share Transfer
      +------------------------+--------------------------------------+
 
 Resource locks
-~~~~~~~~~~~~~~
+--------------
 
 * Prevent a share from being deleted by creating a ``resource lock``:
 

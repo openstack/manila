@@ -28,6 +28,7 @@ from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
+from manila.lock import api as resource_locks
 from manila import policy
 from manila.share import api as share_api
 from manila.share import share_types
@@ -974,6 +975,12 @@ class ShareActionsTest(test.TestCase):
         {'access_type': 'cert', 'access_to': 'x'},
         {'access_type': 'cert', 'access_to': 'tenant.example.com'},
         {'access_type': 'cert', 'access_to': 'x' * 64},
+        {'access_type': 'cert', 'access_to': 'x' * 64,
+         'lock_visibility': True},
+        {'access_type': 'cert', 'access_to': 'x' * 64, 'lock_deletion': True},
+        {'access_type': 'cert', 'access_to': 'x' * 64, 'lock_deletion': True},
+        {'access_type': 'cert', 'access_to': 'x' * 64, 'lock_deletion': True,
+         'lock_visibility': True, 'lock_reason': 'locked_for_testing'},
     )
     def test_allow_access(self, access):
         self.mock_object(share_api.API,
@@ -982,17 +989,218 @@ class ShareActionsTest(test.TestCase):
         self.mock_object(self.controller._access_view_builder, 'view',
                          mock.Mock(return_value={'access':
                                                  {'fake': 'fake'}}))
+        self.mock_object(self.controller, '_create_access_locks')
 
         id = 'fake_share_id'
         body = {'os-allow_access': access}
         expected = {'access': {'fake': 'fake'}}
         req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id)
+        lock_visibility = access.pop('lock_visibility', None)
+        lock_deletion = access.pop('lock_deletion', None)
+        lock_reason = access.pop('lock_reason', None)
 
-        res = self.controller._allow_access(req, id, body)
+        res = self.controller._allow_access(
+            req, id, body, lock_visibility=lock_visibility,
+            lock_deletion=lock_deletion, lock_reason=lock_reason
+        )
 
         self.assertEqual(expected, res)
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], 'share', 'allow_access')
+        if lock_visibility or lock_deletion:
+            self.controller._create_access_locks.assert_called_once_with(
+                req.environ['manila.context'],
+                expected['access'],
+                lock_deletion=lock_deletion,
+                lock_visibility=lock_visibility,
+                lock_reason=lock_reason
+            )
+
+    @ddt.data(
+        {'lock_visibility': True, 'lock_deletion': True,
+         'lock_reason': 'test lock reason'},
+        {'lock_visibility': True, 'lock_deletion': False, 'lock_reason': None},
+        {'lock_visibility': False, 'lock_deletion': True, 'lock_reason': None},
+    )
+    @ddt.unpack
+    def test__create_access_locks(self, lock_visibility, lock_deletion,
+                                  lock_reason):
+        access = {
+            'id': 'fake',
+            'access_type': 'ip',
+            'access_to': '127.0.0.1',
+        }
+        self.mock_object(resource_locks.API, 'create')
+
+        id = 'fake_share_id'
+        req = fakes.HTTPRequest.blank(
+            '/tenant1/shares/%s/action' % id, version='2.82')
+        context = req.environ['manila.context']
+        access['project_id'] = context.project_id
+        access['user_id'] = context.user_id
+
+        self.controller._create_access_locks(
+            req.environ['manila.context'],
+            access,
+            lock_deletion=lock_deletion,
+            lock_visibility=lock_visibility,
+            lock_reason=lock_reason
+        )
+
+        restrict_calls = []
+        if lock_deletion:
+            restrict_calls.append(
+                mock.call(
+                    context, resource_id=access['id'],
+                    resource_type='access_rule',
+                    resource_action=constants.RESOURCE_ACTION_DELETE,
+                    resource=access,
+                    lock_reason=lock_reason
+                )
+            )
+        if lock_visibility:
+            restrict_calls.append(
+                mock.call(
+                    context, resource_id=access['id'],
+                    resource_type='access_rule',
+                    resource_action=constants.RESOURCE_ACTION_SHOW,
+                    resource=access,
+                    lock_reason=lock_reason
+                )
+            )
+        resource_locks.API.create.assert_has_calls(restrict_calls)
+
+    def test__create_access_visibility_locks_creation_failed(self):
+        access = {
+            'id': 'fake',
+            'access_type': 'ip',
+            'access_to': '127.0.0.1',
+        }
+        lock_reason = 'locked for testing'
+        self.mock_object(
+            resource_locks.API, 'create',
+            mock.Mock(side_effect=exception.NotAuthorized)
+        )
+
+        id = 'fake_share_id'
+        req = fakes.HTTPRequest.blank(
+            '/tenant1/shares/%s/action' % id, version='2.82')
+        context = req.environ['manila.context']
+        access['project_id'] = context.project_id
+        access['user_id'] = context.user_id
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller._create_access_locks,
+            req.environ['manila.context'],
+            access,
+            lock_deletion=False,
+            lock_visibility=True,
+            lock_reason=lock_reason
+        )
+
+        resource_locks.API.create.assert_called_once_with(
+            context, resource_id=access['id'], resource_type='access_rule',
+            resource_action=constants.RESOURCE_ACTION_SHOW, resource=access,
+            lock_reason=lock_reason)
+
+    def test__create_access_deletion_locks_creation_failed(self):
+        access = {
+            'id': 'fake',
+            'access_type': 'ip',
+            'access_to': '127.0.0.1',
+        }
+        lock_reason = 'locked for testing'
+        self.mock_object(
+            resource_locks.API, 'create',
+            mock.Mock(side_effect=exception.NotAuthorized)
+        )
+
+        id = 'fake_share_id'
+        req = fakes.HTTPRequest.blank(
+            '/tenant1/shares/%s/action' % id, version='2.82')
+        context = req.environ['manila.context']
+        access['project_id'] = context.project_id
+        access['user_id'] = context.user_id
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller._create_access_locks,
+            req.environ['manila.context'],
+            access,
+            lock_deletion=True,
+            lock_visibility=False,
+            lock_reason=lock_reason
+        )
+
+        resource_locks.API.create.assert_called_once_with(
+            context, resource_id=access['id'], resource_type='access_rule',
+            resource_action=constants.RESOURCE_ACTION_DELETE, resource=access,
+            lock_reason=lock_reason)
+
+    @ddt.data(
+        {'lock_visibility': True, 'lock_deletion': True,
+         'lock_reason': 'test lock reason'},
+        {'lock_visibility': True, 'lock_deletion': False, 'lock_reason': None},
+        {'lock_visibility': False, 'lock_deletion': True, 'lock_reason': None},
+    )
+    @ddt.unpack
+    def test_allow_access_visibility_restrictions(self, lock_visibility,
+                                                  lock_deletion, lock_reason):
+        access = {'id': 'fake'}
+        self.mock_object(share_api.API,
+                         'allow_access',
+                         mock.Mock(return_value=access))
+        self.mock_object(self.controller._access_view_builder, 'view',
+                         mock.Mock(return_value={'access': {'fake': 'fake'}}))
+        self.mock_object(resource_locks.API, 'create')
+
+        id = 'fake_share_id'
+        body = {
+            'allow_access': {
+                'access_type': 'ip',
+                'access_to': '127.0.0.1',
+                'lock_visibility': lock_visibility,
+                'lock_deletion': lock_deletion,
+                'lock_reason': lock_reason
+            }
+        }
+        expected = {'access': {'fake': 'fake'}}
+        req = fakes.HTTPRequest.blank(
+            '/tenant1/shares/%s/action' % id, version='2.82')
+        context = req.environ['manila.context']
+        access['project_id'] = context.project_id
+        access['user_id'] = context.user_id
+
+        res = self.controller._allow_access(
+            req, id, body, lock_visibility=lock_visibility,
+            lock_deletion=lock_deletion, lock_reason=lock_reason)
+
+        self.assertEqual(expected, res)
+        self.mock_policy_check.assert_called_once_with(
+            context, 'share', 'allow_access')
+        restrict_calls = []
+        if lock_deletion:
+            restrict_calls.append(
+                mock.call(
+                    context, resource_id=access['id'],
+                    resource_type='access_rule',
+                    resource_action=constants.RESOURCE_ACTION_DELETE,
+                    resource=access,
+                    lock_reason=lock_reason
+                )
+            )
+        if lock_visibility:
+            restrict_calls.append(
+                mock.call(
+                    context, resource_id=access['id'],
+                    resource_type='access_rule',
+                    resource_action=constants.RESOURCE_ACTION_SHOW,
+                    resource=access,
+                    lock_reason=lock_reason
+                )
+            )
+        resource_locks.API.create.assert_has_calls(restrict_calls)
 
     def test_allow_access_with_network_id(self):
         share_network = db_utils.create_share_network()
@@ -1032,15 +1240,19 @@ class ShareActionsTest(test.TestCase):
         {'access_type': 'cert', 'access_to': ''},
         {'access_type': 'cert', 'access_to': ' '},
         {'access_type': 'cert', 'access_to': 'x' * 65},
-        {'access_type': 'cephx', 'access_to': 'alice'}
+        {'access_type': 'cephx', 'access_to': 'alice'},
+        {'access_type': 'ip', 'access_to': '127.0.0.0/24',
+         'lock_reason': 'fake_lock_reason'},
     )
     def test_allow_access_error(self, access):
         id = 'fake_share_id'
+        lock_reason = access.pop('lock_reason', None)
         body = {'os-allow_access': access}
         req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller._allow_access, req, id, body)
+                          self.controller._allow_access, req, id, body,
+                          lock_reason=lock_reason)
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], 'share', 'allow_access')
 
@@ -1096,6 +1308,181 @@ class ShareActionsTest(test.TestCase):
                           body)
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], 'share', 'deny_access')
+
+    def test_deny_access_delete_locks(self):
+        def _stub_deny_access(*args, **kwargs):
+            pass
+
+        self.mock_object(share_api.API, "deny_access", _stub_deny_access)
+        self.mock_object(share_api.API, "access_get", _fake_access_get)
+        self.mock_object(self.controller, '_check_for_access_rule_locks')
+
+        id = 'fake_share_id'
+        body_data = {"access_id": 'fake_acces_id'}
+        body = {"deny_access": body_data}
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id,
+                                      version='2.82')
+        context = req.environ['manila.context']
+
+        res = self.controller._deny_access(req, id, body)
+
+        self.assertEqual(202, res.status_int)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], 'share', 'deny_access')
+        self.controller._check_for_access_rule_locks.assert_called_once_with(
+            context, body['deny_access'], body_data['access_id'], id
+        )
+
+    def test__check_for_access_rule_locks_no_locks(self):
+        self.mock_object(
+            resource_locks.API, "get_all", mock.Mock(return_value=([], 0)))
+
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id,
+                                      version='2.82')
+        context = req.environ['manila.context']
+        access_id = 'fake_access_id'
+        share_id = 'fake_share_id'
+
+        self.controller._check_for_access_rule_locks(
+            context, {}, access_id, share_id)
+
+        delete_search_opts = {
+            'resource_id': access_id,
+            'resource_action': constants.RESOURCE_ACTION_DELETE
+        }
+
+        resource_locks.API.get_all.assert_called_once_with(
+            context, search_opts=delete_search_opts, show_count=True
+        )
+
+    def test__check_for_access_rules_locks_too_many_locks(self):
+        locks = [{'id': f'lock_id_{i}'} for i in range(4)]
+        self.mock_object(
+            resource_locks.API, "get_all",
+            mock.Mock(return_value=(locks, len(locks))))
+
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id,
+                                      version='2.82')
+        context = req.environ['manila.context']
+        access_id = 'fake_access_id'
+        share_id = 'fake_share_id'
+
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller._check_for_access_rule_locks,
+            context, {}, access_id, share_id)
+
+        delete_search_opts = {
+            'resource_id': access_id,
+            'resource_action': constants.RESOURCE_ACTION_DELETE
+        }
+
+        resource_locks.API.get_all.assert_called_once_with(
+            context, search_opts=delete_search_opts, show_count=True
+        )
+
+    def test__check_for_access_rules_cant_manipulate_lock(self):
+        locks = [{
+            'id': 'fake_lock_id',
+            'resource_action': constants.RESOURCE_ACTION_DELETE
+        }]
+        self.mock_object(
+            resource_locks.API, "get_all",
+            mock.Mock(return_value=(locks, len(locks))))
+        self.mock_object(
+            resource_locks.API, "ensure_context_can_delete_lock",
+            mock.Mock(side_effect=exception.NotAuthorized))
+
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id,
+                                      version='2.82')
+        context = req.environ['manila.context']
+        access_id = 'fake_access_id'
+        share_id = 'fake_share_id'
+
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller._check_for_access_rule_locks,
+            context, {'unrestrict': True}, access_id, share_id)
+
+        delete_search_opts = {
+            'resource_id': access_id,
+            'resource_action': constants.RESOURCE_ACTION_DELETE
+        }
+
+        resource_locks.API.get_all.assert_called_once_with(
+            context, search_opts=delete_search_opts, show_count=True
+        )
+        (resource_locks.API.ensure_context_can_delete_lock
+            .assert_called_once_with(
+                context, locks[0]['id']))
+
+    def test__check_for_access_rules_locks_unauthorized(self):
+        locks = [{
+            'id': 'fake_lock_id',
+            'resource_action': constants.RESOURCE_ACTION_DELETE
+        }]
+        self.mock_object(
+            resource_locks.API, "get_all",
+            mock.Mock(return_value=(locks, len(locks))))
+        self.mock_object(
+            resource_locks.API, "ensure_context_can_delete_lock",
+            mock.Mock(side_effect=exception.NotAuthorized))
+        self.mock_object(
+            resource_locks.API, "delete",
+            mock.Mock(side_effect=exception.NotAuthorized))
+
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id,
+                                      version='2.82')
+        context = req.environ['manila.context']
+        access_id = 'fake_access_id'
+        share_id = 'fake_share_id'
+
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller._check_for_access_rule_locks,
+            context, {'unrestrict': True}, access_id, share_id
+        )
+        delete_search_opts = {
+            'resource_id': access_id,
+            'resource_action': constants.RESOURCE_ACTION_DELETE
+        }
+        resource_locks.API.get_all.assert_called_once_with(
+            context, search_opts=delete_search_opts, show_count=True
+        )
+        (resource_locks.API.ensure_context_can_delete_lock
+            .assert_called_once_with(
+                context, locks[0]['id']))
+
+    def test_check_for_access_rules_locks(self):
+        locks = [{
+            'id': 'fake_lock_id',
+            'resource_action': constants.RESOURCE_ACTION_DELETE
+        }]
+        self.mock_object(
+            resource_locks.API, "get_all",
+            mock.Mock(return_value=(locks, len(locks))))
+        self.mock_object(
+            resource_locks.API, "ensure_context_can_delete_lock")
+        self.mock_object(resource_locks.API, "delete")
+
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id,
+                                      version='2.82')
+        context = req.environ['manila.context']
+        access_id = 'fake_access_id'
+        share_id = 'fake_share_id'
+
+        self.controller._check_for_access_rule_locks(
+            context, {'unrestrict': True}, access_id, share_id)
+
+        delete_search_opts = {
+            'resource_id': access_id,
+            'resource_action': constants.RESOURCE_ACTION_DELETE
+        }
+        resource_locks.API.get_all.assert_called_once_with(
+            context, search_opts=delete_search_opts, show_count=True)
+        (resource_locks.API.ensure_context_can_delete_lock
+            .assert_called_once_with(
+                context, locks[0]['id']))
 
     @ddt.data('_allow_access', '_deny_access')
     def test_allow_access_deny_access_policy_not_authorized(self, method):

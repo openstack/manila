@@ -7,6 +7,12 @@ Share access rules (since API v2.45)
 
 Retrieve details about access rules
 
+.. note::
+  Starting from API version 2.82, access rule visibility can be restricted
+  by a project user, or any user with "service" or "admin" roles. When
+  restricted, the access_to and access_key fields will be redacted to other
+  users. This redaction applies irrespective of the API version.
+
 Describe share access rule
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -73,6 +79,12 @@ Lists the share access rules on a share.
 .. note::
   This API replaces the older :ref:`List share access rules
   <get-access-rules-before-2-45>` API from version 2.45.
+
+.. note::
+  Starting from API version 2.82, access rule visibility can be restricted
+  by a project user, or any user with "service" or "admin" roles. When
+  restricted, the access_to and access_key fields will be redacted to other
+  users. This redaction applies irrespective of the API version.
 
 Response codes
 --------------

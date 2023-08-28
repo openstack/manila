@@ -124,6 +124,71 @@ class ResourceLockApiTest(test.TestCase):
         )
         self.assertIsNone(result)
 
+    @ddt.data(
+        test_utils.annotated(
+            'service_manipulating_user_lock',
+            (context.RequestContext(
+                'fake', 'fake', is_admin=False,
+                service_roles=['service']),
+             'user',
+             'user_b'),
+        ),
+        test_utils.annotated(
+            'admin_manipulating_user_lock',
+            (context.RequestContext('fake', 'fake', is_admin=True),
+             'admin',
+             'user_a'),
+        ),
+        test_utils.annotated(
+            'user_manipulating_locks_they_own',
+            (context.RequestContext('user_a', 'fake', is_admin=False),
+             'user',
+             'user_a'),
+        ),
+        test_utils.annotated(
+            'user_manipulating_other_users_lock',
+            (context.RequestContext('user_a', 'fake', is_admin=False),
+             'user',
+             'user_b'),
+        ),
+    )
+    @ddt.unpack
+    def test_access_is_restricted(self, ctxt, lock_ctxt, lock_user):
+        resource_lock = {
+            'user_id': lock_user,
+            'lock_context': lock_ctxt
+        }
+        is_restricted = (
+            (not ctxt.is_admin and not ctxt.is_service)
+            and lock_user != ctxt.user_id)
+        expected_mock_policy = {}
+        if is_restricted:
+            expected_mock_policy['side_effect'] = exception.NotAuthorized
+        self.mock_object(self.lock_api, '_check_allow_lock_manipulation')
+        self.mock_object(policy, 'check_policy',
+                         mock.Mock(**expected_mock_policy))
+
+        result = self.lock_api.access_is_restricted(
+            ctxt,
+            resource_lock
+        )
+        self.assertEqual(is_restricted, result)
+
+    def test_access_is_restricted_not_authorized(self):
+        resource_lock = {
+            'user_id': 'fakeuserid',
+            'lock_context': 'user'
+        }
+        ctxt = context.RequestContext('fake', 'fake')
+        self.mock_object(self.lock_api, '_check_allow_lock_manipulation',
+                         mock.Mock(side_effect=exception.NotAuthorized()))
+
+        result = self.lock_api.access_is_restricted(
+            ctxt,
+            resource_lock
+        )
+        self.assertTrue(result)
+
     def test_get_all_all_projects_ignored(self):
         self.mock_object(policy, 'check_policy', mock.Mock(return_value=False))
         self.mock_object(self.lock_api.db, 'resource_lock_get_all',
@@ -257,15 +322,84 @@ class ResourceLockApiTest(test.TestCase):
             'project_id': 'fakeproject',
             'lock_context': 'user',
             'lock_reason': None,
+            'resource_type': constants.SHARE_RESOURCE_TYPE
 
         }
         self.assertEqual(expected_create_arg, db_create_arg)
 
+    def test_create_access_show_lock(self):
+        self.mock_object(self.lock_api.db, 'resource_lock_create',
+                         mock.Mock(return_value='created_obj'))
+        mock_access = {
+            'id': 'cacac01c-853d-47f3-afcb-da4484bd09a5',
+            'state': constants.STATUS_ACTIVE,
+        }
+        self.mock_object(self.lock_api.db, 'access_get',
+                         mock.Mock(return_value=mock_access))
+        self.mock_object(self.lock_api.db, 'resource_lock_get_all',
+                         mock.Mock(return_value=['', 0]))
+        self.mock_object(self.ctxt, 'elevated',
+                         mock.Mock(return_value=self.ctxt))
+
+        result = self.lock_api.create(
+            self.ctxt,
+            resource_id='cacac01c-853d-47f3-afcb-da4484bd09a5',
+            resource_action=constants.RESOURCE_ACTION_SHOW,
+            resource_type=constants.SHARE_ACCESS_RESOURCE_TYPE,
+        )
+
+        self.assertEqual('created_obj', result)
+        db_create_arg = self.lock_api.db.resource_lock_create.call_args[0][1]
+        resource_id = 'cacac01c-853d-47f3-afcb-da4484bd09a5'
+        expected_create_arg = {
+            'resource_id': resource_id,
+            'resource_action': constants.RESOURCE_ACTION_SHOW,
+            'user_id': 'fakeuser',
+            'project_id': 'fakeproject',
+            'lock_context': 'user',
+            'lock_reason': None,
+            'resource_type': constants.SHARE_ACCESS_RESOURCE_TYPE
+
+        }
+        self.assertEqual(expected_create_arg, db_create_arg)
+        filters = {
+            'resource_id': resource_id,
+            'resource_action': constants.RESOURCE_ACTION_SHOW,
+            'all_projects': True
+        }
+        self.lock_api.db.resource_lock_get_all.assert_called_once_with(
+            self.ctxt, filters=filters)
+
+    def test_create_visibility_lock_lock_exists(self):
+        self.mock_object(self.lock_api.db, 'resource_lock_create',
+                         mock.Mock(return_value='created_obj'))
+        self.mock_object(self.lock_api.db, 'resource_lock_get_all',
+                         mock.Mock(return_value=['visibility_lock', 1]))
+        self.mock_object(self.ctxt, 'elevated',
+                         mock.Mock(return_value=self.ctxt))
+
+        self.assertRaises(
+            exception.ResourceVisibilityLockExists,
+            self.lock_api.create,
+            self.ctxt,
+            resource_id='cacac01c-853d-47f3-afcb-da4484bd09a5',
+            resource_action=constants.RESOURCE_ACTION_SHOW,
+            resource_type=constants.SHARE_ACCESS_RESOURCE_TYPE,
+        )
+
+        resource_id = 'cacac01c-853d-47f3-afcb-da4484bd09a5'
+        filters = {
+            'resource_id': resource_id,
+            'resource_action': constants.RESOURCE_ACTION_SHOW,
+            'all_projects': True
+        }
+        self.lock_api.db.resource_lock_get_all.assert_called_once_with(
+            self.ctxt, filters=filters)
+
     @ddt.data(True, False)
     def test_update_lock_resource_not_allowed_with_policy_failure(
             self, policy_fails):
-        self.mock_object(self.lock_api.db, 'resource_lock_get', mock.Mock(
-            return_value={'id': 'd767d3cd-1187-404a-a91f-8b172e0e768e'}))
+        lock = {'id': 'd767d3cd-1187-404a-a91f-8b172e0e768e'}
         if policy_fails:
             self.mock_object(
                 policy,
@@ -286,7 +420,7 @@ class ResourceLockApiTest(test.TestCase):
         self.assertRaises(exception.NotAuthorized,
                           self.lock_api.update,
                           self.ctxt,
-                          'd767d3cd-1187-404a-a91f-8b172e0e768e',
+                          lock,
                           {'foo': 'bar'})
 
     @ddt.data(constants.STATUS_DELETING,
@@ -303,8 +437,6 @@ class ResourceLockApiTest(test.TestCase):
             'resource_action': 'something',
             'resource_type': 'share',
         }
-        self.mock_object(self.lock_api.db, 'resource_lock_get',
-                         mock.Mock(return_value=lock))
         self.mock_object(self.lock_api, '_check_allow_lock_manipulation')
         self.mock_object(self.lock_api.db,
                          'share_get',
@@ -313,21 +445,20 @@ class ResourceLockApiTest(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self.lock_api.update,
                           self.ctxt,
-                          'd767d3cd-1187-404a-a91f-8b172e0e768e',
+                          lock,
                           {'resource_action': 'delete'})
 
         self.lock_api.db.resource_lock_update.assert_not_called()
 
     def test_update(self):
-        self.mock_object(self.lock_api.db, 'resource_lock_get', mock.Mock(
-            return_value={'id': 'd767d3cd-1187-404a-a91f-8b172e0e768e'}))
         self.mock_object(self.lock_api, '_check_allow_lock_manipulation')
         self.mock_object(self.lock_api.db, 'resource_lock_update',
                          mock.Mock(return_value='updated_obj'))
+        lock = {'id': 'd767d3cd-1187-404a-a91f-8b172e0e768e'}
 
         result = self.lock_api.update(
             self.ctxt,
-            'd767d3cd-1187-404a-a91f-8b172e0e768e',
+            lock,
             {'foo': 'bar'},
         )
 

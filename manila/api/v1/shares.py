@@ -32,6 +32,7 @@ from manila.common import constants
 from manila import db
 from manila import exception
 from manila.i18n import _
+from manila.lock import api as resource_locks
 from manila import share
 from manila.share import share_types
 from manila import utils
@@ -455,10 +456,61 @@ class ShareMixin(object):
                 return True
         return False
 
+    def _create_access_locks(
+            self, context, access, lock_deletion=False, lock_visibility=False,
+            lock_reason=None):
+        """Creates locks for access rules and rollback if it fails."""
+
+        # We must populate project_id and user_id in the access object, as this
+        # is not in this entity
+        access['project_id'] = context.project_id
+        access['user_id'] = context.user_id
+
+        def raise_lock_failed(access, lock_action):
+            word_mapping = {
+                constants.RESOURCE_ACTION_SHOW: 'visibility',
+                constants.RESOURCE_ACTION_DELETE: 'deletion'
+            }
+            msg = _("Failed to lock the %(action)s of the access rule "
+                    "%(rule)s.") % {
+                'action': word_mapping[lock_action],
+                'rule': access['id']
+            }
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        deletion_lock = {}
+
+        if lock_deletion:
+            try:
+                deletion_lock = self.resource_locks_api.create(
+                    context, resource_id=access['id'],
+                    resource_type='access_rule',
+                    resource_action=constants.RESOURCE_ACTION_DELETE,
+                    resource=access, lock_reason=lock_reason)
+            except Exception:
+                raise_lock_failed(access, constants.RESOURCE_ACTION_DELETE)
+
+        if lock_visibility:
+            try:
+                self.resource_locks_api.create(
+                    context, resource_id=access['id'],
+                    resource_type='access_rule',
+                    resource_action=constants.RESOURCE_ACTION_SHOW,
+                    resource=access, lock_reason=lock_reason)
+            except Exception:
+                # If a deletion lock was placed and the visibility wasn't,
+                # we should rollback the deletion lock.
+                if deletion_lock:
+                    self.resource_locks_api.delete(
+                        context, deletion_lock['id'])
+                raise_lock_failed(access, constants.RESOURCE_ACTION_SHOW)
+
     @wsgi.Controller.authorize('allow_access')
     def _allow_access(self, req, id, body, enable_ceph=False,
                       allow_on_error_status=False, enable_ipv6=False,
-                      enable_metadata=False, allow_on_error_state=False):
+                      enable_metadata=False, allow_on_error_state=False,
+                      lock_visibility=False, lock_deletion=False,
+                      lock_reason=None):
         """Add share access rule."""
         context = req.environ['manila.context']
         access_data = body.get('allow_access', body.get('os-allow_access'))
@@ -487,6 +539,11 @@ class ShareMixin(object):
             }
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
+        if not (lock_visibility or lock_deletion) and lock_reason:
+            msg = _("Lock reason can only be specified when locking the "
+                    "visibility or the deletion of an access rule.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
         access_type = access_data['access_type']
         access_to = access_data['access_to']
         common.validate_access(access_type=access_type,
@@ -507,15 +564,67 @@ class ShareMixin(object):
         except exception.InvalidMetadataSize as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
+        if lock_deletion or lock_visibility:
+            self._create_access_locks(
+                context, access, lock_deletion=lock_deletion,
+                lock_visibility=lock_visibility, lock_reason=lock_reason)
+
         return self._access_view_builder.view(req, access)
+
+    def _check_for_access_rule_locks(self, context, access_data, access_id,
+                                     share_id):
+        """Fetches locks for access rules and attempts deleting them."""
+
+        # ensure the requester is asking to remove the restrictions of the rule
+        unrestrict = access_data.get('unrestrict', False)
+        search_opts = {
+            'resource_id': access_id,
+            'resource_action': constants.RESOURCE_ACTION_DELETE
+        }
+
+        locks, locks_count = (
+            self.resource_locks_api.get_all(
+                context, search_opts=search_opts, show_count=True) or []
+        )
+
+        # no locks placed, nothing to do
+        if not locks:
+            return
+
+        def raise_rule_is_locked(share_id, unrestrict=False):
+            msg = _(
+                "Cannot deny access for share '%s' since it has been "
+                "locked. Please remove the locks and retry the "
+                "operation") % share_id
+            if unrestrict:
+                msg = _(
+                    "Unable to drop access rule restrictions that are not "
+                    "placed by you.")
+            raise exc.HTTPForbidden(explanation=msg)
+
+        if locks_count and not unrestrict:
+            raise_rule_is_locked(share_id)
+
+        non_deletable_locks = []
+        for lock in locks:
+            try:
+                self.resource_locks_api.ensure_context_can_delete_lock(
+                    context, lock['id'])
+            except exception.NotAuthorized:
+                non_deletable_locks.append(lock)
+
+        if non_deletable_locks:
+            raise_rule_is_locked(share_id, unrestrict=unrestrict)
 
     @wsgi.Controller.authorize('deny_access')
     def _deny_access(self, req, id, body, allow_on_error_state=False):
         """Remove share access rule."""
         context = req.environ['manila.context']
 
-        access_id = body.get(
-            'deny_access', body.get('os-deny_access'))['access_id']
+        access_data = body.get('deny_access', body.get('os-deny_access'))
+        access_id = access_data['access_id']
+
+        self._check_for_access_rule_locks(context, access_data, access_id, id)
 
         share = self.share_api.get(context, id)
 
@@ -637,6 +746,7 @@ class ShareController(wsgi.Controller, ShareMixin, wsgi.AdminActionsMixin):
     def __init__(self):
         super(ShareController, self).__init__()
         self.share_api = share.API()
+        self.resource_locks_api = resource_locks.API()
         self._access_view_builder = share_access_views.ViewBuilder()
 
     @wsgi.action('os-reset_status')

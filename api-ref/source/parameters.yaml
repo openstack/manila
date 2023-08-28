@@ -1632,6 +1632,22 @@ links:
   in: body
   required: true
   type: array
+lock_deletion:
+  description: |
+    Whether the resource should have its deletion locked or not.
+  in: body
+  required: false
+  type: string
+  min_version: 2.82
+lock_visibility:
+  description: |
+    Whether the resource should have its sensitive fields restricted or not.
+    When enabled, other users will see the "access_to" and "access_secret"
+    fields set to ******
+  in: body
+  required: false
+  type: string
+  min_version: 2.82
 manage_host:
   description: |
     The host of the destination back end, in this format: ``host@backend``.
@@ -3927,6 +3943,14 @@ unit:
   in: body
   required: false
   type: string
+unrestrict_access:
+  description: |
+    Whether the service should attempt to remove deletion restrictions during
+    the access rule deletion or not.
+  in: body
+  required: false
+  type: string
+  min_version: 2.82
 updated_at:
   description: |
     The date and time stamp when the resource was last updated within the

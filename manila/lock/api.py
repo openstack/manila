@@ -28,6 +28,11 @@ class API(base.Base):
 
     resource_get = {
         "share": "share_get",
+        "access_rule": "share_access_get_with_context"
+    }
+    resource_lock_disallowed_statuses = {
+        "share": constants.DISALLOWED_STATUS_WHEN_LOCKING_SHARES,
+        "access_rule": constants.DISALLOWED_STATUS_WHEN_LOCKING_ACCESS_RULES
     }
 
     def _get_lock_context(self, context):
@@ -73,6 +78,29 @@ class API(base.Base):
                                           "manipulated by user. Please "
                                           "contact the administrator.")
 
+    def access_is_restricted(self, context, resource_lock):
+        """Ensure the requester doesn't have visibility restrictions
+
+        Call the check allow lock manipulation method as a first validation.
+        In case it fails, the requester should not have the access rules
+        fields entirely visible. In case it passes and the access visibility
+        is restricted, the users will have visibility of all fields only if
+        they have originally created the lock.
+        """
+        try:
+            self._check_allow_lock_manipulation(context, resource_lock)
+        except exception.NotAuthorized:
+            return True
+
+        try:
+            policy.check_policy(
+                context, 'resource_lock', 'bypass_locked_show_action',
+                resource_lock)
+        except exception.NotAuthorized:
+            return True
+
+        return False
+
     def get(self, context, lock_id):
         """Return resource lock with the specified id."""
         return self.db.resource_lock_get(context, lock_id)
@@ -109,22 +137,37 @@ class API(base.Base):
         return locks, count
 
     def create(self, context, resource_id=None, resource_type=None,
-               resource_action=None, lock_reason=None):
+               resource_action=None, lock_reason=None, resource=None):
         """Create a resource lock with the specified information."""
         get_res_method = getattr(self.db, self.resource_get[resource_type])
-        resource = get_res_method(context, resource_id)
+        if resource_action == constants.RESOURCE_ACTION_SHOW:
+            # We can't allow visibility locks to be placed more than once,
+            # otherwise the resource might become visible to someone else.
+            visibility_locks, __ = self.db.resource_lock_get_all(
+                context.elevated(),
+                filters={'resource_id': resource_id,
+                         'resource_action': resource_action,
+                         'all_projects': True})
+            if visibility_locks:
+                raise exception.ResourceVisibilityLockExists(
+                    resource_id=resource_id)
+        if resource is None:
+            resource = get_res_method(context, resource_id)
         policy.check_policy(context, 'resource_lock', 'create', resource)
-        self._check_resource_state_for_locking(resource_action, resource)
+        self._check_resource_state_for_locking(
+            resource_action, resource, resource_type=resource_type)
         lock_context_data = self._get_lock_context(context)
         resource_lock = lock_context_data.copy()
         resource_lock.update({
             'resource_id': resource_id,
             'resource_action': resource_action,
             'lock_reason': lock_reason,
+            'resource_type': resource_type
         })
         return self.db.resource_lock_create(context, resource_lock)
 
-    def _check_resource_state_for_locking(self, resource_action, resource):
+    def _check_resource_state_for_locking(self, resource_action, resource,
+                                          resource_type='share'):
         """Check if resource is in a "disallowed" state for locking.
 
         For example, deletion lock on a "deleting" resource would be futile.
@@ -133,28 +176,37 @@ class API(base.Base):
         disallowed_statuses = ()
         if resource_action == 'delete':
             disallowed_statuses = (
-                constants.STATUS_DELETING,
-                constants.STATUS_ERROR_DELETING,
-                constants.STATUS_UNMANAGING,
-                constants.STATUS_MANAGE_ERROR_UNMANAGING,
-                constants.STATUS_UNMANAGE_ERROR,
-                constants.STATUS_UNMANAGED,  # not possible, future proofing
-                constants.STATUS_DELETED,  # not possible, future proofing
-            )
+                self.resource_lock_disallowed_statuses[resource_type])
         if resource_state in disallowed_statuses:
             msg = "Resource status not suitable for locking"
             raise exception.InvalidInput(reason=msg)
-        resource_is_soft_deleted = resource.get('is_soft_deleted', False)
-        if resource_is_soft_deleted:
-            msg = "Resource cannot be locked since it has been soft deleted."
-            raise exception.InvalidInput(reason=msg)
+        if resource_type == constants.SHARE_RESOURCE_TYPE:
+            resource_is_soft_deleted = resource.get('is_soft_deleted', False)
+            if resource_is_soft_deleted:
+                msg = (
+                    "Resource cannot be locked since it has been soft deleted."
+                )
+                raise exception.InvalidInput(reason=msg)
 
-    def update(self, context, lock_id, updates):
+    def update(self, context, resource_lock, updates):
         """Update a resource lock with the specified information."""
-        resource_lock = self.db.resource_lock_get(context, lock_id)
+        lock_id = resource_lock['id']
         policy.check_policy(context, 'resource_lock', 'update', resource_lock)
         self._check_allow_lock_manipulation(context, resource_lock)
         if 'resource_action' in updates:
+            # A resource can have only one visibility lock
+            if (updates['resource_action'] == constants.RESOURCE_ACTION_SHOW
+                    and resource_lock['resource_action'] !=
+                    constants.RESOURCE_ACTION_SHOW):
+                filters = {
+                    "resource_id": resource_lock['resource_id'],
+                    "resource_action": constants.RESOURCE_ACTION_SHOW
+                }
+                visibility_locks = self.get_all(
+                    context.elevated(), search_opts=filters)
+                if visibility_locks:
+                    msg = "The resource already has a visibility lock."
+                    raise exception.InvalidInput(reason=msg)
             get_res_method = getattr(
                 self.db,
                 self.resource_get[resource_lock['resource_type']],
@@ -164,9 +216,13 @@ class API(base.Base):
                 updates['resource_action'], resource)
         return self.db.resource_lock_update(context, lock_id, updates)
 
-    def delete(self, context, lock_id):
-        """Delete resource lock with the specified id."""
+    def ensure_context_can_delete_lock(self, context, lock_id):
+        """Ensure the requester is able to delete locks."""
         resource_lock = self.db.resource_lock_get(context, lock_id)
         policy.check_policy(context, 'resource_lock', 'delete', resource_lock)
         self._check_allow_lock_manipulation(context, resource_lock)
+
+    def delete(self, context, lock_id):
+        """Delete resource lock with the specified id."""
+        self.ensure_context_can_delete_lock(context, lock_id)
         self.db.resource_lock_delete(context, lock_id)

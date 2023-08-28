@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 from unittest import mock
 
 import ddt
@@ -46,37 +47,60 @@ class ResourceLockApiTest(test.TestCase):
         )
 
     @ddt.data(
-        test_utils.annotated('no_body_content', {}),
-        test_utils.annotated('invalid_body', {'share': 'somedata'}),
+        test_utils.annotated(
+            'no_body_content', {
+                'body': {},
+                'resource_type': 'share'
+            }
+        ),
+        test_utils.annotated(
+            'invalid_body', {
+                'body': {
+                    'share': 'somedata'
+                },
+                'resource_type': 'share'
+            }
+        ),
         test_utils.annotated(
             'invalid_action', {
-                'resource_lock': {
-                    'resource_action': 'invalid_action',
+                'body': {
+                    'resource_lock': {
+                        'resource_action': 'invalid_action',
+                    }
                 },
+                'resource_type': 'share'
             },
         ),
         test_utils.annotated(
             'invalid_reason', {
-                'resource_lock': {
-                    'lock_reason': 'xyzzyspoon!' * 94,
+                'body': {
+                    'resource_lock': {
+                        'lock_reason': 'xyzzyspoon!' * 94,
+                    }
                 },
+                'resource_type': 'share'
             },
         ),
         test_utils.annotated(
             'disallowed_attributes', {
-                'resource_lock': {
-                    'lock_reason': 'the reason is you',
-                    'resource_action': 'delete',
-                    'resource_id': uuidutils.generate_uuid(),
+                'body': {
+                    'resource_lock': {
+                        'lock_reason': 'the reason is you',
+                        'resource_action': 'delete',
+                        'resource_id': uuidutils.generate_uuid(),
+                    }
                 },
+                'resource_type': 'share'
             },
         ),
     )
-    def test__check_body_for_update_invalid(self, body):
+    @ddt.unpack
+    def test__check_body_for_update_invalid(self, body, resource_type):
+        current_lock = {'resource_type': resource_type}
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._check_body,
                           body,
-                          for_update=True)
+                          lock_to_update=current_lock)
 
     @ddt.data(
         test_utils.annotated('no_body_content', {}),
@@ -111,14 +135,6 @@ class ResourceLockApiTest(test.TestCase):
                 },
             },
         ),
-        test_utils.annotated(
-            'empty_resource_type', {
-                'resource_lock': {
-                    'resource_id': uuidutils.generate_uuid(),
-                    'resource_type': '',
-                },
-            },
-        ),
     )
     def test__check_body_for_create_invalid(self, body):
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -128,29 +144,43 @@ class ResourceLockApiTest(test.TestCase):
     @ddt.data(
         test_utils.annotated(
             'action_and_lock_reason', {
-                'resource_lock': {
-                    'resource_action': 'delete',
-                    'lock_reason': 'the reason is you',
+                'body': {
+                    'resource_lock': {
+                        'resource_action': 'delete',
+                        'lock_reason': 'the reason is you',
+                    }
                 },
+                'resource_type': 'share',
             },
         ),
         test_utils.annotated(
             'lock_reason', {
-                'resource_lock': {
-                    'lock_reason': 'tienes razon',
+                'body': {
+                    'resource_lock': {
+                        'lock_reason': 'tienes razon',
+                    }
                 },
+                'resource_type': 'share',
             },
         ),
         test_utils.annotated(
             'resource_action', {
-                'resource_lock': {
-                    'resource_action': 'delete',
+                'body': {
+                    'resource_lock': {
+                        'resource_action': 'delete',
+                    }
                 },
+                'resource_type': 'access_rule',
             },
         ),
     )
-    def test__check_body_for_update(self, body):
-        result = self.controller._check_body(body, for_update=True)
+    @ddt.unpack
+    def test__check_body_for_update(self, body, resource_type):
+        current_lock = copy.copy(body['resource_lock'])
+        current_lock['resource_type'] = resource_type
+
+        result = self.controller._check_body(
+            body, lock_to_update=current_lock)
 
         self.assertIsNone(result)
 
@@ -315,6 +345,27 @@ class ResourceLockApiTest(test.TestCase):
                           self.req,
                           body)
 
+    def test_create_visibility_already_locked(self):
+        self.mock_object(self.controller, '_check_body')
+        resource_id = '27e14086-16e1-445b-ad32-b2ebb07225a8'
+        body = {
+            'resource_lock': {
+                'resource_id': resource_id,
+                'resource_type': 'share',
+            },
+        }
+        self.mock_object(
+            self.controller.resource_locks_api,
+            'create',
+            mock.Mock(
+                side_effect=exception.ResourceVisibilityLockExists(
+                    resource_id=resource_id))
+        )
+        self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller.create,
+                          self.req,
+                          body)
+
     def test_create(self):
         self.mock_object(self.controller, '_check_body')
         expected_lock = stubs.stub_lock(
@@ -344,11 +395,13 @@ class ResourceLockApiTest(test.TestCase):
         self.assertIn('links', actual_lock)
 
     def test_update(self):
-        self.mock_object(self.controller, '_check_body')
         expected_lock = stubs.stub_lock(
             '04512dae-18c2-45b5-bbab-50b775ba6f1d',
             lock_reason=None,
         )
+        self.mock_object(self.controller, '_check_body')
+        self.mock_object(self.controller.resource_locks_api, 'get',
+                         mock.Mock(return_value=expected_lock))
         self.mock_object(self.controller.resource_locks_api,
                          'update',
                          mock.Mock(return_value=expected_lock))
@@ -367,7 +420,7 @@ class ResourceLockApiTest(test.TestCase):
 
         self.controller.resource_locks_api.update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
-            '04512dae-18c2-45b5-bbab-50b775ba6f1d',
+            expected_lock,
             {'lock_reason': None}
         )
         self.assertSubDictMatch(expected_lock, actual_lock)

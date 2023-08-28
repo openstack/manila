@@ -19,6 +19,7 @@ import ddt
 from webob import exc
 
 from manila.api.v2 import share_accesses
+from manila.common import constants
 from manila import exception
 from manila import policy
 from manila import test
@@ -102,6 +103,76 @@ class ShareAccessesAPITest(test.TestCase):
             for key in summary_keys:
                 self.assertEqual(index_access[key], show_el[key])
 
+    @ddt.data(True, False)
+    def test_list_accesses_restricted(self, restricted):
+        req = self._get_index_request(version='2.82')
+        rule_list = [{
+            'access_to': '0.0.0.0/0',
+            'id': 'fakeid',
+            'access_key': 'fake_key'
+        }]
+        self.mock_object(
+            self.controller.share_api, 'access_get_all',
+            mock.Mock(return_value=rule_list))
+        self.mock_object(
+            self.controller, '_is_rule_restricted',
+            mock.Mock(return_value=restricted))
+
+        index_result = self.controller.index(req)
+
+        self.assertIn('access_list', index_result)
+        self.controller._is_rule_restricted.assert_called_once_with(
+            req.environ['manila.context'], rule_list[0]['id'])
+        if restricted:
+            for access in index_result['access_list']:
+                self.assertEqual('******', access['access_key'])
+                self.assertEqual('******', access['access_to'])
+
+    @ddt.data(True, False)
+    def test_show_restricted(self, restricted):
+        req = self._get_show_request(
+            version='2.82', use_admin_context=False)
+        self.mock_object(
+            self.controller, '_is_rule_restricted',
+            mock.Mock(return_value=restricted))
+
+        show_result = self.controller.show(req, self.access['id'])
+
+        expected_access_to = (
+            '******' if restricted else self.access['access_to'])
+
+        self.assertEqual(
+            expected_access_to, show_result['access']['access_to'])
+
+    @ddt.data(True, False)
+    def test__is_rule_restricted(self, is_rule_restricted):
+        req = self._get_show_request(
+            version='2.82', use_admin_context=False)
+        context = req.environ['manila.context']
+        fake_lock = {
+            'lock_context': 'user',
+            'user_id': 'fake',
+            'project_id': 'fake',
+            'resource_id': 'fake',
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'lock_reason': 'fake reason',
+        }
+        lock = fake_lock if is_rule_restricted else {}
+        locks = [lock]
+
+        self.mock_object(
+            self.controller.resource_locks_api, 'get_all',
+            mock.Mock(return_value=(locks, len(locks))))
+        self.mock_object(
+            self.controller.resource_locks_api, 'access_is_restricted',
+            mock.Mock(return_value=is_rule_restricted))
+
+        result_rule_restricted = self.controller._is_rule_restricted(
+            context, self.access['id'])
+
+        self.assertEqual(
+            is_rule_restricted, result_rule_restricted)
+
     def test_list_accesses_share_not_found(self):
         self.assertRaises(
             exc.HTTPBadRequest,
@@ -145,10 +216,12 @@ class ShareAccessesAPITest(test.TestCase):
         self.assertIs(False, share_being_checked['is_public'])
 
     def test_show_access_not_found(self):
+        req = self._get_show_request('inexistent_id')
+        print(req.environ)
         self.assertRaises(
             exc.HTTPNotFound,
             self.controller.show,
-            self._get_show_request('inexistent_id'), 'inexistent_id')
+            req, 'inexistent_id')
 
     @ddt.data('1.0', '2.0', '2.8', '2.44')
     def test_list_with_unsupported_version(self, version):
