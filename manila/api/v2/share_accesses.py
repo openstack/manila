@@ -93,9 +93,8 @@ class ShareAccessesController(wsgi.Controller, wsgi.AdminActionsMixin):
                                    enable_ceph=True,
                                    enable_ipv6=True)
 
-        access_level = search_opts.get('access_level')
-        if ('access_level' in search_opts and (
-                search_opts['access_level'] not in constants.ACCESS_LEVELS)):
+        access_level = search_opts.get('access_level', None)
+        if access_level and access_level not in constants.ACCESS_LEVELS:
             raise exception.InvalidShareAccessLevel(level=access_level)
 
     @wsgi.Controller.authorize('index')
