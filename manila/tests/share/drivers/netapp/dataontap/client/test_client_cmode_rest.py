@@ -4865,13 +4865,69 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
     def test_create_vserver(self):
         mock = self.mock_object(self.client, '_create_vserver')
+        self.mock_object(self.client, '_modify_security_cert',
+                         mock.Mock(return_value=[]))
         self.client.create_vserver(fake.VSERVER_NAME, None, None,
                                    [fake.SHARE_AGGREGATE_NAME],
-                                   fake.IPSPACE_NAME)
+                                   fake.IPSPACE_NAME,
+                                   fake.SECURITY_CERT_DEFAULT_EXPIRE_DAYS)
         mock.assert_called_once_with(fake.VSERVER_NAME,
                                      [fake.SHARE_AGGREGATE_NAME],
                                      fake.IPSPACE_NAME,
                                      name_server_switch=['files'])
+        self.client._modify_security_cert.assert_called_once_with(
+            fake.VSERVER_NAME,
+            fake.SECURITY_CERT_DEFAULT_EXPIRE_DAYS)
+
+    def test__modify_security_cert(self):
+        api_response = copy.deepcopy(fake.SECURITY_CERT_GET_RESPONSE_REST)
+        api_response2 = copy.deepcopy(fake.SECURITY_CERT_POST_RESPONSE_REST)
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=[api_response, api_response2, None, None]))
+
+        query = {
+            'common-name': fake.VSERVER_NAME,
+            'ca': fake.VSERVER_NAME,
+            'type': 'server',
+            'svm.name': fake.VSERVER_NAME,
+        }
+        old_cert_info = copy.deepcopy(
+            fake.SECURITY_CERT_GET_RESPONSE_REST['records'][0])
+        old_cert_uuid = old_cert_info['uuid']
+
+        body1 = {
+            'common-name': fake.VSERVER_NAME,
+            'type': 'server',
+            'svm.name': fake.VSERVER_NAME,
+            'expiry_time': 'P' + str(
+                fake.SECURITY_CERT_LARGE_EXPIRE_DAYS) + 'DT',
+        }
+        query1 = {
+            'return_records': 'true'
+        }
+        new_cert_info = copy.deepcopy(
+            fake.SECURITY_CERT_POST_RESPONSE_REST['records'][0])
+        new_cert_uuid = new_cert_info['uuid']
+        new_svm_uuid = new_cert_info['svm']['uuid']
+        body2 = {
+            'certificate': {
+                'uuid': new_cert_uuid,
+            },
+            'client_enabled': 'false',
+        }
+
+        self.client._modify_security_cert(
+            fake.VSERVER_NAME,
+            fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
+
+        self.client.send_request.assert_has_calls([
+            mock.call('/security/certificates', 'get', query=query),
+            mock.call('/security/certificates', 'post', body=body1,
+                      query=query1),
+            mock.call(f'/svm/svms/{new_svm_uuid}', 'patch', body=body2),
+            mock.call(f'/security/certificates/{old_cert_uuid}', 'delete'),
+        ])
 
     def test__broadcast_domain_exists(self):
         response = fake.FAKE_GET_BROADCAST_DOMAIN

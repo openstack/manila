@@ -420,6 +420,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_create_vserver_no_ipspace(self):
 
         self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client,
+                         '_modify_security_cert',
+                         mock.Mock())
 
         vserver_create_args = {
             'vserver-name': fake.VSERVER_NAME,
@@ -438,16 +441,22 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                    fake.ROOT_VOLUME_AGGREGATE_NAME,
                                    fake.ROOT_VOLUME_NAME,
                                    fake.SHARE_AGGREGATE_NAMES,
-                                   None)
+                                   None,
+                                   fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
 
         self.client.send_request.assert_has_calls([
             mock.call('vserver-create', vserver_create_args),
             mock.call('vserver-modify', vserver_modify_args)])
+        self.client._modify_security_cert.assert_called_with(
+            fake.VSERVER_NAME, fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
 
     def test_create_vserver_with_ipspace(self):
 
         self.client.features.add_feature('IPSPACES')
         self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client,
+                         '_modify_security_cert',
+                         mock.Mock())
 
         vserver_create_args = {
             'vserver-name': fake.VSERVER_NAME,
@@ -467,11 +476,65 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                    fake.ROOT_VOLUME_AGGREGATE_NAME,
                                    fake.ROOT_VOLUME_NAME,
                                    fake.SHARE_AGGREGATE_NAMES,
-                                   fake.IPSPACE_NAME)
+                                   fake.IPSPACE_NAME,
+                                   fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
 
         self.client.send_request.assert_has_calls([
             mock.call('vserver-create', vserver_create_args),
             mock.call('vserver-modify', vserver_modify_args)])
+        self.client._modify_security_cert.assert_called_with(
+            fake.VSERVER_NAME, fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
+
+    def test__modify_security_cert(self):
+
+        certificate_create_args = {
+            'vserver': fake.VSERVER_NAME,
+            'common-name': fake.VSERVER_NAME,
+            'type': 'server',
+            'expire-days': fake.SECURITY_CERT_LARGE_EXPIRE_DAYS,
+        }
+
+        self.mock_object(self.client, 'send_request')
+        api_response = netapp_api.NaElement(fake.SECURITY_CERT_GET_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+        certificate_get_args = {
+            'query': {
+                'certificate-info': {
+                    'vserver': fake.VSERVER_NAME,
+                    'common-name': fake.VSERVER_NAME,
+                    'certificate-authority': fake.VSERVER_NAME,
+                    'type': 'server',
+                },
+            },
+            'desired-attributes': {
+                'certificate-info': {
+                    'serial-number': None,
+                },
+            },
+        }
+
+        certificate_delete_args = {
+            'certificate-authority': fake.VSERVER_NAME,
+            'common-name': fake.VSERVER_NAME,
+            'serial-number': '12345',
+            'type': 'server',
+            'vserver': fake.VSERVER_NAME,
+        }
+
+        self.client._modify_security_cert(
+            fake.VSERVER_NAME,
+            fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
+
+        self.client.send_request.assert_has_calls([
+            mock.call(
+                'security-certificate-create', certificate_create_args),
+            mock.call(
+                'security-certificate-delete', certificate_delete_args)])
+
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('security-certificate-get-iter', certificate_get_args)])
 
     def test_create_vserver_dp_destination(self):
 
@@ -506,7 +569,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.ROOT_VOLUME_AGGREGATE_NAME,
                           fake.ROOT_VOLUME_NAME,
                           fake.SHARE_AGGREGATE_NAMES,
-                          fake.IPSPACE_NAME)
+                          fake.IPSPACE_NAME,
+                          fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
 
     def test_get_vserver_root_volume_name(self):
 

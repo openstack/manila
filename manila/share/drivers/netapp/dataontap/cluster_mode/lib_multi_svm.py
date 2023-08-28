@@ -343,7 +343,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 self.configuration.netapp_root_volume_aggregate,
                 self.configuration.netapp_root_volume,
                 aggr_set,
-                ipspace_name)
+                ipspace_name,
+                self.configuration.netapp_security_cert_expire_days)
 
             vserver_client = self._get_api_client(vserver=vserver_name)
 
