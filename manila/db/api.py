@@ -378,6 +378,11 @@ def share_instances_get_all_by_share_group_id(context, share_group_id):
     return IMPL.share_instances_get_all_by_share_group_id(
         context, share_group_id)
 
+
+def share_instance_sizes_sum_by_host(context, host):
+    """Returns sum of sizes of all share instances on given host."""
+    return IMPL.share_instance_sizes_sum_by_host(context, host)
+
 ###################
 
 
