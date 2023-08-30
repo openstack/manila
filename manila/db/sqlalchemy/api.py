@@ -2297,7 +2297,7 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     # NOTE(carloss): Count must be calculated before limit and offset are
     # applied into the query.
     if show_count:
-        count = query.count()
+        count = query.order_by(models.Share.id).distinct().count()
 
     # Returns list of shares that satisfy filters.
     query = query.all()
@@ -3072,7 +3072,7 @@ def _share_snapshot_get_all_with_filters(context, project_id=None,
 
     count = None
     if show_count:
-        count = query.count()
+        count = query.order_by(models.ShareSnapshot.id).distinct().count()
 
     if limit is not None:
         query = query.limit(limit)

@@ -584,9 +584,16 @@ class ShareDatabaseAPITestCase(test.TestCase):
     @ddt.unpack
     def test_share_get_all_with_count(self, filters, amount_of_shares,
                                       expected_shares_len):
-        [db_utils.create_share(display_name='fake_name_%s' % str(i))
-         for i in range(amount_of_shares)]
+        c_shares = [
+            db_utils.create_share(display_name='fake_name_%s' % str(i))
+            for i in range(amount_of_shares)]
 
+        # create one more share instance
+        db_utils.create_share_instance(share_id=c_shares[0]['id'])
+        db_utils.create_share_instance(share_id=c_shares[1]['id'])
+        db_utils.create_share_instance(share_id=c_shares[2]['id'])
+
+        # make sure we return shares count and not share instances.
         count, shares = db_api.share_get_all_with_count(
             self.ctxt, filters=filters)
 
