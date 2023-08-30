@@ -143,6 +143,8 @@ def _usage_from_share(share_ref, share_instance_ref, **extra_usage_info):
         'availability_zone': share_instance_ref['availability_zone'],
         'host': share_instance_ref['host'],
         'status': share_instance_ref['status'],
+        'share_type_id': share_instance_ref['share_type_id'],
+        'share_type': share_instance_ref['share_type']['name'],
     }
 
     usage_info.update(extra_usage_info)
