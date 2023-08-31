@@ -1919,19 +1919,6 @@ def share_instances_get_all_by_host(context, host, with_share_data=False,
 
 
 @require_context
-def share_instance_sizes_sum_by_host(context, host):
-    result = model_query(
-        context, models.Share, func.sum(models.Share.size),
-    ).join(
-        models.ShareInstance.share,
-    ).filter(or_(
-        models.ShareInstance.host == host,
-        models.ShareInstance.host.like("{0}#%".format(host)),
-    )).first()
-    return int(result[0] or 0)
-
-
-@require_context
 def share_instances_get_all_by_share_network(context, share_network_id):
     """Returns list of share instances that belong to given share network."""
     result = (
