@@ -141,13 +141,13 @@ creating share type:
 
 .. code-block:: console
 
-    $ openstack share type create --extra_specs snapshot_support=True ${share_type_name} False
+    $ openstack share type create --extra_specs snapshot_support=True powerflex False
 
 Or you can update already existing share type with command:
 
 .. code-block:: console
 
-    $ openstack share type set --extra_specs snapshot_support=True ${share_type_name}
+    $ openstack share type set --extra_specs snapshot_support=True powerflex
 
 
 Known restrictions

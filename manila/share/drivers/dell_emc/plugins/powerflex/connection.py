@@ -355,6 +355,7 @@ class PowerFlexStorageConnection(driver.StorageConnection):
             self.protection_domain,
             self.storage_pool
             )
+        total = free = used = provisioned = 0
         statistic = self.manager.get_storage_pool_statistic(storage_pool_id)
         if statistic:
             total = statistic.get('maxCapacityInKb') // units.Mi

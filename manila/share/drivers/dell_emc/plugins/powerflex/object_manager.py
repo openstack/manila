@@ -184,7 +184,7 @@ class StorageObjectManager(object):
             "storage_pool_id": storage_pool_id,
             "nas_server_id": nas_server_id
             }
-        url = self.base_url + '/v1/file-systems'
+        url = f'{self.base_url}/v1/file-systems'
         res, response = self.execute_powerflex_post_request(url, params)
         if res.status_code == 201:
             return response["id"]
@@ -202,7 +202,7 @@ class StorageObjectManager(object):
             "path": "/" + str(name),
             "name": name
             }
-        url = self.base_url + '/v1/nfs-exports'
+        url = f'{self.base_url}/v1/nfs-exports'
         res, response = self.execute_powerflex_post_request(url, params)
         if res.status_code == 201:
             return response["id"]
@@ -213,9 +213,7 @@ class StorageObjectManager(object):
         :param filesystem_id: ID of the filesystem to delete
         :return: True if deleted successfully
         """
-        url = self.base_url + \
-            '/v1/file-systems/' + \
-            filesystem_id
+        url = f'{self.base_url}/v1/file-systems/{filesystem_id}'
         res = self.execute_powerflex_delete_request(url)
         return res.status_code == 204
 
@@ -229,10 +227,7 @@ class StorageObjectManager(object):
         params = {
             "name": name
             }
-        url = self.base_url + \
-            '/v1/file-systems/' + \
-            filesystem_id + \
-            '/snapshot'
+        url = f'{self.base_url}/v1/file-systems/{filesystem_id}/snapshot'
         res, response = self.execute_powerflex_post_request(url, params)
         return res.status_code == 201
 
@@ -242,9 +237,7 @@ class StorageObjectManager(object):
         :param nas_server: NAS server name
         :return: ID of the NAS server if success
         """
-        url = self.base_url + \
-            '/v1/nas-servers?select=id&name=eq.' + \
-            nas_server
+        url = f'{self.base_url}/v1/nas-servers?select=id&name=eq.{nas_server}'
         res, response = self.execute_powerflex_get_request(url)
         if res.status_code == 200:
             return response[0]['id']
@@ -255,7 +248,7 @@ class StorageObjectManager(object):
         :param export_id: ID of the NFS export
         :return: path of the NFS export if success
         """
-        url = self.base_url + '/v1/nfs-exports/' + export_id + '?select=*'
+        url = f'{self.base_url}/v1/nfs-exports/{export_id}?select=*'
         res, response = self.execute_powerflex_get_request(url)
         if res.status_code == 200:
             return response["name"]
@@ -266,9 +259,7 @@ class StorageObjectManager(object):
         :param name: name of the filesystem
         :return: ID of the filesystem if success
         """
-        url = self.base_url + \
-            '/v1/file-systems?select=id&name=eq.' + \
-            name
+        url = f'{self.base_url}/v1/file-systems?select=id&name=eq.{name}'
         res, response = self.execute_powerflex_get_request(url)
         if res.status_code == 200:
             return response[0]['id']
@@ -279,9 +270,7 @@ class StorageObjectManager(object):
         :param name: name of the NFS export
         :return: id of the NFS export if success
         """
-        url = self.base_url + \
-            '/v1/nfs-exports?select=id&name=eq.' + \
-            name
+        url = f'{self.base_url}/v1/nfs-exports?select=id&name=eq.{name}'
         res, response = self.execute_powerflex_get_request(url)
         if res.status_code == 200:
             return response[0]['id']
@@ -297,8 +286,8 @@ class StorageObjectManager(object):
             "protectionDomainName": protection_domain,
             "name": storage_pool
             }
-        url = self.host_url + \
-            '/api/types/StoragePool/instances/action/queryIdByKey'
+        url = (f'{self.host_url}/api/types/StoragePool/instances/'
+               'action/queryIdByKey')
         res, response = self.execute_powerflex_post_request(url, params)
         if res.status_code == 200:
             return response
@@ -315,9 +304,7 @@ class StorageObjectManager(object):
             "read_only_hosts": list(ro_hosts),
             "read_write_root_hosts": list(rw_hosts)
             }
-        url = self.base_url + \
-            '/v1/nfs-exports/' + \
-            export_id
+        url = f'{self.base_url}/v1/nfs-exports/{export_id}'
         res = self.execute_powerflex_patch_request(url, params)
         return res.status_code == 204
 
@@ -331,9 +318,7 @@ class StorageObjectManager(object):
         params = {
             "size_total": new_size
             }
-        url = self.base_url + \
-            '/v1/file-systems/' + \
-            export_id
+        url = f'{self.base_url}/v1/file-systems/{export_id}'
         res = self.execute_powerflex_patch_request(url, params)
         return res.status_code == 204
 
@@ -343,9 +328,8 @@ class StorageObjectManager(object):
         :param name: name of the export
         :return: ID of the Filesystem which owns the export
         """
-        url = self.base_url + \
-            '/v1/nfs-exports?select=file_system_id&name=eq.' + \
-            name
+        url = (f'{self.base_url}/v1/nfs-exports'
+               f'?select=file_system_id&name=eq.{name}')
         res, response = self.execute_powerflex_get_request(url)
         if res.status_code == 200:
             return response[0]['file_system_id']
@@ -356,9 +340,8 @@ class StorageObjectManager(object):
         :param snapshot_name: Name of the snapshot
         :return: ID of the parent filesystem of the snapshot
         """
-        url = self.base_url + \
-            '/v1/file-systems?select=id&name=eq.' + \
-            snapshot_name
+        url = (f'{self.base_url}/v1/file-systems'
+               f'?select=id&name=eq.{snapshot_name}')
         res, response = self.execute_powerflex_get_request(url)
         if res.status_code == 200:
             return response[0]['id']
@@ -369,9 +352,7 @@ class StorageObjectManager(object):
         :param storage_pool_id: ID of the storage pool
         :return: Spare capacity percentage of the storage pool
         """
-        url = self.host_url + \
-            '/api/instances/StoragePool::' + \
-            storage_pool_id
+        url = f'{self.host_url}/api/instances/StoragePool::{storage_pool_id}'
         res, response = self.execute_powerflex_get_request(url)
         if res.status_code == 200:
             return response['sparePercentage']
@@ -382,9 +363,8 @@ class StorageObjectManager(object):
         :param storage_pool_id: ID of the storage pool
         :return: Statistics of the storage pool
         """
-        url = self.host_url + \
-            '/api/instances/StoragePool::' + \
-            storage_pool_id + '/relationships/Statistics'
+        url = (f'{self.host_url}/api/instances/StoragePool::{storage_pool_id}'
+               '/relationships/Statistics')
         res, response = self.execute_powerflex_get_request(url)
         if res.status_code == 200:
             statistics = {
@@ -401,9 +381,8 @@ class StorageObjectManager(object):
         :param nas_server_id: ID of the NAS server
         :return: file interfaces of the NAS server
         """
-        url = self.base_url + \
-            '/v1/file-interfaces?select=ip_address&nas_server_id=eq.' + \
-            nas_server_id
+        url = (f'{self.base_url}/v1/file-interfaces'
+               f'?select=ip_address&nas_server_id=eq.{nas_server_id}')
         res, response = self.execute_powerflex_get_request(url)
         if res.status_code == 200:
             return [i['ip_address'] for i in response]
