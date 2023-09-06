@@ -2625,13 +2625,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                       is_flexgroup=is_flexgroup)
 
         self.assertFalse(vserver_client.delete_snapshot.called)
-        vserver_client.get_clone_children_for_snapshot.assert_called_once_with(
-            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
-        vserver_client.volume_clone_split_start.assert_has_calls([
-            mock.call(fake.CDOT_CLONE_CHILD_1),
-            mock.call(fake.CDOT_CLONE_CHILD_2),
-        ])
         if is_flexgroup:
+            (vserver_client.
+                get_clone_children_for_snapshot.assert_called_once_with(
+                    fake.SHARE_NAME, fake.SNAPSHOT_NAME))
+            vserver_client.volume_clone_split_start.assert_has_calls([
+                mock.call(fake.CDOT_CLONE_CHILD_1),
+                mock.call(fake.CDOT_CLONE_CHILD_2),
+            ])
             mock_is_flexgroup_share.assert_called_once_with(
                 vserver_client, fake.SHARE_NAME, fake.SNAPSHOT_NAME)
             vserver_client.soft_delete_snapshot.assert_not_called()

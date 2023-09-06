@@ -5108,7 +5108,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
         mock_delete_snapshot = self.mock_object(self.client, 'delete_snapshot')
         mock_rename_snapshot = self.mock_object(self.client, 'rename_snapshot')
 
-        self.client.soft_delete_snapshot(fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+        self.client.soft_delete_snapshot(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
 
         mock_delete_snapshot.assert_called_once_with(
             fake.SHARE_NAME, fake.SNAPSHOT_NAME)
@@ -5119,14 +5120,26 @@ class NetAppClientCmodeTestCase(test.TestCase):
         mock_delete_snapshot = self.mock_object(
             self.client, 'delete_snapshot', self._mock_api_error())
         mock_rename_snapshot = self.mock_object(self.client, 'rename_snapshot')
+        mock_get_clone_children_for_snapshot = self.mock_object(
+            self.client, 'get_clone_children_for_snapshot',
+            mock.Mock(return_value=fake.CDOT_CLONE_CHILDREN))
+        mock_volume_clone_split_start = self.mock_object(
+            self.client, 'volume_clone_split_start')
 
-        self.client.soft_delete_snapshot(fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+        self.client.soft_delete_snapshot(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
 
         mock_delete_snapshot.assert_called_once_with(
             fake.SHARE_NAME, fake.SNAPSHOT_NAME)
         mock_rename_snapshot.assert_called_once_with(
             fake.SHARE_NAME, fake.SNAPSHOT_NAME,
             'deleted_manila_' + fake.SNAPSHOT_NAME)
+        mock_get_clone_children_for_snapshot.assert_called_once_with(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+        mock_volume_clone_split_start.assert_has_calls([
+            mock.call(fake.CDOT_CLONE_CHILD_1),
+            mock.call(fake.CDOT_CLONE_CHILD_2),
+        ])
 
     def test_prune_deleted_snapshots(self):
 

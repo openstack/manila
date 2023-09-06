@@ -4107,6 +4107,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             msg_args = {'snapshot': snapshot_name, 'volume': volume_name}
             LOG.info(msg, msg_args)
 
+            # Snapshots are locked by clone(s), so split the clone(s)
+            snapshot_children = self.get_clone_children_for_snapshot(
+                volume_name, snapshot_name)
+            for snapshot_child in snapshot_children:
+                self.volume_clone_split_start(snapshot_child['name'])
+
     @na_utils.trace
     def prune_deleted_snapshots(self):
         """Deletes non-busy snapshots that were previously soft-deleted."""
