@@ -176,6 +176,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self.message_api = message_api.API()
         self._snapmirror_schedule = self._convert_schedule_to_seconds(
             schedule=self.configuration.netapp_snapmirror_schedule)
+        self._cluster_name = self.configuration.netapp_cluster_name
 
     @na_utils.trace
     def do_setup(self, context):
@@ -429,9 +430,12 @@ class NetAppCmodeFileStorageLibrary(object):
         flexgroup_aggr = self._get_flexgroup_aggr_set()
         aggr_space = self._get_aggregate_space(aggr_pool.union(flexgroup_aggr))
 
-        if self._have_cluster_creds:
+        cluster_name = self._cluster_name
+        if self._have_cluster_creds and not cluster_name:
             # Get up-to-date node utilization metrics just once.
             self._perf_library.update_performance_cache({}, self._ssc_stats)
+            cluster_name = self._client.get_cluster_name()
+            self._cluster_name = cluster_name
 
         # Add FlexVol pools.
         filter_function = (get_filter_function() if get_filter_function
@@ -446,6 +450,7 @@ class NetAppCmodeFileStorageLibrary(object):
             pool_with_func = copy.deepcopy(pool)
             pool_with_func['filter_function'] = filter_function
             pool_with_func['goodness_function'] = goodness_function
+            pool_with_func['netapp_cluster_name'] = self._cluster_name
 
             pools.append(pool_with_func)
 
@@ -462,6 +467,7 @@ class NetAppCmodeFileStorageLibrary(object):
             pool_with_func = copy.deepcopy(pool)
             pool_with_func['filter_function'] = filter_function
             pool_with_func['goodness_function'] = goodness_function
+            pool_with_func['netapp_cluster_name'] = self._cluster_name
 
             pools.append(pool_with_func)
 
@@ -497,6 +503,7 @@ class NetAppCmodeFileStorageLibrary(object):
             'pool_name': pool_name,
             'filter_function': None,
             'goodness_function': None,
+            'netapp_cluster_name': '',
             'total_capacity_gb': total_capacity_gb,
             'free_capacity_gb': free_capacity_gb,
             'allocated_capacity_gb': allocated_capacity_gb,

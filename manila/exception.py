@@ -1177,3 +1177,8 @@ class ShareBackupSizeExceedsAvailableQuota(QuotaError):
     message = _("Requested backup exceeds allowed Backup gigabytes "
                 "quota. Requested %(requested)sG, quota is %(quota)sG and "
                 "%(consumed)sG has been consumed.")
+
+
+class NetappActiveIQWeigherRequiredParameter(ManilaException):
+    message = _("%(config)s configuration of the NetAppActiveIQ weigher "
+                "must be set.")

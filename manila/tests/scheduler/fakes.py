@@ -244,6 +244,166 @@ SHARE_SERVICE_STATES_WITH_POOLS = {
                                   thin_provisioning=False)]),
 }
 
+FAKE_ACTIVE_IQ_WEIGHER_LIST = [
+    "fake_aggregate_1:fake_cluster_name1",
+    "fake_aggregate_2:fake_cluster_name2",
+    "fake_aggregate_3:fake_cluster_name3"
+]
+
+FAKE_ACTIVE_IQ_WEIGHER_AGGREGATES_RESPONSE = {
+    "records": [
+        {
+            "name": "fake_aggregate_1",
+            "key": "fake_key_1",
+            "cluster": {
+                "name": "fake_cluster_name1"
+            }
+        },
+        {
+            "name": "fake_aggregate_2",
+            "key": "fake_key_2",
+            "cluster": {
+                "name": "fake_cluster_name2"
+            }
+        },
+        {
+            "name": "fake_aggregate_3",
+            "key": "fake_key_3",
+            "cluster": {
+                "name": "fake_cluster_name3"
+            }
+        }
+    ]
+}
+
+FAKE_ACTIVE_IQ_WEIGHER_BALANCE_RESPONSE = [
+    {
+        "key": "fake_key_1",
+        "scores": {
+            "total_weighted_score": 10.0
+        }
+    },
+    {
+        "key": "fake_key_2",
+        "scores": {
+            "total_weighted_score": 20.0
+        }
+    }
+]
+
+
+class FakeHostManagerNetAppOnly(host_manager.HostManager):
+    def __init__(self):
+        super(FakeHostManagerNetAppOnly, self).__init__()
+
+        self.service_states = {
+            'host1': {
+                'total_capacity_gb': 1024,
+                'free_capacity_gb': 1024,
+                'allocated_capacity_gb': 0,
+                'thin_provisioning': False,
+                'reserved_percentage': 10,
+                'reserved_snapshot_percentage': 5,
+                'reserved_share_extend_percentage': 15,
+                'timestamp': None,
+                'snapshot_support': True,
+                'create_share_from_snapshot_support': True,
+                'replication_type': 'writable',
+                'replication_domain': 'endor',
+                'storage_protocol': 'NFS_CIFS',
+                'vendor_name': 'NetApp',
+                'netapp_cluster_name': 'cluster1',
+            },
+            'host2': {
+                'total_capacity_gb': 2048,
+                'free_capacity_gb': 300,
+                'allocated_capacity_gb': 1748,
+                'provisioned_capacity_gb': 1748,
+                'max_over_subscription_ratio': 2.0,
+                'thin_provisioning': True,
+                'reserved_percentage': 10,
+                'reserved_snapshot_percentage': 5,
+                'reserved_share_extend_percentage': 15,
+                'timestamp': None,
+                'snapshot_support': True,
+                'create_share_from_snapshot_support': True,
+                'replication_type': 'readable',
+                'replication_domain': 'kashyyyk',
+                'storage_protocol': 'NFS_CIFS',
+                'vendor_name': 'NetApp',
+                'netapp_cluster_name': 'cluster2',
+            },
+            'host3': {
+                'total_capacity_gb': 512,
+                'free_capacity_gb': 256,
+                'allocated_capacity_gb': 256,
+                'provisioned_capacity_gb': 256,
+                'max_over_subscription_ratio': 2.0,
+                'thin_provisioning': [False],
+                'reserved_percentage': 0,
+                'reserved_snapshot_percentage': 0,
+                'reserved_share_extend_percentage': 0,
+                'snapshot_support': True,
+                'create_share_from_snapshot_support': True,
+                'timestamp': None,
+                'storage_protocol': 'NFS_CIFS',
+                'vendor_name': 'NetApp',
+                'netapp_cluster_name': 'cluster3',
+            },
+            'host4': {
+                'total_capacity_gb': 2048,
+                'free_capacity_gb': 200,
+                'allocated_capacity_gb': 1848,
+                'provisioned_capacity_gb': 1848,
+                'max_over_subscription_ratio': 1.0,
+                'thin_provisioning': [True],
+                'reserved_percentage': 5,
+                'reserved_snapshot_percentage': 2,
+                'reserved_share_extend_percentage': 5,
+                'timestamp': None,
+                'snapshot_support': True,
+                'create_share_from_snapshot_support': True,
+                'replication_type': 'dr',
+                'replication_domain': 'naboo',
+                'storage_protocol': 'NFS_CIFS',
+                'vendor_name': 'NetApp',
+                'netapp_cluster_name': 'cluster4',
+            },
+            'host5': {
+                'total_capacity_gb': 2048,
+                'free_capacity_gb': 500,
+                'allocated_capacity_gb': 1548,
+                'provisioned_capacity_gb': 1548,
+                'max_over_subscription_ratio': 1.5,
+                'thin_provisioning': [True, False],
+                'reserved_percentage': 5,
+                'reserved_snapshot_percentage': 2,
+                'reserved_share_extend_percentage': 5,
+                'timestamp': None,
+                'snapshot_support': True,
+                'create_share_from_snapshot_support': True,
+                'replication_type': None,
+                'storage_protocol': 'NFS_CIFS',
+                'vendor_name': 'NetApp',
+                'netapp_cluster_name': 'cluster5',
+            },
+            'host6': {
+                'total_capacity_gb': 'unknown',
+                'free_capacity_gb': 'unknown',
+                'allocated_capacity_gb': 1548,
+                'thin_provisioning': False,
+                'reserved_percentage': 5,
+                'reserved_snapshot_percentage': 2,
+                'reserved_share_extend_percentage': 5,
+                'snapshot_support': True,
+                'create_share_from_snapshot_support': True,
+                'timestamp': None,
+                'storage_protocol': 'GLUSTERFS',
+                'vendor_name': 'NetApp',
+                'netapp_cluster_name': 'cluster6',
+            },
+        }
+
 
 class FakeFilterScheduler(filter.FilterScheduler):
     def __init__(self, *args, **kwargs):
@@ -269,6 +429,7 @@ class FakeHostManager(host_manager.HostManager):
                       'replication_type': 'writable',
                       'replication_domain': 'endor',
                       'storage_protocol': 'NFS_CIFS',
+                      'vendor_name': 'Dummy',
                       },
             'host2': {'total_capacity_gb': 2048,
                       'free_capacity_gb': 300,
@@ -285,6 +446,7 @@ class FakeHostManager(host_manager.HostManager):
                       'replication_type': 'readable',
                       'replication_domain': 'kashyyyk',
                       'storage_protocol': 'NFS_CIFS',
+                      'vendor_name': 'Dummy',
                       },
             'host3': {'total_capacity_gb': 512,
                       'free_capacity_gb': 256,
@@ -299,6 +461,7 @@ class FakeHostManager(host_manager.HostManager):
                       'create_share_from_snapshot_support': True,
                       'timestamp': None,
                       'storage_protocol': 'NFS_CIFS',
+                      'vendor_name': 'Dummy',
                       },
             'host4': {'total_capacity_gb': 2048,
                       'free_capacity_gb': 200,
@@ -315,6 +478,7 @@ class FakeHostManager(host_manager.HostManager):
                       'replication_type': 'dr',
                       'replication_domain': 'naboo',
                       'storage_protocol': 'NFS_CIFS',
+                      'vendor_name': 'Dummy',
                       },
             'host5': {'total_capacity_gb': 2048,
                       'free_capacity_gb': 500,
@@ -330,6 +494,7 @@ class FakeHostManager(host_manager.HostManager):
                       'create_share_from_snapshot_support': True,
                       'replication_type': None,
                       'storage_protocol': 'NFS_CIFS',
+                      'vendor_name': 'Dummy',
                       },
             'host6': {'total_capacity_gb': 'unknown',
                       'free_capacity_gb': 'unknown',
@@ -342,6 +507,7 @@ class FakeHostManager(host_manager.HostManager):
                       'create_share_from_snapshot_support': True,
                       'timestamp': None,
                       'storage_protocol': 'GLUSTERFS',
+                      'vendor_name': 'Dummy',
                       },
         }
 

@@ -502,6 +502,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_flexgroup_space = self.mock_object(
             self.library, '_get_flexgroup_pool_space',
             mock.Mock(return_value=(fake_total, fake_free, fake_used)))
+        mock_get_cluster_name = self.mock_object(
+            self.library._client, 'get_cluster_name',
+            mock.Mock(return_value='fake_cluster_name'))
 
         self.library._cache_pool_status = na_utils.DataCache(60)
         self.library._have_cluster_creds = True
@@ -520,6 +523,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_flexgroup_space.assert_has_calls([
             mock.call(fake.AGGREGATE_CAPACITIES,
                       fake.FLEXGROUP_POOL_OPT[fake.FLEXGROUP_POOL_NAME])])
+        mock_get_cluster_name.assert_called_once_with()
         mock_get_pool.assert_has_calls([
             mock.call(fake.AGGREGATES[0], fake_total, fake_free, fake_used),
             mock.call(fake.AGGREGATES[1], fake_total, fake_free, fake_used),
@@ -547,6 +551,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_pool = copy.deepcopy(fake.POOLS[0])
         fake_pool['filter_function'] = None
         fake_pool['goodness_function'] = None
+        fake_pool['netapp_cluster_name'] = ''
         self.library._have_cluster_creds = True
         self.library._revert_to_snapshot_support = True
         self.library._cluster_info = fake.CLUSTER_INFO
