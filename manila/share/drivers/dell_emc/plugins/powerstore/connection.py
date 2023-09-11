@@ -181,12 +181,12 @@ class PowerStoreStorageConnection(driver.StorageConnection):
         return locations
 
     def _create_share_NFS_CIFS(self, nas_server_id, filesystem_id, share_name,
-                               protocal):
+                               protocol):
         LOG.debug(f"Get file interfaces of {nas_server_id}")
         file_interfaces = self.client.get_nas_server_interfaces(
             nas_server_id)
-        LOG.debug(f"Creating {protocal} export {share_name}")
-        if protocal == 'NFS':
+        LOG.debug(f"Creating {protocol} export {share_name}")
+        if protocol == 'NFS':
             export_id = self.client.create_nfs_export(filesystem_id,
                                                       share_name)
             if not export_id:
@@ -197,7 +197,7 @@ class PowerStoreStorageConnection(driver.StorageConnection):
                 LOG.error(message)
                 raise exception.ShareBackendException(msg=message)
             locations = self._get_nfs_location(file_interfaces, share_name)
-        elif protocal == 'CIFS':
+        elif protocol == 'CIFS':
             export_id = self.client.create_smb_share(filesystem_id,
                                                      share_name)
             if not export_id:
@@ -243,8 +243,8 @@ class PowerStoreStorageConnection(driver.StorageConnection):
         LOG.debug(f"Retrieving filesystem ID for filesystem {share['name']}")
         filesystem_id = self.client.get_filesystem_id(share['name'])
         if not filesystem_id:
-            LOG.warning(f'Filesystem with share name {share["name"]} \
-                        is not found.')
+            LOG.warning(
+                f'Filesystem with share name {share["name"]} is not found.')
         else:
             LOG.debug(f"Deleting filesystem ID {filesystem_id}")
             share_deleted = self.client.delete_filesystem(filesystem_id)
@@ -293,11 +293,11 @@ class PowerStoreStorageConnection(driver.StorageConnection):
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
         """Is called to update share access."""
-        protocal = share['share_proto'].upper()
-        LOG.debug(f'Updating access to {protocal} share.')
-        if protocal == 'NFS':
+        protocol = share['share_proto'].upper()
+        LOG.debug(f'Updating access to {protocol} share.')
+        if protocol == 'NFS':
             return self._update_nfs_access(share, access_rules)
-        elif protocal == 'CIFS':
+        elif protocol == 'CIFS':
             return self._update_cifs_access(share, access_rules)
 
     def _update_nfs_access(self, share, access_rules):
@@ -350,8 +350,10 @@ class PowerStoreStorageConnection(driver.StorageConnection):
                 access_updates.update({rule['access_id']: {'state': 'error'}})
 
             else:
-                prefix = self.ad_domain or \
+                prefix = (
+                    self.ad_domain or
                     self.client.get_nas_server_smb_netbios(self.nas_server)
+                )
                 if not prefix:
                     message = (
                         _('Failed to get daomain/netbios name of '
@@ -386,16 +388,16 @@ class PowerStoreStorageConnection(driver.StorageConnection):
         stats_dict['driver_version'] = VERSION
         stats_dict['storage_protocol'] = 'NFS_CIFS'
         stats_dict['reserved_percentage'] = self.reserved_percentage
-        stats_dict['reserved_snapshot_percentage'] = \
-            self.reserved_snapshot_percentage
-        stats_dict['reserved_share_extend_percentage'] = \
-            self.reserved_share_extend_percentage
-        stats_dict['max_over_subscription_ratio'] = \
-            self.max_over_subscription_ratio
+        stats_dict['reserved_snapshot_percentage'] = (
+            self.reserved_snapshot_percentage)
+        stats_dict['reserved_share_extend_percentage'] = (
+            self.reserved_share_extend_percentage)
+        stats_dict['max_over_subscription_ratio'] = (
+            self.max_over_subscription_ratio)
 
         cluster_id = self.client.get_cluster_id()
         total, used = self.client.retreive_cluster_capacity_metrics(cluster_id)
-        if(total and used):
+        if total and used:
             free = total - used
             stats_dict['total_capacity_gb'] = total // units.Gi
             stats_dict['free_capacity_gb'] = free // units.Gi
