@@ -1883,13 +1883,14 @@ class NetAppCmodeFileStorageLibrary(object):
             vserver_client.delete_snapshot(share_name, snapshot_name)
 
         elif backend_snapshot['locked_by_clone']:
-            # Snapshots are locked by clone(s), so split the clone(s)
-            snapshot_children = vserver_client.get_clone_children_for_snapshot(
-                share_name, snapshot_name)
-            for snapshot_child in snapshot_children:
-                vserver_client.volume_clone_split_start(snapshot_child['name'])
-
             if is_flexgroup:
+                # Snapshots are locked by clone(s), so split the clone(s)
+                snap_children = vserver_client.get_clone_children_for_snapshot(
+                    share_name, snapshot_name)
+                for snapshot_child in snap_children:
+                    vserver_client.volume_clone_split_start(
+                        snapshot_child['name'])
+
                 # NOTE(felipe_rodrigues): ONTAP does not allow rename a
                 # FlexGroup snapshot, so it cannot be soft deleted. It will
                 # wait for all split clones complete.

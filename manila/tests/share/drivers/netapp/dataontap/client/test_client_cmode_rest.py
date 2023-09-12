@@ -5941,6 +5941,17 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                     ignore_owners)
         mock_sr.assert_has_calls(calls)
 
+    def test_soft_delete_snapshot(self):
+
+        mock_delete_snapshot = self.mock_object(self.client, 'delete_snapshot')
+        mock_rename_snapshot = self.mock_object(self.client, 'rename_snapshot')
+
+        self.client.soft_delete_snapshot(fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+
+        mock_delete_snapshot.assert_called_once_with(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+        self.assertFalse(mock_rename_snapshot.called)
+
     def test_volume_has_luns(self):
         mock_sr = self.mock_object(self.client, 'send_request')
         self.mock_object(self.client, '_has_records',

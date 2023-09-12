@@ -142,6 +142,13 @@ FPOLICY_EXT_TO_EXCLUDE_LIST = ['jpg', 'mp3']
 JOB_ID = 123
 JOB_STATE = 'success'
 
+CDOT_CLONE_CHILD_1 = 'fake_child_1'
+CDOT_CLONE_CHILD_2 = 'fake_child_2'
+CDOT_CLONE_CHILDREN = [
+    {'name': CDOT_CLONE_CHILD_1},
+    {'name': CDOT_CLONE_CHILD_2},
+]
+
 NETWORK_INTERFACES = [{
     'interface_name': 'fake_interface',
     'address': IP_ADDRESS,

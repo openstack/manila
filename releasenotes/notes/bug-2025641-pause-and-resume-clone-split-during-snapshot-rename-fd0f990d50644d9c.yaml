@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    In case of NetApp ONTAP driver, when snpashots are soft deleted (i.e. they
+    are renamed if delete fails) sometime we face issue in during rename. This
+    is due to busy snapshots. To overcome this, Manila will stop clone split,
+    perform rename and start clone split again. For more details, please refer
+    to `launchpad bug 2025641 <https://bugs.launchpad.net/manila/+bug/2025641>`_
