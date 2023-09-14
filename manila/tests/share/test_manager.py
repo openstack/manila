@@ -185,6 +185,104 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver.initialized = False
         self.assertFalse(self.share_manager.is_service_ready())
 
+    @ddt.data(True, False)
+    def test_ensure_driver_resources_driver_needs_to_reapply_rules(
+            self, driver_needs_to_reapply_rules):
+        old_hash = {'info_hash': '1e5ff444cfdc4a154126ddebc0223ffeae2d10c9'}
+        self.mock_object(self.share_manager.db,
+                         'backend_info_get',
+                         mock.Mock(return_value=old_hash))
+        self.mock_object(self.share_manager.driver,
+                         'get_backend_info',
+                         mock.Mock(return_value={'val': 'tigersgo'}))
+        instances, rules = self._setup_init_mocks()
+        fake_export_locations = ['fake/path/1', 'fake/path']
+        fake_update_instances = {
+            instances[0]['id']: {
+                'export_locations': fake_export_locations,
+                'reapply_access_rules': driver_needs_to_reapply_rules,
+            },
+            instances[2]['id']: {
+                'export_locations': fake_export_locations,
+                'reapply_access_rules': driver_needs_to_reapply_rules,
+            },
+        }
+        mock_backend_info_update = self.mock_object(
+            self.share_manager.db, 'backend_info_update')
+        mock_share_get_all_by_host = self.mock_object(
+            self.share_manager.db, 'share_instances_get_all_by_host',
+            mock.Mock(return_value=instances))
+        self.mock_object(self.share_manager.db, 'share_instance_get',
+                         mock.Mock(side_effect=[instances[0], instances[2],
+                                                instances[4]]))
+        self.mock_object(self.share_manager.db,
+                         'share_export_locations_update')
+        mock_ensure_shares = self.mock_object(
+            self.share_manager.driver, 'ensure_shares',
+            mock.Mock(return_value=fake_update_instances))
+        self.mock_object(self.share_manager, '_ensure_share_instance_has_pool')
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value='share_server'))
+        self.mock_object(self.share_manager,
+                         '_get_share_server_dict',
+                         mock.Mock(return_value='share_server'))
+        mock_reset_rules_method = self.mock_object(
+            self.share_manager.access_helper, 'reset_rules_to_queueing_states')
+        mock_update_rules_method = self.mock_object(
+            self.share_manager.access_helper, 'update_access_rules')
+
+        dict_instances = [self._get_share_instance_dict(
+            instance, share_server='share_server') for instance in instances]
+
+        self.share_manager.ensure_driver_resources(self.context)
+
+        exports_update = self.share_manager.db.share_export_locations_update
+        mock_backend_info_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            self.share_manager.host,
+            '77a1d6fc86295017d9908a4f657dc9e089b3de4b')
+        mock_ensure_shares.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            [dict_instances[0], dict_instances[2], dict_instances[4]])
+        mock_share_get_all_by_host.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            self.share_manager.host)
+        exports_update.assert_has_calls([
+            mock.call(mock.ANY, instances[0]['id'], fake_export_locations),
+            mock.call(mock.ANY, instances[2]['id'], fake_export_locations),
+        ])
+        self.share_manager._ensure_share_instance_has_pool.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext),
+                      instances[0]),
+            mock.call(utils.IsAMatcher(context.RequestContext),
+                      instances[2]),
+        ])
+        self.share_manager._get_share_server.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext),
+                      instances[0]),
+            mock.call(utils.IsAMatcher(context.RequestContext),
+                      instances[2]),
+        ])
+        if driver_needs_to_reapply_rules:
+            # don't care if share_instance['access_rules_status'] is "syncing"
+            mock_reset_rules_method.assert_has_calls([
+                mock.call(mock.ANY, instances[0]['id'],
+                          reset_active=driver_needs_to_reapply_rules),
+                mock.call(mock.ANY, instances[2]['id'],
+                          reset_active=driver_needs_to_reapply_rules),
+            ])
+            mock_update_rules_method.assert_has_calls([
+                mock.call(mock.ANY, instances[0]['id'],
+                          share_server='share_server'),
+                mock.call(mock.ANY, instances[2]['id'],
+                          share_server='share_server'),
+            ])
+        else:
+            # none of the share instances in the fake data have syncing rules
+            mock_reset_rules_method.assert_not_called()
+            (self.share_manager.access_helper.update_access_rules
+             .assert_not_called())
+
     def test_init_host_with_no_shares(self):
         self.mock_object(self.share_manager.db,
                          'share_instances_get_all_by_host',
@@ -369,9 +467,8 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=share_server))
         self.mock_object(self.share_manager, 'publish_service_capabilities',
                          mock.Mock())
-        self.mock_object(self.share_manager.db,
-                         'share_access_get_all_for_share',
-                         mock.Mock(return_value=rules))
+        self.mock_object(self.share_manager.access_helper,
+                         'reset_rules_to_queueing_states')
         self.mock_object(
             self.share_manager.access_helper,
             'update_access_rules',
@@ -694,8 +791,8 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(smanager, 'publish_service_capabilities')
         self.mock_object(manager.LOG, 'exception')
         self.mock_object(manager.LOG, 'info')
-        self.mock_object(smanager.db, 'share_access_get_all_for_share',
-                         mock.Mock(return_value=rules))
+        self.mock_object(smanager.access_helper,
+                         'reset_rules_to_queueing_states')
         self.mock_object(smanager.access_helper, 'update_access_rules',
                          mock.Mock(side_effect=raise_exception))
         self.mock_object(smanager, '_get_share_server_dict',

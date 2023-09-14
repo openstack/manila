@@ -583,13 +583,36 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
         )
         return rules_to_apply_or_deny
 
-    def reset_applying_rules(self, context, share_instance_id):
+    def reset_rules_to_queueing_states(self, context, share_instance_id,
+                                       reset_active=False):
+        """Reset applying and denying rules to queued states.
+
+        This helper is useful when re-applying rule changes.
+        :param context: the RequestContext object
+        :param share_instance_id: ID of the share instance
+        :param reset_active: If True, set "active" rules to "queued_to_apply"
+        """
         conditional_updates = {
             constants.ACCESS_STATE_APPLYING:
                 constants.ACCESS_STATE_QUEUED_TO_APPLY,
             constants.ACCESS_STATE_DENYING:
                 constants.ACCESS_STATE_QUEUED_TO_DENY,
         }
+        if reset_active:
+            conditional_updates.update({
+                constants.STATUS_ACTIVE:
+                    constants.ACCESS_STATE_QUEUED_TO_APPLY,
+            })
+        self.get_and_update_share_instance_access_rules_status(
+            context,
+            share_instance_id=share_instance_id,
+            conditionally_change={
+                constants.SHARE_INSTANCE_RULES_ERROR:
+                    constants.SHARE_INSTANCE_RULES_SYNCING,
+                constants.ACCESS_STATE_ACTIVE:
+                    constants.SHARE_INSTANCE_RULES_SYNCING,
+            },
+        )
         self.get_and_update_share_instance_access_rules(
             context, share_instance_id=share_instance_id,
             conditionally_change=conditional_updates)

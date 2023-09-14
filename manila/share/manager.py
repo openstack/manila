@@ -485,30 +485,38 @@ class ShareManager(manager.SchedulerDependentManager):
         for share_instance in share_instances:
             if share_instance['id'] not in update_share_instances:
                 continue
-            if update_share_instances[share_instance['id']].get('status'):
+            share_instance_update_dict = (
+                update_share_instances[share_instance['id']]
+            )
+            if share_instance_update_dict.get('status'):
                 self.db.share_instance_update(
                     ctxt, share_instance['id'],
-                    {'status': (
-                        update_share_instances[share_instance['id']].
-                        get('status')),
+                    {'status': share_instance_update_dict.get('status'),
                      'host': share_instance['host']}
                 )
 
-            update_export_location = (
-                update_share_instances[share_instance['id']]
-                .get('export_locations'))
-            if update_export_location:
+            update_export_locations = (
+                share_instance_update_dict.get('export_locations')
+            )
+            if update_export_locations:
                 self.db.share_export_locations_update(
-                    ctxt, share_instance['id'], update_export_location)
+                    ctxt, share_instance['id'], update_export_locations)
 
             share_server = self._get_share_server(ctxt, share_instance)
-
-            if share_instance['access_rules_status'] != (
-                    constants.STATUS_ACTIVE):
+            driver_has_to_reapply_access_rules = (
+                share_instance_update_dict.get('reapply_access_rules') is True
+            )
+            share_instance_has_pending_rules = (
+                share_instance['access_rules_status'] !=
+                constants.STATUS_ACTIVE
+            )
+            if (driver_has_to_reapply_access_rules or
+                    share_instance_has_pending_rules):
                 try:
                     # Cast any existing 'applying' rules to 'new'
-                    self.access_helper.reset_applying_rules(
-                        ctxt, share_instance['id'])
+                    self.access_helper.reset_rules_to_queueing_states(
+                        ctxt, share_instance['id'],
+                        reset_active=driver_has_to_reapply_access_rules)
                     self.access_helper.update_access_rules(
                         ctxt, share_instance['id'], share_server=share_server)
                 except Exception:

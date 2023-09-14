@@ -781,6 +781,9 @@ class ShareDriver(object):
         the share if it changes. To do that, you should return list with
         export locations.
 
+        It is preferred if the driver implements "get_backend_info" and
+        "ensure_shares" instead of this routine.
+
         :return: None or list with export locations
         """
         raise NotImplementedError()
@@ -2812,7 +2815,8 @@ class ShareDriver(object):
         """Get driver and array configuration parameters.
 
         Driver can use this method to get the special configuration info and
-        return for assessment.
+        return for assessment. The share manager service uses this
+        assessment to invoke "ensure_shares" during service startup.
 
         :returns: A dictionary containing driver-specific info.
 
@@ -2831,9 +2835,13 @@ class ShareDriver(object):
     def ensure_shares(self, context, shares):
         """Invoked to ensure that shares are exported.
 
-        Driver can use this method to update the list of export locations of
-        the shares if it changes. To do that, a dictionary of shares should
-        be returned.
+        Driver can use this method to update the "status" and/or list of
+        export locations of the shares if they change. To do that,
+        a dictionary of shares should be returned. In addition, the driver can
+        seek to "reapply_access_rules" (boolean) on a per-share basis. When
+        this property exists and is set to True, the share manager service
+        will invoke "update_access" with all the access rules from the
+        service database.
         :shares: A list of all shares for updates.
         :returns: None or a dictionary of updates in the format.
 
@@ -2843,11 +2851,13 @@ class ShareDriver(object):
                     '09960614-8574-4e03-89cf-7cf267b0bd08': {
                         'export_locations': [{...}, {...}],
                         'status': 'error',
+                        'reapply_access_rules': False,
                     },
 
                     '28f6eabb-4342-486a-a7f4-45688f0c0295': {
                         'export_locations': [{...}, {...}],
                         'status': 'available',
+                        'reapply_access_rules': True,
                     },
 
                 }

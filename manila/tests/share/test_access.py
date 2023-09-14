@@ -808,3 +808,44 @@ class ShareInstanceAccessTestCase(test.TestCase):
         mock_db_instances_update.assert_called_once_with(
             self.context, share_instances,
             {'access_rules_status': 'fake_status'})
+
+    @ddt.data(True, False)
+    def test_reset_rules_to_queueing_states(self, reset_active):
+        share = db_utils.create_share(
+            status=constants.STATUS_AVAILABLE,
+            # if rules are applying/denying, status would be 'syncing', but,
+            # lets test the transition to syncing when asked to reset_active
+            access_rules_status=constants.STATUS_ACTIVE)
+        share_instance_id = share['instance']['id']
+        rule_kwargs = {'share_id': share['id'], 'access_level': 'rw'}
+        r1 = db_utils.create_access(
+            state=constants.ACCESS_STATE_APPLYING, **rule_kwargs)
+        r2 = db_utils.create_access(
+            state=constants.ACCESS_STATE_DENYING, **rule_kwargs)
+        r3 = db_utils.create_access(
+            state=constants.ACCESS_STATE_ACTIVE, **rule_kwargs)
+        r4 = db_utils.create_access(
+            state=constants.ACCESS_STATE_ACTIVE, **rule_kwargs)
+
+        self.access_helper.reset_rules_to_queueing_states(
+            self.context, share_instance_id, reset_active=reset_active)
+
+        rules = db.share_access_get_all_for_instance(
+            self.context, share_instance_id)
+        share_instance = db.share_instance_get(self.context, share_instance_id)
+        rules_dict = {r['access_id']: r for r in rules}
+        self.assertEqual(constants.SHARE_INSTANCE_RULES_SYNCING,
+                         share_instance['access_rules_status'])
+        self.assertEqual(constants.ACCESS_STATE_QUEUED_TO_APPLY,
+                         rules_dict[r1['id']]['state'])
+        self.assertEqual(constants.ACCESS_STATE_QUEUED_TO_DENY,
+                         rules_dict[r2['id']]['state'])
+        expected_state_for_previously_active = (
+            constants.ACCESS_STATE_QUEUED_TO_APPLY
+            if reset_active else
+            constants.ACCESS_STATE_ACTIVE
+        )
+        self.assertEqual(expected_state_for_previously_active,
+                         rules_dict[r3['id']]['state'])
+        self.assertEqual(expected_state_for_previously_active,
+                         rules_dict[r4['id']]['state'])
