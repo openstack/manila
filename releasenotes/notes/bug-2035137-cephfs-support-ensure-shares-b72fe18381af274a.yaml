@@ -12,6 +12,6 @@ fixes:
 upgrade:
   - |
     A new configuration option called ``cephfs_ensure_all_shares_salt`` has
-    been introduced to assist cloud administrtrators that would like the CephFS
+    been introduced to assist cloud administrators that would like the CephFS
     driver to reconcile export paths of existing shares during service
     startup.
