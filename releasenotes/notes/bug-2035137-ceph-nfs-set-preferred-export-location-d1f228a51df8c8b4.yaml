@@ -1,0 +1,24 @@
+---
+features:
+  - |
+    It is now possible to configure `cephfs_ganesha_export_ips` (or
+    alternatively, `cephfs_ganesha_server_ip`) alongside
+    `cephfs_nfs_cluster_id`. Setting these options will allow the CephFS driver
+    to report additional export paths. These additional export paths will have
+    the "preferred" metadata key set to False. The export paths pertaining to
+    the NFS service host discovered by the driver will have the "preferred"
+    metadata key set to True. It is expected that administrators will configure
+    additional IP addresses when preparing to migrate from a standalone
+    NFS-Ganesha service to a NFS service cluster setup facilitated by the Ceph
+    orchestration service. Eventually, when the migration has completed, these
+    configuration options can be removed and the corresponding share export
+    path records will be dropped from Manila. Note that the CephFS driver will
+    not create or manipulate access rules within the NFS service configured via
+    `cephfs_ganesha_export_ips` or `cephfs_ganesha_server_ip`.
+upgrades:
+  - |
+    In order to assist the user experience when migrating from a standalone
+    CephFS NFS (NFS-Ganesha) service to an NFS service created with the
+    Ceph Orchestrator, the CephFS driver allows configuring
+    `cephfs_ganesha_export_ips` (or alternatively, `cephfs_ganesha_server_ip`)
+    alongside `cephfs_nfs_cluster_id`.

@@ -1026,19 +1026,22 @@ class NFSProtocolHelperMixin():
             # `cephfs_ganesha_server_ip` wasn't possibly set and the used
             # address is the hostname
             try:
-                server_address = driver_helpers.escaped_address(export_ip)
+                server_address = driver_helpers.escaped_address(
+                    export_ip['ip'])
             except ValueError:
-                server_address = export_ip
+                server_address = export_ip['ip']
 
             export_path = "{server_address}:{mount_path}".format(
                 server_address=server_address, mount_path=subvolume_path)
 
             LOG.info("Calculated export path for share %(id)s: %(epath)s",
                      {"id": share['id'], "epath": export_path})
+
             export_location = {
                 'path': export_path,
                 'is_admin_only': False,
                 'metadata': {},
+                'preferred': export_ip['preferred']
             }
             export_locations.append(export_location)
         return export_locations
@@ -1069,7 +1072,7 @@ class NFSProtocolHelperMixin():
 
                 for export_ip in self.export_ips:
                     self.configured_ip_versions.add(
-                        ipaddress.ip_address(str(export_ip)).version)
+                        ipaddress.ip_address(str(export_ip['ip'])).version)
             except Exception:
                 # export_ips contained a hostname, safest thing is to
                 # claim support for IPv4 and IPv6 address families
@@ -1176,9 +1179,13 @@ class NFSProtocolHelper(NFSProtocolHelperMixin, ganesha.GaneshaNASHelper2):
         rados_command(self.rados_client, "fs subvolume deauthorize", argdict)
 
     def _get_export_ips(self):
-        export_ips = self.config.cephfs_ganesha_export_ips
-        if not export_ips:
-            export_ips = [self.ganesha_host]
+        ganesha_export_ips = self.config.cephfs_ganesha_export_ips
+        if not ganesha_export_ips:
+            ganesha_export_ips = [self.ganesha_host]
+
+        export_ips = []
+        for ip in ganesha_export_ips:
+            export_ips.append({'ip': ip, 'preferred': False})
 
         return export_ips
 
@@ -1227,11 +1234,22 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
 
         return self._nfs_clusterid
 
+    def _get_configured_export_ips(self):
+        ganesha_server_ips = (
+            self.configuration.safe_get('cephfs_ganesha_export_ips') or [])
+        if not ganesha_server_ips:
+            ganesha_server_ips = (
+                self.configuration.safe_get('cephfs_ganesha_server_ip'))
+            ganesha_server_ips = (
+                [ganesha_server_ips] if ganesha_server_ips else [])
+
+        return ganesha_server_ips
+
     def _get_export_ips(self):
         """Get NFS cluster export ips."""
         nfs_clusterid = self.nfs_clusterid
-        export_ips = []
-
+        ceph_nfs_export_ips = []
+        ganesha_export_ips = self._get_configured_export_ips()
         argdict = {
             "cluster_id": nfs_clusterid,
         }
@@ -1248,16 +1266,27 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
         if not vip:
             hosts = nfs_cluster_info[nfs_clusterid]["backend"]
             for host in hosts:
-                export_ips.append(host["ip"])
+                ceph_nfs_export_ips.append(host["ip"])
         else:
-            export_ips.append(vip)
+            ceph_nfs_export_ips.append(vip)
 
         # there are no export IPs, there are no NFS servers we can use
-        if not export_ips:
+        if not ceph_nfs_export_ips:
             msg = _("There are no NFS servers available to use. "
                     "Please check the health of your Ceph cluster "
                     "and restart the manila share service.")
             raise exception.ShareBackendException(msg=msg)
+
+        export_ips = []
+        for ip in ceph_nfs_export_ips:
+            export_ips.append({'ip': ip, 'preferred': True})
+
+        # It's possible for deployers to state additional
+        # NFS interfaces directly via manila.conf. If they do,
+        # these are represented as non-preferred export paths.
+        # This is mostly to allow NFS-Ganesha server migrations.
+        for ip in ganesha_export_ips:
+            export_ips.append({'ip': ip, 'preferred': False})
 
         return export_ips
 
