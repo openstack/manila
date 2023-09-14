@@ -3117,6 +3117,9 @@ def share_instance_access_update(context, access_id, instance_id, updates):
     share_access_map_updates, share_instance_access_map_updates = (
         _extract_subdict_by_fields(updates, share_access_fields)
     )
+    updated_at = timeutils.utcnow()
+    share_access_map_updates['updated_at'] = updated_at
+    share_instance_access_map_updates['updated_at'] = updated_at
 
     with session.begin():
         share_access = _share_access_get_query(
@@ -3805,6 +3808,10 @@ def share_snapshot_instance_access_update(
     snapshot_access_map_updates, share_instance_access_map_updates = (
         _extract_subdict_by_fields(updates, snapshot_access_fields)
     )
+
+    updated_at = timeutils.utcnow()
+    snapshot_access_map_updates['updated_at'] = updated_at
+    share_instance_access_map_updates['updated_at'] = updated_at
 
     session = get_session()
     with session.begin():
