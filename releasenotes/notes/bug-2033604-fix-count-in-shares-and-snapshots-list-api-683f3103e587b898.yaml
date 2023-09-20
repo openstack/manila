@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    The 'count' returned by shares and snapshots list API is fixed to provide
+    correct value i.e. count of shares/snapshots instead of
+    shareInstances/shareSnapshotInstances respectively. Please refer to the
+    `Launchpad bug #2033604 <https://bugs.launchpad.net/manila/+bug/2033604>`_
+    for more details.
