@@ -99,6 +99,7 @@ def upgrade():
             sa.UniqueConstraint('export_location_id', 'key', 'deleted',
                                 name="elm_el_id_uc"),
             mysql_engine='InnoDB',
+            mysql_charset='utf8',
         )
     except Exception:
         LOG.error("Failed to create '%s' table!", ELM_TABLE_NAME)
