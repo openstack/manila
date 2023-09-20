@@ -49,6 +49,7 @@ def upgrade():
             'share_type_id', 'resource', 'deleted',
             name="uc_quotas_per_share_types"),
         mysql_engine='InnoDB',
+        mysql_charset='utf8',
     )
     for table_name in ('quota_usages', 'reservations'):
         op.add_column(

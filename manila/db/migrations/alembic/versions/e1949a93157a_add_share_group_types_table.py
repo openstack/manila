@@ -49,6 +49,7 @@ def upgrade():
             sql.UniqueConstraint(
                 'name', 'deleted', name="uniq_share_group_type_name"),
             mysql_engine='InnoDB',
+            mysql_charset='utf8',
         )
     except Exception:
         LOG.error("Table |%s| not created!", 'share_group_types')
@@ -70,6 +71,7 @@ def upgrade():
                 sql.ForeignKey(
                     'share_group_types.id', name="sgtp_id_extra_specs_fk")),
             mysql_engine='InnoDB',
+            mysql_charset='utf8',
         )
     except Exception:
         LOG.error("Table |%s| not created!", 'share_group_type_specs')
@@ -92,6 +94,7 @@ def upgrade():
                 'share_group_type_id', 'project_id', 'deleted',
                 name="sgtp_project_id_uc"),
             mysql_engine='InnoDB',
+            mysql_charset='utf8',
         )
     except Exception:
         LOG.error("Table |%s| not created!", 'share_group_type_projects')
