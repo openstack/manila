@@ -53,6 +53,12 @@ class NASHelperBase(metaclass=abc.ABCMeta):
                       delete_rules, share_server=None):
         """Update access rules of share."""
 
+    def get_backend_info(self, context):
+        raise NotImplementedError
+
+    def ensure_shares(self, context, shares):
+        raise NotImplementedError
+
 
 class GaneshaNASHelper(NASHelperBase):
     """Perform share access changes using Ganesha version < 2.4."""

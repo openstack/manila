@@ -1,0 +1,17 @@
+---
+fixes:
+  - |
+    The CephFS backend driver now supports a bulk share recovery mechanism
+    (``ensure_shares``). At startup time, a combination of driver configuration
+    options will determine if the driver must re-evaluate export paths of
+    previously created shares. If these configuration options do not change,
+    service startup will skip through this recovery stage.
+  - |
+    The CephFS backend driver will also reapply access rules when performing
+    a recovery of pre-existing shares.
+upgrade:
+  - |
+    A new configuration option called ``cephfs_ensure_all_shares_salt`` has
+    been introduced to assist cloud administrtrators that would like the CephFS
+    driver to reconcile export paths of existing shares during service
+    startup.
