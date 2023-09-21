@@ -4257,6 +4257,46 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                    fake.SHARE, None, [],
                                                    share_server=None)
 
+        (self.mock_dm_session.cleanup_previous_snapmirror_relationships
+         .assert_not_called())
+        self.assertEqual(constants.REPLICA_STATE_IN_SYNC, result)
+
+    def test_update_replica_state_replica_change_to_in_sycn(self):
+        fake_snapmirror = {
+            'mirror-state': 'snapmirrored',
+            'relationship-status': 'idle',
+            'last-transfer-end-timestamp': '%s' % float(time.time())
+        }
+        # fake SHARE has replica_state set to active already
+        active_replica = fake.SHARE
+        out_of_sync_replica = copy.deepcopy(fake.SHARE)
+        out_of_sync_replica['replica_state'] = (
+            constants.REPLICA_STATE_OUT_OF_SYNC)
+        replica_list = [out_of_sync_replica, active_replica]
+        vserver_client = mock.Mock()
+        self.mock_object(vserver_client, 'volume_exists',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_dm_session.get_snapmirrors = mock.Mock(
+            return_value=[fake_snapmirror])
+        mock_config = mock.Mock()
+        mock_config.safe_get = mock.Mock(return_value=0)
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_config))
+        self.mock_object(self.library,
+                         '_is_readable_replica',
+                         mock.Mock(return_value=False))
+
+        result = self.library.update_replica_state(
+            None, replica_list, out_of_sync_replica,
+            None, [], share_server=None)
+
+        # Expect a snapmirror cleanup as replica was in out of sync state
+        (self.mock_dm_session.cleanup_previous_snapmirror_relationships
+         .assert_called_once_with(out_of_sync_replica, replica_list))
         self.assertEqual(constants.REPLICA_STATE_IN_SYNC, result)
 
     def test_update_replica_state_backend_volume_absent(self):
@@ -4303,6 +4343,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                    fake.SHARE, None, snapshots,
                                                    share_server=None)
 
+        (self.mock_dm_session.cleanup_previous_snapmirror_relationships
+         .assert_not_called())
         self.assertEqual(constants.REPLICA_STATE_IN_SYNC, result)
 
     def test_update_replica_state_missing_snapshot(self):
