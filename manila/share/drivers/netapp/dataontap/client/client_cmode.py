@@ -2394,13 +2394,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def enable_dedupe_async(self, volume_name):
         """Enable deduplication on FlexVol/FlexGroup volume asynchronously."""
         api_args = {'volume-name': volume_name}
-        self.connection.send_request('sis-enable-async', api_args)
+        self.send_request('sis-enable-async', api_args)
 
     @na_utils.trace
     def disable_dedupe_async(self, volume_name):
         """Disable deduplication on FlexVol/FlexGroup volume asynchronously."""
         api_args = {'volume-name': volume_name}
-        self.connection.send_request('sis-disable-async', api_args)
+        self.send_request('sis-disable-async', api_args)
 
     @na_utils.trace
     def enable_compression_async(self, volume_name):
@@ -2409,7 +2409,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'volume-name': volume_name,
             'enable-compression': 'true'
         }
-        self.connection.send_request('sis-set-config-async', api_args)
+        self.send_request('sis-set-config-async', api_args)
 
     @na_utils.trace
     def disable_compression_async(self, volume_name):
@@ -2418,7 +2418,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'volume-name': volume_name,
             'enable-compression': 'false'
         }
-        self.connection.send_request('sis-set-config-async', api_args)
+        self.send_request('sis-set-config-async', api_args)
 
     @na_utils.trace
     def get_volume_efficiency_status(self, volume_name):

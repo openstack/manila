@@ -3583,28 +3583,25 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                                          sis_set_config_args)
 
     def test_enable_dedupe_async(self):
-        self.mock_object(self.client.connection, 'send_request')
+        self.mock_object(self.client, 'send_request')
 
         self.client.enable_dedupe_async(fake.SHARE_NAME)
 
         sis_enable_args = {'volume-name': fake.SHARE_NAME}
-
-        self.client.connection.send_request.assert_called_once_with(
+        self.client.send_request.assert_called_once_with(
             'sis-enable-async', sis_enable_args)
 
     def test_disable_dedupe_async(self):
-
-        self.mock_object(self.client.connection, 'send_request')
+        self.mock_object(self.client, 'send_request')
 
         self.client.disable_dedupe_async(fake.SHARE_NAME)
 
         sis_enable_args = {'volume-name': fake.SHARE_NAME}
-
-        self.client.connection.send_request.assert_called_once_with(
+        self.client.send_request.assert_called_once_with(
             'sis-disable-async', sis_enable_args)
 
     def test_enable_compression_async(self):
-        self.mock_object(self.client.connection, 'send_request')
+        self.mock_object(self.client, 'send_request')
 
         self.client.enable_compression_async(fake.SHARE_NAME)
 
@@ -3612,12 +3609,11 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume-name': fake.SHARE_NAME,
             'enable-compression': 'true'
         }
-
-        self.client.connection.send_request.assert_called_once_with(
+        self.client.send_request.assert_called_once_with(
             'sis-set-config-async', sis_set_config_args)
 
     def test_disable_compression_async(self):
-        self.mock_object(self.client.connection, 'send_request')
+        self.mock_object(self.client, 'send_request')
 
         self.client.disable_compression_async(fake.SHARE_NAME)
 
@@ -3625,8 +3621,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume-name': fake.SHARE_NAME,
             'enable-compression': 'false'
         }
-
-        self.client.connection.send_request.assert_called_once_with(
+        self.client.send_request.assert_called_once_with(
             'sis-set-config-async', sis_set_config_args)
 
     def test_get_volume_efficiency_status(self):
