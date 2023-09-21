@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Metadata APIs have been fixed to respond with HTTP 404 / Not Found when
+    the requester does not have access to a resource that the metadata
+    pertains to.
