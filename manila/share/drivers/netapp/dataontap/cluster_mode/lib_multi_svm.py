@@ -428,7 +428,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         # NOTE(cknight): Neutron needs cDOT IP spaces because it can provide
         # overlapping IP address ranges for different subnets.  That is not
         # believed to be an issue for any of Manila's other network plugins.
-        ipspace_id = network_info.get('neutron_subnet_id')
+        ipspace_id = network_info.get('neutron_net_id')
         if not ipspace_id:
             return client_cmode.DEFAULT_IPSPACE
 
