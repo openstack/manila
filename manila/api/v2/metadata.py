@@ -72,10 +72,22 @@ class MetadataController(object):
             res = get_res_method(context, resource_id, **kwargs)
 
             get_policy = self.resource_policy_get[self.resource_name]
-            if res.get('is_public') is False or for_modification:
-                policy.check_policy(context, self.resource_name,
-                                    get_policy, res)
-
+            if res.get('is_public') is False:
+                authorized = policy.check_policy(context,
+                                                 self.resource_name,
+                                                 get_policy,
+                                                 res,
+                                                 do_raise=False)
+                if not authorized:
+                    # Raising NotFound to prevent existence detection
+                    raise exception.NotFound()
+            elif for_modification:
+                # a public resource's metadata can be viewed, but not
+                # modified by non owners
+                policy.check_policy(context,
+                                    self.resource_name,
+                                    get_policy,
+                                    res)
         except exception.NotFound:
             msg = _('%s not found.' % self.resource_name.capitalize())
             raise exc.HTTPNotFound(explanation=msg)
