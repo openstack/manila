@@ -29,6 +29,7 @@ from manila.api.views import share_snapshots as snapshot_views
 from manila import db
 from manila import exception
 from manila.i18n import _
+from manila import policy
 from manila import share
 from manila import utils
 
@@ -67,6 +68,7 @@ class ShareSnapshotMixin(object):
         context = req.environ['manila.context']
 
         LOG.info("Delete snapshot with id: %s", id, context=context)
+        policy.check_policy(context, 'share', 'delete_snapshot')
 
         try:
             snapshot = self.share_api.get_snapshot(context, id)
@@ -172,6 +174,7 @@ class ShareSnapshotMixin(object):
     def update(self, req, id, body):
         """Update a snapshot."""
         context = req.environ['manila.context']
+        policy.check_policy(context, 'share', 'snapshot_update')
 
         if not body or 'snapshot' not in body:
             raise exc.HTTPUnprocessableEntity()
