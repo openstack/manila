@@ -334,6 +334,7 @@ class ShareNetworkAPITest(test.TestCase):
                          '_all_share_servers_are_auto_deletable',
                          mock.Mock(return_value=True))
         self.mock_object(db_api, 'share_network_delete')
+        self.mock_object(db_api, 'share_network_subnet_delete')
 
         self.controller.delete(self.req, share_nw['id'])
 
@@ -347,6 +348,8 @@ class ShareNetworkAPITest(test.TestCase):
             mock.call(self.req.environ['manila.context'], 'bar')])
         db_api.share_network_delete.assert_called_once_with(
             self.req.environ['manila.context'], share_nw['id'])
+        db_api.share_network_subnet_delete.assert_called_once_with(
+            self.req.environ['manila.context'], subnet['id'])
 
     def test_delete_not_found(self):
         share_nw = 'fake network id'
@@ -375,6 +378,7 @@ class ShareNetworkAPITest(test.TestCase):
                          mock.Mock(return_value=True))
         self.mock_object(self.controller.share_rpcapi, 'delete_share_server')
         self.mock_object(db_api, 'share_network_delete')
+        self.mock_object(db_api, 'share_network_subnet_delete')
         self.mock_object(share_networks.QUOTAS, 'reserve',
                          mock.Mock(side_effect=Exception))
         self.mock_object(share_networks.QUOTAS, 'commit')

@@ -131,6 +131,7 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
         for subnet in share_network['share_network_subnets']:
             for share_server in subnet['share_servers']:
                 self.share_rpcapi.delete_share_server(context, share_server)
+            db_api.share_network_subnet_delete(context, subnet['id'])
 
         db_api.share_network_delete(context, id)
 
