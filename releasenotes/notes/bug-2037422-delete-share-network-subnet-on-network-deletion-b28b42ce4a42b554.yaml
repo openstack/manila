@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Now, default share network subnet is deleted when share network is deleted,
+    in case it is the only subnet present in share network. Please refer to the
+    `Launchpad bug #2037422 <https://bugs.launchpad.net/manila/+bug/2037422>`_
+    for more details.

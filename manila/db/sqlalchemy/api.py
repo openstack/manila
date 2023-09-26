@@ -4679,6 +4679,8 @@ def share_network_create(context, values):
 @context_manager.writer
 def share_network_delete(context, id):
     network_ref = _share_network_get(context, id)
+    for subnet in network_ref['share_network_subnets']:
+        share_network_subnet_delete(context, subnet['id'])
     network_ref.soft_delete(session=context.session)
 
 
