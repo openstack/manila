@@ -64,3 +64,8 @@ possible to use ``manila-manage db revision`` or the corresponding tox command::
 
 In addition every migration script must be tested. See examples in
 ``manila/tests/db/migrations/alembic/migrations_data_checks.py``.
+
+.. note::
+  When writing database migrations that create tables with unique constraints
+  or foreign keys, please ensure that the ``mysql_charset`` matches the
+  referenced table.
