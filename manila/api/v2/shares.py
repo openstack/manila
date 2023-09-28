@@ -233,12 +233,12 @@ class ShareController(wsgi.Controller,
         try:
             share = self.share_api.get(context, id)
         except exception.NotFound:
-            raise exception.ShareNotFound(share_id=id)
+            raise exc.HTTPNotFound("Share %s not found" % id)
         if share.get('is_soft_deleted'):
             msg = _("status cannot be reset for share '%s' "
                     "since it has been soft deleted.") % id
             raise exc.HTTPForbidden(explanation=msg)
-        return self._reset_status(req, id, body)
+        return self._reset_status(req, id, body, resource=share)
 
     @wsgi.Controller.api_version('2.7')
     @wsgi.action('reset_status')
@@ -248,12 +248,12 @@ class ShareController(wsgi.Controller,
         try:
             share = self.share_api.get(context, id)
         except exception.NotFound:
-            raise exception.ShareNotFound(share_id=id)
+            raise exc.HTTPNotFound("Share %s not found" % id)
         if share.get('is_soft_deleted'):
             msg = _("status cannot be reset for share '%s' "
                     "since it has been soft deleted.") % id
             raise exc.HTTPForbidden(explanation=msg)
-        return self._reset_status(req, id, body)
+        return self._reset_status(req, id, body, resource=share)
 
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-force_delete')
@@ -455,7 +455,8 @@ class ShareController(wsgi.Controller,
             msg = _("task state cannot be reset for share '%s' "
                     "since it has been soft deleted.") % id
             raise exc.HTTPForbidden(explanation=msg)
-        return self._reset_status(req, id, body, status_attr='task_state')
+        return self._reset_status(req, id, body, status_attr='task_state',
+                                  resource=share)
 
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-allow_access')

@@ -1237,8 +1237,17 @@ class AdminActionsMixin(object):
         return update
 
     @Controller.authorize('reset_status')
-    def _reset_status(self, req, id, body, status_attr='status'):
-        """Reset the status_attr specified on the resource."""
+    def _reset_status(self, req, id, body, status_attr='status',
+                      resource=None):
+        """Reset the status_attr specified on the resource.
+
+        :param req: API request object
+        :param id: ID of the resource
+        :param body: API request body
+        :param status_attr: Attribute on the resource denoting the status
+                            to be reset
+        :param resource: Resource model or dict if we need to avoid fetching it
+        """
         context = req.environ['manila.context']
         body_attr = self.body_attributes[status_attr]
         update = self.validate_update(
@@ -1248,9 +1257,17 @@ class AdminActionsMixin(object):
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
                         'update': update})
         try:
-            self._update(context, id, update)
+            resource = resource or self._get(context, id)
         except exception.NotFound as e:
             raise webob.exc.HTTPNotFound(e.message)
+        try:
+            policy.check_policy(context,
+                                self.resource_name,
+                                "reset_status",
+                                target_obj=resource)
+        except exception.NotAuthorized as e:
+            raise webob.exc.HTTPForbidden(e.message)
+        self._update(context, id, update)
         return webob.Response(status_int=http_client.ACCEPTED)
 
     @Controller.authorize('force_delete')
@@ -1261,6 +1278,10 @@ class AdminActionsMixin(object):
             resource = self._get(context, id)
         except exception.NotFound as e:
             raise webob.exc.HTTPNotFound(e.message)
+        policy.check_policy(context,
+                            self.resource_name,
+                            "force_delete",
+                            target_obj=resource)
         self._delete(context, resource, force=True)
         return webob.Response(status_int=http_client.ACCEPTED)
 

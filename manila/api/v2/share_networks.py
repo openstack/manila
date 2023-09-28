@@ -59,6 +59,9 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
         'status': set(constants.SHARE_NETWORK_STATUSES)
     }
 
+    def _get(self, *args, **kwargs):
+        return db_api.share_network_get(*args, **kwargs)
+
     def show(self, req, id):
         """Return data about the requested network info."""
         context = req.environ['manila.context']
