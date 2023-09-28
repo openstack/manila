@@ -3987,6 +3987,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     'raid-type': None,
                     'is-hybrid': None,
                 },
+                'aggr-ownership-attributes': {
+                    'home-id': None,
+                    'owner-id': None,
+                },
             },
         }
 
@@ -4004,12 +4008,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         aggr_attributes = aggrs[0]
         aggr_raid_attrs = aggr_attributes.get_child_by_name(
             'aggr-raid-attributes') or netapp_api.NaElement('none')
+        aggr_owner_attrs = aggr_attributes.get_child_by_name(
+            'aggr-ownership-attributes') or netapp_api.NaElement('none')
 
         aggregate = {
             'name': aggr_attributes.get_child_content('aggregate-name'),
             'raid-type': aggr_raid_attrs.get_child_content('raid-type'),
             'is-hybrid': strutils.bool_from_string(
                 aggr_raid_attrs.get_child_content('is-hybrid')),
+            'is-home': (aggr_owner_attrs.get_child_content('owner-id') ==
+                        aggr_owner_attrs.get_child_content('home-id'))
         }
 
         return aggregate

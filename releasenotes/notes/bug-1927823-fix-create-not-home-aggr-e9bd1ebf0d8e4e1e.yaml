@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    NetApp driver: it is not reporting the home state of the aggregate
+    pool. Operators may want to know this information to avoid those kind of
+    pools during maintenance task. The patch adds the boolean capability
+    `netapp_is_home` enabling the requester to avoid not home pools using
+    the scheduler CapabilitiesFilter and share_type extra_specs.
+    For more details, please refer to
+    `launchpad bug #1927823 <https://bugs.launchpad.net/manila/+bug/1927823>`_

@@ -1131,11 +1131,13 @@ SSC_AGGREGATES = [
         'name': AGGREGATES[0],
         'raid-type': 'raid4',
         'is-hybrid': False,
+        'is-home': False,
     },
     {
         'name': AGGREGATES[1],
         'raid-type': 'raid_dp',
         'is-hybrid': True,
+        'is-home': True,
     },
 ]
 

@@ -5967,6 +5967,10 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     'raid-type': None,
                     'is-hybrid': None,
                 },
+                'aggr-ownership-attributes': {
+                    'home-id': None,
+                    'owner-id': None,
+                },
             },
         }
         self.client._get_aggregates.assert_has_calls([
@@ -5978,6 +5982,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'name': fake.SHARE_AGGREGATE_NAME,
             'raid-type': 'raid_dp',
             'is-hybrid': False,
+            'is-home': True,
         }
         self.assertEqual(expected, result)
 
