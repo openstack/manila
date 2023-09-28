@@ -7244,14 +7244,9 @@ def async_operation_data_delete(context, entity_id, key=None):
 
 
 @require_context
-def share_backup_create(context, share_id, values):
-    return _share_backup_create(context, share_id, values)
-
-
-@require_context
 @require_availability_zone_exists(strict=True)
 @context_manager.writer
-def _share_backup_create(context, share_id, values):
+def share_backup_create(context, share_id, values):
     if not values.get('id'):
         values['id'] = uuidutils.generate_uuid()
     values.update({'share_id': share_id})
