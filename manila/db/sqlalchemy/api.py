@@ -3324,9 +3324,7 @@ def share_snapshot_instance_delete(context, snapshot_instance_id):
         )
 
     for el in snapshot_instance_ref.export_locations:
-        _share_snapshot_instance_export_location_delete(
-            context, el['id'], session=context.session
-        )
+        _share_snapshot_instance_export_location_delete(context, el['id'])
 
     snapshot_instance_ref.soft_delete(
         session=context.session, update_status=True)
@@ -3513,16 +3511,16 @@ def share_snapshot_get(context, snapshot_id, project_only=True):
     return _share_snapshot_get(context, snapshot_id, project_only=project_only)
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
-def _share_snapshot_get(context, snapshot_id, project_only=True, session=None):
-    result = (model_query(context, models.ShareSnapshot, session=session,
-                          project_only=project_only).
-              filter_by(id=snapshot_id).
-              options(joinedload('share')).
-              options(joinedload('instances')).
-              options(joinedload('share_snapshot_metadata')).
-              first())
+def _share_snapshot_get(context, snapshot_id, project_only=True):
+    result = model_query(
+        context, models.ShareSnapshot, project_only=project_only,
+    ).filter_by(
+        id=snapshot_id,
+    ).options(
+        joinedload('share'),
+        joinedload('instances'),
+        joinedload('share_snapshot_metadata'),
+    ).first()
 
     if not result:
         raise exception.ShareSnapshotNotFound(snapshot_id=snapshot_id)
@@ -4101,55 +4099,59 @@ def _share_snapshot_instance_access_delete(
 
 
 @require_context
+@context_manager.writer
 def share_snapshot_instance_export_location_create(context, values):
-
     values = ensure_model_dict_has_id(values)
-    session = get_session()
-    with session.begin():
-        ssiel = models.ShareSnapshotInstanceExportLocation()
-        ssiel.update(values)
-        ssiel.save(session=session)
+    ssiel = models.ShareSnapshotInstanceExportLocation()
+    ssiel.update(values)
+    ssiel.save(session=context.session)
 
-        return ssiel
+    return ssiel
 
 
-def _share_snapshot_instance_export_locations_get_query(context, session,
-                                                        values):
-    query = model_query(context, models.ShareSnapshotInstanceExportLocation,
-                        session=session)
+def _share_snapshot_instance_export_locations_get_query(context, values):
+    query = model_query(context, models.ShareSnapshotInstanceExportLocation)
     return query.filter_by(**values)
 
 
 @require_context
+@context_manager.reader
 def share_snapshot_export_locations_get(context, snapshot_id):
-    session = get_session()
-    snapshot = _share_snapshot_get(context, snapshot_id, session=session)
+    snapshot = _share_snapshot_get(context, snapshot_id)
     ins_ids = [ins['id'] for ins in snapshot.instances]
     export_locations = _share_snapshot_instance_export_locations_get_query(
-        context, session, {}).filter(
+        context, {}).filter(
         models.ShareSnapshotInstanceExportLocation.
             share_snapshot_instance_id.in_(ins_ids)).all()
     return export_locations
 
 
 @require_context
+@context_manager.reader
 def share_snapshot_instance_export_locations_get_all(
-        context, share_snapshot_instance_id, session=None):
+    context, share_snapshot_instance_id,
+):
+    return _share_snapshot_instance_export_locations_get_all(
+        context, share_snapshot_instance_id,
+    )
 
-    if not session:
-        session = get_session()
+
+def _share_snapshot_instance_export_locations_get_all(
+    context, share_snapshot_instance_id,
+):
     export_locations = _share_snapshot_instance_export_locations_get_query(
-        context, session,
-        {'share_snapshot_instance_id': share_snapshot_instance_id}).all()
+        context,
+        {'share_snapshot_instance_id': share_snapshot_instance_id},
+    ).all()
     return export_locations
 
 
 @require_context
+@context_manager.reader
 def share_snapshot_instance_export_location_get(context, el_id):
-    session = get_session()
-
     export_location = _share_snapshot_instance_export_locations_get_query(
-        context, session, {'id': el_id}).first()
+        context, {'id': el_id},
+    ).first()
 
     if export_location:
         return export_location
@@ -4158,32 +4160,32 @@ def share_snapshot_instance_export_location_get(context, el_id):
 
 
 @require_context
+@context_manager.writer
 def share_snapshot_instance_export_location_delete(context, el_id):
-    session = get_session()
-    with session.begin():
-        return _share_snapshot_instance_export_location_delete(context, el_id,
-                                                               session=session)
+    return _share_snapshot_instance_export_location_delete(context, el_id)
 
 
-# TODO(stephenfin): Remove session argument
-def _share_snapshot_instance_export_location_delete(context, el_id, session):
+def _share_snapshot_instance_export_location_delete(context, el_id):
     el = _share_snapshot_instance_export_locations_get_query(
-        context, session, {'id': el_id}).first()
+        context, {'id': el_id}).first()
 
     if not el:
         exception.NotFound()
 
-    el.soft_delete(session=session)
+    el.soft_delete(session=context.session)
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def share_snapshot_instance_export_locations_update(
-        context, share_snapshot_instance_id, export_locations, delete):
+    context, share_snapshot_instance_id, export_locations, delete,
+):
     # NOTE(dviroel): Lets keep this backward compatibility for driver that
     # may still return export_locations as string
     if not isinstance(export_locations, (list, tuple, set)):
         export_locations = (export_locations, )
+
     export_locations_as_dicts = []
     for el in export_locations:
         export_location = el
@@ -4196,14 +4198,12 @@ def share_snapshot_instance_export_locations_update(
             raise exception.ManilaException(
                 _("Wrong export location type '%s'.") % type(export_location))
         export_locations_as_dicts.append(export_location)
+
     export_locations = export_locations_as_dicts
-
     export_locations_paths = [el['path'] for el in export_locations]
-
-    session = get_session()
-
-    current_el_rows = share_snapshot_instance_export_locations_get_all(
-        context, share_snapshot_instance_id, session=session)
+    current_el_rows = _share_snapshot_instance_export_locations_get_all(
+        context, share_snapshot_instance_id,
+    )
 
     def get_path_list_from_rows(rows):
         return set([row['path'] for row in rows])
@@ -4223,13 +4223,13 @@ def share_snapshot_instance_export_locations_update(
 
     for el in current_el_rows:
         if delete and el['path'] not in export_locations_paths:
-            el.soft_delete(session)
+            el.soft_delete(session=context.session)
         else:
             updated_at = indexed_update_time[el['path']]
             el.update({
                 'updated_at': updated_at,
             })
-            el.save(session=session)
+            el.save(session=context.session)
 
     # Now add new export locations
     for el in export_locations:
@@ -4245,11 +4245,13 @@ def share_snapshot_instance_export_locations_update(
             'updated_at': indexed_update_time[el['path']],
             'is_admin_only': el.get('is_admin_only', False),
         })
-        location_ref.save(session=session)
+        location_ref.save(session=context.session)
 
     return get_path_list_from_rows(
-        share_snapshot_instance_export_locations_get_all(
-            context, share_snapshot_instance_id, session=session))
+        _share_snapshot_instance_export_locations_get_all(
+            context, share_snapshot_instance_id,
+        )
+    )
 
 #################################
 
