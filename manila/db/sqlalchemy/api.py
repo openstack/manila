@@ -1680,7 +1680,7 @@ def share_instance_update(context, share_instance_id, values,
 def _share_instance_update(context, share_instance_id, values):
     share_instance_ref = _share_instance_get(context, share_instance_id)
     share_instance_ref.update(values)
-    share_instance_ref.save(context.session)
+    share_instance_ref.save(session=context.session)
     return share_instance_ref
 
 
@@ -1760,13 +1760,9 @@ def share_instance_get(context, share_instance_id, with_share_data=False):
     )
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
-def _share_instance_get(
-    context, share_instance_id, session=None, with_share_data=False,
-):
+def _share_instance_get(context, share_instance_id, with_share_data=False):
     result = model_query(
-        context, models.ShareInstance, session=session,
+        context, models.ShareInstance,
     ).filter_by(
         id=share_instance_id,
     ).options(
@@ -1777,7 +1773,7 @@ def _share_instance_get(
         raise exception.NotFound()
 
     if with_share_data:
-        parent_share = _share_get(context, result['share_id'], session=session)
+        parent_share = _share_get(context, result['share_id'])
         result.set_share_data(parent_share)
 
     return result
@@ -1942,19 +1938,16 @@ def _share_instance_delete(context, instance_id,
 
 
 @require_context
-def update_share_instance_quota_usages(context, instance_id, session=None):
+@context_manager.writer
+def update_share_instance_quota_usages(context, instance_id):
     # This method is specifically written for deferred deletion share
     # instance usage.
-    session = session or get_session()
-
-    with session.begin():
-        instance_ref = _share_instance_get(
-            context, instance_id, session=session)
-        is_replica = instance_ref['replica_state'] is not None
-        share = share_get(context, instance_ref['share_id'], session=session)
-        _update_share_instance_usages(context, share, instance_ref,
-                                      is_replica=is_replica,
-                                      deferred_delete=True)
+    instance_ref = _share_instance_get(context, instance_id)
+    is_replica = instance_ref['replica_state'] is not None
+    share = _share_get(context, instance_ref['share_id'])
+    _update_share_instance_usages(context, share, instance_ref,
+                                  is_replica=is_replica,
+                                  deferred_delete=True)
 
 
 def _set_instances_share_data(context, instances):
@@ -2366,7 +2359,7 @@ def _share_update(context, share_id, update_values):
     )
 
     share_ref.update(share_values)
-    share_ref.save(context.session)
+    share_ref.save(session=context.session)
     return share_ref
 
 
@@ -2376,11 +2369,9 @@ def share_get(context, share_id, **kwargs):
     return _share_get(context, share_id, **kwargs)
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
-def _share_get(context, share_id, session=None, **kwargs):
+def _share_get(context, share_id, **kwargs):
     result = model_query(
-        context, models.Share, session=session, **kwargs,
+        context, models.Share, **kwargs,
     ).options(
         joinedload('share_metadata')
     ).filter_by(id=share_id).first()
@@ -2609,27 +2600,26 @@ def share_get_all_soft_deleted_by_network(
 
 
 @require_context
+@context_manager.writer
 def share_delete(context, share_id):
-    session = get_session()
+    share_ref = _share_get(context, share_id)
 
-    with session.begin():
-        share_ref = _share_get(context, share_id, session=session)
+    if len(share_ref.instances) > 0:
+        msg = _("Share %(id)s has %(count)s share instances.") % {
+            'id': share_id, 'count': len(share_ref.instances)}
+        raise exception.InvalidShare(msg)
 
-        if len(share_ref.instances) > 0:
-            msg = _("Share %(id)s has %(count)s share instances.") % {
-                'id': share_id, 'count': len(share_ref.instances)}
-            raise exception.InvalidShare(msg)
+    share_ref.soft_delete(session=context.session)
 
-        share_ref.soft_delete(session=session)
-
-        (session.query(models.ShareMetadata).
-            filter_by(share_id=share_id).soft_delete())
+    context.session.query(models.ShareMetadata).filter_by(
+        share_id=share_id,
+    ).soft_delete()
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def share_soft_delete(context, share_id):
-    session = get_session()
     now_time = timeutils.utcnow()
     time_delta = datetime.timedelta(
         seconds=CONF.soft_deleted_share_retention_time)
@@ -2639,25 +2629,23 @@ def share_soft_delete(context, share_id):
         'scheduled_to_be_deleted_at': scheduled_to_be_deleted_at
     }
 
-    with session.begin():
-        share_ref = _share_get(context, share_id, session=session)
-        share_ref.update(update_values)
-        share_ref.save(session=session)
+    share_ref = _share_get(context, share_id)
+    share_ref.update(update_values)
+    share_ref.save(session=context.session)
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def share_restore(context, share_id):
-    session = get_session()
     update_values = {
         'is_soft_deleted': False,
         'scheduled_to_be_deleted_at': None
     }
 
-    with session.begin():
-        share_ref = _share_get(context, share_id, session=session)
-        share_ref.update(update_values)
-        share_ref.save(session=session)
+    share_ref = _share_get(context, share_id)
+    share_ref.update(update_values)
+    share_ref.save(session=context.session)
 
 
 ###################
@@ -2789,7 +2777,6 @@ def transfer_destroy(context, transfer_id, update_share_status=True):
     transfer_query.soft_delete()
 
 
-# TODO(stephenfin): Convert these once we convert the 'share_snapshot*' APIs
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
@@ -2828,7 +2815,6 @@ def transfer_accept(
     )
 
 
-# TODO(stephenfin): Convert these once we convert the 'share_*' APIs
 @require_context
 @context_manager.writer
 def transfer_accept_rollback(
@@ -3346,19 +3332,19 @@ def share_snapshot_instance_get(context, snapshot_instance_id,
     )
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
-def _share_snapshot_instance_get(context, snapshot_instance_id, session=None,
-                                 with_share_data=False):
+def _share_snapshot_instance_get(
+    context, snapshot_instance_id, with_share_data=False,
+):
     result = _share_snapshot_instance_get_with_filters(
-        context, instance_ids=[snapshot_instance_id], session=session).first()
+        context, instance_ids=[snapshot_instance_id],
+    ).first()
 
     if result is None:
         raise exception.ShareSnapshotInstanceNotFound(
             instance_id=snapshot_instance_id)
 
     if with_share_data:
-        result = _set_share_snapshot_instance_data(context, result, session)[0]
+        result = _set_share_snapshot_instance_data(context, result)[0]
 
     return result
 
@@ -3404,10 +3390,8 @@ def _share_snapshot_instance_get_all_with_filters(
 
 def _share_snapshot_instance_get_with_filters(context, instance_ids=None,
                                               snapshot_ids=None, statuses=None,
-                                              share_instance_ids=None,
-                                              session=None):
-
-    query = model_query(context, models.ShareSnapshotInstance, session=session,
+                                              share_instance_ids=None):
+    query = model_query(context, models.ShareSnapshotInstance,
                         read_deleted="no")
 
     if instance_ids is not None:
@@ -3429,17 +3413,13 @@ def _share_snapshot_instance_get_with_filters(context, instance_ids=None,
     return query
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
-def _set_share_snapshot_instance_data(
-    context, snapshot_instances, session=None,
-):
+def _set_share_snapshot_instance_data(context, snapshot_instances):
     if snapshot_instances and not isinstance(snapshot_instances, list):
         snapshot_instances = [snapshot_instances]
 
     for snapshot_instance in snapshot_instances:
         share_instance = _share_instance_get(
-            context, snapshot_instance['share_instance_id'], session=session,
+            context, snapshot_instance['share_instance_id'],
             with_share_data=True)
         snapshot_instance['share'] = share_instance
 
@@ -4730,7 +4710,7 @@ def security_service_get(context, id, **kwargs):
 
 
 @require_context
-def _security_service_get(context, id, session=None, **kwargs):
+def _security_service_get(context, id, **kwargs):
     result = _security_service_get_query(
         context,
         **kwargs,
@@ -5535,21 +5515,18 @@ def share_server_get_all_unused_deletable(context, host, updated_before):
     return result
 
 
-def _share_server_backend_details_get_item(context,
-                                           share_server_id,
-                                           key, session=None):
-    result = (_share_server_backend_details_get_query(
-        context, share_server_id, session=session).filter_by(key=key).first())
+def _share_server_backend_details_get_item(context, share_server_id, key):
+    result = _share_server_backend_details_get_query(
+        context, share_server_id,
+    ).filter_by(key=key).first()
     if not result:
         raise exception.ShareServerBackendDetailsNotFound()
     return result
 
 
-def _share_server_backend_details_get_query(context,
-                                            share_server_id,
-                                            session=None):
+def _share_server_backend_details_get_query(context, share_server_id):
     return (model_query(
-        context, models.ShareServerBackendDetails, session=session,
+        context, models.ShareServerBackendDetails,
         read_deleted="no").
         filter_by(share_server_id=share_server_id))
 
@@ -5565,7 +5542,7 @@ def share_server_backend_details_set(context, share_server_id, server_details):
         item = {"value": meta_value}
         try:
             meta_ref = _share_server_backend_details_get_item(
-                context, share_server_id, meta_key, session=context.session)
+                context, share_server_id, meta_key)
         except exception.ShareServerBackendDetailsNotFound:
             meta_ref = models.ShareServerBackendDetails()
             item.update({"key": meta_key, "share_server_id": share_server_id})

@@ -322,7 +322,7 @@ def share_instance_delete(context, instance_id,
         need_to_update_usages=need_to_update_usages)
 
 
-def update_share_instance_quota_usages(context, instance_id, session=None):
+def update_share_instance_quota_usages(context, instance_id):
     """Update share instance quota usages"""
     return IMPL.update_share_instance_quota_usages(context, instance_id)
 
