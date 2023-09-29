@@ -3757,65 +3757,56 @@ def _share_snapshot_instances_status_update(
 
 @require_context
 @require_share_snapshot_exists
+@context_manager.writer
 def share_snapshot_metadata_get(context, share_snapshot_id):
-    session = get_session()
-    return _share_snapshot_metadata_get(context,
-                                        share_snapshot_id, session=session)
+    return _share_snapshot_metadata_get(context, share_snapshot_id)
 
 
 @require_context
 @require_share_snapshot_exists
+@context_manager.writer
 def share_snapshot_metadata_delete(context, share_snapshot_id, key):
-    session = get_session()
     meta_ref = _share_snapshot_metadata_get_item(
-        context, share_snapshot_id, key, session=session)
-    meta_ref.soft_delete(session=session)
+        context, share_snapshot_id, key)
+    meta_ref.soft_delete(session=context.session)
 
 
 @require_context
 @require_share_snapshot_exists
+@context_manager.writer
 def share_snapshot_metadata_update(context, share_snapshot_id,
                                    metadata, delete):
-    session = get_session()
     return _share_snapshot_metadata_update(context, share_snapshot_id,
-                                           metadata, delete,
-                                           session=session)
+                                           metadata, delete)
 
 
-def share_snapshot_metadata_update_item(context, share_snapshot_id,
-                                        item):
-    session = get_session()
+@context_manager.writer
+def share_snapshot_metadata_update_item(context, share_snapshot_id, item):
     return _share_snapshot_metadata_update(context, share_snapshot_id,
-                                           item, delete=False,
-                                           session=session)
+                                           item, delete=False)
 
 
-def share_snapshot_metadata_get_item(context, share_snapshot_id,
-                                     key):
+@context_manager.reader
+def share_snapshot_metadata_get_item(context, share_snapshot_id, key):
 
-    session = get_session()
-    row = _share_snapshot_metadata_get_item(context, share_snapshot_id,
-                                            key, session=session)
+    row = _share_snapshot_metadata_get_item(context, share_snapshot_id, key)
     result = {}
     result[row['key']] = row['value']
 
     return result
 
 
-def _share_snapshot_metadata_get_query(context, share_snapshot_id,
-                                       session=None):
-    session = session or get_session()
+def _share_snapshot_metadata_get_query(context, share_snapshot_id):
     return (model_query(context, models.ShareSnapshotMetadata,
-                        session=session,
                         read_deleted="no").
             filter_by(share_snapshot_id=share_snapshot_id).
             options(joinedload('share_snapshot')))
 
 
-def _share_snapshot_metadata_get(context, share_snapshot_id, session=None):
-    session = session or get_session()
-    rows = _share_snapshot_metadata_get_query(context, share_snapshot_id,
-                                              session=session).all()
+def _share_snapshot_metadata_get(context, share_snapshot_id):
+    rows = _share_snapshot_metadata_get_query(
+        context, share_snapshot_id,
+    ).all()
 
     result = {}
     for row in rows:
@@ -3823,12 +3814,10 @@ def _share_snapshot_metadata_get(context, share_snapshot_id, session=None):
     return result
 
 
-def _share_snapshot_metadata_get_item(context, share_snapshot_id,
-                                      key, session=None):
-    session = session or get_session()
-    result = (_share_snapshot_metadata_get_query(
-        context, share_snapshot_id, session=session).filter_by(
-            key=key).first())
+def _share_snapshot_metadata_get_item(context, share_snapshot_id, key):
+    result = _share_snapshot_metadata_get_query(
+        context, share_snapshot_id).filter_by(
+            key=key).first()
     if not result:
         raise exception.MetadataItemNotFound
     return result
@@ -3836,38 +3825,35 @@ def _share_snapshot_metadata_get_item(context, share_snapshot_id,
 
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def _share_snapshot_metadata_update(context, share_snapshot_id,
-                                    metadata, delete, session=None):
-    session = session or get_session()
+                                    metadata, delete):
     delete = strutils.bool_from_string(delete)
-    with session.begin():
-        if delete:
-            original_metadata = _share_snapshot_metadata_get(
-                context, share_snapshot_id, session=session)
-            for meta_key, meta_value in original_metadata.items():
-                if meta_key not in metadata:
-                    meta_ref = _share_snapshot_metadata_get_item(
-                        context, share_snapshot_id, meta_key,
-                        session=session)
-                    meta_ref.soft_delete(session=session)
-        meta_ref = None
-        # Now update all existing items with new values, or create new meta
-        # objects
-        for meta_key, meta_value in metadata.items():
+    if delete:
+        original_metadata = _share_snapshot_metadata_get(
+            context, share_snapshot_id)
+        for meta_key, meta_value in original_metadata.items():
+            if meta_key not in metadata:
+                meta_ref = _share_snapshot_metadata_get_item(
+                    context, share_snapshot_id, meta_key,
+                )
+                meta_ref.soft_delete(session=context.session)
 
-            # update the value whether it exists or not
-            item = {"value": meta_value}
-            meta_ref = _share_snapshot_metadata_get_query(
-                context, share_snapshot_id,
-                session=session).filter_by(
-                key=meta_key).first()
-            if not meta_ref:
-                meta_ref = models.ShareSnapshotMetadata()
-                item.update({"key": meta_key,
-                             "share_snapshot_id": share_snapshot_id})
-            meta_ref.update(item)
-            meta_ref.save(session=session)
+    # Now update all existing items with new values, or create new meta
+    # objects
+    meta_ref = None
+    for meta_key, meta_value in metadata.items():
+        # update the value whether it exists or not
+        item = {"value": meta_value}
+        meta_ref = _share_snapshot_metadata_get_query(
+            context, share_snapshot_id,
+        ).filter_by(key=meta_key).first()
+        if not meta_ref:
+            meta_ref = models.ShareSnapshotMetadata()
+            item.update({"key": meta_key,
+                         "share_snapshot_id": share_snapshot_id})
+        meta_ref.update(item)
+        meta_ref.save(session=context.session)
 
-        return metadata
+    return metadata
 
 #################################
 
