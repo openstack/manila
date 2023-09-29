@@ -610,7 +610,7 @@ class DataManagerTestCase(test.TestCase):
             self.context, share_info['id'],
             {'status': constants.STATUS_AVAILABLE})
 
-    @ddt.data(None, exception.ShareDataCopyFailed())
+    @ddt.data(None, exception.ShareDataCopyFailed(reason='fake'))
     def test__run_backup(self, exc):
         share_info = db_utils.create_share(status=constants.STATUS_AVAILABLE)
         backup_info = db_utils.create_backup(
@@ -780,7 +780,7 @@ class DataManagerTestCase(test.TestCase):
             self.context, share_info['id'],
             {'status': constants.STATUS_BACKUP_RESTORING_ERROR})
 
-    @ddt.data(None, exception.ShareDataCopyFailed())
+    @ddt.data(None, exception.ShareDataCopyFailed(reason='fake'))
     def test__run_restore(self, exc):
         share_info = db_utils.create_share(status=constants.STATUS_AVAILABLE)
         backup_info = db_utils.create_backup(
