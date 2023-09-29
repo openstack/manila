@@ -4415,7 +4415,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_is_readable_replica',
                          mock.Mock(return_value=is_readable))
-
+        self.mock_object(self.library,
+                         '_update_autosize_attributes_after_promote_replica')
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2],
             self.fake_replica_2, [], share_server=None)
@@ -4478,6 +4479,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(
             protocol_helper, 'cleanup_demoted_replica',
             mock.Mock(side_effect=exception.StorageCommunicationException))
+        self.mock_object(self.library,
+                         '_update_autosize_attributes_after_promote_replica')
         mock_log = self.mock_object(lib_base.LOG, 'exception')
 
         self.library.promote_replica(
@@ -4508,6 +4511,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(
             self.library, '_convert_destination_replica_to_independent',
             mock.Mock(side_effect=exception.StorageCommunicationException))
+        self.mock_object(self.library,
+                         '_update_autosize_attributes_after_promote_replica')
 
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2],
@@ -4551,6 +4556,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_is_readable_replica',
                          mock.Mock(return_value=False))
+        self.mock_object(self.library,
+                         '_update_autosize_attributes_after_promote_replica')
 
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2, fake_replica_3],
@@ -4607,6 +4614,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_is_readable_replica',
                          mock.Mock(return_value=False))
+        self.mock_object(self.library,
+                         '_update_autosize_attributes_after_promote_replica')
 
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2],
@@ -4836,6 +4845,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_is_readable_replica',
                          mock.Mock(return_value=False))
+        self.mock_object(self.library,
+                         '_update_autosize_attributes_after_promote_replica')
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2],
             self.fake_replica_2, fake_access_rules, share_server=None)

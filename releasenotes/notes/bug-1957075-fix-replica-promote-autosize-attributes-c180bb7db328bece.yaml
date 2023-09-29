@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp driver: Fixed the issue with replica promotion where the autosize
+    attributes were not being updated on ONTAP. Now, the autosize attributes
+    are updated after promoting the replica. For more details, please refer to
+    `launchpad bug #1957075 <https://bugs.launchpad.net/manila/+bug/1957075>`_
