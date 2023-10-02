@@ -77,6 +77,11 @@ share_servers_handling_mode_opts = [
         default="manila_service_network",
         help="Name of manila service network. Used only with Neutron. "
              "Only used if driver_handles_share_servers=True."),
+    cfg.HostAddressOpt(
+        "service_network_host",
+        sample_default="<your_network_hostname>",
+        help="Hostname to be used for service network binding. Used only with "
+             "Neutron and if driver_handles_share_servers=True."),
     cfg.StrOpt(
         "service_network_cidr",
         default="10.254.0.0/16",
@@ -1015,7 +1020,7 @@ class NeutronNetworkHelper(BaseNetworkhelper):
 
         This port will be used for connectivity with service instances.
         """
-        host = CONF.host
+        host = self.get_config_option("service_network_host") or CONF.host
         search_opts = {'device_id': device_id,
                        'binding:host_id': host}
         ports = [port for port in self.neutron_api.
