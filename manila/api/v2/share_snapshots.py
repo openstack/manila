@@ -182,6 +182,9 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
             if not data.get(parameter):
                 msg = _("Required parameter %s is empty.") % parameter
                 raise exc_response(explanation=msg)
+            if not isinstance(data[parameter], str):
+                msg = _("Parameter %s must be a string.") % parameter
+                raise exc_response(explanation=msg)
 
     def _check_if_share_share_network_is_active(self, context, snapshot):
         share_network_id = snapshot['share'].get('share_network_id')
