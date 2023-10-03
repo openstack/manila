@@ -4899,7 +4899,7 @@ class ShareAPITestCase(test.TestCase):
             db_api, 'share_get_all_by_share_server',
             mock.Mock(return_value=[fake_share]))
         mock_shares_in_recycle_bin_get_all = self.mock_object(
-            db_api, 'get_shares_in_recycle_bin_by_share_server',
+            db_api, 'share_get_all_soft_deleted',
             mock.Mock(return_value=[]))
         mock_get_type = self.mock_object(
             share_types, 'get_share_type', mock.Mock(return_value=share_type))
