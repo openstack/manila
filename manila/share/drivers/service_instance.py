@@ -1019,7 +1019,7 @@ class NeutronNetworkHelper(BaseNetworkhelper):
 
         This port will be used for connectivity with service instances.
         """
-        host = socket.gethostname()
+        host = CONF.host
         search_opts = {'device_id': device_id,
                        'binding:host_id': host}
         ports = [port for port in self.neutron_api.
