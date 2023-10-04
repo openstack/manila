@@ -158,7 +158,7 @@ class ShareManagerTestCase(test.TestCase):
         hook_data_mock = mock.Mock()
         self.mock_object(
             self.share_manager.db,
-            "share_instances_get_all_by_host",
+            "share_instance_get_all_by_host",
             share_instances_mock)
         self.mock_object(
             self.share_manager.driver,
@@ -210,7 +210,7 @@ class ShareManagerTestCase(test.TestCase):
         mock_backend_info_update = self.mock_object(
             self.share_manager.db, 'backend_info_update')
         mock_share_get_all_by_host = self.mock_object(
-            self.share_manager.db, 'share_instances_get_all_by_host',
+            self.share_manager.db, 'share_instance_get_all_by_host',
             mock.Mock(return_value=instances))
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(side_effect=[instances[0], instances[2],
@@ -285,13 +285,13 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_init_host_with_no_shares(self):
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_host',
+                         'share_instance_get_all_by_host',
                          mock.Mock(return_value=[]))
 
         self.share_manager.init_host()
 
         self.assertTrue(self.share_manager.driver.initialized)
-        (self.share_manager.db.share_instances_get_all_by_host.
+        (self.share_manager.db.share_instance_get_all_by_host.
             assert_called_once_with(utils.IsAMatcher(context.RequestContext),
                                     self.share_manager.host))
         self.share_manager.driver.do_setup.assert_called_once_with(
@@ -450,7 +450,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.driver, 'get_backend_info',
                          mock.Mock(return_value=new_backend_info))
         mock_share_get_all_by_host = self.mock_object(
-            self.share_manager.db, 'share_instances_get_all_by_host',
+            self.share_manager.db, 'share_instance_get_all_by_host',
             mock.Mock(return_value=instances))
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(side_effect=[instances[0], instances[2],
@@ -554,8 +554,8 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock())
         mock_ensure_shares = self.mock_object(
             self.share_manager.driver, 'ensure_shares')
-        mock_share_instances_get_all_by_host = self.mock_object(
-            self.share_manager.db, 'share_instances_get_all_by_host',
+        mock_share_instance_get_all_by_host = self.mock_object(
+            self.share_manager.db, 'share_instance_get_all_by_host',
             mock.Mock(return_value=[]))
 
         # call of 'init_host' method
@@ -563,7 +563,7 @@ class ShareManagerTestCase(test.TestCase):
         if new_backend_info_hash == old_backend_info_hash:
             mock_backend_info_update.assert_not_called()
             mock_ensure_shares.assert_not_called()
-            mock_share_instances_get_all_by_host.assert_not_called()
+            mock_share_instance_get_all_by_host.assert_not_called()
         else:
             mock_backend_info_update.assert_called_once_with(
                 utils.IsAMatcher(context.RequestContext),
@@ -576,7 +576,7 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.driver.get_backend_info.assert_called_once_with(
                 utils.IsAMatcher(context.RequestContext))
             mock_ensure_shares.assert_not_called()
-            mock_share_instances_get_all_by_host.assert_called_once_with(
+            mock_share_instance_get_all_by_host.assert_called_once_with(
                 utils.IsAMatcher(context.RequestContext),
                 self.share_manager.host)
 
@@ -588,7 +588,7 @@ class ShareManagerTestCase(test.TestCase):
         instances = self._setup_init_mocks(setup_access_rules=False)
         share_server = fakes.fake_share_server_get()
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_host',
+                         'share_instance_get_all_by_host',
                          mock.Mock(return_value=instances))
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(side_effect=[instances[0], instances[2],
@@ -615,7 +615,7 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.init_host()
 
         # verification of call
-        (self.share_manager.db.share_instances_get_all_by_host.
+        (self.share_manager.db.share_instance_get_all_by_host.
             assert_called_once_with(utils.IsAMatcher(context.RequestContext),
                                     self.share_manager.host))
         self.share_manager.driver.do_setup.assert_called_once_with(
@@ -700,7 +700,7 @@ class ShareManagerTestCase(test.TestCase):
         mock_ensure_share = self.mock_object(
             self.share_manager.driver, 'ensure_share')
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_host',
+                         'share_instance_get_all_by_host',
                          mock.Mock(return_value=instances))
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(side_effect=[instances[0], instances[2],
@@ -720,7 +720,7 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.init_host()
 
         # verification of call
-        (self.share_manager.db.share_instances_get_all_by_host.
+        (self.share_manager.db.share_instance_get_all_by_host.
          assert_called_once_with(utils.IsAMatcher(context.RequestContext),
                                  self.share_manager.host))
         self.share_manager.driver.do_setup.assert_called_once_with(
@@ -776,7 +776,7 @@ class ShareManagerTestCase(test.TestCase):
             instances[4]['id']: {'status': 'available'}
         }
         smanager = self.share_manager
-        self.mock_object(smanager.db, 'share_instances_get_all_by_host',
+        self.mock_object(smanager.db, 'share_instance_get_all_by_host',
                          mock.Mock(return_value=instances))
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(side_effect=[instances[0], instances[2],
@@ -805,7 +805,7 @@ class ShareManagerTestCase(test.TestCase):
         smanager.init_host()
 
         # verification of call
-        (smanager.db.share_instances_get_all_by_host.
+        (smanager.db.share_instance_get_all_by_host.
             assert_called_once_with(utils.IsAMatcher(context.RequestContext),
                                     smanager.host))
         smanager.driver.do_setup.assert_called_once_with(
@@ -2580,7 +2580,7 @@ class ShareManagerTestCase(test.TestCase):
         driver_mock.max_share_server_size = max_gigabytes
         self.share_manager.driver = driver_mock
         self.mock_object(
-            db, 'share_instances_get_all_by_share_server',
+            db, 'share_instance_get_all_by_share_server',
             mock.Mock(return_value=share_instances))
         self.mock_object(
             db, 'share_snapshot_instance_get_all_with_filters',
@@ -2629,7 +2629,7 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.driver = driver_mock
         self.mock_object(
-            db, 'share_instances_get_all_by_share_server',
+            db, 'share_instance_get_all_by_share_server',
             mock.Mock(return_value=share_instances))
         self.mock_object(
             db, 'share_snapshot_instance_get_all_with_filters',
@@ -2655,7 +2655,7 @@ class ShareManagerTestCase(test.TestCase):
 
         self.assertEqual(
             1, len(available_share_servers))
-        db.share_instances_get_all_by_share_server.assert_called_once_with(
+        db.share_instance_get_all_by_share_server.assert_called_once_with(
             self.context, share_servers[0]['id'], with_share_data=True)
         (db.share_snapshot_instance_get_all_with_filters.
             assert_called_once_with(
@@ -2828,7 +2828,7 @@ class ShareManagerTestCase(test.TestCase):
         self.assertEqual(share_id, db.share_get(context.get_admin_context(),
                          share_id).id)
         shr = db.share_get(self.context, share_id)
-        shr_instances = db.share_instances_get_all_by_share(
+        shr_instances = db.share_instance_get_all_by_share(
             self.context, shr['id'])
         self.assertEqual(1, len(shr_instances))
         self.assertEqual(constants.STATUS_AVAILABLE, shr['status'])
@@ -4254,7 +4254,7 @@ class ShareManagerTestCase(test.TestCase):
                          'share_access_get_all_for_share',
                          mock.Mock(return_value=rules))
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_share',
+                         'share_instance_get_all_by_share',
                          mock.Mock(return_value=instances))
         self.mock_object(db, 'share_instance_get',
                          mock.Mock(return_value=instances[0]))
@@ -4296,7 +4296,7 @@ class ShareManagerTestCase(test.TestCase):
                          'share_access_get_all_for_share',
                          mock.Mock(return_value=rules))
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_share',
+                         'share_instance_get_all_by_share',
                          mock.Mock(return_value=[shr_obj['instance']]))
         self.mock_object(db, 'share_instance_get',
                          mock.Mock(return_value=shr_obj['instance']))
@@ -4341,7 +4341,7 @@ class ShareManagerTestCase(test.TestCase):
                          'share_access_get_all_for_share',
                          mock.Mock(return_value=rules))
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_share',
+                         'share_instance_get_all_by_share',
                          mock.Mock(return_value=[shr_obj['instance']]))
         self.mock_object(db, 'share_instance_get',
                          mock.Mock(return_value=shr_obj['instance']))
@@ -4927,7 +4927,7 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.driver.configuration, 'safe_get',
             mock.Mock(return_value=True))
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_share_group_id',
+                         'share_instance_get_all_by_share_group_id',
                          mock.Mock(return_value=[]))
         fake_group = {
             'id': 'fake_id',
@@ -5098,7 +5098,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.db, 'share_group_snapshot_get',
                          mock.Mock(return_value=fake_snap))
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_share_group_id',
+                         'share_instance_get_all_by_share_group_id',
                          mock.Mock(return_value=[]))
         self.mock_object(self.share_manager.db, 'share_group_update',
                          mock.Mock(return_value=fake_group))
@@ -5134,7 +5134,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.db, 'share_group_snapshot_get',
                          mock.Mock(return_value=fake_snap))
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_share_group_id',
+                         'share_instance_get_all_by_share_group_id',
                          mock.Mock(return_value=[]))
         self.mock_object(self.share_manager.db, 'share_group_update',
                          mock.Mock(return_value=fake_group))
@@ -5173,7 +5173,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.db, 'share_group_snapshot_get',
                          mock.Mock(return_value=fake_snap))
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_share_group_id',
+                         'share_instance_get_all_by_share_group_id',
                          mock.Mock(return_value=[fake_share]))
         self.mock_object(self.share_manager.db, 'share_group_update')
         self.mock_object(self.share_manager.db, 'share_instance_update')
@@ -6013,7 +6013,7 @@ class ShareManagerTestCase(test.TestCase):
 
         self.mock_object(manager.LOG, 'warning')
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_host', mock.Mock(
+                         'share_instance_get_all_by_host', mock.Mock(
                              return_value=[regular_instance, src_instance]))
         self.mock_object(self.share_manager.db, 'share_get',
                          mock.Mock(side_effect=[share, share_cancelled]))
@@ -6084,7 +6084,7 @@ class ShareManagerTestCase(test.TestCase):
                 share_get_calls.append(mock.call(self.context, 'share_id'))
                 self.assertTrue(manager.LOG.warning.called)
 
-        self.share_manager.db.share_instances_get_all_by_host(
+        self.share_manager.db.share_instance_get_all_by_host(
             self.context, self.share_manager.host)
         self.share_manager.db.share_get.assert_has_calls(share_get_calls)
         api.API.get_migrating_instances.assert_called_once_with(share)
@@ -8372,7 +8372,7 @@ class ShareManagerTestCase(test.TestCase):
 
         manager = self.share_manager
         self.mock_object(manager, 'driver')
-        self.mock_object(manager.db, 'share_instances_get_all_by_host',
+        self.mock_object(manager.db, 'share_instance_get_all_by_host',
                          mock.Mock(return_value=instances))
         self.mock_object(manager.db, 'share_instance_get',
                          mock.Mock(side_effect=instances))
@@ -8392,7 +8392,7 @@ class ShareManagerTestCase(test.TestCase):
 
         self.mock_object(self.share_manager, 'driver')
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_host',
+                         'share_instance_get_all_by_host',
                          mock.Mock(return_value=instances))
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(side_effect=instances))
@@ -8411,7 +8411,7 @@ class ShareManagerTestCase(test.TestCase):
         ]
         self.mock_object(self.share_manager, 'driver')
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_host',
+                         'share_instance_get_all_by_host',
                          mock.Mock(return_value=instances_creating_from_snap))
         mock_update_share_status = self.mock_object(
             self.share_manager, '_update_share_status')
@@ -8595,7 +8595,7 @@ class ShareManagerTestCase(test.TestCase):
     def test__update_resource_status(self, kwargs, resource_type):
         if resource_type == 'share_instance':
             mock_db_instances_status_update = self.mock_object(
-                db, 'share_instances_status_update')
+                db, 'share_instance_status_update')
         else:
             mock_db_instances_status_update = self.mock_object(
                 db, 'share_snapshot_instances_status_update')
@@ -8664,7 +8664,7 @@ class ShareManagerTestCase(test.TestCase):
             fake_new_network, fake_service, fake_request_spec,
             fake_driver_result, fake_new_share_server, server_info,
             network_subnet, new_network_subnet=None, az_compatible=True):
-        self.mock_object(db, 'share_instances_get_all_by_share_server',
+        self.mock_object(db, 'share_instance_get_all_by_share_server',
                          mock.Mock(return_value=fake_share_instances))
         self.mock_object(db, 'share_snapshot_instance_get_all_with_filters',
                          mock.Mock(return_value=fake_snap_instances))
@@ -8773,7 +8773,7 @@ class ShareManagerTestCase(test.TestCase):
             nondisruptive, preserve_snapshots, fake_new_network['id'])
 
         self.assertTrue(result)
-        db.share_instances_get_all_by_share_server.assert_called_once_with(
+        db.share_instance_get_all_by_share_server.assert_called_once_with(
             self.context, fake_old_share_server['id'], with_share_data=True)
         (db.share_snapshot_instance_get_all_with_filters.
             assert_called_once_with(
@@ -8889,7 +8889,7 @@ class ShareManagerTestCase(test.TestCase):
             nondisruptive, preserve_snapshots, fake_new_network['id']
         )
 
-        db.share_instances_get_all_by_share_server.assert_called_once_with(
+        db.share_instance_get_all_by_share_server.assert_called_once_with(
             self.context, fake_old_share_server['id'], with_share_data=True)
         (db.share_snapshot_instance_get_all_with_filters.
             assert_called_once_with(
@@ -8979,7 +8979,7 @@ class ShareManagerTestCase(test.TestCase):
         mock_server_get = self.mock_object(
             db, 'share_server_get', mock.Mock(return_value=fake_share_server))
         mock_get_server_instances = self.mock_object(
-            db, 'share_instances_get_all_by_share_server',
+            db, 'share_instance_get_all_by_share_server',
             mock.Mock(return_value=fake_share_instances))
         mock_snap_instances_get = self.mock_object(
             db, 'share_snapshot_instance_get_all_with_filters',
@@ -9141,7 +9141,7 @@ class ShareManagerTestCase(test.TestCase):
             db, 'share_server_get_all_by_host',
             mock.Mock(return_value=fake_share_servers))
         self.mock_object(
-            db, 'share_instances_get_all_by_share_server',
+            db, 'share_instance_get_all_by_share_server',
             mock.Mock(return_value=fake_share_instances))
         self.mock_object(
             db, 'share_snapshot_instance_get_all_with_filters',
@@ -9196,7 +9196,7 @@ class ShareManagerTestCase(test.TestCase):
             self.context, self.share_manager.host,
             filters={'status': constants.STATUS_SERVER_MIGRATING_TO}
         )
-        db.share_instances_get_all_by_share_server.assert_called_once_with(
+        db.share_instance_get_all_by_share_server.assert_called_once_with(
             self.context, fake_src_share_servers[0]['id'],
             with_share_data=True
         )
@@ -9292,7 +9292,7 @@ class ShareManagerTestCase(test.TestCase):
         db.share_server_get.assert_called_once_with(
             self.context, fake_src_share_server['id'])
         if src_share_server_exists:
-            db.share_instances_get_all_by_share_server.assert_called_once_with(
+            db.share_instance_get_all_by_share_server.assert_called_once_with(
                 self.context, fake_src_share_server['id'],
                 with_share_data=True)
             (db.share_snapshot_instance_get_all_with_filters.
@@ -9323,7 +9323,7 @@ class ShareManagerTestCase(test.TestCase):
             db, 'share_server_get',
             mock.Mock(side_effect=server_get_side_effects))
         self.mock_object(
-            db, 'share_instances_get_all_by_share_server',
+            db, 'share_instance_get_all_by_share_server',
             mock.Mock(return_value=fake_share_instances))
         self.mock_object(
             db, 'share_snapshot_instance_get_all_with_filters',
@@ -9376,7 +9376,7 @@ class ShareManagerTestCase(test.TestCase):
             [mock.call(self.context, fake_dest_share_server['id']),
              mock.call(self.context, fake_source_share_server['id'])]
         )
-        db.share_instances_get_all_by_share_server.assert_called_once_with(
+        db.share_instance_get_all_by_share_server.assert_called_once_with(
             self.context, fake_source_share_server['id'], with_share_data=True)
         (db.share_snapshot_instance_get_all_with_filters.
             assert_called_once_with(
@@ -9426,7 +9426,7 @@ class ShareManagerTestCase(test.TestCase):
             [mock.call(self.context, fake_dest_share_server['id']),
              mock.call(self.context, fake_source_share_server['id'])]
         )
-        db.share_instances_get_all_by_share_server.assert_called_once_with(
+        db.share_instance_get_all_by_share_server.assert_called_once_with(
             self.context, fake_source_share_server['id'], with_share_data=True)
         (db.share_snapshot_instance_get_all_with_filters.
             assert_called_once_with(
@@ -9672,7 +9672,7 @@ class ShareManagerTestCase(test.TestCase):
             mock.Mock(side_effect=[fake_source_share_server,
                                    fake_dest_share_server]))
         mock_get_instances = self.mock_object(
-            db, 'share_instances_get_all_by_share_server',
+            db, 'share_instance_get_all_by_share_server',
             mock.Mock(return_value=fake_share_instances))
         mock_get_snap_instances = self.mock_object(
             db, 'share_snapshot_instance_get_all_with_filters',
@@ -9760,7 +9760,7 @@ class ShareManagerTestCase(test.TestCase):
             mock.Mock(side_effect=[fake_source_share_server,
                                    fake_dest_share_server]))
         mock_get_instances = self.mock_object(
-            db, 'share_instances_get_all_by_share_server',
+            db, 'share_instance_get_all_by_share_server',
             mock.Mock(return_value=fake_share_instances))
         mock_get_snap_instances = self.mock_object(
             db, 'share_snapshot_instance_get_all_with_filters',
@@ -9849,7 +9849,7 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager, '_form_server_setup_info',
             mock.Mock(return_value=network_info))
         self.mock_object(
-            db, 'share_instances_get_all_by_share_server',
+            db, 'share_instance_get_all_by_share_server',
             mock.Mock(return_value=share_instances))
         self.mock_object(
             db, 'share_access_get_all_for_instance',
@@ -9942,7 +9942,7 @@ class ShareManagerTestCase(test.TestCase):
             self.context, share_servers[0], share_network,
             [share_network_subnet]
         )
-        db.share_instances_get_all_by_share_server.assert_called_once_with(
+        db.share_instance_get_all_by_share_server.assert_called_once_with(
             self.context, share_servers[0]['id'], with_share_data=True)
         db.share_access_get_all_for_instance.assert_called_once_with(
             self.context, share_instances[0]['id'])
@@ -10020,7 +10020,7 @@ class ShareManagerTestCase(test.TestCase):
             self.context, share_servers[0], share_network,
             [share_network_subnet]
         )
-        db.share_instances_get_all_by_share_server.assert_called_once_with(
+        db.share_instance_get_all_by_share_server.assert_called_once_with(
             self.context, share_servers[0]['id'], with_share_data=True)
         db.share_access_get_all_for_instance.assert_called_once_with(
             self.context, share_instances[0]['id'])
@@ -10075,7 +10075,7 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.access_helper,
             'update_share_instances_access_rules_status')
         self.mock_object(
-            db, 'share_instances_get_all_by_share_server',
+            db, 'share_instance_get_all_by_share_server',
             mock.Mock(return_value=share_instances))
 
         self.share_manager._update_share_network_security_service(
@@ -10110,7 +10110,7 @@ class ShareManagerTestCase(test.TestCase):
         db.share_server_update.assert_called_once_with(
             self.context, share_servers[0]['id'],
             {'status': constants.STATUS_ERROR})
-        db.share_instances_get_all_by_share_server.assert_called_once_with(
+        db.share_instance_get_all_by_share_server.assert_called_once_with(
             self.context, share_servers[0]['id'], with_share_data=True)
         db.share_access_get_all_for_instance.assert_called_once_with(
             self.context, share_instances[0]['id'])
@@ -10263,7 +10263,7 @@ class ShareManagerTestCase(test.TestCase):
         shares = [fakes.fake_share(id=share_id)]
         mock_shares_get = self.mock_object(
             self.share_manager.db,
-            'share_instances_get_all_by_share_server',
+            'share_instance_get_all_by_share_server',
             mock.Mock(return_value=shares))
         access = 'fake_access'
         mock_access_get = self.mock_object(
@@ -10417,7 +10417,7 @@ class ShareManagerTestCase(test.TestCase):
         share_instances = [{'id': 'fake_id'}]
         mock_instances_get = self.mock_object(
             self.share_manager.db,
-            'share_instances_get_all_by_share_server',
+            'share_instance_get_all_by_share_server',
             mock.Mock(return_value=share_instances))
         snap_instances = [{'id': 'fake_id'}]
         mock_snap_instances_get = self.mock_object(
@@ -10487,7 +10487,7 @@ class ShareManagerTestCase(test.TestCase):
         share_instances = [{'id': 'fake_id'}]
         mock_instances_get = self.mock_object(
             self.share_manager.db,
-            'share_instances_get_all_by_share_server',
+            'share_instance_get_all_by_share_server',
             mock.Mock(return_value=share_instances))
         snap_instances = [{'id': 'fake_id'}]
         mock_snap_instances_get = self.mock_object(

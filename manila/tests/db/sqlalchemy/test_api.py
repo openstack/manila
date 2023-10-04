@@ -390,7 +390,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         db_utils.create_share()
         self._assertEqualListsOfObjects(share_instances[0],
-                                        db_api.share_instances_get_all_by_host(
+                                        db_api.share_instance_get_all_by_host(
                                             self.ctxt, 'foo'),
                                         ignored_keys=['share_type',
                                                       'share_type_id',
@@ -403,7 +403,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         db_utils.create_share()
         self._assertEqualListsOfObjects(share_instances[0],
-                                        db_api.share_instances_get_all_by_host(
+                                        db_api.share_instance_get_all_by_host(
                                             self.ctxt, 'foo'),
                                         ignored_keys=['share_type',
                                                       'share_type_id',
@@ -516,7 +516,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
     def test_share_instance_get_all_by_host(self, with_share_data, status):
         kwargs = {'status': status} if status else {}
         db_utils.create_share(**kwargs)
-        instances = db_api.share_instances_get_all_by_host(
+        instances = db_api.share_instance_get_all_by_host(
             self.ctxt, 'fake_host', with_share_data=with_share_data,
             status=status)
 
@@ -535,7 +535,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
         db_utils.create_share()
         self.mock_object(db_api, 'share_get', mock.Mock(
                          side_effect=exception.NotFound))
-        instances = db_api.share_instances_get_all_by_host(
+        instances = db_api.share_instance_get_all_by_host(
             self.ctxt, 'fake_host', True)
 
         self.assertEqual(0, len(instances))
@@ -545,7 +545,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
         db_utils.create_share(share_group_id=group['id'])
         db_utils.create_share()
 
-        instances = db_api.share_instances_get_all_by_share_group_id(
+        instances = db_api.share_instance_get_all_by_share_group_id(
             self.ctxt, group['id'])
 
         self.assertEqual(1, len(instances))
@@ -568,7 +568,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
         else:
             value = 'fake_export_location'
 
-        instances = db_api.share_instances_get_all(
+        instances = db_api.share_instance_get_all(
             self.ctxt, filters={'export_location_' + type: value})
 
         self.assertEqual(1, len(instances))
@@ -580,7 +580,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
         db_utils.create_share()
         db_utils.create_share(is_soft_deleted=True)
 
-        instances = db_api.share_instances_get_all(
+        instances = db_api.share_instance_get_all(
             self.ctxt, filters={'is_soft_deleted': True})
 
         self.assertEqual(1, len(instances))
@@ -596,7 +596,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
         # Populate the db with a dummy share
         db_utils.create_share_instance(share_id=fake_share['id'])
 
-        instances = db_api.share_instances_get_all(
+        instances = db_api.share_instance_get_all(
             self.ctxt,
             filters={'instance_ids': [expected_share_instance['id']]})
 
@@ -4884,7 +4884,7 @@ class ShareResourcesAPITestCase(test.TestCase):
         expected_updates = {'instances': 0, 'servers': 0, 'groups': 0}
         self.assertDictEqual(expected_updates, updates)
         # validate that resources are unmodified:
-        share_instances = db_api.share_instances_get_all(
+        share_instances = db_api.share_instance_get_all(
             self.context, filters={'share_id': share_id})
         share_groups = db_api.share_group_get_all(
             self.context, filters={'share_network_id': share_network_id})
@@ -4976,7 +4976,7 @@ class ShareResourcesAPITestCase(test.TestCase):
         actual_updates = db_api.share_resources_host_update(
             self.context, current_host, new_host)
 
-        share_instances = db_api.share_instances_get_all(
+        share_instances = db_api.share_instance_get_all(
             self.context, filters={'share_id': share_id})
         share_groups = db_api.share_group_get_all(
             self.context, filters={'share_network_id': share_network_id})
@@ -4991,7 +4991,7 @@ class ShareResourcesAPITestCase(test.TestCase):
         self.assertEqual(expected_updates, actual_updates)
         self.assertEqual(total_updates_expected, len(updated_resources))
 
-    def test_share_instances_status_update(self):
+    def test_share_instance_status_update(self):
         for i in range(1, 3):
             instances = [
                 db_utils.create_share_instance(
@@ -5000,7 +5000,7 @@ class ShareResourcesAPITestCase(test.TestCase):
         share_instance_ids = [instance['id'] for instance in instances]
         values = {'status': constants.STATUS_AVAILABLE}
 
-        db_api.share_instances_status_update(
+        db_api.share_instance_status_update(
             self.context, share_instance_ids, values)
 
         instances = [
@@ -5047,7 +5047,7 @@ class ShareResourcesAPITestCase(test.TestCase):
         values = {'status': constants.STATUS_AVAILABLE}
 
         mock_update_share_instances = self.mock_object(
-            db_api, 'share_instances_status_update',
+            db_api, 'share_instance_status_update',
             mock.Mock(return_value=[share_instance]))
         mock_update_snap_instances = self.mock_object(
             db_api, 'share_snapshot_instances_status_update',
@@ -5096,7 +5096,7 @@ class ShareResourcesAPITestCase(test.TestCase):
         mock_get_session = self.mock_object(
             db_api, 'get_session', mock.Mock(return_value=fake_session))
         mock_instances_get_all = self.mock_object(
-            db_api, 'share_instances_get_all',
+            db_api, 'share_instance_get_all',
             mock.Mock(return_value=[share_instance]))
         mock_snap_instances_get_all = self.mock_object(
             db_api, 'share_snapshot_instance_get_all_with_filters',

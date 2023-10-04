@@ -83,7 +83,7 @@ class ShareNetworkSubnetController(wsgi.Controller,
             raise exc.HTTPNotFound(explanation=e.msg)
 
         for share_server in share_network_subnet['share_servers'] or []:
-            shares = db_api.share_instances_get_all_by_share_server(
+            shares = db_api.share_instance_get_all_by_share_server(
                 context, share_server['id'])
             if shares:
                 msg = _("Cannot delete share network subnet %(id)s, it has "

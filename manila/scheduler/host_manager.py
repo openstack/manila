@@ -442,7 +442,7 @@ class PoolState(HostState):
         """Estimate provisioned capacity from share sizes on backend."""
         provisioned_capacity = 0
 
-        instances = db.share_instances_get_all_by_host(
+        instances = db.share_instance_get_all_by_host(
             context, host_name, with_share_data=True)
 
         for instance in instances:

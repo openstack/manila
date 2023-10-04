@@ -337,45 +337,47 @@ def share_and_snapshot_instances_status_update(
         current_expected_status=current_expected_status)
 
 
-def share_instances_status_update(context, share_instance_ids, values):
+def share_instance_status_update(context, share_instance_ids, values):
     """Updates the status of a bunch of share instances at once."""
-    return IMPL.share_instances_status_update(
+    return IMPL.share_instance_status_update(
         context, share_instance_ids, values)
 
 
-def share_instances_get_all(context, filters=None):
+def share_instance_get_all(context, filters=None):
     """Returns all share instances."""
-    return IMPL.share_instances_get_all(context, filters=filters)
+    return IMPL.share_instance_get_all(context, filters=filters)
 
 
-def share_instances_get_all_by_share_server(context, share_server_id,
-                                            with_share_data=False):
+def share_instance_get_all_by_share_server(
+    context, share_server_id, with_share_data=False,
+):
     """Returns all share instances with given share_server_id."""
-    return IMPL.share_instances_get_all_by_share_server(
+    return IMPL.share_instance_get_all_by_share_server(
         context, share_server_id, with_share_data=with_share_data)
 
 
-def share_instances_get_all_by_host(context, host, with_share_data=False,
-                                    status=None):
+def share_instance_get_all_by_host(
+    context, host, with_share_data=False, status=None,
+):
     """Returns all share instances with given host."""
-    return IMPL.share_instances_get_all_by_host(
+    return IMPL.share_instance_get_all_by_host(
         context, host, with_share_data=with_share_data, status=status)
 
 
-def share_instances_get_all_by_share_network(context, share_network_id):
+def share_instance_get_all_by_share_network(context, share_network_id):
     """Returns list of shares that belong to given share network."""
-    return IMPL.share_instances_get_all_by_share_network(context,
-                                                         share_network_id)
+    return IMPL.share_instance_get_all_by_share_network(
+        context, share_network_id)
 
 
-def share_instances_get_all_by_share(context, share_id):
+def share_instance_get_all_by_share(context, share_id):
     """Returns list of shares that belong to given share."""
-    return IMPL.share_instances_get_all_by_share(context, share_id)
+    return IMPL.share_instance_get_all_by_share(context, share_id)
 
 
-def share_instances_get_all_by_share_group_id(context, share_group_id):
+def share_instance_get_all_by_share_group_id(context, share_group_id):
     """Returns list of share instances that belong to given share group."""
-    return IMPL.share_instances_get_all_by_share_group_id(
+    return IMPL.share_instance_get_all_by_share_group_id(
         context, share_group_id)
 
 ###################

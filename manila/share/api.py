@@ -950,8 +950,8 @@ class API(base.Base):
         if share_server_id:
             filters['share_server_id'] = share_data['share_server_id']
 
-        already_managed = self.db.share_instances_get_all(context,
-                                                          filters=filters)
+        already_managed = self.db.share_instance_get_all(
+            context, filters=filters)
 
         if already_managed:
             LOG.error("Found an existing share with export location %s!",
@@ -1423,8 +1423,8 @@ class API(base.Base):
     def delete_share_server(self, context, server):
         """Delete share server."""
         policy.check_policy(context, 'share_server', 'delete', server)
-        shares = self.db.share_instances_get_all_by_share_server(context,
-                                                                 server['id'])
+        shares = self.db.share_instance_get_all_by_share_server(
+            context, server['id'])
 
         if shares:
             raise exception.ShareServerInUse(share_server_id=server['id'])
@@ -1478,7 +1478,7 @@ class API(base.Base):
     def unmanage_share_server(self, context, share_server, force=False):
         """Unmanage a share server."""
 
-        shares = self.db.share_instances_get_all_by_share_server(
+        shares = self.db.share_instance_get_all_by_share_server(
             context, share_server['id'])
 
         if shares:

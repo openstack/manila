@@ -80,7 +80,7 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
             db_api, 'share_network_subnet_get',
             mock.Mock(return_value=self.subnet))
         mock_all_get_all_shares_by_ss = self.mock_object(
-            db_api, 'share_instances_get_all_by_share_server',
+            db_api, 'share_instance_get_all_by_share_server',
             mock.Mock(return_value=[]))
         mock_all_ss_are_auto_deletable = self.mock_object(
             self.controller, '_all_share_servers_are_auto_deletable',
@@ -160,7 +160,7 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
             db_api, 'share_network_subnet_get',
             mock.Mock(return_value=self.subnet))
         mock_all_get_all_shares_by_ss = self.mock_object(
-            db_api, 'share_instances_get_all_by_share_server',
+            db_api, 'share_instance_get_all_by_share_server',
             mock.Mock(return_value=[]))
         mock_all_ss_are_auto_deletable = self.mock_object(
             self.controller, '_all_share_servers_are_auto_deletable',
@@ -195,7 +195,7 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
             db_api, 'share_network_subnet_get',
             mock.Mock(return_value=self.subnet))
         mock_all_get_all_shares_by_ss = self.mock_object(
-            db_api, 'share_instances_get_all_by_share_server',
+            db_api, 'share_instance_get_all_by_share_server',
             mock.Mock(return_value=[self.share]))
 
         self.assertRaises(exc.HTTPConflict,

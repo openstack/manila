@@ -430,7 +430,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 {'host': self.host})
             return
 
-        share_instances = self.db.share_instances_get_all_by_host(
+        share_instances = self.db.share_instance_get_all_by_host(
             ctxt, self.host)
         LOG.debug("Re-exporting %s shares", len(share_instances))
 
@@ -577,7 +577,7 @@ class ShareManager(manager.SchedulerDependentManager):
             return available_share_servers
 
         for ss in available_share_servers[:]:
-            share_instances = self.db.share_instances_get_all_by_share_server(
+            share_instances = self.db.share_instance_get_all_by_share_server(
                 context, ss['id'], with_share_data=True)
             if not share_instances:
                 continue
@@ -1359,7 +1359,7 @@ class ShareManager(manager.SchedulerDependentManager):
     def migration_driver_continue(self, context):
         """Invokes driver to continue migration of shares."""
 
-        instances = self.db.share_instances_get_all_by_host(
+        instances = self.db.share_instance_get_all_by_host(
             context, self.host, with_share_data=True)
 
         for instance in instances:
@@ -3644,7 +3644,7 @@ class ShareManager(manager.SchedulerDependentManager):
         share_ref = self.db.share_get(elevated_context, share_id)
         access_rules = self.db.share_access_get_all_for_share(
             elevated_context, share_id)
-        share_instances = self.db.share_instances_get_all_by_share(
+        share_instances = self.db.share_instance_get_all_by_share(
             elevated_context, share_id)
         share_server = self._get_share_server(context, share_ref)
 
@@ -4215,7 +4215,7 @@ class ShareManager(manager.SchedulerDependentManager):
         """Executes periodic-based hooks."""
         # TODO(vponomaryov): add also access rules and share servers
         share_instances = (
-            self.db.share_instances_get_all_by_host(
+            self.db.share_instance_get_all_by_host(
                 context=context, host=self.host))
         periodic_hook_data = self.driver.get_periodic_hook_data(
             context=context, share_instances=share_instances)
@@ -4429,7 +4429,7 @@ class ShareManager(manager.SchedulerDependentManager):
             # this method starts executing when amount of dependent shares
             # has been changed.
             server_id = share_server['id']
-            shares = self.db.share_instances_get_all_by_share_server(
+            shares = self.db.share_instance_get_all_by_share_server(
                 context, server_id)
 
             if shares:
@@ -4636,7 +4636,7 @@ class ShareManager(manager.SchedulerDependentManager):
         context = context.elevated()
         share_group_ref = self.db.share_group_get(context, share_group_id)
         share_group_ref['host'] = self.host
-        shares = self.db.share_instances_get_all_by_share_group_id(
+        shares = self.db.share_instance_get_all_by_share_group_id(
             context, share_group_id)
 
         source_share_group_snapshot_id = share_group_ref.get(
@@ -4796,7 +4796,7 @@ class ShareManager(manager.SchedulerDependentManager):
         share_group_ref = self.db.share_group_get(context, share_group_id)
         share_group_ref['host'] = self.host
         share_group_ref['shares'] = (
-            self.db.share_instances_get_all_by_share_group_id(
+            self.db.share_instance_get_all_by_share_group_id(
                 context, share_group_id))
 
         # TODO(ameade): Add notification for delete.start
@@ -5275,7 +5275,7 @@ class ShareManager(manager.SchedulerDependentManager):
     def update_share_usage_size(self, context):
         """Invokes driver to gather usage size of shares."""
         updated_share_instances = []
-        share_instances = self.db.share_instances_get_all_by_host(
+        share_instances = self.db.share_instance_get_all_by_host(
             context, host=self.host, with_share_data=True)
 
         if share_instances:
@@ -5298,7 +5298,7 @@ class ShareManager(manager.SchedulerDependentManager):
     def periodic_share_status_update(self, context):
         """Invokes share driver to update shares status."""
         LOG.debug("Updating status of share instances.")
-        share_instances = self.db.share_instances_get_all_by_host(
+        share_instances = self.db.share_instance_get_all_by_host(
             context, self.host, with_share_data=True,
             status=constants.STATUS_CREATING_FROM_SNAPSHOT)
 
@@ -5434,7 +5434,7 @@ class ShareManager(manager.SchedulerDependentManager):
         if task_state:
             fields['task_state'] = task_state
         if share_instance_ids:
-            self.db.share_instances_status_update(
+            self.db.share_instance_status_update(
                 context, share_instance_ids, fields)
         if snapshot_instance_ids:
             self.db.share_snapshot_instances_status_update(
@@ -5444,7 +5444,7 @@ class ShareManager(manager.SchedulerDependentManager):
             self, context, source_share_server, dest_host, writable,
             nondisruptive, preserve_snapshots, new_share_network_id):
 
-        share_instances = self.db.share_instances_get_all_by_share_server(
+        share_instances = self.db.share_instance_get_all_by_share_server(
             context, source_share_server['id'], with_share_data=True)
         share_instance_ids = [x.id for x in share_instances]
 
@@ -5619,7 +5619,7 @@ class ShareManager(manager.SchedulerDependentManager):
             return result
 
         share_server = self.db.share_server_get(context, share_server_id)
-        share_instances = self.db.share_instances_get_all_by_share_server(
+        share_instances = self.db.share_instance_get_all_by_share_server(
             context, share_server_id, with_share_data=True)
         share_instance_ids = [x.id for x in share_instances]
 
@@ -5764,7 +5764,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     continue
 
                 share_instances = (
-                    self.db.share_instances_get_all_by_share_server(
+                    self.db.share_instance_get_all_by_share_server(
                         context, src_share_server_id, with_share_data=True))
                 share_instance_ids = [x.id for x in share_instances]
 
@@ -5826,7 +5826,7 @@ class ShareManager(manager.SchedulerDependentManager):
         src_server = self.db.share_server_get(context, src_share_server_id)
 
         share_instances = (
-            self.db.share_instances_get_all_by_share_server(
+            self.db.share_instance_get_all_by_share_server(
                 context, src_share_server_id, with_share_data=True))
         share_instance_ids = [x.id for x in share_instances]
 
@@ -6045,7 +6045,7 @@ class ShareManager(manager.SchedulerDependentManager):
             raise exception.InvalidShareServer(reason=msg)
 
         share_instances = (
-            self.db.share_instances_get_all_by_share_server(
+            self.db.share_instance_get_all_by_share_server(
                 context, src_share_server_id, with_share_data=True))
         share_instance_ids = [x.id for x in share_instances]
 
@@ -6112,7 +6112,7 @@ class ShareManager(manager.SchedulerDependentManager):
         dest_share_server = self.db.share_server_get(context,
                                                      dest_share_server_id)
         share_instances = (
-            self.db.share_instances_get_all_by_share_server(
+            self.db.share_instance_get_all_by_share_server(
                 context, src_share_server_id, with_share_data=True))
         share_instance_ids = [x.id for x in share_instances]
 
@@ -6187,7 +6187,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 context, share_server, share_network, share_network_subnets)
 
             share_instances = (
-                self.db.share_instances_get_all_by_share_server(
+                self.db.share_instance_get_all_by_share_server(
                     context, share_server['id'], with_share_data=True))
             share_instance_ids = [sn.id for sn in share_instances]
 
@@ -6256,7 +6256,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     # failed on update operation. We will set all share
                     # instances to 'error'.
                     if share_instance_ids:
-                        self.db.share_instances_status_update(
+                        self.db.share_instance_status_update(
                             context, share_instance_ids,
                             {'status': constants.STATUS_ERROR})
                         # Update share instance access rules status
@@ -6403,7 +6403,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 context, share_server['id'], az_subnets)
 
             share_instances = (
-                self.db.share_instances_get_all_by_share_server(
+                self.db.share_instance_get_all_by_share_server(
                     context, share_server['id'], with_share_data=True))
             share_instance_ids = [sn.id for sn in share_instances]
 
@@ -6512,7 +6512,7 @@ class ShareManager(manager.SchedulerDependentManager):
             current_network_allocations = self._form_network_allocations(
                 context, share_server_id, current_subnets)
             share_instances = (
-                self.db.share_instances_get_all_by_share_server(
+                self.db.share_instance_get_all_by_share_server(
                     context, share_server_id, with_share_data=True))
             share_instance_ids = [x['id'] for x in share_instances]
             snapshot_instances = (
