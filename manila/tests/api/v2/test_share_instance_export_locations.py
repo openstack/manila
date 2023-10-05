@@ -52,7 +52,7 @@ class ShareInstanceExportLocationsAPITest(test.TestCase):
         self.share_instance_id = self.share.instance.id
         self.req = self._get_request()
         paths = ['fake1/1/', 'fake2/2', 'fake3/3']
-        db.share_export_locations_update(
+        db.export_locations_update(
             self.ctxt['admin'], self.share_instance_id, paths, False)
 
     @ddt.data({'role': 'admin', 'version': '2.9'},

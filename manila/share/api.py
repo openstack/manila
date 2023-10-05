@@ -1013,8 +1013,8 @@ class API(base.Base):
         share = self.db.share_create(context, share_data)
 
         export_location_path = share_data.pop('export_location_path')
-        self.db.share_export_locations_update(context, share.instance['id'],
-                                              export_location_path)
+        self.db.export_locations_update(
+            context, share.instance['id'], export_location_path)
 
         request_spec = self._get_request_spec_dict(
             context, share, share_type, size=0,

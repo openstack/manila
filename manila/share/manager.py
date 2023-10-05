@@ -499,7 +499,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 share_instance_update_dict.get('export_locations')
             )
             if update_export_locations:
-                self.db.share_export_locations_update(
+                self.db.export_locations_update(
                     ctxt, share_instance['id'], update_export_locations)
 
             share_server = self._get_share_server(ctxt, share_instance)
@@ -565,7 +565,7 @@ class ShareManager(manager.SchedulerDependentManager):
                           "share '%(s_id)s'.",
                           {'s_id': share_instance['id']})
         if export_locations:
-            self.db.share_export_locations_update(
+            self.db.export_locations_update(
                 ctxt, share_instance['id'], export_locations)
 
     def _check_share_server_backend_limits(
@@ -1647,7 +1647,7 @@ class ShareManager(manager.SchedulerDependentManager):
             dest_share_server) or {}
 
         if data_updates.get('export_locations'):
-            self.db.share_export_locations_update(
+            self.db.export_locations_update(
                 context, dest_share_instance['id'],
                 data_updates['export_locations'])
 
@@ -2187,7 +2187,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 raise exception.InvalidShareInstance(reason=msg)
 
             if export_locations:
-                self.db.share_export_locations_update(
+                self.db.export_locations_update(
                     context, share_instance['id'], export_locations)
 
         except Exception as e:
@@ -2205,7 +2205,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 export_locations = get_export_location(detail_data)
 
                 if export_locations:
-                    self.db.share_export_locations_update(
+                    self.db.export_locations_update(
                         context, share_instance['id'], export_locations)
                 else:
                     LOG.warning('Share instance information in exception '
@@ -2414,7 +2414,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         if replica_ref.get('export_locations'):
             if isinstance(replica_ref.get('export_locations'), list):
-                self.db.share_export_locations_update(
+                self.db.export_locations_update(
                     context, share_replica['id'],
                     replica_ref.get('export_locations'))
             else:
@@ -2692,7 +2692,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     'export_locations')
                 if(updated_export_locs is not None
                    and isinstance(updated_export_locs, list)):
-                    self.db.share_export_locations_update(
+                    self.db.export_locations_update(
                         context, updated_replica['id'],
                         updated_export_locs)
 
@@ -2961,7 +2961,7 @@ class ShareManager(manager.SchedulerDependentManager):
             # that driver has calculated to avoid incompatibilities with one
             # provided by user.
             if 'export_locations' in share_update:
-                self.db.share_export_locations_update(
+                self.db.export_locations_update(
                     context, share_instance['id'],
                     share_update.pop('export_locations'),
                     delete=True)
@@ -4744,9 +4744,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     values.pop('id')
                     export_locations = values.pop('export_locations')
                     self.db.share_instance_update(context, share['id'], values)
-                    self.db.share_export_locations_update(context,
-                                                          share['id'],
-                                                          export_locations)
+                    self.db.export_locations_update(
+                        context, share['id'], export_locations)
 
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -5370,7 +5369,7 @@ class ShareManager(manager.SchedulerDependentManager):
                       'status': status})
             LOG.debug(msg)
         if export_locations:
-            self.db.share_export_locations_update(
+            self.db.export_locations_update(
                 context, share_instance['id'], export_locations)
 
     def _validate_check_compatibility_result(
@@ -5983,7 +5982,7 @@ class ShareManager(manager.SchedulerDependentManager):
             update_export_location = (
                 share_updates[share_instance['id']].get('export_locations'))
             if update_export_location:
-                self.db.share_export_locations_update(
+                self.db.export_locations_update(
                     context, share_instance['id'], update_export_location)
 
         snapshot_updates = model_update.get('snapshot_updates', {})
@@ -6466,7 +6465,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         share_updates = model_update.get('share_updates', {})
         for share_instance_id, export_locations in share_updates.items():
-            self.db.share_export_locations_update(
+            self.db.export_locations_update(
                 context, share_instance_id, export_locations)
 
         snapshot_updates = model_update.get('snapshot_updates', {})

@@ -55,11 +55,9 @@ class ShareReplicaExportLocationController(wsgi.Controller):
         """Return a list of export locations for the share instance."""
         context = req.environ['manila.context']
         self._verify_share_replica(context, share_replica_id)
-        export_locations = (
-            db_api.share_export_locations_get_by_share_instance_id(
-                context, share_replica_id,
-                include_admin_only=context.is_admin)
-        )
+        export_locations = db_api.export_location_get_all_by_share_instance_id(
+            context, share_replica_id,
+            include_admin_only=context.is_admin)
         return self._view_builder.summary_list(req, export_locations,
                                                replica=True)
 
@@ -80,7 +78,7 @@ class ShareReplicaExportLocationController(wsgi.Controller):
         context = req.environ['manila.context']
         self._verify_share_replica(context, share_replica_id)
         try:
-            export_location = db_api.share_export_location_get_by_uuid(
+            export_location = db_api.export_location_get_by_uuid(
                 context, export_location_uuid)
             return self._view_builder.detail(req, export_location,
                                              replica=True)

@@ -54,7 +54,7 @@ class ShareExportLocationsAPITest(test.TestCase):
         self.share_instance_id = self.share.instance.id
         self.req = self._get_request()
         paths = ['fake1/1/', 'fake2/2', 'fake3/3']
-        db.share_export_locations_update(
+        db.export_locations_update(
             self.ctxt['admin'], self.share_instance_id, paths, False)
 
     @ddt.data({'role': 'admin', 'version': '2.9'},
@@ -154,7 +154,7 @@ class ShareExportLocationsAPITest(test.TestCase):
             'is_admin_only': True,
             'metadata': {'foo': 'bar'},
         }
-        db.share_export_locations_update(
+        db.export_locations_update(
             self.ctxt['admin'], self.share_instance_id, el_data, True)
         index_result = self.controller.index(self.req, self.share['id'])
         el_id = index_result['export_locations'][0]['id']
@@ -191,7 +191,7 @@ class ShareExportLocationsAPITest(test.TestCase):
             {'path': 'myshare.mydomain/active-replica-exp2',
              'is_admin_only': False},
         ]
-        db.share_export_locations_update(
+        db.export_locations_update(
             self.ctxt['user'], active_replica_id, exports)
 
         # Replicas
@@ -208,9 +208,9 @@ class ShareExportLocationsAPITest(test.TestCase):
             {'path': 'myshare.mydomain/outofsync-replica-exp',
              'is_admin_only': False}
         ]
-        db.share_export_locations_update(
+        db.export_locations_update(
             self.ctxt['user'], share_replica2.id, replica2_exports)
-        db.share_export_locations_update(
+        db.export_locations_update(
             self.ctxt['user'], share_replica3.id, replica3_exports)
 
         req = self._get_request(version=version)

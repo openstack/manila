@@ -946,42 +946,46 @@ def share_metadata_update_item(context, share_id, item):
 
 ###################
 
-def share_export_location_get_by_uuid(context, export_location_uuid,
-                                      ignore_secondary_replicas=False):
+def export_location_get_by_uuid(
+    context, export_location_uuid, ignore_secondary_replicas=False,
+):
     """Get specific export location of a share."""
-    return IMPL.share_export_location_get_by_uuid(
+    return IMPL.export_location_get_by_uuid(
         context, export_location_uuid,
         ignore_secondary_replicas=ignore_secondary_replicas)
 
 
-def share_export_locations_get(context, share_id):
+def export_location_get_all(context, share_id):
     """Get all export locations of a share."""
-    return IMPL.share_export_locations_get(context, share_id)
+    return IMPL.export_location_get_all(context, share_id)
 
 
-def share_export_locations_get_by_share_id(context, share_id,
-                                           include_admin_only=True,
-                                           ignore_migration_destination=False,
-                                           ignore_secondary_replicas=False):
+def export_location_get_all_by_share_id(
+    context, share_id,
+    include_admin_only=True,
+    ignore_migration_destination=False,
+    ignore_secondary_replicas=False,
+):
     """Get all export locations of a share by its ID."""
-    return IMPL.share_export_locations_get_by_share_id(
+    return IMPL.export_location_get_all_by_share_id(
         context, share_id, include_admin_only=include_admin_only,
         ignore_migration_destination=ignore_migration_destination,
         ignore_secondary_replicas=ignore_secondary_replicas)
 
 
-def share_export_locations_get_by_share_instance_id(context,
-                                                    share_instance_id,
-                                                    include_admin_only=True):
+def export_location_get_all_by_share_instance_id(
+    context, share_instance_id, include_admin_only=True,
+):
     """Get all export locations of a share instance by its ID."""
-    return IMPL.share_export_locations_get_by_share_instance_id(
+    return IMPL.export_location_get_all_by_share_instance_id(
         context, share_instance_id, include_admin_only=include_admin_only)
 
 
-def share_export_locations_update(context, share_instance_id, export_locations,
-                                  delete=True):
+def export_locations_update(
+    context, share_instance_id, export_locations, delete=True,
+):
     """Update export locations of a share instance."""
-    return IMPL.share_export_locations_update(
+    return IMPL.export_locations_update(
         context, share_instance_id, export_locations, delete)
 
 

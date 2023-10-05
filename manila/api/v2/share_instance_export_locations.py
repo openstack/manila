@@ -49,9 +49,8 @@ class ShareInstanceExportLocationController(wsgi.Controller):
         """Return a list of export locations for the share instance."""
         context = req.environ['manila.context']
         self._verify_share_instance(context, share_instance_id)
-        export_locations = (
-            db_api.share_export_locations_get_by_share_instance_id(
-                context, share_instance_id))
+        export_locations = db_api.export_location_get_all_by_share_instance_id(
+            context, share_instance_id)
         return self._view_builder.summary_list(req, export_locations)
 
     @wsgi.Controller.api_version('2.9')
@@ -61,7 +60,7 @@ class ShareInstanceExportLocationController(wsgi.Controller):
         context = req.environ['manila.context']
         self._verify_share_instance(context, share_instance_id)
         try:
-            export_location = db_api.share_export_location_get_by_uuid(
+            export_location = db_api.export_location_get_by_uuid(
                 context, export_location_uuid)
             return self._view_builder.detail(req, export_location)
         except exception.ExportLocationNotFound as e:
