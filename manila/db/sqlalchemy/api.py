@@ -5999,6 +5999,18 @@ def purge_deleted_records(context, age_in_days):
     metadata.reflect(get_engine())
     deleted_age = timeutils.utcnow() - datetime.timedelta(days=age_in_days)
 
+    # Deleting rows in share_network_security_service_association
+    # related to deleted network or security service
+    sec_assoc_to_delete = context.session.query(
+        models.ShareNetworkSecurityServiceAssociation).join(
+        models.ShareNetwork).join(models.SecurityService).filter(
+        or_(models.ShareNetwork.deleted_at <= deleted_age,
+            models.SecurityService.deleted_at <= deleted_age)).all()
+
+    for assoc in sec_assoc_to_delete:
+        with context.session.begin_nested():
+            context.session.delete(assoc)
+
     for table in reversed(metadata.sorted_tables):
         if 'deleted' not in table.columns.keys():
             continue

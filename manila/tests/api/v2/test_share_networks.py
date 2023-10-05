@@ -1769,3 +1769,20 @@ class ShareNetworkAPITest(test.TestCase):
         self.assertRaises(exception_to_be_raised,
                           self.controller.share_network_subnet_create_check,
                           request, 'fake_net_id', body)
+
+    def test_share_network_sec_service_delete(self):
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value=fake_share_network_with_ss))
+        self.mock_object(db_api, 'share_network_delete')
+        self.mock_object(db_api, 'share_network_remove_security_service')
+        self.controller.delete(self.req, fake_share_network_with_ss['id'])
+        db_api.share_network_get.assert_called_once_with(
+            self.req.environ['manila.context'],
+            fake_share_network_with_ss['id'])
+        db_api.share_network_remove_security_service.assert_called_once_with(
+            self.req.environ['manila.context'],
+            fake_share_network_with_ss['id'],
+            fake_share_network_with_ss['security_services'][0]['id'])
+        db_api.share_network_delete.assert_called_once_with(
+            self.req.environ['manila.context'],
+            fake_share_network_with_ss['id'])
