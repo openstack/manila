@@ -2115,8 +2115,6 @@ def share_replica_delete(context, share_replica_id, session=None,
 
 @require_context
 def _share_get_query(context, session=None, **kwargs):
-    if session is None:
-        session = get_session()
     return (model_query(context, models.Share, session=session, **kwargs).
             options(joinedload('share_metadata')))
 
@@ -2292,6 +2290,15 @@ def share_update(context, share_id, update_values):
 
 @require_context
 def share_get(context, share_id, session=None, **kwargs):
+    if session is None:
+        session = get_session()
+
+    return _share_get(context, share_id, session=session, **kwargs)
+
+
+# TODO(stephenfin): Remove the 'session' argument once all callers have been
+# converted
+def _share_get(context, share_id, session=None, **kwargs):
     result = _share_get_query(context, session, **kwargs).filter_by(
         id=share_id).first()
 
@@ -2318,6 +2325,8 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     :returns: list -- models.Share
     :raises: exception.InvalidInput
     """
+    session = get_session()
+
     if filters is None:
         filters = {}
 
@@ -2326,7 +2335,7 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     if not sort_dir:
         sort_dir = 'desc'
     query = (
-        _share_get_query(context).join(
+        _share_get_query(context, session).join(
             models.ShareInstance,
             models.ShareInstance.share_id == models.Share.id
         )
@@ -2376,8 +2385,10 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
 
 @require_admin_context
 def share_get_all_expired(context):
+    session = get_session()
+
     query = (
-        _share_get_query(context).join(
+        _share_get_query(context, session).join(
             models.ShareInstance,
             models.ShareInstance.share_id == models.Share.id
         )
