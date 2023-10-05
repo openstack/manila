@@ -530,6 +530,7 @@ NETWORK_INFO_NETMASK = '255.255.255.0'
 SHARE_SERVER = {
     'id': 'fake_id',
     'share_network_id': 'c5b3a865-56d0-4d88-abe5-879965e099c9',
+    'identifier': 'fake_id',
     'backend_details': {
         'vserver_name': VSERVER1
     },

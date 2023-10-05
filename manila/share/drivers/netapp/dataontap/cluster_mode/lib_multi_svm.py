@@ -1221,7 +1221,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         if (dest_client.is_svm_migrate_supported()
                 and src_client.is_svm_migrate_supported()):
             source_share_server_name = self._get_vserver_name(
-                source_share_server['id'])
+                source_share_server['identifier'])
 
             # Check if the migration is supported.
             try:
@@ -1451,7 +1451,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         # Prepare the migration request.
         src_cluster_name = src_client.get_cluster_name()
         source_share_server_name = self._get_vserver_name(
-            source_share_server['id'])
+            source_share_server['identifier'])
 
         # 3. Send the migration request to ONTAP.
         try:
