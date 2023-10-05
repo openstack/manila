@@ -1729,6 +1729,18 @@ def share_instance_get(context, share_instance_id, session=None,
                        with_share_data=False):
     if session is None:
         session = get_session()
+
+    return _share_instance_get(
+        context, share_instance_id, session=session,
+        with_share_data=with_share_data,
+    )
+
+
+# TODO(stephenfin): Remove the 'session' argument once all callers have been
+# converted
+def _share_instance_get(
+    context, share_instance_id, session=None, with_share_data=False,
+):
     result = model_query(
         context, models.ShareInstance, session=session,
     ).filter_by(
