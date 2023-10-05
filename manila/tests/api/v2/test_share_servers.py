@@ -54,14 +54,22 @@ class ShareServerControllerTest(test.TestCase):
         body = {'reset_status': {'status': status}}
 
         context = req.environ['manila.context']
+        self.mock_object(self.controller, '_get', mock.Mock(
+            return_value={'share_server': 'object'}))
         mock_update = self.mock_object(db_api, 'share_server_update')
 
         result = self.controller.share_server_reset_status(
             req, 'fake_server_id', body)
 
         self.assertEqual(202, result.status_int)
-        policy.check_policy.assert_called_once_with(
-            context, self.resource_name, 'reset_status')
+        policy.check_policy.assert_has_calls([
+            mock.call(context, self.resource_name, 'reset_status'),
+            mock.call(context,
+                      self.resource_name,
+                      'reset_status',
+                      target_obj={'share_server': 'object'}),
+        ])
+
         mock_update.assert_called_once_with(
             context, 'fake_server_id', {'status': status})
 
@@ -881,16 +889,18 @@ class ShareServerControllerTest(test.TestCase):
         update = {'task_state': constants.TASK_STATE_MIGRATION_ERROR}
         body = {'reset_task_state': update}
 
-        self.mock_object(db_api, 'share_server_update',
+        self.mock_object(db_api, 'share_server_get',
                          mock.Mock(side_effect=exception.ShareServerNotFound(
                                    share_server_id='fake_server_id')))
+        self.mock_object(db_api, 'share_server_update')
 
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.share_server_reset_task_state,
                           req, server['id'], body)
 
-        db_api.share_server_update.assert_called_once_with(utils.IsAMatcher(
-            ctx_api.RequestContext), server['id'], update)
+        db_api.share_server_get.assert_called_once_with(utils.IsAMatcher(
+            ctx_api.RequestContext), server['id'])
+        db_api.share_server_update.assert_not_called()
 
     def test_share_server_migration_complete(self):
         server = db_utils.create_share_server(
