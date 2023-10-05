@@ -278,7 +278,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
                           snapshot_access_rules, share_server)
 
     def test_unmanage_manage(self):
-        share = mock.Mock()
+        share = {}
         server_details = {}
         share_server = mock.Mock()
         snapshot = mock.Mock()

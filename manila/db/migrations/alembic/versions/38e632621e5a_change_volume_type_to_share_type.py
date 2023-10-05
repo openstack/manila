@@ -60,7 +60,7 @@ def upgrade():
                   nullable=False),
         sa.Column('spec_key', sa.String(length=255)),
         sa.Column('spec_value', sa.String(length=255)),
-        mysql_engine='InnoDB')
+        mysql_engine='InnoDB', mysql_charset='utf8')
 
     LOG.info("Migrating volume_type_extra_specs to "
              "share_type_extra_specs")

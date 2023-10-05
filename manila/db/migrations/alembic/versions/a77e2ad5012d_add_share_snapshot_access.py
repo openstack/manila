@@ -45,7 +45,8 @@ def upgrade():
                   sa.ForeignKey('share_snapshots.id',
                                 name='ssam_snapshot_fk')),
         sa.Column('access_type', sa.String(255)),
-        sa.Column('access_to', sa.String(255))
+        sa.Column('access_to', sa.String(255)),
+        mysql_charset='utf8'
     )
 
     op.create_table(
@@ -62,7 +63,8 @@ def upgrade():
                   sa.ForeignKey('share_snapshot_access_map.id',
                                 name='ssam_access_fk')),
         sa.Column('state', sa.String(255),
-                  default=constants.ACCESS_STATE_QUEUED_TO_APPLY)
+                  default=constants.ACCESS_STATE_QUEUED_TO_APPLY),
+        mysql_charset='utf8'
     )
 
     op.create_table(
@@ -76,7 +78,8 @@ def upgrade():
                   sa.ForeignKey('share_snapshot_instances.id',
                                 name='ssiel_snapshot_instance_fk')),
         sa.Column('path', sa.String(2000)),
-        sa.Column('is_admin_only', sa.Boolean, default=False, nullable=False)
+        sa.Column('is_admin_only', sa.Boolean, default=False, nullable=False),
+        mysql_charset='utf8'
     )
 
     op.add_column('shares',

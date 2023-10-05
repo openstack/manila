@@ -59,6 +59,7 @@ def upgrade():
             sql.UniqueConstraint('share_type_id', 'project_id', 'deleted',
                                  name="stp_project_id_uc"),
             mysql_engine='InnoDB',
+            mysql_charset='utf8'
         )
     except Exception:
         LOG.error("Table |%s| not created!", 'share_type_projects')
