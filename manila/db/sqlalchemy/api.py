@@ -1679,6 +1679,16 @@ def share_instance_update(context, share_instance_id, values,
         return instance_ref
 
 
+# TODO(stephenfin): Remove the 'session' argument once all callers have been
+# converted
+def _share_instance_update(context, share_instance_id, values, session=None):
+    share_instance_ref = _share_instance_get(
+        context, share_instance_id, session=session)
+    share_instance_ref.update(values)
+    share_instance_ref.save(session=session)
+    return share_instance_ref
+
+
 def share_and_snapshot_instances_status_update(
         context, values, share_instance_ids=None, snapshot_instance_ids=None,
         current_expected_status=None):
@@ -1739,14 +1749,6 @@ def share_instance_status_update(
             models.ShareInstance.id.in_(share_instance_ids)).update(
             values, synchronize_session=False))
     return result
-
-
-def _share_instance_update(context, share_instance_id, values, session):
-    share_instance_ref = share_instance_get(context, share_instance_id,
-                                            session=session)
-    share_instance_ref.update(values)
-    share_instance_ref.save(session=session)
-    return share_instance_ref
 
 
 @require_context
@@ -2303,23 +2305,31 @@ def _share_data_get_for_project(
 
 @require_context
 @require_availability_zone_exists(strict=False)
-@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_update(context, share_id, update_values):
     session = get_session()
+
+    with session.begin():
+        return _share_update(context, share_id, update_values, session)
+
+
+# TODO(stephenfin): Remove the 'session' argument once all callers have been
+# converted
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def _share_update(context, share_id, update_values, session=None):
     values = copy.deepcopy(update_values)
 
     share_instance_values, share_values = _extract_share_instance_values(
         values)
 
-    with session.begin():
-        share_ref = share_get(context, share_id, session=session)
+    share_ref = _share_get(context, share_id, session=session)
 
-        _share_instance_update(context, share_ref.instance['id'],
-                               share_instance_values, session=session)
+    _share_instance_update(
+        context, share_ref.instance['id'], share_instance_values,
+        session=session)
 
-        share_ref.update(share_values)
-        share_ref.save(session=session)
-        return share_ref
+    share_ref.update(share_values)
+    share_ref.save(session=session)
+    return share_ref
 
 
 @require_context
