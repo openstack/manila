@@ -25,7 +25,9 @@ import manila.common.config
 import manila.compute
 import manila.compute.nova
 import manila.coordination
+import manila.data.drivers.nfs
 import manila.data.helper
+import manila.data.manager
 import manila.db.api
 import manila.db.base
 import manila.exception
@@ -104,7 +106,10 @@ _global_opt_lists = [
     manila.common.config.global_opts,
     manila.compute._compute_opts,
     manila.coordination.coordination_opts,
+    manila.data.drivers.nfs.nfsbackup_service_opts,
     manila.data.helper.data_helper_opts,
+    manila.data.manager.backup_opts,
+    manila.data.manager.data_opts,
     manila.db.api.db_opts,
     [manila.db.base.db_driver_opt],
     manila.exception.exc_log_opts,
