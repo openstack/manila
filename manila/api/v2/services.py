@@ -14,11 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import strutils
 import webob.exc
 
 from manila.api.openstack import wsgi
 from manila.api.views import services as services_views
 from manila import db
+from manila.i18n import _
 
 
 class ServiceMixin(object):
@@ -46,6 +48,7 @@ class ServiceMixin(object):
                 'host': service['host'],
                 'zone': service['availability_zone']['name'],
                 'status': 'disabled' if service['disabled'] else 'enabled',
+                'disabled_reason': service.get('disabled_reason'),
                 'state': service['state'],
                 'updated_at': service['updated_at'],
             }
@@ -65,17 +68,38 @@ class ServiceMixin(object):
             if len(services) == 0:
                 break
 
-        return self._view_builder.detail_list(services)
+        return self._view_builder.detail_list(req, services)
 
     @wsgi.Controller.authorize("update")
-    def _update(self, req, id, body):
+    def _update(self, req, id, body, support_disabled_reason=True):
         """Enable/Disable scheduling for a service."""
         context = req.environ['manila.context']
+        update_dict = {}
 
         if id == "enable":
             data = {'disabled': False}
+            if support_disabled_reason:
+                update_dict['disabled_reason'] = None
         elif id == "disable":
             data = {'disabled': True}
+            disabled_reason = body.get('disabled_reason')
+            if disabled_reason and not support_disabled_reason:
+                msg = _("'disabled_reason' option is not supported by this "
+                        "microversion. Use 2.83 or greater microversion to "
+                        "be able to set 'disabled_reason'.")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+            if disabled_reason:
+                try:
+                    strutils.check_string_length(disabled_reason.strip(),
+                                                 name='disabled_reason',
+                                                 min_length=1,
+                                                 max_length=255)
+                except (ValueError, TypeError):
+                    msg = _('Disabled reason contains invalid characters '
+                            'or is too long')
+                    raise webob.exc.HTTPBadRequest(explanation=msg)
+                update_dict['disabled_reason'] = disabled_reason.strip()
+                data['disabled_reason'] = disabled_reason.strip()
         else:
             raise webob.exc.HTTPNotFound("Unknown action '%s'" % id)
 
@@ -86,10 +110,12 @@ class ServiceMixin(object):
             raise webob.exc.HTTPBadRequest()
 
         svc = db.service_get_by_args(context, data['host'], data['binary'])
-        db.service_update(
-            context, svc['id'], {'disabled': data['disabled']})
+        update_dict['disabled'] = data['disabled']
 
-        return self._view_builder.summary(data)
+        db.service_update(context, svc['id'], update_dict)
+        data['status'] = 'disabled' if id == "disable" else 'enabled'
+
+        return self._view_builder.summary(req, data)
 
 
 class ServiceControllerLegacy(ServiceMixin, wsgi.Controller):
@@ -119,8 +145,12 @@ class ServiceController(ServiceMixin, wsgi.Controller):
     def index(self, req):
         return self._index(req)
 
-    @wsgi.Controller.api_version('2.7')
+    @wsgi.Controller.api_version('2.7', '2.82')
     def update(self, req, id, body):
+        return self._update(req, id, body, support_disabled_reason=False)
+
+    @wsgi.Controller.api_version('2.83') # noqa
+    def update(self, req, id, body): # pylint: disable=function-redefined  # noqa F811
         return self._update(req, id, body)
 
 

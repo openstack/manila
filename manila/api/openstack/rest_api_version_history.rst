@@ -444,3 +444,9 @@ user documentation.
 -------------------------------
   Introduce the ability to lock access rules and restrict the visibility of
   sensitive fields.
+
+2.83
+----
+  The ``disabled_reason`` field was added to the service to mark the reason why
+  the user disabled the service. ``disabled`` field will be replaced by
+  ``status`` field.

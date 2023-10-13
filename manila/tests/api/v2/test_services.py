@@ -21,6 +21,7 @@ from unittest import mock
 import ddt
 from oslo_utils import timeutils
 
+from manila.api.openstack import api_version_request as api_version
 from manila.api.v2 import services
 from manila import context
 from manila import db
@@ -37,6 +38,7 @@ fake_services_list = [
         'availability_zone': {'name': 'manila1'},
         'id': 1,
         'disabled': True,
+        'disabled_reason': 'test1',
         'state': 'up',
         'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 2),
         'created_at': datetime.datetime(2012, 9, 18, 2, 46, 27),
@@ -47,6 +49,7 @@ fake_services_list = [
         'availability_zone': {'name': 'manila1'},
         'id': 2,
         'disabled': True,
+        'disabled_reason': 'test2',
         'state': 'up',
         'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 5),
         'created_at': datetime.datetime(2012, 9, 18, 2, 46, 27)},
@@ -56,6 +59,7 @@ fake_services_list = [
         'availability_zone': {'name': 'manila2'},
         'id': 3,
         'disabled': False,
+        'disabled_reason': '',
         'state': 'down',
         'updated_at': datetime.datetime(2012, 9, 19, 6, 55, 34),
         'created_at': datetime.datetime(2012, 9, 18, 2, 46, 28)},
@@ -65,6 +69,7 @@ fake_services_list = [
         'availability_zone': {'name': 'manila2'},
         'id': 4,
         'disabled': True,
+        'disabled_reason': 'test4',
         'state': 'down',
         'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),
         'created_at': datetime.datetime(2012, 9, 18, 2, 46, 28),
@@ -106,6 +111,49 @@ fake_response_service_list = {'services': [
         'host': 'host2',
         'zone': 'manila2',
         'status': 'disabled',
+        'state': 'down',
+        'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),
+    },
+]}
+
+fake_response_service_list_with_disabled_reason = {'services': [
+    {
+        'id': 1,
+        'binary': 'manila-scheduler',
+        'host': 'host1',
+        'zone': 'manila1',
+        'status': 'disabled',
+        'disabled_reason': 'test1',
+        'state': 'up',
+        'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 2),
+    },
+    {
+        'id': 2,
+        'binary': 'manila-share',
+        'host': 'host1',
+        'zone': 'manila1',
+        'status': 'disabled',
+        'disabled_reason': 'test2',
+        'state': 'up',
+        'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 5),
+    },
+    {
+        'id': 3,
+        'binary': 'manila-scheduler',
+        'host': 'host2',
+        'zone': 'manila2',
+        'status': 'enabled',
+        'disabled_reason': '',
+        'state': 'down',
+        'updated_at': datetime.datetime(2012, 9, 19, 6, 55, 34),
+    },
+    {
+        'id': 4,
+        'binary': 'manila-share',
+        'host': 'host2',
+        'zone': 'manila2',
+        'status': 'disabled',
+        'disabled_reason': 'test4',
         'state': 'down',
         'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),
     },
@@ -165,6 +213,7 @@ class ServicesTest(test.TestCase):
         ('os-services', '1.0', services.ServiceControllerLegacy),
         ('os-services', '2.6', services.ServiceControllerLegacy),
         ('services', '2.7', services.ServiceController),
+        ('services', '2.83', services.ServiceController),
     )
     @ddt.unpack
     def test_services_list(self, url, version, controller):
@@ -173,7 +222,12 @@ class ServicesTest(test.TestCase):
 
         res_dict = controller().index(req)
 
-        self.assertEqual(fake_response_service_list, res_dict)
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.83')):
+            self.assertEqual(fake_response_service_list_with_disabled_reason,
+                             res_dict)
+        else:
+            self.assertEqual(fake_response_service_list, res_dict)
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], self.resource_name, 'index')
 
@@ -273,7 +327,7 @@ class ServicesTest(test.TestCase):
 
         res_dict = controller().update(req, "enable", body)
 
-        self.assertFalse(res_dict['disabled'])
+        self.assertEqual('enabled', res_dict['status'])
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], self.resource_name, 'update')
 
@@ -281,16 +335,24 @@ class ServicesTest(test.TestCase):
         ('os-services', '1.0', services.ServiceControllerLegacy),
         ('os-services', '2.6', services.ServiceControllerLegacy),
         ('services', '2.7', services.ServiceController),
+        ('services', '2.83', services.ServiceController),
     )
     @ddt.unpack
     def test_services_disable(self, url, version, controller):
         req = fakes.HTTPRequest.blank(
             '/fooproject/%s/disable' % url, version=version)
         body = {'host': 'host1', 'binary': 'manila-share'}
+        if (api_version.APIVersionRequest(version) >
+                api_version.APIVersionRequest("2.83")):
+            body['disabled_reason'] = 'test1'
 
         res_dict = controller().update(req, "disable", body)
 
-        self.assertTrue(res_dict['disabled'])
+        self.assertEqual('disabled', res_dict['status'])
+        if (api_version.APIVersionRequest(version) >
+                api_version.APIVersionRequest("2.83")):
+            self.assertEqual(res_dict['disabled_reason'], 'test1')
+
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], self.resource_name, 'update')
 

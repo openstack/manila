@@ -3372,3 +3372,35 @@ class AddResourceLocks(BaseMigrationChecks):
         self.test_case.assertRaises(sa_exc.NoSuchTableError,
                                     utils.load_table,
                                     'resource_locks', engine)
+
+
+@map_to_migration('99d328f0a3d2')
+class ServiceDisabledReason(BaseMigrationChecks):
+    def _get_service_data(self, options):
+        base_dict = {
+            'binary': 'manila-share',
+            'topic': 'share',
+            'disabled': False,
+            'report_count': '100',
+        }
+        base_dict.update(options)
+        return base_dict
+
+    def setup_upgrade_data(self, engine):
+        service_fixture = [
+            self._get_service_data({'host': 'fake1'}),
+            self._get_service_data({'host': 'fake2'}),
+        ]
+        services_table = utils.load_table('services', engine)
+        for fixture in service_fixture:
+            engine.execute(services_table.insert(fixture))
+
+    def check_upgrade(self, engine, data):
+        service_table = utils.load_table('services', engine)
+        for s in engine.execute(service_table.select()):
+            self.test_case.assertTrue(hasattr(s, 'disabled_reason'))
+
+    def check_downgrade(self, engine):
+        service_table = utils.load_table('services', engine)
+        for s in engine.execute(service_table.select()):
+            self.test_case.assertFalse(hasattr(s, 'disabled_reason'))

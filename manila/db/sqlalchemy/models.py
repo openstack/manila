@@ -68,6 +68,7 @@ class Service(BASE, ManilaBase):
     state = Column(String(36))
     report_count = Column(Integer, nullable=False, default=0)
     disabled = Column(Boolean, default=False)
+    disabled_reason = Column(String(255))
     availability_zone_id = Column(String(36),
                                   ForeignKey('availability_zones.id'),
                                   nullable=True)
