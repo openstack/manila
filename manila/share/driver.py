@@ -21,6 +21,7 @@ Drivers for shares.
 import time
 
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log
 
 from manila.common import constants
@@ -109,8 +110,9 @@ share_opts = [
              "specify the executable with all necessary parameters for the "
              "protocol supported. 'path' template element is required. It is "
              "advisable to separate different commands per backend."),
-    cfg.DictOpt(
+    cfg.Opt(
         'protocol_access_mapping',
+        type=types.Dict(types.List(types.String(), bounds=True)),
         default={
             'ip': ['nfs'],
             'user': ['cifs'],
