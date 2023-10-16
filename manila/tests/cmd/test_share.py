@@ -58,6 +58,7 @@ class ManilaCmdShareTestCase(test.TestCase):
                     service_name=backend,
                     binary='manila-share',
                     coordination=True,
+                    reexport=False,
                 ) for backend in backends
             ])
             self.launcher.launch_service.assert_has_calls([

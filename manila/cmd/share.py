@@ -39,6 +39,8 @@ from manila import utils
 from manila import version
 
 CONF = cfg.CONF
+CONF.register_cli_opt(
+    cfg.BoolOpt('reexport', default=False, help='Ensure share resources.'))
 
 
 def main():
@@ -56,7 +58,8 @@ def main():
             server = service.Service.create(host=host,
                                             service_name=backend,
                                             binary='manila-share',
-                                            coordination=True)
+                                            coordination=True,
+                                            reexport=CONF.reexport)
             launcher.launch_service(server)
     else:
         server = service.Service.create(binary='manila-share')

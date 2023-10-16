@@ -103,7 +103,8 @@ class Service(service.Service):
 
     def __init__(self, host, binary, topic, manager, report_interval=None,
                  periodic_interval=None, periodic_fuzzy_delay=None,
-                 service_name=None, coordination=False, *args, **kwargs):
+                 service_name=None, coordination=False, reexport=False,
+                 *args, **kwargs):
         super(Service, self).__init__()
         if not rpc.initialized():
             rpc.init(CONF)
@@ -125,11 +126,19 @@ class Service(service.Service):
         self.periodic_fuzzy_delay = periodic_fuzzy_delay
         self.saved_args, self.saved_kwargs = args, kwargs
         self.coordinator = coordination
+        self.reexport = reexport
 
         setup_profiler(binary, host)
         self.rpcserver = None
 
     def start(self):
+        # NOTE(chuan137) Do not start RPC listeners or periodic tasks if this
+        # is a re-exporting service. Re-exporting is started as a one-time task
+        # or periodic tasks in init_host() method.
+        if self.reexport:
+            self.manager.init_host(reexport=True)
+            return
+
         version_string = version.version_string()
         LOG.info('Starting %(topic)s node (version %(version_string)s)',
                  {'topic': self.topic, 'version_string': version_string})
@@ -190,7 +199,7 @@ class Service(service.Service):
     def create(cls, host=None, binary=None, topic=None, manager=None,
                report_interval=None, periodic_interval=None,
                periodic_fuzzy_delay=None, service_name=None,
-               coordination=False):
+               coordination=False, reexport=False):
         """Instantiates class and passes back application object.
 
         :param host: defaults to CONF.host
@@ -222,7 +231,8 @@ class Service(service.Service):
                           periodic_interval=periodic_interval,
                           periodic_fuzzy_delay=periodic_fuzzy_delay,
                           service_name=service_name,
-                          coordination=coordination)
+                          coordination=coordination,
+                          reexport=reexport)
 
         return service_obj
 
