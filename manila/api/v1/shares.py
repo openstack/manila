@@ -436,6 +436,18 @@ class ShareMixin(object):
                                           display_description,
                                           **kwargs)
 
+        msg = "Share {share_id} created".format(share_id=new_share['id'])
+        if kwargs.get('snapshot_id'):
+            msg += " from snapshot {snapshot_id}".format(
+                snapshot_id=kwargs['snapshot_id'])
+        if kwargs.get('share_network_id'):
+            msg += " in share network {share_network_id}".format(
+                share_network_id=kwargs['share_network_id'])
+        if kwargs.get('scheduler_hints'):
+            msg += " with scheduler hints: {hints}".format(
+                hints=kwargs['scheduler_hints'])
+        LOG.info(msg, context=context)
+
         return self._view_builder.detail(req, new_share)
 
     @staticmethod

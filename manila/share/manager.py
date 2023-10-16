@@ -2153,7 +2153,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     error = ("Provision of share server failed: "
                              "failed to authenticate user "
                              "against security server.")
-                    LOG.error(error)
+                    LOG.warning(error)
                     self.db.share_instance_update(
                         context, share_instance_id,
                         {'status': constants.STATUS_ERROR}
