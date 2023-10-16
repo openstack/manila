@@ -2779,6 +2779,9 @@ class NetAppCmodeFileStorageLibrary(object):
                                                is_dr,
                                                share_server=share_server)
 
+        self._update_autosize_attributes_after_promote_replica(
+            orig_active_replica, new_active_replica, dm_session)
+
         return new_replica_list
 
     def _unmount_orig_active_replica(self, orig_active_replica,
@@ -2799,6 +2802,87 @@ class NetAppCmodeFileStorageLibrary(object):
         except exception.StorageCommunicationException:
             LOG.exception("Could not unmount the original active replica %s.",
                           orig_active_replica['id'])
+
+    def _get_replica_info(self, replica, dm_session):
+        """Retrieves a dict with the replica information.
+
+        :param replica: Share replica.
+        :param dm_session: Data Motion session.
+
+        :return: A dict with the replica information.
+        """
+        extra_specs = share_types.get_extra_specs_from_share(replica)
+        provisioning_options = self._get_provisioning_options(extra_specs)
+        replica_name = self._get_backend_share_name(replica['id'])
+        vserver = dm_session.get_vserver_from_share(replica)
+
+        replica_backend = share_utils.extract_host(replica['host'],
+                                                   level='backend_name')
+
+        replica_client = data_motion.get_client_for_backend(
+            replica_backend, vserver_name=vserver)
+
+        pool_name = share_utils.extract_host(replica['host'], level='pool')
+        is_flexgroup = self._is_flexgroup_pool(pool_name)
+
+        if is_flexgroup:
+            replica_aggregate = self._get_flexgroup_aggregate_list(pool_name)
+        else:
+            replica_aggregate = share_utils.extract_host(
+                replica['host'], level='pool')
+
+        replica_info = {
+            'client': replica_client,
+            'aggregate': replica_aggregate,
+            'name': replica_name,
+            'provisioning_options': provisioning_options,
+        }
+
+        return replica_info
+
+    def _update_autosize_attributes_after_promote_replica(
+            self, orig_active_replica, new_active_replica, dm_session):
+        """Update autosize attributes after replica is promoted"""
+
+        # 1. Get the info from original active replica
+        orig_active_replica_info = self._get_replica_info(
+            orig_active_replica, dm_session)
+
+        # 2. Get the info from the promoted replica (new_active_replica)
+        new_active_replica_info = self._get_replica_info(
+            new_active_replica, dm_session)
+
+        # 3. Set autosize attributes for orig_active_replica
+
+        # Reset the autosize attributes according to the volume type (RW or DP)
+        orig_active_replica_autosize_attributes = {'reset': 'true'}
+
+        orig_provisioning_opts = (
+            orig_active_replica_info['provisioning_options'])
+
+        orig_provisioning_opts['autosize_attributes'] = (
+            orig_active_replica_autosize_attributes)
+
+        orig_active_replica_info['client'].modify_volume(
+            orig_active_replica_info['aggregate'],
+            orig_active_replica_info['name'],
+            **orig_provisioning_opts)
+
+        # 4. Set autosize attributes for new_active_replica
+
+        # Reset the autosize attributes according to the volume type (RW or DP)
+        new_active_replica_autosize_attributes = {'reset': 'true'}
+
+        new_provisioning_opts = (
+            new_active_replica_info['provisioning_options'])
+
+        new_provisioning_opts['autosize_attributes'] = (
+            new_active_replica_autosize_attributes)
+
+        new_active_replica_info['client'].modify_volume(
+            new_active_replica_info['aggregate'],
+            new_active_replica_info['name'],
+            **new_provisioning_opts)
 
     def _handle_qos_on_replication_change(self, dm_session, new_active_replica,
                                           orig_active_replica, is_dr,
