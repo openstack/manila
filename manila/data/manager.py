@@ -20,6 +20,7 @@ import os
 import shutil
 
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log
 from oslo_service import periodic_task
 from oslo_utils import excutils
@@ -67,8 +68,9 @@ backup_opts = [
         default=['lost+found'],
         help="List of files and folders to be ignored when backing up "
              "shares. Items should be names (not including any path)."),
-    cfg.DictOpt(
+    cfg.Opt(
         'backup_protocol_access_mapping',
+        type=types.Dict(types.List(types.String(), bounds=True)),
         default={'ip': ['nfs']},
         help="Protocol access mapping for backup. Should be a "
              "dictionary comprised of "
