@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#
 # Copyright (c) 2012 Rackspace Hosting
 # Copyright (c) 2013 NetApp
 # All Rights Reserved.
