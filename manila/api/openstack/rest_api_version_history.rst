@@ -369,7 +369,7 @@ user documentation.
   Added filter search by group spec for share group type list.
 
 2.67
-____
+----
   Added support for 'only_host' key in "scheduler_hints" in the request body
   of the POST/shares and POST/share-replicas request. This hint will invoke
   'OnlyHost' scheduler filter during share and share-replica creation.
@@ -440,7 +440,7 @@ ____
   Introduce resource locks as a way users can restrict certain actions on
   resources. Only share deletion can be prevented at this version.
 
-2.82
-----
+2.82 (Maximum in 2023.2/Bobcat)
+-------------------------------
   Introduce the ability to lock access rules and restrict the visibility of
   sensitive fields.
