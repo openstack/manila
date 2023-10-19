@@ -1,3 +1,5 @@
+.. _running-unit-tests:
+
 Unit Tests
 ==========
 

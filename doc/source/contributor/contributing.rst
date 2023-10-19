@@ -174,6 +174,8 @@ If you'd like to propose a new feature, do so by `creating a blueprint
 on Launchpad. <https://blueprints.launchpad.net/manila>`_ For significant
 changes we might require a design specification.
 
+.. _features-that-require-spefication:
+
 Feature changes that need a specification include:
 --------------------------------------------------
 
