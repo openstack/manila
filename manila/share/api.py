@@ -2165,6 +2165,13 @@ class API(base.Base):
                                                      key)
         except exception.ShareMetadataNotFound:
             return
+        except exception.NotFound:
+            msg = (
+                "Share ID '%(share_id)s' not found in metadata. "
+                "Proceeding with deletion anyway."
+            ) % {'share_id': share['id']}
+            LOG.warning(msg)
+            return
 
         # elevate context as default user context won't be enough
         # to delete the scheduler hints.
@@ -2175,6 +2182,13 @@ class API(base.Base):
             try:
                 result = self.db.share_metadata_get_item(context, uuid, key)
             except exception.ShareMetadataNotFound:
+                continue
+            except exception.NotFound:
+                msg = (
+                    "UUID '%(uuid)s' not found in metadata for key '%(key)s'. "
+                    "Proceeding with deletion anyway."
+                ) % {'uuid': uuid, 'key': key}
+                LOG.warning(msg)
                 continue
 
             new_val_uuids = [val_uuid for val_uuid
