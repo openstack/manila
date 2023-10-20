@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    The CephFS driver uses a `RemoveExport` DBUS API call to the NFS/Ganesha
+    service when a user deletes an access rule, or when deleting the share.
+    If this call fails, the driver now provides a log of the failure, and
+    continues cleaning up.  Prior to this change, share deletion could fail if
+    the service failed the DBUS command to drop the export. This would leave
+    the share with an "error_deleting" status, needing administrator
+    intervention. See `bug #2035572 <https://launchpad.net/bugs/2035572>`_
+    for more information.
