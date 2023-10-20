@@ -972,8 +972,7 @@ class GaneshaManagerTestCase(test.TestCase):
         for method in methods:
             self.mock_object(self._manager, method)
 
-        self.assertRaises(exception.GaneshaCommandFailure,
-                          self._manager.remove_export, test_name)
+        ret = self._manager.remove_export(test_name)
 
         self._manager._read_export.assert_called_once_with(test_name)
         self.assertFalse(self._manager._remove_export_dbus.called)
@@ -994,6 +993,7 @@ class GaneshaManagerTestCase(test.TestCase):
             self.assertFalse(self._manager._delete_rados_object.called)
             self.assertFalse(
                 self._manager._remove_rados_object_url_from_index.called)
+        self.assertIsNone(ret)
 
     @ddt.data(True, False)
     def test_remove_export_error_during_remove_export_dbus_with_rados_store(
@@ -1012,8 +1012,7 @@ class GaneshaManagerTestCase(test.TestCase):
         for method in methods:
             self.mock_object(self._manager, method)
 
-        self.assertRaises(exception.GaneshaCommandFailure,
-                          self._manager.remove_export, test_name)
+        ret = self._manager.remove_export(test_name)
 
         self._manager._read_export.assert_called_once_with(test_name)
         self._manager._remove_export_dbus.assert_called_once_with(
@@ -1035,6 +1034,7 @@ class GaneshaManagerTestCase(test.TestCase):
             self.assertFalse(self._manager._delete_rados_object.called)
             self.assertFalse(
                 self._manager._remove_rados_object_url_from_index.called)
+        self.assertIsNone(ret)
 
     def test_get_rados_object(self):
         fakebin = chr(246).encode('utf-8')
