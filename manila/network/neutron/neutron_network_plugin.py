@@ -409,132 +409,6 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
             self.db.share_network_subnet_update(
                 context, share_network_subnet['id'], subnet_values)
 
-    def extend_network_allocations(self, context, share_server, host):
-        """Extend network to target host.
-
-        Create extra (inactive) port bindings on given host. Network
-        is bound to the host with new segementation id.
-        """
-        phys_net = self.configuration.neutron_physical_net_name
-        vnic_type = self.configuration.neutron_vnic_type
-        vlan = None
-
-        # Active port bindings are labeled as 'user'. Destination port bindings
-        # are labeled with physical network name.
-        active_port_bindings = (
-            self.db.network_allocations_get_for_share_server(
-                context, share_server.id, label='user'))
-        dest_port_bindings = (
-            self.db.network_allocations_get_for_share_server(
-                context, share_server.id, label=phys_net))
-
-        if len(active_port_bindings) == 0:
-            raise exception.NetworkException(
-                'Can not extend network with no active bindings')
-
-        if len(dest_port_bindings) == 0:
-            # Create port binding on destination backend. Exception is ignored
-            # in the neutron api call, if the port is already bound to
-            # destination host.
-            for port in active_port_bindings:
-                self.neutron_api.bind_port_to_host(port.id, host, vnic_type)
-
-            # Get the segmentation id on destination host
-            neutron_network_id = share_server['share_network_subnet'].get(
-                'neutron_net_id')
-            neutron_network = self.neutron_api.get_network(neutron_network_id)
-            for segment in neutron_network['segments']:
-                if (segment['provider:physical_network'] == phys_net):
-                    vlan = segment['provider:segmentation_id']
-                    network_type = segment['provider:network_type']
-                    break
-            if vlan is None:
-                msg = _('Network segment not found on host %s') % host
-                raise exception.NetworkException(msg)
-
-            # Label the new port bindings with physical network name.
-            dest_port_bindings = []
-            for port in active_port_bindings:
-                port_data = self.db.network_allocation_get(context, port.id)
-                port_data['label'] = phys_net
-                port_data['segmentation_id'] = vlan
-                port_data['network_type'] = network_type
-                port_data['id'] = None
-                port_data['created_at'] = None
-                dest_port_bindings.append(
-                    self.db.network_allocation_create(context, port_data))
-
-        return dest_port_bindings
-
-    def delete_port_bindings(self, context, share_server, host):
-        phys_net = self.configuration.neutron_physical_net_name
-
-        ports = (
-            self.db.network_allocations_get_for_share_server(
-                context, share_server.id, label='user'))
-        if len(ports) == 0:
-            msg = 'No ports found for Share server %{share_server}s'
-            LOG.warning(msg, {'share_server': share_server.id})
-        dest_port_bindings = (
-            self.db.network_allocations_get_for_share_server(
-                context, share_server.id, label=phys_net))
-        if len(dest_port_bindings) == 0:
-            msg = (
-                'No port bindings found on %{host}s for '
-                'share server %{share_server}s')
-            LOG.warning(msg, {'host': host, 'share_server': share_server.id})
-        # Parent port are not tracked in network allocations; so we have to use
-        # the port id's extracted from source share server
-        for port in ports:
-            try:
-                self.neutron_api.delete_port_binding(port.id, host)
-            except exception.NetworkException as e:
-                msg = _(
-                    'Failed to delete port binding on port %{port}s: %{err}s')
-                LOG.warning(msg, {'port': port.id, 'err': e})
-        for binding in dest_port_bindings:
-            self.db.network_allocation_delete(context, binding.id)
-
-    def cutover_network_allocations(self, context, src_share_server,
-                                    dest_share_server):
-        physnet = self.configuration.neutron_physical_net_name
-        src_host = share_utils.extract_host(src_share_server['host'], 'host')
-        dest_host = share_utils.extract_host(dest_share_server['host'], 'host')
-
-        active_allocations = (
-            self.db.network_allocations_get_for_share_server(
-                context, src_share_server.id, label='user'))
-        inactive_allocations = (
-            self.db.network_allocations_get_for_share_server(
-                context, src_share_server.id, label=physnet))
-
-        if len(inactive_allocations) == 0:
-            msg = _(
-                'No target network allocations for cutover from '
-                '%{src_ss}s to %{dest_ss}s')
-            raise exception.NetworkException(
-                msg % {
-                    'src_ss': src_share_server.id,
-                    'dest_ss': dest_share_server.id
-                })
-        vlan_to_activate = inactive_allocations[0]['segmentation_id']
-
-        # Cutting over network allocations
-        alloc_data = {
-            'share_server_id': dest_share_server.id,
-            'segmentation_id': vlan_to_activate
-        }
-        for alloc in active_allocations:
-            self.neutron_api.activate_port_binding(alloc.id, dest_host)
-            self.neutron_api.delete_port_binding(alloc.id, src_host)
-            self.db.network_allocation_update(context, alloc.id, alloc_data)
-        for alloc in inactive_allocations:
-            self.db.network_allocation_delete(context, alloc.id)
-        # Update segmentation id of the share network subnet after cutting over
-        subnet_data = {'segmentation_id': vlan_to_activate}
-        sns_id = src_share_server['share_network_subnet']['id']
-        self.db.share_network_subnet_update(context, sns_id, subnet_data)
-
 
 class NeutronSingleNetworkPlugin(NeutronNetworkPlugin):
 
@@ -768,6 +642,132 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                     ports[num] = self.db.network_allocation_update(
                         context, port['id'], port_info)
         return ports
+
+    def extend_network_allocations(self, context, share_server, host):
+        """Extend network to target host.
+
+        Create extra (inactive) port bindings on given host. Network
+        is bound to the host with new segementation id.
+        """
+        phys_net = self.configuration.neutron_physical_net_name
+        vnic_type = self.configuration.neutron_vnic_type
+        vlan = None
+
+        # Active port bindings are labeled as 'user'. Destination port bindings
+        # are labeled with physical network name.
+        active_port_bindings = (
+            self.db.network_allocations_get_for_share_server(
+                context, share_server.id, label='user'))
+        dest_port_bindings = (
+            self.db.network_allocations_get_for_share_server(
+                context, share_server.id, label=phys_net))
+
+        if len(active_port_bindings) == 0:
+            raise exception.NetworkException(
+                'Can not extend network with no active bindings')
+
+        if len(dest_port_bindings) == 0:
+            # Create port binding on destination backend. Exception is ignored
+            # in the neutron api call, if the port is already bound to
+            # destination host.
+            for port in active_port_bindings:
+                self.neutron_api.bind_port_to_host(port.id, host, vnic_type)
+
+            # Get the segmentation id on destination host
+            neutron_network_id = share_server['share_network_subnet'].get(
+                'neutron_net_id')
+            neutron_network = self.neutron_api.get_network(neutron_network_id)
+            for segment in neutron_network['segments']:
+                if (segment['provider:physical_network'] == phys_net):
+                    vlan = segment['provider:segmentation_id']
+                    network_type = segment['provider:network_type']
+                    break
+            if vlan is None:
+                msg = _('Network segment not found on host %s') % host
+                raise exception.NetworkException(msg)
+
+            # Label the new port bindings with physical network name.
+            dest_port_bindings = []
+            for port in active_port_bindings:
+                port_data = self.db.network_allocation_get(context, port.id)
+                port_data['label'] = phys_net
+                port_data['segmentation_id'] = vlan
+                port_data['network_type'] = network_type
+                port_data['id'] = None
+                port_data['created_at'] = None
+                dest_port_bindings.append(
+                    self.db.network_allocation_create(context, port_data))
+
+        return dest_port_bindings
+
+    def delete_port_bindings(self, context, share_server, host):
+        phys_net = self.configuration.neutron_physical_net_name
+
+        ports = (
+            self.db.network_allocations_get_for_share_server(
+                context, share_server.id, label='user'))
+        if len(ports) == 0:
+            msg = 'No ports found for Share server %{share_server}s'
+            LOG.warning(msg, {'share_server': share_server.id})
+        dest_port_bindings = (
+            self.db.network_allocations_get_for_share_server(
+                context, share_server.id, label=phys_net))
+        if len(dest_port_bindings) == 0:
+            msg = (
+                'No port bindings found on %{host}s for '
+                'share server %{share_server}s')
+            LOG.warning(msg, {'host': host, 'share_server': share_server.id})
+        # Parent port are not tracked in network allocations; so we have to use
+        # the port id's extracted from source share server
+        for port in ports:
+            try:
+                self.neutron_api.delete_port_binding(port.id, host)
+            except exception.NetworkException as e:
+                msg = _(
+                    'Failed to delete port binding on port %{port}s: %{err}s')
+                LOG.warning(msg, {'port': port.id, 'err': e})
+        for binding in dest_port_bindings:
+            self.db.network_allocation_delete(context, binding.id)
+
+    def cutover_network_allocations(self, context, src_share_server,
+                                    dest_share_server):
+        physnet = self.configuration.neutron_physical_net_name
+        src_host = share_utils.extract_host(src_share_server['host'], 'host')
+        dest_host = share_utils.extract_host(dest_share_server['host'], 'host')
+
+        active_allocations = (
+            self.db.network_allocations_get_for_share_server(
+                context, src_share_server.id, label='user'))
+        inactive_allocations = (
+            self.db.network_allocations_get_for_share_server(
+                context, src_share_server.id, label=physnet))
+
+        if len(inactive_allocations) == 0:
+            msg = _(
+                'No target network allocations for cutover from '
+                '%{src_ss}s to %{dest_ss}s')
+            raise exception.NetworkException(
+                msg % {
+                    'src_ss': src_share_server.id,
+                    'dest_ss': dest_share_server.id
+                })
+        vlan_to_activate = inactive_allocations[0]['segmentation_id']
+
+        # Cutting over network allocations
+        alloc_data = {
+            'share_server_id': dest_share_server.id,
+            'segmentation_id': vlan_to_activate
+        }
+        for alloc in active_allocations:
+            self.neutron_api.activate_port_binding(alloc.id, dest_host)
+            self.neutron_api.delete_port_binding(alloc.id, src_host)
+            self.db.network_allocation_update(context, alloc.id, alloc_data)
+        for alloc in inactive_allocations:
+            self.db.network_allocation_delete(context, alloc.id)
+        # Update segmentation id of the share network subnet after cutting over
+        subnet_data = {'segmentation_id': vlan_to_activate}
+        sns_id = src_share_server['share_network_subnet']['id']
+        self.db.share_network_subnet_update(context, sns_id, subnet_data)
 
 
 class NeutronBindSingleNetworkPlugin(NeutronSingleNetworkPlugin,
