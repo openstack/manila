@@ -643,14 +643,15 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                         context, port['id'], port_info)
         return ports
 
-    def extend_network_allocations(self, context, share_server, host):
+    def extend_network_allocations(self, context, share_server):
         """Extend network to target host.
 
         Create extra (inactive) port bindings on given host. Network
         is bound to the host with new segementation id.
         """
-        phys_net = self.configuration.neutron_physical_net_name
-        vnic_type = self.configuration.neutron_vnic_type
+        phys_net = self.config.neutron_physical_net_name
+        vnic_type = self.config.neutron_vnic_type
+        host_id = self.config.neutron_host_id
         vlan = None
 
         # Active port bindings are labeled as 'user'. Destination port bindings
@@ -667,12 +668,6 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                 'Can not extend network with no active bindings')
 
         if len(dest_port_bindings) == 0:
-            # Create port binding on destination backend. Exception is ignored
-            # in the neutron api call, if the port is already bound to
-            # destination host.
-            for port in active_port_bindings:
-                self.neutron_api.bind_port_to_host(port.id, host, vnic_type)
-
             # Get the segmentation id on destination host
             neutron_network_id = share_server['share_network_subnet'].get(
                 'neutron_net_id')
@@ -683,8 +678,14 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                     network_type = segment['provider:network_type']
                     break
             if vlan is None:
-                msg = _('Network segment not found on host %s') % host
+                msg = _('Network segment not found on host %s') % host_id
                 raise exception.NetworkException(msg)
+
+            # Create port binding on destination backend. Exception is ignored
+            # in the neutron api call, if the port is already bound to
+            # destination host.
+            for port in active_port_bindings:
+                self.neutron_api.bind_port_to_host(port.id, host_id, vnic_type)
 
             # Label the new port bindings with physical network name.
             dest_port_bindings = []
@@ -700,8 +701,9 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
 
         return dest_port_bindings
 
-    def delete_port_bindings(self, context, share_server, host):
-        phys_net = self.configuration.neutron_physical_net_name
+    def delete_port_bindings(self, context, share_server):
+        phys_net = self.config.neutron_physical_net_name
+        host_id = self.config.neutron_host_id
 
         ports = (
             self.db.network_allocations_get_for_share_server(
@@ -716,12 +718,12 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
             msg = (
                 'No port bindings found on %{host}s for '
                 'share server %{share_server}s')
-            LOG.warning(msg, {'host': host, 'share_server': share_server.id})
+            LOG.warning(msg, {'host': host_id, 'share_server': share_server.id})
         # Parent port are not tracked in network allocations; so we have to use
         # the port id's extracted from source share server
         for port in ports:
             try:
-                self.neutron_api.delete_port_binding(port.id, host)
+                self.neutron_api.delete_port_binding(port.id, host_id)
             except exception.NetworkException as e:
                 msg = _(
                     'Failed to delete port binding on port %{port}s: %{err}s')
@@ -731,7 +733,7 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
 
     def cutover_network_allocations(self, context, src_share_server,
                                     dest_share_server):
-        physnet = self.configuration.neutron_physical_net_name
+        physnet = self.config.neutron_physical_net_name
         src_host = share_utils.extract_host(src_share_server['host'], 'host')
         dest_host = share_utils.extract_host(dest_share_server['host'], 'host')
 

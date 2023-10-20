@@ -5306,11 +5306,9 @@ class ShareManager(manager.SchedulerDependentManager):
             # bindings, so that correct segmentation id is used during
             # compatibility check and migration.
             if CONF.server_migration_extend_neutron_network:
-                neutron_host = share_utils.extract_host(
-                    dest_host, level='host')
                 new_allocations = (
                     self.driver.network_api.extend_network_allocations(
-                        context, source_share_server, neutron_host))
+                        context, source_share_server))
                 source_share_server['network_allocations'] = new_allocations
 
             compatibility = (
@@ -5403,10 +5401,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 snapshot_instance_ids=snapshot_instance_ids)
             # Rollback port bindings on destination host
             if new_allocations:
-                neutron_host = share_utils.extract_host(
-                    dest_host, level='host')
                 self.driver.network_api.delete_port_bindings(
-                    context, source_share_server, neutron_host)
+                    context, source_share_server)
             # Rollback read only access rules
             self._reset_read_only_access_rules_for_server(
                 context, share_instances, source_share_server,
@@ -5477,15 +5473,14 @@ class ShareManager(manager.SchedulerDependentManager):
         # compatibility check.
         if CONF.server_migration_extend_neutron_network:
             try:
-                neutron_host = share_utils.extract_host(
-                    dest_host, level='host')
                 new_allocations = (
                     self.driver.network_api.extend_network_allocations(
-                        context, share_server, neutron_host))
+                        context, share_server))
                 share_server['network_allocations'] = new_allocations
             except Exception:
-                self.driver.network_api.delete_port_bindings(
-                    context, share_server, neutron_host)
+                LOG.warning(
+                    'Failed to extend network allocations for '
+                    'share server %s.', share_server['id'])
                 return result
 
         # NOTE(dviroel): We'll build a list of request specs and send it to
@@ -5518,9 +5513,7 @@ class ShareManager(manager.SchedulerDependentManager):
         # NOTE(sapcc): Delete port bindings on destination host after
         # compatibility check
         if CONF.server_migration_extend_neutron_network:
-            neutron_host = share_utils.extract_host(dest_host, level='host')
-            self.driver.network_api.delete_port_bindings(
-                context, share_server, neutron_host)
+            self.driver.network_api.delete_port_bindings(context, share_server)
         result.update(driver_result)
 
         return result
