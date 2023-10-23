@@ -94,12 +94,16 @@ IRC
 
 The team uses `IRC <https://docs.openstack.org/contributors/common/irc.html>`_
 extensively for communication and coordination of project activities. The
-IRC channel is ``#openstack-manila`` on OFTC. Contributors work in various
-timezones across the world; so many of them run IRC Bouncers and appear to be
-always online. If you ping someone, or raise a question on the IRC channel,
-someone will get back to you when they are back on their computer.
-Additionally, the IRC channel is logged, so if you ask a question
-when no one is around, you can `check the log
+IRC channel is ``#openstack-manila`` on OFTC.
+
+If you'd like a quick and dirty guide to get connected with the community,
+refer to `this page <irc-quick-and-dirty.html>`_.
+
+Contributors work in various timezones across the world; so many of them run
+IRC Bouncers and appear to be always online. If you ping someone, or raise a
+question on the IRC channel, someone will get back to you when they are back
+on their computer. Additionally, the community IRC channel is logged, so if
+you ask a question when no one is around, you can `check the log
 <http://eavesdrop.openstack.org/irclogs/%23openstack-manila/>`_
 to see if it has been answered.
 

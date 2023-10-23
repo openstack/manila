@@ -69,6 +69,7 @@ Other Resources
    gerrit
    manila-review-policy
    project-team-lead
+   irc-quick-and-dirty
 
 API Reference
 -------------
