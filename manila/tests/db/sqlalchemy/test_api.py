@@ -2738,6 +2738,24 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
                           self.fake_context,
                           self.share_nw_dict['id'])
 
+    @ddt.data([{'id': 'fake_id_1', 'availability_zone_id': 'None'}],
+              [{'id': 'fake_id_2', 'availability_zone_id': 'None'},
+               {'id': 'fake_id_3', 'availability_zone_id': 'fake_az_id'}])
+    def test_delete_with_subnets(self, subnets):
+        db_api.share_network_create(self.fake_context, self.share_nw_dict)
+
+        for subnet in subnets:
+            subnet['share_network_id'] = self.share_nw_dict['id']
+            db_api.share_network_subnet_create(self.fake_context, subnet)
+
+        db_api.share_network_delete(self.fake_context,
+                                    self.share_nw_dict['id'])
+
+        self.assertRaises(exception.ShareNetworkSubnetNotFound,
+                          db_api.share_network_subnet_get,
+                          self.fake_context,
+                          subnets[0]['id'])
+
     def test_delete_not_found(self):
         self.assertRaises(exception.ShareNetworkNotFound,
                           db_api.share_network_delete,
