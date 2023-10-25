@@ -18,9 +18,11 @@ import io
 import readline
 import sys
 from unittest import mock
+import yaml
 
 import ddt
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 
 from manila.cmd import manage as manila_manage
 from manila import context
@@ -48,6 +50,7 @@ class ManilaCmdManageTestCase(test.TestCase):
         self.service_cmds = manila_manage.ServiceCommands()
         self.share_cmds = manila_manage.ShareCommands()
         self.server_cmds = manila_manage.ShareServerCommands()
+        self.list_commands = manila_manage.ListCommand()
 
     @mock.patch.object(manila_manage.ShellCommands, 'run', mock.Mock())
     def test_shell_commands_bpython(self):
@@ -291,7 +294,7 @@ class ManilaCmdManageTestCase(test.TestCase):
                                      'Zone',
                                      'Status',
                                      'State',
-                                     'Updated At')
+                                     'Updated at')
             service_format = format % (service['binary'],
                                        service['host'].partition('.')[0],
                                        service['availability_zone']['name'],
@@ -299,11 +302,46 @@ class ManilaCmdManageTestCase(test.TestCase):
                                        ':-)',
                                        service['updated_at'])
             expected_out = print_format + '\n' + service_format + '\n'
-            self.service_cmds.list()
+            self.service_cmds.list(format_output='table')
             self.assertEqual(expected_out, fake_out.getvalue())
             get_admin_context.assert_called_with()
             service_get_all.assert_called_with(ctxt)
             service_is_up.assert_called_with(service)
+
+    @ddt.data('json', 'yaml')
+    def test_service_commands_list_format(self, format_output):
+        ctxt = context.RequestContext('fake-user', 'fake-project')
+        format_method_name = f'list_{format_output}'
+        mock_list_method = self.mock_object(
+            self.service_cmds, format_method_name)
+        get_admin_context = self.mock_object(context, 'get_admin_context')
+        service_get_all = self.mock_object(db, 'service_get_all')
+        service_is_up = self.mock_object(utils, 'service_is_up')
+        get_admin_context.return_value = ctxt
+        service = {'binary': 'manila-binary',
+                   'host': 'fake-host.fake-domain',
+                   'availability_zone': {'name': 'fake-zone'},
+                   'updated_at': '2014-06-30 11:22:33',
+                   'disabled': False}
+        services = [service]
+        service_get_all.return_value = services
+        service_is_up.return_value = True
+
+        with mock.patch('sys.stdout', new=io.StringIO()):
+            self.service_cmds.list(format_output=format_output)
+            get_admin_context.assert_called_with()
+            service_get_all.assert_called_with(ctxt)
+            service_is_up.assert_called_with(service)
+            service_format = {
+                'binary': service['binary'],
+                'host': service['host'].partition('.')[0],
+                'zone': service['availability_zone']['name'],
+                'status': 'enabled',
+                'state': ':-)',
+                'updated_at': service['updated_at'],
+            }
+            mock_list_method.assert_called_once_with(
+                'services', [service_format])
 
     @ddt.data(True, False)
     def test_service_commands_cleanup(self, service_is_up):
@@ -508,3 +546,47 @@ class ManilaCmdManageTestCase(test.TestCase):
             True)
 
         self.assertEqual(1, exit.code)
+
+    @mock.patch('builtins.print')
+    def test_list_commands_json(self, mock_print):
+        resource_name = 'service'
+        service_format = [{
+            'binary': 'manila-binary',
+            'host': 'fake-host',
+            'availability_zone': 'fakeaz',
+            'status': 'enabled',
+            'state': ':-)',
+            'updated_at': '13 04:57:49 PM -03 2023'
+        }]
+
+        mock_json_dumps = self.mock_object(
+            jsonutils, 'dumps', mock.Mock(return_value=service_format[0]))
+        services = {resource_name: service_format}
+
+        self.list_commands.list_json('service', service_format)
+
+        mock_json_dumps.assert_called_once_with(
+            services, indent=4)
+        mock_print.assert_called_once_with(service_format[0])
+
+    @mock.patch('builtins.print')
+    def test_list_commands_yaml(self, mock_print):
+        resource_name = 'service'
+        service_format = [{
+            'binary': 'manila-binary',
+            'host': 'fake-host',
+            'availability_zone': 'fakeaz',
+            'status': 'enabled',
+            'state': ':-)',
+            'updated_at': '13 04:57:49 PM -03 2023'
+        }]
+
+        mock_yaml_dump = self.mock_object(
+            yaml, 'dump', mock.Mock(return_value=service_format[0]))
+        services = {resource_name: service_format}
+
+        self.list_commands.list_yaml('service', service_format)
+
+        mock_yaml_dump.assert_called_once_with(
+            services)
+        mock_print.assert_called_once_with(service_format[0])

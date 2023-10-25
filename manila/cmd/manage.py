@@ -55,9 +55,11 @@
 
 import os
 import sys
+import yaml
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_serialization import jsonutils
 
 from manila.common import config  # Need to register global_opts  # noqa
 from manila import context
@@ -69,6 +71,7 @@ from manila import version
 
 CONF = cfg.CONF
 
+ALLOWED_OUTPUT_FORMATS = ['table', 'json', 'yaml']
 HOST_UPDATE_HELP_MSG = ("A fully qualified host string is of the format "
                         "'HostA@BackendB#PoolC'. Provide only the host name "
                         "(ex: 'HostA') to update the hostname part of "
@@ -78,6 +81,8 @@ HOST_UPDATE_HELP_MSG = ("A fully qualified host string is of the format "
 HOST_UPDATE_CURRENT_HOST_HELP = ("Current share host name. %s" %
                                  HOST_UPDATE_HELP_MSG)
 HOST_UPDATE_NEW_HOST_HELP = "New share host name. %s" % HOST_UPDATE_HELP_MSG
+LIST_OUTPUT_FORMAT_HELP = ("Format to be used to print the output (table, "
+                           "json, yaml). Defaults to 'table'")
 SHARE_SERVERS_UPDATE_HELP = ("List of share servers to be updated, separated "
                              "by commas.")
 SHARE_SERVERS_UPDATE_CAPABILITIES_HELP = (
@@ -91,6 +96,37 @@ def args(*args, **kwargs):
         func.__dict__.setdefault('args', []).insert(0, (args, kwargs))
         return func
     return _decorator
+
+
+class ListCommand(object):
+
+    def list_json(self, resource_name, resource_list):
+        resource_list = {resource_name: resource_list}
+        object_list = jsonutils.dumps(resource_list, indent=4)
+        print(object_list)
+
+    def list_yaml(self, resource_name, resource_list):
+        resource_list = {resource_name: resource_list}
+        data_yaml = yaml.dump(resource_list)
+        print(data_yaml)
+
+    def list_table(self, resource_name, resource_list):
+        print_format = "{0:<16} {1:<36} {2:<16} {3:<10} {4:<5} {5:<10}"
+        print(print_format.format(
+            *[k.capitalize().replace(
+                '_', ' ') for k in resource_list[0].keys()]))
+        for resource in resource_list:
+            # Print is not transforming into a string, so let's ensure it
+            # happens
+            resource['updated_at'] = str(resource['updated_at'])
+            print(print_format.format(*resource.values()))
+
+    def _check_format_output(self, format_output):
+        if format_output not in ALLOWED_OUTPUT_FORMATS:
+            print('Invalid output format specified. Defaulting to table.')
+            return 'table'
+        else:
+            return format_output
 
 
 class ShellCommands(object):
@@ -319,35 +355,35 @@ class GetLogCommands(object):
             print("No manila entries in syslog!")
 
 
-class ServiceCommands(object):
+class ServiceCommands(ListCommand):
     """Methods for managing services."""
-    def list(self):
+
+    @args('--format_output', required=False, default='table',
+          help=LIST_OUTPUT_FORMAT_HELP)
+    def list(self, format_output):
         """Show a list of all manila services."""
         ctxt = context.get_admin_context()
         services = db.service_get_all(ctxt)
-        print_format = "%-16s %-36s %-16s %-10s %-5s %-10s"
-        print(print_format % (
-            _('Binary'),
-            _('Host'),
-            _('Zone'),
-            _('Status'),
-            _('State'),
-            _('Updated At'))
-        )
-        for svc in services:
-            alive = utils.service_is_up(svc)
-            art = ":-)" if alive else "XXX"
+        format_output = self._check_format_output(format_output)
+
+        services_list = []
+        for service in services:
+            alive = utils.service_is_up(service)
+            state = ":-)" if alive else "XXX"
             status = 'enabled'
-            if svc['disabled']:
+            if service['disabled']:
                 status = 'disabled'
-            print(print_format % (
-                svc['binary'],
-                svc['host'].partition('.')[0],
-                svc['availability_zone']['name'],
-                status,
-                art,
-                svc['updated_at'],
-            ))
+            services_list.append({
+                'binary': service['binary'],
+                'host': service['host'].partition('.')[0],
+                'zone': service['availability_zone']['name'],
+                'status': status,
+                'state': state,
+                'updated_at': str(service['updated_at']),
+            })
+
+        method_list_name = f'list_{format_output}'
+        getattr(self, method_list_name)('services', services_list)
 
     def cleanup(self):
         """Remove manila services reporting as 'down'."""

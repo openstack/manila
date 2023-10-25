@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    The possibility to specify the desired output format while issuing the
+    `manila-manage service list` command was added. It is now possible to
+    display the output also in yaml and json formats.
