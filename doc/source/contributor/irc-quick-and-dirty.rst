@@ -60,7 +60,7 @@ Step 3: Join the #openstack-manila channel
     !username <Nickname>
 * Provide your password::
 
-    !storepass
+    !storepass <Password>
 * Log in by issuing::
 
    !reconnect
