@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The "replica_state" attribute of "active" replicas cannot be modified.
+    Please see `Launchpad bug 2015328 <https://launchpad.net/bugs/2015328>`_
+    for more details.

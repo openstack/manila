@@ -45,6 +45,7 @@ PROMOTE_QUIESCE_WAIT_VERSION = '2.75'
 @ddt.ddt
 class ShareReplicasApiTest(test.TestCase):
     """Share Replicas API Test Cases."""
+
     def setUp(self):
         super(ShareReplicasApiTest, self).setUp()
         self.controller = share_replicas.ShareReplicationController()
@@ -821,6 +822,22 @@ class ShareReplicasApiTest(test.TestCase):
         self._reset_status(context, replica, action_req,
                            valid_code=valid_code, status_attr='replica_state',
                            valid_status=valid_status, body=body)
+
+    def test_reset_replica_with_active_state(self):
+        body = {
+            'reset_replica_state': {
+                'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC,
+            }
+        }
+
+        replica, action_req = self._create_replica_get_req(
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+
+        self._reset_status(self.admin_context, replica, action_req,
+                           status_attr='replica_state',
+                           valid_code=400,
+                           valid_status=constants.REPLICA_STATE_ACTIVE,
+                           body=body)
 
     @ddt.data(
         {'os-reset_replica_state': {'x-replica_state': 'bad'}},
