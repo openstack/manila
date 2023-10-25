@@ -1260,6 +1260,12 @@ class AdminActionsMixin(object):
             resource = resource or self._get(context, id)
         except exception.NotFound as e:
             raise webob.exc.HTTPNotFound(e.message)
+
+        if (status_attr == 'replica_state' and
+            resource.get('replica_state') ==
+                constants.REPLICA_STATE_ACTIVE):
+            msg = _("Cannot reset replica_state of an active replica")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
         try:
             policy.check_policy(context,
                                 self.resource_name,
