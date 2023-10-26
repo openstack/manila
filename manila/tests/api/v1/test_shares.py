@@ -542,6 +542,26 @@ class ShareAPITest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], self.resource_name, 'create')
 
+    def test_share_creation_fails_with_invalid_share_type(self):
+        shr = {
+            "size": 1,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "share_type": "Invalid share type"
+        }
+        body = {"share": shr}
+        req = fakes.HTTPRequest.blank('/fake/shares')
+        with mock.patch('manila.share.share_types.get_share_type_by_name',
+                        side_effect=exception.InvalidShareType(reason='')):
+            self.assertRaises(webob.exc.HTTPBadRequest,
+                              self.controller.create,
+                              req,
+                              body)
+            self.mock_policy_check.assert_called_once_with(
+                req.environ['manila.context'], self.resource_name, 'create')
+
     def test_share_create_invalid_availability_zone(self):
         self.mock_object(
             db,
