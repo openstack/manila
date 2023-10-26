@@ -201,7 +201,9 @@ def get_share_type_by_name(context, name):
     if name is None:
         msg = _("name cannot be None")
         raise exception.InvalidShareType(reason=msg)
-
+    if not isinstance(name, str):
+        msg = _("the share type's name parameter was badly formatted")
+        raise exception.InvalidShareType(reason=msg)
     return db.share_type_get_by_name(context, name)
 
 
