@@ -189,20 +189,52 @@ class ShareController(wsgi.Controller,
 
         return data
 
-    @wsgi.Controller.api_version("2.65")
+    # @wsgi.Controller.api_version("2.65")
+    # def create(self, req, body):
+    #     if not self.is_valid_body(body, 'share'):
+    #         raise exc.HTTPUnprocessableEntity()
+
+    #     share = body['share']
+    #     scheduler_hints = share.pop('scheduler_hints', None)
+    #     if req.api_version_request < api_version.APIVersionRequest("2.67"):
+    #         if scheduler_hints:
+    #             scheduler_hints.pop('only_host', None)
+    #     return self._create(req, body,
+    #                         check_create_share_from_snapshot_support=True,
+    #                         check_availability_zones_extra_spec=True,
+    #                         scheduler_hints=scheduler_hints)
+
+  ################################     the function    ######################
+
+        # HTTP 500 raised by POST /shares API when failing to handle "share_type" in request  ##
+   @wsgi.Controller.api_version("2.65")
     def create(self, req, body):
         if not self.is_valid_body(body, 'share'):
             raise exc.HTTPUnprocessableEntity()
 
         share = body['share']
+        share_type = share.get('share_type')
+
+        if not isinstance(share_type, str):
+            raise exc.HTTPBadRequest(explanation=_("Invalid format for 'share_type' parameter. Expected a string."))
+
         scheduler_hints = share.pop('scheduler_hints', None)
         if req.api_version_request < api_version.APIVersionRequest("2.67"):
             if scheduler_hints:
                 scheduler_hints.pop('only_host', None)
+
         return self._create(req, body,
                             check_create_share_from_snapshot_support=True,
                             check_availability_zones_extra_spec=True,
                             scheduler_hints=scheduler_hints)
+
+    def is_valid_body(self, body, entity_name):
+        if body is None or entity_name not in body:
+            return False
+        return True
+  
+    ################################     the function    ######################
+
 
     @wsgi.Controller.api_version("2.48", "2.64") # noqa
     def create(self, req, body):  # pylint: disable=function-redefined  # noqa F811

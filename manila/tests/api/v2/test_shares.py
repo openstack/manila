@@ -3292,3 +3292,42 @@ class ShareManageTest(test.TestCase):
                           req,
                           'fake_id',
                           'fake_body')
+
+
+     ###################   test for the  create function  #######################################
+
+     # HTTP 500 raised by POST /shares API when failing to handle "share_type" in request  ##
+
+
+    def test_create_with_invalid_share_type_format(self):
+        body = {
+            "share": {
+                "size": 1,
+                "share_proto": "cephfs",
+                "share_type": {
+                    "id": "9b158411-67de-4a90-9b10-92f545d4967f",
+                    "name": "type-1726987944",
+                    "extra_specs": {"driver_handles_share_servers": "False"},
+                    "required_extra_specs": {"driver_handles_share_servers": False},
+                    "share_type_access:is_public": True,
+                    "description": None,
+                    "is_default": False
+                }
+            }
+        }
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version="2.65")
+        controller = shares.ShareController()
+
+        with self.assertRaises(webob.exc.HTTPBadRequest) as context:
+            controller.create(req, body)
+
+        self.assertEqual(
+            "Invalid format for 'share_type' parameter. Expected a string.",
+            context.exception.explanation
+        )
+
+        ###################   test for the  create function  #######################################
+                      
+
+
+
