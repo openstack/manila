@@ -675,7 +675,6 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
             for segment in neutron_network['segments']:
                 if (segment['provider:physical_network'] == phys_net):
                     vlan = segment['provider:segmentation_id']
-                    network_type = segment['provider:network_type']
                     break
             if vlan is None:
                 msg = _('Network segment not found on host %s') % host_id
@@ -693,7 +692,6 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                 port_data = self.db.network_allocation_get(context, port.id)
                 port_data['label'] = phys_net
                 port_data['segmentation_id'] = vlan
-                port_data['network_type'] = network_type
                 port_data['id'] = None
                 port_data['created_at'] = None
                 dest_port_bindings.append(
