@@ -373,6 +373,8 @@ class ShareMixin(object):
                     exception.ShareTypeNotFoundByName):
                 msg = _("Share type not found.")
                 raise exc.HTTPNotFound(explanation=msg)
+            except exception.InvalidShareType as e:
+                raise exc.HTTPBadRequest(explanation=e.message)
         elif not snapshot:
             def_share_type = share_types.get_default_share_type()
             if def_share_type:
