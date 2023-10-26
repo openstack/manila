@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Changed the error and status code that was raised
+    when share types are not handled in shares api
