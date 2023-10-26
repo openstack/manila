@@ -197,7 +197,19 @@ class FlashBladeShareDriver(driver.ShareDriver):
         super(FlashBladeShareDriver, self)._update_share_stats(data)
 
     def _get_available_capacity(self):
-        space = self._sys.arrays.list_arrays_space()
+        try:
+            space = self._sys.arrays.list_arrays_space()
+        except purity_fb.rest.ApiException:
+            message = "Connection failure. Retrying login..."
+            LOG.warning(message)
+            try:
+                self._sys.login(self.api)
+                self._sys._api_client.user_agent = self._user_agent
+            except purity_fb.rest.ApiException as ex:
+                msg = _("Exception when logging into the array: %s\n") % ex
+                LOG.exception(msg)
+                raise exception.ManilaException(message=msg)
+            space = self._sys.arrays.list_arrays_space()
         array_space = space.items[0]
         data_reduction = array_space.space.data_reduction
         physical_capacity_bytes = array_space.capacity

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Pure Storage FlashBlade driver: Retry login for periodic task should
+    network issue cause loss of connection. See `launchpad bug 2032681
+    <https://bugs.launchpad.net/manila/+bug/2032681>`_ for more details.
