@@ -1164,11 +1164,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         node_name = self._client.list_cluster_nodes()[0]
         port = self._get_node_data_port(node_name)
         vlan = network_info['network_allocations'][0]['segmentation_id']
-        destination_ipspace = self._client.get_ipspace_name_for_vlan_port(
-            node_name, port, vlan) or self._create_ipspace(
-            network_info, client=dest_client)
-        self._create_port_and_broadcast_domain(
-            destination_ipspace, network_info)
+        destination_ipspace = self._create_ipspace(network_info,
+                                                   client=dest_client)
+        self._create_port_and_broadcast_domain(destination_ipspace,
+                                               network_info)
 
         def _cleanup_ipspace(ipspace):
             try:
@@ -1443,14 +1442,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         }
 
         # 2. Create new ipspace, port and broadcast domain.
-        node_name = self._client.list_cluster_nodes()[0]
-        port = self._get_node_data_port(node_name)
-        vlan = network_info['network_allocations'][0]['segmentation_id']
-        destination_ipspace = self._client.get_ipspace_name_for_vlan_port(
-            node_name, port, vlan) or self._create_ipspace(
-            network_info, client=dest_client)
-        self._create_port_and_broadcast_domain(
-            destination_ipspace, network_info)
+        destination_ipspace = self._create_ipspace(network_info,
+                                                   client=dest_client)
+        self._create_port_and_broadcast_domain(destination_ipspace,
+                                               network_info)
 
         # Prepare the migration request.
         src_cluster_name = src_client.get_cluster_name()
@@ -1473,7 +1468,6 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             # As it failed, we must remove the ipspace, ports and broadcast
             # domain.
             dest_client.delete_ipspace(destination_ipspace)
-
             vlan = network_info['network_allocations'][0]['segmentation_id']
             if vlan:
                 port = None
