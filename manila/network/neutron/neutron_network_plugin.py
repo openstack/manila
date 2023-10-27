@@ -699,26 +699,21 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
 
         return dest_port_bindings
 
-    def delete_port_bindings(self, context, share_server):
-        phys_net = self.config.neutron_physical_net_name
+    def delete_extended_allocations(self, context, src_share_server,
+                                    dest_share_server=None):
         host_id = self.config.neutron_host_id
+        phys_net = self.config.neutron_physical_net_name
 
-        ports = (
-            self.db.network_allocations_get_for_share_server(
-                context, share_server.id, label='user'))
-        if len(ports) == 0:
-            msg = 'No ports found for Share server %{share_server}s'
-            LOG.warning(msg, {'share_server': share_server.id})
-        dest_port_bindings = (
-            self.db.network_allocations_get_for_share_server(
-                context, share_server.id, label=phys_net))
-        if len(dest_port_bindings) == 0:
-            msg = (
-                'No port bindings found on %{host}s for '
-                'share server %{share_server}s')
-            LOG.warning(msg, {'host': host_id, 'share_server': share_server.id})
-        # Parent port are not tracked in network allocations; so we have to use
-        # the port id's extracted from source share server
+        # Nuetron port ids are stored in 'id' field of active network
+        # allocations, which are bound to source share server.
+        ports = self.db.network_allocations_get_for_share_server(
+            context, src_share_server.id, label='user')
+
+        # Sometimes extended allocations are deleted before the destination
+        # server server is created.
+        share_server_to_get_alloc = dest_share_server or src_share_server
+        extended_allocs = self.db.network_allocations_get_for_share_server(
+            context, share_server_to_get_alloc['id'], label=phys_net)
         for port in ports:
             try:
                 self.neutron_api.delete_port_binding(port.id, host_id)
@@ -726,8 +721,8 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                 msg = _(
                     'Failed to delete port binding on port %{port}s: %{err}s')
                 LOG.warning(msg, {'port': port.id, 'err': e})
-        for binding in dest_port_bindings:
-            self.db.network_allocation_delete(context, binding.id)
+        for alloc in extended_allocs:
+            self.db.network_allocation_delete(context, alloc.id)
 
     def cutover_network_allocations(self, context, src_share_server,
                                     dest_share_server):
@@ -740,7 +735,7 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                 context, src_share_server.id, label='user'))
         inactive_allocations = (
             self.db.network_allocations_get_for_share_server(
-                context, src_share_server.id, label=physnet))
+                context, dest_share_server.id, label=physnet))
 
         if len(inactive_allocations) == 0:
             msg = _(
