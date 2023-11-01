@@ -5097,7 +5097,6 @@ class ShareResourcesAPITestCase(test.TestCase):
         share_instance = db_utils.create_share_instance(
             status=constants.STATUS_AVAILABLE, share_id='fake')
         share_instance_ids = [share_instance['id']]
-        fake_session = db_api.get_session()
         snap_instances = [
             db_utils.create_snapshot_instance(
                 'fake_snapshot_id_1', status=constants.STATUS_CREATING,
@@ -5108,24 +5107,21 @@ class ShareResourcesAPITestCase(test.TestCase):
         values = {'status': constants.STATUS_AVAILABLE}
 
         mock_update_share_instances = self.mock_object(
-            db_api, 'share_instance_status_update',
+            db_api, '_share_instance_status_update',
             mock.Mock(return_value=[share_instance]))
         mock_update_snap_instances = self.mock_object(
-            db_api, 'share_snapshot_instances_status_update',
+            db_api, '_share_snapshot_instances_status_update',
             mock.Mock(return_value=snap_instances))
-        mock_get_session = self.mock_object(
-            db_api, 'get_session', mock.Mock(return_value=fake_session))
 
         updated_share_instances, updated_snap_instances = (
             db_api.share_and_snapshot_instances_status_update(
                 self.context, values, share_instance_ids=share_instance_ids,
                 snapshot_instance_ids=snapshot_instance_ids))
 
-        mock_get_session.assert_called()
         mock_update_share_instances.assert_called_once_with(
-            self.context, share_instance_ids, values, session=fake_session)
+            self.context, share_instance_ids, values)
         mock_update_snap_instances.assert_called_once_with(
-            self.context, snapshot_instance_ids, values, session=fake_session)
+            self.context, snapshot_instance_ids, values)
         self.assertEqual(updated_share_instances, [share_instance])
         self.assertEqual(updated_snap_instances, snap_instances)
 
@@ -5152,15 +5148,12 @@ class ShareResourcesAPITestCase(test.TestCase):
         share_instance_ids = [share_instance['id']]
         snap_instance_ids = [share_snapshot_instance['id']]
         values = {'status': constants.STATUS_AVAILABLE}
-        fake_session = db_api.get_session()
 
-        mock_get_session = self.mock_object(
-            db_api, 'get_session', mock.Mock(return_value=fake_session))
         mock_instances_get_all = self.mock_object(
             db_api, '_share_instance_get_all',
             mock.Mock(return_value=[share_instance]))
         mock_snap_instances_get_all = self.mock_object(
-            db_api, 'share_snapshot_instance_get_all_with_filters',
+            db_api, '_share_snapshot_instance_get_all_with_filters',
             mock.Mock(return_value=[share_snapshot_instance]))
 
         self.assertRaises(expected_exc,
@@ -5171,14 +5164,13 @@ class ShareResourcesAPITestCase(test.TestCase):
                           snapshot_instance_ids=snap_instance_ids,
                           current_expected_status=constants.STATUS_AVAILABLE)
 
-        mock_get_session.assert_called()
         mock_instances_get_all.assert_called_once_with(
             self.context, filters={'instance_ids': share_instance_ids},
-            session=fake_session)
+        )
         if snap_instance_status == constants.STATUS_ERROR:
             mock_snap_instances_get_all.assert_called_once_with(
                 self.context, {'instance_ids': snap_instance_ids},
-                session=fake_session)
+            )
 
 
 @ddt.ddt
