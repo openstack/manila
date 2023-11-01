@@ -2,7 +2,7 @@
 fixes:
   - |
     `bug 2038607 <https://bugs.launchpad.net/manila/+bug/2038607>`_: Fixed
-    parse of the protcol_access_mapping option and
+    parse of the protocol_access_mapping option and
     the backup_protocol_access_mapping option. This change requires that
     the values used for these options should be formatted like
     `key0=[value00, value01],key1=[value10]`.
