@@ -2151,12 +2151,6 @@ def share_replica_delete(context, share_replica_id, session=None,
 ################
 
 
-@require_context
-def _share_get_query(context, session=None, **kwargs):
-    return (model_query(context, models.Share, session=session, **kwargs).
-            options(joinedload('share_metadata')))
-
-
 def _process_share_filters(query, filters, project_id=None, is_public=False):
     if filters is None:
         filters = {}
@@ -2343,8 +2337,11 @@ def share_get(context, share_id, session=None, **kwargs):
 # TODO(stephenfin): Remove the 'session' argument once all callers have been
 # converted
 def _share_get(context, share_id, session=None, **kwargs):
-    result = _share_get_query(context, session, **kwargs).filter_by(
-        id=share_id).first()
+    result = model_query(
+        context, models.Share, session=session, **kwargs,
+    ).options(
+        joinedload('share_metadata')
+    ).filter_by(id=share_id).first()
 
     if result is None:
         raise exception.NotFound()
@@ -2378,11 +2375,14 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
         sort_key = 'created_at'
     if not sort_dir:
         sort_dir = 'desc'
-    query = (
-        _share_get_query(context, session).join(
-            models.ShareInstance,
-            models.ShareInstance.share_id == models.Share.id
-        )
+
+    query = model_query(
+        context, models.Share, session=session,
+    ).options(
+        joinedload('share_metadata')
+    ).join(
+        models.ShareInstance,
+        models.ShareInstance.share_id == models.Share.id
     )
 
     if share_group_id:
@@ -2431,11 +2431,13 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
 def share_get_all_expired(context):
     session = get_session()
 
-    query = (
-        _share_get_query(context, session).join(
-            models.ShareInstance,
-            models.ShareInstance.share_id == models.Share.id
-        )
+    query = model_query(
+        context, models.Share, session=session,
+    ).options(
+        joinedload('share_metadata')
+    ).join(
+        models.ShareInstance,
+        models.ShareInstance.share_id == models.Share.id,
     )
     filters = {"is_soft_deleted": True}
     query = _process_share_filters(query, filters=filters)
