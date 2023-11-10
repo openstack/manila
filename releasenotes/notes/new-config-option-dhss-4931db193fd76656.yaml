@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add new config option 'service_network_host' for service instance with
+    'dhss'=True. This helps us to define network host for ports and able to
+    seperate from manila host.
