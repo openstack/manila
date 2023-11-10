@@ -41,10 +41,13 @@ flashblade_connection_opts = [
         help="The name (or IP address) for the Pure Storage "
         "FlashBlade storage system management VIP.",
     ),
-    cfg.HostAddressOpt(
+    cfg.ListOpt(
         "flashblade_data_vip",
-        help="The name (or IP address) for the Pure Storage "
-        "FlashBlade storage system data VIP.",
+        help="The names (or IP address) for the Pure Storage "
+        "FlashBlade storage system data VIPs. "
+        "The first listed name or IP address will be considered "
+        "to be the preferred IP address, although is not "
+        "enforced.",
     ),
 ]
 
@@ -243,10 +246,9 @@ class FlashBladeShareDriver(driver.ShareDriver):
         base_name = CONF.share_name_template + "-manila"
         return base_name % manila_share["id"]
 
-    def _get_full_nfs_export_path(self, export_path):
-        subnet_ip = self.data_address
+    def _get_full_nfs_export_path(self, export_path, location):
         return "{subnet_ip}:/{export_path}".format(
-            subnet_ip=subnet_ip, export_path=export_path
+            subnet_ip=location, export_path=export_path
         )
 
     def _get_flashblade_filesystem_by_name(self, name):
@@ -270,18 +272,6 @@ class FlashBladeShareDriver(driver.ShareDriver):
             msg = _("Snapshot not found on FlashBlade: %s\n") % ex
             LOG.exception(msg)
             raise exception.ManilaException(message=msg)
-
-    @purity_fb_to_manila_exceptions
-    def _create_filesystem_export(self, flashblade_filesystem):
-        flashblade_export = flashblade_filesystem.add_export(permissions=[])
-        return {
-            "path": self._get_full_nfs_export_path(
-                flashblade_export.get_export_path()
-            ),
-            "is_admin_only": False,
-            "preferred": True,
-            "metadata": {},
-        }
 
     @purity_fb_to_manila_exceptions
     def _resize_share(self, share, new_size):
@@ -360,7 +350,22 @@ class FlashBladeShareDriver(driver.ShareDriver):
                 ),
             )
             self._sys.file_systems.create_file_systems(flashblade_fs)
-            location = self._get_full_nfs_export_path(share_name)
+            locations = []
+            preferred = True
+            for address in self.data_address:
+                export_location = {
+                    "path": self._get_full_nfs_export_path(
+                        share_name,
+                        address,
+                    ),
+                    "is_admin_only": False,
+                    "metadata": {
+                        "preferred": preferred,
+                    },
+                }
+                LOG.debug("pref %(pref)s", {"pref": preferred})
+                preferred = False
+                locations.append(export_location)
         else:
             message = _("Unsupported share protocol: %(proto)s.") % {
                 "proto": share["share_proto"]
@@ -369,7 +374,7 @@ class FlashBladeShareDriver(driver.ShareDriver):
             raise exception.InvalidShare(reason=message)
         LOG.info("FlashBlade created share %(name)s", {"name": share_name})
 
-        return location
+        return locations
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Called to create a snapshot"""

@@ -63,7 +63,7 @@ Configure the driver back-end section with the parameters below.
   .. code-block:: ini
 
      flashblade_mgmt_vip = FlashBlade management VIP
-     flashblade_data_vip = FlashBlade data VIP
+     flashblade_data_vip = FlashBlade data VIP(s)
 
 * Configure user credentials:
 

@@ -28,6 +28,31 @@ from manila import test
 _MOCK_SHARE_ID = 1
 _MOCK_SNAPSHOT_ID = "snap"
 _MOCK_SHARE_SIZE = 4294967296
+_SINGLE_VIP_LOCATION = [
+    {
+        "path": 'mockfb2:/share-1-manila',
+        "is_admin_only": False,
+        "metadata": {
+            "preferred": True,
+        }
+    }
+]
+_DUAL_VIP_LOCATION = [
+    {
+        "path": 'mockfb2:/share-1-manila',
+        "is_admin_only": False,
+        "metadata": {
+            "preferred": True,
+        }
+    },
+    {
+        "path": 'mockfb3:/share-1-manila',
+        "is_admin_only": False,
+        "metadata": {
+            "preferred": False,
+        }
+    }
+]
 
 
 def _create_mock__getitem__(mock):
@@ -58,7 +83,7 @@ class FlashBladeDriverTestCaseBase(test.TestCase):
         super(FlashBladeDriverTestCaseBase, self).setUp()
         self.configuration = mock.Mock()
         self.configuration.flashblade_mgmt_vip = "mockfb1"
-        self.configuration.flashblade_data_vip = "mockfb2"
+        self.configuration.flashblade_data_vip = ["mockfb2"]
         self.configuration.flashblade_api = "api"
         self.configuration.flashblade_eradicate = True
 
@@ -173,7 +198,12 @@ class FlashBladeDriverTestCase(FlashBladeDriverTestCaseBase):
                 ),
             )
         )
-        self.assertEqual("mockfb2:/share-1-manila", location)
+        self.assertEqual(_SINGLE_VIP_LOCATION, location)
+
+    def test_create_nfs_share_multiple_vips(self):
+        self.configuration.flashblade_data_vip.append("mockfb3")
+        location = self.driver.create_share(None, test_nfs_share)
+        self.assertEqual(_DUAL_VIP_LOCATION, location)
 
     def test_delete_share(self):
         self.mock_object(self.driver, "_get_flashblade_filesystem_by_name")

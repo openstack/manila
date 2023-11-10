@@ -11,7 +11,7 @@
    * - ``flashblade_mgmt_vip`` = ``None``
      - (String) The name (or IP address) for the Pure Storage FlashBlade storage system management port.
    * - ``flashblade_data_vip`` = ``None``
-     - (String) The name (or IP address) for the Pure Storage FlashBlade storage system data port.
+     - (String) The names (or IP address) for the Pure Storage FlashBlade storage system data ports.
    * - ``flashblade_api`` = ``None``
      - (String) API token for an administrative level user account.
    * - ``flashblade_eradicate`` = ``True``
