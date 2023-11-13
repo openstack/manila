@@ -514,6 +514,9 @@ class GaneshaManager(object):
         try:
             confdict = self._read_export(name)
             self._remove_export_dbus(confdict["EXPORT"]["Export_Id"])
+        except Exception:
+            LOG.exception("There was a problem removing the export. "
+                          "Ignoring errors and continuing operation.")
         finally:
             if self.ganesha_rados_store_enable:
                 self._delete_rados_object(
