@@ -557,7 +557,6 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         node_network_info = zip(nodes, network_info['network_allocations'])
 
         for node_name, network_allocation in node_network_info:
-
             port = self._get_node_data_port(node_name)
             vlan = network_allocation['segmentation_id']
             network_mtu = network_allocation.get('mtu')
@@ -740,12 +739,24 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         super(NetAppCmodeMultiSVMFileStorageLibrary, self).delete_replica(
             context, replica_list, replica, share_snapshots)
 
+        # Fix for bug 1996907- If snapmirror relationship still exist,
+        # deletes those again.
+        snapmirrors_des_list = self._get_snapmirrors_destinations(
+            vserver, peer_vserver)
+        snapmirrors_des_list_from_peer = self._get_snapmirrors_destinations(
+            peer_vserver, vserver)
+        if snapmirrors_des_list or snapmirrors_des_list_from_peer:
+            super(NetAppCmodeMultiSVMFileStorageLibrary, self).delete_replica(
+                context, replica_list, replica, share_snapshots)
+
         # Check if there are no remaining SnapMirror connections and if a
         # vserver peering exists and delete it.
-        snapmirrors = self._get_snapmirrors(vserver, peer_vserver)
+        snapmirrors_from_local = self._get_snapmirrors(vserver, peer_vserver)
         snapmirrors_from_peer = self._get_snapmirrors(peer_vserver, vserver)
         peers = self._get_vserver_peers(peer_vserver, vserver)
-        if not (snapmirrors or snapmirrors_from_peer) and peers:
+        if (not (snapmirrors_from_local or snapmirrors_from_peer
+                 or snapmirrors_des_list or snapmirrors_des_list_from_peer)
+                and peers):
             self._delete_vserver_peer(peer_vserver, vserver)
 
     def manage_server(self, context, share_server, identifier, driver_options):
@@ -792,6 +803,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
     def _get_snapmirrors(self, vserver, peer_vserver):
         return self._client.get_snapmirrors(
+            source_vserver=vserver, dest_vserver=peer_vserver)
+
+    def _get_snapmirrors_destinations(self, vserver, peer_vserver):
+        return self._client.get_snapmirror_destinations(
             source_vserver=vserver, dest_vserver=peer_vserver)
 
     def _get_vservers_from_replicas(self, context, replica_list, new_replica):
@@ -1174,6 +1189,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 LOG.debug(
                     msg, {'operation_id': operation_id, 'status': status})
                 return
+
         try:
             wait_for_status()
         except exception.NetAppException:
@@ -2068,9 +2084,9 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             raise exception.NetAppException(msg)
 
         (super(NetAppCmodeMultiSVMFileStorageLibrary, self)
-            .validate_provisioning_options_for_share(provisioning_options,
-                                                     extra_specs=extra_specs,
-                                                     qos_specs=qos_specs))
+         .validate_provisioning_options_for_share(provisioning_options,
+                                                  extra_specs=extra_specs,
+                                                  qos_specs=qos_specs))
 
     def _get_different_keys_for_equal_ss_type(self, current_sec_service,
                                               new_sec_service):
