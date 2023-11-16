@@ -27,7 +27,7 @@ from manila.tests import db_utils
 @ddt.ddt
 class MetadataAPITest(test.TestCase):
 
-    def _get_request(self, version="2.65", use_admin_context=True):
+    def _get_request(self, version="2.65", use_admin_context=False):
         req = fakes.HTTPRequest.blank(
             '/v2/shares/{resource_id}/metadata',
             version=version, use_admin_context=use_admin_context)
@@ -38,10 +38,48 @@ class MetadataAPITest(test.TestCase):
         self.controller = (
             metadata.MetadataController())
         self.controller.resource_name = 'share'
-        self.admin_context = context.RequestContext('admin', 'fake', True)
         self.mock_policy_check = self.mock_object(
             policy, 'check_policy', mock.Mock(return_value=True))
         self.resource = db_utils.create_share(size=1)
+
+    def test__get_resource_policy_not_authorized_pubic_resource(self):
+        fake_context = context.RequestContext('fake', 'fake', True)
+        policy_exception = exception.PolicyNotAuthorized(action='share:get')
+        mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(side_effect=policy_exception))
+        share_obj = db_utils.create_share(size=1, is_public=True)
+
+        self.assertRaises(
+            exception.PolicyNotAuthorized,
+            self.controller._get_resource,
+            fake_context,
+            share_obj['id'],
+            for_modification=True,
+        )
+
+        mock_policy_check.assert_called_once_with(
+            fake_context, 'share', 'get', mock.ANY)
+        policy_resource_obj = mock_policy_check.call_args[0][3]
+        self.assertEqual(share_obj['id'], policy_resource_obj['id'])
+
+    @ddt.data(True, False)
+    def test__get_resource_policy_not_authorized_private_resource(self, formd):
+        fake_context = context.RequestContext('fake', 'fake', True)
+        mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=False))
+        share_obj = db_utils.create_share(size=1, is_public=False)
+
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller._get_resource,
+            fake_context,
+            share_obj['id'],
+            for_modification=formd,
+        )
+        mock_policy_check.assert_called_once_with(
+            fake_context, 'share', 'get', mock.ANY, do_raise=False)
+        policy_resource_obj = mock_policy_check.call_args[0][3]
+        self.assertEqual(share_obj['id'], policy_resource_obj['id'])
 
     def test_create_index_metadata(self):
         url = self._get_request()
