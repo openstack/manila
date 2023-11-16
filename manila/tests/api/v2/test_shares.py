@@ -133,6 +133,7 @@ class ShareAPITest(test.TestCase):
         }
 
         CONF.set_default("default_share_type", None)
+        self.mock_object(policy, 'check_policy')
 
     def _process_expected_share_detailed_response(self, shr_dict, req_version):
         """Sets version based parameters on share dictionary."""
@@ -1853,6 +1854,10 @@ class ShareAPITest(test.TestCase):
             search_opts_expected['is_soft_deleted'] = (
                 search_opts['is_soft_deleted'])
 
+        policy.check_policy.assert_called_once_with(
+            req.environ['manila.context'],
+            'share',
+            'get_all')
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
             search_opts_expected['host'] = search_opts['host']
@@ -1897,6 +1902,10 @@ class ShareAPITest(test.TestCase):
 
         search_opts_expected = {}
 
+        policy.check_policy.assert_called_once_with(
+            req.environ['manila.context'],
+            'share',
+            'get_all')
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
             search_opts_expected['host'] = search_opts['host']
@@ -1932,6 +1941,10 @@ class ShareAPITest(test.TestCase):
                 }
             ]
         }
+        policy.check_policy.assert_called_once_with(
+            req.environ['manila.context'],
+            'share',
+            'get_all')
         self.assertEqual(expected, res_dict)
 
     @ddt.data({'use_admin_context': False, 'version': '2.4'},
@@ -2029,10 +2042,14 @@ class ShareAPITest(test.TestCase):
                 api_version.APIVersionRequest('2.69')):
             search_opts_expected['is_soft_deleted'] = (
                 search_opts['is_soft_deleted'])
-
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
             search_opts_expected['host'] = search_opts['host']
+
+        policy.check_policy.assert_called_once_with(
+            req.environ['manila.context'],
+            'share',
+            'get_all')
         mock_get_all.assert_called_once_with(
             req.environ['manila.context'],
             sort_key=search_opts['sort_key'],
@@ -2105,7 +2122,13 @@ class ShareAPITest(test.TestCase):
     def _list_detail_test_common(self, req, expected):
         self.mock_object(share_api.API, 'get_all',
                          stubs.stub_share_get_all_by_project)
+
         res_dict = self.controller.detail(req)
+
+        policy.check_policy.assert_called_once_with(
+            req.environ['manila.context'],
+            'share',
+            'get_all')
         self.assertDictListMatch(expected['shares'], res_dict['shares'])
         self.assertEqual(res_dict['shares'][0]['volume_type'],
                          res_dict['shares'][0]['share_type'])
@@ -2164,7 +2187,13 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             '/v2/fake/shares/detail', environ=env,
             version=share_replicas.MIN_SUPPORTED_API_VERSION)
+
         res_dict = self.controller.detail(req)
+
+        policy.check_policy.assert_called_once_with(
+            req.environ['manila.context'],
+            'share',
+            'get_all')
         expected = {
             'shares': [
                 {
@@ -2249,6 +2278,7 @@ class ShareActionsTest(test.TestCase):
         super(ShareActionsTest, self).setUp()
         self.controller = shares.ShareController()
         self.mock_object(share_api.API, 'get', stubs.stub_share_get)
+        self.mock_object(policy, 'check_policy')
 
     @ddt.unpack
     @ddt.data(
