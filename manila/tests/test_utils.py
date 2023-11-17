@@ -726,7 +726,7 @@ class TestRetryDecorator(test.TestCase):
         retry_param = exception.ManilaException
 
         class FakeTenacityRetry(tenacity.Retrying):
-            def __init__(*args, **kwargs):
+            def __init__(self, *args, **kwargs):
                 pass
 
         with mock.patch('tenacity.Retrying',
