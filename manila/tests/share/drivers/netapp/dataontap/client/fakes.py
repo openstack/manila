@@ -498,6 +498,7 @@ CIFS_SECURITY_SERVICE = {
     'domain': 'fake_domain',
     'dns_ip': 'fake_dns_ip',
     'server': 'fake_server',
+    'defaultadsite': None,
 }
 
 CIFS_SECURITY_SERVICE_2 = {
@@ -508,6 +509,29 @@ CIFS_SECURITY_SERVICE_2 = {
     'domain': 'fake_domain_2',
     'dns_ip': 'fake_dns_ip_2',
     'server': 'fake_server_2',
+    'defaultadsite': None,
+}
+
+CIFS_SECURITY_SERVICE_3 = {
+    'type': 'active_directory',
+    'password': 'fake_password_3',
+    'user': 'fake_user_3',
+    'ou': 'fake_ou_3',
+    'domain': 'fake_domain_3',
+    'dns_ip': 'fake_dns_ip_3',
+    'defaultadsite': 'fake_defaultadsite_3',
+    'server': None,
+}
+
+CIFS_SECURITY_SERVICE_4 = {
+    'type': 'active_directory',
+    'password': 'fake_password_4',
+    'user': 'fake_user_4',
+    'ou': 'fake_ou_4',
+    'domain': 'fake_domain_4',
+    'dns_ip': 'fake_dns_ip_4',
+    'defaultadsite': 'fake_defaultadsite_4',
+    'server': None,
 }
 
 LDAP_LINUX_SECURITY_SERVICE = {

@@ -189,6 +189,17 @@ class SecurityServiceController(wsgi.Controller):
                             "fields are available for update.") % id
                     raise exc.HTTPForbidden(explanation=msg)
 
+        server = security_service_data.get('server')
+        default_ad_site = (security_service_data.get('default_ad_site') or
+                           security_service_data.get('defaultadsite'))
+        if default_ad_site:
+            if (security_service['type'] == 'active_directory' and server and
+                    default_ad_site):
+                raise exception.InvalidInput(
+                    reason=(_("Cannot update security service because both "
+                              "server and 'default_ad_site' were provided. "
+                              "Specify either server or 'default_ad_site'.")))
+
         policy.check_policy(context, RESOURCE_NAME, 'update', security_service)
         security_service = db.security_service_update(
             context, id, security_service_data)

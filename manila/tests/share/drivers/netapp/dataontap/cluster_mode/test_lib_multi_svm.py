@@ -3447,12 +3447,20 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test__get_different_keys_for_equal_ss_type(self):
         curr_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
         new_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_2)
+        new_sec_service2 = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_3)
 
         expected_keys = ['password', 'user', 'ou',
                          'domain', 'dns_ip', 'server']
 
         result = self.library._get_different_keys_for_equal_ss_type(
             curr_sec_service, new_sec_service)
+
+        self.assertEqual(expected_keys, result)
+
+        expected_keys = ['password', 'user', 'ou',
+                         'domain', 'dns_ip', 'server', 'defaultadsite']
+        result = self.library._get_different_keys_for_equal_ss_type(
+            curr_sec_service, new_sec_service2)
 
         self.assertEqual(expected_keys, result)
 

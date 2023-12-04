@@ -8145,19 +8145,36 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             'volume-autosize-get', {'volume': fake.SHARE_NAME})
 
-    def test_modify_active_directory_security_service(self):
-        curr_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
-        new_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_2)
+    @ddt.data('server_to_server',
+              'server_to_default_ad_site',
+              'default_ad_site_to_default_ad_site',
+              'default_ad_site_to_server')
+    def test_modify_active_directory_security_service(self,
+                                                      modify_ad_direction):
+        if modify_ad_direction == 'server_to_server':
+            curr_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+            new_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_2)
+        if modify_ad_direction == 'server_to_default_ad_site':
+            curr_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+            new_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_3)
+        if modify_ad_direction == 'default_ad_site_to_default_ad_site':
+            curr_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_3)
+            new_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_4)
+        if modify_ad_direction == 'default_ad_site_to_server':
+            curr_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_4)
+            new_sec_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_2)
         # we don't support domain change, but this validation isn't made in
         # within this method
         new_sec_service['domain'] = curr_sec_service['domain']
-        api_responses = [fake.PASSED_RESPONSE, fake.PASSED_RESPONSE]
+        api_responses = [fake.PASSED_RESPONSE, fake.PASSED_RESPONSE,
+                         fake.PASSED_RESPONSE]
 
         self.mock_object(self.client, 'send_request',
                          mock.Mock(side_effect=api_responses))
         self.mock_object(self.client, 'remove_preferred_dcs')
         self.mock_object(self.client, 'set_preferred_dc')
-        differing_keys = {'password', 'user', 'server'}
+        self.mock_object(self.client, 'configure_cifs_options')
+        differing_keys = {'password', 'user', 'server', 'defaultadsite'}
 
         self.client.modify_active_directory_security_service(
             fake.VSERVER_NAME, differing_keys, new_sec_service,
@@ -8177,9 +8194,30 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('cifs-local-user-set-password', set_pass_api_args),
             mock.call('cifs-local-user-rename', user_rename_api_args)])
-        self.client.remove_preferred_dcs.assert_called_once_with(
-            curr_sec_service)
-        self.client.set_preferred_dc.assert_called_once_with(new_sec_service)
+
+        if modify_ad_direction in ('default_ad_site_to_default_ad_site',
+                                   'server_to_default_ad_site'):
+            cifs_server_modify_args = {
+                'admin-username': new_sec_service['user'],
+                'admin-password': new_sec_service['password'],
+                'force-account-overwrite': 'true',
+                'cifs-server': cifs_server,
+                'default-site': new_sec_service['defaultadsite'],
+            }
+            self.client.send_request.assert_has_calls([
+                mock.call('cifs-server-modify', cifs_server_modify_args)])
+            self.client.configure_cifs_options.assert_has_calls([
+                mock.call(new_sec_service)])
+        if modify_ad_direction in ('server_to_server',
+                                   'server_to_default_ad_site'):
+            self.client.remove_preferred_dcs.assert_called_once_with(
+                curr_sec_service)
+        if modify_ad_direction in ('server_to_server',
+                                   'default_ad_site_to_server'):
+            self.client.set_preferred_dc.assert_called_once_with(
+                new_sec_service)
+            self.client.configure_cifs_options.assert_has_calls([
+                mock.call(new_sec_service)])
 
     @ddt.data(True, False)
     def test_modify_active_directory_security_service_error(
