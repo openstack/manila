@@ -121,7 +121,7 @@ of ``/etc/manila/manila.conf``:
 +-------------------------------------------------+-----------------------------------------------------------------------------------------------------+
 | flashblade_mgmt_vip                             | The name (or IP address) for the Pure Storage FlashBlade storage system management VIP.             |
 +-------------------------------------------------+-----------------------------------------------------------------------------------------------------+
-| flashblade_data_vip                             | The name (or IP address) for the Pure Storage FlashBlade storage system data VIP.                   |
+| flashblade_data_vip                             | The names (or IP address) for the Pure Storage FlashBlade storage system data VIPs.                 |
 +-------------------------------------------------+-----------------------------------------------------------------------------------------------------+
 | flashblade_api                                  | API token for an administrative user account                                                        |
 +-------------------------------------------------+-----------------------------------------------------------------------------------------------------+
@@ -146,7 +146,7 @@ Below is an example of a valid configuration of the FlashBlade driver:
    share_driver = manila.share.drivers.purestorage.flashblade.FlashBladeShareDriver
    driver_handles_share_servers = False
    flashblade_mgmt_vip = 1.2.3.4
-   flashblade_data_vip = 1.2.3.5
+   flashblade_data_vip = 1.2.3.5,1.2.3.6
    flashblade_api = T-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 Restart of :term:`manila-share` service is needed for the configuration changes to take
