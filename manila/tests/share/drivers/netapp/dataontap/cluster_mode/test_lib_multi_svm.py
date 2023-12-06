@@ -2149,8 +2149,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 self.fake_src_share_server['share_network_subnet'].get(
                     'neutron_subnet_id')
         }
-        self.mock_object(self.library._client, 'list_cluster_nodes',
-                         mock.Mock(return_value=fake.CLUSTER_NODES))
+
+        dest_ipspace = 'ipspace_' + network_info['neutron_subnet_id']
+
         self.mock_object(self.library, '_get_node_data_port',
                          mock.Mock(return_value=fake.NODE_DATA_PORT))
         self.mock_object(
@@ -2162,6 +2163,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(
             self.mock_dest_client, 'svm_migration_start',
             mock.Mock(return_value=c_fake.FAKE_MIGRATION_RESPONSE_WITH_JOB))
+        self.mock_object(self.mock_dest_client, 'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
         self.mock_object(self.library, '_get_job_uuid',
                          mock.Mock(return_value=c_fake.FAKE_JOB_ID))
         self.mock_object(self.library, '_wait_for_operation_status',
@@ -2174,19 +2177,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertIs(expected_compatibility, compatibility)
         self.mock_dest_client.svm_migration_start.assert_called_once_with(
             fake.CLUSTER_NAME, fake.VSERVER1, fake.AGGREGATES, check_only=True,
-            dest_ipspace=fake.IPSPACE)
+            dest_ipspace=dest_ipspace)
         self.library._get_job_uuid.assert_called_once_with(
             c_fake.FAKE_MIGRATION_RESPONSE_WITH_JOB)
-        self.library._client.list_cluster_nodes.assert_called_once()
+        self.mock_dest_client.list_cluster_nodes.assert_called_once()
         self.library._get_node_data_port.assert_called_once_with(
             fake.CLUSTER_NODES[0])
-        (self.library._client.get_ipspace_name_for_vlan_port
-            .assert_called_once_with(
-                fake.CLUSTER_NODES[0], fake.NODE_DATA_PORT,
-                self.fake_src_share_server['network_allocations'][0][
-                    'segmentation_id']))
         self.library._create_port_and_broadcast_domain.assert_called_once_with(
-            fake.IPSPACE, network_info)
+            dest_ipspace, network_info)
 
     def test__check_compatibility_for_svm_migrate_check_failure(self):
         network_info = {
@@ -2197,16 +2195,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                     'neutron_subnet_id')
         }
 
-        self.mock_object(self.library._client, 'list_cluster_nodes',
-                         mock.Mock(return_value=fake.CLUSTER_NODES))
+        dest_ipspace = 'ipspace_' + network_info['neutron_subnet_id']
+
         self.mock_object(self.library, '_get_node_data_port',
                          mock.Mock(return_value=fake.NODE_DATA_PORT))
-        self.mock_object(
-            self.library._client, 'get_ipspace_name_for_vlan_port',
-            mock.Mock(return_value=fake.IPSPACE))
         self.mock_object(self.library, '_create_port_and_broadcast_domain')
         self.mock_object(self.mock_dest_client, 'get_ipspaces',
                          mock.Mock(return_value=[{'uuid': fake.IPSPACE_ID}]))
+        self.mock_object(self.mock_dest_client, 'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
         self.mock_object(
             self.mock_dest_client, 'svm_migration_start',
             mock.Mock(side_effect=exception.NetAppException()))
@@ -2221,18 +2218,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.AGGREGATES,
             self.mock_dest_client)
 
-        self.library._client.list_cluster_nodes.assert_called_once()
+        self.mock_dest_client.list_cluster_nodes.assert_called_once()
         self.library._get_node_data_port.assert_called_once_with(
             fake.CLUSTER_NODES[0])
-        (self.library._client.get_ipspace_name_for_vlan_port
-            .assert_called_once_with(
-                fake.CLUSTER_NODES[0], fake.NODE_DATA_PORT,
-                self.fake_src_share_server['network_allocations'][0][
-                    'segmentation_id']))
         self.library._create_port_and_broadcast_domain.assert_called_once_with(
-            fake.IPSPACE, network_info)
+            dest_ipspace, network_info)
         self.mock_dest_client.delete_ipspace.assert_called_once_with(
-            fake.IPSPACE)
+            dest_ipspace)
 
     def test_share_server_migration_check_compatibility_compatible(self):
         compatible = {
@@ -2457,7 +2449,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.fake_src_share_server['share_network_subnet_id'] = 'fake_sns_id'
         self.fake_dest_share_server['share_network_subnet_id'] = 'fake_sns_id'
-        node_name = fake.CLUSTER_NODES[0]
         expected_server_info = {
             'backend_details': {
                 'migration_operation_id': c_fake.FAKE_MIGRATION_POST_ID
@@ -2474,10 +2465,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.fake_dest_share_server['share_network_subnet_id'] = (
                 'different_sns_id')
 
-        segmentation_id = (
-            server_to_get_network_info['network_allocations'][0][
-                'segmentation_id'])
-
         network_info = {
             'network_allocations':
                 server_to_get_network_info['network_allocations'],
@@ -2486,15 +2473,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                     'neutron_subnet_id']
         }
 
-        mock_list_cluster_nodes = self.mock_object(
-            self.library._client, 'list_cluster_nodes',
-            mock.Mock(return_value=fake.CLUSTER_NODES))
-        mock_get_data_port = self.mock_object(
-            self.library, '_get_node_data_port',
-            mock.Mock(return_value=fake.NODE_DATA_PORT))
-        mock_get_ipspace = self.mock_object(
-            self.library._client, 'get_ipspace_name_for_vlan_port',
-            mock.Mock(return_value=fake.IPSPACE))
+        dest_ipspace = 'ipspace_' + network_info['neutron_subnet_id']
+
         mock_create_port = self.mock_object(
             self.library, '_create_port_and_broadcast_domain')
         mock_get_vserver_name = self.mock_object(
@@ -2506,6 +2486,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_aggregates = self.mock_object(
             self.library, '_find_matching_aggregates',
             mock.Mock(return_value=fake.AGGREGATES))
+        mock_create_ipspace = self.mock_object(
+            self.mock_dest_client, 'create_ipspace')
         mock_svm_migration_start = self.mock_object(
             self.mock_dest_client, 'svm_migration_start',
             mock.Mock(return_value=c_fake.FAKE_MIGRATION_RESPONSE_WITH_JOB))
@@ -2517,18 +2499,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             None, self.fake_src_share_server, self.fake_dest_share_server,
             self.mock_src_client, self.mock_dest_client)
 
-        self.assertTrue(mock_list_cluster_nodes.called)
-        mock_get_data_port.assert_called_once_with(node_name)
-        mock_get_ipspace.assert_called_once_with(
-            node_name, fake.NODE_DATA_PORT, segmentation_id)
+        mock_create_ipspace.assert_called_once_with(
+            dest_ipspace)
         mock_create_port.assert_called_once_with(
-            fake.IPSPACE, network_info)
+            dest_ipspace, network_info)
         mock_get_vserver_name.assert_called_once_with(
             self.fake_src_share_server['id'])
         self.assertTrue(mock_get_cluster_name.called)
         mock_svm_migration_start.assert_called_once_with(
             fake.CLUSTER_NAME, fake.VSERVER1, fake.AGGREGATES,
-            dest_ipspace=fake.IPSPACE)
+            dest_ipspace=dest_ipspace)
         self.assertTrue(mock_get_aggregates.called)
         self.assertEqual(expected_server_info, server_info)
         mock_get_job.assert_called_once_with(c_fake.FAKE_JOB_ID)
@@ -2537,13 +2517,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.fake_src_share_server['share_network_subnet_id'] = 'fake_sns_id'
         self.fake_dest_share_server['share_network_subnet_id'] = 'fake_sns_id'
-        node_name = fake.CLUSTER_NODES[0]
 
         server_to_get_network_info = self.fake_dest_share_server
-
-        segmentation_id = (
-            server_to_get_network_info['network_allocations'][0][
-                'segmentation_id'])
 
         network_info = {
             'network_allocations':
@@ -2553,15 +2528,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                     'neutron_subnet_id']
         }
 
-        mock_list_cluster_nodes = self.mock_object(
-            self.library._client, 'list_cluster_nodes',
-            mock.Mock(return_value=fake.CLUSTER_NODES))
-        mock_get_data_port = self.mock_object(
-            self.library, '_get_node_data_port',
-            mock.Mock(return_value=fake.NODE_DATA_PORT))
-        mock_get_ipspace = self.mock_object(
-            self.library._client, 'get_ipspace_name_for_vlan_port',
-            mock.Mock(return_value=fake.IPSPACE))
+        dest_ipspace = 'ipspace_' + network_info['neutron_subnet_id']
+
         mock_create_port = self.mock_object(
             self.library, '_create_port_and_broadcast_domain')
         mock_get_vserver_name = self.mock_object(
@@ -2573,11 +2541,19 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_aggregates = self.mock_object(
             self.library, '_find_matching_aggregates',
             mock.Mock(return_value=fake.AGGREGATES))
+        mock_get_node_data_port = self.mock_object(
+            self.library, '_get_node_data_port',
+            mock.Mock(return_value=fake.NODE_DATA_PORT))
+        mock_create_ipspace = self.mock_object(
+            self.mock_dest_client, 'create_ipspace')
         mock_svm_migration_start = self.mock_object(
             self.mock_dest_client, 'svm_migration_start',
             mock.Mock(side_effect=exception.NetAppException()))
         mock_delete_ipspace = self.mock_object(
             self.mock_dest_client, 'delete_ipspace')
+        mock_list_cluster_nodes = self.mock_object(
+            self.mock_dest_client, 'list_cluster_nodes',
+            mock.Mock(return_value=fake.CLUSTER_NODES))
 
         self.assertRaises(
             exception.NetAppException,
@@ -2586,20 +2562,20 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.fake_src_share_server, self.fake_dest_share_server,
             self.mock_src_client, self.mock_dest_client)
 
-        self.assertTrue(mock_list_cluster_nodes.called)
-        mock_get_data_port.assert_called_once_with(node_name)
-        mock_get_ipspace.assert_called_once_with(
-            node_name, fake.NODE_DATA_PORT, segmentation_id)
+        mock_create_ipspace.assert_called_once_with(
+            dest_ipspace)
         mock_create_port.assert_called_once_with(
-            fake.IPSPACE, network_info)
+            dest_ipspace, network_info)
         mock_get_vserver_name.assert_called_once_with(
             self.fake_src_share_server['id'])
         self.assertTrue(mock_get_cluster_name.called)
         mock_svm_migration_start.assert_called_once_with(
             fake.CLUSTER_NAME, fake.VSERVER1, fake.AGGREGATES,
-            dest_ipspace=fake.IPSPACE)
+            dest_ipspace=dest_ipspace)
+        self.assertTrue(mock_get_node_data_port.called)
         self.assertTrue(mock_get_aggregates.called)
-        mock_delete_ipspace.assert_called_once_with(fake.IPSPACE)
+        mock_delete_ipspace.assert_called_once_with(dest_ipspace)
+        self.assertTrue(mock_list_cluster_nodes.called)
 
     def test__get_snapmirror_svm(self):
         dm_session_mock = mock.Mock()
@@ -3092,6 +3068,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 }
             }
         }
+        netowrk_info = self.fake_dest_share_server['network_allocations'][0]
+        vlan_id = netowrk_info['segmentation_id']
 
         if has_ipspace:
             migration_information["destination"]["ipspace"]["name"] = (
@@ -3100,6 +3078,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_get_job_uuid',
                          mock.Mock(
                              side_effect=[pause_job_uuid, cancel_job_uuid]))
+        self.mock_object(self.library, '_get_node_data_port',
+                         mock.Mock(return_value=fake.NODE_DATA_PORT))
         self.mock_object(data_motion, 'get_client_for_host',
                          mock.Mock(return_value=self.mock_dest_client))
         self.mock_object(self.mock_dest_client, 'svm_migration_get',
@@ -3111,7 +3091,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=cancel_job))
         self.mock_object(self.mock_dest_client, 'ipspace_has_data_vservers',
                          mock.Mock(return_value=False))
+        self.mock_object(self.mock_dest_client, 'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
         self.mock_object(self.mock_dest_client, 'delete_ipspace')
+        self.mock_object(self.mock_dest_client, 'delete_vlan')
 
         self.library._migration_cancel_using_svm_migrate(
             migration_id, self.fake_dest_share_server)
@@ -3137,6 +3120,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         if has_ipspace:
             self.mock_dest_client.delete_ipspace.assert_called_once_with(
                 ipspace_name)
+            node1, node2 = fake.CLUSTER_NODES
+            self.mock_dest_client.delete_vlan.assert_has_calls(
+                [mock.call(node1, fake.NODE_DATA_PORT, vlan_id),
+                 mock.call(node2, fake.NODE_DATA_PORT, vlan_id)])
 
     @ddt.data(
         (mock.Mock(side_effect=exception.NetAppException()), mock.Mock()),

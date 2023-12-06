@@ -1160,15 +1160,13 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     'neutron_subnet_id')
         }
 
-        # 2. Create new ipspace, port and broadcast domain.
-        node_name = self._client.list_cluster_nodes()[0]
-        port = self._get_node_data_port(node_name)
         vlan = network_info['network_allocations'][0]['segmentation_id']
-        destination_ipspace = self._client.get_ipspace_name_for_vlan_port(
-            node_name, port, vlan) or self._create_ipspace(
-            network_info, client=dest_client)
-        self._create_port_and_broadcast_domain(
-            destination_ipspace, network_info)
+
+        # 2. Create new ipspace, port and broadcast domain.
+        destination_ipspace = self._create_ipspace(network_info,
+                                                   client=dest_client)
+        self._create_port_and_broadcast_domain(destination_ipspace,
+                                               network_info)
 
         def _cleanup_ipspace(ipspace):
             try:
@@ -1178,6 +1176,12 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     'Did not delete ipspace used to check the compatibility '
                     'for SVM Migrate. It is possible that it was reused and '
                     'there are other entities consuming it.')
+            else:
+                if vlan:
+                    port = None
+                    for node in dest_client.list_cluster_nodes():
+                        port = port or self._get_node_data_port(node)
+                        dest_client.delete_vlan(node, port, vlan)
 
         # 1. Sends the request to the backend.
         try:
@@ -1439,14 +1443,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         }
 
         # 2. Create new ipspace, port and broadcast domain.
-        node_name = self._client.list_cluster_nodes()[0]
-        port = self._get_node_data_port(node_name)
-        vlan = network_info['network_allocations'][0]['segmentation_id']
-        destination_ipspace = self._client.get_ipspace_name_for_vlan_port(
-            node_name, port, vlan) or self._create_ipspace(
-            network_info, client=dest_client)
-        self._create_port_and_broadcast_domain(
-            destination_ipspace, network_info)
+        destination_ipspace = self._create_ipspace(network_info,
+                                                   client=dest_client)
+        self._create_port_and_broadcast_domain(destination_ipspace,
+                                               network_info)
 
         # Prepare the migration request.
         src_cluster_name = src_client.get_cluster_name()
@@ -1469,7 +1469,12 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             # As it failed, we must remove the ipspace, ports and broadcast
             # domain.
             dest_client.delete_ipspace(destination_ipspace)
-
+            vlan = network_info['network_allocations'][0]['segmentation_id']
+            if vlan:
+                port = None
+                for node in dest_client.list_cluster_nodes():
+                    port = port or self._get_node_data_port(node)
+                    dest_client.delete_vlan(node, port, vlan)
             msg = _("Unable to start the migration for share server %s."
                     % source_share_server['id'])
             raise exception.NetAppException(msg)
@@ -1962,7 +1967,17 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         if (dest_ipspace_name and dest_ipspace_name not in CLUSTER_IPSPACES
                 and not dest_client.ipspace_has_data_vservers(
                     dest_ipspace_name)):
+            # TODO(chuan) Wait until the ipspace is not being used by vserver
+            # anymore, which is not deleted immediately after migration
+            # cancelled.
             dest_client.delete_ipspace(dest_ipspace_name)
+            network_info = dest_share_server.get('network_allocations')
+            vlan = network_info[0]['segmentation_id'] if network_info else None
+            if vlan:
+                port = None
+                for node in dest_client.list_cluster_nodes():
+                    port = port or self._get_node_data_port(node)
+                    dest_client.delete_vlan(node, port, vlan)
         return
 
     @na_utils.trace

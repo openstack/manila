@@ -28,6 +28,7 @@ from manila import exception
 from manila.network.neutron import api as neutron_api
 from manila.network.neutron import constants as neutron_constants
 from manila.network.neutron import neutron_network_plugin as plugin
+from manila.share import utils as share_utils
 from manila import test
 from manila.tests import utils as test_utils
 
@@ -132,6 +133,11 @@ fake_nw_info = {
             'provider:segmentation_id': 3926,
         },
         {
+            'provider:network_type': 'vlan',
+            'provider:physical_network': 'net2',
+            'provider:segmentation_id': 1249,
+        },
+        {
             'provider:network_type': 'vxlan',
             'provider:physical_network': None,
             'provider:segmentation_id': 2000,
@@ -193,6 +199,23 @@ fake_binding_profile = {
     'neutron_switch_id': 'fake switch id',
     'neutron_port_id': 'fake port id',
     'neutron_switch_info': 'fake switch info'
+}
+
+fake_network_allocation_ext = {
+    'id': 'fake port binding id',
+    'share_server_id': fake_share_server['id'],
+    'ip_address': fake_neutron_port['fixed_ips'][0]['ip_address'],
+    'mac_address': fake_neutron_port['mac_address'],
+    'status': constants.STATUS_ACTIVE,
+    'label': fake_nw_info['segments'][1]['provider:physical_network'],
+    'network_type': fake_share_network_subnet['network_type'],
+    'segmentation_id': (
+        fake_nw_info['segments'][1]['provider:segmentation_id']
+    ),
+    'ip_version': fake_share_network_subnet['ip_version'],
+    'cidr': fake_share_network_subnet['cidr'],
+    'gateway': fake_share_network_subnet['gateway'],
+    'mtu': 1509,
 }
 
 
@@ -1071,6 +1094,207 @@ class NeutronBindNetworkPluginTest(test.TestCase):
                 self.fake_context,
                 fake_neutron_port['id'],
                 network_allocation_update_data)
+
+    def test_extend_network_allocations(self):
+        old_network_allocation = copy.deepcopy(fake_network_allocation)
+        new_network_allocation = copy.deepcopy(fake_network_allocation_ext)
+        fake_network = copy.deepcopy(fake_neutron_network_multi)
+        fake_ss = copy.deepcopy(fake_share_server)
+        fake_ss["share_network_subnet"] = fake_share_network_subnet
+
+        fake_host_id = "fake_host_id"
+        fake_physical_net = "net2"
+        fake_port_id = old_network_allocation["id"]
+        fake_vnic_type = "baremetal"
+        config_data = {
+            'DEFAULT': {
+                "neutron_host_id": fake_host_id,
+                "neutron_vnic_type": fake_vnic_type,
+                'neutron_physical_net_name': fake_physical_net,
+            }
+        }
+        self.bind_plugin = self._get_neutron_network_plugin_instance(
+            config_data
+        )
+        self.mock_object(
+            self.bind_plugin.neutron_api,
+            "get_network",
+            mock.Mock(return_value=fake_network),
+        )
+        self.mock_object(self.bind_plugin.neutron_api, "bind_port_to_host")
+        self.mock_object(self.bind_plugin.db, "network_allocation_create")
+
+        # mocking the db.network_allocations_get_for_share_server method to
+        # return the old network allocation for old host and no network
+        # allocation for the new host
+        def get_nalloc_side_effect(*args, **kwargs):
+            if kwargs["label"] == "user":
+                return [old_network_allocation]
+            elif kwargs["label"] == fake_physical_net:
+                return []
+
+        self.mock_object(
+            self.bind_plugin.db,
+            "network_allocations_get_for_share_server",
+            mock.Mock(side_effect=get_nalloc_side_effect),
+        )
+
+        # calling the extend_network_allocations method
+        self.bind_plugin.extend_network_allocations(self.fake_context, fake_ss)
+
+        # testing the calls, we expect the port to be bound to the current host
+        # and the new network allocation to be created
+        self.bind_plugin.neutron_api.bind_port_to_host.assert_called_once_with(
+            fake_port_id, fake_host_id, fake_vnic_type
+        )
+        new_network_allocation["id"] = None
+        new_network_allocation["created_at"] = None
+        self.bind_plugin.db.network_allocation_create.assert_called_once_with(
+            self.fake_context, new_network_allocation
+        )
+
+    def test_delete_extended_allocations(self):
+        old_network_allocation = copy.deepcopy(fake_network_allocation)
+        new_network_allocation = copy.deepcopy(fake_network_allocation_ext)
+        fake_ss = copy.deepcopy(fake_share_server)
+
+        fake_host_id = "fake_host_id"
+        fake_physical_net = "net2"
+        fake_port_id = old_network_allocation["id"]
+        fake_vnic_type = "baremetal"
+        config_data = {
+            "DEFAULT": {
+                "neutron_host_id": fake_host_id,
+                "neutron_vnic_type": fake_vnic_type,
+                "neutron_physical_net_name": fake_physical_net,
+            }
+        }
+        self.bind_plugin = self._get_neutron_network_plugin_instance(
+            config_data
+        )
+        self.mock_object(self.bind_plugin.neutron_api, "delete_port_binding")
+        self.mock_object(self.bind_plugin.db, "network_allocation_delete")
+
+        def get_nalloc_side_effect(*args, **kwargs):
+            if kwargs["label"] == "user":
+                return [old_network_allocation]
+            elif kwargs["label"] == fake_physical_net:
+                return [new_network_allocation]
+
+        self.mock_object(
+            self.bind_plugin.db,
+            "network_allocations_get_for_share_server",
+            mock.Mock(side_effect=get_nalloc_side_effect),
+        )
+
+        self.bind_plugin.delete_extended_allocations(
+            self.fake_context, fake_ss
+        )
+        neutron_api = self.bind_plugin.neutron_api
+        neutron_api.delete_port_binding.assert_called_once_with(
+            fake_port_id, fake_host_id
+        )
+        self.bind_plugin.db.network_allocation_delete.assert_called_once_with(
+            self.fake_context, new_network_allocation["id"]
+        )
+
+    @ddt.data(
+        {
+            "old_alloc": fake_network_allocation,
+            "new_alloc": None,
+        },
+        {
+            "old_alloc": fake_network_allocation,
+            "new_alloc": fake_network_allocation_ext,
+        },
+    )
+    @ddt.unpack
+    def test_cutover_network_allocation(self, old_alloc, new_alloc):
+        fake_network = copy.deepcopy(fake_neutron_network_multi)
+        fake_old_ss = copy.deepcopy(fake_share_server)
+        fake_old_ss["share_network_subnet"] = fake_share_network_subnet
+        fake_dest_ss = copy.deepcopy(fake_share_server)
+        fake_dest_ss["host"] = "fake_host2@backend2#pool2"
+        fake_old_host = share_utils.extract_host(fake_old_ss["host"], "host")
+        fake_dest_host = share_utils.extract_host(fake_dest_ss["host"], "host")
+
+        fake_host_id = "fake_host_id"
+        fake_physical_net = "net2"
+        fake_port_id = old_alloc["id"]
+        fake_vnic_type = "baremetal"
+        config_data = {
+            "DEFAULT": {
+                "neutron_host_id": fake_host_id,
+                "neutron_vnic_type": fake_vnic_type,
+                "neutron_physical_net_name": fake_physical_net,
+            }
+        }
+        self.bind_plugin = self._get_neutron_network_plugin_instance(
+            config_data
+        )
+        self.mock_object(
+            self.bind_plugin.neutron_api,
+            "get_network",
+            mock.Mock(return_value=fake_network),
+        )
+        self.mock_object(self.bind_plugin.neutron_api, "bind_port_to_host")
+        self.mock_object(self.bind_plugin.db, "network_allocation_create")
+
+        def get_nalloc_side_effect(*args, **kwargs):
+            if kwargs["label"] == "user":
+                return [old_alloc]
+            elif kwargs["label"] == fake_physical_net:
+                return [new_alloc] if new_alloc else []
+
+        self.mock_object(
+            self.bind_plugin.db,
+            "network_allocations_get_for_share_server",
+            mock.Mock(side_effect=get_nalloc_side_effect),
+        )
+
+        neutron_api = self.bind_plugin.neutron_api
+        db_api = self.bind_plugin.db
+        self.mock_object(neutron_api, "activate_port_binding")
+        self.mock_object(neutron_api, "delete_port_binding")
+        self.mock_object(db_api, "network_allocation_update")
+        self.mock_object(db_api, "network_allocation_delete")
+        self.mock_object(db_api, "share_network_subnet_update")
+
+        if not new_alloc:
+            self.assertRaises(
+                exception.NetworkException,
+                self.bind_plugin.cutover_network_allocations,
+                self.fake_context, fake_old_ss, fake_dest_ss,
+            )
+        else:
+            self.bind_plugin.cutover_network_allocations(
+                self.fake_context,
+                fake_old_ss,
+                fake_dest_ss,
+            )
+            neutron_api.activate_port_binding.assert_called_once_with(
+                fake_port_id,
+                fake_dest_host,
+            )
+            neutron_api.delete_port_binding.assert_called_once_with(
+                fake_port_id, fake_old_host
+            )
+            db_api.network_allocation_update.assert_called_once_with(
+                self.fake_context,
+                old_alloc["id"],
+                {
+                    "share_server_id": fake_dest_ss["id"],
+                    "segmentation_id": new_alloc["segmentation_id"],
+                },
+            )
+            db_api.network_allocation_delete.assert_called_once_with(
+                self.fake_context, new_alloc["id"]
+            )
+            db_api.share_network_subnet_update.assert_called_once_with(
+                self.fake_context,
+                fake_old_ss["share_network_subnet"]["id"],
+                {"segmentation_id": new_alloc["segmentation_id"]},
+            )
 
     @ddt.data({
         'neutron_binding_profiles': None,
