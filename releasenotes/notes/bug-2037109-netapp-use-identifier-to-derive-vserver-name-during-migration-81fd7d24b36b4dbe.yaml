@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver during migration uses share server id which was causing
+    failure for migrate a share server that had been migrated before. Fixed it
+    by using share server identifier instead of id. Please refer to the
+    `Launchpad bug #2037109 <https://bugs.launchpad.net/manila/+bug/2037109>`_
+    for more details.
