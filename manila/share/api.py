@@ -1232,7 +1232,6 @@ class API(base.Base):
         self.share_rpcapi.revert_to_snapshot(
             context, share, snapshot, active_replica['host'], reservations)
 
-    @policy.wrap_check_policy('share')
     def soft_delete(self, context, share):
         """Soft delete share."""
         share_id = share['id']
@@ -1272,7 +1271,6 @@ class API(base.Base):
         self._check_is_share_busy(share)
         self.db.share_soft_delete(context, share_id)
 
-    @policy.wrap_check_policy('share')
     def restore(self, context, share):
         """Restore share."""
         share_id = share['id']
@@ -1971,8 +1969,6 @@ class API(base.Base):
 
     def _get_all(self, context, search_opts=None, sort_key='created_at',
                  sort_dir='desc', show_count=False):
-        policy.check_policy(context, 'share', 'get_all')
-
         if search_opts is None:
             search_opts = {}
 
@@ -2307,9 +2303,9 @@ class API(base.Base):
 
     def extend(self, context, share, new_size, force=False):
         if force:
-            policy.check_policy(context, 'share', 'force_extend')
+            policy.check_policy(context, 'share', 'force_extend', share)
         else:
-            policy.check_policy(context, 'share', 'extend')
+            policy.check_policy(context, 'share', 'extend', share)
 
         if share['status'] != constants.STATUS_AVAILABLE:
             msg_params = {
@@ -2418,8 +2414,6 @@ class API(base.Base):
                  resource=share)
 
     def shrink(self, context, share, new_size):
-        policy.check_policy(context, 'share', 'shrink')
-
         status = str(share['status']).lower()
         valid_statuses = (constants.STATUS_AVAILABLE,
                           constants.STATUS_SHRINKING_POSSIBLE_DATA_LOSS_ERROR)
