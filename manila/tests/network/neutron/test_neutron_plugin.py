@@ -271,7 +271,8 @@ class NeutronNetworkPluginTest(test.TestCase):
                 network_id=fake_share_network_subnet['neutron_net_id'],
                 subnet_id=fake_share_network_subnet['neutron_subnet_id'],
                 device_owner='manila:share',
-                device_id=fake_share_network['id'])
+                device_id=fake_share_network['id'],
+                name=fake_share_network['id'] + '_0')
             db_api.network_allocation_create.assert_called_once_with(
                 self.fake_context,
                 fake_network_allocation)
@@ -308,13 +309,15 @@ class NeutronNetworkPluginTest(test.TestCase):
                     network_id=fake_share_network_subnet['neutron_net_id'],
                     subnet_id=fake_share_network_subnet['neutron_subnet_id'],
                     device_owner='manila:share',
-                    device_id=fake_share_network['id']),
+                    device_id=fake_share_network['id'],
+                    name=fake_share_network['id'] + '_0'),
                 mock.call(
                     fake_share_network['project_id'],
                     network_id=fake_share_network_subnet['neutron_net_id'],
                     subnet_id=fake_share_network_subnet['neutron_subnet_id'],
                     device_owner='manila:share',
-                    device_id=fake_share_network['id']),
+                    device_id=fake_share_network['id'],
+                    name=fake_share_network['id'] + '_1'),
             ]
             db_api_calls = [
                 mock.call(self.fake_context, fake_network_allocation),
@@ -994,6 +997,7 @@ class NeutronBindNetworkPluginTest(test.TestCase):
                 'subnet_id': fake_share_network_subnet['neutron_subnet_id'],
                 'device_owner': 'manila:share',
                 'device_id': fake_share_network['id'],
+                'name': fake_share_network['id'] + '_0',
             }
             self.bind_plugin.neutron_api.create_port.assert_called_once_with(
                 fake_share_network['project_id'], **expected_kwargs)
@@ -1075,7 +1079,8 @@ class NeutronBindNetworkPluginTest(test.TestCase):
                 'network_id': fake_share_network_multi['neutron_net_id'],
                 'subnet_id': fake_share_network_multi['neutron_subnet_id'],
                 'device_owner': 'manila:share',
-                'device_id': fake_share_network_multi['id']
+                'device_id': fake_share_network_multi['id'],
+                'name': fake_share_network_multi['id'] + '_0'
             }
             self.bind_plugin.neutron_api.create_port.assert_called_once_with(
                 fake_share_network_multi['project_id'], **expected_kwargs)
@@ -1391,7 +1396,8 @@ class NeutronBindNetworkPluginTest(test.TestCase):
             'network_id': fake_share_network_subnet['neutron_net_id'],
             'subnet_id': fake_share_network_subnet['neutron_subnet_id'],
             'device_owner': 'manila:' + fake_device_owner,
-            'device_id': fake_share_server['id']
+            'device_id': fake_share_server['id'],
+            'name': fake_share_server['id'] + '_0'
         }
         if neutron_binding_profiles:
             expected_create_args['binding:profile'] = {
@@ -1445,7 +1451,8 @@ class NeutronBindNetworkPluginTest(test.TestCase):
             'network_id': fake_share_network_subnet['neutron_net_id'],
             'subnet_id': fake_share_network_subnet['neutron_subnet_id'],
             'device_owner': 'manila:' + fake_device_owner,
-            'device_id': fake_share_server['id']
+            'device_id': fake_share_server['id'],
+            'name': fake_share_server['id'] + '_0'
         }
 
         self.assertEqual(expected_create_args, create_args)
@@ -1720,6 +1727,7 @@ class NeutronBindSingleNetworkPluginTest(test.TestCase):
                 'subnet_id': fake_share_network_subnet['neutron_subnet_id'],
                 'device_owner': 'manila:share',
                 'device_id': fake_share_network['id'],
+                'name': fake_share_network['id'] + '_0'
             }
             self.bind_plugin.neutron_api.create_port.assert_called_once_with(
                 fake_share_network['project_id'], **expected_kwargs)
@@ -1826,7 +1834,8 @@ class NeutronBindSingleNetworkPluginTest(test.TestCase):
             'network_id': fake_share_network_subnet['neutron_net_id'],
             'subnet_id': fake_share_network_subnet['neutron_subnet_id'],
             'device_owner': 'manila:' + fake_device_owner,
-            'device_id': fake_share_server['id']
+            'device_id': fake_share_server['id'],
+            'name': fake_share_server['id'] + '_0'
         }
         if neutron_binding_profiles:
             expected_create_args['binding:profile'] = {
@@ -1880,7 +1889,8 @@ class NeutronBindSingleNetworkPluginTest(test.TestCase):
             'network_id': fake_share_network_subnet['neutron_net_id'],
             'subnet_id': fake_share_network_subnet['neutron_subnet_id'],
             'device_owner': 'manila:' + fake_device_owner,
-            'device_id': fake_share_server['id']
+            'device_id': fake_share_server['id'],
+            'name': fake_share_server['id'] + '_0'
         }
 
         self.assertEqual(expected_create_args, create_args)
@@ -1947,6 +1957,7 @@ class NeutronBindNetworkPluginWithNormalTypeTest(test.TestCase):
                 'subnet_id': fake_share_network_subnet['neutron_subnet_id'],
                 'device_owner': 'manila:share',
                 'device_id': fake_share_server['id'],
+                'name': fake_share_server['id'] + '_0',
             }
             self.bind_plugin.neutron_api.create_port.assert_called_once_with(
                 fake_share_network['project_id'], **expected_kwargs)
@@ -2034,6 +2045,7 @@ class NeutronBindSingleNetworkPluginWithNormalTypeTest(test.TestCase):
                 'subnet_id': fake_share_network_subnet['neutron_subnet_id'],
                 'device_owner': 'manila:share',
                 'device_id': fake_share_network['id'],
+                'name': fake_share_network['id'] + '_0'
             }
             self.bind_plugin.neutron_api.create_port.assert_called_once_with(
                 fake_share_network['project_id'], **expected_kwargs)

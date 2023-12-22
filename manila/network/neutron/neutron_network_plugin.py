@@ -156,10 +156,11 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         device_owner = kwargs.get('device_owner', 'share')
 
         ports = []
-        for __ in range(0, allocation_count):
+        for current_count in range(0, allocation_count):
             ports.append(self._create_port(
                          context, share_server, share_network,
-                         share_network_subnet, device_owner))
+                         share_network_subnet, device_owner,
+                         current_count))
 
         return ports
 
@@ -301,18 +302,19 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
             self._delete_port(context, port)
 
     def _get_port_create_args(self, share_server, share_network_subnet,
-                              device_owner):
+                              device_owner, count=0):
         return {
             "network_id": share_network_subnet['neutron_net_id'],
             "subnet_id": share_network_subnet['neutron_subnet_id'],
             "device_owner": 'manila:' + device_owner,
             "device_id": share_server.get('id'),
+            "name": share_server.get('id') + '_' + str(count)
         }
 
     def _create_port(self, context, share_server, share_network,
-                     share_network_subnet, device_owner):
+                     share_network_subnet, device_owner, count=0):
         create_args = self._get_port_create_args(
-            share_server, share_network_subnet, device_owner)
+            share_server, share_network_subnet, device_owner, count)
 
         port = self.neutron_api.create_port(
             share_network['project_id'], **create_args)
@@ -558,10 +560,10 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
         raise exception.NetworkBindException(msg)
 
     def _get_port_create_args(self, share_server, share_network_subnet,
-                              device_owner):
+                              device_owner, count=0):
         arguments = super(
             NeutronBindNetworkPlugin, self)._get_port_create_args(
-            share_server, share_network_subnet, device_owner)
+            share_server, share_network_subnet, device_owner, count)
         arguments['host_id'] = self.config.neutron_host_id
         arguments['binding:vnic_type'] = self.config.neutron_vnic_type
         if self.binding_profiles:
