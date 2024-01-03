@@ -93,7 +93,7 @@ share_manager_opts = [
     cfg.IntOpt('unused_share_server_cleanup_interval',
                default=10,
                help='Unallocated share servers reclamation time interval '
-                    '(minutes). Minimum value is 10 minutes, maximum is 60 '
+                    '(minutes). Minimum value is 10 minutes, maximum is 1440 '
                     'minutes. The reclamation function is run every '
                     '10 minutes and delete share servers which were unused '
                     'more than unused_share_server_cleanup_interval option '
@@ -101,7 +101,7 @@ share_manager_opts = [
                     'will wait for a share server to go unutilized before '
                     'deleting it.',
                min=10,
-               max=60),
+               max=1440),
     cfg.IntOpt('replica_state_update_interval',
                default=300,
                help='This value, specified in seconds, determines how often '

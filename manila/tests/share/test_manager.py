@@ -3911,7 +3911,7 @@ class ShareManagerTestCase(test.TestCase):
                           self.share_manager._validate_segmentation_id,
                           network_info)
 
-    @ddt.data(10, 36, 60)
+    @ddt.data(10, 36, 1440)
     def test_verify_server_cleanup_interval_valid_cases(self, val):
         data = dict(DEFAULT=dict(unused_share_server_cleanup_interval=val))
         with test_utils.create_temp_config_with_opts(data):
