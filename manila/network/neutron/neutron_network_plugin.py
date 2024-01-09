@@ -643,6 +643,17 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                         context, port['id'], port_info)
         return ports
 
+    @utils.retry(retry_param=exception.NetworkException, retries=20)
+    def _wait_for_network_segment(self, share_server, host):
+        network_id = share_server['share_network_subnet']['neutron_net_id']
+        network = self.neutron_api.get_network(network_id)
+        for segment in network['segments']:
+            if segment['provider:physical_network'] == (
+                    self.config.neutron_physical_net_name):
+                return segment['provider:segmentation_id']
+        msg = _('Network segment not found on host %s') % host
+        raise exception.NetworkException(msg)
+
     def extend_network_allocations(self, context, share_server):
         """Extend network to target host.
 
@@ -668,24 +679,15 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                 'Can not extend network with no active bindings')
 
         if len(dest_port_bindings) == 0:
-            # Get the segmentation id on destination host
-            neutron_network_id = share_server['share_network_subnet'].get(
-                'neutron_net_id')
-            neutron_network = self.neutron_api.get_network(neutron_network_id)
-            for segment in neutron_network['segments']:
-                if (segment['provider:physical_network'] == phys_net):
-                    vlan = segment['provider:segmentation_id']
-                    break
-            if vlan is None:
-                msg = _('Network segment not found on host %s') % host_id
-                raise exception.NetworkException(msg)
-
             # Create port binding on destination backend. Exception is ignored
             # in the neutron api call, if the port is already bound to
             # destination host.
             for port in active_port_bindings:
                 self.neutron_api.bind_port_to_host(port['id'], host_id,
                                                    vnic_type)
+
+            # Wait for network segment to be created on destination host.
+            vlan = self._wait_for_network_segment(share_server, host_id)
 
             # Label the new port bindings with physical network name.
             dest_port_bindings = []
