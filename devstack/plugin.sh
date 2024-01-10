@@ -746,30 +746,7 @@ function install_manila {
             if [[ $(sudo zfs list &> /dev/null && sudo zpool list &> /dev/null || echo 'absent') == 'absent' ]]; then
                 # ZFS not found, try to install it
                 if is_ubuntu; then
-                    if [[ $(lsb_release -s -d) == *"14.04"* ]]; then
-                        # Trusty
-                        sudo apt-get install -y software-properties-common
-                        sudo apt-add-repository --yes ppa:zfs-native/stable
-
-                        # Workaround for bug #1609696
-                        sudo apt-mark hold grub*
-
-                        sudo apt-get -y -q update && sudo apt-get -y -q upgrade
-
-                        # Workaround for bug #1609696
-                        sudo apt-mark unhold grub*
-
-                        sudo apt-get install -y linux-headers-generic
-                        sudo apt-get install -y build-essential
-                        sudo apt-get install -y ubuntu-zfs
-
-                    elif [[ $(echo $(lsb_release -rs) '>=' 16.04 | bc -l) == 1 ]]; then
-                        # Xenial and beyond
-                        sudo apt-get install -y zfsutils-linux
-                    else
-                        echo "Only 'Trusty', 'Xenial' and newer releases of Ubuntu are supported."
-                        exit 1
-                    fi
+                    sudo apt-get install -y zfsutils-linux
                 else
                     echo "Manila Devstack plugin supports installation "\
                         "of ZFS packages only for 'Ubuntu' distros. "\
