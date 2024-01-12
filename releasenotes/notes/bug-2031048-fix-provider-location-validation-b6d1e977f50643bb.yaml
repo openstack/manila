@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The "manage" API for snapshots now validates the format of
+    "provider_location" and "share_id" fields and handles errors
+    appropriately. These fields are expected to contain string values.
