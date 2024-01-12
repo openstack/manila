@@ -2785,7 +2785,8 @@ class API(base.Base):
         """Attempts to cancel share server migration."""
         if share_server['status'] != constants.STATUS_SERVER_MIGRATING:
             msg = _("Migration of share server %s cannot be cancelled because "
-                    "the provided share server is not being migrated.")
+                    "the provided share server is not being migrated."
+                    % (share_server['id']))
             LOG.error(msg)
             raise exception.InvalidShareServer(reason=msg)
 
