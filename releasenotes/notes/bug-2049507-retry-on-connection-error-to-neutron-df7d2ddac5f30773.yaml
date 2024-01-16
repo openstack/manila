@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Manila will retry neutron API calls e.g. create_port(), show_port() in
+    case of keystoneauth1 connection error. For more details, please refer to
+    `launchpad bug #2049507 <https://bugs.launchpad.net/manila/+bug/2049507>`_
