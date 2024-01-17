@@ -25,6 +25,7 @@ from oslo_config import cfg
 from oslo_config import types
 from oslo_log import log
 from oslo_utils import importutils
+from oslo_utils import timeutils
 from oslo_utils import units
 
 from manila.common import constants
@@ -146,6 +147,12 @@ cephfs_opts = [
                     "startup. Ensuring would re-export shares and this "
                     "action isn't always required, unless something has "
                     "been administratively modified on CephFS."),
+    cfg.IntOpt('cephfs_cached_allocated_capacity_update_interval',
+               min=0,
+               default=60,
+               help="The maximum time in seconds that the cached pool "
+                    "data will be considered updated. If it is expired when "
+                    "trying to read the pool data, it must be refreshed.")
 ]
 
 cephfsnfs_opts = [
@@ -163,6 +170,32 @@ class RadosError(Exception):
     """Something went wrong talking to Ceph with librados"""
 
     pass
+
+
+class AllocationCapacityCache(object):
+    """AllocationCapacityCache for CephFS filesystems.
+
+    The cache validity is measured by a stop watch that is
+    not thread-safe.
+    """
+
+    def __init__(self, duration):
+        self._stop_watch = timeutils.StopWatch(duration)
+        self._cached_allocated_capacity = None
+
+    def is_expired(self):
+        return not self._stop_watch.has_started() or self._stop_watch.expired()
+
+    def get_data(self):
+        return self._cached_allocated_capacity
+
+    def update_data(self, cached_allocated_capacity):
+        if not self._stop_watch.has_started():
+            self._stop_watch.start()
+        else:
+            self._stop_watch.restart()
+
+        self._cached_allocated_capacity = cached_allocated_capacity
 
 
 def rados_command(rados_client, prefix=None, args=None,
@@ -242,6 +275,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         self._ceph_mon_version = None
         self.configuration.append_config_values(cephfs_opts)
         self.configuration.append_config_values(cephfsnfs_opts)
+        self._cached_allocated_capacity_gb = None
         self.private_storage = kwargs.get('private_storage')
 
         try:
@@ -277,16 +311,48 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             volname=self.volname)
 
         self.protocol_helper.init_helper()
+        allocation_capacity_gb = self._get_cephfs_filesystem_allocation()
+        self._cached_allocated_capacity_gb = AllocationCapacityCache(
+            self.configuration.cephfs_cached_allocated_capacity_update_interval
+        )
+        self._cached_allocated_capacity_gb.update_data(allocation_capacity_gb)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
         self.protocol_helper.check_for_setup_error()
+
+    def _get_cephfs_filesystem_allocation(self):
+        allocated_capacity_gb = 0
+        argdict = {"vol_name": self.volname}
+        subvolumes = rados_command(
+            self.rados_client, "fs subvolume ls", argdict, json_obj=True)
+        for sub_vol in subvolumes:
+            argdict = {"vol_name": self.volname, "sub_name": sub_vol["name"]}
+            sub_info = rados_command(
+                self.rados_client, "fs subvolume info", argdict, json_obj=True)
+            size = sub_info.get('bytes_quota', 0)
+            if size == "infinite":
+                # If we have a share that has infinite quota, we should not
+                # add that to the allocated capacity as that would make the
+                # scheduler think this backend is full.
+                continue
+            allocated_capacity_gb += round(int(size) / units.Gi, 2)
+        return allocated_capacity_gb
 
     def _update_share_stats(self):
         stats = self.rados_client.get_cluster_stats()
 
         total_capacity_gb = round(stats['kb'] / units.Mi, 2)
         free_capacity_gb = round(stats['kb_avail'] / units.Mi, 2)
+        if self._cached_allocated_capacity_gb.is_expired():
+            allocated_capacity_gb = self._get_cephfs_filesystem_allocation()
+            self._cached_allocated_capacity_gb.update_data(
+                allocated_capacity_gb
+            )
+        else:
+            allocated_capacity_gb = (
+                self._cached_allocated_capacity_gb.get_data()
+            )
 
         data = {
             'vendor_name': 'Ceph',
@@ -299,6 +365,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                     'pool_name': 'cephfs',
                     'total_capacity_gb': total_capacity_gb,
                     'free_capacity_gb': free_capacity_gb,
+                    'allocated_capacity_gb': allocated_capacity_gb,
                     'qos': 'False',
                     'reserved_percentage': self.configuration.safe_get(
                         'reserved_share_percentage'),
@@ -314,11 +381,12 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                             'reserved_share_percentage'),
                     'dedupe': [False],
                     'compression': [False],
-                    'thin_provisioning': [False]
+                    'thin_provisioning': [True]
                 }
             ],
             'total_capacity_gb': total_capacity_gb,
             'free_capacity_gb': free_capacity_gb,
+            'allocated_capacity_gb': allocated_capacity_gb,
             'snapshot_support': True,
             'create_share_from_snapshot_support': True,
         }
