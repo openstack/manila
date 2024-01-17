@@ -23,6 +23,7 @@ import copy
 import datetime
 import json
 import math
+import re
 import socket
 
 from oslo_config import cfg
@@ -182,6 +183,8 @@ class NetAppCmodeFileStorageLibrary(object):
         self._backend_name = self.configuration.safe_get(
             'share_backend_name') or driver_name
         self.message_api = message_api.API()
+        self._snapmirror_schedule = self._convert_schedule_to_seconds(
+            schedule=self.configuration.netapp_snapmirror_schedule)
 
     @na_utils.trace
     def do_setup(self, context):
@@ -2903,6 +2906,35 @@ class NetAppCmodeFileStorageLibrary(object):
         self._delete_share(replica, vserver, vserver_client,
                            remove_export=is_readable, remove_qos=is_readable)
 
+    @na_utils.trace
+    def _convert_schedule_to_seconds(self, schedule='hourly'):
+        """Convert snapmirror schedule to seconds."""
+        results = re.findall(r'[\d]+|[^d]+', schedule)
+        if not results or len(results) > 2:
+            return 3600  # default (1 hour)
+
+        if len(results) == 2:
+            try:
+                num = int(results[0])
+            except ValueError:
+                return 3600
+            schedule = results[1]
+        else:
+            num = 1
+            schedule = results[0]
+        schedule = schedule.lower()
+        if schedule in ['min', 'minute']:
+            return (num * 60)
+        if schedule in ['hour', 'hourly']:
+            return (num * 3600)
+        if schedule in ['day', 'daily']:
+            return (num * 24 * 3600)
+        if schedule in ['week', 'weekly']:
+            return (num * 7 * 24 * 3600)
+        if schedule in ['month', 'monthly']:
+            return (num * 30 * 24 * 2600)
+        return 3600
+
     def update_replica_state(self, context, replica_list, replica,
                              access_rules, share_snapshots, share_server=None,
                              replication=True):
@@ -2977,12 +3009,13 @@ class NetAppCmodeFileStorageLibrary(object):
 
         last_update_timestamp = float(
             snapmirror.get('last-transfer-end-timestamp', 0))
-        # TODO(ameade): Have a configurable RPO for replicas, for now it is
-        # one hour.
+        # Recovery Point Objective (RPO) indicates the point in time to
+        # which data can be recovered. The RPO target is typically less
+        # than twice the replication schedule.
         if (last_update_timestamp and
             (timeutils.is_older_than(
                 datetime.datetime.utcfromtimestamp(last_update_timestamp)
-                .isoformat(), 1200))):
+                .isoformat(), (2 * self._snapmirror_schedule)))):
             current_schedule = snapmirror.get('schedule')
             new_schedule = self.configuration.netapp_snapmirror_schedule
             if current_schedule == new_schedule:
