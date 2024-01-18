@@ -3777,8 +3777,9 @@ def security_service_update(context, id, values):
 
 
 @require_context
-def security_service_get(context, id, session=None):
-    result = (_security_service_get_query(context, session=session).
+def security_service_get(context, id, session=None, **kwargs):
+    result = (_security_service_get_query(context, session=session,
+                                          **kwargs).
               filter_by(id=id).first())
 
     if result is None:
@@ -3797,10 +3798,11 @@ def security_service_get_all_by_project(context, project_id):
             filter_by(project_id=project_id).all())
 
 
-def _security_service_get_query(context, session=None):
+def _security_service_get_query(context, session=None, project_only=False):
     if session is None:
         session = get_session()
-    return model_query(context, models.SecurityService, session=session)
+    return model_query(context, models.SecurityService, session=session,
+                       project_only=project_only)
 
 
 ###################

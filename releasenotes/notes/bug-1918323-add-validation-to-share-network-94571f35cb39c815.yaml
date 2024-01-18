@@ -1,0 +1,5 @@
+
+fixes:
+  - Adds a check when associating a security service to a share network, so
+    that both resources must have the same project_id. If not,
+    HTTP Bad Request is raised.
