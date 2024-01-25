@@ -53,14 +53,11 @@
         # These services can be turned off, if not
         # for: https://launchpad.net/bugs/1887835
         # g-api: false
-        # g-reg: false
         # n-api: false
         # n-api-meta: false
-        # n-cauth: false
         # n-cond: false
         # n-cpu: false
         # n-novnc: false
-        # n-obj: false
         # n-sch: false
         # placement-api: false
         # q-agt: false

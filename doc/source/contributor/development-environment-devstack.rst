@@ -209,7 +209,7 @@ your testing::
 Optionally, you can deploy with Manila, Nova, Neutron, Glance and Tempest::
 
     ENABLED_SERVICES=key,mysql,rabbit,tempest,g-api
-    ENABLED_SERVICES+=n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,placement-api,placement-client
+    ENABLED_SERVICES+=n-api,n-cpu,n-cond,n-sch,n-crt,placement-api,placement-client
     ENABLED_SERVICES+=q-svc,q-dhcp,q-meta,q-l3,q-agt
     ENABLED_SERVICES+=tempest
 
