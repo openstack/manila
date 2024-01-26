@@ -14,6 +14,8 @@
       License for the specific language governing permissions and limitations
       under the License.
 
+.. _adding-a-new-api:
+
 Adding a Method to the OpenStack Manila API
 ===========================================
 

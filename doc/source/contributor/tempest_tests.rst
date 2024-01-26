@@ -1,3 +1,5 @@
+.. _installing-tempest-tests:
+
 Tempest Tests
 =============
 

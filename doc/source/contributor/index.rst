@@ -35,6 +35,7 @@ Programming HowTos and Tutorials
 .. toctree::
     :maxdepth: 3
 
+    new_feature_workflow
     development.environment
     development-environment-devstack
     apache-httpd
