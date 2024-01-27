@@ -166,7 +166,7 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
 
         share_access_keys_present = True if with_share_access_data else False
         actual_access_ids = [r['access_id'] for r in rules]
-        self.assertTrue(isinstance(actual_access_ids, list))
+        self.assertIsInstance(actual_access_ids, list)
         expected = [access_1['id'], access_2['id']]
         self.assertEqual(len(expected), len(actual_access_ids))
         for pool in expected:
@@ -3649,9 +3649,9 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual(2, len(servers))
         ids = [s['id'] for s in servers]
-        self.assertTrue(valid['id'] in ids)
-        self.assertTrue(other['id'] in ids)
-        self.assertFalse(invalid['id'] in ids)
+        self.assertIn(valid['id'], ids)
+        self.assertIn(other['id'], ids)
+        self.assertNotIn(invalid['id'], ids)
 
     def test_get_all_by_host_and_share_subnet_not_found(self):
         self.assertRaises(
@@ -5615,8 +5615,7 @@ class ResourceLocksTestCase(test.TestCase):
         ]
         self.assertEqual(order_expected,
                          [lock['id'] for lock in all_project_locks])
-        self.assertTrue(lk_5['project_id']
-                        not in [self.project_id, project_id_2])
+        self.assertNotIn(lk_5['project_id'], [self.project_id, project_id_2])
         self.assertIsNone(count)
 
         filtered_locks, count = db_api.resource_lock_get_all(

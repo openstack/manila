@@ -142,11 +142,11 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
                     id,
                     security_service['id'])
             except Exception:
-                LOG.exception(
-                    "Failed to delete security association of network "
-                    "{net_id} and security service "
-                    "{sec_id}".format(net_id=id,
-                                      sec_id=security_service['id']))
+                msg = ("Failed to delete security association of network "
+                       "{net_id} and security service "
+                       "{sec_id}".format(net_id=id,
+                                         sec_id=security_service['id']))
+                LOG.exception(msg)
 
         db_api.share_network_delete(context, id)
 

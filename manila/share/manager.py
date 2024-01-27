@@ -2690,8 +2690,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
                 updated_export_locs = updated_replica.get(
                     'export_locations')
-                if(updated_export_locs is not None
-                   and isinstance(updated_export_locs, list)):
+                if updated_export_locs is not None \
+                        and isinstance(updated_export_locs, list):
                     self.db.export_locations_update(
                         context, updated_replica['id'],
                         updated_export_locs)

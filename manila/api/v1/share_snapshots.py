@@ -56,7 +56,7 @@ class ShareSnapshotMixin(object):
             snapshot = self.share_api.get_snapshot(context, id)
 
             # Snapshot with no instances is filtered out.
-            if(snapshot.get('status') is None):
+            if snapshot.get('status') is None:
                 raise exc.HTTPNotFound()
         except exception.NotFound:
             raise exc.HTTPNotFound()

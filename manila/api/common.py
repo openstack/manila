@@ -438,7 +438,7 @@ def validate_common_name(access):
     common name. The meaning of a string depends on its
     interpretation and is limited to 64 characters.
     """
-    if not(0 < len(access) < 65):
+    if not (0 < len(access) < 65):
         exc_str = _('Invalid CN (common name). Must be 1-64 chars long.')
         raise webob.exc.HTTPBadRequest(explanation=exc_str)
 

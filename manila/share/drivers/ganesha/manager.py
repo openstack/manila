@@ -305,7 +305,7 @@ class GaneshaManager(object):
         try:
             self.execute('mv', tmpf, path)
         except exception.ProcessExecutionError as e:
-            LOG.error('mv temp file ({0}) to {1} failed.'.format(tmpf, path))
+            LOG.error('mv temp file (%s) to %s failed.', tmpf, path)
             self.execute('rm', tmpf)
             raise exception.GaneshaCommandFailure(
                 stdout=e.stdout, stderr=e.stderr, exit_code=e.exit_code,
@@ -546,8 +546,8 @@ class GaneshaManager(object):
             bytes_read = ioctx.read(object_name, max_size)
             if ((len(bytes_read) == max_size) and
                     (ioctx.read(object_name, 1, offset=max_size))):
-                LOG.warning("Size of object {0} exceeds '{1}' bytes "
-                            "read".format(object_name, max_size))
+                LOG.warning("Size of object %s exceeds '%d' bytes "
+                            "read", object_name, max_size)
         finally:
             ioctx.close()
 
@@ -595,7 +595,7 @@ class GaneshaManager(object):
         try:
             ioctx.remove_object(object_name)
         except rados.ObjectNotFound:
-            LOG.warning("Object '{0}' was already removed".format(object_name))
+            LOG.warning("Object '%s' was already removed", object_name)
         finally:
             ioctx.close()
 

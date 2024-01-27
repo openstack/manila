@@ -257,7 +257,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         test_args = ('volume', 'list')
 
         def raise_exception(*args, **kwargs):
-            if(args == test_args):
+            if args == test_args:
                 raise exception.GlusterfsException()
 
         self._layout.configuration.glusterfs_servers = [self.glusterfs_server1]
@@ -438,8 +438,8 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         self._layout._push_gluster_vol(self.glusterfs_target2)
 
         self.assertEqual(1, len(self._layout.gluster_used_vols))
-        self.assertFalse(
-            self.glusterfs_target2 in self._layout.gluster_used_vols)
+        self.assertNotIn(self.glusterfs_target2,
+                         self._layout.gluster_used_vols)
 
     def test_push_gluster_vol_excp(self):
         self._layout.gluster_used_vols = set([self.glusterfs_target1])

@@ -267,7 +267,7 @@ class APIVersionRequest(utils.ComparableMixin):
 
     @experimental.setter
     def experimental(self, value):
-        if type(value) != bool:
+        if not isinstance(value, bool):
             msg = _('The experimental property must be a bool value.')
             raise exception.InvalidParameterValue(err=msg)
         self._experimental = value
@@ -275,7 +275,7 @@ class APIVersionRequest(utils.ComparableMixin):
     def matches_versioned_method(self, method):
         """Compares this version to that of a versioned method."""
 
-        if type(method) != versioned_method.VersionedMethod:
+        if not isinstance(method, versioned_method.VersionedMethod):
             msg = _('An API version request must be compared '
                     'to a VersionedMethod object.')
             raise exception.InvalidParameterValue(err=msg)

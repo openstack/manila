@@ -286,7 +286,7 @@ HNAS_RESULT_tree_job_status_fail = """JOB ID : d933100a-b5f6-11d0-91d9-836896aad
         Source files missing           : 0
         Source files skipped           : 801
         Skipping details               : 104 symlinks, 452 hard links,
-47 block special devices, 25 character devices"""
+47 block special devices, 25 character devices"""  # noqa
 
 HNAS_RESULT_job_completed = """JOB ID : ab4211b8-aac8-11ce-91af-39e0822ea368
       Job request

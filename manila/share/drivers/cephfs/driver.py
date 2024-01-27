@@ -587,8 +587,8 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         if share['share_group_id'] is not None:
             argdict.update({"group_name": share["share_group_id"]})
 
-        LOG.debug("extend_share {id} {size}".format(
-            id=share['id'], size=new_size))
+        LOG.debug("extend_share {id} {size}",
+                  {"id": share['id'], "size": new_size})
 
         rados_command(self.rados_client, "fs subvolume resize", argdict)
 

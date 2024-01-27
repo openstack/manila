@@ -638,7 +638,7 @@ class HostManagerTestCase(test.TestCase):
                     },
                 },
             ]
-            self.assertTrue(isinstance(res, list))
+            self.assertIsInstance(res, list)
             self.assertEqual(len(expected), len(res))
             for pool in expected:
                 self.assertIn(pool, res)

@@ -113,7 +113,7 @@ class RestHelper(object):
             result = self.do_call(url, data, 'POST',
                                   calltimeout=constants.LOGIN_SOCKET_TIMEOUT)
 
-            if((result['error']['code'] != 0)
+            if ((result['error']['code'] != 0)
                or ("data" not in result)
                or (result['data']['deviceid'] is None)):
                 LOG.error("Login to %s failed, try another.", item_url)
@@ -142,7 +142,7 @@ class RestHelper(object):
         old_url = self.url
         result = self.do_call(url, data, method)
         error_code = result['error']['code']
-        if(error_code == constants.ERROR_CONNECT_TO_SERVER
+        if (error_code == constants.ERROR_CONNECT_TO_SERVER
            or error_code == constants.ERROR_UNAUTHORIZED_TO_SERVER):
             LOG.error("Can't open the recent url, re-login.")
             deviceid = self.login()

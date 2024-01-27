@@ -81,7 +81,7 @@ class GlusterfsShareDriverBase(driver.ShareDriver):
                                                 False)
 
     def _setup_via_manager(self, share_mgr, share_mgr_parent=None):
-        """Callback for layout's `create_share` and `create_share_from_snapshot`
+        """Callback for layout's `create_share`/`create_share_from_snapshot`
 
         :param share_mgr: a {'share': <share>, 'manager': <gmgr>}
                dict where <share> is the share created

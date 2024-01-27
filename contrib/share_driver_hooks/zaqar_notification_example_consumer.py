@@ -219,7 +219,7 @@ def main():
 
     # Run consumer
     print_with_time("Consumer was successfully run.")
-    while(True):
+    while True:
         messages = pop_zaqar_messages(
             zaqarclientwrapper.ZAQARCLIENT, CONF.zaqar.zaqar_queues)
         if not messages:

@@ -144,7 +144,7 @@ class GaneshaConfigTests(test.TestCase):
             # whitespace-split expressions to tokens with
             # (equality is forced to be treated as token by
             # sandwiching in space)
-            conf = map(lambda l: l.replace("=", " = ").split(), conf)
+            conf = map(lambda line: line.replace("=", " = ").split(), conf)
             # get rid of by-product empty lists (derived from superflouous
             # ";"-s that might have crept in due to "sandwiching")
             conf = map(lambda x: x, conf)

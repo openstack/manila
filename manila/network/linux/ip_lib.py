@@ -352,11 +352,11 @@ class IpRouteCommand(IpDeviceCommandBase):
                 'list', 'proto', 'kernel', 'exact', subnet).split('\n')
             for subnet_route_line in subnet_route_list_lines:
                 i = iter(subnet_route_line.split())
-                while(next(i) != 'dev'):
+                while next(i) != 'dev':
                     pass
                 device = next(i)
                 try:
-                    while(next(i) != 'src'):
+                    while next(i) != 'src':
                         pass
                     src = next(i)
                 except Exception:

@@ -2032,7 +2032,7 @@ class NFSShare(StorageObject):
             access_hosts = set()
         try:
             access_hosts.remove('-0.0.0.0/0.0.0.0')
-        except(ValueError, KeyError):
+        except (ValueError, KeyError):
             pass
 
         access_str = ('access=%(access)s' % {'access': ':'.join(

@@ -300,7 +300,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.fake_time = 0
 
         def fake_connect(addr):
-            if not(is_ok and self.fake_time > 1):
+            if not (is_ok and self.fake_time > 1):
                 raise service_instance.socket.error
 
         def fake_time():

@@ -406,7 +406,7 @@ class TestCase(base_test.BaseTestCase):
         try:
             f = super(TestCase, self).assertIn
         except AttributeError:
-            self.assertTrue(a in b, *args, **kwargs)
+            self.assertIn(a, b, *args, **kwargs)
         else:
             f(a, b, *args, **kwargs)
 
@@ -415,7 +415,7 @@ class TestCase(base_test.BaseTestCase):
         try:
             f = super(TestCase, self).assertNotIn
         except AttributeError:
-            self.assertFalse(a in b, *args, **kwargs)
+            self.assertNotIn(a, b, *args, **kwargs)
         else:
             f(a, b, *args, **kwargs)
 

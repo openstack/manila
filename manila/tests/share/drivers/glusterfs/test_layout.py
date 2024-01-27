@@ -87,7 +87,7 @@ class GlusterfsShareDriverBaseTestCase(test.TestCase):
         if layout_name is not None:
             conf.glusterfs_share_layout = layout_name
         if has_snap is None:
-            del(_layout._snapshots_are_supported)
+            del _layout._snapshots_are_supported
         else:
             _layout._snapshots_are_supported = has_snap
 

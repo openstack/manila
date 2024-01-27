@@ -6280,7 +6280,7 @@ class ShareManagerTestCase(test.TestCase):
             mock.call(self.context, new_instance['id'], with_share_data=True)
         ])
 
-        cancelled = not(status == constants.TASK_STATE_DATA_COPYING_CANCELLED)
+        cancelled = not (status == constants.TASK_STATE_DATA_COPYING_CANCELLED)
         if status != 'other':
             helper.cleanup_new_instance.assert_called_once_with(new_instance)
             (self.share_manager._reset_read_only_access_rules.

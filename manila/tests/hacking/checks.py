@@ -17,7 +17,6 @@ import ast
 import re
 
 from hacking import core
-import pycodestyle
 
 
 """
@@ -104,7 +103,7 @@ class BaseASTChecker(ast.NodeVisitor):
 @core.flake8ext
 def no_translate_logs(logical_line):
     if translated_log.match(logical_line):
-        yield(0, "M359 Don't translate log messages!")
+        yield (0, "M359 Don't translate log messages!")
 
 
 class CheckLoggingFormatArgs(BaseASTChecker):
@@ -193,7 +192,7 @@ def check_explicit_underscore_import(logical_line, filename):
           custom_underscore_check.match(logical_line)):
         UNDERSCORE_IMPORT_FILES.append(filename)
     elif string_translation.match(logical_line):
-        yield(0, "M323: Found use of _() without explicit import of _ !")
+        yield (0, "M323: Found use of _() without explicit import of _ !")
 
 
 class CheckForTransAdd(BaseASTChecker):
@@ -221,14 +220,14 @@ class CheckForTransAdd(BaseASTChecker):
 
 
 @core.flake8ext
-def check_oslo_namespace_imports(physical_line, logical_line, filename):
-    if pycodestyle.noqa(physical_line):
+def check_oslo_namespace_imports(logical_line, filename, noqa):
+    if noqa:
         return
     if re.match(oslo_namespace_imports, logical_line):
         msg = ("M333: '%s' must be used instead of '%s'.") % (
             logical_line.replace('oslo.', 'oslo_'),
             logical_line)
-        yield(0, msg)
+        yield (0, msg)
 
 
 @core.flake8ext
@@ -243,7 +242,7 @@ def dict_constructor_with_list_copy(logical_line):
 @core.flake8ext
 def no_xrange(logical_line):
     if assert_no_xrange_re.match(logical_line):
-        yield(0, "M337: Do not use xrange().")
+        yield (0, "M337: Do not use xrange().")
 
 
 @core.flake8ext
@@ -251,7 +250,7 @@ def validate_assertTrue(logical_line):
     if re.match(assert_True, logical_line):
         msg = ("M313: Unit tests should use assertTrue(value) instead"
                " of using assertEqual(True, value).")
-        yield(0, msg)
+        yield (0, msg)
 
 
 @core.flake8ext
@@ -284,7 +283,7 @@ def no_log_warn_check(logical_line):
     """
     msg = ("M338: LOG.warn is deprecated, use LOG.warning.")
     if re.match(no_log_warn, logical_line):
-        yield(0, msg)
+        yield (0, msg)
 
 
 @core.flake8ext
@@ -295,4 +294,4 @@ def no_third_party_mock(logical_line):
             re.match(from_third_party_mock, logical_line)):
         msg = ('M339: Unit tests should use the standard library "mock" '
                'module, not the third party mock library.')
-        yield(0, msg)
+        yield (0, msg)

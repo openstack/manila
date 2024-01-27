@@ -2747,8 +2747,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
     @ddt.data(True, False)
     def test_update_volume_efficiency_attributes(self, status):
         response = {
-            'dedupe': not(status),
-            'compression': not(status)
+            'dedupe': not status,
+            'compression': not status
         }
         self.mock_object(self.client, 'get_volume_efficiency_status',
                          mock.Mock(return_value=response))
@@ -6089,7 +6089,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
     def test__create_vlan(self, code):
         self.mock_object(self.client, 'send_request',
                          mock.Mock(side_effect=self._mock_api_error(code)))
-        if not(code):
+        if not code:
             self.assertRaises(exception.NetAppException,
                               self.client._create_vlan,
                               fake.NODE_NAME,
@@ -6114,7 +6114,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                          mock.Mock(return_value=volume))
         self.mock_object(self.client, 'send_request',
                          mock.Mock(side_effect=self._mock_api_error(code)))
-        if not(code):
+        if not code:
             self.assertRaises(exception.NetAppException,
                               self.client.delete_fpolicy_event,
                               fake.SHARE_NAME, 'fake_event')
@@ -6129,7 +6129,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                          mock.Mock(return_value=volume))
         self.mock_object(self.client, 'send_request',
                          mock.Mock(side_effect=self._mock_api_error(code)))
-        if not(code):
+        if not code:
             self.assertRaises(exception.NetAppException,
                               self.client.delete_fpolicy_policy,
                               fake.SHARE_NAME, 'fake_policy')
@@ -6545,7 +6545,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                      netapp_api.api.NaApiError(code=code)]
         self.mock_object(self.client, 'send_request',
                          mock.Mock(side_effect=responses))
-        if not(code):
+        if not code:
             self.assertRaises(netapp_api.api.NaApiError,
                               self.client.remove_cifs_share,
                               fake.SHARE_NAME)
