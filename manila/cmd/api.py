@@ -48,6 +48,7 @@ def main():
     CONF(sys.argv[1:], project='manila',
          version=version.version_string())
     config.verify_share_protocols()
+    config.set_lib_defaults()
     log.setup(CONF, "manila")
     utils.monkey_patch()
 

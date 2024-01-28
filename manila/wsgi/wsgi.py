@@ -35,6 +35,7 @@ def initialize_application():
     gmr_opts.set_defaults(CONF)
     CONF(sys.argv[1:], project="manila", version=version.version_string())
     config.verify_share_protocols()
+    config.set_lib_defaults()
     log.setup(CONF, "manila")
 
     gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
