@@ -1841,6 +1841,10 @@ def share_instance_get_all(context, filters=None, session=None):
         query = query.filter(
             models.ShareInstance.share_server_id == share_server_id)
 
+    status = filters.get('status')
+    if status:
+        query = query.filter(models.ShareInstance.status == status)
+
     # Returns list of share instances that satisfy filters.
     query = query.all()
     return query
@@ -1848,9 +1852,12 @@ def share_instance_get_all(context, filters=None, session=None):
 
 @require_context
 def _update_share_instance_usages(context, share, instance_ref,
-                                  is_replica=False):
+                                  is_replica=False,
+                                  deferred_delete=False):
     deltas = {}
-    no_instances_remain = len(share.instances) == 0
+    # if share is expected to be deferred_deleted, we drop its quotas
+    # whether or not it has additional share instances
+    no_instances_remain = deferred_delete or len(share.instances) == 0
     share_usages_to_release = {"shares": -1, "gigabytes": -share['size']}
     replica_usages_to_release = {"share_replicas": -1,
                                  "replica_gigabytes": -share['size']}
@@ -1916,7 +1923,24 @@ def share_instance_delete(context, instance_id, session=None,
 
         if need_to_update_usages:
             _update_share_instance_usages(context, share, instance_ref,
-                                          is_replica=is_replica)
+                                          is_replica=is_replica,
+                                          deferred_delete=False)
+
+
+@require_context
+def update_share_instance_quota_usages(context, instance_id, session=None):
+    # This method is specifically written for deferred deletion share
+    # instance usage.
+    session = session or get_session()
+
+    with session.begin():
+        instance_ref = share_instance_get(context, instance_id,
+                                          session=session)
+        is_replica = instance_ref['replica_state'] is not None
+        share = share_get(context, instance_ref['share_id'], session=session)
+        _update_share_instance_usages(context, share, instance_ref,
+                                      is_replica=is_replica,
+                                      deferred_delete=True)
 
 
 def _set_instances_share_data(context, instances, session):
@@ -2239,6 +2263,13 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
         for k, v in filters['extra_specs'].items():
             query = query.filter(and_(models.ShareTypeExtraSpecs.key == k,
                                  models.ShareTypeExtraSpecs.value == v))
+
+    if not filters.get('list_deferred_delete'):
+        query = query.filter(and_(
+            models.ShareInstance.status != (
+                constants.STATUS_DEFERRED_DELETING),
+            models.ShareInstance.status != (
+                constants.STATUS_ERROR_DEFERRED_DELETING)))
 
     return query
 
@@ -3530,6 +3561,13 @@ def _share_snapshot_get_all_with_filters(context, project_id=None,
                          'share_proto', 'size', 'share_size')
     query = exact_filter(query, models.ShareSnapshot,
                          filters, legal_filter_keys)
+
+    if not filters.get('list_deferred_delete'):
+        query = query.filter(and_(
+            models.ShareSnapshotInstance.status != (
+                constants.STATUS_DEFERRED_DELETING),
+            models.ShareSnapshotInstance.status != (
+                constants.STATUS_ERROR_DEFERRED_DELETING)))
 
     query = apply_sorting(models.ShareSnapshot, query, sort_key, sort_dir)
 

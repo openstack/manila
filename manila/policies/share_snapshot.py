@@ -94,7 +94,12 @@ deprecated_get_snapshot_metadata = policy.DeprecatedRule(
     deprecated_reason=DEPRECATED_REASON,
     deprecated_since='ZED'
 )
-
+deprecated_list_snapshots_in_deferred_deletion_states = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'list_snapshots_in_deferred_deletion_states',
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2023.2/Bobcat'
+)
 
 share_snapshot_policies = [
     policy.DocumentedRuleDefault(
@@ -268,6 +273,19 @@ share_snapshot_policies = [
             }
         ],
         deprecated_rule=deprecated_get_snapshot_metadata
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'list_snapshots_in_deferred_deletion_states',
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description="List share snapshots whose deletion has been deferred",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/v2/snapshots',
+            }
+        ],
+        deprecated_rule=deprecated_list_snapshots_in_deferred_deletion_states
     ),
 ]
 

@@ -242,6 +242,10 @@ function configure_manila {
         iniset $MANILA_CONF DEFAULT driver_restore_continue_update_interval $MANILA_RESTORE_BACKUP_CONTINUE_TASK_INTERVAL
     fi
 
+    if ! [[ -z $MANILA_DEFERRED_DELETE_TASK_INTERVAL ]]; then
+        iniset $MANILA_CONF DEFAULT periodic_deferred_delete_interval $MANILA_DEFERRED_DELETE_TASK_INTERVAL
+    fi
+
     if ! [[ -z $MANILA_DATA_COPY_CHECK_HASH ]]; then
         iniset $MANILA_CONF DEFAULT check_hash $MANILA_DATA_COPY_CHECK_HASH
     fi

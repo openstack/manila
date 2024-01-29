@@ -151,7 +151,12 @@ share_manager_opts = [
                default=60,
                help='This value, specified in seconds, determines how often '
                     'the share manager will poll to perform the next steps '
-                    'of restore such as fetch the progress of restore.')
+                    'of restore such as fetch the progress of restore.'),
+    cfg.IntOpt('periodic_deferred_delete_interval',
+               default=300,
+               help='This value, specified in seconds, determines how often '
+                    'the share manager will try to delete the share and share '
+                    'snapshots in backend driver.'),
 ]
 
 CONF = cfg.CONF
@@ -259,7 +264,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.26'
+    RPC_API_VERSION = '1.27'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -3508,16 +3513,20 @@ class ShareManager(manager.SchedulerDependentManager):
         msg_args = {'share': share_id, 'snap': snapshot_id}
         LOG.info(msg, msg_args)
 
+    def _get_share_details_from_instance(self, context, share_instance_id):
+        share_instance = self._get_share_instance(context, share_instance_id)
+        share = self.db.share_get(context, share_instance.get('share_id'))
+        share_server = self._get_share_server(context, share_instance)
+        return (share, share_instance, share_server)
+
     @add_hooks
     @utils.require_driver_initialized
-    def delete_share_instance(self, context, share_instance_id, force=False):
+    def delete_share_instance(self, context, share_instance_id, force=False,
+                              deferred_delete=False):
         """Delete a share instance."""
         context = context.elevated()
-        share_instance = self._get_share_instance(context, share_instance_id)
-        share_id = share_instance.get('share_id')
-        share_server = self._get_share_server(context, share_instance)
-        share = self.db.share_get(context, share_id)
-
+        share, share_instance, share_server = (
+            self._get_share_details_from_instance(context, share_instance_id))
         self._notify_about_share_usage(context, share,
                                        share_instance, "delete.start")
 
@@ -3552,6 +3561,22 @@ class ShareManager(manager.SchedulerDependentManager):
                     resource_id=share_instance_id,
                     exception=excep)
 
+        if deferred_delete:
+            try:
+                LOG.info(
+                    "Share instance %s has been added to a deferred deletion "
+                    "queue and will be deleted during the next iteration of "
+                    "the periodic deletion task", share_instance_id
+                )
+                self.db.update_share_instance_quota_usages(
+                    context, share_instance_id)
+                return
+            except Exception:
+                LOG.warning(
+                    "Error occured during quota usage update. Administrator "
+                    "must rectify quotas.")
+                return
+
         try:
             self.driver.delete_share(context, share_instance,
                                      share_server=share_server)
@@ -3581,8 +3606,16 @@ class ShareManager(manager.SchedulerDependentManager):
                     resource_id=share_instance_id,
                     exception=excep)
 
+        need_to_update_usages = True
+        if share_instance['status'] in (
+            constants.STATUS_DEFERRED_DELETING,
+            constants.STATUS_ERROR_DEFERRED_DELETING
+        ):
+            need_to_update_usages = False
+
         self.db.share_instance_delete(
-            context, share_instance_id, need_to_update_usages=True)
+            context, share_instance_id,
+            need_to_update_usages=need_to_update_usages)
 
         LOG.info("Share instance %s: deleted successfully.",
                  share_instance_id)
@@ -3608,6 +3641,62 @@ class ShareManager(manager.SchedulerDependentManager):
                     rpcapi.delete_share_server(context, share_server)
                 else:
                     self.delete_share_server(context, share_server)
+
+    def _get_share_instances_with_deferred_deletion(self, ctxt):
+        share_instances = self.db.share_instance_get_all(
+            ctxt, filters={'status': constants.STATUS_DEFERRED_DELETING})
+
+        share_instances_error_deferred_deleting = (
+            self.db.share_instance_get_all(
+                ctxt,
+                filters={'status': constants.STATUS_ERROR_DEFERRED_DELETING}))
+        updated_del = timeutils.utcnow() - datetime.timedelta(minutes=30)
+        for share_instance in share_instances_error_deferred_deleting:
+            if share_instance.get('updated_at') < updated_del:
+                share_instances.append(share_instance)
+        return share_instances
+
+    @periodic_task.periodic_task(
+        spacing=CONF.periodic_deferred_delete_interval)
+    @utils.require_driver_initialized
+    def do_deferred_share_deletion(self, ctxt):
+        LOG.debug("Checking for shares in 'deferred_deleting' status to "
+                  "process their deletion.")
+        ctxt = ctxt.elevated()
+        share_instances = (
+            self._get_share_instances_with_deferred_deletion(ctxt))
+
+        for share_instance in share_instances:
+            share_instance_id = share_instance['id']
+            share, share_instance, share_server = (
+                self._get_share_details_from_instance(
+                    ctxt,
+                    share_instance_id
+                )
+            )
+            try:
+                self.driver.delete_share(ctxt, share_instance,
+                                         share_server=share_server)
+            except exception.ShareResourceNotFound:
+                LOG.warning("Share instance %s does not exist in the "
+                            "backend.", share_instance_id)
+            except Exception:
+                msg = ("The driver was unable to delete the share "
+                       "instance: %s on the backend. ")
+                LOG.error(msg, share_instance_id)
+                self.db.share_instance_update(
+                    ctxt,
+                    share_instance_id,
+                    {'status': constants.STATUS_ERROR_DEFERRED_DELETING})
+                continue
+
+            self.db.share_instance_delete(ctxt, share_instance_id)
+            LOG.info("Share instance %s: deferred deleted successfully.",
+                     share_instance_id)
+            self._check_delete_share_server(ctxt,
+                                            share_instance=share_instance)
+            self._notify_about_share_usage(ctxt, share,
+                                           share_instance, "delete.end")
 
     @periodic_task.periodic_task(spacing=600)
     @utils.require_driver_initialized
@@ -3771,9 +3860,32 @@ class ShareManager(manager.SchedulerDependentManager):
         self.db.share_snapshot_instance_update(
             context, snapshot_instance_id, model_update)
 
+    def _delete_snapshot_quota(self, context, snapshot,
+                               deferred_delete=False):
+        share_type_id = snapshot['share']['instance']['share_type_id']
+        reservations = None
+        try:
+            reservations = QUOTAS.reserve(
+                context, project_id=snapshot['project_id'], snapshots=-1,
+                snapshot_gigabytes=-snapshot['size'],
+                user_id=snapshot['user_id'],
+                share_type_id=share_type_id,
+            )
+        except Exception:
+            LOG.exception("Failed to update quota usages while deleting "
+                          "snapshot %s.", snapshot['id'])
+
+        if reservations:
+            QUOTAS.commit(
+                context, reservations, project_id=snapshot['project_id'],
+                user_id=snapshot['user_id'],
+                share_type_id=share_type_id,
+            )
+
     @add_hooks
     @utils.require_driver_initialized
-    def delete_snapshot(self, context, snapshot_id, force=False):
+    def delete_snapshot(self, context, snapshot_id, force=False,
+                        deferred_delete=False):
         """Delete share snapshot."""
         context = context.elevated()
         snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
@@ -3783,11 +3895,6 @@ class ShareManager(manager.SchedulerDependentManager):
         snapshot_instance = self.db.share_snapshot_instance_get(
             context, snapshot_ref.instance['id'], with_share_data=True)
         snapshot_instance_id = snapshot_instance['id']
-
-        if context.project_id != snapshot_ref['project_id']:
-            project_id = snapshot_ref['project_id']
-        else:
-            project_id = context.project_id
 
         snapshot_instance = self._get_snapshot_instance_dict(
             context, snapshot_instance)
@@ -3806,6 +3913,23 @@ class ShareManager(manager.SchedulerDependentManager):
                 LOG.warning("The driver was unable to remove access rules "
                             "for snapshot %s. Moving on.",
                             snapshot_instance['snapshot_id'])
+
+        if deferred_delete:
+            try:
+                LOG.info(
+                    "Snapshot instance %s has been added to a deferred "
+                    "deletion queue and will be deleted during the next "
+                    "iteration of the periodic deletion task",
+                    snapshot_instance['id']
+                )
+                self._delete_snapshot_quota(
+                    context, snapshot_ref, deferred_delete=True)
+                return
+            except Exception:
+                LOG.warning(
+                    "Error occured during quota usage update. Administrator "
+                    "must rectify quotas.")
+                return
 
         try:
             self.driver.delete_snapshot(context, snapshot_instance,
@@ -3834,26 +3958,49 @@ class ShareManager(manager.SchedulerDependentManager):
                     exception=excep)
 
         self.db.share_snapshot_instance_delete(context, snapshot_instance_id)
+        self._delete_snapshot_quota(context, snapshot_ref)
 
-        share_type_id = snapshot_ref['share']['instance']['share_type_id']
-        try:
-            reservations = QUOTAS.reserve(
-                context, project_id=project_id, snapshots=-1,
-                snapshot_gigabytes=-snapshot_ref['size'],
-                user_id=snapshot_ref['user_id'],
-                share_type_id=share_type_id,
-            )
-        except Exception:
-            reservations = None
-            LOG.exception("Failed to update quota usages while deleting "
-                          "snapshot %s.", snapshot_id)
+    def _get_snapshot_instances_with_deletion_deferred(self, ctxt):
+        snap_instances = self.db.share_snapshot_instance_get_all_with_filters(
+            ctxt, {'statuses': constants.STATUS_DEFERRED_DELETING})
 
-        if reservations:
-            QUOTAS.commit(
-                context, reservations, project_id=project_id,
-                user_id=snapshot_ref['user_id'],
-                share_type_id=share_type_id,
-            )
+        snap_instances_error_deferred_deleting = \
+            self.db.share_snapshot_instance_get_all_with_filters(
+                ctxt, {'statuses': constants.STATUS_ERROR_DEFERRED_DELETING})
+        updated_del = timeutils.utcnow() - datetime.timedelta(minutes=30)
+        for snap_instance in snap_instances_error_deferred_deleting:
+            if snap_instance.get('updated_at') < updated_del:
+                snap_instances.append(snap_instance)
+        return snap_instances
+
+    @periodic_task.periodic_task(
+        spacing=CONF.periodic_deferred_delete_interval)
+    @utils.require_driver_initialized
+    def do_deferred_snapshot_deletion(self, ctxt):
+        LOG.debug("Checking for snapshots in 'deferred_deleting' status to "
+                  "process their deletion.")
+        ctxt = ctxt.elevated()
+        snapshot_instances = (
+            self._get_snapshot_instances_with_deletion_deferred(ctxt))
+
+        for snapshot_instance in snapshot_instances:
+            snapshot_instance_id = snapshot_instance['id']
+            share_server = self._get_share_server(
+                ctxt, snapshot_instance['share_instance'])
+            snapshot_instance = self._get_snapshot_instance_dict(
+                ctxt, snapshot_instance)
+
+            try:
+                self.driver.delete_snapshot(ctxt, snapshot_instance,
+                                            share_server=share_server)
+            except Exception:
+                self.db.share_snapshot_instance_update(
+                    ctxt,
+                    snapshot_instance_id,
+                    {'status': constants.STATUS_ERROR_DEFERRED_DELETING})
+                continue
+            self.db.share_snapshot_instance_delete(ctxt,
+                                                   snapshot_instance_id)
 
     @add_hooks
     @utils.require_driver_initialized

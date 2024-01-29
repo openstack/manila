@@ -408,6 +408,7 @@ class ShareManagerTestCase(test.TestCase):
         "create_replicated_snapshot",
         "delete_replicated_snapshot",
         "periodic_share_replica_snapshot_update",
+        "do_deferred_share_deletion"
     )
     def test_call_driver_when_its_init_failed(self, method_name):
         self.mock_object(self.share_manager.driver, 'do_setup',
@@ -2208,6 +2209,39 @@ class ShareManagerTestCase(test.TestCase):
             resource_id=snapshot_instance['id'],
             exception=mock.ANY)
 
+    def test_delete_snapshot_deferred_delete_quota_error(self):
+        share_id = 'FAKE_SHARE_ID'
+        share = fakes.fake_share(id=share_id)
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name='fake_snapshot')
+        snapshot = fakes.fake_snapshot(
+            share_id=share_id, share=share, instance=snapshot_instance,
+            project_id=self.context.project_id, size=1)
+        snapshot_id = snapshot['id']
+        self.mock_object(self.share_manager.db, 'share_snapshot_get',
+                         mock.Mock(return_value=snapshot))
+        self.mock_object(self.share_manager.db, 'share_snapshot_instance_get',
+                         mock.Mock(return_value=snapshot_instance))
+        self.mock_object(self.share_manager.db, 'share_get',
+                         mock.Mock(return_value=share))
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value=None))
+
+        self.mock_object(self.share_manager.driver, 'delete_snapshot')
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(side_effect=exception.QuotaError(code=500)))
+        quota_commit_call = self.mock_object(quota.QUOTAS, 'commit')
+
+        self.share_manager.delete_snapshot(self.context, snapshot_id,
+                                           deferred_delete=True)
+
+        self.share_manager.driver.delete_snapshot.assert_not_called()
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY, project_id=self.context.project_id, snapshots=-1,
+            snapshot_gigabytes=-snapshot['size'], user_id=snapshot['user_id'],
+            share_type_id=share['instance']['share_type_id'])
+        self.assertEqual(False, quota_commit_call.called)
+
     @ddt.data(True, False)
     def test_delete_snapshot_with_quota_error(self, quota_error):
 
@@ -2251,7 +2285,6 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, expected_snapshot_instance_dict, share_server=None)
         self.assertFalse(db_update_call.called)
         self.assertTrue(snapshot_destroy_call.called)
-        self.assertTrue(manager.QUOTAS.reserve.called)
         quota.QUOTAS.reserve.assert_called_once_with(
             mock.ANY, project_id=self.context.project_id, snapshots=-1,
             snapshot_gigabytes=-snapshot['size'], user_id=snapshot['user_id'],
@@ -2310,6 +2343,43 @@ class ShareManagerTestCase(test.TestCase):
             resource_type=message_field.Resource.SHARE_SNAPSHOT,
             resource_id=snapshot_instance['id'],
             exception=mock.ANY)
+
+    @ddt.data(True, False)
+    def test_do_deferred_snapshot_deletion(self, consider_error_deleting):
+        instance_1 = db_utils.create_share_instance(
+            share_id='fake_id',
+            share_type_id='fake_type_id')
+        instance_2 = db_utils.create_share_instance(
+            share_id='fake_id',
+            share_type_id='fake_type_id')
+        share = db_utils.create_share(
+            id='fake_id',
+            instances=[instance_1, instance_2])
+        snapshot = db_utils.create_snapshot(share_id=share['id'])
+        db_utils.create_snapshot_instance(
+            snapshot_id=snapshot['id'],
+            share_instance_id=instance_1['id'],
+            status='deferred_deleting')
+        mins = 20
+        if consider_error_deleting:
+            mins = 40
+        db_utils.create_snapshot_instance(
+            snapshot_id=snapshot['id'],
+            share_instance_id=instance_2['id'],
+            updated_at=timeutils.utcnow() - datetime.timedelta(minutes=mins),
+            status='error_deferred_deleting')
+
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value=None))
+        mock_delete_share = self.mock_object(
+            self.share_manager.driver, 'delete_snapshot')
+        self.mock_object(self.share_manager.db,
+                         'share_snapshot_instance_update')
+        self.share_manager.do_deferred_snapshot_deletion(self.context)
+        if consider_error_deleting:
+            self.assertEqual(2, mock_delete_share.call_count)
+        else:
+            self.assertEqual(1, mock_delete_share.call_count)
 
     def test_create_share_instance_with_share_network_dhss_false(self):
         manager.CONF.set_default('driver_handles_share_servers', False)
@@ -3857,6 +3927,152 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext), share.instance['id'],
             delete_all_rules=True, share_server=share_srv)
         self.assertTrue(manager.LOG.warning.called)
+
+    def test_delete_share_instance_deferred_delete_quota_error(self):
+        share_net = db_utils.create_share_network()
+        share_srv = db_utils.create_share_server(
+            host=self.share_manager.host
+        )
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_network_id=share_net['id'],
+                                      share_server_id=share_srv['id'],
+                                      share_type_id=share_type['id'])
+        share_srv = db.share_server_get(self.context, share_srv['id'])
+
+        manager.CONF.delete_share_server_with_last_share = False
+        self.share_manager.driver = mock.Mock()
+        self.mock_object(db, 'share_server_get',
+                         mock.Mock(return_value=share_srv))
+        mock_access_helper_call = self.mock_object(
+            self.share_manager.access_helper, 'update_access_rules')
+
+        self.mock_object(
+            quota.QUOTAS, 'reserve',
+            mock.Mock(side_effect=exception.QuotaError(code='500')))
+        self.mock_object(quota.QUOTAS, 'commit')
+        self.mock_object(manager.LOG, 'exception')
+        self.mock_object(self.share_manager.db, 'share_instance_update',
+                         mock.Mock(return_value=None))
+
+        self.share_manager.delete_share_instance(self.context,
+                                                 share.instance['id'],
+                                                 deferred_delete=True)
+
+        mock_access_helper_call.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share.instance['id'],
+            delete_all_rules=True, share_server=share_srv)
+
+        reservation_params = {
+            'gigabytes': -share['size'],
+            'shares': -1,
+            'project_id': share['project_id'],
+            'share_type_id': share_type['id'],
+            'user_id': share['user_id'],
+        }
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY, **reservation_params,
+        )
+        self.assertFalse(quota.QUOTAS.commit.called)
+        self.assertFalse(self.share_manager.driver.teardown_network.called)
+
+    def test_delete_share_instance_deferred_delete(self):
+        share_net = db_utils.create_share_network()
+        share_srv = db_utils.create_share_server(
+            host=self.share_manager.host
+        )
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_network_id=share_net['id'],
+                                      share_server_id=share_srv['id'],
+                                      share_type_id=share_type['id'])
+        share_srv = db.share_server_get(self.context, share_srv['id'])
+
+        manager.CONF.delete_share_server_with_last_share = False
+        self.share_manager.driver = mock.Mock()
+        self.mock_object(db, 'share_server_get',
+                         mock.Mock(return_value=share_srv))
+        mock_access_helper_call = self.mock_object(
+            self.share_manager.access_helper, 'update_access_rules')
+
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(return_value='fake_reservation'))
+        self.mock_object(quota.QUOTAS, 'commit')
+        self.mock_object(manager.LOG, 'exception')
+        self.mock_object(self.share_manager.db, 'share_instance_update',
+                         mock.Mock(return_value=None))
+
+        self.share_manager.delete_share_instance(self.context,
+                                                 share.instance['id'],
+                                                 deferred_delete=True)
+
+        mock_access_helper_call.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share.instance['id'],
+            delete_all_rules=True, share_server=share_srv)
+
+        reservation_params = {
+            'gigabytes': -share['size'],
+            'shares': -1,
+            'project_id': share['project_id'],
+            'share_type_id': share_type['id'],
+            'user_id': share['user_id'],
+        }
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY, **reservation_params,
+        )
+        quota.QUOTAS.commit.assert_called_once_with(
+            mock.ANY, mock.ANY, project_id=share['project_id'],
+            share_type_id=share_type['id'], user_id=share['user_id'],
+        )
+        self.assertFalse(self.share_manager.driver.teardown_network.called)
+
+    @ddt.data(True, False)
+    def test_do_deferred_share_deletion(self, consider_error_deleting):
+        share = db_utils.create_share_without_instance(
+            id='fake_id',
+            status=constants.STATUS_AVAILABLE)
+        share_server = fakes.fake_share_server_get()
+        kwargs = {
+            'id': 1,
+            'share_id': share['id'],
+            'share_server_id': share_server['id'],
+            'status': 'deferred_deleting',
+            'updated_at': timeutils.utcnow()
+        }
+        db_utils.create_share_instance(**kwargs)
+        kwargs = {
+            'id': 2,
+            'share_id': share['id'],
+            'share_server_id': share_server['id'],
+            'status': 'deferred_deleting',
+            'updated_at': timeutils.utcnow()
+        }
+        db_utils.create_share_instance(**kwargs)
+        mins = 20
+        if consider_error_deleting:
+            mins = 40
+        kwargs = {
+            'id': 3,
+            'share_id': share['id'],
+            'share_server_id': share_server['id'],
+            'status': 'error_deferred_deleting',
+            'updated_at': timeutils.utcnow() - datetime.timedelta(minutes=mins)
+        }
+        db_utils.create_share_instance(**kwargs)
+
+        self.mock_object(self.share_manager.db, 'share_server_get',
+                         mock.Mock(return_value=share_server))
+        self.mock_object(self.share_manager.db, 'share_get',
+                         mock.Mock(return_value=share))
+        self.mock_object(self.share_manager.db, 'share_instance_delete')
+        self.mock_object(self.share_manager, '_check_delete_share_server')
+        self.mock_object(self.share_manager, '_notify_about_share_usage')
+        mock_delete_share = self.mock_object(
+            self.share_manager.driver, 'delete_share')
+
+        self.share_manager.do_deferred_share_deletion(self.context)
+        if consider_error_deleting:
+            self.assertEqual(3, mock_delete_share.call_count)
+        else:
+            self.assertEqual(2, mock_delete_share.call_count)
 
     def test_setup_server(self):
         # Setup required test data
