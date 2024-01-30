@@ -4177,7 +4177,8 @@ class NetAppCmodeFileStorageLibrary(object):
                     'export_locations': self.update_share(
                         share,
                         share_server=share_server
-                    )
+                    ),
+                    'status': constants.STATUS_AVAILABLE
                 }
             except (exception.NetAppException,
                     netapp_api.NaApiError,

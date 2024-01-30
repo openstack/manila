@@ -543,7 +543,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 )
                 continue
 
-            if share_instance['status'] != constants.STATUS_AVAILABLE:
+            if (share_instance['status'] != constants.STATUS_AVAILABLE and
+                    share_instance['status'] != constants.STATUS_CREATING):
                 LOG.info(
                     "Share instance %(id)s: skipping export, "
                     "because it has '%(status)s' status.",
