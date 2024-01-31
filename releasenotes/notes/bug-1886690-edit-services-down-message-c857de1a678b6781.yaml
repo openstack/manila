@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed `bug #1886690 <https://bugs.launchpad.net/manila/+bug/1886690>`_
+    that was a misleading user message when share services are down. The
+    message is now clear and descriptive.

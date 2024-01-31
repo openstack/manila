@@ -148,6 +148,12 @@ class Detail(object):
           "increase the network port quotas or free up some ports and retry. "
           "If this doesn't work, contact your administrator to troubleshoot "
           "issues with your network."))
+    SHARE_BACKEND_NOT_READY_YET = (
+        '028',
+        _("No storage could be allocated for this share "
+          "request. Share back end services are not "
+          "ready yet. Contact your administrator in case "
+          "retrying does not help."))
 
     ALL = (
         UNKNOWN_ERROR,
@@ -177,6 +183,7 @@ class Detail(object):
         MISSING_SECURITY_SERVICE,
         DRIVER_FAILED_TRANSFER_ACCEPT,
         SHARE_NETWORK_PORT_QUOTA_LIMIT_EXCEEDED,
+        SHARE_BACKEND_NOT_READY_YET,
     )
 
     # Exception and detail mappings

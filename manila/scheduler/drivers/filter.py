@@ -241,6 +241,20 @@ class FilterScheduler(base.Scheduler):
         # Note: remember, we are using an iterator here. So only
         # traverse this list once.
         hosts = self.host_manager.get_all_host_states_share(elevated)
+        if not hosts:
+            msg = _("No storage could be allocated for this share "
+                    "request. Share back end services are not "
+                    "ready yet. Contact your administrator in case "
+                    "retrying does not help.")
+            LOG.error(msg)
+            self.message_api.create(
+                context,
+                message_field.Action.CREATE,
+                context.project_id,
+                resource_type=message_field.Resource.SHARE,
+                resource_id=request_spec.get('share_id', None),
+                detail=message_field.Detail.SHARE_BACKEND_NOT_READY_YET)
+            raise exception.WillNotSchedule(msg)
 
         # Filter local hosts based on requirements ...
         hosts, last_filter = self.host_manager.get_filtered_hosts(

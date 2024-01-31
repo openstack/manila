@@ -145,43 +145,28 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         self.assertDictEqual(fake_type, retval['resource_type'])
 
     def test_create_share_no_hosts(self):
-        # Ensure empty hosts/child_zones result in NoValidHosts exception.
+        # Ensure empty hosts/child_zones result in WillNotSchedule exception.
         sched = fakes.FakeFilterScheduler()
         fake_context = context.RequestContext('user', 'project')
+        create_mock_message = self.mock_object(sched.message_api, 'create')
         request_spec = {
             'share_properties': {'project_id': 1, 'size': 1},
             'share_instance_properties': {},
             'share_type': {'name': 'NFS'},
             'share_id': 'fake-id1',
         }
-        self.assertRaises(exception.NoValidHost, sched.schedule_create_share,
-                          fake_context, request_spec, {})
-
-    @mock.patch('manila.scheduler.host_manager.HostManager.'
-                'get_all_host_states_share')
-    def test_create_share_non_admin(self, _mock_get_all_host_states):
-        # Test creating a volume locally using create_volume, passing
-        # a non-admin context. DB actions should work.
-        self.was_admin = False
-
-        def fake_get(context, *args, **kwargs):
-            # Make sure this is called with admin context, even though
-            # we're using user context below.
-            self.was_admin = context.is_admin
-            return {}
-
-        sched = fakes.FakeFilterScheduler()
-        _mock_get_all_host_states.side_effect = fake_get
-        fake_context = context.RequestContext('user', 'project')
-        request_spec = {
-            'share_properties': {'project_id': 1, 'size': 1},
-            'share_instance_properties': {},
-            'share_type': {'name': 'NFS'},
-            'share_id': 'fake-id1',
-        }
-        self.assertRaises(exception.NoValidHost, sched.schedule_create_share,
-                          fake_context, request_spec, {})
-        self.assertTrue(self.was_admin)
+        self.assertRaises(exception.WillNotSchedule,
+                          sched.schedule_create_share,
+                          fake_context,
+                          request_spec,
+                          {})
+        create_mock_message.assert_called_once_with(
+            fake_context,
+            message_field.Action.CREATE,
+            fake_context.project_id,
+            resource_type=message_field.Resource.SHARE,
+            resource_id=request_spec.get('share_id', None),
+            detail=message_field.Detail.SHARE_BACKEND_NOT_READY_YET)
 
     @ddt.data(
         {'name': 'foo'},
@@ -420,10 +405,13 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         self.assertRaises(exception.InvalidParameterValue,
                           fakes.FakeFilterScheduler)
 
-    def test_retry_disabled(self):
+    @mock.patch('manila.scheduler.host_manager.HostManager.'
+                'get_all_host_states_share')
+    def test_retry_disabled(self, _mock_get_all_host_states):
         # Retry info should not get populated when re-scheduling is off.
         self.flags(scheduler_max_attempts=1)
         sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
         request_spec = {
             'share_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
@@ -436,10 +424,13 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         # Should not have retry info in the populated filter properties.
         self.assertNotIn("retry", filter_properties)
 
-    def test_retry_attempt_one(self):
+    @mock.patch('manila.scheduler.host_manager.HostManager.'
+                'get_all_host_states_share')
+    def test_retry_attempt_one(self, _mock_get_all_host_states):
         # Test retry logic on initial scheduling attempt.
         self.flags(scheduler_max_attempts=2)
         sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
         request_spec = {
             'share_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
@@ -452,10 +443,13 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         num_attempts = filter_properties['retry']['num_attempts']
         self.assertEqual(1, num_attempts)
 
-    def test_retry_attempt_two(self):
+    @mock.patch('manila.scheduler.host_manager.HostManager.'
+                'get_all_host_states_share')
+    def test_retry_attempt_two(self, _mock_get_all_host_states):
         # Test retry logic when re-scheduling.
         self.flags(scheduler_max_attempts=2)
         sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
         request_spec = {
             'share_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
@@ -643,7 +637,7 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         self.mock_object(sched.host_manager, 'get_filtered_hosts',
                          mock.Mock(return_value=(None, 'filter')))
 
-        self.assertRaises(exception.NoValidHost,
+        self.assertRaises(exception.WillNotSchedule,
                           sched.schedule_create_replica,
                           self.context, request_spec, {})
 
