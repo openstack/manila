@@ -77,6 +77,9 @@ class EMCShareDriver(driver.ShareDriver):
         self.plugin_manager = manager.EMCPluginManager(
             namespace='manila.share.drivers.dell_emc.plugins')
         LOG.info("BACKEND IS: %s", self.backend_name)
+        if self.backend_name == 'vnx':
+            LOG.warning('Dell EMC VNX share driver has been deprecated and is '
+                        'expected to be removed in a future release.')
         self.plugin = self.plugin_manager.load_plugin(
             self.backend_name,
             configuration=self.configuration)
