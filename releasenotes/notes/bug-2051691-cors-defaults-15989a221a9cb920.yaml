@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    `bug 2051691 <https://bugs.launchpad.net/manila/+bug/2051691>`_: Fixed
+    the default values of the following options.
+
+    - ``[cors] allowed_headers``
+    - ``[cors] expose_headers``
+    - ``[cors] allow_methods``
