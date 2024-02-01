@@ -41,7 +41,7 @@ EMC_NAS_OPTS = [
                 help='Use secure connection to server.'),
     cfg.StrOpt('emc_share_backend',
                ignore_case=True,
-               choices=['isilon', 'vnx', 'unity', 'vmax', 'powermax',
+               choices=['isilon', 'vnx', 'unity', 'powermax',
                         'powerstore', 'powerflex'],
                help='Share backend.'),
     cfg.StrOpt('emc_nas_root_dir',
@@ -76,12 +76,6 @@ class EMCShareDriver(driver.ShareDriver):
         self.backend_name = self.backend_name or 'EMC_NAS_Storage'
         self.plugin_manager = manager.EMCPluginManager(
             namespace='manila.share.drivers.dell_emc.plugins')
-        if self.backend_name == 'vmax':
-            LOG.warning("Configuration option 'emc_share_backend=vmax' will "
-                        "remain a valid option until the V release of "
-                        "OpenStack. After that, only "
-                        "'emc_share_backend=powermax' will be excepted.")
-            self.backend_name = 'powermax'
         LOG.info("BACKEND IS: %s", self.backend_name)
         self.plugin = self.plugin_manager.load_plugin(
             self.backend_name,

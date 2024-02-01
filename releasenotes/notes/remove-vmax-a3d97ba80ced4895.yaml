@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The ``emc_share_backend`` option no longer supports ``vmax``. Use
+    ``powermax`` instead.

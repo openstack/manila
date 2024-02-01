@@ -79,7 +79,7 @@ class FakeConnection(base.StorageConnection):
         """Teardown share server."""
 
 
-class FakeConnection_vmax(FakeConnection):
+class FakeConnection_powermax(FakeConnection):
     def __init__(self, *args, **kwargs):
         self.dhss_mandatory_security_service_association = {}
         self.revert_to_snap_support = False
@@ -94,7 +94,6 @@ class FakeConnection_vmax(FakeConnection):
 
 
 FAKE_BACKEND = 'fake_backend'
-FAKE_BACKEND_VMAX = 'vmax'
 FAKE_BACKEND_POWERMAX = 'powermax'
 
 
@@ -108,7 +107,7 @@ class FakeEMCExtensionManager(object):
                                 obj=None))
         self.extensions.append(
             extension.Extension(name=FAKE_BACKEND_POWERMAX,
-                                plugin=FakeConnection_vmax,
+                                plugin=FakeConnection_powermax,
                                 entry_point=None,
                                 obj=None))
 
@@ -126,14 +125,14 @@ class EMCShareFrameworkTestCase(test.TestCase):
         self.driver = emcdriver.EMCShareDriver(
             configuration=self.configuration)
 
-        self.configuration_vmax = conf.Configuration(None)
-        self.configuration_vmax.append_config_values = \
+        self.configuration_powermax = conf.Configuration(None)
+        self.configuration_powermax.append_config_values = \
             mock.Mock(return_value=0)
-        self.configuration_vmax.share_backend_name = FAKE_BACKEND_VMAX
-        self.mock_object(self.configuration_vmax, 'safe_get',
-                         self._fake_safe_get_vmax)
-        self.driver_vmax = emcdriver.EMCShareDriver(
-            configuration=self.configuration_vmax)
+        self.configuration_powermax.share_backend_name = FAKE_BACKEND_POWERMAX
+        self.mock_object(self.configuration_powermax, 'safe_get',
+                         self._fake_safe_get_powermax)
+        self.driver_powermax = emcdriver.EMCShareDriver(
+            configuration=self.configuration_powermax)
 
     def test_driver_setup(self):
         FakeConnection.connect = mock.Mock()
@@ -185,9 +184,9 @@ class EMCShareFrameworkTestCase(test.TestCase):
             return True
         return None
 
-    def _fake_safe_get_vmax(self, value):
+    def _fake_safe_get_powermax(self, value):
         if value in ['emc_share_backend', 'share_backend_name']:
-            return FAKE_BACKEND_VMAX
+            return FAKE_BACKEND_POWERMAX
         elif value == 'driver_handles_share_servers':
             return True
         return None

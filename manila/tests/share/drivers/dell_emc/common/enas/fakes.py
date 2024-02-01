@@ -1732,9 +1732,3 @@ STATS = dict(
     vendor_name='EMC',
     storage_protocol='NFS_CIFS',
     driver_version='2.0.0,')
-
-STATS_VMAX = dict(
-    share_backend_name='VMAX',
-    vendor_name='EMC',
-    storage_protocol='NFS_CIFS',
-    driver_version='2.0.0,')
