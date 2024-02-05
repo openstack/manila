@@ -242,11 +242,9 @@ class FilterScheduler(base.Scheduler):
         # traverse this list once.
         hosts = self.host_manager.get_all_host_states_share(elevated)
         if not hosts:
-            msg = _("No storage could be allocated for this share "
-                    "request. Share back end services are not "
-                    "ready yet. Contact your administrator in case "
-                    "retrying does not help.")
-            LOG.error(msg)
+            msg = _("There are no hosts to fulfill this "
+                    "provisioning request. Are share "
+                    "backend services down?")
             self.message_api.create(
                 context,
                 message_field.Action.CREATE,
