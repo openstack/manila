@@ -4312,12 +4312,15 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.mock_object(self.client, 'send_request',
                                       mock.Mock(return_value=fake_response))
         self.client.remove_preferred_dcs(fake_ss, svm_uuid)
-        self.client.send_request.has_calls([
+        query = {
+            'fqdn': fake.LDAP_AD_SECURITY_SERVICE.get('domain'),
+        }
+        self.client.send_request.assert_has_calls([
             mock.call(f'/protocols/cifs/domains/{svm_uuid}/'
                       f'preferred-domain-controllers/', 'get'),
             mock.call(f'/protocols/cifs/domains/{svm_uuid}/'
                       f'preferred-domain-controllers/{fqdn}/{server_ip}',
-                      'delete', query=fqdn)
+                      'delete', query=query)
         ])
 
     def test_remove_preferred_dcs_api_error(self):
