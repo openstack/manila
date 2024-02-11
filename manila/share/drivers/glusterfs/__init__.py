@@ -29,6 +29,7 @@ import socket
 import sys
 
 from oslo_config import cfg
+from oslo_log import log
 
 from manila.common import constants
 from manila import exception
@@ -60,6 +61,9 @@ GlusterfsManilaShare_opts = [
 CONF = cfg.CONF
 CONF.register_opts(GlusterfsManilaShare_opts)
 
+LOG = log.getLogger(__name__)
+
+
 NFS_EXPORT_DIR = 'nfs.export-dir'
 NFS_EXPORT_VOL = 'nfs.export-volumes'
 NFS_RPC_AUTH_ALLOW = 'nfs.rpc-auth-allow'
@@ -78,6 +82,8 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
     def __init__(self, *args, **kwargs):
         super(GlusterfsShareDriver, self).__init__(False, *args, **kwargs)
+        LOG.warning('GlusterFS share driver has been deprecated and is '
+                    'expected to be removed in a future release.')
         self._helpers = {}
         self.configuration.append_config_values(GlusterfsManilaShare_opts)
         self.backend_name = self.configuration.safe_get(

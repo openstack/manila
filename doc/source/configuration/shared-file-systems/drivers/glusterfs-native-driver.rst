@@ -14,6 +14,9 @@ via TLS Certificates. Only the instance which has the TLS trust
 established with the GlusterFS back end can mount and hence use the
 share. Currently only ``read-write (rw)`` access is supported.
 
+.. note::
+   This driver has been deprecated in 18.0.0 release.
+
 Network approach
 ~~~~~~~~~~~~~~~~
 

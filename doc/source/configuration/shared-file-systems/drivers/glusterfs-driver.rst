@@ -6,6 +6,9 @@ GlusterFS driver uses GlusterFS, an open source distributed file system,
 as the storage back end for serving file shares to the Shared File
 Systems clients.
 
+.. note::
+   This driver has been deprecated in 18.0.0 release.
+
 Supported shared filesystems and operations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

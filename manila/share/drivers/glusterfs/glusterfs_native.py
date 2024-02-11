@@ -71,6 +71,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
     def __init__(self, *args, **kwargs):
         super(GlusterfsNativeShareDriver, self).__init__(
             False, *args, **kwargs)
+        LOG.warning('GlusterFS native share driver has been deprecated and is '
+                    'expected to be removed in a future release.')
         self._helpers = None
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or 'GlusterFS-Native'
