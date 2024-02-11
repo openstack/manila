@@ -26,7 +26,7 @@ down_revision = None
 
 from alembic import op
 from oslo_log import log
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey
+from sqlalchemy import Boolean, Column, DateTime, ForeignKeyConstraint
 from sqlalchemy import Integer, MetaData, String, Table, UniqueConstraint
 
 LOG = log.getLogger(__name__)
@@ -129,10 +129,7 @@ def upgrade():
                       unicode_error=None,
                       _warn_on_bytestring=False),
                nullable=False),
-        Column('usage_id',
-               Integer(),
-               ForeignKey('quota_usages.id'),
-               nullable=False),
+        Column('usage_id', Integer(), nullable=False),
         Column('project_id',
                String(length=255, convert_unicode=True,
                       unicode_error=None,
@@ -144,6 +141,7 @@ def upgrade():
                       _warn_on_bytestring=False)),
         Column('delta', Integer(), nullable=False),
         Column('expire', DateTime(timezone=False)),
+        ForeignKeyConstraint(['usage_id'], ['quota_usages.id']),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
@@ -183,17 +181,13 @@ def upgrade():
         Column('display_name', String(length=255)),
         Column('display_description', String(length=255)),
         Column('snapshot_id', String(length=36)),
-        Column('share_network_id',
-               String(length=36),
-               ForeignKey('share_networks.id'),
-               nullable=True),
-        Column('share_server_id',
-               String(length=36),
-               ForeignKey('share_servers.id'),
-               nullable=True),
+        Column('share_network_id', String(length=36), nullable=True),
+        Column('share_server_id', String(length=36), nullable=True),
         Column('share_proto', String(255)),
         Column('export_location', String(255)),
         Column('volume_type_id', String(length=36)),
+        ForeignKeyConstraint(['share_network_id'], ['share_networks.id']),
+        ForeignKeyConstraint(['share_server_id'], ['share_servers.id']),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -205,11 +199,11 @@ def upgrade():
         Column('deleted_at', DateTime),
         Column('deleted', String(length=36), default='False'),
         Column('id', String(length=36), primary_key=True, nullable=False),
-        Column('share_id', String(36), ForeignKey('shares.id'),
-               nullable=False),
+        Column('share_id', String(36), nullable=False),
         Column('access_type', String(255)),
         Column('access_to', String(255)),
         Column('state', String(255)),
+        ForeignKeyConstraint(['share_id'], ['shares.id']),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -223,8 +217,7 @@ def upgrade():
         Column('id', String(length=36), primary_key=True, nullable=False),
         Column('user_id', String(length=255)),
         Column('project_id', String(length=255)),
-        Column('share_id', String(36), ForeignKey('shares.id'),
-               nullable=False),
+        Column('share_id', String(36), nullable=False),
         Column('size', Integer),
         Column('status', String(length=255)),
         Column('progress', String(length=255)),
@@ -233,6 +226,7 @@ def upgrade():
         Column('share_size', Integer),
         Column('share_proto', String(length=255)),
         Column('export_location', String(255)),
+        ForeignKeyConstraint(['share_id'], ['shares.id']),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -244,10 +238,10 @@ def upgrade():
         Column('deleted_at', DateTime),
         Column('deleted', Integer, default=0),
         Column('id', Integer, primary_key=True, nullable=False),
-        Column('share_id', String(length=36), ForeignKey('shares.id'),
-               nullable=False),
+        Column('share_id', String(length=36), nullable=False),
         Column('key', String(length=255), nullable=False),
         Column('value', String(length=1023), nullable=False),
+        ForeignKeyConstraint(['share_id'], ['shares.id']),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -301,10 +295,10 @@ def upgrade():
         Column('deleted_at', DateTime),
         Column('deleted', String(length=36), default='False'),
         Column('id', String(length=36), primary_key=True, nullable=False),
-        Column('share_network_id', String(length=36),
-               ForeignKey('share_networks.id'), nullable=True),
+        Column('share_network_id', String(length=36), nullable=True),
         Column('host', String(length=255), nullable=True),
         Column('status', String(length=32)),
+        ForeignKeyConstraint(['share_network_id'], ['share_networks.id']),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
@@ -316,11 +310,10 @@ def upgrade():
         Column('deleted_at', DateTime),
         Column('deleted', String(length=36), default=0),
         Column('id', Integer, primary_key=True, nullable=False),
-        Column('share_server_id', String(length=36),
-               ForeignKey('share_servers.id'),
-               nullable=False),
+        Column('share_server_id', String(length=36), nullable=False),
         Column('key', String(length=255), nullable=False),
         Column('value', String(length=1023), nullable=False),
+        ForeignKeyConstraint(['share_server_id'], ['share_servers.id']),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -334,9 +327,9 @@ def upgrade():
         Column('id', String(length=36), primary_key=True, nullable=False),
         Column('ip_address', String(length=64), nullable=True),
         Column('mac_address', String(length=32), nullable=True),
-        Column('share_server_id', String(length=36),
-               ForeignKey('share_servers.id'), nullable=False),
+        Column('share_server_id', String(length=36), nullable=False),
         Column('status', String(length=32)),
+        ForeignKeyConstraint(['share_server_id'], ['share_servers.id']),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
@@ -348,10 +341,11 @@ def upgrade():
         Column('deleted_at', DateTime),
         Column('deleted', Integer, default=0),
         Column('id', Integer, primary_key=True, nullable=False),
-        Column('share_network_id', String(length=36),
-               ForeignKey('share_networks.id'), nullable=False),
-        Column('security_service_id', String(length=36),
-               ForeignKey('security_services.id'), nullable=False),
+        Column('share_network_id', String(length=36), nullable=False),
+        Column('security_service_id', String(length=36), nullable=False),
+        ForeignKeyConstraint(['share_network_id'], ['share_networks.id']),
+        ForeignKeyConstraint(['security_service_id'],
+                             ['security_services.id']),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
@@ -365,7 +359,8 @@ def upgrade():
         Column('id', String(length=36), primary_key=True, nullable=False),
         Column('name', String(length=255)),
         UniqueConstraint('name', 'deleted', name='vt_name_uc'),
-        mysql_engine='InnoDB'
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
     )
 
     volume_type_extra_specs = Table(
@@ -375,11 +370,12 @@ def upgrade():
         Column('deleted_at', DateTime),
         Column('deleted', Boolean),
         Column('id', Integer, primary_key=True, nullable=False),
-        Column('volume_type_id', String(length=36),
-               ForeignKey('volume_types.id'), nullable=False),
+        Column('volume_type_id', String(length=36), nullable=False),
         Column('key', String(length=255)),
         Column('value', String(length=255)),
-        mysql_engine='InnoDB'
+        ForeignKeyConstraint(['volume_type_id'], ['volume_types.id']),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
     )
 
     # create all tables
@@ -399,25 +395,6 @@ def upgrade():
                 LOG.info(repr(table))
                 LOG.exception('Exception while creating table.')
                 raise
-
-    if migrate_engine.name == "mysql":
-        tables = ["quotas", "services", "quota_classes", "quota_usages",
-                  "reservations", "project_user_quotas", "share_access_map",
-                  "share_snapshots", "share_metadata", "security_services",
-                  "share_networks", "network_allocations", "shares",
-                  "share_servers",
-                  "share_network_security_service_association", "volume_types",
-                  "volume_type_extra_specs", "share_server_backend_details"]
-
-        migrate_engine.execute("SET foreign_key_checks = 0")
-        for table in tables:
-            migrate_engine.execute(
-                "ALTER TABLE %s CONVERT TO CHARACTER SET utf8" % table)
-        migrate_engine.execute("SET foreign_key_checks = 1")
-        migrate_engine.execute(
-            "ALTER DATABASE %s DEFAULT CHARACTER SET utf8" %
-            migrate_engine.url.database)
-        migrate_engine.execute("ALTER TABLE %s Engine=InnoDB" % table)
 
 
 def downgrade():

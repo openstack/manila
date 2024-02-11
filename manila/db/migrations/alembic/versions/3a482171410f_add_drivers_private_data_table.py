@@ -50,6 +50,7 @@ def upgrade():
                        nullable=False, primary_key=True),
             sql.Column('value', sql.String(1023), nullable=False),
             mysql_engine='InnoDB',
+            mysql_charset='utf8',
         )
     except Exception:
         LOG.error("Table |%s| not created!",
