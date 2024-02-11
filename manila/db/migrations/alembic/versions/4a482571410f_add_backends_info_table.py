@@ -47,6 +47,7 @@ def upgrade():
             sql.Column('info_hash', sql.String(255),
                        nullable=False),
             mysql_engine='InnoDB',
+            mysql_charset='utf8',
         )
     except Exception:
         LOG.error("Table |%s| not created!",
