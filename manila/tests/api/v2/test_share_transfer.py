@@ -65,37 +65,31 @@ class ShareTransferAPITestCase(test.TestCase):
                       mount_point_name=None):
         """Create a share object."""
         share_type = db_utils.create_share_type()
+        instance_list = []
         if mount_point_name:
-            instance_list = [
+            instance_list.append(
                 db_utils.create_share_instance(
                     status=status,
                     share_id='fake_id',
                     mount_point_name=mount_point_name
                 )
-            ]
-            share = db_utils.create_share(
-                display_name=display_name,
-                display_description=display_description,
-                status=status, size=size,
-                project_id=project_id,
-                user_id=user_id,
-                share_type_id=share_type['id'],
-                share_network_id=share_network_id,
-                instances=instance_list
             )
-        else:
-            share = db_utils.create_share(
-                display_name=display_name,
-                display_description=display_description,
-                status=status,
-                size=size,
-                project_id=project_id,
-                user_id=user_id,
-                share_type_id=share_type['id'],
-                share_network_id=share_network_id,
-                mount_point_name=mount_point_name
-            )
+
+        share = db_utils.create_share(
+            display_name=display_name,
+            display_description=display_description,
+            status=status,
+            size=size,
+            project_id=project_id,
+            user_id=user_id,
+            share_type_id=share_type['id'],
+            share_network_id=share_network_id,
+            instances=instance_list,
+            mount_point_name=mount_point_name
+        )
+
         share_id = share['id']
+
         return share_id
 
     def test_show_transfer(self):
@@ -276,9 +270,7 @@ class ShareTransferAPITestCase(test.TestCase):
     def test_create_transfer_with_project_id_prefix_mount_point_name(self):
         share_id = self._create_share(project_id='fake',
                                       mount_point_name='fake_mp')
-        '''self.share_transfer_api.create(context.get_admin_context(),
-                                       share_id,
-                                       'test_missing_share_type')'''
+
         self.assertRaises(exception.Invalid,
                           self.share_transfer_api.create,
                           context.get_admin_context(), share_id,

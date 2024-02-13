@@ -1,0 +1,5 @@
+features:
+  - |
+    The NetApp ONTAP driver now supports the common capability
+    "mount_point_name_support". It allows users to
+    specify a custom "mount_point_name" when creating shares.
