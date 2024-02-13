@@ -45,6 +45,24 @@ class HostFiltersTestCase(test.TestCase):
         assertion = self.assertTrue if passes else self.assertFalse
         assertion(self.filter.host_passes(host, filter_properties))
 
+    def test_mount_point_name_support_pass(self):
+        capabilities = {'mount_point_name_support': True}
+        service = {'disabled': False}
+        filter_properties = {
+            'resource_type': {
+                'request_spec': {
+                    'share_properties': {
+                        'mount_point_name': 'fake_mp',
+                    }
+                }
+            }
+        }
+        host = fakes.FakeHostState('host1',
+                                   {'free_capacity_gb': 1024,
+                                    'capabilities': capabilities,
+                                    'service': service})
+        self.assertTrue(self.filter.host_passes(host, filter_properties))
+
     def test_capability_filter_passes_extra_specs_simple(self):
         self._do_test_type_filter_extra_specs(
             ecaps={'opt1': '1', 'opt2': '2'},

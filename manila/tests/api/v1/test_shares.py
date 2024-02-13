@@ -261,6 +261,37 @@ class ShareAPITest(test.TestCase):
         self.assertEqual("fakenetid",
                          create_mock.call_args[1]['share_network_id'])
 
+    def test_share_create_mount_point_name(self):
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "mount_point_name": "fake_mp"
+        }
+        fake_network = {'id': 'fakenetid'}
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=shr['size'],
+                                share_proto=shr['share_proto'].upper(),
+                                mount_point_name=shr['mount_point_name']))
+        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'get_share_network', mock.Mock(
+            return_value=fake_network))
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
+        self.mock_object(
+            db, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value={'id': 'fakesubnetid'}))
+
+        body = {"share": copy.deepcopy(shr)}
+        req = fakes.HTTPRequest.blank('/v1/fake/shares')
+        self.controller.create(req, body)
+
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
+
     def test_share_create_with_share_net_not_active(self):
         shr = {
             "size": 100,
@@ -458,6 +489,53 @@ class ShareAPITest(test.TestCase):
                           body)
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], self.resource_name, 'create')
+
+    def test_share_create_from_mount_point_name(self):
+        parent_share_net = 444
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "snapshot_id": 333,
+            "share_network_id": parent_share_net,
+            "mount_point_name": "fake_mp"
+        }
+        fake_share_net = {'id': parent_share_net}
+        share_net_subnets = [db_utils.create_share_network_subnet(
+            id='fake_subnet_id', share_network_id=fake_share_net['id'])]
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=shr['size'],
+                                share_proto=shr['share_proto'].upper(),
+                                snapshot_id=shr['snapshot_id'],
+                                mount_point_name=shr['mount_point_name'],
+                                instance=dict(
+                                    availability_zone=shr['availability_zone'],
+                                    share_network_id=shr['share_network_id'],
+                                )))
+        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'get_snapshot',
+                         stubs.stub_snapshot_get)
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
+        parent_share = stubs.stub_share(
+            '1', instance={'share_network_id': parent_share_net},
+            create_share_from_snapshot_support=True)
+        self.mock_object(share_api.API, 'get', mock.Mock(
+            return_value=parent_share))
+        self.mock_object(share_api.API, 'get_share_network', mock.Mock(
+            return_value=fake_share_net))
+        self.mock_object(
+            db, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=share_net_subnets))
+
+        body = {"share": copy.deepcopy(shr)}
+        req = fakes.HTTPRequest.blank('/v1/fake/shares', version='2.84')
+        res_dict = self.controller.create(req, body)
+        self.assertEqual(res_dict['share']['project_id'], 'fakeproject')
 
     @ddt.data(
         {'name': 'name1', 'description': 'x' * 256},

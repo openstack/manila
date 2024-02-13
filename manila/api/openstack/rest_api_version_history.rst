@@ -450,3 +450,7 @@ user documentation.
   The ``disabled_reason`` field was added to the service to mark the reason why
   the user disabled the service. ``disabled`` field will be replaced by
   ``status`` field.
+
+2.84
+----
+   Added optional ``mount_point_name`` field to share.

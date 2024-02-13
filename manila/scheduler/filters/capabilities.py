@@ -39,6 +39,7 @@ class CapabilitiesFilter(base_host.BaseHostFilter):
     def host_passes(self, host_state, filter_properties):
         """Return a list of hosts that can create resource_type."""
         resource_type = filter_properties.get('resource_type')
+
         if not self._satisfies_extra_specs(host_state.capabilities,
                                            resource_type):
             LOG.debug("%(host_state)s fails resource_type extra_specs "

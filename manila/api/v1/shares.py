@@ -25,6 +25,7 @@ import webob
 from webob import exc
 
 from manila.api import common
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.views import share_accesses as share_access_views
 from manila.api.views import shares as share_views
@@ -444,6 +445,9 @@ class ShareMixin(object):
             kwargs['share_network_id'] = share_network_id
 
         kwargs['scheduler_hints'] = scheduler_hints
+
+        if req.api_version_request >= api_version.APIVersionRequest("2.84"):
+            kwargs['mount_point_name'] = share.pop('mount_point_name', None)
 
         new_share = self.share_api.create(context,
                                           share_proto,

@@ -166,6 +166,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         data['replication_domain'] = None
         data['filter_function'] = None
         data['goodness_function'] = None
+        data['mount_point_name_support'] = False
         data['snapshot_support'] = True
         data['create_share_from_snapshot_support'] = True
         data['ipv4_support'] = True

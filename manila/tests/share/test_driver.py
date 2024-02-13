@@ -144,6 +144,7 @@ class ShareDriverTestCase(test.TestCase):
             'reserved_share_extend_percentage',
             'vendor_name', 'storage_protocol',
             'snapshot_support', 'mount_snapshot_support',
+            'mount_point_name_support',
         ]
         share_driver = driver.ShareDriver(True, configuration=conf)
         fake_stats = {'fake_key': 'fake_value'}

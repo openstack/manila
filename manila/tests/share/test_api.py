@@ -166,7 +166,10 @@ class ShareAPITestCase(test.TestCase):
         share_instance = db_utils.create_share_instance(
             share_id=share['id'],
             share_type_id=share_type_id)
-        share_type = {'fake': 'fake'}
+        share_type = {
+            'fake': 'fake',
+            'mount_point_name_support': False
+        }
         self.mock_object(db_api, 'share_instance_create',
                          mock.Mock(return_value=share_instance))
         self.mock_object(db_api, 'share_type_get',
@@ -801,7 +804,7 @@ class ShareAPITestCase(test.TestCase):
             availability_zones=expected_azs,
             az_request_multiple_subnet_support_map=compatible_azs_multiple,
             snapshot_host=None,
-            scheduler_hints=None
+            scheduler_hints=None, mount_point_name=None,
         )
         db_api.share_get.assert_called_once()
 
@@ -839,6 +842,85 @@ class ShareAPITestCase(test.TestCase):
         get_all_azs_sns = self.api._get_all_availability_zones_with_subnets
         get_all_azs_sns.assert_called_once_with(
             self.context, fake_share_network_id)
+
+    def test_prefix_with_missing_extra_spec_mount_point_name_support(self):
+        share, share_data = self._setup_create_mocks(is_public=True)
+        az = share_data.pop('availability_zone')
+        extra_specs = {'replication_type': 'readable',
+                       'mount_point_name_support': False}
+        self.mock_object(
+            self.api, 'get_share_attributes_from_share_type',
+            mock.Mock(return_value=extra_specs))
+
+        self.assertRaises(
+            exception.InvalidInput,
+            self.api.create,
+            self.context, share_data['share_proto'], share_data['size'],
+            share_data['display_name'], share_data['display_description'],
+            availability_zones=az,
+            mount_point_name='fake_mp')
+
+    def test_prefix_with_valid_mount_point_name(self):
+        share_type = {
+            'extra_specs': {
+                constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX: 'prefix',
+            }
+        }
+        self.context.project_id = 'project_id'
+        mount_point_name = 'mount_point'
+        result = self.api._prefix_mount_point_name(
+            share_type, self.context, mount_point_name
+        )
+        self.assertEqual(result, 'prefix_mount_point')
+
+    def test_prefix_with_valid_missing_extra_spec_mount_point_name(self):
+        share_type = {
+            'extra_specs': {},
+        }
+        self.context.project_id = 'project_id'
+        mount_point_name = 'mount_point'
+        result = self.api._prefix_mount_point_name(
+            share_type, self.context, mount_point_name
+        )
+        self.assertEqual(result, 'project_id_mount_point')
+
+    def test_prefix_with_invalid_mount_point_name(self):
+        share_type = \
+            {
+                'extra_specs':
+                    {
+                        constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX:
+                            'prefix',
+                    }
+            }
+        self.context.project_id = 'project_id'
+        mount_point_name = 'invalid*name'
+        self.assertRaises(
+            exception.InvalidInput,
+            self.api._prefix_mount_point_name,
+            share_type,
+            self.context,
+            mount_point_name
+        )
+
+    def test_prefix_with_too_long_mount_point_name(self):
+        share_type = \
+            {
+                'extra_specs':
+                    {
+                        constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX:
+                            'prefix',
+                    }
+            }
+        self.context.project_id = 'project_id'
+        mount_point_name = 'a' * 256
+        self.assertRaises(
+            exception.InvalidInput,
+            self.api._prefix_mount_point_name,
+            share_type,
+            self.context,
+            mount_point_name
+        )
 
     @ddt.data(
         None, '', 'fake', 'nfsfake', 'cifsfake', 'glusterfsfake', 'hdfsfake')
@@ -984,6 +1066,7 @@ class ShareAPITestCase(test.TestCase):
                 'availability_zone_id': 'fake_id',
                 'share_type_id': 'fake_share_type',
                 'cast_rules_to_readonly': False,
+                'mount_point_name': None,
             }
         )
         db_api.share_type_get.assert_called_once_with(
@@ -998,6 +1081,28 @@ class ShareAPITestCase(test.TestCase):
         )
         self.assertFalse(
             self.api.scheduler_rpcapi.create_share_instance.called)
+
+    def test_create_share_instance_with_mount_point_name(self):
+        host, share, share_instance = self._setup_create_instance_mocks()
+
+        self.api.create_instance(self.context, share, host=host,
+                                 availability_zone='fake',
+                                 share_type_id='fake_share_type',
+                                 mount_point_name='fake_mp')
+
+        db_api.share_instance_create.assert_called_once_with(
+            self.context, share['id'],
+            {
+                'share_network_id': None,
+                'status': constants.STATUS_CREATING,
+                'scheduled_at': self.dt_utc,
+                'host': host,
+                'availability_zone_id': 'fake_id',
+                'share_type_id': 'fake_share_type',
+                'cast_rules_to_readonly': False,
+                'mount_point_name': 'fake_mp',
+            }
+        )
 
     def test_create_share_instance_without_host(self):
         _, share, share_instance = self._setup_create_instance_mocks()
@@ -1072,6 +1177,7 @@ class ShareAPITestCase(test.TestCase):
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
+                'mount_point_name_support': False,
                 'replication_type': 'dr',
             }
         }
@@ -1090,6 +1196,7 @@ class ShareAPITestCase(test.TestCase):
             'create_share_from_snapshot_support': False,
             'revert_to_snapshot_support': False,
             'mount_snapshot_support': False,
+            'mount_point_name_support': False,
             'replication_type': None,
         }
         self.assertEqual(expected, result)
@@ -1140,6 +1247,7 @@ class ShareAPITestCase(test.TestCase):
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
+                'mount_point_name_support': False,
                 'driver_handles_share_servers': dhss,
             },
         }
@@ -1176,6 +1284,8 @@ class ShareAPITestCase(test.TestCase):
                 fake_type['extra_specs']['revert_to_snapshot_support'],
             'mount_snapshot_support':
                 fake_type['extra_specs']['mount_snapshot_support'],
+            'mount_point_name_support':
+                fake_type['extra_specs']['mount_point_name_support'],
             'replication_type': replication_type,
         })
 
@@ -1231,6 +1341,7 @@ class ShareAPITestCase(test.TestCase):
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
+                'mount_point_name_support': False,
                 'driver_handles_share_servers': dhss,
             },
         }
@@ -1278,6 +1389,7 @@ class ShareAPITestCase(test.TestCase):
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
+                'mount_point_name_support': False,
                 'driver_handles_share_servers': True,
             },
         }
@@ -1329,6 +1441,7 @@ class ShareAPITestCase(test.TestCase):
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
+                'mount_point_name_support': False,
                 'driver_handles_share_servers': True,
             },
         }
@@ -1412,6 +1525,9 @@ class ShareAPITestCase(test.TestCase):
             'mount_snapshot_support': kwargs.get(
                 'mount_snapshot_support',
                 share_type['extra_specs'].get('mount_snapshot_support')),
+            'mount_point_name_support': kwargs.get(
+                'mount_point_name_support',
+                share_type['extra_specs'].get('mount_point_name_support')),
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': share_type['id'],
             'is_public': kwargs.get('is_public', share.get('is_public')),
@@ -2356,7 +2472,7 @@ class ShareAPITestCase(test.TestCase):
             availability_zones=None,
             az_request_multiple_subnet_support_map=None,
             snapshot_host=snapshot['share']['instance']['host'],
-            scheduler_hints=None)
+            scheduler_hints=None, mount_point_name=None)
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share_snapshot', 'get_snapshot')
         quota.QUOTAS.reserve.assert_called_once_with(
@@ -3508,6 +3624,7 @@ class ShareAPITestCase(test.TestCase):
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
+                'mount_point_name_support': False,
                 'driver_handles_share_servers': dhss,
             },
         }
@@ -3520,6 +3637,7 @@ class ShareAPITestCase(test.TestCase):
                     'create_share_from_snapshot_support': False,
                     'revert_to_snapshot_support': False,
                     'mount_snapshot_support': False,
+                    'mount_point_name_support': False,
                     'driver_handles_share_servers': dhss,
                     'availability_zones': 'fake_az1,fake_az2',
                 },
@@ -3603,6 +3721,7 @@ class ShareAPITestCase(test.TestCase):
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
+                'mount_point_name_support': False,
                 'driver_handles_share_servers': 'true',
                 'availability_zones': 'fake_az3'
             },
@@ -3615,6 +3734,7 @@ class ShareAPITestCase(test.TestCase):
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
+                'mount_point_name_support': False,
                 'driver_handles_share_servers': 'true',
                 'availability_zones': 'fake_az1,fake_az2',
             },

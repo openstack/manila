@@ -268,6 +268,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'replication_domain': None,
             'filter_function': None,
             'goodness_function': None,
+            'mount_point_name_support': False,
             'ipv4_support': True,
             'ipv6_support': False,
             'security_service_update_support': False,

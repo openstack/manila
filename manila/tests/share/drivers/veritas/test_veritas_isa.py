@@ -438,6 +438,7 @@ class ACCESSShareDriverTestCase(test.TestCase):
             'driver_handles_share_servers': False,
             'filter_function': 'Disable',
             'goodness_function': 'Disable',
+            'mount_point_name_support': False,
             'ipv4_support': True,
             'ipv6_support': False,
             'mount_snapshot_support': False,

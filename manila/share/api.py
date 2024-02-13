@@ -21,6 +21,7 @@ Handles all requests relating to shares.
 """
 import functools
 import json
+import re
 
 from oslo_config import cfg
 from oslo_log import log
@@ -270,7 +271,8 @@ class API(base.Base):
                share_network_id=None, share_type=None, is_public=False,
                share_group_id=None, share_group_snapshot_member=None,
                availability_zones=None, scheduler_hints=None,
-               az_request_multiple_subnet_support_map=None):
+               az_request_multiple_subnet_support_map=None,
+               mount_point_name=None):
         """Create new share."""
 
         api_common.check_metadata_properties(metadata)
@@ -348,6 +350,18 @@ class API(base.Base):
         deltas = {'shares': 1, 'gigabytes': size}
         share_type_attributes = self.get_share_attributes_from_share_type(
             share_type)
+
+        mount_point_name_support = share_type_attributes.get(
+            constants.ExtraSpecs.MOUNT_POINT_NAME_SUPPORT, None)
+        if mount_point_name is not None:
+            if not mount_point_name_support:
+                msg = _("Setting a mount point name is not supported"
+                        " by the share type used: %s." % share_type_id)
+                raise exception.InvalidInput(reason=msg)
+            mount_point_name = self._prefix_mount_point_name(
+                share_type, context, mount_point_name
+            )
+
         share_type_supports_replication = share_type_attributes.get(
             'replication_type', None)
         if share_type_supports_replication:
@@ -482,7 +496,8 @@ class API(base.Base):
             share_type_id=share_type_id, availability_zones=availability_zones,
             snapshot_host=snapshot_host, scheduler_hints=scheduler_hints,
             az_request_multiple_subnet_support_map=(
-                az_request_multiple_subnet_support_map))
+                az_request_multiple_subnet_support_map),
+            mount_point_name=mount_point_name)
 
         # Retrieve the share with instance details
         share = self.db.share_get(context, share['id'])
@@ -505,6 +520,9 @@ class API(base.Base):
             constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT)
         mount_snapshot_support_key = (
             constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT)
+        mount_point_name_support_key = (
+            constants.ExtraSpecs.MOUNT_POINT_NAME_SUPPORT
+        )
 
         snapshot_support_default = inferred_map.get(snapshot_support_key)
         create_share_from_snapshot_support_default = inferred_map.get(
@@ -513,6 +531,7 @@ class API(base.Base):
             revert_to_snapshot_key)
         mount_snapshot_support_default = inferred_map.get(
             constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT)
+        mount_point_name_support_default = False
 
         if share_type:
             snapshot_support = share_types.parse_boolean_extra_spec(
@@ -536,6 +555,11 @@ class API(base.Base):
                     'extra_specs', {}).get(
                     mount_snapshot_support_key,
                     mount_snapshot_support_default))
+            mount_point_name_support = share_types.parse_boolean_extra_spec(
+                mount_point_name_support_key, share_type.get(
+                    'extra_specs', {}).get(
+                    mount_point_name_support_key,
+                    mount_point_name_support_default))
             replication_type = share_type.get('extra_specs', {}).get(
                 'replication_type')
         else:
@@ -544,6 +568,7 @@ class API(base.Base):
                 create_share_from_snapshot_support_default)
             revert_to_snapshot_support = revert_to_snapshot_support_default
             mount_snapshot_support = mount_snapshot_support_default
+            mount_point_name_support = mount_point_name_support_default
             replication_type = None
 
         return {
@@ -553,6 +578,7 @@ class API(base.Base):
             'revert_to_snapshot_support': revert_to_snapshot_support,
             'replication_type': replication_type,
             'mount_snapshot_support': mount_snapshot_support,
+            'mount_point_name_support': mount_point_name_support,
         }
 
     def create_instance(self, context, share, share_network_id=None,
@@ -560,7 +586,8 @@ class API(base.Base):
                         share_group=None, share_group_snapshot_member=None,
                         share_type_id=None, availability_zones=None,
                         snapshot_host=None, scheduler_hints=None,
-                        az_request_multiple_subnet_support_map=None):
+                        az_request_multiple_subnet_support_map=None,
+                        mount_point_name=None):
         request_spec, share_instance = (
             self.create_share_instance_and_get_request_spec(
                 context, share, availability_zone=availability_zone,
@@ -570,7 +597,8 @@ class API(base.Base):
                 availability_zones=availability_zones,
                 snapshot_host=snapshot_host,
                 az_request_multiple_subnet_support_map=(
-                    az_request_multiple_subnet_support_map)))
+                    az_request_multiple_subnet_support_map),
+                mount_point_name=mount_point_name))
 
         if share_group_snapshot_member:
             # Inherit properties from the share_group_snapshot_member
@@ -613,7 +641,8 @@ class API(base.Base):
             share_group=None, host=None, share_network_id=None,
             share_type_id=None, cast_rules_to_readonly=False,
             availability_zones=None, snapshot_host=None,
-            az_request_multiple_subnet_support_map=None):
+            az_request_multiple_subnet_support_map=None,
+            mount_point_name=None):
 
         availability_zone_id = None
         if availability_zone:
@@ -633,6 +662,7 @@ class API(base.Base):
                 'availability_zone_id': availability_zone_id,
                 'share_type_id': share_type_id,
                 'cast_rules_to_readonly': cast_rules_to_readonly,
+                'mount_point_name': mount_point_name,
             }
         )
 
@@ -666,7 +696,7 @@ class API(base.Base):
             'host': share_instance['host'],
             'status': share_instance['status'],
             'replica_state': share_instance['replica_state'],
-            'share_type_id': share_instance['share_type_id'],
+            'share_type_id': share_instance['share_type_id']
         }
 
         share_type = None
@@ -686,7 +716,7 @@ class API(base.Base):
             'availability_zone_id': availability_zone_id,
             'availability_zones': availability_zones,
             'az_request_multiple_subnet_support_map': (
-                az_request_multiple_subnet_support_map),
+                az_request_multiple_subnet_support_map)
         }
         return request_spec, share_instance
 
@@ -1063,6 +1093,11 @@ class API(base.Base):
                 share_type.get('extra_specs', {}).get(
                     'mount_snapshot_support')
             ),
+            'mount_point_name_support': kwargs.get(
+                'mount_point_name_support',
+                share_type.get('extra_specs', {}).get(
+                    'mount_point_name_support')
+            ),
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': share_type['id'],
             'is_public': kwargs.get('is_public', share.get('is_public')),
@@ -1093,6 +1128,25 @@ class API(base.Base):
             'share_id': share.get('id'),
         }
         return request_spec
+
+    def _prefix_mount_point_name(self, share_type, context,
+                                 mount_point_name=None):
+        prefix = share_type.get('extra_specs').get(
+            constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX)
+        prefix = prefix or context.project_id
+        prefix = prefix.format(context.to_dict())
+        mount_point_name = f"{prefix}_{mount_point_name}"
+
+        if mount_point_name and (
+                not re.match(
+                    r'^[a-zA-Z0-9_]*$', mount_point_name)
+                or len(mount_point_name) > 255
+        ):
+            msg = _("Invalid mount_point_name: %s")
+            LOG.error(msg, mount_point_name)
+            raise exception.InvalidInput(msg % mount_point_name)
+
+        return mount_point_name
 
     @prevent_locked_action_on_share('delete')
     def unmanage(self, context, share):

@@ -1,0 +1,12 @@
+---
+features:
+  - A human readable ``mount_point_name`` can now be specified
+    while creating shares through the mount_point_name parameter.
+    Manila will prepend a prefix to the mount point name which
+    can be configured through the ``provisioning:mount_point_prefix``
+    share type extra spec. In case this extra spec is not available
+    in the share type, Manila will prepend a project identification
+    to the mount point name. Project id will be added to this friendly
+    name ``provisioning:mount_point_prefix`` share type is not
+    provided during provisioning. The LVM driver now supports
+    human readable export locations.

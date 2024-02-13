@@ -64,6 +64,7 @@ def fake_share_instance(base_share=None, **kwargs):
         'share_network_id': 'fakesharenetworkid',
         'share_server_id': 'fakeshareserverid',
         'share_type_id': '1',
+        'mount_point_name': None,
     }
 
     for attr in models.ShareInstance._proxified_properties:
@@ -82,7 +83,8 @@ def fake_share_type(**kwargs):
         'is_public': False,
         'extra_specs': {
             'driver_handles_share_servers': 'False',
-        }
+        },
+        'mount_point_name_support': False
     }
 
     extra_specs = kwargs.pop('extra_specs', {})

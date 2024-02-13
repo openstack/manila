@@ -162,6 +162,7 @@ class HostState(object):
         self.security_service_update_support = False
         self.network_allocation_update_support = False
         self.share_server_multiple_subnet_support = False
+        self.mount_point_name_support = False
 
         # PoolState for all pools
         self.pools = {}

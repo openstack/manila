@@ -116,6 +116,9 @@ class LVMMixin(driver.ExecuteMixin):
         except processutils.ProcessExecutionError:
             raise
 
+    def _get_mount_point_name(self, share):
+        return share.get('mount_point_name') or share.get('name')
+
     def _extend_container(self, share, device_name, size):
         privsep_common.execute_with_retries(
             privsep_lvm.lvextend, [device_name, size],
@@ -267,14 +270,16 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             'reserved_percentage': 0,
             'reserved_snapshot_percentage': 0,
             'reserved_share_extend_percentage': 0,
+            'mount_point_name_support': True,
         }, ]
 
     def create_share(self, context, share, share_server=None):
         self._allocate_container(share)
         # create file system
         device_name = self._get_local_path(share)
+        share_export_location = self._get_mount_point_name(share)
         location = self._get_helper(share).create_exports(
-            self.share_server, share['name'])
+            self.share_server, share_export_location)
         self._mount_device(share, device_name)
         return location
 
@@ -287,8 +292,9 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         self._set_random_uuid_to_device(share)
         self._copy_volume(
             snapshot_device_name, share_device_name, share['size'])
+        share_export_location = self._get_mount_point_name(share)
         location = self._get_helper(share).create_exports(
-            self.share_server, share['name'])
+            self.share_server, share_export_location)
         self._mount_device(share, share_device_name)
         return location
 
@@ -342,14 +348,19 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         """Ensure that storage are mounted and exported."""
         device_name = self._get_local_path(share)
         self._mount_device(share, device_name)
+        share_export_location = self._get_mount_point_name(share)
         return self._get_helper(share).create_exports(
-            self.share_server, share['name'], recreate=True)
+            self.share_server,
+            share_export_location,
+            recreate=True
+        )
 
     def _delete_share(self, ctx, share):
+        share_export_location = self._get_mount_point_name(share)
         """Delete a share."""
         try:
             self._get_helper(share).remove_exports(
-                self.share_server, share['name'])
+                self.share_server, share_export_location)
         except exception.ProcessExecutionError:
             LOG.warning("Can't remove share %r", share['id'])
         except exception.InvalidShare as exc:
@@ -379,8 +390,10 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                removed. access_rules doesn't contain these rules.
         :param share_server: None or Share server model
         """
+        share_export_location = self._get_mount_point_name(share)
         self._get_helper(share).update_access(self.share_server,
-                                              share['name'], access_rules,
+                                              share_export_location,
+                                              access_rules,
                                               add_rules=add_rules,
                                               delete_rules=delete_rules)
 
@@ -434,11 +447,15 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
     def revert_to_snapshot(self, context, snapshot, share_access_rules,
                            snapshot_access_rules, share_server=None):
         share = snapshot['share']
+        snapshot_export_location = self._get_mount_point_name(snapshot)
+        share_export_location = self._get_mount_point_name(share)
         # Temporarily remove all access rules
         self._get_helper(share).update_access(self.share_server,
-                                              snapshot['name'], [], [], [])
+                                              snapshot_export_location,
+                                              [], [], [])
         self._get_helper(share).update_access(self.share_server,
-                                              share['name'], [], [], [])
+                                              share_export_location,
+                                              [], [], [])
         # Unmount the snapshot filesystem
         self._unmount_device(snapshot)
         # Unmount the share filesystem
@@ -459,15 +476,17 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         # Also remount the snapshot
         device_name = self._get_local_path(snapshot)
         self._mount_device(snapshot, device_name)
+        share_export_location = self._get_mount_point_name(share)
+        snapshot_export_location = self._get_mount_point_name(share)
         # Lastly we add all the access rules back
         self._get_helper(share).update_access(self.share_server,
-                                              share['name'],
+                                              share_export_location,
                                               share_access_rules,
                                               [], [])
         snapshot_access_rules, __, __ = share_utils.change_rules_to_readonly(
             snapshot_access_rules, [], [])
         self._get_helper(share).update_access(self.share_server,
-                                              snapshot['name'],
+                                              snapshot_export_location,
                                               snapshot_access_rules,
                                               [], [])
 

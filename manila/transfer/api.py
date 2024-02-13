@@ -168,6 +168,17 @@ class API(base.Base):
         policy.check_policy(context, "share_transfer", "create",
                             target_obj=share_ref)
         share_instance = share_ref['instance']
+
+        mount_point_name = share_instance['mount_point_name']
+        if (mount_point_name and
+                mount_point_name.startswith(share_ref['project_id'])):
+            msg = _('Share %s has a custom mount_point_name %s.'
+                    ' This has the project_id encoded in it.'
+                    ' Transferring such'
+                    ' a share isn\'t supported') % (share_ref['name'],
+                                                    mount_point_name)
+            raise exception.Invalid(reason=msg)
+
         if share_ref['status'] != "available":
             raise exception.InvalidShare(reason=_("Share's status must be "
                                                   "available"))

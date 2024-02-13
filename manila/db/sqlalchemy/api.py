@@ -1619,6 +1619,7 @@ def _extract_share_instance_values(values):
         'status', 'host', 'scheduled_at', 'launched_at', 'terminated_at',
         'share_server_id', 'share_network_id', 'availability_zone_id',
         'replica_state', 'share_type_id', 'share_type', 'access_rules_status',
+        'mount_point_name',
     ]
     share_instance_values, share_values = (
         _extract_subdict_by_fields(values, share_instance_model_fields)

@@ -330,6 +330,10 @@ def is_valid_csv(extra_spec_value):
     return all([v.strip() for v in values])
 
 
+def is_valid_string(v):
+    return isinstance(v, str) and len(v) in range(1, 256)
+
+
 def sanitize_csv(csv_string):
     return ','.join(value.strip() for value in csv_string.split(',')
                     if (csv_string and value))
@@ -356,8 +360,12 @@ def is_valid_optional_extra_spec(key, value):
         return value in constants.ExtraSpecs.REPLICATION_TYPES
     elif key == constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT:
         return parse_boolean_extra_spec(key, value) is not None
+    elif key == constants.ExtraSpecs.MOUNT_POINT_NAME_SUPPORT:
+        return parse_boolean_extra_spec(key, value) is not None
     elif key == constants.ExtraSpecs.AVAILABILITY_ZONES:
         return is_valid_csv(value)
+    elif key == constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX:
+        return is_valid_string(value)
     elif key in [constants.ExtraSpecs.PROVISIONING_MAX_SHARE_SIZE,
                  constants.ExtraSpecs.PROVISIONING_MIN_SHARE_SIZE,
                  constants.ExtraSpecs.PROVISIONING_MAX_SHARE_EXTEND_SIZE]:

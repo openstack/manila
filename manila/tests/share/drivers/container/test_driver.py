@@ -114,6 +114,8 @@ class ContainerShareDriverTestCase(test.TestCase):
         self.assertEqual('test-pool', self._driver._stats['pools'])
         self.assertTrue(self._driver._stats['ipv4_support'])
         self.assertFalse(self._driver._stats['ipv6_support'])
+        self.assertFalse(self._driver.
+                         _stats['mount_point_name_support'])
 
     def test_create_share(self):
 
