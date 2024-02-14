@@ -2670,12 +2670,15 @@ class API(base.Base):
                             'share_status': share['status']}
                 raise exception.InvalidShareServer(reason=msg)
 
-            if share.has_replicas:
-                msg = _('Share %s has replicas. Remove the replicas of all '
-                        'shares in the share server before attempting to '
-                        'migrate it.') % share['id']
-                LOG.warning(msg)
-                raise exception.InvalidShareServer(reason=msg)
+            # NOTE(sapcc): We want to skip the check for replicas bc migration
+            # with replicas are supported by ONTAP driver 9.12 onwards.
+            #
+            # if share.has_replicas:
+            #     msg = _('Share %s has replicas. Remove the replicas of all '
+            #             'shares in the share server before attempting to '
+            #             'migrate it.') % share['id']
+            #     LOG.warning(msg)
+            #     raise exception.InvalidShareServer(reason=msg)
 
             # NOTE(carloss): Not validating the flag preserve_snapshots at this
             # point, considering that even if the admin set the value to False,
