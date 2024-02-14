@@ -3007,27 +3007,33 @@ class NetAppCmodeFileStorageLibrary(object):
                 LOG.exception("Could not resync snapmirror.")
                 return constants.STATUS_ERROR
 
+        # Enforce the SnapMirror schedule to match the configuration
+        current_schedule = snapmirror.get('schedule')
+        target_schedule = self.configuration.netapp_snapmirror_schedule
+        if current_schedule != target_schedule:
+            LOG.debug(
+                'Modify snapmirror schedule for replica: '
+                '%(replica)s from %(from)s to %(to)s', {
+                    'replica': replica['id'],
+                    'from': current_schedule,
+                    'to': target_schedule
+                })
+            dm_session.modify_snapmirror(active_replica, replica,
+                                         schedule=target_schedule)
+
         last_update_timestamp = float(
             snapmirror.get('last-transfer-end-timestamp', 0))
         # Recovery Point Objective (RPO) indicates the point in time to
         # which data can be recovered. The RPO target is typically less
         # than twice the replication schedule.
+        #
+        # Since snapmirror schedule is updated according to the configuration,
+        # we use the configuration value to calculate the RPO target.
         if (last_update_timestamp and
             (timeutils.is_older_than(
                 datetime.datetime.utcfromtimestamp(last_update_timestamp)
                 .isoformat(), (2 * self._snapmirror_schedule)))):
-            current_schedule = snapmirror.get('schedule')
-            new_schedule = self.configuration.netapp_snapmirror_schedule
-            if current_schedule == new_schedule:
-                return constants.REPLICA_STATE_OUT_OF_SYNC
-            else:
-                LOG.debug('Modify snapmirror schedule for replica:'
-                          '%(replica)s from %(from)s to %(to)s',
-                          {'replica': replica['id'],
-                           'from': current_schedule,
-                           'to': new_schedule})
-                dm_session.modify_snapmirror(active_replica, replica,
-                                             schedule=new_schedule)
+            return constants.REPLICA_STATE_OUT_OF_SYNC
 
         replica_backend = share_utils.extract_host(replica['host'],
                                                    level='backend_name')
