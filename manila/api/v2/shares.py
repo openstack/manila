@@ -15,6 +15,7 @@
 
 from http import client as http_client
 
+from oslo_config import cfg
 from oslo_log import log
 import webob
 from webob import exc
@@ -38,6 +39,7 @@ from manila import share
 from manila import utils
 
 LOG = log.getLogger(__name__)
+CONF = cfg.CONF
 
 
 class ShareController(wsgi.Controller,
@@ -55,6 +57,9 @@ class ShareController(wsgi.Controller,
         self.share_api = share.API()
         self._access_view_builder = share_access_views.ViewBuilder()
         self._migration_view_builder = share_migration_views.ViewBuilder()
+        self._conf_admin_only_metadata_keys = getattr(
+            CONF, 'admin_only_metadata', []
+        )
 
     @wsgi.Controller.authorize('revert_to_snapshot')
     def _revert(self, req, id, body=None):
@@ -613,11 +618,9 @@ class ShareController(wsgi.Controller,
 
     def _validate_metadata_for_update(self, req, share_id, metadata,
                                       delete=True):
-        admin_metadata_ignore_keys = (
-            constants.AdminOnlyMetadata.SCHEDULER_FILTERS
-        )
+        admin_metadata_ignore_keys = set(self._conf_admin_only_metadata_keys)
         context = req.environ['manila.context']
-        if set(metadata).intersection(set(admin_metadata_ignore_keys)):
+        if set(metadata).intersection(admin_metadata_ignore_keys):
             try:
                 policy.check_policy(
                     context, 'share', 'update_admin_only_metadata')
@@ -693,7 +696,7 @@ class ShareController(wsgi.Controller,
     @wsgi.Controller.authorize("delete_share_metadata")
     def delete_metadata(self, req, resource_id, key):
         context = req.environ['manila.context']
-        if key in constants.AdminOnlyMetadata.SCHEDULER_FILTERS:
+        if key in self._conf_admin_only_metadata_keys:
             policy.check_policy(context, 'share',
                                 'update_admin_only_metadata')
         return self._delete_metadata(req, resource_id, key)

@@ -472,6 +472,7 @@ class ShareManager(manager.SchedulerDependentManager):
             self.db.backend_info_update(
                 ctxt, self.host, new_backend_info_hash)
 
+        shares_with_metadata_already_updated = set()
         for share_instance in share_instances:
             if share_instance['id'] not in update_share_instances:
                 continue
@@ -484,6 +485,15 @@ class ShareManager(manager.SchedulerDependentManager):
                     {'status': share_instance_update_dict.get('status'),
                      'host': share_instance['host']}
                 )
+            metadata_updates = share_instance_update_dict.get('metadata')
+            if metadata_updates:
+                share_id = share_instance['share_id']
+                # NOTE(carloss): Multiple instances might exist, and in such
+                # cases, a single share metadata update would be enough.
+                if share_id not in shares_with_metadata_already_updated:
+                    self.db.share_metadata_update(
+                        ctxt, share_id, metadata_updates, False)
+                    shares_with_metadata_already_updated.add(share_id)
 
             update_export_locations = (
                 share_instance_update_dict.get('export_locations')
@@ -2176,6 +2186,14 @@ class ShareManager(manager.SchedulerDependentManager):
                 msg = _('Driver returned an invalid status: %s') % status
                 raise exception.InvalidShareInstance(reason=msg)
 
+            share_backend_info = (
+                self.driver.get_optional_share_creation_data(
+                    share, share_server=share_server))
+            if share_backend_info:
+                metadata_updates = share_backend_info.get("metadata")
+                if metadata_updates:
+                    self.db.share_metadata_update(
+                        context, share_id, metadata_updates, False)
             if export_locations:
                 self.db.share_export_locations_update(
                     context, share_instance['id'], export_locations)

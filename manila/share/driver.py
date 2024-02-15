@@ -2835,6 +2835,25 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
+    def get_optional_share_creation_data(self, share, share_server=None):
+        """Get info to set in shares after their creation.
+
+        Driver can use this method to get the special info and
+        return for assessment. The share manager service uses this
+        assessment to set this info to shares after the creation.
+
+        :returns: A dictionary containing driver-specific info.
+
+            Example::
+
+                 {
+                      'metadata': {'__mount_options': 'fake_key=fake_val'}
+                       ...
+                 }
+
+        """
+        return {}
+
     def ensure_shares(self, context, shares):
         """Invoked to ensure that shares are exported.
 
