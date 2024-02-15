@@ -65,6 +65,7 @@ SHARE_AGGREGATE_DISK_TYPES = ['SATA', 'SSD']
 EFFECTIVE_TYPE = 'fake_effective_type1'
 SHARE_NAME = 'fake_share'
 SHARE_SIZE = '1000000000'
+SHARE_USED_SIZE = '3456796'
 SHARE_NAME_2 = 'fake_share_2'
 FLEXGROUP_STYLE_EXTENDED = 'flexgroup'
 FLEXVOL_STYLE_EXTENDED = 'flexvol'
@@ -2351,6 +2352,7 @@ VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
         </volume-id-attributes>
         <volume-space-attributes>
           <size>%(size)s</size>
+          <size-used>%(size-used)s</size-used>
         </volume-space-attributes>
         <volume-qos-attributes>
           <policy-group-name>%(qos-policy-group-name)s</policy-group-name>
@@ -2364,6 +2366,7 @@ VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
     'vserver': VSERVER_NAME,
     'volume': SHARE_NAME,
     'size': SHARE_SIZE,
+    'size-used': SHARE_USED_SIZE,
     'qos-policy-group-name': QOS_POLICY_GROUP_NAME,
     'style-extended': FLEXVOL_STYLE_EXTENDED,
 })
@@ -2385,6 +2388,7 @@ VOLUME_GET_ITER_FLEXGROUP_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
         </volume-id-attributes>
         <volume-space-attributes>
           <size>%(size)s</size>
+          <size-used>%(size-used)s</size-used>
         </volume-space-attributes>
         <volume-qos-attributes>
           <policy-group-name>%(qos-policy-group-name)s</policy-group-name>
@@ -2398,6 +2402,7 @@ VOLUME_GET_ITER_FLEXGROUP_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
     'vserver': VSERVER_NAME,
     'volume': SHARE_NAME,
     'size': SHARE_SIZE,
+    'size-used': SHARE_USED_SIZE,
     'qos-policy-group-name': QOS_POLICY_GROUP_NAME,
     'style-extended': FLEXGROUP_STYLE_EXTENDED,
 })
@@ -2417,6 +2422,7 @@ VOLUME_GET_ITER_NO_QOS_RESPONSE = etree.XML("""
         </volume-id-attributes>
         <volume-space-attributes>
           <size>%(size)s</size>
+          <size-used>%(size-used)s</size-used>
         </volume-space-attributes>
       </volume-attributes>
     </attributes-list>
@@ -2427,6 +2433,7 @@ VOLUME_GET_ITER_NO_QOS_RESPONSE = etree.XML("""
     'vserver': VSERVER_NAME,
     'volume': SHARE_NAME,
     'size': SHARE_SIZE,
+    'size-used': SHARE_USED_SIZE,
     'style-extended': FLEXVOL_STYLE_EXTENDED,
 })
 
@@ -3754,7 +3761,8 @@ GENERIC_EXPORT_POLICY_RESPONSE_AND_VOLUMES = {
                 "path": VOLUME_JUNCTION_PATH
             },
             "space": {
-                "size": 21474836480
+                "size": 21474836480,
+                'used': SHARE_USED_SIZE,
             },
         }
     ],
@@ -4796,7 +4804,8 @@ FAKE_VOLUME_MANAGE = {
                 }
             },
             'space': {
-                'size': SHARE_SIZE
+                'size': SHARE_SIZE,
+                'used': SHARE_USED_SIZE,
             }
         }
     ],

@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    The NetApp ONTAP driver now supports driver-advantaged share backup. NetApp
+    SnapVault technology is used to create and restore backups for NetApp ONTAP
+    shares. Backup delete workflow just deletes the transferred snapshots from
+    destination backup volume. How to get the config data for backup, refer
+    https://etherpad.opendev.org/p/manila-share-backup link.

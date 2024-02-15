@@ -345,3 +345,20 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
             self, context, share_server, current_network_allocations,
             new_network_allocations, security_services, shares, snapshots):
         raise NotImplementedError
+
+    def create_backup(self, context, share, backup, **kwargs):
+        return self.library.create_backup(context, share, backup, **kwargs)
+
+    def create_backup_continue(self, context, share, backup, **kwargs):
+        return self.library.create_backup_continue(context, share, backup,
+                                                   **kwargs)
+
+    def restore_backup(self, context, backup, share, **kwargs):
+        return self.library.restore_backup(context, backup, share, **kwargs)
+
+    def restore_backup_continue(self, context, backup, share, **kwargs):
+        return self.library.restore_backup_continue(context, backup, share,
+                                                    **kwargs)
+
+    def delete_backup(self, context, backup, share, **kwargs):
+        return self.library.delete_backup(context, backup, share, **kwargs)

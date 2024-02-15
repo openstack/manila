@@ -35,6 +35,8 @@ from manila.share import share_types
 from manila.share import utils as share_utils
 from manila import test
 from manila.tests.share.drivers.netapp.dataontap.client import fakes as c_fake
+from manila.tests.share.drivers.netapp.dataontap.cluster_mode.test_lib_base\
+    import _get_config
 from manila.tests.share.drivers.netapp.dataontap import fakes as fake
 
 
@@ -4078,3 +4080,42 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._build_model_update.assert_called_once_with(
             fake_current_network_allocations, fake_new_network_allocations,
             export_locations=None)
+
+    def test__get_backup_vserver(self):
+        mock_dest_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_backend',
+                         mock.Mock(return_value=fake.BACKEND_NAME))
+        self.mock_object(data_motion,
+                         'get_backend_configuration',
+                         mock.Mock(return_value=_get_config()))
+        self.mock_object(self.library,
+                         '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock_dest_client))
+        self.mock_object(mock_dest_client,
+                         'list_non_root_aggregates',
+                         mock.Mock(return_value=['aggr1', 'aggr2']))
+        self.mock_object(mock_dest_client,
+                         'create_vserver',
+                         mock.Mock(side_effect=netapp_api.NaApiError(
+                             message='Vserver name is already used by another'
+                                     ' Vserver')))
+        self.library._get_backup_vserver(fake.SHARE_BACKUP, fake.SHARE_SERVER)
+
+    def test__delete_backup_vserver(self):
+        mock_api_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_backend',
+                         mock.Mock(return_value=fake.BACKEND_NAME))
+        self.mock_object(self.library,
+                         '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock_api_client))
+        des_vserver = fake.VSERVER2
+        msg = (f"Cannot delete Vserver. Vserver {des_vserver} "
+               f"has shares.")
+        self.mock_object(mock_api_client,
+                         'delete_vserver',
+                         mock.Mock(
+                             side_effect=exception.NetAppException(
+                                 message=msg)))
+        self.library._delete_backup_vserver(fake.SHARE_BACKUP, des_vserver)

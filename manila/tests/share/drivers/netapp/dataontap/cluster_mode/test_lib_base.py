@@ -24,6 +24,7 @@ import time
 from unittest import mock
 
 import ddt
+from oslo_config import cfg
 from oslo_log import log
 from oslo_service import loopingcall
 from oslo_utils import timeutils
@@ -32,6 +33,8 @@ from oslo_utils import uuidutils
 
 from manila.common import constants
 from manila import exception
+from manila.share import configuration
+from manila.share import driver
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
@@ -39,17 +42,49 @@ from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp.dataontap.cluster_mode import performance
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
+from manila.share.drivers.netapp import options as na_opts
 from manila.share.drivers.netapp import utils as na_utils
 from manila.share import share_types
 from manila.share import utils as share_utils
 from manila import test
 from manila.tests import fake_share
 from manila.tests.share.drivers.netapp.dataontap import fakes as fake
+from manila.tests.share.drivers.netapp import fakes as na_fakes
 from manila.tests import utils
+
+CONF = cfg.CONF
 
 
 def fake_replica(**kwargs):
     return fake_share.fake_replica(for_manager=True, **kwargs)
+
+
+def _get_config():
+    backup_config = 'backup_config'
+    config = configuration.Configuration(driver.share_opts,
+                                         config_group=backup_config)
+    config.append_config_values(na_opts.netapp_backup_opts)
+    config.append_config_values(na_opts.netapp_proxy_opts)
+    config.append_config_values(na_opts.netapp_connection_opts)
+    config.append_config_values(na_opts.netapp_basicauth_opts)
+    config.append_config_values(na_opts.netapp_provisioning_opts)
+    config.append_config_values(na_opts.netapp_support_opts)
+    config.append_config_values(na_opts.netapp_data_motion_opts)
+    config.append_config_values(na_opts.netapp_cluster_opts)
+
+    CONF.set_override("netapp_enabled_backup_types",
+                      [fake.BACKUP_TYPE, "backup2"],
+                      group=backup_config)
+    CONF.set_override("netapp_backup_backend_section_name",
+                      fake.BACKEND_NAME,
+                      group=backup_config)
+    CONF.set_override("netapp_backup_vserver",
+                      "fake_backup_share",
+                      group=backup_config)
+    CONF.set_override("netapp_backup_share",
+                      "fake_share_server",
+                      group=backup_config)
+    return config
 
 
 @ddt.ddt
@@ -7743,3 +7778,1005 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         ])
         mock_extract.assert_called_once_with(fake.HOST_NAME, level='pool')
         mock_parse.assert_called_once_with(flexgroup_pools)
+
+    def test_create_backup_first_backup(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(vserver_client,
+                         'get_snapmirror_destinations',
+                         mock.Mock(return_value=[]))
+
+        vserver_peer_info = [{'vserver': fake.VSERVER1,
+                              'peer-vserver': fake.VSERVER2}]
+        self.mock_object(vserver_client,
+                         'get_vserver_peers',
+                         mock.Mock(return_value=vserver_peer_info))
+        snap_list = ["snap1", "snap2", "snap3"]
+        self.mock_object(mock_dest_client,
+                         'list_volume_snapshots',
+                         mock.Mock(return_value=snap_list))
+
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.create_backup(self.context, share_instance, backup)
+        (mock_dest_client.create_snapmirror_policy.
+         assert_called_once_with(mock.ANY,
+                                 policy_type='vault',
+                                 discard_network_info=False,
+                                 snapmirror_label=mock.ANY,
+                                 keep=mock.ANY))
+
+        (mock_dest_client.create_snapmirror_vol.
+         assert_called_once_with(mock.ANY,
+                                 mock.ANY,
+                                 mock.ANY,
+                                 mock.ANY,
+                                 'extended_data_protection',
+                                 policy=mock.ANY
+                                 ))
+        dm_session = data_motion.DataMotionSession()
+        (dm_session.initialize_and_wait_snapmirror_vol.
+         assert_called_once_with(mock.ANY,
+                                 mock.ANY,
+                                 mock.ANY,
+                                 mock.ANY,
+                                 mock.ANY,
+                                 timeout=mock.ANY,
+                                 ))
+        (mock_dest_client.update_snapmirror_vol.
+         assert_called_once_with(mock.ANY,
+                                 mock.ANY,
+                                 mock.ANY,
+                                 mock.ANY,
+                                 ))
+
+    def test_create_backup_second_backup(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        snapmirror_info = [fake.SNAP_MIRROR_INFO]
+        self.mock_object(vserver_client,
+                         'get_snapmirror_destinations',
+                         mock.Mock(return_value=snapmirror_info))
+
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.create_backup(self.context, share_instance, backup)
+        mock_dest_client.create_snapmirror_policy.assert_not_called()
+        mock_dest_client.create_snapmirror_vol.assert_not_called()
+        (data_motion.DataMotionSession().
+         initialize_and_wait_snapmirror_vol.assert_not_called())
+        (mock_dest_client.update_snapmirror_vol.
+         assert_called_once_with(mock.ANY,
+                                 mock.ANY,
+                                 mock.ANY,
+                                 mock.ANY,
+                                 ))
+
+    def test_create_backup_continue(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        snapmirror_info = [fake.SNAP_MIRROR_INFO]
+        self.mock_object(mock_dest_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=snapmirror_info))
+        snap_list = ["snap1", "snap2", "snap3"]
+        self.mock_object(self.library,
+                         '_get_des_volume_backup_snapshots',
+                         mock.Mock(return_value=snap_list))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.create_backup_continue(self.context, share_instance,
+                                            backup)
+
+    def test_restore_backup(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.restore_backup(self.context, backup, share_instance)
+        vserver_client.snapmirror_restore_vol.assert_called_once_with(
+            source_path=mock.ANY,
+            dest_path=mock.ANY,
+            source_snapshot=mock.ANY)
+
+    def test_restore_backup_continue(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(vserver_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=[]))
+        snap_list = ["restored_snap1", "snap2", "snap3"]
+        self.mock_object(vserver_client,
+                         'list_volume_snapshots',
+                         mock.Mock(return_value=snap_list))
+        self.mock_object(self.library,
+                         '_get_backup_snapshot_name',
+                         mock.Mock(return_value="restored_snap1"))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.restore_backup_continue(self.context, backup,
+                                             share_instance)
+
+    def test_delete_backup(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(mock_dest_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=[]))
+        snap_list = ["snap1", "snap2", "snap3"]
+        self.mock_object(self.library,
+                         '_get_des_volume_backup_snapshots',
+                         mock.Mock(return_value=snap_list))
+        self.mock_object(
+            self.library, '_is_snapshot_deleted',
+            mock.Mock(return_value=True))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.delete_backup(self.context, share_instance, backup)
+
+    def test_delete_backup_with_resource_cleanup(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        snapmirror_info = [fake.SNAP_MIRROR_INFO]
+        self.mock_object(mock_dest_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=snapmirror_info))
+        snap_list = ["snap1", "snap2", "snap3"]
+        self.mock_object(self.library,
+                         '_get_des_volume_backup_snapshots',
+                         mock.Mock(return_value=snap_list))
+        self.mock_object(
+            self.library, '_is_snapshot_deleted',
+            mock.Mock(return_value=True))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.delete_backup(self.context, share_instance, backup)
+
+    def test__get_backup_snapshot_name(self):
+        backup = fake.SHARE_BACKUP
+        actual_result = self.library._get_backup_snapshot_name(backup,
+                                                               fake.SHARE_ID)
+        backup_id = backup.get('id', "")
+        expected_result = f"backup_{fake.SHARE_ID}_{backup_id}"
+        self.assertEqual(actual_result, expected_result)
+
+    def test__get_backend(self):
+        backup = fake.SHARE_BACKUP
+        self.mock_object(data_motion,
+                         'get_backup_configuration',
+                         mock.Mock(return_value=_get_config()))
+
+        actual_result = self.library._get_backend(backup)
+        self.assertEqual(actual_result, fake.BACKEND_NAME)
+
+    def test__get_des_volume_backup_snapshots(self):
+        mock_dest_client = mock.Mock()
+        share_id = fake.SHARE_ID
+        snap_list = [f"backup_{share_id}_snap1",
+                     f"backup_{share_id}_snap2", "snap3"]
+        self.mock_object(mock_dest_client,
+                         'list_volume_snapshots',
+                         mock.Mock(return_value=snap_list))
+        expected_snap_list = [f"backup_{share_id}_snap1",
+                              f"backup_{share_id}_snap2"]
+        actual_result = self.library._get_des_volume_backup_snapshots(
+            mock_dest_client,
+            fake.FLEXVOL_NAME,
+            share_id)
+        self.assertEqual(expected_snap_list, actual_result)
+
+    def test__get_volume_for_backup(self):
+        mock_dest_client = mock.Mock()
+        mock_src_client = mock.Mock()
+        self.mock_object(data_motion,
+                         'get_backup_configuration',
+                         mock.Mock(return_value=_get_config()))
+        self.library._get_volume_for_backup(fake.SHARE_BACKUP,
+                                            fake.SHARE_INSTANCE,
+                                            mock_src_client, mock_dest_client)
+
+    def test__get_volume_for_backup_create_new_vol(self):
+        mock_dest_client = mock.Mock()
+        mock_src_client = mock.Mock()
+        _get_config()
+        backup_config = 'backup_config'
+        fake_config = configuration.Configuration(driver.share_opts,
+                                                  config_group=backup_config)
+        CONF.set_override("netapp_backup_share", "",
+                          group=backup_config)
+        CONF.set_override("netapp_backup_vserver", "",
+                          group=backup_config)
+        self.mock_object(data_motion,
+                         'get_backup_configuration',
+                         mock.Mock(return_value=fake_config))
+        vol_attr = {'name': 'fake_vol', 'size': 12345}
+        self.mock_object(mock_src_client,
+                         'get_volume',
+                         mock.Mock(return_value=vol_attr))
+        self.library._get_volume_for_backup(fake.SHARE_BACKUP,
+                                            fake.SHARE_INSTANCE,
+                                            mock_src_client, mock_dest_client)
+
+    def test__get_volume_for_backup_aggr_not_found_negative(self):
+        mock_dest_client = mock.Mock()
+        mock_src_client = mock.Mock()
+        _get_config()
+        backup_config = 'backup_config'
+        fake_config = configuration.Configuration(driver.share_opts,
+                                                  config_group=backup_config)
+        CONF.set_override("netapp_backup_share", "",
+                          group=backup_config)
+        CONF.set_override("netapp_backup_vserver", "",
+                          group=backup_config)
+        self.mock_object(data_motion,
+                         'get_backup_configuration',
+                         mock.Mock(return_value=fake_config))
+        self.mock_object(self.mock_dm_session,
+                         'get_most_available_aggr_of_vserver',
+                         mock.Mock(return_value=None))
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._get_volume_for_backup,
+            fake.SHARE_BACKUP,
+            fake.SHARE_INSTANCE,
+            mock_src_client,
+            mock_dest_client,
+        )
+
+    def test__get_vserver_for_backup(self):
+        mock_dest_client = mock.Mock()
+        self.mock_object(data_motion,
+                         'get_backup_configuration',
+                         mock.Mock(return_value=_get_config()))
+
+        mock_backend_config = na_fakes.create_configuration()
+        self.mock_object(data_motion,
+                         'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
+        self.mock_object(self.library,
+                         '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock_dest_client))
+
+        self.library._get_vserver_for_backup(fake.SHARE_INSTANCE,
+                                             fake.SHARE_BACKUP)
+
+    def test__get_destination_vserver_and_vol(self):
+        mock_dest_client = mock.Mock()
+        snapmirror_info = [fake.SNAP_MIRROR_INFO]
+        source_path = f"{fake.VSERVER1}:{fake.FLEXVOL_NAME}"
+        self.mock_object(mock_dest_client,
+                         'get_snapmirror_destinations',
+                         mock.Mock(return_value=snapmirror_info))
+        actual_result = self.library._get_destination_vserver_and_vol(
+            mock_dest_client,
+            source_path, validate_relation=True)
+        expected_result = (fake.VSERVER2, fake.FLEXVOL_NAME_1)
+        self.assertEqual(actual_result, expected_result)
+
+    def test__get_destination_vserver_and_vol_negative(self):
+        mock_dest_client = mock.Mock()
+        snapmirror_info = [{'source-vserver': fake.VSERVER1,
+                            'source-volume': fake.FLEXVOL_NAME,
+                            'destination-vserver': fake.VSERVER2,
+                            'destination-volume': fake.FLEXVOL_NAME_1
+                            },
+                           {'source-vserver': 'fake_vs_1',
+                            'source-volume': 'fake_vol_1',
+                            'destination-vserver': 'fake_vs_2',
+                            'destination-volume': 'fake_vol_2'
+                            }
+                           ]
+        source_path = f"{fake.VSERVER1}:{fake.FLEXVOL_NAME}"
+        self.mock_object(mock_dest_client,
+                         'get_snapmirror_destinations',
+                         mock.Mock(return_value=snapmirror_info))
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._get_destination_vserver_and_vol,
+            mock_dest_client,
+            source_path,
+            validate_relation=True
+        )
+
+    def test_verify_and_wait_for_snapshot_to_transfer(self):
+        vserver_client = mock.Mock()
+        self.mock_object(vserver_client,
+                         'get_snapshot',
+                         mock.Mock(return_value=fake.SNAPSHOT_NAME))
+        result = self.library._verify_and_wait_for_snapshot_to_transfer(
+            vserver_client,
+            fake.FLEXVOL_NAME,
+            fake.SNAPSHOT_NAME,
+        )
+        self.assertIsNone(result)
+
+    def test_verify_and_wait_for_snapshot_to_transfer_negative(self):
+        vserver_client = mock.Mock()
+        self.mock_object(vserver_client,
+                         'get_snapshot',
+                         mock.Mock(side_effect=netapp_api.NaApiError))
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._verify_and_wait_for_snapshot_to_transfer,
+            vserver_client,
+            fake.FLEXVOL_NAME,
+            fake.SNAPSHOT_NAME,
+            timeout=10,
+        )
+
+    def test__resource_cleanup_for_backup(self):
+        src_vserver_client = mock.Mock()
+        des_vserver_client = mock.Mock()
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.mock_object(data_motion,
+                         'get_backup_configuration',
+                         mock.Mock(return_value=_get_config()))
+        mock_backend_config = na_fakes.create_configuration()
+        self.mock_object(data_motion,
+                         'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 src_vserver_client)))
+        self.mock_object(self.library,
+                         '_get_api_client_for_backend',
+                         mock.Mock(return_value=des_vserver_client))
+        self.mock_object(self.library,
+                         '_get_backend_share_name',
+                         mock.Mock(return_value=fake.FLEXVOL_NAME))
+
+        self.library._resource_cleanup_for_backup(backup,
+                                                  share_instance,
+                                                  fake.VSERVER2,
+                                                  fake.FLEXVOL_NAME_1,
+                                                  )
+        (des_vserver_client.abort_snapmirror_vol.
+         assert_called_once_with(fake.VSERVER1,
+                                 fake.FLEXVOL_NAME,
+                                 fake.VSERVER2,
+                                 fake.FLEXVOL_NAME_1,
+                                 clear_checkpoint=False
+                                 ))
+        (des_vserver_client.delete_snapmirror_vol.
+         assert_called_once_with(fake.VSERVER1,
+                                 fake.FLEXVOL_NAME,
+                                 fake.VSERVER2,
+                                 fake.FLEXVOL_NAME_1,
+                                 ))
+        db_session = data_motion.DataMotionSession()
+        (db_session.wait_for_snapmirror_release_vol.
+         assert_called_once_with(fake.VSERVER1,
+                                 fake.VSERVER2,
+                                 fake.FLEXVOL_NAME,
+                                 fake.FLEXVOL_NAME_1,
+                                 False, src_vserver_client,
+                                 timeout=mock.ANY
+                                 ))
+
+    def test__resource_cleanup_for_backup_with_exception(self):
+        mock_src_vserver_client = mock.Mock()
+        mock_des_vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 mock_src_vserver_client)))
+        self._backup_mock_common_method(mock_des_vserver_client)
+        self.mock_object(mock_des_vserver_client,
+                         'abort_snapmirror_vol',
+                         mock.Mock(side_effect=netapp_api.NaApiError))
+        self.mock_object(mock_des_vserver_client,
+                         'delete_snapmirror_vol',
+                         mock.Mock(side_effect=netapp_api.NaApiError(
+                             code=netapp_api.EOBJECTNOTFOUND)))
+        self.mock_object(mock_des_vserver_client,
+                         'delete_snapmirror_policy',
+                         mock.Mock(side_effect=netapp_api.NaApiError))
+        self.mock_object(mock_src_vserver_client,
+                         'delete_vserver_peer',
+                         mock.Mock(side_effect=netapp_api.NaApiError))
+        self.library._resource_cleanup_for_backup(fake.SHARE_BACKUP,
+                                                  fake.SHARE_INSTANCE,
+                                                  fake.VSERVER2,
+                                                  fake.FLEXVOL_NAME_1,
+                                                  )
+
+    def test__resource_cleanup_for_backup_vserver_volume_none(self):
+        mock_src_vserver_client = mock.Mock()
+        mock_des_vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 mock_src_vserver_client)))
+        self.mock_object(self.library,
+                         '_delete_backup_vserver',
+                         mock.Mock(return_value=None))
+
+        self.mock_object(mock_des_vserver_client,
+                         'delete_volume',
+                         mock.Mock(side_effect=netapp_api.NaApiError))
+
+        self._backup_mock_common_method(mock_des_vserver_client)
+        backup_config = 'backup_config'
+        CONF.set_override("netapp_backup_share", "",
+                          group=backup_config)
+        CONF.set_override("netapp_backup_vserver", "",
+                          group=backup_config)
+        self.library._resource_cleanup_for_backup(
+            fake.SHARE_BACKUP,
+            fake.SHARE_INSTANCE,
+            fake.VSERVER2,
+            fake.FLEXVOL_NAME_1,
+            share_server=fake.SHARE_SERVER,
+        )
+
+    def test_create_backup_with_backup_type_none_negative(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        backup = {'id': '242ff47e-518d-4b07-b3c3-0a51e6744149',
+                  'backup_options': {'backend': 'fake_ontap',
+                                     'backup_type': None
+                                     },
+                  }
+        self.assertRaises(
+            exception.BackupException,
+            self.library.create_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            backup,
+        )
+
+    def test_create_backup_with_non_netapp_backend_negative(self):
+        self.mock_object(data_motion,
+                         'get_backup_configuration',
+                         mock.Mock(return_value=_get_config()))
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 mock.Mock())))
+        fake_config = configuration.Configuration(
+            driver.share_opts, config_group='backup_config')
+        CONF.set_override("netapp_storage_family", None,
+                          group='backup_config')
+        self.mock_object(data_motion,
+                         'get_backend_configuration',
+                         mock.Mock(return_value=fake_config))
+        self.assertRaises(
+            exception.BackupException,
+            self.library.create_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_create_backup_when_enabled_backup_types_none_negative(self):
+        vserver_src_client = mock.Mock()
+        vserver_dest_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_src_client)))
+        self._backup_mock_common_method(vserver_dest_client)
+        fake_config = configuration.Configuration(driver.share_opts,
+                                                  config_group='backup_config')
+        CONF.set_override("netapp_enabled_backup_types", None,
+                          group='backup_config')
+        self.mock_object(data_motion,
+                         'get_backend_configuration',
+                         mock.Mock(return_value=fake_config))
+        self.assertRaises(
+            exception.BackupException,
+            self.library.create_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_create_backup_source_has_2_more_relationships_negative(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        snapmirror_info = [{'source-vserver': fake.VSERVER1,
+                            'source-volume': fake.FLEXVOL_NAME,
+                            'destination-vserver': fake.VSERVER2,
+                            'destination-volume': fake.FLEXVOL_NAME_1
+                            },
+                           {'source-vserver': 'fake_vs_1',
+                            'source-volume': 'fake_vol_1',
+                            'destination-vserver': 'fake_vs_2',
+                            'destination-volume': 'fake_vol_2'
+                            }
+                           ]
+        self.mock_object(vserver_client,
+                         'get_snapmirror_destinations',
+                         mock.Mock(return_value=snapmirror_info))
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.create_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_create_backup_bad_backup_config_negative(self):
+        mock_src_client = mock.Mock()
+        mock_des_client = mock.Mock()
+        self._backup_mock_common_method_for_negative(mock_src_client,
+                                                     mock_des_client)
+        fake_config = configuration.Configuration(
+            driver.share_opts, config_group='backup_config')
+        CONF.set_override("netapp_backup_vserver", None,
+                          group='backup_config')
+        self.mock_object(data_motion,
+                         'get_backup_configuration',
+                         mock.Mock(return_value=fake_config))
+        self.assertRaises(
+            exception.BadConfigurationException,
+            self.library.create_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_create_backup_when_cluster_are_not_peered_negative(self):
+        mock_src_client = mock.Mock()
+        mock_des_client = mock.Mock()
+        self._backup_mock_common_method_for_negative(mock_src_client,
+                                                     mock_des_client)
+        self.mock_object(self.client,
+                         'get_cluster_peers',
+                         mock.Mock(return_value=[]))
+        self.mock_object(mock_src_client,
+                         'get_cluster_name',
+                         mock.Mock(return_value='fake_src_cluster'))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.create_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_create_backup_when_des_vol_creation_fail_negative(self):
+        mock_src_client = mock.Mock()
+        mock_des_client = mock.Mock()
+        self._backup_mock_common_method_for_negative(mock_src_client,
+                                                     mock_des_client)
+        self.mock_object(self.library,
+                         '_get_volume_for_backup',
+                         mock.Mock(side_effect=exception.NetAppException))
+        self.mock_object(self.library,
+                         '_delete_backup_vserver',
+                         mock.Mock(return_value=[]))
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.create_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_create_backup_when_vserver_not_peered(self):
+        mock_src_client = mock.Mock()
+        mock_des_client = mock.Mock()
+        mock_cluster_client = mock.Mock()
+        self._backup_mock_common_method_for_negative(mock_src_client,
+                                                     mock_des_client)
+        self.mock_object(mock_cluster_client,
+                         'get_cluster_name',
+                         mock.Mock(return_value='fake_src_cluster'))
+        self.mock_object(mock_src_client,
+                         'get_vserver_peers',
+                         mock.Mock(return_value=[]))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.create_backup(self.context, share_instance, backup)
+
+    def test_create_backup_when_policy_creation_failed_negative(self):
+        mock_src_client = mock.Mock()
+        mock_des_client = mock.Mock()
+        self._backup_mock_common_method_for_negative(mock_src_client,
+                                                     mock_des_client)
+
+        self.mock_object(mock_des_client,
+                         'create_snapmirror_policy',
+                         mock.Mock(side_effect=netapp_api.NaApiError))
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.library.create_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_create_backup_when_duplicate_policy_created(self):
+        mock_src_client = mock.Mock()
+        mock_des_client = mock.Mock()
+        self._backup_mock_common_method_for_negative(mock_src_client,
+                                                     mock_des_client)
+        msg = 'policy with this name already exists'
+        self.mock_object(mock_des_client,
+                         'create_snapmirror_policy',
+                         mock.Mock(side_effect=netapp_api.NaApiError(
+                             message=msg)))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.create_backup(self.context, share_instance, backup)
+
+    def test_create_backup_when_snapmirror_creation_failed_negative(self):
+        mock_src_client = mock.Mock()
+        mock_des_client = mock.Mock()
+        self._backup_mock_common_method_for_negative(mock_src_client,
+                                                     mock_des_client)
+        self.mock_object(mock_des_client,
+                         'create_snapmirror_vol',
+                         mock.Mock(side_effect=netapp_api.NaApiError))
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.create_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_create_backup_continue_with_status_inprogress(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        snapmirror_info = [{'source-vserver': fake.VSERVER1,
+                            'source-volume': fake.FLEXVOL_NAME,
+                            'destination-vserver': fake.VSERVER2,
+                            'destination-volume': fake.FLEXVOL_NAME_1,
+                            'relationship-status': "inprogress",
+                            'last-transfer-type': "update",
+                            }]
+        self.mock_object(mock_dest_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=snapmirror_info))
+        snap_list = ["snap1", "snap2", "snap3"]
+        self.mock_object(self.library,
+                         '_get_des_volume_backup_snapshots',
+                         mock.Mock(return_value=snap_list))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.create_backup_continue(self.context, share_instance,
+                                            backup)
+
+    def test_create_backup_continue_with_state_not_update(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        snapmirror_info = [{'source-vserver': fake.VSERVER1,
+                            'source-volume': fake.FLEXVOL_NAME,
+                            'destination-vserver': fake.VSERVER2,
+                            'destination-volume': fake.FLEXVOL_NAME_1,
+                            'relationship-status': "idle",
+                            'last-transfer-type': "initialize",
+                            }]
+        self.mock_object(mock_dest_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=snapmirror_info))
+        snap_list = ["snap1", "snap2", "snap3"]
+        self.mock_object(self.library,
+                         '_get_des_volume_backup_snapshots',
+                         mock.Mock(return_value=snap_list))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.create_backup_continue(self.context, share_instance,
+                                            backup)
+
+    def test_create_backup_continue_snapmirror_none(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(vserver_client,
+                         'get_snapmirror_destinations',
+                         mock.Mock(return_value=None))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.create_backup_continue(self.context, share_instance,
+                                            backup)
+
+    def test_create_backup_continue_snapmirror_none_from_destination(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(mock_dest_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=None))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.create_backup_continue(self.context, share_instance,
+                                            backup)
+
+    def test_create_backup_continue_des_vserver_vol_none_negative(self):
+        vserver_client = mock.Mock()
+        mock_des_vserver = mock.Mock()
+        self._backup_mock_common_method(mock_des_vserver)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        snapmirror_info = [fake.SNAP_MIRROR_INFO]
+        self.mock_object(vserver_client,
+                         'get_snapmirror_destinations',
+                         mock.Mock(return_value=snapmirror_info))
+        self.mock_object(self.library,
+                         '_get_destination_vserver_and_vol',
+                         mock.Mock(return_value=(None, None)))
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.create_backup_continue,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_restore_backup_with_vserver_volume_none(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(self.library,
+                         '_get_destination_vserver_and_vol',
+                         mock.Mock(return_value=(None, None)))
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.restore_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_restore_backup_continue_with_rst_relationship(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(vserver_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=fake.SNAP_MIRROR_INFO))
+        snap_list = ["restored_snap1", "snap2", "snap3"]
+        self.mock_object(self.library,
+                         '_get_des_volume_backup_snapshots',
+                         mock.Mock(return_value=snap_list))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.restore_backup_continue(self.context, backup,
+                                             share_instance)
+
+    def test_restore_backup_continue_restore_failed_negative(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(vserver_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=[]))
+        snap_list = ["restored_snap1", "snap2", "snap3"]
+        self.mock_object(vserver_client,
+                         'list_volume_snapshots',
+                         mock.Mock(return_value=snap_list))
+        self.mock_object(self.library,
+                         '_get_backup_snapshot_name',
+                         mock.Mock(return_value="restored_snap_test1"))
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.restore_backup_continue,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_delete_backup_vserver_vol_none_negative(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(self.library,
+                         '_get_destination_vserver_and_vol',
+                         mock.Mock(return_value=(None, None)))
+        self.mock_object(self.library,
+                         '_get_backend',
+                         mock.Mock(return_value=fake.BACKEND_NAME))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.delete_backup(self.context, backup,
+                                   share_instance)
+
+    def test_delete_backup_snapshot_not_found_negative(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(self.library,
+                         '_get_destination_vserver_and_vol',
+                         mock.Mock(return_value=(fake.VSERVER2,
+                                                 fake.FLEXVOL_NAME_1)))
+        self.mock_object(self.library,
+                         '_get_backend',
+                         mock.Mock(return_value=fake.BACKEND_NAME))
+        self.mock_object(self.library,
+                         '_get_des_volume_backup_snapshots',
+                         mock.Mock(side_effect=netapp_api.NaApiError))
+        self.mock_object(self.library,
+                         '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock_dest_client))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.delete_backup(self.context, backup,
+                                   share_instance)
+
+    def test_delete_backup_cleanup_resource(self):
+        vserver_client = mock.Mock()
+        mock_des_client = mock.Mock()
+        self._backup_mock_common_method(mock_des_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(mock_des_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=fake.SNAP_MIRROR_INFO))
+        self.mock_object(self.library,
+                         '_get_des_volume_backup_snapshots',
+                         mock.Mock(return_value=['fake_snapshot']))
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.delete_backup(self.context, backup,
+                                   share_instance)
+
+    def test_delete_backup_snapshot_delete_fail_negative(self):
+        vserver_client = mock.Mock()
+        mock_des_client = mock.Mock()
+        self._backup_mock_common_method(mock_des_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(mock_des_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=fake.SNAP_MIRROR_INFO))
+        self.mock_object(self.library,
+                         '_get_des_volume_backup_snapshots',
+                         mock.Mock(return_value=['fake_snapshot1',
+                                                 'fake_snapshot2']))
+        self.mock_object(mock_des_client,
+                         'get_snapshot',
+                         mock.Mock(side_effect=netapp_api.NaApiError))
+        self.mock_object(self.library,
+                         '_is_snapshot_deleted',
+                         mock.Mock(return_value=False))
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.delete_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test__get_backup_progress_status(self):
+        mock_dest_client = mock.Mock()
+        vol_attr = {'name': 'fake_vol', 'size-used': '123454'}
+        self.mock_object(mock_dest_client,
+                         'get_volume',
+                         mock.Mock(return_value=vol_attr))
+        snapmirror_info = {'source-vserver': fake.VSERVER1,
+                           'source-volume': fake.FLEXVOL_NAME,
+                           'destination-vserver': fake.VSERVER2,
+                           'destination-volume': fake.FLEXVOL_NAME_1,
+                           'relationship-status': "idle",
+                           'last-transfer-size': '3456',
+                           }
+        self.library._get_backup_progress_status(mock_dest_client,
+                                                 [snapmirror_info])
+
+    def _backup_mock_common_method(self, mock_dest_client):
+        self.mock_object(mock_dest_client,
+                         'get_cluster_name',
+                         mock.Mock(return_value=fake.CLUSTER_NAME))
+        self.mock_object(self.library,
+                         '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(self.library,
+                         '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock_dest_client))
+        self.mock_object(data_motion,
+                         'get_backend_configuration',
+                         mock.Mock(return_value=_get_config()))
+        self.mock_object(data_motion,
+                         'get_backup_configuration',
+                         mock.Mock(return_value=_get_config()))
+
+        self.mock_object(self.library,
+                         '_get_destination_vserver_and_vol',
+                         mock.Mock(return_value=(fake.VSERVER2,
+                                                 fake.FLEXVOL_NAME)))
+        self.mock_object(self.library,
+                         '_get_backend',
+                         mock.Mock(return_value=fake.BACKEND_NAME))
+
+    def _backup_mock_common_method_for_negative(self,
+                                                mock_src_client,
+                                                mock_des_client):
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 mock_src_client)))
+        self._backup_mock_common_method(mock_des_client)
+        self.mock_object(mock_src_client,
+                         'get_snapmirror_destinations',
+                         mock.Mock(return_value=[]))
+        vserver_peer_info = [{'vserver': fake.VSERVER1,
+                              'peer-vserver': fake.VSERVER2}]
+        self.mock_object(mock_src_client,
+                         'get_vserver_peers',
+                         mock.Mock(return_value=vserver_peer_info))
+        snap_list = ["snap1", "snap2", "snap3"]
+        self.mock_object(mock_des_client,
+                         'list_volume_snapshots',
+                         mock.Mock(return_value=snap_list))

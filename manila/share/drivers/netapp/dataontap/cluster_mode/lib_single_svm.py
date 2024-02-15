@@ -26,6 +26,7 @@ from oslo_log import log
 
 from manila import exception
 from manila.i18n import _
+from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp import utils as na_utils
 
@@ -177,3 +178,13 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
         if ipv6:
             versions.append(6)
         return versions
+
+    def _get_backup_vserver(self, backup, share_server=None):
+
+        backend_name = self._get_backend(backup)
+        backend_config = data_motion.get_backend_configuration(backend_name)
+        if share_server is not None:
+            msg = _('Share server must not be passed to the driver '
+                    'when the driver is not managing share servers.')
+            raise exception.InvalidParameterValue(err=msg)
+        return backend_config.netapp_vserver

@@ -4299,6 +4299,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     },
                     'volume-space-attributes': {
                         'size': None,
+                        'size-used': None,
                     },
                     'volume-qos-attributes': {
                         'policy-group-name': None,
@@ -4315,6 +4316,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'type': 'rw',
             'style': 'flex',
             'size': fake.SHARE_SIZE,
+            'size-used': fake.SHARE_USED_SIZE,
             'owning-vserver-name': fake.VSERVER_NAME,
             'qos-policy-group-name': fake.QOS_POLICY_GROUP_NAME,
             'style-extended': (fake.FLEXGROUP_STYLE_EXTENDED
@@ -4358,6 +4360,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     },
                     'volume-space-attributes': {
                         'size': None,
+                        'size-used': None,
                     },
                     'volume-qos-attributes': {
                         'policy-group-name': None,
@@ -4374,6 +4377,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'type': 'rw',
             'style': 'flex',
             'size': fake.SHARE_SIZE,
+            'size-used': fake.SHARE_USED_SIZE,
             'owning-vserver-name': fake.VSERVER_NAME,
             'qos-policy-group-name': None,
             'style-extended': fake.FLEXVOL_STYLE_EXTENDED,
@@ -7927,8 +7931,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.create_snapmirror_policy(
             fake.SNAPMIRROR_POLICY_NAME, discard_network_info=discard_network,
-            preserve_snapshots=preserve_snapshots)
-
+            snapmirror_label="backup", preserve_snapshots=preserve_snapshots)
         expected_create_api_args = {
             'policy-name': fake.SNAPMIRROR_POLICY_NAME,
             'type': 'async_mirror',
@@ -7944,8 +7947,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
         if preserve_snapshots:
             expected_add_rules = {
                 'policy-name': fake.SNAPMIRROR_POLICY_NAME,
-                'snapmirror-label': 'all_source_snapshots',
-                'keep': '1',
+                'snapmirror-label': 'backup',
+                'keep': 1,
                 'preserve': 'false'
             }
             expected_calls.append(mock.call('snapmirror-policy-add-rule',
@@ -9160,3 +9163,52 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           self.client.configure_active_directory,
                           fake.CIFS_SECURITY_SERVICE,
                           fake.VSERVER_NAME)
+
+    def test_snapmirror_restore_vol(self):
+        self.mock_object(self.client, 'send_request')
+        self.client.snapmirror_restore_vol(source_path=fake.SM_SOURCE_PATH,
+                                           dest_path=fake.SM_DEST_PATH,
+                                           source_snapshot=fake.SNAPSHOT_NAME,
+                                           )
+        snapmirror_restore_args = {
+            'source-location': fake.SM_SOURCE_PATH,
+            'destination-location': fake.SM_DEST_PATH,
+            'source-snapshot': fake.SNAPSHOT_NAME,
+
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-restore', snapmirror_restore_args)])
+
+    @ddt.data({'snapmirror_label': None, 'newer_than': '2345'},
+              {'snapmirror_label': "fake_backup", 'newer_than': None})
+    @ddt.unpack
+    def test_list_volume_snapshots(self, snapmirror_label, newer_than):
+        print(f"snapmirror_label: {snapmirror_label}")
+        api_response = netapp_api.NaElement(
+            fake.SNAPSHOT_GET_ITER_SNAPMIRROR_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_volume_snapshots(
+            fake.SHARE_NAME,
+            snapmirror_label=snapmirror_label,
+            newer_than=newer_than)
+        snapshot_get_iter_args = {
+            'query': {
+                'snapshot-info': {
+                    'volume': fake.SHARE_NAME,
+                },
+            },
+        }
+        if newer_than:
+            snapshot_get_iter_args['query']['snapshot-info'][
+                'access-time'] = '>' + newer_than
+        if snapmirror_label:
+            snapshot_get_iter_args['query']['snapshot-info'][
+                'snapmirror-label'] = snapmirror_label
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('snapshot-get-iter', snapshot_get_iter_args)])
+
+        expected = [fake.SNAPSHOT_NAME]
+        self.assertEqual(expected, result)
