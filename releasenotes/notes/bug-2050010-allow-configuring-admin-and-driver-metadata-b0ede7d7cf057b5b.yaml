@@ -1,0 +1,6 @@
+---
+upgrades:
+  - |
+    A new configuration option called ``admin_metadata_keys`` has been
+    introduced to assist cloud administrators while defining share
+    metadata that should only be modified by administrators.

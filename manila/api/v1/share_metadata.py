@@ -18,9 +18,10 @@ from oslo_log import log
 import webob
 from webob import exc
 
+from oslo_config import cfg
+
 from manila.api import common as api_common
 from manila.api.openstack import wsgi
-from manila.common import constants
 from manila import db
 from manila import exception
 from manila.i18n import _
@@ -29,6 +30,7 @@ from manila import share
 
 
 LOG = log.getLogger(__name__)
+CONF = cfg.CONF
 
 
 class ShareMetadataController(object):
@@ -107,7 +109,7 @@ class ShareMetadataController(object):
     def _update_share_metadata(self, context,
                                share_id, metadata,
                                delete=False):
-        ignore_keys = constants.AdminOnlyMetadata.SCHEDULER_FILTERS
+        ignore_keys = getattr(CONF, 'admin_metadata_keys', [])
         try:
             share = self.share_api.get(context, share_id)
             if set(metadata).intersection(set(ignore_keys)):
@@ -176,7 +178,8 @@ class ShareMetadataController(object):
 
         try:
             share = self.share_api.get(context, share_id)
-            if id in constants.AdminOnlyMetadata.SCHEDULER_FILTERS:
+            admin_metadata_keys = getattr(CONF, 'admin_metadata_keys', set())
+            if id in admin_metadata_keys:
                 policy.check_policy(context, 'share',
                                     'update_admin_only_metadata')
             db.share_metadata_delete(context, share['id'], id)

@@ -352,7 +352,7 @@ class AdminOnlyMetadata(object):
     AFFINITY_KEY = "__affinity_same_host"
     ANTI_AFFINITY_KEY = "__affinity_different_host"
 
-    SCHEDULER_FILTERS = (
+    SCHEDULER_FILTERS = [
         AFFINITY_KEY,
-        ANTI_AFFINITY_KEY
-    )
+        ANTI_AFFINITY_KEY,
+    ]
