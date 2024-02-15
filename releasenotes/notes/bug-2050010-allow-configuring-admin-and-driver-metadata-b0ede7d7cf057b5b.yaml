@@ -1,0 +1,8 @@
+---
+upgrades:
+  - |
+    A new configuration option called ``admin_only_metadata`` has been
+    introduced to assist cloud administrators while defining share
+    metadata that should only be modified by administrators. This
+    configuration option defaults to the existing admin only metadata
+    keys, i.e., scheduler hints to preserve backwards compatibility.
