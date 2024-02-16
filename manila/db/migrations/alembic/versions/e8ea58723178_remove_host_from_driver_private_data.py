@@ -80,6 +80,7 @@ def downgrade():
                    nullable=False, primary_key=True),
         sql.Column('value', sql.String(1023), nullable=False),
         mysql_engine='InnoDB',
+        mysql_charset='utf8',
     )
 
     LOG.info("Copying data from %(from_table)s to the migration "

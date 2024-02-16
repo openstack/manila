@@ -80,9 +80,10 @@ def downgrade():
         sa.Column('deleted', sa.Boolean),
         sa.Column('id', sa.Integer, primary_key=True, nullable=False),
         sa.Column('volume_type_id', sa.String(length=36),
-                  sa.ForeignKey('share_types.id'), nullable=False),
+                  nullable=False),
         sa.Column('key', sa.String(length=255)),
         sa.Column('value', sa.String(length=255)),
+        mysql_charset='utf8',
         mysql_engine='InnoDB')
 
     LOG.info("Migrating share_type_extra_specs to "
@@ -97,6 +98,12 @@ def downgrade():
     op.create_unique_constraint('vt_name_uc', 'share_types',
                                 ['name', 'deleted'])
     op.rename_table("share_types", "volume_types")
+    op.create_foreign_key(
+        "volume_type_extra_specs_ibfk_1",
+        "volume_type_extra_specs",
+        "volume_types",
+        ["volume_type_id"], ["id"]
+    )
 
     LOG.info("Renaming column name shares.share_type_id to "
              "shares.volume_type.id")
