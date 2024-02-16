@@ -170,6 +170,9 @@ class TegileShareDriver(driver.ShareDriver):
     def __init__(self, *args, **kwargs):
         super(TegileShareDriver, self).__init__(False, *args, **kwargs)
 
+        LOG.warning('Tegile share driver has been deprecated and will be '
+                    'removed in a future release.')
+
         self.configuration.append_config_values(tegile_opts)
         self._default_project = (self.configuration.safe_get(
             "tegile_default_project") or 'openstack')
