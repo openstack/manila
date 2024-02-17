@@ -20,6 +20,9 @@ GlusterFS driver
 GlusterFS driver uses GlusterFS, an open source distributed file system,
 as the storage backend for serving file shares to manila clients.
 
+.. note::
+   This driver has been deprecated in 18.0.0 release.
+
 Supported shared filesystems
 ----------------------------
 
