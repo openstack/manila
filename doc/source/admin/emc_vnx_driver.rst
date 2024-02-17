@@ -30,6 +30,11 @@ This driver performs the operations on VNX by XMLAPI and the File command line.
 Each backend manages one Data Mover of VNX. Multiple manila backends need to
 be configured to manage multiple Data Movers.
 
+.. note::
+
+   Dell EMC VNX driver has been deprecated and will be removed in a future
+   release
+
 Requirements
 ------------
 

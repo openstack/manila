@@ -16,6 +16,11 @@ command line. Each back end manages one Data Mover of VNX. Multiple
 Shared File Systems service back ends need to be configured to manage
 multiple Data Movers.
 
+.. note::
+
+   Dell EMC VNX driver has been deprecated and will be removed in a future
+   release
+
 Requirements
 ~~~~~~~~~~~~
 

@@ -1,0 +1,5 @@
+---
+deprecations:
+  - |
+    The Dell EMC VNX share driver has been deprecated because the product has
+    reached its EOL. The driver will be removed in a future release.
