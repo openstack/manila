@@ -28,12 +28,6 @@
           MANILA_CONFIGURE_DEFAULT_TYPES: true
           SHARE_DRIVER: manila.share.drivers.lvm.LVMShareDriver
           MANILA_ENABLED_BACKENDS: london,paris
-          # TODO(vkmc) Grenade uses prior branch for running tests
-          # Drop this variables in Xena once Wallaby is shipped
-          MANILA_BACKEND1_CONFIG_GROUP_NAME: london
-          MANILA_BACKEND2_CONFIG_GROUP_NAME: paris
-          MANILA_SHARE_BACKEND1_NAME: LONDON
-          MANILA_SHARE_BACKEND2_NAME: PARIS
           MANILA_OPTGROUP_london_driver_handles_share_servers: false
           MANILA_OPTGROUP_paris_driver_handles_share_servers: false
           SHARE_BACKING_FILE_SIZE: 32000M
@@ -97,6 +91,4 @@
     vars:
       # Move this forward when a new release cycle start. grenade_from_branch
       # should be always N-2 from master.
-      grenade_from_branch: stable/zed
-      grenade_localrc:
-        NOVA_ENABLE_UPGRADE_WORKAROUND: True
+      grenade_from_branch: stable/2023.1
