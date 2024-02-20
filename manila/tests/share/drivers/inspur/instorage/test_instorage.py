@@ -30,6 +30,7 @@ from manila import exception
 from manila.share import driver
 from manila.share.drivers.inspur.instorage import cli_helper
 from manila.share.drivers.inspur.instorage import instorage
+from manila import ssh_utils
 from manila import test
 from manila.tests import fake_share
 from manila import utils as manila_utils
@@ -275,7 +276,7 @@ class SSHRunnerTestCase(test.TestCase):
     def test___call___success(self):
         mock_csi = self.mock_object(manila_utils, 'check_ssh_injection')
         mock_sshpool = mock.Mock(return_value=self.fakePool)
-        self.mock_object(manila_utils, 'SSHPool', mock_sshpool)
+        self.mock_object(ssh_utils, 'SSHPool', mock_sshpool)
         mock_se = mock.Mock(return_value='fake_value')
         self.mock_object(cli_helper.SSHRunner, '_ssh_execute', mock_se)
 
@@ -303,7 +304,7 @@ class SSHRunnerTestCase(test.TestCase):
     def test___call___ssh_pool_failed(self):
         mock_csi = self.mock_object(manila_utils, 'check_ssh_injection')
         mock_sshpool = mock.Mock(side_effect=paramiko.SSHException())
-        self.mock_object(manila_utils, 'SSHPool', mock_sshpool)
+        self.mock_object(ssh_utils, 'SSHPool', mock_sshpool)
 
         runner = cli_helper.SSHRunner(
             '127.0.0.1', '22', 'fakeuser', 'fakepassword'
@@ -315,7 +316,7 @@ class SSHRunnerTestCase(test.TestCase):
     def test___call___ssh_exec_failed(self):
         mock_csi = self.mock_object(manila_utils, 'check_ssh_injection')
         mock_sshpool = mock.Mock(return_value=self.fakePool)
-        self.mock_object(manila_utils, 'SSHPool', mock_sshpool)
+        self.mock_object(ssh_utils, 'SSHPool', mock_sshpool)
         exception = processutils.ProcessExecutionError()
         mock_se = mock.Mock(side_effect=exception)
         self.mock_object(cli_helper.SSHRunner, '_ssh_execute', mock_se)

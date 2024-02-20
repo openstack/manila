@@ -26,6 +26,7 @@ from manila import exception
 import manila.share.configuration as config
 import manila.share.drivers.ibm.gpfs as gpfs
 from manila.share import share_types
+from manila import ssh_utils
 from manila import test
 from manila.tests import fake_share
 from manila import utils
@@ -117,7 +118,9 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         expected_cmd = 'fake cmd'
         ssh_pool = mock.Mock()
         ssh = mock.Mock()
-        self.mock_object(utils, 'SSHPool', mock.Mock(return_value=ssh_pool))
+        self.mock_object(ssh_utils,
+                         'SSHPool',
+                         mock.Mock(return_value=ssh_pool))
         ssh_pool.item = mock.Mock(return_value=ssh)
         setattr(ssh, '__enter__', mock.Mock())
         setattr(ssh, '__exit__', mock.Mock())
@@ -132,7 +135,9 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         cmd_list = ['fake', 'cmd']
         ssh_pool = mock.Mock()
         ssh = mock.Mock()
-        self.mock_object(utils, 'SSHPool', mock.Mock(return_value=ssh_pool))
+        self.mock_object(ssh_utils,
+                         'SSHPool',
+                         mock.Mock(return_value=ssh_pool))
         ssh_pool.item = mock.Mock(return_value=ssh)
         self.mock_object(self._driver, '_gpfs_ssh_execute')
         self.assertRaises(exception.GPFSException,

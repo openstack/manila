@@ -574,6 +574,10 @@ class ShareBackendException(ManilaException):
     message = _("Share backend error: %(msg)s.")
 
 
+class RequirementMissing(ManilaException):
+    message = _("Requirement %(req)s is not installed.")
+
+
 class ExportLocationNotFound(NotFound):
     message = _("Export location %(uuid)s could not be found.")
 

@@ -20,7 +20,6 @@
 import contextlib
 import functools
 import inspect
-import os
 import pyclbr
 import re
 import shutil
@@ -29,7 +28,6 @@ import tempfile
 import tenacity
 import time
 
-from eventlet import pools
 import logging
 import netaddr
 from oslo_concurrency import lockutils
@@ -38,10 +36,8 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import netutils
-from oslo_utils.secretutils import md5
 from oslo_utils import strutils
 from oslo_utils import timeutils
-import paramiko
 from webob import exc
 
 
@@ -60,21 +56,6 @@ _ISO8601_TIME_FORMAT_SUBSECOND = '%Y-%m-%dT%H:%M:%S.%f'
 _ISO8601_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
 synchronized = lockutils.synchronized_with_prefix('manila-')
-
-
-def get_fingerprint(self):
-    """Patch paramiko
-
-    This method needs to be patched to allow paramiko to work under FIPS.
-    Until the patch to do this merges, patch paramiko here.
-
-    TODO(carloss) Remove this when paramiko is patched.
-    See https://github.com/paramiko/paramiko/pull/1928
-    """
-    return md5(self.asbytes(), usedforsecurity=False).digest()
-
-
-paramiko.pkey.PKey.get_fingerprint = get_fingerprint
 
 
 def isotime(at=None, subsecond=False):
@@ -113,85 +94,6 @@ def execute(*cmd, **kwargs):
     if getattr(CONF, 'debug', False):
         kwargs['loglevel'] = logging.DEBUG
     return processutils.execute(*cmd, **kwargs)
-
-
-class SSHPool(pools.Pool):
-    """A simple eventlet pool to hold ssh connections."""
-
-    def __init__(self, ip, port, conn_timeout, login, password=None,
-                 privatekey=None, *args, **kwargs):
-        self.ip = ip
-        self.port = port
-        self.login = login
-        self.password = password
-        self.conn_timeout = conn_timeout if conn_timeout else None
-        self.path_to_private_key = privatekey
-        super(SSHPool, self).__init__(*args, **kwargs)
-
-    def create(self):  # pylint: disable=method-hidden
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        look_for_keys = True
-        if self.path_to_private_key:
-            self.path_to_private_key = os.path.expanduser(
-                self.path_to_private_key)
-            look_for_keys = False
-        elif self.password:
-            look_for_keys = False
-        try:
-            LOG.debug("ssh.connect: ip: %s, port: %s, look_for_keys: %s, "
-                      "timeout: %s, banner_timeout: %s",
-                      self.ip,
-                      self.port,
-                      look_for_keys,
-                      self.conn_timeout,
-                      self.conn_timeout)
-            ssh.connect(self.ip,
-                        port=self.port,
-                        username=self.login,
-                        password=self.password,
-                        key_filename=self.path_to_private_key,
-                        look_for_keys=look_for_keys,
-                        timeout=self.conn_timeout,
-                        banner_timeout=self.conn_timeout)
-            if self.conn_timeout:
-                transport = ssh.get_transport()
-                transport.set_keepalive(self.conn_timeout)
-            return ssh
-        except Exception as e:
-            msg = _("Check whether private key or password are correctly "
-                    "set. Error connecting via ssh: %s") % e
-            LOG.error(msg)
-            raise exception.SSHException(msg)
-
-    def get(self):
-        """Return an item from the pool, when one is available.
-
-        This may cause the calling greenthread to block. Check if a
-        connection is active before returning it. For dead connections
-        create and return a new connection.
-        """
-        if self.free_items:
-            conn = self.free_items.popleft()
-            if conn:
-                if conn.get_transport().is_active():
-                    return conn
-                else:
-                    conn.close()
-            return self.create()
-        if self.current_size < self.max_size:
-            created = self.create()
-            self.current_size += 1
-            return created
-        return self.channel.get()
-
-    def remove(self, ssh):
-        """Close an ssh client and remove it from free_items."""
-        ssh.close()
-        if ssh in self.free_items:
-            self.free_items.remove(ssh)
-            if self.current_size > 0:
-                self.current_size -= 1
 
 
 def check_ssh_injection(cmd_list):

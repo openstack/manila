@@ -24,6 +24,7 @@ from manila import exception
 import manila.share.configuration as config
 from manila.share.drivers.maprfs import driver_util as mapru
 import manila.share.drivers.maprfs.maprfs_native as maprfs
+from manila import ssh_utils
 from manila import test
 from manila.tests import fake_share
 from manila import utils
@@ -797,12 +798,14 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
         ssh.get_transport().is_active = mock.Mock(return_value=False)
         ssh_pool = mock.Mock()
         ssh_pool.create = mock.Mock(return_value=ssh)
-        self.mock_object(utils, 'SSHPool', mock.Mock(return_value=ssh_pool))
+        self.mock_object(ssh_utils,
+                         'SSHPool',
+                         mock.Mock(return_value=ssh_pool))
         self.mock_object(processutils, 'ssh_execute',
                          mock.Mock(return_value=ssh_output))
         result = self._driver._maprfs_util._run_ssh(
             self.local_ip, cmd_list, check_exit_code=False)
-        utils.SSHPool.assert_called_once_with(
+        ssh_utils.SSHPool.assert_called_once_with(
             self._driver.configuration.maprfs_clinode_ip[0],
             self._driver.configuration.maprfs_ssh_port,
             self._driver.configuration.ssh_conn_timeout,
@@ -824,14 +827,16 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
         ssh.get_transport().is_active = mock.Mock(return_value=True)
         ssh_pool = mock.Mock()
         ssh_pool.create = mock.Mock(return_value=ssh)
-        self.mock_object(utils, 'SSHPool', mock.Mock(return_value=ssh_pool))
+        self.mock_object(ssh_utils,
+                         'SSHPool',
+                         mock.Mock(return_value=ssh_pool))
         self.mock_object(processutils, 'ssh_execute', mock.Mock(
             side_effect=exception.ProcessExecutionError))
         self.assertRaises(exception.ProcessExecutionError,
                           self._driver._maprfs_util._run_ssh,
                           self.local_ip,
                           cmd_list)
-        utils.SSHPool.assert_called_once_with(
+        ssh_utils.SSHPool.assert_called_once_with(
             self._driver.configuration.maprfs_clinode_ip[0],
             self._driver.configuration.maprfs_ssh_port,
             self._driver.configuration.ssh_conn_timeout,
