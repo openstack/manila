@@ -292,6 +292,9 @@ def is_valid_ip_address(ip_address, ip_version):
         raise exception.ManilaException(
             _("Provided improper IP version '%s'.") % ip_version)
 
+    if not isinstance(ip_address, str):
+        return False
+
     if 4 in ip_version:
         if netutils.is_valid_ipv4(ip_address):
             return True
