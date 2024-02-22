@@ -1,0 +1,10 @@
+---
+upgrade:
+  - |
+    Shares created using the CEPHFS Native protocol will now have a new
+    `__mount_options` metadata containing the `cephfs_filesystem_name` to
+    enhance usability while mounting shares. Existing shares will be updated
+    through the ensure shares workflow. To preserve backwards compatibility,
+    this metadata is mutable by end users. It is strongly recommended that
+    administrators include "__mount_options" in the
+    `[DEFAULT]/admin_only_metadata_keys` configuration option.
