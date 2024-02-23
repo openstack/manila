@@ -48,17 +48,15 @@ class ShareServerController(wsgi.Controller):
         search_opts = {}
         search_opts.update(req.GET)
         share_servers = db_api.share_server_get_all(context)
+        share_networks = db_api.share_network_get_all(context)
+        share_network_map = {s["id"]: s for s in share_networks}
         for s in share_servers:
-            try:
-                s.share_network_id = s.share_network_subnet['share_network_id']
-                share_network = db_api.share_network_get(
-                    context, s.share_network_id)
-                s.project_id = share_network['project_id']
-                if share_network['name']:
-                    s.share_network_name = share_network['name']
-                else:
-                    s.share_network_name = share_network['id']
-            except exception.ShareNetworkNotFound:
+            s.share_network_id = s.share_network_subnet['share_network_id']
+            sn = share_network_map.get(s.share_network_id)
+            if sn:
+                s.project_id = sn['project_id']
+                s.share_network_name = sn['name'] or sn['id']
+            else:
                 # NOTE(dviroel): The share-network may already be deleted while
                 # the share-server is in 'deleting' state. In this scenario,
                 # we will return some empty values.
