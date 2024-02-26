@@ -22,7 +22,6 @@ from unittest import mock
 from alembic import script
 from oslo_db.sqlalchemy import enginefacade
 from oslo_db.sqlalchemy import test_fixtures
-from oslo_db.sqlalchemy import test_migrations
 from oslo_log import log
 from oslotest import base as test_base
 from sqlalchemy.sql import text
@@ -34,8 +33,7 @@ from manila.tests import utils as test_utils
 LOG = log.getLogger('manila.tests.test_migrations')
 
 
-class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin,
-                               migrations_data_checks.DbMigrationsData):
+class ManilaMigrationsCheckers(migrations_data_checks.DbMigrationsData):
     """Test alembic migrations."""
 
     def setUp(self):
