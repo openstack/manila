@@ -2573,7 +2573,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def enable_dedup(self, volume_name):
         """Enable deduplication on volume."""
         api_args = {'path': '/vol/%s' % volume_name}
-        self.send_request('sis-enable', api_args)
+        try:
+            self.send_request('sis-enable', api_args)
+        except netapp_api.NaApiError as e:
+            enabled_msg = "has already been enabled"
+            if (e.code == netapp_api.OPERATION_ALREADY_ENABLED and
+                    enabled_msg in e.message):
+                return
+            raise e
 
     @na_utils.trace
     def disable_dedup(self, volume_name):
