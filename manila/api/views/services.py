@@ -19,14 +19,33 @@ from manila.api import common
 class ViewBuilder(common.ViewBuilder):
 
     _collection_name = "services"
+    _detail_version_modifiers = [
+        "add_disabled_reason_field",
+    ]
 
-    def summary(self, service):
+    def summary(self, request, service):
         """Summary view of a single service."""
-        keys = 'host', 'binary', 'disabled'
-        return {key: service.get(key) for key in keys}
+        keys = 'host', 'binary', 'status',
+        service_dict = {key: service.get(key) for key in keys}
+        self.update_versioned_resource_dict(request, service_dict, service)
+        return service_dict
 
-    def detail_list(self, services):
+    def detail(self, request, service):
+        """Detailed view of a single service."""
+        keys = ('id', 'binary', 'host', 'zone', 'status',
+                'state', 'updated_at')
+        service_dict = {key: service.get(key) for key in keys}
+        self.update_versioned_resource_dict(request, service_dict, service)
+        return service_dict
+
+    def detail_list(self, request, services):
         """Detailed view of a list of services."""
-        keys = 'id', 'binary', 'host', 'zone', 'status', 'state', 'updated_at'
-        views = [{key: s.get(key) for key in keys} for s in services]
-        return {self._collection_name: views}
+        services_list = [self.detail(request, s) for s in services]
+        services_dict = dict(services=services_list)
+        return services_dict
+
+    @common.ViewBuilder.versioned_method("2.83")
+    def add_disabled_reason_field(self, context, service_dict, service):
+        service_dict.pop('disabled', None)
+        service_dict['status'] = service.get('status')
+        service_dict['disabled_reason'] = service.get('disabled_reason')

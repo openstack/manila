@@ -1,0 +1,8 @@
+---
+features:
+  - Added a new field 'disabled_reason' to services table. Users can set
+    'disabled_reason' when disabling a service, and query the disabled
+    reason while listing services. When re-enabling the service, the
+    disabled reason will be cleared.
+    See `bug 2037700 <https://bugs.launchpad.net/manila/+bug/2037700>`_
+    for more details.
