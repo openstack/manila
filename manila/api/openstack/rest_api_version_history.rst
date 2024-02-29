@@ -454,3 +454,7 @@ user documentation.
 2.84
 ----
    Added optional ``mount_point_name`` field to share.
+
+2.85
+----
+   Added ``backup_type`` field to share backup object.

@@ -202,13 +202,14 @@ REST_API_VERSION_HISTORY = """
     * 2.82 - Added lock and restriction to share access rules.
     * 2.83 - Added 'disabled_reason' field to services.
     * 2.84 - Added mount_point_name to shares.
+    * 2.85 - Added backup_type field to share backups.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.84"
+_MAX_API_VERSION = "2.85"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

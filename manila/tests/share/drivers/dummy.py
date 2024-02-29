@@ -1020,30 +1020,35 @@ class DummyDriver(driver.ShareDriver):
         }
 
     @slow_me_down
-    def create_backup(self, context, share_instance, backup):
+    def create_backup(self, context, share_instance, backup,
+                      share_server=None):
         LOG.debug("Created backup %(backup)s of share %(share)s "
                   "using dummy driver.",
                   {'backup': backup['id'],
                    'share': share_instance['share_id']})
 
-    def create_backup_continue(self, context, share_instance, backup):
+    def create_backup_continue(self, context, share_instance, backup,
+                               share_server=None):
         LOG.debug("Continue backup %(backup)s of share %(share)s "
                   "using dummy driver.",
                   {'backup': backup['id'],
                    'share': share_instance['share_id']})
         return {'total_progress': '100'}
 
-    def delete_backup(self, context, backup):
+    def delete_backup(self, context, backup, share_instance,
+                      share_server=None):
         LOG.debug("Deleted backup '%s' using dummy driver.", backup['id'])
 
     @slow_me_down
-    def restore_backup(self, context, backup, share_instance):
+    def restore_backup(self, context, backup, share_instance,
+                       share_server=None):
         LOG.debug("Restored backup %(backup)s into share %(share)s "
                   "using dummy driver.",
                   {'backup': backup['id'],
                    'share': share_instance['share_id']})
 
-    def restore_backup_continue(self, context, share_instance, backup):
+    def restore_backup_continue(self, context, backup, share_instance,
+                                share_server=None):
         LOG.debug("Continue restore of backup %(backup)s into share "
                   "%(share)s using dummy driver.",
                   {'backup': backup['id'],

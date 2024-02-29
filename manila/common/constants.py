@@ -113,6 +113,7 @@ TASK_STATE_DATA_COPYING_COMPLETING = 'data_copying_completing'
 TASK_STATE_DATA_COPYING_COMPLETED = 'data_copying_completed'
 TASK_STATE_DATA_COPYING_CANCELLED = 'data_copying_cancelled'
 TASK_STATE_DATA_COPYING_ERROR = 'data_copying_error'
+BACKUP_TYPE = "backup_type"
 
 BUSY_TASK_STATES = (
     TASK_STATE_MIGRATION_STARTING,
