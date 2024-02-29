@@ -11,6 +11,11 @@ These APIs help in interacting with the Shared File Systems services,
     For API versions 2.6 and prior, replace ``services`` in the URLs
     with ``os-services``.
 
+.. note::
+  Starting from API version 2.83, ``disabled`` field will be replaced
+  by ``status`` field in response of enable or disable service request.
+  Re-enabling a disabled service will automatically clear ``disable reason``.
+
 
 List services
 ~~~~~~~~~~~~~
@@ -57,6 +62,7 @@ Response parameters
    - host: service_host_response
    - state: service_state_response
    - updated_at: updated_at
+   - disabled_reason: service_disable_reason_response
 
 Response example
 ----------------
@@ -109,6 +115,8 @@ Response parameters
    - host: service_enable_host_response
    - binary: service_binary_response
    - disabled: service_disabled_response
+   - status: service_status_new_response
+   - disabled_reason: service_disable_reason_response
 
 Response example
 ----------------
@@ -146,6 +154,7 @@ Request
    - project_id: project_id_path
    - binary: service_disable_binary_request
    - host: service_disable_host_request
+   - disabled_reason: service_disable_reason_request
 
 Request example
 ---------------
@@ -161,6 +170,8 @@ Response parameters
    - host: service_disable_host_response
    - binary: service_disable_binary_response
    - disabled: service_disabled_response
+   - status: service_status_new_response
+   - disabled_reason: service_disable_reason_response
 
 Response example
 ----------------

@@ -1,4 +1,5 @@
 {
     "binary": "manila-share",
-    "host": "openstackhost@generic#pool_0"
+    "host": "openstackhost@generic#pool_0",
+    "disabled_reason": "Service taken down for maintenance until May"
 }
