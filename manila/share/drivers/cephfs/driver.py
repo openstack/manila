@@ -139,7 +139,7 @@ cephfs_opts = [
                help="The name of the filesystem to use, if there are "
                     "multiple filesystems in the cluster."),
     cfg.StrOpt('cephfs_ensure_all_shares_salt',
-               default="manila_cephfs_reef_bobcat",
+               default="manila_cephfs_reef_caracal",
                help="Provide a unique string value to make the driver "
                     "ensure all of the shares it has created during "
                     "startup. Ensuring would re-export shares and this "
@@ -353,6 +353,14 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         return self.protocol_helper.get_export_locations(share, subvolume_path)
 
+    def get_optional_share_creation_data(self, share, share_server=None):
+        """Get the additional properties to be set in a share.
+
+        :return: the metadata to be set in share.
+        """
+
+        return self.protocol_helper.get_optional_share_creation_data(share)
+
     def setup_default_ceph_cmd_target(self):
         global ceph_default_target
         if not ceph_default_target:
@@ -558,8 +566,13 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                     self.protocol_helper.reapply_rules_while_ensuring_shares,
             }
             try:
+                share_metadata = (
+                    self.get_optional_share_creation_data(share).get(
+                        "metadata", {})
+                )
                 share_updates[share['id']].update({
                     'export_locations': self._get_export_locations(share),
+                    "metadata": share_metadata
                 })
             except exception.ShareBackendException as e:
                 if 'does not exist' in str(e).lower():
@@ -842,6 +855,7 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
         return {
             "cephfs_ensure_all_shares_salt":
                 self.configuration.cephfs_ensure_all_shares_salt,
+            "cephfs_filesystem_name": self.volname,
         }
 
     def get_export_locations(self, share, subvolume_path):
@@ -860,6 +874,9 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
             'is_admin_only': False,
             'metadata': {},
         }
+
+    def get_optional_share_creation_data(self, share, share_server=None):
+        return {"metadata": {"__mount_options": f"fs={self.volname}"}}
 
     def _allow_access(self, context, share, access, share_server=None):
         if access['access_type'] != CEPHX_ACCESS_TYPE:
@@ -1056,6 +1073,9 @@ class NFSProtocolHelperMixin():
             }
             export_locations.append(export_location)
         return export_locations
+
+    def get_optional_share_creation_data(self, share, share_server=None):
+        return {}
 
     def _get_export_path(self, share):
         """Callback to provide export path."""
