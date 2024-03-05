@@ -35,6 +35,8 @@ class WindowsSMBDriver(generic.GenericShareDriver):
 
     def __init__(self, *args, **kwargs):
         super(WindowsSMBDriver, self).__init__(*args, **kwargs)
+        LOG.warning('Windows SMB share driver has been deprecated and is '
+                    'expected to be removed in a future release.')
 
         self._remote_execute = winrm_helper.WinRMHelper(
             configuration=self.configuration).execute

@@ -259,6 +259,9 @@ Windows SMB driver when Windows VMs are preferred.
 For more details, please check out the following page:
 :ref:`windows_smb_driver`.
 
+.. note::
+   This driver has been deprecated in 18.0.0 release.
+
 The :mod:`manila.share.drivers.generic` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
