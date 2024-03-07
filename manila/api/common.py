@@ -302,6 +302,7 @@ class ViewBuilder(object):
     """Model API responses as dictionaries."""
 
     _collection_name = None
+    _collection_route_name = None
     _detail_version_modifiers = []
 
     def _get_project_id(self, request):
@@ -325,20 +326,30 @@ class ViewBuilder(object):
         """Return href string with proper limit and marker params."""
         params = request.params.copy()
         params["marker"] = identifier
+        url = ""
+        collection_route_name = (
+            self._collection_route_name
+            or self._collection_name
+        )
         prefix = self._update_link_prefix(request.application_url,
                                           CONF.osapi_share_base_URL)
         url = os.path.join(prefix,
                            self._get_project_id(request),
-                           self._collection_name)
+                           collection_route_name)
+
         return "%s?%s" % (url, dict_to_query_str(params))
 
     def _get_href_link(self, request, identifier):
         """Return an href string pointing to this object."""
+        collection_route_name = (
+            self._collection_route_name
+            or self._collection_name
+        )
         prefix = self._update_link_prefix(request.application_url,
                                           CONF.osapi_share_base_URL)
         return os.path.join(prefix,
                             self._get_project_id(request),
-                            self._collection_name,
+                            collection_route_name,
                             str(identifier))
 
     def _get_bookmark_link(self, request, identifier):
@@ -346,9 +357,13 @@ class ViewBuilder(object):
         base_url = remove_version_from_href(request.application_url)
         base_url = self._update_link_prefix(base_url,
                                             CONF.osapi_share_base_URL)
+        collection_route_name = (
+            self._collection_route_name
+            or self._collection_name
+        )
         return os.path.join(base_url,
                             self._get_project_id(request),
-                            self._collection_name,
+                            collection_route_name,
                             str(identifier))
 
     def _get_collection_links(self, request, items, id_key="uuid"):
