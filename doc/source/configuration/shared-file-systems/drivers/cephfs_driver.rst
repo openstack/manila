@@ -31,9 +31,9 @@ The client can then mount the share using the ID and the secret key. To learn
 more about configuring Ceph clients to access the shares created using this
 driver, please see the `Ceph documentation`_
 
-And when guests access CephFS through NFS, an NFS-Ganesha server mediates
-access to CephFS. The driver enables access control by managing the NFS-Ganesha
-server's exports.
+And when guests access CephFS through NFS, an NFS-Ganesha server (or CephFS
+NFS service) mediates access to CephFS. The driver enables access control by
+managing the NFS-Ganesha server's exports.
 
 
 Supported Operations
@@ -82,30 +82,25 @@ added to the table below. Contributors to those projects can determine what
 versions of ceph are tested and supported with manila by those components;
 however, their state is presented here for ease of access.
 
-.. important::
-
-    From the Victoria cycle, the Manila CephFS driver is not tested or
-    supported with Ceph clusters older than Nautilus. Future releases of
-    Manila may be incompatible with Nautilus too! We suggest always running
-    the latest version of Manila with the latest release of Ceph.
-
-+-------------------+----------+----------------------+-----------+
-| OpenStack release |  manila  | devstack-plugin-ceph | tripleo   |
-+===================+==========+======================+===========+
-| Queens            | Luminous | Luminous             | Luminous  |
-+-------------------+----------+----------------------+-----------+
-| Rocky             | Luminous | Luminous             | Luminous  |
-+-------------------+----------+----------------------+-----------+
-| Stein             | Nautilus | Luminous, Nautilus   | Nautilus  |
-+-------------------+----------+----------------------+-----------+
-| Train             | Nautilus | Luminous, Nautilus   | Nautilus  |
-+-------------------+----------+----------------------+-----------+
-| Ussuri            | Nautilus | Luminous, Nautilus   | Nautilus  |
-+-------------------+----------+----------------------+-----------+
-| Victoria          | Nautilus | Nautilus, Octopus    | Nautilus  |
-+-------------------+----------+----------------------+-----------+
-| Wallaby           | Octopus  | Nautilus, Octopus    | Pacific   |
-+-------------------+----------+----------------------+-----------+
++-----------------------+---------+----------------------+
+|   OpenStack release   | Manila  | devstack-plugin-ceph |
++=======================+=========+======================+
+| Wallaby               | Pacific | Pacific              |
++-----------------------+---------+----------------------+
+| Xena                  | Pacific | Quincy               |
++-----------------------+---------+----------------------+
+| Yoga                  | Quincy  | Quincy               |
++-----------------------+---------+----------------------+
+| Zed                   | Quincy  | Quincy               |
++-----------------------+---------+----------------------+
+| 2023.1 ("Antelope")   | Quincy  | Quincy               |
++-----------------------+---------+----------------------+
+| 2023.2 ("Bobcat")     | Quincy  | Reef                 |
++-----------------------+---------+----------------------+
+| 2024.1 ("Caracal")    | Reef    | Reef                 |
++-----------------------+---------+----------------------+
+| 2024.2 ("Dalmation")  | Reef    | Reef                 |
++-----------------------+---------+----------------------+
 
 Additionally, it is expected that the version of the Ceph client
 available to manila is aligned with the Ceph server version. Mixing
@@ -113,23 +108,6 @@ server and client versions is strongly unadvised.
 
 In case of using the NFS Ganesha driver, it's also a good practice to use
 the versions that align with the Ceph version of choice.
-
-.. important::
-
-   It's recommended to install the latest stable version of Ceph Nautilus/Octopus/Pacific release.
-   See, `Ceph releases <https://docs.ceph.com/en/latest/releases/index.html>`_
-
-   Prior to upgrading to Wallaby, please ensure that you're running at least the following versions of Ceph:
-
-   +----------+-----------------+
-   | Release  | Minimum version |
-   +----------+-----------------+
-   | Nautilus | 14.2.20         |
-   +----------+-----------------+
-   | Octopus  | 15.2.11         |
-   +----------+-----------------+
-   | Pacific  | 16.2.1          |
-   +----------+-----------------+
 
 Common Prerequisites
 --------------------
@@ -151,12 +129,62 @@ For CephFS native shares
 For CephFS NFS shares
 ---------------------
 
-- 3.0 or later versions of NFS-Ganesha.
+There are two ways for the CephFS driver to provision and export CephFS
+shares via NFS. Both ways involve the user space NFS service, NFS-Ganesha.
+
+Since the Quincy release of Ceph, there is support to create and manage an
+NFS-Ganesha based "ceph nfs" service. This service can be clustered, i.e.,
+it can have one or more active NFS services working in tandem to provide
+high availability. You can also optionally deploy an ingress service to
+front-end this cluster natively using ceph's management commands. Doing this
+allows ease of management of an NFS service to serve CephFS shares securely as
+well provides an active/active high availability configuration for it which
+may be highly desired in production environments.
+Please `follow the ceph documentation <https://docs.ceph
+.com/en/latest/cephadm/services/nfs/>`_ for instructions to deploy a cluster
+with necessary configuration. With an NFS cluster, the CephFS driver uses
+Ceph mgr APIs to create and manipulate exports when share access rules are
+created and deleted.
+
+The CephFS driver can also work with Manila's in-built NFS-Ganesha driver to
+interface with an independent, standalone NFS-Ganesha service that is not
+orchestrated via Ceph. Unlike when under Ceph's management, the high
+availability of the NFS server must be externally managed. Typically deployers
+use Pacemaker/Corosync for providing active/passive availability for such a
+standalone NFS-Ganesha service. See `the NFS-Ganesha documentation
+<https://github.com/nfs-ganesha/nfs-ganesha/wiki/NFS-Ganesha-and-High-Availability>`_
+for more information. The CephFS driver can be configured to store the NFS
+recovery data in a RADOS pool to facilitate the server's recovery if the
+service is shut down and respawned due to failures/outages.
+
+Since the Antelope (2023.1) release of OpenStack Manila, we recommend the
+use of ceph orchestrator deployed NFS service. The use of a standalone
+NFS-Ganesha service is deprecated as of the Caracal release (2024.1) and
+support will be removed in a future release.
+
+The CephFS driver does not specify an NFS protocol version when setting up
+exports. This is to allow the deployer to configure the appropriate NFS
+protocol version/s directly in NFS-Ganesha configuration. NFS-Ganesha enables
+both NFS version 3 and version 4.x by virtue of default configuration.
+Please note that there are many differences at the protocol level
+between NFS versions. Many deployers enable only NFS version 4.1 (and beyond)
+to take advantage of enhancements in locking, security and ease of port
+management. Be aware that not all clients support the latest versions
+of NFS.
+
+The pre-requisites for NFS are:
+
 - NFS client installed in the guest.
 - Network connectivity between your Ceph cluster's public network and
-  NFS-Ganesha server.
-- Network connectivity between your NFS-Ganesha server and the manila
-  guest.
+  NFS-Ganesha service.
+- Network connectivity between your NFS-Ganesha service and the client
+  mounting the manila share.
+- Appropriate firewall rules to permit port access
+  between the clients and the NFS-Ganesha service.
+
+If you're deploying a standalone NFS-Ganesha service, we recommend using
+the latest version of NFS-Ganesha. The server must be deployed with at least
+NFS-Ganesha version 3.5.
 
 .. _authorize_ceph_driver:
 
@@ -181,7 +209,9 @@ communicate to the Ceph Cluster.
     E.g. a native driver that already uses `client.manila` Ceph identity,
     issue command `ceph auth caps client.manila mon 'allow r' mgr 'allow rw'`
 
-For the CephFS Native driver, the auth ID should be set as follows:
+If you are deploying the CephFS driver with Native CephFS or using an NFS
+service deployed with ceph management commands, the auth ID should be set as
+follows:
 
 .. code-block:: console
 
@@ -189,10 +219,11 @@ For the CephFS Native driver, the auth ID should be set as follows:
       mgr 'allow rw' \
       mon 'allow r'
 
-For the CephFS NFS driver, we use a specific pool to store exports
-(configurable with the config option "ganesha_rados_store_pool_name").
-We also need to specify osd caps for it.
-So, the auth ID should be set as follows:
+If you're deploying the CephFS NFS driver with a standalone NFS-Ganesha
+service, we use a specific pool to store exports (configurable with the
+config option "ganesha_rados_store_pool_name"). The `client.manila` ceph
+user requires permission to access this pool. So, the auth ID should be set
+as follows:
 
 .. code-block:: console
 
@@ -232,10 +263,6 @@ log files respectively.
 
 Enabling snapshot support in Ceph backend
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-CephFS Snapshots were experimental prior to the Nautilus release of Ceph.
-There may be some `limitations on snapshots`_ based on the Ceph version you
-use.
 
 From Ceph Nautilus, all new filesystems created on Ceph have snapshots
 enabled by default. If you've upgraded your ceph cluster and want to enable
@@ -299,9 +326,11 @@ Configure CephFS NFS share backend in manila.conf
 .. note::
 
     Prior to configuring the Manila CephFS driver to use NFS, you must have
-    installed and configured NFS-Ganesha. For guidance on configuration,
-    refer to the `NFS-Ganesha setup guide
-    <../contributor/ganesha.html#nfs-ganesha-configuration>`_.
+    installed and configured NFS-Ganesha. If you're using ceph orchestrator to
+    create the NFS-Ganesha service and manage it alongside ceph, refer to
+    the Ceph documentation on how to setup this service. If you're using an
+    independently deployed standalone NFS-Ganesha service,  refer to the
+    `NFS-Ganesha setup guide <../contributor/ganesha.html#nfs-ganesha-configuration>`_.
 
 Add NFS to ``enabled_share_protocols`` if it's not already there:
 
@@ -310,7 +339,25 @@ Add NFS to ``enabled_share_protocols`` if it's not already there:
     enabled_share_protocols = NFS,CIFS,CEPHFS
 
 
-Create a section to define a CephFS NFS share backend:
+Create a section to define a CephFS NFS share backend.
+The following is an example for using a ceph orchestrator deployed NFS service:
+
+.. code-block:: ini
+
+    [cephfsnfs1]
+    driver_handles_share_servers = False
+    share_backend_name = CEPHFSNFS1
+    share_driver = manila.share.drivers.cephfs.driver.CephFSDriver
+    cephfs_protocol_helper_type = NFS
+    cephfs_conf_path = /etc/ceph/ceph.conf
+    cephfs_auth_id = manila
+    cephfs_cluster_name = ceph
+    cephfs_filesystem_name = cephfs
+    cephfs_nfs_cluster_id = mycephfsnfscluster
+
+
+The following is an example for using an independently deployed standalone
+NFS-Ganesha service:
 
 .. code-block:: ini
 
@@ -329,7 +376,7 @@ Create a section to define a CephFS NFS share backend:
     ganesha_rados_store_pool_name = cephfs_data
 
 
-The following options are set in the driver backend section above:
+The following options are set in the driver backend sections above:
 
 * ``driver-handles-share-servers`` to ``False`` as the driver does not
   manage the lifecycle of ``share-servers``.
@@ -339,25 +386,33 @@ The following options are set in the driver backend section above:
 
 * ``ceph_auth_id`` to the ceph auth ID created in :ref:`authorize_ceph_driver`.
 
-* ``cephfs_ganesha_server_is_remote`` to False if the NFS-ganesha server is
+* ``cephfs_nfs_cluster_id`` - Use this option with a ceph orchestrator deployed
+  clustered NFS service. Set it to the name of the cluster created with the
+  ceph orchestrator.
+
+* ``cephfs_ganesha_server_is_remote`` - Use this option with a standalone
+  NFS-Ganesha service. Set it to False if the NFS-ganesha server is
   co-located with the :term:`manila-share`  service. If the NFS-Ganesha
   server is remote, then set the options to ``True``, and set other options
   such as ``cephfs_ganesha_server_ip``, ``cephfs_ganesha_server_username``,
   and ``cephfs_ganesha_server_password`` (or ``cephfs_ganesha_path_to_private_key``)
   to allow the driver to manage the NFS-Ganesha export entries over SSH.
 
-* ``cephfs_ganesha_server_ip`` to the ganesha server IP address. It is
+* ``cephfs_ganesha_server_ip`` - Use this option with a standalone
+  NFS-Ganesha service. Set it to the ganesha server IP address. It is
   recommended to set this option even if the ganesha server is co-located
   with the :term:`manila-share` service.
 
-* ``ganesha_rados_store_enable`` to True or False. Setting this option to
+* ``ganesha_rados_store_enable`` - Use this option with a standalone
+  NFS-Ganesha service. Set it to True or False. Setting this option to
   True allows NFS Ganesha to store exports and its export counter in Ceph
   RADOS objects. We recommend setting this to True and using a RADOS object
   since it is useful for highly available NFS-Ganesha deployments to store
   their configuration efficiently in an already available distributed
   storage system.
 
-* ``ganesha_rados_store_pool_name`` to the name of the RADOS pool you have
+* ``ganesha_rados_store_pool_name`` - Use this option with a standalone
+  NFS-Ganesha service. Set it to the name of the RADOS pool you have
   created for use with NFS-Ganesha. Set this option only if also setting
   the ``ganesha_rados_store_enable`` option to True. If you want to use
   one of the backend CephFS's RADOS pools, then using CephFS's data pool is
@@ -403,20 +458,20 @@ Configure a share type suitable for CephFS native share:
 
 .. code-block:: console
 
-    manila type-create cephfsnativetype false
-    manila type-key cephfsnativetype set vendor_name=Ceph storage_protocol=CEPHFS
+    openstack share type create cephfsnativetype false
+    openstack share type set cephfsnativetype --extra-specs vendor_name=Ceph storage_protocol=CEPHFS
 
 Then create a share,
 
 .. code-block:: console
 
-    manila create --share-type cephfsnativetype --name cephnativeshare1 cephfs 1
+    openstack share create --share-type cephfsnativetype --name cephnativeshare1 cephfs 1
 
 Note the export location of the share:
 
 .. code-block:: console
 
-    manila share-export-location-list cephnativeshare1
+    openstack share export location list cephnativeshare1
 
 The export location of the share contains the Ceph monitor (mon) addresses and
 ports, and the path to be mounted. It is of the form,
@@ -429,20 +484,20 @@ Configure a share type suitable for CephFS NFS share:
 
 .. code-block:: console
 
-    manila type-create cephfsnfstype false
-    manila type-key cephfsnfstype set vendor_name=Ceph storage_protocol=NFS
+    openstack share type create cephfsnfstype false
+    openstack share type set cephfsnfstype --extra-specs vendor_name=Ceph storage_protocol=NFS
 
 Then create a share:
 
 .. code-block:: console
 
-    manila create --share-type cephfsnfstype --name cephnfsshare1 nfs 1
+    openstack share create --share-type cephfsnfstype --name cephnfsshare1 nfs 1
 
 Note the export location of the share:
 
 .. code-block:: console
 
-    manila share-export-location-list cephnfsshare1
+    openstack share export location list cephnfsshare1
 
 The export location of the share contains the IP address of the NFS-Ganesha
 server and the path to be mounted. It is of the form,
@@ -459,13 +514,13 @@ Allow Ceph auth ID ``alice`` access to the share using ``cephx`` access type.
 
 .. code-block:: console
 
-    manila access-allow cephnativeshare1 cephx alice
+    openstack share access create cephnativeshare1 cephx alice
 
 Note the access status, and the access/secret key of ``alice``.
 
 .. code-block:: console
 
-    manila access-list cephnativeshare1
+    openstack share access list cephnativeshare1
 
 
 Allow access to CephFS NFS share
@@ -475,7 +530,7 @@ Allow a guest access to the share using ``ip`` access type.
 
 .. code-block:: console
 
-    manila access-allow cephnfsshare1 ip 172.24.4.225
+    openstack share access create cephnfsshare1 ip 172.24.4.225
 
 
 Mounting CephFS shares
@@ -573,17 +628,7 @@ Security
 
 - Each share's data is mapped to a distinct Ceph RADOS namespace. A guest is
   restricted to access only that particular RADOS namespace.
-  https://docs.ceph.com/docs/nautilus/cephfs/file-layouts/
-
-- An additional level of resource isolation can be provided by mapping a
-  share's contents to a separate RADOS pool. This layout would be preferred
-  only for cloud deployments with a limited number of shares needing strong
-  resource separation. You can do this by setting a share type specification,
-  ``cephfs:data_isolated`` for the share type used by the cephfs driver.
-
-  .. code-block:: console
-
-    manila type-key cephfstype set cephfs:data_isolated=True
+  https://docs.ceph.com/en/latest/cephfs/file-layouts/
 
 .. _security_cephfs_native:
 
@@ -593,10 +638,16 @@ Security with CephFS native share backend
 As the guests need direct access to Ceph's public network, CephFS native
 share backend is suitable only in private clouds where guests can be trusted.
 
-.. _Ceph documentation: https://docs.ceph.com/docs/nautilus/cephfs/
-.. _Create ceph filesystem: https://docs.ceph.com/docs/nautilus/cephfs/createfs/
-.. _limitations on snapshots: https://docs.ceph.com/docs/nautilus/cephfs/experimental-features/#snapshots
-.. _quota limitations documentation: https://docs.ceph.com/docs/nautilus/cephfs/quota/#limitations
+.. _Ceph documentation: https://docs.ceph.com/en/latest/cephfs/
+.. _Create ceph filesystem: https://docs.ceph.com/en/latest/cephfs/createfs/
+.. _limitations on snapshots: https://docs.ceph.com/en/latest/dev/cephfs-snapshots/
+.. _quota limitations documentation: https://docs.ceph.com/en/latest/cephfs/quota/#limitations
+
+Configuration Reference
+-----------------------
+
+.. include:: ../../tables/manila-cephfs.inc
+
 
 The :mod:`manila.share.drivers.cephfs.driver` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
