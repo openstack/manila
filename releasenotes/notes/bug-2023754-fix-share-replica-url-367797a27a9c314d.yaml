@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Launchpad `bug 2023754 <https://bugs.launchpad.net/manila/+bug/2023754>`_
+    has been fixed for "next links" broken for limited share replicas api.
+
