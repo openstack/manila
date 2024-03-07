@@ -439,6 +439,33 @@ class ManilaCmdManageTestCase(test.TestCase):
         db.share_resources_host_update.assert_called_once_with(
             'admin_ctxt', current_host, new_host)
 
+    def test_share_delete(self):
+        share_id = "fake_share_id"
+        share = {
+            'id': share_id,
+            'instances': [
+                {'id': 'instance_id1', 'replica_state': 'active'},
+                {'id': 'instance_id2', 'replica_state': 'error'},
+                {'id': 'instance_id3', 'replica_state': 'active'},
+            ]
+        }
+        self.mock_object(context, 'get_admin_context',
+                         mock.Mock(return_value='admin_ctxt'))
+        self.mock_object(db, 'share_get',
+                         mock.Mock(return_value=share))
+        self.mock_object(db, 'share_instance_delete',
+                         mock.Mock(return_value=None))
+
+        self.share_cmds.delete(share_id)
+
+        db.share_instance_delete.assert_has_calls([
+            mock.call('admin_ctxt', 'instance_id2'),
+            mock.call('admin_ctxt', 'instance_id1'),
+            mock.call('admin_ctxt', 'instance_id3'),
+        ])
+
+        self.assertEqual(3, db.share_instance_delete.call_count)
+
     def test_share_server_update_capability(self):
         self.mock_object(context, 'get_admin_context',
                          mock.Mock(return_value='admin_ctxt'))
