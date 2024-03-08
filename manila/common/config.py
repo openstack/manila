@@ -137,7 +137,7 @@ global_opts = [
                help='Maximum time (in seconds) to keep a share in '
                     'awaiting_transfer state, after timeout, the share will '
                     'automatically be rolled back to the available state'),
-    cfg.ListOpt('admin_metadata_keys',
+    cfg.ListOpt('admin_only_metadata',
                 default=constants.AdminOnlyMetadata.SCHEDULER_FILTERS,
                 help='Metadata keys that should only be manipulated by '
                      'administrators.'),

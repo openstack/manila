@@ -109,7 +109,7 @@ class ShareMetadataController(object):
     def _update_share_metadata(self, context,
                                share_id, metadata,
                                delete=False):
-        ignore_keys = getattr(CONF, 'admin_metadata_keys', [])
+        ignore_keys = getattr(CONF, 'admin_only_metadata', [])
         try:
             share = self.share_api.get(context, share_id)
             if set(metadata).intersection(set(ignore_keys)):
@@ -178,8 +178,10 @@ class ShareMetadataController(object):
 
         try:
             share = self.share_api.get(context, share_id)
-            admin_metadata_keys = getattr(CONF, 'admin_metadata_keys', set())
-            if id in admin_metadata_keys:
+            admin_only_metadata_keys = (
+                getattr(CONF, 'admin_only_metadata', set())
+            )
+            if id in admin_only_metadata_keys:
                 policy.check_policy(context, 'share',
                                     'update_admin_only_metadata')
             db.share_metadata_delete(context, share['id'], id)
