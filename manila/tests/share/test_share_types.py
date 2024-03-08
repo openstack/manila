@@ -406,14 +406,18 @@ class ShareTypesTestCase(test.TestCase):
              (constants.ExtraSpecs.SNAPSHOT_SUPPORT,
               constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT,
               constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT,
-              constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT),
+              constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT,
+              constants.ExtraSpecs.MOUNT_POINT_NAME_SUPPORT),
              strutils.TRUE_STRINGS + strutils.FALSE_STRINGS)) +
         list(itertools.product(
              (constants.ExtraSpecs.REPLICATION_TYPE_SPEC,),
              constants.ExtraSpecs.REPLICATION_TYPES)) +
         [(constants.ExtraSpecs.AVAILABILITY_ZONES, 'zone a, zoneb$c'),
          (constants.ExtraSpecs.AVAILABILITY_ZONES, '    zonea,    zoneb'),
-         (constants.ExtraSpecs.AVAILABILITY_ZONES, 'zone1')]
+         (constants.ExtraSpecs.AVAILABILITY_ZONES, 'zone1')] +
+        [(constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX, 'gold'),
+         (constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX, 'silver'),
+         (constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX, 'bronze')]
     ))
     @ddt.unpack
     def test_is_valid_optional_extra_spec_valid(self, key, value):
@@ -421,6 +425,18 @@ class ShareTypesTestCase(test.TestCase):
         result = share_types.is_valid_optional_extra_spec(key, value)
 
         self.assertTrue(result)
+
+    def test_valid_string(self):
+        self.assertTrue(share_types.is_valid_string("This is a valid string"))
+
+    def test_empty_string(self):
+        self.assertFalse(share_types.is_valid_string(""))
+
+    def test_string_too_long(self):
+        self.assertFalse(share_types.is_valid_string("a" * 256))
+
+    def test_non_string_input(self):
+        self.assertFalse(share_types.is_valid_string(123))
 
     def test_is_valid_optional_extra_spec_valid_unknown_key(self):
 

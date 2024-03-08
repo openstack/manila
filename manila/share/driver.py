@@ -1356,6 +1356,7 @@ class ShareDriver(object):
             network_allocation_update_support=(
                 self.network_allocation_update_support),
             share_server_multiple_subnet_support=False,
+            mount_point_name_support=False,
         )
         if isinstance(data, dict):
             common.update(data)

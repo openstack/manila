@@ -300,10 +300,12 @@ class ExtraSpecs(object):
     CREATE_SHARE_FROM_SNAPSHOT_SUPPORT = "create_share_from_snapshot_support"
     REVERT_TO_SNAPSHOT_SUPPORT = "revert_to_snapshot_support"
     MOUNT_SNAPSHOT_SUPPORT = "mount_snapshot_support"
+    MOUNT_POINT_NAME_SUPPORT = "mount_point_name_support"
     AVAILABILITY_ZONES = "availability_zones"
     PROVISIONING_MAX_SHARE_SIZE = "provisioning:max_share_size"
     PROVISIONING_MIN_SHARE_SIZE = "provisioning:min_share_size"
     PROVISIONING_MAX_SHARE_EXTEND_SIZE = "provisioning:max_share_extend_size"
+    PROVISIONING_MOUNT_POINT_PREFIX = "provisioning:mount_point_prefix"
 
     # Extra specs containers
     REQUIRED = (
@@ -316,10 +318,12 @@ class ExtraSpecs(object):
         REVERT_TO_SNAPSHOT_SUPPORT,
         REPLICATION_TYPE_SPEC,
         MOUNT_SNAPSHOT_SUPPORT,
+        MOUNT_POINT_NAME_SUPPORT,
         AVAILABILITY_ZONES,
         PROVISIONING_MAX_SHARE_SIZE,
         PROVISIONING_MIN_SHARE_SIZE,
-        PROVISIONING_MAX_SHARE_EXTEND_SIZE
+        PROVISIONING_MAX_SHARE_EXTEND_SIZE,
+        PROVISIONING_MOUNT_POINT_PREFIX,
     )
 
     # NOTE(cknight): Some extra specs are necessary parts of the Manila API and

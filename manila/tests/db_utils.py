@@ -94,7 +94,8 @@ def create_share(**kwargs):
         'availability_zone': 'fake_availability_zone',
         'status': constants.STATUS_CREATING,
         'host': 'fake_host',
-        'is_soft_deleted': False
+        'is_soft_deleted': False,
+        'mount_point_name': 'fake_mp',
     }
     return _create_db_row(db.share_create, share, kwargs)
 
@@ -112,7 +113,8 @@ def create_share_without_instance(**kwargs):
         'availability_zone': 'fake_availability_zone',
         'status': constants.STATUS_CREATING,
         'host': 'fake_host',
-        'is_soft_deleted': False
+        'is_soft_deleted': False,
+        'mount_point_name': None,
     }
     share.update(copy.deepcopy(kwargs))
     return db.share_create(context.get_admin_context(), share, False)

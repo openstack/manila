@@ -371,7 +371,7 @@ class ShareInstance(BASE, ManilaBase):
     host = Column(String(255))
     status = Column(String(255))
     progress = Column(String(32))
-
+    mount_point_name = Column(String(255))
     ACCESS_STATUS_PRIORITIES = {
         constants.STATUS_ACTIVE: 0,
         constants.SHARE_INSTANCE_RULES_SYNCING: 1,

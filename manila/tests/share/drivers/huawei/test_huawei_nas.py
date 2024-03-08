@@ -2431,6 +2431,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             "replication_domain": None,
             "filter_function": None,
             "goodness_function": None,
+            'mount_point_name_support': False,
             "pools": [],
             "share_group_stats": {"consistent_snapshot_support": None},
             "ipv4_support": True,

@@ -61,17 +61,40 @@ class ShareTransferAPITestCase(test.TestCase):
                       size=1,
                       project_id='fake_project_id',
                       user_id='fake_user_id',
-                      share_network_id=None):
+                      share_network_id=None,
+                      mount_point_name=None):
         """Create a share object."""
         share_type = db_utils.create_share_type()
-        share = db_utils.create_share(display_name=display_name,
-                                      display_description=display_description,
-                                      status=status, size=size,
-                                      project_id=project_id,
-                                      user_id=user_id,
-                                      share_type_id=share_type['id'],
-                                      share_network_id=share_network_id
-                                      )
+        if mount_point_name:
+            instance_list = [
+                db_utils.create_share_instance(
+                    status=status,
+                    share_id='fake_id',
+                    mount_point_name=mount_point_name
+                )
+            ]
+            share = db_utils.create_share(
+                display_name=display_name,
+                display_description=display_description,
+                status=status, size=size,
+                project_id=project_id,
+                user_id=user_id,
+                share_type_id=share_type['id'],
+                share_network_id=share_network_id,
+                instances=instance_list
+            )
+        else:
+            share = db_utils.create_share(
+                display_name=display_name,
+                display_description=display_description,
+                status=status,
+                size=size,
+                project_id=project_id,
+                user_id=user_id,
+                share_type_id=share_type['id'],
+                share_network_id=share_network_id,
+                mount_point_name=mount_point_name
+            )
         share_id = share['id']
         return share_id
 
@@ -231,6 +254,35 @@ class ShareTransferAPITestCase(test.TestCase):
         req.body = jsonutils.dumps(body).encode("utf-8")
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.v2_controller.create, req, body)
+
+    def test_create_transfer_with_invalid_mount_point_name(self):
+        share_id = self._create_share(
+            project_id='fake_pid',
+            mount_point_name='fake_pid_mount_point_name')
+        body = {"transfer": {"name": "transfer1",
+                             "share_id": share_id}}
+        db.share_update(context.get_admin_context(),
+                        share_id, {'status': 'error'})
+
+        path = '/v2/fake_project_id/share-transfers'
+        req = fakes.HTTPRequest.blank(path, version=self.microversion)
+        req.environ['manila.context'] = self.ctxt
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dumps(body).encode("utf-8")
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.v2_controller.create, req, body)
+
+    def test_create_transfer_with_project_id_prefix_mount_point_name(self):
+        share_id = self._create_share(project_id='fake',
+                                      mount_point_name='fake_mp')
+        '''self.share_transfer_api.create(context.get_admin_context(),
+                                       share_id,
+                                       'test_missing_share_type')'''
+        self.assertRaises(exception.Invalid,
+                          self.share_transfer_api.create,
+                          context.get_admin_context(), share_id,
+                          'test_missing_share_type')
 
     def test_create_transfer_share_with_network_id(self):
         share_id = self._create_share(share_network_id='fake_id')

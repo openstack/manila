@@ -746,6 +746,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'replication_domain': None,
             'filter_function': None,
             'goodness_function': None,
+            'mount_point_name_support': False,
             'ipv4_support': True,
             'ipv6_support': False,
             'max_share_server_size': -1,
@@ -839,6 +840,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'replication_domain': None,
             'filter_function': None,
             'goodness_function': None,
+            'mount_point_name_support': False,
             'ipv4_support': True,
             'ipv6_support': False,
         }
@@ -890,6 +892,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'replication_domain': None,
             'filter_function': None,
             'goodness_function': None,
+            'mount_point_name_support': False,
             'ipv4_support': True,
             'ipv6_support': False,
         }

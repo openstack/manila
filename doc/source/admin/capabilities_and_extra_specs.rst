@@ -196,6 +196,20 @@ Share type common capability extra-specs that are visible to end users:
   this extra-spec, the share type is assumed to be serviceable in all
   availability zones known to the Shared File Systems service.
 
+* **mount_point_name_support** whether a custom export location could
+  be specified during share creation. To enable users to specify a custom
+  mount point for their shares, administrators must set this
+  extra-specification in the share type to True. They must also provide
+  an extra-spec named ``provisioning:mount_point_prefix``. The service will
+  use this prefix in conjunction with the mount point name provided by end
+  users during share creation. When ``provisioning:mount_point_prefix`` is not
+  set on a share type, but ``mount_point_name_support`` is enabled, the
+  share's export location will be prefixed with the ``project_id``.
+  However, shares created with a ``project_id`` prefix are not eligible
+  for transfer. For these shares to be transferred to a different project,
+  the admin will need to manually unmount them from the current project
+  and mount them to the target project.
+
 Share type common capability extra-specs that are not visible to end users:
 ---------------------------------------------------------------------------
 
@@ -274,3 +288,7 @@ Share type common capability extra-specs that are not visible to end users:
   the share type can not be greater than the specified value. This capability
   is ignored for regular users and the "provisioning:max_share_size" is the
   only effective limit.
+
+* **provisioning:mount_point_prefix** can set prefix for human readable
+  mount_point_name, the value must be a string containing ASCII alphabets
+  and optionally, the underscore character.

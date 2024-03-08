@@ -181,6 +181,9 @@ class DummyDriver(driver.ShareDriver):
                 ))
 
     def _get_share_name(self, share):
+        mount_point_name = share.get('mount_point_name')
+        if mount_point_name is not None:
+            return mount_point_name
         return "share_%(s_id)s_%(si_id)s" % {
             "s_id": share["share_id"].replace("-", "_"),
             "si_id": share["id"].replace("-", "_")}
@@ -516,6 +519,7 @@ class DummyDriver(driver.ShareDriver):
                 "consistent_snapshot_support": "pool",
             },
             'share_server_multiple_subnet_support': True,
+            'mount_point_name_support': True,
         }
         if self.configuration.replication_domain:
             data["replication_type"] = "readable"
