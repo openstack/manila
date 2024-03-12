@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Driver-advantaged share backups can now have a "backup_type".
+    It is also possible to create share backups in environments
+    that support hard multi-tenancy (driver_handles_share_servers=True).

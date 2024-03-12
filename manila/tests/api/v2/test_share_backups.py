@@ -15,6 +15,7 @@ from oslo_config import cfg
 from unittest import mock
 from webob import exc
 
+from manila.api.openstack import api_version_request as api_version
 from manila.api.v2 import share_backups
 from manila.common import constants
 from manila import context
@@ -65,7 +66,9 @@ class ShareBackupsApiTest(test.TestCase):
 
         return backup, req
 
-    def _get_fake_backup(self, admin=False, summary=False, **values):
+    def _get_fake_backup(self, admin=False, summary=False,
+                         apiversion=share_backups.MIN_SUPPORTED_API_VERSION,
+                         **values):
         backup = fake_share.fake_backup(**values)
         backup['updated_at'] = '2016-06-12T19:57:56.506805'
         expected_keys = {'id', 'share_id', 'status'}
@@ -86,6 +89,11 @@ class ShareBackupsApiTest(test.TestCase):
                 'progress': backup.get('progress'),
                 'restore_progress': backup.get('restore_progress'),
             })
+            if self.is_microversion_ge(apiversion, '2.85'):
+                expected_backup.update({
+                    'backup_type': backup.get('backup_type'),
+                })
+
             if admin:
                 expected_backup.update({
                     'host': backup.get('host'),
@@ -189,16 +197,19 @@ class ShareBackupsApiTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.member_context, self.resource_name, 'get_all')
 
-    def test_list_share_backups_detail(self):
-        fake_backup, expected_backup = self._get_fake_backup()
-
+    @ddt.data(share_backups.MIN_SUPPORTED_API_VERSION,
+              api_version._MAX_API_VERSION)
+    def test_list_share_backups_detail(self, apiversion):
+        fake_backup, expected_backup = self._get_fake_backup(
+            apiversion=apiversion,
+        )
         self.mock_object(share.API, 'get',
                          mock.Mock(return_value={'id': 'FAKE_SHAREID'}))
         self.mock_object(share_backups.db, 'share_backups_get_all',
                          mock.Mock(return_value=[fake_backup]))
         req = fakes.HTTPRequest.blank(
             '/share-backups?share_id=FAKE_SHARE_ID',
-            version=self.api_version, experimental=True)
+            version=apiversion, experimental=True)
         req.environ['manila.context'] = (
             self.member_context)
         req_context = req.environ['manila.context']

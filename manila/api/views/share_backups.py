@@ -23,6 +23,10 @@ class BackupViewBuilder(common.ViewBuilder):
     _collection_name = 'share_backups'
     _collection_links = 'share_backup_links'
 
+    _detail_version_modifiers = [
+        "add_backup_type_field",
+    ]
+
     def summary_list(self, request, backups):
         """Summary view of a list of backups."""
         return self._list_view(self.summary, request, backups)
@@ -68,6 +72,7 @@ class BackupViewBuilder(common.ViewBuilder):
             'restore_progress': backup.get('restore_progress'),
         }
 
+        self.update_versioned_resource_dict(request, backup_dict, backup)
         if policy.check_is_host_admin(context):
             backup_dict['host'] = backup.get('host')
             backup_dict['topic'] = backup.get('topic')
@@ -88,3 +93,7 @@ class BackupViewBuilder(common.ViewBuilder):
             backups_dict[self._collection_links] = backup_links
 
         return backups_dict
+
+    @common.ViewBuilder.versioned_method("2.85")
+    def add_backup_type_field(self, context, backup_dict, backup):
+        backup_dict['backup_type'] = backup.get('backup_type')

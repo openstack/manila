@@ -1533,6 +1533,7 @@ class ShareBackup(BASE, ManilaBase):
     restore_progress = Column(String(32))
     status = Column(String(255))
     fail_reason = Column(String(1023))
+    backup_type = Column(String(32))
     availability_zone_id = Column(String(36),
                                   ForeignKey('availability_zones.id'),
                                   nullable=True)

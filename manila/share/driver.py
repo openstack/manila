@@ -3666,7 +3666,8 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
-    def create_backup(self, context, share_instance, backup):
+    def create_backup(self, context, share_instance, backup,
+                      share_server=None):
         """Starts backup of a given share_instance into backup.
 
         Driver should implement this method if willing to perform backup of
@@ -3677,10 +3678,12 @@ class ShareDriver(object):
         :param context: The 'context.RequestContext' object for the request.
         :param share_instance: Reference to the original share instance.
         :param backup: Share backup model.
+        :param share_server: share server in case of dhss_true
         """
         raise NotImplementedError()
 
-    def create_backup_continue(self, context, share_instance, backup):
+    def create_backup_continue(self, context, share_instance, backup,
+                               share_server=None):
         """Continue backup of a given share_instance into backup.
 
         Driver must implement this method if it supports 'create_backup'
@@ -3690,14 +3693,17 @@ class ShareDriver(object):
         :param context: The 'context.RequestContext' object for the request.
         :param share_instance: Reference to the original share instance.
         :param backup: Share backup model.
+        :param share_server: share server in case of dhss_true
         """
         raise NotImplementedError()
 
-    def delete_backup(self, context, backup):
+    def delete_backup(self, context, backup, share_instance,
+                      share_server=None):
         """Is called to remove backup."""
         raise NotImplementedError()
 
-    def restore_backup(self, context, backup, share_instance):
+    def restore_backup(self, context, backup, share_instance,
+                       share_server=None):
         """Starts restoring backup into a given share_instance.
 
         Driver should implement this method if willing to perform restore of
@@ -3708,10 +3714,12 @@ class ShareDriver(object):
         :param context: The 'context.RequestContext' object for the request.
         :param share_instance: Reference to the original share instance.
         :param backup: Share backup model.
+        :param share_server: share server in case of dhss_true
         """
         raise NotImplementedError()
 
-    def restore_backup_continue(self, context, backup, share_instance):
+    def restore_backup_continue(self, context, backup, share_instance,
+                                share_server=None):
         """Continue restore of a given backup into share_instance.
 
         Driver must implement this method if it supports 'restore_backup'
@@ -3721,5 +3729,6 @@ class ShareDriver(object):
         :param context: The 'context.RequestContext' object for the request.
         :param share_instance: Reference to the original share instance.
         :param backup: Share backup model.
+        :param share_server: share server in case of dhss_true
         """
         raise NotImplementedError()

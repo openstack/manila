@@ -29,6 +29,7 @@ from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
+from webob import exc
 
 from manila.api import common as api_common
 from manila.common import constants
@@ -3931,6 +3932,31 @@ class API(base.Base):
                     raise exception.BackupLimitExceeded(
                         allowed=quotas[over])
 
+        # Validate right backup type is provided
+        backup_type = backup.get('backup_options') and backup.get(
+            'backup_options').get(constants.BACKUP_TYPE)
+        filters = {
+            'status': constants.STATUS_AVAILABLE,
+            'share_id': share_id,
+            'topic': CONF.share_topic,
+        }
+        backups = self.db.share_backups_get_all(context, filters)
+        if backup_type and len(backups) > 0:
+            previous_backup_type = backups[0][constants.BACKUP_TYPE]
+            backup_options = backup.get('backup_options')
+            current_backup_type = backup_options.get(constants.BACKUP_TYPE)
+            if previous_backup_type != current_backup_type:
+                err_msg = _("Share '%(share)s' has existing backups with"
+                            " backup_type: '%(correct_backup_type)s'. You must"
+                            " delete these backups to schedule a backup with"
+                            " a different backup_type, or re-use the same"
+                            " backup_type.")
+                msg_args = {
+                    'share': share.get('display_name'),
+                    'correct_backup_type': previous_backup_type,
+                }
+                raise exc.HTTPBadRequest(explanation=err_msg % msg_args)
+
         backup_ref = {}
         try:
             backup_ref = self.db.share_backup_create(
@@ -3944,7 +3970,9 @@ class API(base.Base):
                     'display_description': backup.get('description'),
                     'display_name': backup.get('name'),
                     'size': share['size'],
-                    'availability_zone': share['instance']['availability_zone']
+                    'availability_zone': share['instance']
+                    ['availability_zone'],
+                    'backup_type': backup_type,
                 }
             )
             QUOTAS.commit(context, reservations)
