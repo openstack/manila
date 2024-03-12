@@ -1,0 +1,5 @@
+---
+deprecations:
+  - |
+    Usage of the NFSProtocolHelper with the CephFS driver has been
+    deprecated and it will be removed in the next skip-level release.
