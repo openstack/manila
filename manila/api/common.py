@@ -531,8 +531,8 @@ def validate_integer(value, name, min_value=None, max_value=None):
 
     :param value: the value of the integer
     :param name: the name of the integer
-    :param min_length: the min_length of the integer
-    :param max_length: the max_length of the integer
+    :param min_value: the lowest integer permitted in the range
+    :param max_value: the highest integer permitted in the range
     :returns: integer
     """
     try:
