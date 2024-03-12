@@ -3049,12 +3049,27 @@ service_disable_host_response:
   in: body
   required: true
   type: string
+service_disable_reason_request:
+  description: |
+    A reason for the service being disabled.
+  in: body
+  required: false
+  type: string
+  min_version: 2.83
+service_disable_reason_response:
+  description: |
+    A reason for the service being disabled.
+  in: body
+  required: true
+  type: string
+  min_version: 2.83
 service_disabled_response:
   description: |
     Indicates whether the service is disabled.
   in: body
   required: true
   type: boolean
+  max_version: 2.82
 service_enable_binary_request:
   description: |
     The name of the service binary that you want to
@@ -3105,6 +3120,14 @@ service_state_response:
   in: body
   required: true
   type: string
+service_status_new_response:
+  description: |
+    The service status, which is ``enabled`` or
+    ``disabled``.
+  in: body
+  required: true
+  type: string
+  min_version: 2.83
 service_status_response:
   description: |
     The service status, which is ``enabled`` or

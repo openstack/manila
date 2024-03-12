@@ -1,5 +1,6 @@
 {
-    "disabled": true,
     "binary": "manila-share",
-    "host": "openstackhost@generic#pool_0"
+    "host": "openstackhost@generic#pool_0",
+    "status": "disabled",
+    "disabled_reason": "Service taken down for maintenance until May"
 }

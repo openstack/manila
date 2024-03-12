@@ -131,7 +131,7 @@ class ServiceControllerLegacy(ServiceMixin, wsgi.Controller):
 
     @wsgi.Controller.api_version('1.0', '2.6')
     def update(self, req, id, body):
-        return self._update(req, id, body)
+        return self._update(req, id, body, support_disabled_reason=False)
 
 
 class ServiceController(ServiceMixin, wsgi.Controller):
