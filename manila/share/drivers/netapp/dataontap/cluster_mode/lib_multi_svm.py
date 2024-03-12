@@ -1266,14 +1266,6 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             LOG.error(msg)
             return not_compatible
 
-        # Vserver will spread across aggregates in this implementation
-        if share_utils.extract_host(dest_host, level='pool') is not None:
-            msg = _("Cannot perform server migration to a specific pool. "
-                    "Please choose a destination host 'host@backend' as "
-                    "destination.")
-            LOG.error(msg)
-            return not_compatible
-
         src_backend_name = share_utils.extract_host(
             source_share_server['host'], level='backend_name')
         src_vserver, src_client = self._get_vserver(
@@ -1455,9 +1447,16 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         # 3. Send the migration request to ONTAP.
         try:
+            dest_host = (
+                dest_share_server.get("volume_placement")
+                or dest_share_server["host"]
+            )
+            dest_pool = share_utils.extract_host(dest_host, level="pool")
+            aggr_names = [dest_pool] if dest_pool else None
+
             result = dest_client.svm_migration_start(
                 src_cluster_name, source_share_server_name,
-                self._find_matching_aggregates(),
+                self._find_matching_aggregates(aggr_names),
                 dest_ipspace=destination_ipspace)
 
             # 4. Read the job id and get the id of the migration.

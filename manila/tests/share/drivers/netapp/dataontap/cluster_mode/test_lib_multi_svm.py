@@ -1920,17 +1920,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_get_pools',
                          mock.Mock(return_value=pools))
 
-    def test_share_server_migration_check_compatibility_dest_with_pool(
-            self):
-        not_compatible = fake.SERVER_MIGRATION_CHECK_NOT_COMPATIBLE
-        self.library._have_cluster_creds = True
-
-        result = self.library.share_server_migration_check_compatibility(
-            None, self.fake_src_share_server, fake.MANILA_HOST_NAME,
-            None, None, None)
-
-        self.assertEqual(not_compatible, result)
-
     def test_share_server_migration_check_compatibility_same_cluster(
             self):
         not_compatible = fake.SERVER_MIGRATION_CHECK_NOT_COMPATIBLE

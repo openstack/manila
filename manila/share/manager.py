@@ -5387,6 +5387,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 {'task_state': (
                     constants.TASK_STATE_MIGRATION_DRIVER_STARTING)})
 
+            dest_share_server['volume_placement'] = dest_host
+
             server_info = self.driver.share_server_migration_start(
                 context, source_share_server, dest_share_server,
                 share_instances, snapshot_instances)

@@ -239,12 +239,6 @@ class ShareServerController(share_servers.ShareServerController,
         utils.check_params_exist(mandatory_params, params)
         bool_param_values = utils.check_params_are_boolean(bool_params, params)
 
-        pool_was_specified = len(params['host'].split('#')) > 1
-
-        if pool_was_specified:
-            msg = _('The destination host can not contain pool information.')
-            raise exc.HTTPBadRequest(explanation=msg)
-
         new_share_network = None
 
         new_share_network_id = params.get('new_share_network_id', None)
@@ -366,12 +360,6 @@ class ShareServerController(share_servers.ShareServerController,
 
         utils.check_params_exist(mandatory_params, params)
         bool_param_values = utils.check_params_are_boolean(bool_params, params)
-
-        pool_was_specified = len(params['host'].split('#')) > 1
-
-        if pool_was_specified:
-            msg = _('The destination host can not contain pool information.')
-            raise exc.HTTPBadRequest(explanation=msg)
 
         new_share_network = None
         new_share_network_id = params.get('new_share_network_id', None)
