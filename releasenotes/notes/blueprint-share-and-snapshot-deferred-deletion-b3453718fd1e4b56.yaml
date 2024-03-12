@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    With deferred deletion, when resource(share or snapshot) is deleted, the
+    quota is freed immediately and periodic tasks will delete the resource
+    (i.e. share or snapshot) in driver. The resources errored during deletion
+    are retried for deletion after some time in the same periodic tasks.

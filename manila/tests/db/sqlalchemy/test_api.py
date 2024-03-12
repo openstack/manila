@@ -587,6 +587,18 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual('share-%s' % instance['id'], instance['name'])
 
+    def test_share_instance_get_all_by_status(self):
+        share = db_utils.create_share()
+        db_utils.create_share_instance(
+            share_id=share['id'], status='creating')
+        share2 = db_utils.create_share()
+        db_utils.create_share_instance(
+            share_id=share2['id'], status='error_deferred_deleting')
+
+        instances = db_api.share_instance_get_all(
+            self.ctxt, filters={'status': 'error_deferred_deleting'})
+        self.assertEqual(1, len(instances))
+
     def test_share_instance_get_all_by_ids(self):
         fake_share = db_utils.create_share()
         expected_share_instance = db_utils.create_share_instance(

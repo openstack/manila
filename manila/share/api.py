@@ -57,7 +57,14 @@ share_api_opts = [
                      'When enabling this option make sure that filter '
                      'CreateFromSnapshotFilter is enabled and to have hosts '
                      'reporting replication_domain option.'
-                )
+                ),
+    cfg.BoolOpt('is_deferred_deletion_enabled',
+                default=False,
+                help='Whether to delete shares and share snapshots in a '
+                     'deferred manner. Setting this option to True will cause '
+                     'quotas to be released immediately if a deletion request '
+                     'is accepted. Deletions may eventually fail, and '
+                     'rectifying them will require manual intervention.'),
 ]
 
 CONF = cfg.CONF
@@ -1450,18 +1457,29 @@ class API(base.Base):
         statuses = (constants.STATUS_AVAILABLE, constants.STATUS_ERROR,
                     constants.STATUS_INACTIVE)
         if not (force or share_instance['status'] in statuses):
-            msg = _("Share instance status must be  one of %(statuses)s") % {
+            msg = _("Share instance status must be one of %(statuses)s") % {
                 "statuses": statuses}
             raise exception.InvalidShareInstance(reason=msg)
 
-        share_instance = self.db.share_instance_update(
-            context, share_instance['id'],
-            {'status': constants.STATUS_DELETING,
-             'terminated_at': timeutils.utcnow()}
-        )
+        deferred_delete = CONF.is_deferred_deletion_enabled
+        if force and deferred_delete:
+            deferred_delete = False
 
-        self.share_rpcapi.delete_share_instance(context, share_instance,
-                                                force=force)
+        current_status = share_instance['status']
+        if current_status not in (constants.STATUS_DEFERRED_DELETING,
+                                  constants.STATUS_ERROR_DEFERRED_DELETING):
+            new_status = constants.STATUS_DELETING
+            if deferred_delete:
+                new_status = constants.STATUS_DEFERRED_DELETING
+            share_instance = self.db.share_instance_update(
+                context, share_instance['id'],
+                {'status': new_status, 'terminated_at': timeutils.utcnow()}
+            )
+
+        self.share_rpcapi.delete_share_instance(
+            context, share_instance,
+            force=force,
+            deferred_delete=deferred_delete)
 
         # NOTE(u_glide): 'updated_at' timestamp is used to track last usage of
         # share server. This is required for automatic share servers cleanup
@@ -2160,10 +2178,17 @@ class API(base.Base):
                 context, {'snapshot_ids': snapshot['id']})
         )
 
+        deferred_delete = CONF.is_deferred_deletion_enabled
+        if force and deferred_delete:
+            deferred_delete = False
+
+        status = constants.STATUS_DELETING
+        if deferred_delete:
+            status = constants.STATUS_DEFERRED_DELETING
+
         for snapshot_instance in snapshot_instances:
             self.db.share_snapshot_instance_update(
-                context, snapshot_instance['id'],
-                {'status': constants.STATUS_DELETING})
+                context, snapshot_instance['id'], {'status': status})
 
         if share['has_replicas']:
             self.share_rpcapi.delete_replicated_snapshot(
@@ -2171,7 +2196,8 @@ class API(base.Base):
                 share_id=share['id'], force=force)
         else:
             self.share_rpcapi.delete_snapshot(
-                context, snapshot, share['instance']['host'], force=force)
+                context, snapshot, share['instance']['host'],
+                force=force, deferred_delete=deferred_delete)
 
     @policy.wrap_check_policy('share')
     def update(self, context, share, fields):
@@ -2260,6 +2286,15 @@ class API(base.Base):
                 self.db.share_get_all_by_project_with_count
                 if show_count else self.db.share_get_all_by_project)}
 
+        # check if user is querying with deferred states and forbid
+        # users that aren't authorized to query shares in these states
+        policy_str = "list_shares_in_deferred_deletion_states"
+        do_raise = ('status' in filters and 'deferred' in filters['status'])
+        show_deferred_deleted = policy.check_policy(
+            context, 'share', policy_str, do_raise=do_raise)
+        if show_deferred_deleted:
+            filters['list_deferred_delete'] = True
+
         # Get filtered list of shares
         if 'host' in filters:
             policy.check_policy(context, 'share', 'list_by_host')
@@ -2323,6 +2358,16 @@ class API(base.Base):
                 msg = _("Wrong '%(k)s' filter provided: "
                         "'%(v)s'.") % {'k': k, 'v': string_args[k]}
                 raise exception.InvalidInput(reason=msg)
+
+        # check if user is querying with deferred states and forbid
+        # users that aren't authorized to query shares in these states
+        policy_str = "list_snapshots_in_deferred_deletion_states"
+        do_raise = ('status' in search_opts and
+                    'deferred' in search_opts['status'])
+        show_deferred_deleted = policy.check_policy(
+            context, 'share_snapshot', policy_str, do_raise=do_raise)
+        if show_deferred_deleted:
+            search_opts['list_deferred_delete'] = True
 
         get_methods = {
             'get_all': (
