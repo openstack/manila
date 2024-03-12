@@ -21,11 +21,13 @@ single-SVM or multi-SVM functionality needed by the cDOT Manila drivers.
 
 import copy
 import datetime
+from enum import Enum
 import json
 import math
 import re
 import socket
 
+from manila.exception import SnapshotResourceNotFound
 from oslo_config import cfg
 from oslo_log import log
 from oslo_service import loopingcall
@@ -57,8 +59,22 @@ LOG = log.getLogger(__name__)
 CONF = cfg.CONF
 
 
-class NetAppCmodeFileStorageLibrary(object):
+class Backup(Enum):
+    """Enum for share backup"""
+    BACKUP_TYPE = "backup_type"
+    BACKEND_NAME = "netapp_backup_backend_section_name"
+    DES_VSERVER = "netapp_backup_vserver"
+    DES_VOLUME = "netapp_backup_share"
+    SM_LABEL = "backup"
+    DES_VSERVER_PREFIX = "backup_vserver"
+    DES_VOLUME_PREFIX = "backup_volume"
+    VOLUME_TYPE = "dp"
+    SM_POLICY = "os_backup_policy"
+    TOTAL_PROGRESS_HUNDRED = "100"
+    TOTAL_PROGRESS_ZERO = "0"
 
+
+class NetAppCmodeFileStorageLibrary(object):
     AUTOSUPPORT_INTERVAL_SECONDS = 3600  # hourly
     SSC_UPDATE_INTERVAL_SECONDS = 3600  # hourly
     HOUSEKEEPING_INTERVAL_SECONDS = 600  # ten minutes
@@ -157,6 +173,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self._licenses = []
         self._client = None
         self._clients = {}
+        self._backend_clients = {}
         self._ssc_stats = {}
         self._have_cluster_creds = None
         self._revert_to_snapshot_support = False
@@ -177,6 +194,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self._snapmirror_schedule = self._convert_schedule_to_seconds(
             schedule=self.configuration.netapp_snapmirror_schedule)
         self._cluster_name = self.configuration.netapp_cluster_name
+        self.is_volume_backup_before = False
 
     @na_utils.trace
     def do_setup(self, context):
@@ -218,39 +236,51 @@ class NetAppCmodeFileStorageLibrary(object):
     def _get_vserver(self, share_server=None):
         raise NotImplementedError()
 
+    def _get_client(self, config, vserver=None):
+        if config.netapp_use_legacy_client:
+            client = client_cmode.NetAppCmodeClient(
+                transport_type=config.netapp_transport_type,
+                ssl_cert_path=config.netapp_ssl_cert_path,
+                username=config.netapp_login,
+                password=config.netapp_password,
+                hostname=config.netapp_server_hostname,
+                port=config.netapp_server_port,
+                vserver=vserver,
+                trace=na_utils.TRACE_API,
+                api_trace_pattern=na_utils.API_TRACE_PATTERN)
+        else:
+            client = client_cmode_rest.NetAppRestClient(
+                transport_type=config.netapp_transport_type,
+                ssl_cert_path=config.netapp_ssl_cert_path,
+                username=config.netapp_login,
+                password=config.netapp_password,
+                hostname=config.netapp_server_hostname,
+                port=config.netapp_server_port,
+                vserver=vserver,
+                trace=na_utils.TRACE_API,
+                async_rest_timeout=(
+                    config.netapp_rest_operation_timeout),
+                api_trace_pattern=na_utils.API_TRACE_PATTERN)
+        return client
+
     @na_utils.trace
     def _get_api_client(self, vserver=None):
 
         # Use cached value to prevent redo calls during client initialization.
         client = self._clients.get(vserver)
-
         if not client:
-            if self.configuration.netapp_use_legacy_client:
-                client = client_cmode.NetAppCmodeClient(
-                    transport_type=self.configuration.netapp_transport_type,
-                    ssl_cert_path=self.configuration.netapp_ssl_cert_path,
-                    username=self.configuration.netapp_login,
-                    password=self.configuration.netapp_password,
-                    hostname=self.configuration.netapp_server_hostname,
-                    port=self.configuration.netapp_server_port,
-                    vserver=vserver,
-                    trace=na_utils.TRACE_API,
-                    api_trace_pattern=na_utils.API_TRACE_PATTERN)
-            else:
-                client = client_cmode_rest.NetAppRestClient(
-                    transport_type=self.configuration.netapp_transport_type,
-                    ssl_cert_path=self.configuration.netapp_ssl_cert_path,
-                    username=self.configuration.netapp_login,
-                    password=self.configuration.netapp_password,
-                    hostname=self.configuration.netapp_server_hostname,
-                    port=self.configuration.netapp_server_port,
-                    vserver=vserver,
-                    trace=na_utils.TRACE_API,
-                    async_rest_timeout=(
-                        self.configuration.netapp_rest_operation_timeout),
-                    api_trace_pattern=na_utils.API_TRACE_PATTERN)
+            client = self._get_client(self.configuration, vserver=vserver)
             self._clients[vserver] = client
+        return client
 
+    @na_utils.trace
+    def _get_api_client_for_backend(self, backend_name, vserver=None):
+        key = f"{backend_name}-{vserver}"
+        client = self._backend_clients.get(key)
+        if not client:
+            config = data_motion.get_backend_configuration(backend_name)
+            client = self._get_client(config, vserver=vserver)
+            self._backend_clients[key] = client
         return client
 
     @na_utils.trace
@@ -646,6 +676,14 @@ class NetAppCmodeFileStorageLibrary(object):
 
     def _find_matching_aggregates(self, aggregate_names=None):
         """Find all aggregates match pattern."""
+        raise NotImplementedError()
+
+    def _get_backup_vserver(self, backup, share_server=None):
+        """Get/Create the vserver for backup """
+        raise NotImplementedError()
+
+    def _delete_backup_vserver(self, backup, des_vserver):
+        """Delete the vserver for backup """
         raise NotImplementedError()
 
     @na_utils.trace
@@ -4281,3 +4319,639 @@ class NetAppCmodeFileStorageLibrary(object):
 
         pool_name = share_utils.extract_host(host, level='pool')
         return pool_name in pools
+
+    @na_utils.trace
+    def create_backup(self, context, share_instance, backup,
+                      share_server=None):
+        """Create backup for NetApp share"""
+
+        src_vserver, src_vserver_client = self._get_vserver(
+            share_server=share_server)
+        src_cluster = src_vserver_client.get_cluster_name()
+        src_vol = self._get_backend_share_name(share_instance['id'])
+        backup_options = backup.get('backup_options', {})
+        backup_type = backup_options.get(Backup.BACKUP_TYPE.value)
+
+        # Check if valid backup type is provided
+        if not backup_type:
+            raise exception.BackupException("Driver needs a valid backup type"
+                                            " from command line or API.")
+
+        # check the backend is related to NetApp
+        backup_config = data_motion.get_backup_configuration(backup_type)
+        backend_name = backup_config.safe_get(Backup.BACKEND_NAME.value)
+        backend_config = data_motion.get_backend_configuration(
+            backend_name)
+        if (backend_config.safe_get("netapp_storage_family")
+                != 'ontap_cluster'):
+            err_msg = _("Wrong vendor backend %s is provided, provide"
+                        " only NetApp backend.") % backend_name
+            raise exception.BackupException(err_msg)
+
+        # Check backend has compatible backup type
+        if (backend_config.safe_get("netapp_enabled_backup_types") is None or
+                backup_type not in backend_config.safe_get(
+                    "netapp_enabled_backup_types")):
+            err_msg = _("Backup type '%(backup_type)s' is not compatible with"
+                        " backend '%(backend_name)s'.")
+            msg_args = {
+                'backup_type': backup_type,
+                'backend_name': backend_name,
+            }
+            raise exception.BackupException(err_msg % msg_args)
+
+        # Verify that both source and destination cluster are peered
+        des_cluster_api_client = self._get_api_client_for_backend(
+            backend_name)
+        des_cluster = des_cluster_api_client.get_cluster_name()
+        if src_cluster != des_cluster:
+            cluster_peer_info = self._client.get_cluster_peers(
+                remote_cluster_name=des_cluster)
+            if not cluster_peer_info:
+                err_msg = _("Source cluster '%(src_cluster)s' and destination"
+                            " cluster '%(des_cluster)s' are not peered"
+                            " backend %(backend_name)s.")
+                msg_args = {
+                    'src_cluster': src_cluster,
+                    'des_cluster': des_cluster,
+                    'backend_name': backend_name
+                }
+                raise exception.NetAppException(err_msg % msg_args)
+
+        # Get the destination vserver and volume for relationship
+        source_path = f"{src_vserver}:{src_vol}"
+        snapmirror_info = src_vserver_client.get_snapmirror_destinations(
+            source_path=source_path)
+        if len(snapmirror_info) > 1:
+            err_msg = _("Source path %(path)s has more than one relationships."
+                        " To create the share backup, delete the all source"
+                        " volume's SnapMirror relationships using 'snapmirror'"
+                        " ONTAP CLI or System Manger.")
+            msg_args = {
+                'path': source_path
+            }
+            raise exception.NetAppException(err_msg % msg_args)
+        elif len(snapmirror_info) == 1:
+            des_vserver, des_volume = self._get_destination_vserver_and_vol(
+                src_vserver_client, source_path, False)
+            des_vserver_client = self._get_api_client_for_backend(
+                backend_name, vserver=des_vserver)
+        else:
+            if (backup_config.safe_get(Backup.DES_VOLUME.value) and
+                    not backup_config.safe_get(Backup.DES_VSERVER.value)):
+                msg = _("Could not find vserver name under stanza"
+                        " '%(backup_type)s' in configuration while volume"
+                        " name is provided.")
+                params = {"backup_type": backup_type}
+                raise exception.BadConfigurationException(reason=msg % params)
+
+            des_vserver = self._get_vserver_for_backup(
+                backup, share_server=share_server)
+            des_vserver_client = self._get_api_client_for_backend(
+                backend_name, vserver=des_vserver)
+            try:
+                des_volume = self._get_volume_for_backup(backup,
+                                                         share_instance,
+                                                         src_vserver_client,
+                                                         des_vserver_client)
+            except (netapp_api.NaApiError, exception.NetAppException):
+                # Delete the vserver
+                if share_server:
+                    self._delete_backup_vserver(backup, des_vserver)
+
+                msg = _("Failed to create a volume in vserver %(des_vserver)s")
+                msg_args = {'des_vserver': des_vserver}
+                raise exception.NetAppException(msg % msg_args)
+
+            if (src_vserver != des_vserver and
+                    len(src_vserver_client.get_vserver_peers(
+                        src_vserver, des_vserver)) == 0):
+                src_vserver_client.create_vserver_peer(
+                    src_vserver, des_vserver,
+                    peer_cluster_name=des_cluster)
+                if des_cluster is not None and src_cluster != des_cluster:
+                    des_vserver_client.accept_vserver_peer(des_vserver,
+                                                           src_vserver)
+            des_snapshot_list = (des_vserver_client.
+                                 list_volume_snapshots(des_volume))
+            snap_list_with_backup = [
+                snap for snap in des_snapshot_list if snap.startswith(
+                    Backup.SM_LABEL.value)
+            ]
+            if len(snap_list_with_backup) == 1:
+                self.is_volume_backup_before = True
+
+            policy_name = f"{Backup.SM_POLICY.value}_{share_instance['id']}"
+            try:
+                des_vserver_client.create_snapmirror_policy(
+                    policy_name,
+                    policy_type="vault",
+                    discard_network_info=False,
+                    snapmirror_label=Backup.SM_LABEL.value,
+                    keep=250)
+            except netapp_api.NaApiError as e:
+                with excutils.save_and_reraise_exception() as exc_context:
+                    if 'policy with this name already exists' in e.message:
+                        exc_context.reraise = False
+            try:
+                des_vserver_client.create_snapmirror_vol(
+                    src_vserver,
+                    src_vol,
+                    des_vserver,
+                    des_volume,
+                    "extended_data_protection",
+                    policy=policy_name,
+                )
+                db_session = data_motion.DataMotionSession()
+                db_session.initialize_and_wait_snapmirror_vol(
+                    des_vserver_client,
+                    src_vserver,
+                    src_vol,
+                    des_vserver,
+                    des_volume,
+                    timeout=backup_config.netapp_snapmirror_job_timeout
+                )
+            except netapp_api.NaApiError:
+                self._resource_cleanup_for_backup(backup,
+                                                  share_instance,
+                                                  des_vserver,
+                                                  des_volume,
+                                                  share_server=share_server)
+                msg = _("SnapVault relationship creation or initialization"
+                        " failed between source %(source_vserver)s:"
+                        "%(source_volume)s and destination %(des_vserver)s:"
+                        "%(des_volume)s  for share id %(share_id)s.")
+
+                msg_args = {
+                    'source_vserver': src_vserver,
+                    'source_volume': src_vol,
+                    'des_vserver': des_vserver,
+                    'des_volume': des_volume,
+                    'share_id': share_instance['share_id']
+                }
+                raise exception.NetAppException(msg % msg_args)
+
+        snapshot_name = self._get_backup_snapshot_name(backup,
+                                                       share_instance['id'])
+        src_vserver_client.create_snapshot(
+            src_vol, snapshot_name,
+            snapmirror_label=Backup.SM_LABEL.value)
+
+        # Update the SnapMirror relationship
+        des_vserver_client.update_snapmirror_vol(src_vserver,
+                                                 src_vol,
+                                                 des_vserver,
+                                                 des_volume)
+        LOG.debug("SnapMirror relationship updated successfully.")
+
+    @na_utils.trace
+    def create_backup_continue(self, context, share_instance, backup,
+                               share_server=None):
+        """Keep tracking the status of share backup"""
+
+        progress_status = {'total_progress': Backup.TOTAL_PROGRESS_ZERO.value}
+        src_vserver, src_vserver_client = self._get_vserver(
+            share_server=share_server)
+        src_vol_name = self._get_backend_share_name(share_instance['id'])
+        backend_name = self._get_backend(backup)
+        source_path = f"{src_vserver}:{src_vol_name}"
+        LOG.debug("SnapMirror source path: %s", source_path)
+        backup_type = backup.get(Backup.BACKUP_TYPE.value)
+        backup_config = data_motion.get_backup_configuration(backup_type)
+
+        # Make sure SnapMirror relationship is created
+        snapmirror_info = src_vserver_client.get_snapmirror_destinations(
+            source_path=source_path,
+        )
+        if not snapmirror_info:
+            LOG.warning("There is no SnapMirror relationship available for"
+                        " source path yet %s.", source_path)
+            return progress_status
+
+        des_vserver, des_vol = self._get_destination_vserver_and_vol(
+            src_vserver_client,
+            source_path,
+        )
+        if not des_vserver or not des_vol:
+            raise exception.NetAppException("Not able to find vserver "
+                                            " and volume from SnpMirror"
+                                            " relationship.")
+        des_path = f"{des_vserver}:{des_vol}"
+        LOG.debug("SnapMirror destination path: %s", des_path)
+
+        des_vserver_client = self._get_api_client_for_backend(
+            backend_name,
+            vserver=des_vserver,
+        )
+        snapmirror_info = des_vserver_client.get_snapmirrors(
+            source_path=source_path, dest_path=des_path)
+        if not snapmirror_info:
+            msg_args = {
+                'source_path': source_path,
+                'des_path': des_path,
+            }
+            msg = _("There is no SnapMirror relationship available for"
+                    " source path '%(source_path)s' and destination path"
+                    " '%(des_path)s' yet.") % msg_args
+            LOG.warning(msg, msg_args)
+            return progress_status
+        LOG.debug("SnapMirror details %s:", snapmirror_info)
+        progress_status["total_progress"] = (Backup.
+                                             TOTAL_PROGRESS_HUNDRED.value)
+        if snapmirror_info[0].get("last-transfer-type") != "update":
+            progress_status["total_progress"] = (Backup.
+                                                 TOTAL_PROGRESS_ZERO.value)
+            return progress_status
+
+        if snapmirror_info[0].get("relationship-status") != "idle":
+            progress_status = self._get_backup_progress_status(
+                des_vserver_client, snapmirror_info)
+            LOG.debug("Progress status: %(progress_status)s",
+                      {'progress_status': progress_status})
+            return progress_status
+
+        # Verify that snapshot is transferred to destination volume
+        snap_name = self._get_backup_snapshot_name(backup,
+                                                   share_instance['id'])
+        self._verify_and_wait_for_snapshot_to_transfer(des_vserver_client,
+                                                       des_vol,
+                                                       snap_name)
+        LOG.debug("Snapshot '%(snap_name)s' transferred successfully to"
+                  " destination", {'snap_name': snap_name})
+        # previously if volume was part of some relationship and if we delete
+        # all the backup of share then last snapshot will be left on
+        # destination volume, and we can't delete that snapshot due to ONTAP
+        # restriction. Next time if user create the first backup then we
+        # update the destination volume with latest backup and delete the last
+        # leftover snapshot
+        is_backup_completed = (progress_status["total_progress"]
+                               == Backup.TOTAL_PROGRESS_HUNDRED.value)
+        if backup_config.get(Backup.DES_VOLUME.value) and is_backup_completed:
+            snap_list_with_backup = self._get_des_volume_backup_snapshots(
+                des_vserver_client,
+                des_vol, share_instance['id']
+            )
+            LOG.debug("Snapshot list for backup %(snap_list)s.",
+                      {'snap_list': snap_list_with_backup})
+            if (self.is_volume_backup_before and
+                    len(snap_list_with_backup) == 2):
+                if snap_name == snap_list_with_backup[0]:
+                    snap_to_delete = snap_list_with_backup[1]
+                else:
+                    snap_to_delete = snap_list_with_backup[0]
+                self.is_volume_backup_before = False
+                des_vserver_client.delete_snapshot(des_vol, snap_to_delete,
+                                                   True)
+                LOG.debug("Previous snapshot %{snap_name}s deleted"
+                          " successfully. ", {'snap_name': snap_to_delete})
+        return progress_status
+
+    @na_utils.trace
+    def restore_backup(self, context, backup, share_instance,
+                       share_server=None):
+        """Restore the share backup"""
+
+        src_vserver, src_vserver_client = self._get_vserver(
+            share_server=share_server,
+        )
+        src_vol_name = self._get_backend_share_name(share_instance['id'])
+
+        source_path = f"{src_vserver}:{src_vol_name}"
+        des_vserver, des_vol = self._get_destination_vserver_and_vol(
+            src_vserver_client,
+            source_path,
+        )
+        if not des_vserver or not des_vol:
+            raise exception.NetAppException("Not able to find vserver "
+                                            " and volume from SnpMirror"
+                                            " relationship.")
+        snap_name = self._get_backup_snapshot_name(backup,
+                                                   share_instance['id'])
+        source_path = src_vserver + ":" + src_vol_name
+        des_path = des_vserver + ":" + des_vol
+        src_vserver_client.snapmirror_restore_vol(source_path=des_path,
+                                                  dest_path=source_path,
+                                                  source_snapshot=snap_name)
+
+    @na_utils.trace
+    def restore_backup_continue(self, context, backup,
+                                share_instance, share_server=None):
+        """Keep checking the restore operation status"""
+
+        progress_status = {}
+        src_vserver, src_vserver_client = self._get_vserver(
+            share_server=share_server)
+        src_vol_name = self._get_backend_share_name(share_instance['id'])
+
+        source_path = f"{src_vserver}:{src_vol_name}"
+        snapmirror_info = src_vserver_client.get_snapmirrors(
+            dest_path=source_path,
+        )
+        if snapmirror_info:
+            progress_status = {
+                "total_progress": Backup.TOTAL_PROGRESS_ZERO.value
+            }
+            return progress_status
+        LOG.debug("SnapMirror relationship of type RST is deleted")
+        snap_name = self._get_backup_snapshot_name(backup,
+                                                   share_instance['id'])
+        snapshot_list = src_vserver_client.list_volume_snapshots(src_vol_name)
+        for snapshot in snapshot_list:
+            if snap_name in snapshot:
+                progress_status["total_progress"] = (
+                    Backup.TOTAL_PROGRESS_HUNDRED.value)
+                return progress_status
+        if not progress_status:
+            err_msg = _("Failed to restore the snapshot %s.") % snap_name
+            raise exception.NetAppException(err_msg)
+
+    @na_utils.trace
+    def delete_backup(self, context, backup, share_instance,
+                      share_server=None):
+        """Delete the share backup for netapp share"""
+
+        try:
+            src_vserver, src_vserver_client = self._get_vserver(
+                share_server=share_server,
+            )
+        except exception.VserverNotFound:
+            LOG.warning("Vserver associated with share %s was not found.",
+                        share_instance['id'])
+            return
+        src_vol_name = self._get_backend_share_name(share_instance['id'])
+        backend_name = self._get_backend(backup)
+        if backend_name is None:
+            return
+
+        source_path = f"{src_vserver}:{src_vol_name}"
+        des_vserver, des_vol = self._get_destination_vserver_and_vol(
+            src_vserver_client,
+            source_path,
+            False,
+        )
+
+        if not des_vserver or not des_vol:
+            LOG.debug("Not able to find vserver and volume from SnpMirror"
+                      " relationship.")
+            return
+        des_path = f"{des_vserver}:{des_vol}"
+
+        # Delete the snapshot from destination volume
+        snap_name = self._get_backup_snapshot_name(backup,
+                                                   share_instance['id'])
+        des_vserver_client = self._get_api_client_for_backend(
+            backend_name,
+            vserver=des_vserver,
+        )
+        try:
+            list_snapshots = self._get_des_volume_backup_snapshots(
+                des_vserver_client,
+                des_vol,
+                share_instance['id'],
+            )
+        except netapp_api.NaApiError:
+            LOG.exception("Failed to get the snapshots from cluster,"
+                          " provide the right backup type or check the"
+                          " backend details are properly configured in"
+                          " manila.conf file.")
+            return
+
+        snapmirror_info = des_vserver_client.get_snapmirrors(
+            source_path=source_path,
+            dest_path=des_path,
+        )
+        is_snapshot_deleted = self._is_snapshot_deleted(True)
+        if snapmirror_info and len(list_snapshots) == 1:
+            self._resource_cleanup_for_backup(backup,
+                                              share_instance,
+                                              des_vserver,
+                                              des_vol,
+                                              share_server=share_server)
+        elif len(list_snapshots) > 1:
+            try:
+                des_vserver_client.delete_snapshot(des_vol, snap_name, True)
+            except netapp_api.NaApiError as e:
+                with excutils.save_and_reraise_exception() as exc_context:
+                    if "entry doesn't exist" in e.message:
+                        exc_context.reraise = False
+            try:
+                des_vserver_client.get_snapshot(des_vol, snap_name)
+                is_snapshot_deleted = self._is_snapshot_deleted(False)
+            except (SnapshotResourceNotFound, netapp_api.NaApiError):
+                LOG.debug("Snapshot %s deleted successfully.", snap_name)
+        if not is_snapshot_deleted:
+            err_msg = _("Snapshot '%(snapshot_name)s' is not deleted"
+                        " successfully on ONTAP."
+                        % {"snapshot_name": snap_name})
+            LOG.exception(err_msg)
+            raise exception.NetAppException(err_msg)
+
+    @na_utils.trace
+    def _is_snapshot_deleted(self, is_deleted):
+        return is_deleted
+
+    @na_utils.trace
+    def _get_backup_snapshot_name(self, backup, share_id):
+        backup_id = backup.get('id', "")
+        return f"{Backup.SM_LABEL.value}_{share_id}_{backup_id}"
+
+    @na_utils.trace
+    def _get_backend(self, backup):
+        backup_type = backup.get(Backup.BACKUP_TYPE.value)
+        try:
+            backup_config = data_motion.get_backup_configuration(backup_type)
+        except Exception:
+            LOG.exception("There is some issue while getting the"
+                          " backup configuration. Make sure correct"
+                          " backup type is provided while creating the"
+                          " backup.")
+            return None
+        return backup_config.safe_get(Backup.BACKEND_NAME.value)
+
+    @na_utils.trace
+    def _get_des_volume_backup_snapshots(self, des_vserver_client,
+                                         des_vol, share_id):
+        """Get the list of snapshot from destination volume"""
+
+        des_snapshot_list = (des_vserver_client.
+                             list_volume_snapshots(des_vol,
+                                                   Backup.SM_LABEL.value))
+        backup_filter = f"{Backup.SM_LABEL.value}_{share_id}"
+        snap_list_with_backup = [snap for snap in des_snapshot_list
+                                 if snap.startswith(backup_filter)]
+        return snap_list_with_backup
+
+    @na_utils.trace
+    def _get_vserver_for_backup(self, backup, share_server=None):
+        """Get the destination vserver
+
+        if vserver not provided we are creating the new one
+        in case of dhss_true
+        """
+        backup_type_config = data_motion.get_backup_configuration(
+            backup.get(Backup.BACKUP_TYPE.value))
+        if backup_type_config.get(Backup.DES_VSERVER.value):
+            return backup_type_config.get(Backup.DES_VSERVER.value)
+        else:
+            return self._get_backup_vserver(backup, share_server=share_server)
+
+    @na_utils.trace
+    def _get_volume_for_backup(self, backup, share_instance,
+                               src_vserver_client, des_vserver_client):
+        """Get the destination volume
+
+        if volume is not provided in config file under backup_type stanza
+        then create the new one
+        """
+
+        dm_session = data_motion.DataMotionSession()
+        backup_type = backup.get(Backup.BACKUP_TYPE.value)
+        backup_type_config = data_motion.get_backup_configuration(backup_type)
+        if (backup_type_config.get(Backup.DES_VSERVER.value) and
+                backup_type_config.get(Backup.DES_VOLUME.value)):
+            return backup_type_config.get(Backup.DES_VOLUME.value)
+        else:
+            des_aggr = dm_session.get_most_available_aggr_of_vserver(
+                des_vserver_client)
+            if not des_aggr:
+                msg = _("Not able to find any aggregate from ONTAP"
+                        " to create the volume")
+                raise exception.NetAppException(msg)
+            src_vol = self._get_backend_share_name(share_instance['id'])
+            vol_attr = src_vserver_client.get_volume(src_vol)
+            source_vol_size = vol_attr.get('size')
+            vol_size_in_gb = int(source_vol_size) / units.Gi
+            share_id = share_instance['id'].replace('-', '_')
+            des_volume = f"backup_volume_{share_id}"
+            des_vserver_client.create_volume(des_aggr, des_volume,
+                                             vol_size_in_gb, volume_type='dp')
+            return des_volume
+
+    @na_utils.trace
+    def _get_destination_vserver_and_vol(self, src_vserver_client,
+                                         source_path, validate_relation=True):
+        """Get Destination vserver and volume from SM relationship"""
+
+        des_vserver, des_vol = None, None
+        snapmirror_info = src_vserver_client.get_snapmirror_destinations(
+            source_path=source_path)
+        if validate_relation and len(snapmirror_info) != 1:
+            msg = _("There are more then one relationship with the source."
+                    " '%(source_path)s'." % {'source_path': source_path})
+            raise exception.NetAppException(msg)
+        if len(snapmirror_info) == 1:
+            des_vserver = snapmirror_info[0].get("destination-vserver")
+            des_vol = snapmirror_info[0].get("destination-volume")
+        return des_vserver, des_vol
+
+    @na_utils.trace
+    def _verify_and_wait_for_snapshot_to_transfer(self,
+                                                  des_vserver_client,
+                                                  des_vol,
+                                                  snap_name,
+                                                  timeout=300,
+                                                  ):
+        """Wait and verify that snapshot is moved to destination"""
+
+        interval = 5
+        retries = (timeout / interval or 1)
+
+        @manila_utils.retry(retry_param=(netapp_api.NaApiError,
+                                         SnapshotResourceNotFound),
+                            interval=interval,
+                            retries=retries, backoff_rate=1)
+        def _wait_for_snapshot_to_transfer():
+            des_vserver_client.get_snapshot(des_vol, snap_name)
+        try:
+            _wait_for_snapshot_to_transfer()
+        except (netapp_api.NaApiError, SnapshotResourceNotFound):
+            msg = _("Timed out while wait for snapshot to transfer")
+            raise exception.NetAppException(message=msg)
+
+    @na_utils.trace
+    def _get_backup_progress_status(self, des_vserver_client,
+                                    snapmirror_details):
+        """Calculate percentage of SnapMirror data transferred"""
+
+        des_vol = snapmirror_details[0].get("destination-volume")
+        vol_attr = des_vserver_client.get_volume(des_vol)
+        size_used = vol_attr.get('size-used')
+        sm_data_transferred = snapmirror_details[0].get(
+            "last-transfer-size")
+        if size_used and sm_data_transferred:
+            progress_status_percent = (int(sm_data_transferred) / int(
+                size_used)) * 100
+            return str(round(progress_status_percent, 2))
+        else:
+            return Backup.TOTAL_PROGRESS_ZERO.value
+
+    @na_utils.trace
+    def _resource_cleanup_for_backup(self, backup, share_instance,
+                                     des_vserver, des_vol,
+                                     share_server=None):
+        """Cleanup the created resources
+
+        cleanup all created ONTAP resources when delete the last backup
+        or in case of exception throw while creating the backup.
+        """
+        src_vserver, src_vserver_client = self._get_vserver(
+            share_server=share_server)
+        dm_session = data_motion.DataMotionSession()
+        backup_type_config = data_motion.get_backup_configuration(
+            backup.get(Backup.BACKUP_TYPE.value))
+        backend_name = backup_type_config.safe_get(Backup.BACKEND_NAME.value)
+        des_vserver_client = self._get_api_client_for_backend(
+            backend_name,
+            vserver=des_vserver,
+        )
+        src_vol_name = self._get_backend_share_name(share_instance['id'])
+
+        # Abort relationship
+        try:
+            des_vserver_client.abort_snapmirror_vol(src_vserver,
+                                                    src_vol_name,
+                                                    des_vserver,
+                                                    des_vol,
+                                                    clear_checkpoint=False)
+        except netapp_api.NaApiError:
+            pass
+        try:
+            des_vserver_client.delete_snapmirror_vol(src_vserver,
+                                                     src_vol_name,
+                                                     des_vserver,
+                                                     des_vol)
+        except netapp_api.NaApiError as e:
+            with excutils.save_and_reraise_exception() as exc_context:
+                if (e.code == netapp_api.EOBJECTNOTFOUND or
+                        e.code == netapp_api.ESOURCE_IS_DIFFERENT or
+                        "(entry doesn't exist)" in e.message):
+                    exc_context.reraise = False
+
+        dm_session.wait_for_snapmirror_release_vol(
+            src_vserver, des_vserver, src_vol_name,
+            des_vol, False, src_vserver_client,
+            timeout=backup_type_config.netapp_snapmirror_job_timeout)
+
+        try:
+            policy_name = f"{Backup.SM_POLICY.value}_{share_instance['id']}"
+            des_vserver_client.delete_snapmirror_policy(policy_name)
+        except netapp_api.NaApiError:
+            pass
+
+        # Delete the vserver peering
+        try:
+            src_vserver_client.delete_vserver_peer(src_vserver, des_vserver)
+        except netapp_api.NaApiError:
+            pass
+
+        # Delete volume
+        if not backup_type_config.safe_get(Backup.DES_VOLUME.value):
+            try:
+                des_vserver_client.offline_volume(des_vol)
+                des_vserver_client.delete_volume(des_vol)
+            except netapp_api.NaApiError:
+                pass
+
+        # Delete Vserver
+        if share_server is not None:
+            self._delete_backup_vserver(backup, des_vserver)

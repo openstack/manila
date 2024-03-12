@@ -1272,3 +1272,43 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
 
         mock_src_client.release_snapmirror_vol.assert_called()
         self.assertIsNone(result)
+
+    def test_get_most_available_aggr_of_vserver(self):
+        vserver_client = mock.Mock()
+        aggr_space_attr = {fake.AGGREGATE: {'available': 5678},
+                           'aggr2': {'available': 2024}}
+        self.mock_object(vserver_client,
+                         'get_vserver_aggregate_capacities',
+                         mock.Mock(return_value=aggr_space_attr))
+        result = self.dm_session.get_most_available_aggr_of_vserver(
+            vserver_client)
+        self.assertEqual(result, fake.AGGREGATE)
+
+    def test_initialize_and_wait_snapmirror_vol(self):
+        vserver_client = mock.Mock()
+        snapmirror_info = [{'source-vserver': fake.VSERVER1,
+                            'source-volume': "fake_source_vol",
+                            'destination-vserver': fake.VSERVER2,
+                            'destination-volume': "fake_des_vol",
+                            'relationship-status': "idle"}]
+        self.mock_object(vserver_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=snapmirror_info))
+
+        (self.dm_session.
+         initialize_and_wait_snapmirror_vol(vserver_client,
+                                            fake.VSERVER1,
+                                            fake.FLEXVOL_NAME,
+                                            fake.VSERVER2,
+                                            fake.FLEXVOL_NAME_1,
+                                            source_snapshot=None,
+                                            transfer_priority=None,
+                                            timeout=300))
+        (vserver_client.initialize_snapmirror_vol.
+         assert_called_once_with(mock.ANY,
+                                 mock.ANY,
+                                 mock.ANY,
+                                 mock.ANY,
+                                 source_snapshot=mock.ANY,
+                                 transfer_priority=mock.ANY,
+                                 ))

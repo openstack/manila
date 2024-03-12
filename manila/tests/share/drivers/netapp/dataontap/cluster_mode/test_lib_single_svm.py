@@ -21,10 +21,13 @@ import ddt
 from oslo_log import log
 
 from manila import exception
+from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_single_svm
 from manila.share.drivers.netapp import utils as na_utils
 from manila import test
+from manila.tests.share.drivers.netapp.dataontap.cluster_mode.test_lib_base\
+    import _get_config
 import manila.tests.share.drivers.netapp.dataontap.fakes as fake
 
 
@@ -295,3 +298,26 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result = self.library.get_admin_network_allocations_number()
 
         self.assertEqual(0, result)
+
+    def test__get_backup_vserver(self):
+        self.mock_object(self.library,
+                         '_get_backend',
+                         mock.Mock(return_value=fake.BACKEND_NAME))
+        self.mock_object(data_motion,
+                         'get_backend_configuration',
+                         mock.Mock(return_value=_get_config()))
+        self.library._get_backup_vserver(fake.SHARE_BACKUP)
+
+    def test__get_backup_vserver_with_share_server_negative(self):
+        self.mock_object(self.library,
+                         '_get_backend',
+                         mock.Mock(return_value=fake.BACKEND_NAME))
+        self.mock_object(data_motion,
+                         'get_backend_configuration',
+                         mock.Mock(return_value=_get_config()))
+        self.assertRaises(
+            exception.InvalidParameterValue,
+            self.library._get_backup_vserver,
+            fake.SHARE_BACKUP,
+            fake.SHARE_SERVER,
+        )

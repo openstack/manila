@@ -300,6 +300,42 @@ netapp_data_motion_opts = [
                     'a replica.'),
 ]
 
+netapp_backup_opts = [
+    cfg.ListOpt('netapp_enabled_backup_types',
+                default=[],
+                help='Specify compatible backup_types for backend to provision'
+                     ' backup share for SnapVault relationship. Multiple '
+                     'backup_types can be provided. If multiple backup types '
+                     'are enabled, create separate config sections for each '
+                     'backup type specifying the "netapp_backup_vserver", '
+                     '"netapp_backup_backend_section_name", '
+                     '"netapp_backup_share", and '
+                     '"netapp_snapmirror_job_timeout" as appropriate.'
+                     ' Example- netapp_enabled_backup_types = eng_backup,'
+                     ' finance_backup'),
+    cfg.StrOpt('netapp_backup_backend_section_name',
+               help='Backend (ONTAP cluster) name where backup volume will be '
+                    'provisioned. This is one of the backend which is enabled '
+                    'in manila.conf file.'),
+    cfg.StrOpt('netapp_backup_vserver',
+               default='',
+               help='vserver name of backend that is use for backup the share.'
+                    ' When user provide vserver value then backup volume will '
+                    ' be created under this vserver '),
+    cfg.StrOpt('netapp_backup_share',
+               default='',
+               help='Specify backup share name in case user wanted to backup '
+                    'the share. Some case user has dedicated volume for backup'
+                    ' in this case use can provide dedicated volume. '
+                    'backup_share_server must be specified if backup_share is'
+                    ' provided'),
+    cfg.IntOpt('netapp_snapmirror_job_timeout',
+               min=0,
+               default=1800,  # 30 minutes
+               help='The maximum time in seconds to wait for a snapmirror '
+                    'related operation to backup to complete.'),
+]
+
 CONF = cfg.CONF
 CONF.register_opts(netapp_proxy_opts)
 CONF.register_opts(netapp_connection_opts)
@@ -308,3 +344,4 @@ CONF.register_opts(netapp_basicauth_opts)
 CONF.register_opts(netapp_provisioning_opts)
 CONF.register_opts(netapp_support_opts)
 CONF.register_opts(netapp_data_motion_opts)
+CONF.register_opts(netapp_backup_opts)

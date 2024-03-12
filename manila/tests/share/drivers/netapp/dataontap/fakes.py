@@ -40,6 +40,7 @@ SHARE_NAME = 'share_7cf7c200_d3af_4e05_b87e_9167c95dfcad'
 SHARE_NAME2 = 'share_d24e7257_124e_4fb6_b05b_d384f660bc85'
 SHARE_INSTANCE_NAME = 'share_d24e7257_124e_4fb6_b05b_d384f660bc85'
 FLEXVOL_NAME = 'fake_volume'
+FLEXVOL_NAME_1 = 'fake_volume_1'
 JUNCTION_PATH = '/%s' % FLEXVOL_NAME
 EXPORT_LOCATION = '%s:%s' % (HOST_NAME, JUNCTION_PATH)
 SNAPSHOT_NAME = 'fake_snapshot'
@@ -112,6 +113,7 @@ FPOLICY_EXT_TO_INCLUDE = 'avi'
 FPOLICY_EXT_TO_INCLUDE_LIST = ['avi']
 FPOLICY_EXT_TO_EXCLUDE = 'jpg,mp3'
 FPOLICY_EXT_TO_EXCLUDE_LIST = ['jpg', 'mp3']
+BACKUP_TYPE = "fake_backup_type"
 
 JOB_ID = '123'
 JOB_STATE = 'success'
@@ -1868,6 +1870,24 @@ NEW_NETWORK_ALLOCATIONS = {
     'neutron_subnet_id': '3bc10d67-2598-4122-bb62',
     'network_allocations': USER_NETWORK_ALLOCATIONS
 }
+
+SHARE_BACKUP = {
+    'id': '242ff47e-518d-4b07-b3c3-0a51e6744149',
+    'share_id': 'd0a424c3-fee9-4781-9d4a-2c48a63386aa',
+    'size': SHARE_SIZE,
+    'host': MANILA_HOST_NAME,
+    'display_name': 'fake_backup',
+    'backup_options': {'backend': BACKEND_NAME, 'backup_type': BACKUP_TYPE},
+    }
+
+SNAP_MIRROR_INFO = {'source-vserver': VSERVER1,
+                    'source-volume': FLEXVOL_NAME,
+                    'destination-vserver': VSERVER2,
+                    'destination-volume': FLEXVOL_NAME_1,
+                    'relationship-status': "idle",
+                    'last-transfer-type': "update",
+                    }
+
 
 SERVER_MODEL_UPDATE = {
     'server_details': {
