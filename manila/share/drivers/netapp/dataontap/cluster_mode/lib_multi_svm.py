@@ -21,6 +21,7 @@ as needed to provision shares.
 """
 import re
 
+from manila.share.drivers.netapp.dataontap.cluster_mode.lib_base import Backup
 from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
@@ -2393,7 +2394,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             ]
             aggr_list = aggr_matching_list
         share_server_id = share_server['id']
-        des_vserver = f"backup_{share_server_id}"
+        des_vserver = f"{Backup.DES_VSERVER_PREFIX.value}_{share_server_id}"
         LOG.debug("Creating vserver %s:", des_vserver)
         try:
             des_cluster_api_client.create_vserver(
