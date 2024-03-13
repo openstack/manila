@@ -2341,6 +2341,41 @@ class ShareAPITestCase(test.TestCase):
             db_api.share_get.assert_called_once_with(
                 self.context, snapshot['share_id'])
 
+    @ddt.data(True, False)
+    def test_delete_snapshot_deferred(self, force):
+        CONF.set_default("is_deferred_deletion_enabled", True)
+        snapshot = db_utils.create_snapshot(
+            with_share=True, status=constants.STATUS_AVAILABLE)
+        share = snapshot['share']
+
+        self.mock_object(db_api, 'share_snapshot_instance_update',
+                         mock.Mock())
+
+        with mock.patch.object(db_api, 'share_get',
+                               mock.Mock(return_value=share)):
+            self.api.delete_snapshot(self.context, snapshot, force=force)
+            if force:
+                self.share_rpcapi.delete_snapshot.assert_called_once_with(
+                    self.context, snapshot, share['host'], force=True,
+                    deferred_delete=False)
+                db_api.share_snapshot_instance_update.assert_called_once_with(
+                    self.context,
+                    snapshot['instance']['id'],
+                    {'status': constants.STATUS_DELETING})
+            else:
+                self.share_rpcapi.delete_snapshot.assert_called_once_with(
+                    self.context, snapshot, share['host'], force=False,
+                    deferred_delete=True)
+                db_api.share_snapshot_instance_update.assert_called_once_with(
+                    self.context,
+                    snapshot['instance']['id'],
+                    {'status': constants.STATUS_DEFERRED_DELETING})
+
+            share_api.policy.check_policy.assert_called_once_with(
+                self.context, 'share', 'delete_snapshot', snapshot)
+            db_api.share_get.assert_called_once_with(
+                self.context, snapshot['share_id'])
+
     def test_delete_snapshot_wrong_status(self):
         snapshot = db_utils.create_snapshot(
             with_share=True, status=constants.STATUS_CREATING)
@@ -2791,6 +2826,51 @@ class ShareAPITestCase(test.TestCase):
                 force=force,
                 deferred_delete=False
             )
+        db_api.share_server_update(
+            self.context,
+            instance['share_server_id'],
+            {'updated_at': self.dt_utc}
+        )
+
+    @ddt.data({'status': constants.STATUS_DEFERRED_DELETING, 'force': True},
+              {'status': constants.STATUS_AVAILABLE, 'force': False},
+              {'status': constants.STATUS_AVAILABLE, 'force': True})
+    @ddt.unpack
+    def test_delete_share_instance_deferred(self, status, force):
+        CONF.set_default("is_deferred_deletion_enabled", True)
+        instance = self._setup_delete_share_instance_mocks(
+            status=status, share_server_id='fake')
+
+        self.api.delete_instance(self.context, instance, force=force)
+        if force:
+            if status != constants.STATUS_DEFERRED_DELETING:
+                db_api.share_instance_update.assert_called_once_with(
+                    self.context,
+                    instance['id'],
+                    {'status': constants.STATUS_DELETING,
+                     'terminated_at': self.dt_utc}
+                )
+            self.api.share_rpcapi.delete_share_instance.\
+                assert_called_once_with(
+                    self.context,
+                    instance,
+                    force=True,
+                    deferred_delete=False
+                )
+        else:
+            db_api.share_instance_update.assert_called_once_with(
+                self.context,
+                instance['id'],
+                {'status': constants.STATUS_DEFERRED_DELETING,
+                 'terminated_at': self.dt_utc}
+            )
+            self.api.share_rpcapi.delete_share_instance.\
+                assert_called_once_with(
+                    self.context,
+                    instance,
+                    force=False,
+                    deferred_delete=True
+                )
         db_api.share_server_update(
             self.context,
             instance['share_server_id'],
