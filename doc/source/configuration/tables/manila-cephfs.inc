@@ -18,9 +18,33 @@
      - Description
    * - **[DEFAULT]**
      -
-   * - ``cephfs_auth_id`` = ``manila``
+   * - ``cephfs_auth_id`` = manila
      - (String) The name of the ceph auth identity to use.
-   * - ``cephfs_cluster_name`` = ``None``
+   * - ``cephfs_cluster_name`` = ceph
      - (String) The name of the cluster in use, if it is not the default ('ceph').
-   * - ``cephfs_conf_path`` =
+   * - ``cephfs_conf_path`` = /etc/ceph/ceph.conf
      - (String) Fully qualified path to the ceph.conf file.
+   * - ``cephfs_protocol_helper_type`` = CEPHFS
+     - (String) The type of protocol helper to use. Default is CEPHFS.
+   * - ``cephfs_ganesha_server_is_remote`` = False
+     - (Boolean) Whether the NFS-Ganesha server is remote to the driver.
+   * - ``cephfs_ganesha_server_ip`` = None
+     - (String) The IP address of the NFS-Ganesha server.
+   * - ``cephfs_protocol_helper_type`` = CEPHFS
+     - (String) The type of protocol helper to use. Default is CEPHFS.
+   * - ``cephfs_ganesha_server_username`` = root
+     - (String) The username to authenticate as in the remote NFS-Ganesha server host.
+   * - ``cephfs_ganesha_path_to_private_key`` = None
+     - (String) The path of the driver host's private SSH key file.
+   * - ``cephfs_ganesha_server_password`` = None
+     - (String) The password to authenticate as the user in the remote Ganesha server host. This is not required if 'cephfs_ganesha_path_to_private_key' is configured.
+   * - ``cephfs_ganesha_export_ips`` = []
+     - (String) List of IPs to export shares. If not supplied, then the value of 'cephfs_ganesha_server_ip' will be used to construct share export locations.
+   * - ``cephfs_volume_mode`` = 755
+     - (String) The read/write/execute permissions mode for CephFS volumes, snapshots, and snapshot groups expressed in Octal as with linux 'chmod' or 'umask' commands.
+   * - ``cephfs_filesystem_name`` = None
+     - (String) The name of the filesystem to use, if there are multiple filesystems in the cluster."
+   * - ``cephfs_ensure_all_shares_salt`` = manila_cephfs_reef_caracal
+     - (String) Provide a unique string value to make the driver ensure all of the shares it has created during startup. Ensuring would re-export shares and this action isn't always required, unless something has been administratively modified on CephFS.
+   * - ``cephfs_nfs_cluster_id`` = None
+     - (String) The ID of the NFS cluster to use.

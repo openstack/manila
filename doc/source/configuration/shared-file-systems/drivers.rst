@@ -11,7 +11,7 @@ Share drivers
    :maxdepth: 1
 
    drivers/generic-driver.rst
-   drivers/cephfs-native-driver.rst
+   drivers/cephfs_driver.rst
    drivers/dell-emc-powerflex-driver.rst
    drivers/dell-emc-powermax-driver.rst
    drivers/dell-emc-unity-driver.rst
