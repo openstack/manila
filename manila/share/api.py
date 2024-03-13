@@ -137,6 +137,7 @@ class API(base.Base):
         self.access_helper = access.ShareInstanceAccess(self.db, None)
         coordination.LOCK_COORDINATOR.start()
 
+    # pylint: disable = no-self-argument
     def prevent_locked_action_on_share(arg):
         """Decorator for preventing a locked method from executing on a share.
 
@@ -471,6 +472,7 @@ class API(base.Base):
                 az_request_multiple_subnet_support_map = (
                     compatible_azs_multiple)
 
+        share = None
         try:
             share = self.db.share_create(context, options,
                                          create_share_instance=False)
@@ -478,7 +480,8 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
-                    self.db.share_delete(context, share['id'])
+                    if share:
+                        self.db.share_delete(context, share['id'])
                 finally:
                     QUOTAS.rollback(
                         context, reservations, share_type_id=share_type_id)
@@ -844,6 +847,7 @@ class API(base.Base):
         else:
             cast_rules_to_readonly = False
 
+        share_replica = None
         try:
             request_spec, share_replica = (
                 self.create_share_instance_and_get_request_spec(
@@ -862,9 +866,10 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
-                    self.db.share_replica_delete(
-                        context, share_replica['id'],
-                        need_to_update_usages=False)
+                    if share_replica:
+                        self.db.share_replica_delete(
+                            context, share_replica['id'],
+                            need_to_update_usages=False)
                 finally:
                     QUOTAS.rollback(
                         context, reservations, share_type_id=share_type['id'])
@@ -1639,8 +1644,8 @@ class API(base.Base):
         if metadata:
             options.update({"metadata": metadata})
 
+        snapshot = None
         try:
-            snapshot = None
             snapshot = self.db.share_snapshot_create(context, options)
             QUOTAS.commit(
                 context, reservations,

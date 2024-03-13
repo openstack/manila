@@ -5876,7 +5876,7 @@ class ShareManager(manager.SchedulerDependentManager):
             if not self.driver.driver_handles_share_servers:
                 LOG.error('This operation is supported only on backends that '
                           'handle share servers.')
-                raise
+                raise exception.OperationNotSupportedByDriverMode()
 
             self._share_server_migration_start_driver(
                 context, share_server, dest_host, writable, nondisruptive,
