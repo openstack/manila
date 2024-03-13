@@ -81,7 +81,7 @@ def _get_config():
     CONF.set_override("netapp_backup_vserver",
                       "fake_backup_share",
                       group=backup_config)
-    CONF.set_override("netapp_backup_share",
+    CONF.set_override("netapp_backup_volume",
                       "fake_share_server",
                       group=backup_config)
     return config
@@ -8015,7 +8015,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         backup_config = 'backup_config'
         fake_config = configuration.Configuration(driver.share_opts,
                                                   config_group=backup_config)
-        CONF.set_override("netapp_backup_share", "",
+        CONF.set_override("netapp_backup_volume", "",
                           group=backup_config)
         CONF.set_override("netapp_backup_vserver", "",
                           group=backup_config)
@@ -8037,7 +8037,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         backup_config = 'backup_config'
         fake_config = configuration.Configuration(driver.share_opts,
                                                   config_group=backup_config)
-        CONF.set_override("netapp_backup_share", "",
+        CONF.set_override("netapp_backup_volume", "",
                           group=backup_config)
         CONF.set_override("netapp_backup_vserver", "",
                           group=backup_config)
@@ -8232,7 +8232,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self._backup_mock_common_method(mock_des_vserver_client)
         backup_config = 'backup_config'
-        CONF.set_override("netapp_backup_share", "",
+        CONF.set_override("netapp_backup_volume", "",
                           group=backup_config)
         CONF.set_override("netapp_backup_vserver", "",
                           group=backup_config)
@@ -8461,6 +8461,48 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SHARE_BACKUP,
         )
 
+    def test_create_backup_when_invalid_backup_type_negative(self):
+        mock_src_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 mock_src_client)))
+        self.mock_object(self.mock_dm_session,
+                         'get_backup_configuration',
+                         mock.Mock(
+                             side_effect=exception.BadConfigurationException,
+                         ))
+        self.assertRaises(
+            exception.BadConfigurationException,
+            self.library.create_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_create_backup_when_invalid_backend_negative(self):
+        mock_src_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 mock_src_client)))
+        self.mock_object(data_motion,
+                         'get_backup_configuration',
+                         mock.Mock(return_value=_get_config()))
+
+        self.mock_object(self.mock_dm_session,
+                         'get_backend_configuration',
+                         mock.Mock(
+                             side_effect=exception.BadConfigurationException,
+                         ))
+        self.assertRaises(
+            exception.BadConfigurationException,
+            self.library.create_backup,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
     def test_create_backup_continue_with_status_inprogress(self):
         vserver_client = mock.Mock()
         mock_dest_client = mock.Mock()
@@ -8562,6 +8604,60 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_destination_vserver_and_vol',
                          mock.Mock(return_value=(None, None)))
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.create_backup_continue,
+            self.context,
+            fake.SHARE_INSTANCE,
+            fake.SHARE_BACKUP,
+        )
+
+    def test_create_backup_continue_snapshot_left_from_old_relationship(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        snapmirror_info = [fake.SNAP_MIRROR_INFO]
+        self.mock_object(mock_dest_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=snapmirror_info))
+        snap_list = ["snap1", "snap2"]
+        self.mock_object(self.library,
+                         '_get_des_volume_backup_snapshots',
+                         mock.Mock(return_value=snap_list))
+
+        self.library._set_volume_has_backup_before(True)
+        share_instance = fake.SHARE_INSTANCE
+        backup = fake.SHARE_BACKUP
+        self.library.create_backup_continue(self.context, share_instance,
+                                            backup)
+        self.library._set_volume_has_backup_before(False)
+
+    def test_create_backup_continue_relationship_not_healthy_negative(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        snapmirror_info = [
+            {
+                'source-vserver': fake.VSERVER1,
+                'source-volume': fake.FLEXVOL_NAME,
+                'destination-vserver': fake.VSERVER2,
+                'destination-volume': fake.FLEXVOL_NAME_1,
+                'relationship-status': "idle",
+                'last-transfer-type': "update",
+                'is-healthy': "false",
+            }
+        ]
+        self.mock_object(mock_dest_client,
+                         'get_snapmirrors',
+                         mock.Mock(return_value=snapmirror_info))
         self.assertRaises(
             exception.NetAppException,
             self.library.create_backup_continue,
@@ -8718,6 +8814,27 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SHARE_INSTANCE,
             fake.SHARE_BACKUP,
         )
+
+    def test_delete_backup_snapshot_not_exist(self):
+        vserver_client = mock.Mock()
+        mock_des_client = mock.Mock()
+        self._backup_mock_common_method(mock_des_client)
+        self._backup_mock_common_method_for_negative(vserver_client,
+                                                     mock_des_client)
+        self.mock_object(self.library,
+                         '_get_des_volume_backup_snapshots',
+                         mock.Mock(return_value=['fake_snapshot1',
+                                                 'fake_snapshot2']))
+        self.mock_object(self.library,
+                         '_is_snapshot_deleted',
+                         mock.Mock(return_value=True))
+        msg = "entry doesn't exist"
+        self.mock_object(mock_des_client,
+                         'delete_snapshot',
+                         mock.Mock(side_effect=netapp_api.NaApiError(
+                             message=msg)))
+        self.library.delete_backup(self.context, fake.SHARE_BACKUP,
+                                   fake.SHARE_INSTANCE)
 
     def test__get_backup_progress_status(self):
         mock_dest_client = mock.Mock()

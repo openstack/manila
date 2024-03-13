@@ -2292,7 +2292,9 @@ class NetAppRestClient(object):
         fields = ['state', 'source.svm.name', 'source.path',
                   'destination.svm.name', 'destination.path',
                   'transfer.end_time', 'uuid', 'policy.type',
-                  'transfer_schedule.name', 'transfer.state']
+                  'transfer_schedule.name', 'transfer.state',
+                  'last_transfer_type', 'transfer.bytes_transferred',
+                  'healthy']
 
         query = {}
         query['fields'] = ','.join(fields)
@@ -2342,7 +2344,14 @@ class NetAppRestClient(object):
                     (self._parse_timestamp(record['transfer']['end_time']) if
                      record.get('transfer', {}).get('end_time') else 0),
                 'uuid': record['uuid'],
-                'policy-type': record.get('policy', {}).get('type')
+                'policy-type': record.get('policy', {}).get('type'),
+                'is-healthy': (
+                    'true'
+                    if record.get('healthy', {}) is True else 'false'),
+                'last-transfer-type': record.get('last_transfer_type', None),
+                'last-transfer-size': record.get('transfer',
+                                                 {}).get('bytes_transferred'),
+
             })
 
         return snapmirrors
