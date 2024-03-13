@@ -1140,6 +1140,10 @@ class NFSProtocolHelper(NFSProtocolHelperMixin, ganesha.GaneshaNASHelper2):
         super(NFSProtocolHelper, self).__init__(execute, config_object,
                                                 **kwargs)
 
+        LOG.warning('The NFSProtocolHelper has been deprecated. Starting '
+                    'from the 2025.1 release, we will no longer support '
+                    'exporting NFS shares through a NFS Ganesha instance '
+                    'that not managed by the Ceph orchestrator.')
         if not hasattr(self, 'rados_client'):
             self.rados_client = kwargs.pop('rados_client')
         if not hasattr(self, 'volname'):
