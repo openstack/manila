@@ -98,7 +98,7 @@ deprecated_list_snapshots_in_deferred_deletion_states = policy.DeprecatedRule(
     name=BASE_POLICY_NAME % 'list_snapshots_in_deferred_deletion_states',
     check_str=base.RULE_ADMIN_API,
     deprecated_reason=DEPRECATED_REASON,
-    deprecated_since='2023.2/Bobcat'
+    deprecated_since='2024.1/Caracal'
 )
 
 share_snapshot_policies = [

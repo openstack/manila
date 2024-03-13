@@ -2371,15 +2371,45 @@ class ShareManagerTestCase(test.TestCase):
 
         self.mock_object(self.share_manager, '_get_share_server',
                          mock.Mock(return_value=None))
-        mock_delete_share = self.mock_object(
+        mock_delete_snapshot = self.mock_object(
             self.share_manager.driver, 'delete_snapshot')
         self.mock_object(self.share_manager.db,
                          'share_snapshot_instance_update')
         self.share_manager.do_deferred_snapshot_deletion(self.context)
         if consider_error_deleting:
-            self.assertEqual(2, mock_delete_share.call_count)
+            self.assertEqual(2, mock_delete_snapshot.call_count)
         else:
-            self.assertEqual(1, mock_delete_share.call_count)
+            self.assertEqual(1, mock_delete_snapshot.call_count)
+
+    def test_do_deferred_snapshot_deletion_exception(self):
+        instance_1 = db_utils.create_share_instance(
+            share_id='fake_id',
+            share_type_id='fake_type_id')
+        share = db_utils.create_share(
+            id='fake_id',
+            instances=[instance_1])
+        snapshot = db_utils.create_snapshot(share_id=share['id'])
+        si = db_utils.create_snapshot_instance(
+            snapshot_id=snapshot['id'],
+            share_instance_id=instance_1['id'],
+            status='deferred_deleting')
+
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value=None))
+        self.mock_object(
+            self.share_manager.driver, 'delete_snapshot',
+            mock.Mock(side_effect=exception.ManilaException))
+        self.mock_object(self.share_manager.db,
+                         'share_snapshot_instance_update')
+        mock_delete_snapshot_db = self.mock_object(
+            self.share_manager.db,
+            'share_snapshot_instance_delete')
+
+        self.share_manager.do_deferred_snapshot_deletion(self.context)
+        self.share_manager.db.share_snapshot_instance_update.assert_any_call(
+            mock.ANY, si['id'],
+            {'status': constants.STATUS_ERROR_DEFERRED_DELETING})
+        mock_delete_snapshot_db.assert_not_called()
 
     def test_create_share_instance_with_share_network_dhss_false(self):
         manager.CONF.set_default('driver_handles_share_servers', False)
@@ -4073,6 +4103,37 @@ class ShareManagerTestCase(test.TestCase):
             self.assertEqual(3, mock_delete_share.call_count)
         else:
             self.assertEqual(2, mock_delete_share.call_count)
+
+    def test_do_deferred_share_deletion_exception(self):
+        share = db_utils.create_share_without_instance(
+            id='fake_id',
+            status=constants.STATUS_AVAILABLE)
+        share_server = fakes.fake_share_server_get()
+        kwargs = {
+            'id': 1,
+            'share_id': share['id'],
+            'share_server_id': share_server['id'],
+            'status': 'deferred_deleting',
+            'updated_at': timeutils.utcnow()
+        }
+        si = db_utils.create_share_instance(**kwargs)
+
+        self.mock_object(self.share_manager.db, 'share_server_get',
+                         mock.Mock(return_value=share_server))
+        self.mock_object(self.share_manager.db, 'share_get',
+                         mock.Mock(return_value=share))
+        self.mock_object(self.share_manager.db, 'share_instance_update')
+        mock_delete = self.mock_object(self.share_manager.db,
+                                       'share_instance_delete')
+        self.mock_object(
+            self.share_manager.driver, 'delete_share',
+            mock.Mock(side_effect=exception.ManilaException))
+
+        self.share_manager.do_deferred_share_deletion(self.context)
+        self.share_manager.db.share_instance_update.assert_any_call(
+            mock.ANY, si['id'],
+            {'status': constants.STATUS_ERROR_DEFERRED_DELETING})
+        mock_delete.assert_not_called()
 
     def test_setup_server(self):
         # Setup required test data
