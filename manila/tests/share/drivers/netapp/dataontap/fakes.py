@@ -114,6 +114,7 @@ FPOLICY_EXT_TO_INCLUDE_LIST = ['avi']
 FPOLICY_EXT_TO_EXCLUDE = 'jpg,mp3'
 FPOLICY_EXT_TO_EXCLUDE_LIST = ['jpg', 'mp3']
 BACKUP_TYPE = "fake_backup_type"
+MOUNT_POINT_NAME = 'fake_mp'
 
 JOB_ID = '123'
 JOB_STATE = 'success'
@@ -135,6 +136,7 @@ SHARE = {
     'host': MANILA_HOST_NAME,
     'project_id': TENANT_ID,
     'name': SHARE_NAME,
+    'mount_point_name': MOUNT_POINT_NAME,
     'size': SHARE_SIZE,
     'share_proto': 'fake',
     'share_type_id': 'fake_share_type_id',
@@ -195,6 +197,7 @@ SHARE_INSTANCE = {
     'share_id': SHARE_ID,
     'host': MANILA_HOST_NAME,
     'project_id': TENANT_ID,
+    'mount_point_name': MOUNT_POINT_NAME,
     'name': SHARE_INSTANCE_NAME,
     'size': SHARE_SIZE,
     'share_proto': 'fake',
@@ -1037,6 +1040,7 @@ POOLS = [
         'utilization': 30.0,
         'filter_function': 'filter',
         'goodness_function': 'goodness',
+        'mount_point_name_support': True,
         'snapshot_support': True,
         'create_share_from_snapshot_support': True,
         'revert_to_snapshot_support': True,
@@ -1082,6 +1086,7 @@ POOLS_VSERVER_CREDS = [
         'pool_name': AGGREGATES[0],
         'filter_function': None,
         'goodness_function': None,
+        'mount_point_name_support': True,
         'netapp_cluster_name': '',
         'netapp_aggregate': AGGREGATES[0],
         'total_capacity_gb': 'unknown',

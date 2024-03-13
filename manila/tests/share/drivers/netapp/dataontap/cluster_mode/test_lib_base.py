@@ -1537,12 +1537,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock_get_aggr_flexgroup.assert_called_once_with(fake.POOL_NAME)
             mock_create_flexgroup.assert_called_once_with(
                 vserver_client, [fake.AGGREGATE], fake.SHARE_NAME,
-                fake.SHARE['size'], 8, **provisioning_options)
+                fake.SHARE['size'], 8, mount_point_name=fake.MOUNT_POINT_NAME,
+                **provisioning_options)
         else:
             mock_get_aggr_flexgroup.assert_not_called()
             vserver_client.create_volume.assert_called_once_with(
                 fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
-                snapshot_reserve=8, **provisioning_options)
+                snapshot_reserve=8, mount_point_name=fake.MOUNT_POINT_NAME,
+                **provisioning_options)
 
         if hide_snapdir:
             vserver_client.set_volume_snapdir_access.assert_called_once_with(
@@ -1587,8 +1589,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             thin_provisioned=True, snapshot_policy='default',
             language='en-US', dedup_enabled=True, split=True,
             compression_enabled=False, max_files=5000, encrypt=False,
-            snapshot_reserve=8, volume_type='dp',
-            adaptive_qos_policy_group=None)
+            snapshot_reserve=8, mount_point_name=fake.MOUNT_POINT_NAME,
+            volume_type='dp', adaptive_qos_policy_group=None)
 
     def test_allocate_container_no_pool_name(self):
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
@@ -1630,7 +1632,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         start_timeout = (self.library.configuration.
                          netapp_flexgroup_aggregate_not_busy_timeout)
         mock_wait_for_start.assert_called_once_with(
-            start_timeout, vserver_client, aggr_list, fake.SHARE_NAME, 100, 10)
+            start_timeout, vserver_client, aggr_list, fake.SHARE_NAME, 100,
+            10, None)
         mock_wait_for_flexgroup_deployment.assert_called_once_with(
             vserver_client, fake.JOB_ID, 2)
         (vserver_client.update_volume_efficiency_attributes.
@@ -1668,7 +1671,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.create_volume_async.assert_called_once_with(
             aggr_list, fake.SHARE_NAME, 1, is_flexgroup=True,
             snapshot_reserve=10,
-            auto_provisioned=self.library._is_flexgroup_auto)
+            auto_provisioned=self.library._is_flexgroup_auto,
+            mount_point_name=None)
 
     def test_wait_for_start_create_flexgroup_timeout(self):
         vserver_client = mock.Mock()
@@ -2809,7 +2813,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.set_volume_name.assert_called_once_with(
             fake.FLEXVOL_NAME, fake.SHARE_NAME)
         vserver_client.mount_volume.assert_called_once_with(
-            fake.SHARE_NAME)
+            fake.SHARE_NAME, fake.MOUNT_POINT_NAME)
         vserver_client.modify_volume.assert_called_once_with(
             fake_aggr, fake.SHARE_NAME, **provisioning_opts)
         mock_modify_or_create_qos_policy.assert_called_once_with(
@@ -7124,7 +7128,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_unmount.assert_called_once_with(fake.SHARE_NAME)
         mock_rehost.assert_called_once_with(fake.SHARE, fake.VSERVER1,
                                             fake.VSERVER2)
-        mock_mount.assert_called_once_with(fake.SHARE_NAME)
+        mock_mount.assert_called_once_with(fake.SHARE_NAME,
+                                           fake.MOUNT_POINT_NAME)
 
     def test__move_volume_after_splitting(self):
         src_share = fake_share.fake_share_instance(id='source-share-instance')

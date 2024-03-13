@@ -953,7 +953,7 @@ class NetAppRestClient(object):
                       compression_enabled=False, max_files=None,
                       snapshot_reserve=None, volume_type='rw',
                       qos_policy_group=None, adaptive_qos_policy_group=None,
-                      encrypt=False, **options):
+                      encrypt=False, mount_point_name=None, **options):
         """Creates a FlexVol volume synchronously."""
 
         # NOTE(nahimsouza): In REST API, both FlexVol and FlexGroup volumes are
@@ -966,7 +966,8 @@ class NetAppRestClient(object):
             language=language, max_files=max_files,
             snapshot_reserve=snapshot_reserve, volume_type=volume_type,
             qos_policy_group=qos_policy_group, encrypt=encrypt,
-            adaptive_qos_policy_group=adaptive_qos_policy_group, **options)
+            adaptive_qos_policy_group=adaptive_qos_policy_group,
+            mount_point_name=mount_point_name, **options)
 
         self.update_volume_efficiency_attributes(volume_name,
                                                  dedup_enabled,
@@ -981,7 +982,8 @@ class NetAppRestClient(object):
                             language=None, snapshot_reserve=None,
                             volume_type='rw', qos_policy_group=None,
                             encrypt=False, adaptive_qos_policy_group=None,
-                            auto_provisioned=False, **options):
+                            auto_provisioned=False, mount_point_name=None,
+                            **options):
         """Creates FlexGroup/FlexVol volumes.
 
         If the parameter `is_flexgroup` is False, the creation process is
@@ -1002,7 +1004,7 @@ class NetAppRestClient(object):
         body.update(self._get_create_volume_body(
             volume_name, thin_provisioned, snapshot_policy, language,
             snapshot_reserve, volume_type, qos_policy_group, encrypt,
-            adaptive_qos_policy_group))
+            adaptive_qos_policy_group, mount_point_name))
 
         # NOTE(nahimsouza): When a volume is not a FlexGroup, volume creation
         # is made synchronously to replicate old ZAPI behavior. When ZAPI is
@@ -1025,7 +1027,8 @@ class NetAppRestClient(object):
     def _get_create_volume_body(self, volume_name, thin_provisioned,
                                 snapshot_policy, language, snapshot_reserve,
                                 volume_type, qos_policy_group, encrypt,
-                                adaptive_qos_policy_group):
+                                adaptive_qos_policy_group,
+                                mount_point_name=None):
         """Builds the body to volume creation request."""
 
         body = {
@@ -1034,7 +1037,8 @@ class NetAppRestClient(object):
             'svm.name': self.connection.get_vserver()
         }
         if volume_type != 'dp':
-            body['nas.path'] = f'/{volume_name}'
+            mount_point_name = mount_point_name or volume_name
+            body['nas.path'] = f'/{mount_point_name}'
         if snapshot_policy is not None:
             body['snapshot_policy.name'] = snapshot_policy
         if language is not None:

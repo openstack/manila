@@ -1045,7 +1045,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             is_flexgroup=False, thin_provisioned=False, snapshot_policy=None,
             language=None, max_files=1, snapshot_reserve=None,
             volume_type='rw', qos_policy_group=None, encrypt=False,
-            adaptive_qos_policy_group=None)
+            adaptive_qos_policy_group=None, mount_point_name=None)
         mock_update.assert_called_once_with(fake.VOLUME_NAMES[0], False, False)
         mock_max_files.assert_called_once_with(fake.VOLUME_NAMES[0], 1)
 
@@ -1076,7 +1076,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.client._get_create_volume_body.assert_called_once_with(
             fake.VOLUME_NAMES[0], False, None, None, None, 'rw', None, False,
-            None)
+            None, None)
         self.client.send_request.assert_called_once_with(
             '/storage/volumes', 'post', body=body, wait_on_accepted=True)
         self.assertEqual(expected_result, result)
@@ -2602,7 +2602,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             permission = record['permission']
             rules[user_or_group] = permission
 
-    def test_mount_volume(self):
+    def test_mount_volume_with_junction_path(self):
         volume_name = fake.SHARE_NAME
         junction_path = '/fake_path'
         volume = fake.VOLUME
@@ -2616,8 +2616,26 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         uuid = volume['uuid']
 
         body = {
-            'nas.path': (junction_path if junction_path
-                         else '/%s' % volume_name)
+            'nas.path': junction_path
+        }
+
+        self.client.send_request.assert_called_once_with(
+            f'/storage/volumes/{uuid}', 'patch', body=body)
+
+    def test_mount_volume_with_volume_name(self):
+        volume_name = fake.SHARE_NAME
+        volume = fake.VOLUME
+
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+        self.mock_object(self.client, 'send_request')
+
+        self.client.mount_volume(volume_name)
+
+        uuid = volume['uuid']
+
+        body = {
+            'nas.path': '/%s' % volume_name
         }
 
         self.client.send_request.assert_called_once_with(

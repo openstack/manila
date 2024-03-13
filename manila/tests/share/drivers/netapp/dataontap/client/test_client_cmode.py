@@ -3215,7 +3215,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
 
         self.client._get_create_volume_api_args.assert_called_once_with(
-            fake.SHARE_NAME, False, None, None, None, 'rw', None, False, None)
+            fake.SHARE_NAME, False, None, None, None, 'rw', None, False,
+            None, None)
         self.client.send_request.assert_called_with('volume-create',
                                                     volume_create_args)
         (self.client.update_volume_efficiency_attributes.
@@ -3291,7 +3292,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
 
         self.client._get_create_volume_api_args.assert_called_once_with(
-            fake.SHARE_NAME, False, None, None, None, 'rw', None, False, None)
+            fake.SHARE_NAME, False, None, None, None, 'rw', None, False,
+            None, None)
         self.client.send_request.assert_called_with('volume-create-async',
                                                     volume_create_args)
         self.assertEqual(expected_result, result)
@@ -3307,6 +3309,37 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           100,
                           adaptive_qos_policy_group='fake')
         self.client.send_request.assert_not_called()
+
+    def test_get_create_volume_api_args_with_mount_point_name(self):
+
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION')
+        volume_type = 'rw'
+        thin_provisioned = False
+        snapshot_policy = 'default'
+        language = 'en-US'
+        reserve = 15
+        qos_name = 'fake_qos'
+        encrypt = True
+        qos_adaptive_name = 'fake_adaptive_qos'
+        mount_point_name = 'fake_mp'
+
+        result_api_args = self.client._get_create_volume_api_args(
+            fake.SHARE_NAME, thin_provisioned, snapshot_policy, language,
+            reserve, volume_type, qos_name, encrypt, qos_adaptive_name,
+            mount_point_name)
+
+        expected_api_args = {
+            'volume-type': volume_type,
+            'junction-path': '/fake_mp',
+            'space-reserve': 'volume',
+            'snapshot-policy': snapshot_policy,
+            'language-code': language,
+            'percentage-snapshot-reserve': str(reserve),
+            'qos-policy-group-name': qos_name,
+            'qos-adaptive-policy-group-name': qos_adaptive_name,
+            'encrypt': 'true',
+        }
+        self.assertEqual(expected_api_args, result_api_args)
 
     def test_get_create_volume_api_args_with_extra_specs(self):
 

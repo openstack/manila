@@ -2215,7 +2215,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       compression_enabled=False, max_files=None,
                       snapshot_reserve=None, volume_type='rw',
                       qos_policy_group=None, adaptive_qos_policy_group=None,
-                      encrypt=False, **options):
+                      encrypt=False, mount_point_name=None, **options):
         """Creates a volume."""
         if adaptive_qos_policy_group and not self.features.ADAPTIVE_QOS:
             msg = 'Adaptive QoS not supported on this backend ONTAP version.'
@@ -2229,7 +2229,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         api_args.update(self._get_create_volume_api_args(
             volume_name, thin_provisioned, snapshot_policy, language,
             snapshot_reserve, volume_type, qos_policy_group, encrypt,
-            adaptive_qos_policy_group))
+            adaptive_qos_policy_group, mount_point_name))
 
         self.send_request('volume-create', api_args)
 
@@ -2245,7 +2245,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                             language=None, snapshot_reserve=None,
                             volume_type='rw', qos_policy_group=None,
                             encrypt=False, adaptive_qos_policy_group=None,
-                            auto_provisioned=False, **options):
+                            auto_provisioned=False, mount_point_name=None,
+                            **options):
         """Creates a volume asynchronously."""
 
         if adaptive_qos_policy_group and not self.features.ADAPTIVE_QOS:
@@ -2264,7 +2265,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         api_args.update(self._get_create_volume_api_args(
             volume_name, thin_provisioned, snapshot_policy, language,
             snapshot_reserve, volume_type, qos_policy_group, encrypt,
-            adaptive_qos_policy_group))
+            adaptive_qos_policy_group, mount_point_name))
 
         result = self.send_request('volume-create-async', api_args)
         job_info = {
@@ -2279,13 +2280,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                     snapshot_policy, language,
                                     snapshot_reserve, volume_type,
                                     qos_policy_group, encrypt,
-                                    adaptive_qos_policy_group):
+                                    adaptive_qos_policy_group,
+                                    mount_point_name=None):
         api_args = {
             'volume-type': volume_type,
             'space-reserve': ('none' if thin_provisioned else 'volume'),
         }
         if volume_type != 'dp':
-            api_args['junction-path'] = '/%s' % volume_name
+            api_args['junction-path'] = '/%s' % (mount_point_name
+                                                 or volume_name)
         if snapshot_policy is not None:
             api_args['snapshot-policy'] = snapshot_policy
         if language is not None:

@@ -550,7 +550,8 @@ class NetAppCmodeFileStorageLibrary(object):
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': self._revert_to_snapshot_support,
             'security_service_update_support': True,
-            'share_server_multiple_subnet_support': True
+            'share_server_multiple_subnet_support': True,
+            'mount_point_name_support': True
         }
 
         # Add storage service catalog data.
@@ -1130,6 +1131,7 @@ class NetAppCmodeFileStorageLibrary(object):
             provisioning_options['volume_type'] = 'dp'
 
         hide_snapdir = provisioning_options.pop('hide_snapdir')
+        mount_point_name = share.get('mount_point_name')
 
         LOG.debug('Creating share %(share)s on pool %(pool)s with '
                   'provisioning options %(options)s',
@@ -1141,12 +1143,15 @@ class NetAppCmodeFileStorageLibrary(object):
                 vserver_client, aggr_list, share_name,
                 share['size'],
                 self.configuration.netapp_volume_snapshot_reserve_percent,
+                mount_point_name=mount_point_name,
                 **provisioning_options)
         else:
             vserver_client.create_volume(
                 pool_name, share_name, share['size'],
                 snapshot_reserve=self.configuration.
-                netapp_volume_snapshot_reserve_percent, **provisioning_options)
+                netapp_volume_snapshot_reserve_percent,
+                mount_point_name=mount_point_name,
+                **provisioning_options)
 
         if hide_snapdir:
             self._apply_snapdir_visibility(
@@ -1174,14 +1179,14 @@ class NetAppCmodeFileStorageLibrary(object):
     def _create_flexgroup_share(self, vserver_client, aggr_list, share_name,
                                 size, snapshot_reserve, dedup_enabled=False,
                                 compression_enabled=False, max_files=None,
-                                **provisioning_options):
+                                mount_point_name=None, **provisioning_options):
         """Create a FlexGroup share using async API with job."""
 
         start_timeout = (
             self.configuration.netapp_flexgroup_aggregate_not_busy_timeout)
         job_info = self.wait_for_start_create_flexgroup(
             start_timeout, vserver_client, aggr_list, share_name, size,
-            snapshot_reserve, **provisioning_options)
+            snapshot_reserve, mount_point_name, **provisioning_options)
 
         if not job_info['jobid'] or job_info['error-code']:
             msg = "Error creating FlexGroup share: %s."
@@ -1201,6 +1206,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def wait_for_start_create_flexgroup(self, start_timeout, vserver_client,
                                         aggr_list, share_name, size,
                                         snapshot_reserve,
+                                        mount_point_name=None,
                                         **provisioning_options):
         """Wait for starting create FlexGroup volume succeed.
 
@@ -1214,6 +1220,7 @@ class NetAppCmodeFileStorageLibrary(object):
         :param share_name: name of the FlexGroup volume.
         :param size: size to be provisioned.
         :param snapshot_reserve: snapshot reserve option.
+        :param mount_point_name: junction_path_name.
         :param provisioning_options: other provision not required options.
         """
 
@@ -1225,9 +1232,11 @@ class NetAppCmodeFileStorageLibrary(object):
         def _start_create_flexgroup_volume():
             try:
                 return vserver_client.create_volume_async(
-                    aggr_list, share_name, size, is_flexgroup=True,
+                    aggr_list, share_name, size,
+                    is_flexgroup=True,
                     snapshot_reserve=snapshot_reserve,
                     auto_provisioned=self._is_flexgroup_auto,
+                    mount_point_name=mount_point_name,
                     **provisioning_options)
             except netapp_api.NaApiError as e:
                 with excutils.save_and_reraise_exception() as raise_ctxt:
@@ -2027,6 +2036,7 @@ class NetAppCmodeFileStorageLibrary(object):
                     reason=msg % msg_args)
 
         share_name = self._get_backend_share_name(share['id'])
+        mount_point_name = share.get('mount_point_name')
         debug_args = {
             'share': share_name,
             'aggr': (",".join(aggregate_name) if flexgroup_vol
@@ -2039,7 +2049,7 @@ class NetAppCmodeFileStorageLibrary(object):
         # Rename & remount volume on new path.
         vserver_client.unmount_volume(volume_name)
         vserver_client.set_volume_name(volume_name, share_name)
-        vserver_client.mount_volume(share_name)
+        vserver_client.mount_volume(share_name, mount_point_name)
 
         qos_policy_group_name = self._modify_or_create_qos_for_existing_share(
             share, extra_specs, vserver, vserver_client)
@@ -3942,12 +3952,13 @@ class NetAppCmodeFileStorageLibrary(object):
     def _rehost_and_mount_volume(self, share, src_vserver, src_vserver_client,
                                  dest_vserver, dest_vserver_client):
         volume_name = self._get_backend_share_name(share['id'])
+        mount_point_name = share.get('mount_point_name')
         # Unmount volume in the source vserver:
         src_vserver_client.unmount_volume(volume_name)
         # Rehost the volume
         self.volume_rehost(share, src_vserver, dest_vserver)
         # Mount the volume on the destination vserver
-        dest_vserver_client.mount_volume(volume_name)
+        dest_vserver_client.mount_volume(volume_name, mount_point_name)
 
     def _check_capacity_compatibility(self, pools, thin_provision, size):
         """Check if the size requested is suitable for the available pools"""
