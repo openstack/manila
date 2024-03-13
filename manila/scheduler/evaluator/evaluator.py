@@ -227,7 +227,7 @@ _vars = {}
 
 def _def_parser():
     # Enabling packrat parsing greatly speeds up the parsing.
-    pyparsing.ParserElement.enablePackrat()
+    pyparsing.ParserElement.enablePackrat()  # pylint: disable = no-value-for-parameter # noqa:E501
 
     alphas = pyparsing.alphas
     Combine = pyparsing.Combine

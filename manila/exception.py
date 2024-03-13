@@ -578,6 +578,10 @@ class ShareBackendException(ManilaException):
     message = _("Share backend error: %(msg)s.")
 
 
+class OperationNotSupportedByDriverMode(ManilaException):
+    message = _("The share driver mode does not support this operation.")
+
+
 class RequirementMissing(ManilaException):
     message = _("Requirement %(req)s is not installed.")
 
