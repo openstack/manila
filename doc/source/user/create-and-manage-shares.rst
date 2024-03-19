@@ -61,6 +61,10 @@ important terms:
 | availability_zones                 | a list of one or        | shares are limited to these availability zones          |
 |                                    | more availability zones |                                                         |
 +------------------------------------+-------------------------+---------------------------------------------------------+
+| mount_point_name_support           | true or false           | share can or cannot have customized export location     |
++------------------------------------+-------------------------+---------------------------------------------------------+
+| provisioning:mount_point_prefix    | string                  | prefix used for custom export location                  |
++------------------------------------+-------------------------+---------------------------------------------------------+
 
 .. note::
 
@@ -69,6 +73,8 @@ important terms:
    -  When the ``availability_zones`` extra specification is not present in
       the share type, the share type can be used in all availability zones of
       the cloud.
+   -  When ``mount_point_name_support`` extra specification is not present in the
+      share type, or is set to False, you cannot customize the export location.
 
 - ``status`` of resources: Resources that you create or modify with manila
   may not be "available" immediately. The API service is designed to respond
@@ -365,6 +371,139 @@ Create a share
      | 83b0772b-00ad-4e45-8fad-106b9d4f1719 | myshare   | 1    | NFS         | available | False     | default         | nosb-devstack@london#LONDON | nova              |
      | 40de4f4c-4588-4d9c-844b-f74d8951053a | myshare2  | 1    | NFS         | available | False     | default         | nosb-devstack@lisboa#LISBOA | nova              |
      +--------------------------------------+-----------+------+-------------+-----------+-----------+-----------------+-----------------------------+-------------------+
+
+* Create a share using `mount_point_name`.
+
+  When `mount_point_name_support` is enabled by your administrator, you
+  can specify a custom mount point name during share creation. This name
+  will be used in conjunction with the prefix set by the administrator
+  to form the share's export location.
+
+  The general workflow for using `mount_point_name`:
+
+  - ``Creating a new share``: Specify a custom `mount_point_name` using the
+    `--mount-point-name` flag. The `mount_point_name` should not exceed 255
+    characters in length.
+
+  .. code-block:: bash
+
+     openstack share create NFS 1 --share-type gold_provisioning_prefix \
+     --name MyShare --mount-point-name mount_abc1 \
+     --share-network 19d78275-55cb-4684-81f2-ec9c07701563
+
+    +---------------------------------------+--------------------------------------+
+    | Field                                 | Value                                |
+    +=======================================+======================================+
+    | access_rules_status                   | active                               |
+    +---------------------------------------+--------------------------------------+
+    | availability_zone                     | None                                 |
+    +---------------------------------------+--------------------------------------+
+    | create_share_from_snapshot_support    | False                                |
+    +---------------------------------------+--------------------------------------+
+    | created_at                            | 2024-03-20T20:32:50.819345           |
+    +---------------------------------------+--------------------------------------+
+    | description                           | None                                 |
+    +---------------------------------------+--------------------------------------+
+    | has_replicas                          | False                                |
+    +---------------------------------------+--------------------------------------+
+    | host                                  |                                      |
+    +---------------------------------------+--------------------------------------+
+    | id                                    | 138a6884-7a9b-4d9a-9ac1-f565701a4b83 |
+    +---------------------------------------+--------------------------------------+
+    | is_public                             | False                                |
+    +---------------------------------------+--------------------------------------+
+    | is_soft_deleted                       | False                                |
+    +---------------------------------------+--------------------------------------+
+    | metadata                              | {}                                   |
+    +---------------------------------------+--------------------------------------+
+    | mount_snapshot_support                | False                                |
+    +---------------------------------------+--------------------------------------+
+    | name                                  | MyShare                              |
+    +---------------------------------------+--------------------------------------+
+    | progress                              | None                                 |
+    +---------------------------------------+--------------------------------------+
+    | project_id                            | 44754d5c4aea4c8c8d619bb6b4ebeb17     |
+    +---------------------------------------+--------------------------------------+
+    | replication_type                      | None                                 |
+    +---------------------------------------+--------------------------------------+
+    | revert_to_snapshot_support            | False                                |
+    +---------------------------------------+--------------------------------------+
+    | scheduled_to_be_deleted_at            | None                                 |
+    +---------------------------------------+--------------------------------------+
+    | share_group_id                        | None                                 |
+    +---------------------------------------+--------------------------------------+
+    | share_network_id                      | 19d78275-55cb-4684-81f2-ec9c07701563 |
+    +---------------------------------------+--------------------------------------+
+    | share_proto                           | NFS                                  |
+    +---------------------------------------+--------------------------------------+
+    | share_server_id                       | None                                 |
+    +---------------------------------------+--------------------------------------+
+    | share_type                            | ee1995d8-6827-4711-a58d-38ee00f24a75 |
+    +---------------------------------------+--------------------------------------+
+    | share_type_name                       | gold_provisioning_prefix             |
+    +---------------------------------------+--------------------------------------+
+    | size                                  | 1                                    |
+    +---------------------------------------+--------------------------------------+
+    | snapshot_id                           | None                                 |
+    +---------------------------------------+--------------------------------------+
+    | snapshot_support                      | False                                |
+    +---------------------------------------+--------------------------------------+
+    | source_backup_id                      | None                                 |
+    +---------------------------------------+--------------------------------------+
+    | source_share_group_snapshot_member_id | None                                 |
+    +---------------------------------------+--------------------------------------+
+    | status                                | creating                             |
+    +---------------------------------------+--------------------------------------+
+    | task_state                            | None                                 |
+    +---------------------------------------+--------------------------------------+
+    | user_id                               | fbdba3d017b2484f9773033e3fc0c6ae     |
+    +---------------------------------------+--------------------------------------+
+    | volume_type                           | gold_provisioning_prefix             |
+    +---------------------------------------+--------------------------------------+
+
+* To view the details of a share created with custom mount_point_name.
+
+  .. code-block:: console
+
+     $ openstack share show 138a6884-7a9b-4d9a-9ac1-f565701a4b83
+
+    +---------------------------------------+-------------------------------------------------------------------------+
+    | Field                                 | Value                                                                   |
+    +---------------------------------------+-------------------------------------------------------------------------+
+    | access_rules_status                   | active                                                                  |
+    | availability_zone                     | nova                                                                    |
+    | create_share_from_snapshot_support    | False                                                                   |
+    | created_at                            | 2024-03-20T20:32:50.819345                                              |
+    | description                           | None                                                                    |
+    | export_locations                      |                                                                         |
+    |                                       | id = 1f5d8a51-965e-4062-a1e1-03ca146ad277                               |
+    |                                       | path = <ip>:/gold_mount_abc1                                            |
+    |                                       | preferred = True                                                        |
+    |                                       | share_instance_id = 62a4d622-a3c8-4915-adca-54a7fe5789bf                |
+    |                                       | is_admin_only = False                                                   |
+    |                                       | id = ea7c936a-d94b-47bd-8a35-4b2f1f7b5e5a                               |
+    |                                       | path = <ip>:/gold_mount_abc1                                            |
+    |                                       | preferred = False                                                       |
+    |                                       | share_instance_id = 62a4d622-a3c8-4915-adca-54a7fe5789bf                |
+    |                                       | is_admin_only = False                                                   |
+    | has_replicas                          | False                                                                   |
+    | host                                  | host@share_server_dhss_true#AstraInfra                                  |
+    | id                                    | 138a6884-7a9b-4d9a-9ac1-f565701a4b83                                    |
+    | is_public                             | False                                                                   |
+    | is_soft_deleted                       | False                                                                   |
+    | mount_snapshot_support                | False                                                                   |
+    | name                                  | MyShare                                                                 |
+    | progress                              | 100%                                                                    |
+    | project_id                            | 44754d5c4aea4c8c8d619bb6b4ebeb17                                        |
+    | properties                            |                                                                         |
+    | replication_type                      | None                                                                    |
+    | revert_to_snapshot_support            | False                                                                   |
+    | scheduled_to_be_deleted_at            | None                                                                    |
+    | share_group_id                        | None                                                                    |
+    | share_network_id                      | 19d78275-55cb-4684-81f2-ec9c07701563                                    |
+    | share_proto                           | NFS                                                                     |
+    +---------------------------------------+-------------------------------------------------------------------------+
+
 
 Grant and revoke share access
 -----------------------------

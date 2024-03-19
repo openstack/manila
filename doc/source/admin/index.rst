@@ -62,6 +62,7 @@ deployment.
    shared-file-systems-upgrades.rst
    shared-file-systems-share-revert-to-snapshot.rst
    shared-file-systems-share-server-migration.rst
+   share_mount_point_name.rst
    share_back_ends_feature_support_mapping
    capabilities_and_extra_specs
    group_capabilities_and_extra_specs
