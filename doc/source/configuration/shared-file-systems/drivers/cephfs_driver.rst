@@ -314,6 +314,13 @@ Finally, edit ``cephfs_filesystem_name`` with the name of the Ceph filesystem
 If you have more than one Ceph filesystem in the cluster, you need to set this
 option.
 
+.. important::
+  For Native CephFS shares, the backing ``cephfs_filesystem_name`` is visible
+  to end users through the ``__mount_options`` metadata. Make sure to add
+  the ``__mount_options`` metadata key to the list of admin only modifiable
+  metadata keys (``admin_only_metadata``), as explained in the
+  :ref:`additional configuration options page <manila-common>`.
+
 
 .. code-block:: ini
 
@@ -535,6 +542,10 @@ Allow a guest access to the share using ``ip`` access type.
 
 Mounting CephFS shares
 ~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+  The cephfs filesystem name will be available in the ``__mount_options``
+  share's metadata.
 
 Mounting CephFS native share using FUSE client
 ----------------------------------------------
