@@ -126,3 +126,5 @@
      - (List) Check the presence of a file based on a port to determine if an application is running on a port. Expects a "port:path" list of strings. Used by DisableByFilesPortsHealthcheck plugin.
    * - ``path`` = ``/healthcheck``
      - (String) DEPRECATED: The path to respond to healtcheck requests on.
+   * - ``admin_only_metadata`` = ``__affinity_same_host,__affinity_different_host``
+     - (List) The affinity keys are default to ensure backwards compatibility. Update the list with metadata items that should only be manipulated by people allowed by the "update_admin_only_metadata" policy.
