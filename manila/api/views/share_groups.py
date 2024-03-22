@@ -20,6 +20,7 @@ class ShareGroupViewBuilder(common.ViewBuilder):
     """Model a share group API response as a python dictionary."""
 
     _collection_name = 'share_groups'
+    _collection_route_name = "share-groups"
     _detail_version_modifiers = [
         "add_consistent_snapshot_support_and_az_id_fields_to_sg",
     ]

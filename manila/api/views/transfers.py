@@ -20,6 +20,7 @@ class ViewBuilder(common.ViewBuilder):
     """Model transfer API responses as a python dictionary."""
 
     _collection_name = "share-transfer"
+    _collection_route_name = "share-transfers"
 
     def __init__(self):
         """Initialize view builder."""

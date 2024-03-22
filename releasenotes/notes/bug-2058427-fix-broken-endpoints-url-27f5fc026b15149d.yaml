@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Launchpad `bug 2058427 <https://bugs.launchpad.net/manila/+bug/2058427>`_
+    has been fixed for pagination links with incorrect endpoint names.
+

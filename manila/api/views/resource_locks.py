@@ -18,6 +18,7 @@ class ViewBuilder(common.ViewBuilder):
     """Model a resource lock API response as a python dictionary."""
 
     _collection_name = "resource_locks"
+    _collection_route_name = "resource-locks"
 
     def index(self, request, resource_locks, count=None):
         """Show a list of resource locks."""

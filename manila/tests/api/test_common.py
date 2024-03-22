@@ -511,3 +511,11 @@ class ViewBuilderTest(test.TestCase):
         actual_resource = self.view_builder.view(req, self.fake_resource)
 
         self.assertEqual(expected_keys, set(actual_resource.keys()))
+
+    def test__collection_name(self):
+        self.assertEqual('fake_resource',
+                         self.view_builder._collection_name)
+
+    def test__collection_route_name(self):
+        self.assertEqual('fake-route-name',
+                         self.view_builder._collection_route_name)
