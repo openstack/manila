@@ -65,6 +65,9 @@ The following operations are supported on Clustered Data ONTAP:
 - Update a replicated snapshot (DHSS=False)
 - Migrate share
 - Migrate share server
+- Create share backup
+- Restore share backup
+- Delete share backup
 
 .. note::
 
@@ -128,6 +131,51 @@ Known restrictions
 - The time on external security services and storage must be synchronized. The
   maximum allowed clock skew is 5 minutes.
 - cDOT supports only flat and VLAN network segmentation types.
+
+How to take backup for NetApp shares
+------------------------------------
+
+Starting from 2024.1, a concept named ``backup_type`` has been introduced. At
+present, it has been implemented for NetApp driver. The ``backup_type`` is a
+construct which consists of backup specific configuration parameters such
+as ``backup_type_name``,
+``netapp_backup_backend_section_name``, ``netapp_backup_vserver``,
+``netapp_backup_share``, ``netapp_snapmirror_job_timeout``.
+
+
+.. note::
+   The sample config will look like this:
+   ``eng_data_backup`` is the backup_type here.::
+
+       [eng_data_backup]
+       netapp_backup_backend_section_name = ontap2
+       netapp_backup_vserver = backup_vserver_name
+       netapp_backup_volume = backup_volume_name_inside_vserver
+       netapp_snapmirror_job_timeout = 180
+
+       [nas_storage]
+       vendor_name = NetApp
+       share_driver = manila.share.drivers.netapp.common.NetAppDriver
+       driver_handles_share_servers = False
+       netapp_login = admin
+       ....
+       ....
+       enabled_backup_types = eng_data_backup
+
+
+   If the option ``netapp_backup_volume`` is not specified, the backup
+   volume (destination volume) would be created automatically by the driver
+   inside the vserver.
+
+   The options "netapp_backup_vserver" and "netapp_backup_volume" are optional
+   and it works as below:
+
+   In case of "driver_handles_share_servers=true", "netapp_backup_vserver" and
+   "netapp_backup_volume" will be created by driver on "backend" mentioned
+   under backup type stanza.
+   In case of "driver_handles_share_servers=false", it will use the existing
+   vserver of the "backend" mentioned under backup type stanza and will create
+   the new volume.
 
 The :mod:`manila.share.drivers.netapp.common.py` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

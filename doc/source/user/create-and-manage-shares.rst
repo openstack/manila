@@ -1130,3 +1130,90 @@ Resource locks
   .. code-block:: console
 
     $ openstack share lock delete dc7ec691-a505-47d0-b2ec-8eb7fb9270e4
+
+Share backups
+-------------
+
+* Create backup
+
+  .. code-block:: console
+
+     $ openstack share backup create --name test5 --backup-options backup_type=eng_data_backup source_share
+     +-------------------+--------------------------------------+
+     | Field             | Value                                |
+     +-------------------+--------------------------------------+
+     | availability_zone | manila-zone-0                        |
+     | backup_type       | backup_type1                         |
+     | created_at        | 2024-03-11T18:15:32.183982           |
+     | description       | None                                 |
+     | host              | vm.openstack.opendev.com@nas_storage |
+     | id                | 4b468327-d03f-4df7-97ef-c5230b5beafc |
+     | name              | test5                                |
+     | progress          | 0                                    |
+     | restore_progress  | 0                                    |
+     | share_id          | 983c6dd5-ef93-4c73-9359-ef02fe3bbce7 |
+     | size              | 1                                    |
+     | status            | creating                             |
+     | topic             | None                                 |
+     | updated_at        | None                                 |
+     +-------------------+--------------------------------------+
+
+* List backups
+
+  .. code-block:: console
+
+     $ openstack share backup list
+     +--------------------------------------+-------+--------------------------------------+-----------+
+     | ID                                   | Name  | Share ID                             | Status    |
+     +--------------------------------------+-------+--------------------------------------+-----------+
+     | 4b468327-d03f-4df7-97ef-c5230b5beafc | test5 | 983c6dd5-ef93-4c73-9359-ef02fe3bbce7 | creating  |
+     | 8a9b3ce0-23bb-4923-b8ce-d0dd1f56b2b8 | test4 | 983c6dd5-ef93-4c73-9359-ef02fe3bbce7 | available |
+     +--------------------------------------+-------+--------------------------------------+-----------+
+
+     $ openstack share backup show test5
+     +-------------------+------------------------------------------------+
+     | Field             | Value                                          |
+     +-------------------+------------------------------------------------+
+     | availability_zone | manila-zone-0                                  |
+     | backup_type       | backup_type1                                   |
+     | created_at        | 2024-03-11T18:15:32.000000                     |
+     | description       | None                                           |
+     | host              | scs000215254-1.nb.openenglab.netapp.com@ontap1 |
+     | id                | 4b468327-d03f-4df7-97ef-c5230b5beafc           |
+     | name              | test5                                          |
+     | progress          | 0                                              |
+     | restore_progress  | 0                                              |
+     | share_id          | 983c6dd5-ef93-4c73-9359-ef02fe3bbce7           |
+     | size              | 1                                              |
+     | status            | creating                                       |
+     | topic             | manila-share                                   |
+     | updated_at        | 2024-03-11T18:15:32.000000                     |
+     +-------------------+------------------------------------------------+
+
+     $ openstack share backup list
+     +--------------------------------------+-------+--------------------------------------+-----------+
+     | ID                                   | Name  | Share ID                             | Status    |
+     +--------------------------------------+-------+--------------------------------------+-----------+
+     | 4b468327-d03f-4df7-97ef-c5230b5beafc | test5 | 983c6dd5-ef93-4c73-9359-ef02fe3bbce7 | available |
+     | 8a9b3ce0-23bb-4923-b8ce-d0dd1f56b2b8 | test4 | 983c6dd5-ef93-4c73-9359-ef02fe3bbce7 | available |
+     +--------------------------------------+-------+--------------------------------------+-----------+
+
+* Restore backup
+
+  .. code-block:: console
+
+     $ openstack share backup restore test4
+
+     $ openstack share backup list
+     +--------------------------------------+-------+--------------------------------------+-----------+
+     | ID                                   | Name  | Share ID                             | Status    |
+     +--------------------------------------+-------+--------------------------------------+-----------+
+     | 4b468327-d03f-4df7-97ef-c5230b5beafc | test5 | 983c6dd5-ef93-4c73-9359-ef02fe3bbce7 | available |
+     | 8a9b3ce0-23bb-4923-b8ce-d0dd1f56b2b8 | test4 | 983c6dd5-ef93-4c73-9359-ef02fe3bbce7 | restoring |
+     +--------------------------------------+-------+--------------------------------------+-----------+
+
+* Delete backup
+
+  .. code-block:: console
+
+     $ openstack share backup delete test5
