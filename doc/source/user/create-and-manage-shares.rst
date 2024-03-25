@@ -1057,6 +1057,58 @@ Share Transfer
      | expires_at             | 2023-05-25T14:42:11.176049           |
      +------------------------+--------------------------------------+
 
+Snapshot metadata
+-----------------
+
+* Set metadata items on your share snapshot during creation
+
+  .. code-block:: console
+
+     $ openstack share snapshot create myshare --name mysnapshot \
+        --property key1=value1 --property key2=value2
+    +-------------------+--------------------------------------+
+    | Field             | Value                                |
+    +-------------------+--------------------------------------+
+    | created_at        | 2024-03-25T15:39:52.555692           |
+    | description       | None                                 |
+    | id                | 00a82c82-cb49-414b-a334-c1a1e9b360d5 |
+    | metadata          | {'key1': 'value1', 'key2': 'value2'} |
+    | name              | mysnapshot                           |
+    | project_id        | df63c20d921f48d8802083fdb858fd3e     |
+    | provider_location | None                                 |
+    | share_id          | 6c4d785b-9034-400b-95de-3d4f06280b31 |
+    | share_proto       | NFS                                  |
+    | share_size        | 1                                    |
+    | size              | 1                                    |
+    | status            | creating                             |
+    | user_id           | b3369f53dadd40499d797a9a4ee9326b     |
+    +-------------------+--------------------------------------+
+
+* Set metadata items on your share snapshot
+
+  .. code-block:: console
+
+     $ openstack share snapshot set mysnapshot --property key1=value
+
+
+* Query snapshot list with metadata
+
+  .. code-block:: console
+
+     $ openstack share snapshot list --property key1=value1
+     +--------------------------------------+------------+
+     | ID                                   | Name       |
+     +--------------------------------------+------------+
+     | 83b0772b-00ad-4e45-8fad-106b9d4f1719 | mysnapshot |
+     +--------------------------------------+------------+
+
+* Unset snapshot metadata
+
+  .. code-block:: console
+
+     $ openstack share snapshot unset mysnapshot --property key1
+
+
 Resource locks
 --------------
 
