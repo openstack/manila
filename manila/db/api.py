@@ -772,10 +772,11 @@ def share_snapshot_access_get(context, access_id):
 
 
 def share_snapshot_access_get_all_for_snapshot_instance(
-        context, snapshot_instance_id, session=None):
+    context, snapshot_instance_id,
+):
     """Get all access rules related to a certain snapshot instance."""
     return IMPL.share_snapshot_access_get_all_for_snapshot_instance(
-        context, snapshot_instance_id, session)
+        context, snapshot_instance_id)
 
 
 def share_snapshot_access_get_all_for_share_snapshot(context,

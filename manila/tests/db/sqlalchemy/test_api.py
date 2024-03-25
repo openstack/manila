@@ -1998,12 +1998,11 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
     def test_share_snapshot_instance_access_get_all(self):
         access = db_utils.create_snapshot_access(
             share_snapshot_id=self.snapshot_1['id'])
-        session = db_api.get_session()
         values = {'share_snapshot_instance_id': self.snapshot_instances[0].id,
                   'access_id': access['id']}
 
         rules = db_api.share_snapshot_instance_access_get_all(
-            self.ctxt, access['id'], session)
+            self.ctxt, access['id'])
 
         self.assertSubDictMatch(values, rules[0].to_dict())
 
