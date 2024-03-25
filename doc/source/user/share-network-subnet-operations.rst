@@ -126,3 +126,49 @@ Delete a share network subnet
       | description           | Share Network created for demo purposes |
       | share_network_subnets | []                                      |
       +-----------------------+-----------------------------------------+
+
+Share network subnet metadata
+-----------------------------
+
+* Set metadata items on your share network subnet during creation
+
+  .. code-block:: console
+
+     $ openstack share network subnet create sharenetwork1 \
+        --property key1=value1 --property key2=value2
+    +--------------------+--------------------------------------+
+    | Field              | Value                                |
+    +--------------------+--------------------------------------+
+    | availability_zone  | None                                 |
+    | cidr               | None                                 |
+    | created_at         | 2024-03-28T15:22:53.291721           |
+    | gateway            | None                                 |
+    | id                 | 9ab933ef-f0cd-409e-8b6b-c3d34073ac44 |
+    | ip_version         | None                                 |
+    | metadata           | {'key1': 'value1', 'key2': 'value2'} |
+    | mtu                | None                                 |
+    | network_type       | None                                 |
+    | neutron_net_id     | None                                 |
+    | neutron_subnet_id  | None                                 |
+    | segmentation_id    | None                                 |
+    | share_network_id   | 35f44d3c-8888-429e-b8c7-8a29dead6e5b |
+    | share_network_name | sharenetwork1                        |
+    | updated_at         | None                                 |
+    +--------------------+--------------------------------------+
+
+
+* Set metadata items on your share network subnet
+
+  .. code-block:: console
+
+     $ openstack share network subnet set sharenetwork1 \
+        be3ae5ad-a22c-494f-840e-5e3526e34e0f --property key1=value1 \
+        --property key2=value2
+
+
+* Unset share network subnet metadata
+
+  .. code-block:: console
+
+     $ openstack share network subnet unset sharenetwork1 \
+        be3ae5ad-a22c-494f-840e-5e3526e34e0f --property key1
