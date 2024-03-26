@@ -17,8 +17,8 @@ import base64
 import copy
 import requests
 import time
-from xml.etree import ElementTree as ET
 
+from defusedxml import ElementTree as ET
 from oslo_log import log
 from oslo_serialization import jsonutils
 

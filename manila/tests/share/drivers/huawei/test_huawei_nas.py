@@ -25,8 +25,8 @@ from unittest import mock
 import xml.dom.minidom
 
 import ddt
+from defusedxml import ElementTree as ET
 from oslo_serialization import jsonutils
-from xml.etree import ElementTree as ET
 
 from manila.common import constants as common_constants
 from manila import context
