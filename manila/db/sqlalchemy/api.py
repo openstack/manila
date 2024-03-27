@@ -1901,7 +1901,7 @@ def _update_share_instance_usages(context, share, instance_ref,
 
 
 @require_context
-@context_manager.writer.independent
+@context_manager.writer
 def share_instance_delete(context, instance_id, need_to_update_usages=False):
     _share_instance_delete(
         context, instance_id,
@@ -2005,7 +2005,7 @@ def share_instance_get_all_by_share_network(context, share_network_id):
 
 
 @require_context
-@context_manager.reader.independent
+@context_manager.reader
 def share_instance_get_all_by_share_server(context, share_server_id,
                                            with_share_data=False):
     """Returns list of share instance with given share server."""
@@ -2176,7 +2176,7 @@ def share_replica_update(context, share_replica_id, values,
 
 
 @require_context
-@context_manager.writer.independent
+@context_manager.writer
 def share_replica_delete(
     context, replica_id, need_to_update_usages=True,
 ):
@@ -2465,7 +2465,7 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
 
 
 @require_admin_context
-@context_manager.reader.independent
+@context_manager.reader
 def share_get_all_expired(context):
     query = model_query(
         context, models.Share,
@@ -2532,7 +2532,7 @@ def share_get_all_by_project_with_count(
 
 
 @require_context
-@context_manager.reader.independent
+@context_manager.reader
 def share_get_all_by_share_group_id(context, share_group_id,
                                     filters=None, sort_key=None,
                                     sort_dir=None):
@@ -2544,7 +2544,7 @@ def share_get_all_by_share_group_id(context, share_group_id,
 
 
 @require_context
-@context_manager.reader.independent
+@context_manager.reader
 def share_get_all_by_share_group_id_with_count(context, share_group_id,
                                                filters=None, sort_key=None,
                                                sort_dir=None):
@@ -2556,7 +2556,7 @@ def share_get_all_by_share_group_id_with_count(context, share_group_id,
 
 
 @require_context
-@context_manager.reader.independent
+@context_manager.reader
 def share_get_all_by_share_server(context, share_server_id, filters=None,
                                   sort_key=None, sort_dir=None):
     """Returns list of shares with given share server."""
@@ -2567,7 +2567,7 @@ def share_get_all_by_share_server(context, share_server_id, filters=None,
 
 
 @require_context
-@context_manager.reader.independent
+@context_manager.reader
 def share_get_all_soft_deleted(
         context, share_server_id, filters=None, sort_key=None, sort_dir=None):
     """Returns list of shares in recycle bin with given share server."""
@@ -2581,7 +2581,7 @@ def share_get_all_soft_deleted(
 
 
 @require_context
-@context_manager.reader.independent
+@context_manager.reader
 def share_get_all_by_share_server_with_count(
         context, share_server_id, filters=None, sort_key=None, sort_dir=None):
     """Returns list of shares with given share server."""
@@ -2592,7 +2592,7 @@ def share_get_all_by_share_server_with_count(
 
 
 @require_context
-@context_manager.reader.independent
+@context_manager.reader
 def share_get_all_soft_deleted_by_network(
         context, share_network_id, filters=None, sort_key=None, sort_dir=None):
     """Returns list of shares in recycle bin with given share network."""
