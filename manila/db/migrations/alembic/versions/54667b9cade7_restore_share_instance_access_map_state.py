@@ -66,11 +66,12 @@ def upgrade():
     )
 
     for instance in connection.execute(instances_query):
-        access_rule_status = instance['access_rules_status']
+        access_rule_status = instance._mapping['access_rules_status']
         # pylint: disable=no-value-for-parameter
         op.execute(
             instance_access_map_table.update().where(
-                instance_access_map_table.c.share_instance_id == instance['id']
+                instance_access_map_table.c.share_instance_id ==
+                instance._mapping['id']
             ).values({
                 'state': access_rules_status_to_state_mapping[
                     access_rule_status],
@@ -78,7 +79,7 @@ def upgrade():
         )
         op.execute(
             share_instances_table.update().where(
-                share_instances_table.c.id == instance['id']
+                share_instances_table.c.id == instance._mapping['id']
             ).values({
                 'access_rules_status': access_rules_status_upgrade_mapping[
                     access_rule_status],

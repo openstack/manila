@@ -17,5 +17,4 @@ import sqlalchemy as sa
 
 
 def load_table(name, connection):
-    return sa.Table(name, sa.MetaData(), autoload=True,
-                    autoload_with=connection)
+    return sa.Table(name, sa.MetaData(), autoload_with=connection)

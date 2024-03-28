@@ -111,18 +111,19 @@ def upgrade():
                                                 connection)
     for alloc in connection.execute(network_allocation_table.select()):
         # admin allocations should not contain subnet id.
-        if alloc['label'] == 'admin':
+        if alloc._mapping['label'] == 'admin':
             continue
 
         server = connection.execute(
             share_servers_table.select().where(
-                alloc['share_server_id'] == (
+                alloc._mapping['share_server_id'] == (
                     share_servers_table.c.id))).first()
 
         # pylint: disable=no-value-for-parameter
         op.execute(network_allocation_table.update().where(
-            alloc['id'] == network_allocation_table.c.id).values(
-            {'share_network_subnet_id': server['share_network_subnet_id']}))
+            alloc._mapping['id'] == network_allocation_table.c.id).values(
+            {'share_network_subnet_id':
+             server._mapping['share_network_subnet_id']}))
 
     # add a new column to share_servers.
     try:
@@ -173,27 +174,30 @@ def downgrade():
             SHARE_SERVER_SUBNET_MAP_TABLE, connection)
         share_servers_table = utils.load_table(SHARE_SERVERS_TABLE,
                                                connection)
-        session = sa.orm.Session(bind=connection.connect())
-        for server in connection.execute(share_servers_table.select()):
-            subnets = session.query(
-                server_subnet_mappings_table).filter(
-                    server['id'] == (
-                        server_subnet_mappings_table.c.share_server_id)).all()
 
-            if server['deleted'] != 'False' and len(subnets) > 1:
-                LOG.warning('Share server %s is not deleted and it '
-                            'has more than one subnet (%s subnets), '
-                            'the downgrade may cause an inconsistent '
-                            'environment.', server['id'], len(subnets))
+        with sa.orm.Session(bind=op.get_bind()) as session:
+            for server in connection.execute(share_servers_table.select()):
+                subnets = session.query(
+                    server_subnet_mappings_table).filter(
+                        server._mapping['id'] == (
+                            server_subnet_mappings_table.c.share_server_id)
+                        ).all()
 
-            subnet_id = subnets[0].share_network_subnet_id if subnets else None
+                if server._mapping['deleted'] != 'False' and len(subnets) > 1:
+                    LOG.warning('Share server %s is not deleted and it '
+                                'has more than one subnet (%s subnets), '
+                                'the downgrade may cause an inconsistent '
+                                'environment.',
+                                server._mapping['id'], len(subnets))
 
-            # pylint: disable=no-value-for-parameter
-            op.execute(share_servers_table.update().where(
-                server['id'] == share_servers_table.c.id).values(
-                {'share_network_subnet_id': subnet_id}))
+                subnet_id = (
+                    subnets[0].share_network_subnet_id if subnets else None
+                )
 
-        session.close_all()
+                # pylint: disable=no-value-for-parameter
+                op.execute(share_servers_table.update().where(
+                    server._mapping['id'] == share_servers_table.c.id).values(
+                    {'share_network_subnet_id': subnet_id}))
 
     except Exception:
         LOG.error("'share_network_subnet_id' field in the %s table could not "

@@ -96,14 +96,15 @@ def downgrade():
     for access_rule in share_access_rules:
         access_mapping = connection.execute(
             instance_access_table.select().where(
-                instance_access_table.c.access_id == access_rule['id'])
+                instance_access_table.c.access_id ==
+                access_rule._mapping['id'])
         ).first()
 
         # pylint: disable=no-value-for-parameter
         op.execute(
             access_table.update().where(
-                access_table.c.id == access_rule['id']
-            ).values({'state': access_mapping['state']})
+                access_table.c.id == access_rule._mapping['id']
+            ).values({'state': access_mapping._mapping['state']})
         )
 
     op.drop_table('share_instance_access_map')
