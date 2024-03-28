@@ -189,13 +189,6 @@ class WarningsFixture(fixtures.Fixture):
         warnings.filterwarnings(
             'ignore',
             module='manila',
-            message='The current statement is being autocommitted ',
-            category=sqla_exc.SADeprecationWarning,
-        )
-
-        warnings.filterwarnings(
-            'ignore',
-            module='manila',
             message='The autoload parameter is deprecated ',
             category=sqla_exc.SADeprecationWarning,
         )
