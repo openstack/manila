@@ -997,24 +997,22 @@ def export_locations_update(
 
 ####################
 
-def export_location_metadata_get(context, export_location_uuid, session=None):
+def export_location_metadata_get(context, export_location_uuid):
     """Get all metadata of an export location."""
-    return IMPL.export_location_metadata_get(
-        context, export_location_uuid, session=session)
+    return IMPL.export_location_metadata_get(context, export_location_uuid)
 
 
-def export_location_metadata_delete(context, export_location_uuid, keys,
-                                    session=None):
+def export_location_metadata_delete(context, export_location_uuid, keys):
     """Delete metadata of an export location."""
     return IMPL.export_location_metadata_delete(
-        context, export_location_uuid, keys, session=session)
+        context, export_location_uuid, keys)
 
 
 def export_location_metadata_update(context, export_location_uuid, metadata,
-                                    delete, session=None):
+                                    delete):
     """Update metadata of an export location."""
     return IMPL.export_location_metadata_update(
-        context, export_location_uuid, metadata, delete, session=session)
+        context, export_location_uuid, metadata, delete)
 
 ####################
 
