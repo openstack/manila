@@ -22,11 +22,7 @@ import re
 import ssl
 from urllib import parse as urlparse
 
-try:
-    import xml.etree.cElementTree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
-
+from defusedxml import ElementTree as ET
 from oslo_log import log as logging
 
 from manila import exception
@@ -83,7 +79,7 @@ class QnapAPIExecutor(object):
     def _prepare_connection(self, isSSL, ip, port):
         if isSSL:
             if hasattr(ssl, '_create_unverified_context'):
-                context = ssl._create_unverified_context()
+                context = ssl._create_unverified_context()  # nosec B314
                 connection = http_client.HTTPSConnection(ip,
                                                          port=port,
                                                          context=context)
