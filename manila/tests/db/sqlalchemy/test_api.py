@@ -2908,12 +2908,13 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
                                                   self.share_nw_dict['id'],
                                                   security_dict1['id'])
 
-        result = (db_api.model_query(
-                  self.fake_context,
-                  models.ShareNetworkSecurityServiceAssociation).
-                  filter_by(security_service_id=security_dict1['id']).
-                  filter_by(share_network_id=self.share_nw_dict['id']).
-                  first())
+        with db_api.context_manager.reader.using(self.fake_context):
+            result = (db_api.model_query(
+                      self.fake_context,
+                      models.ShareNetworkSecurityServiceAssociation).
+                      filter_by(security_service_id=security_dict1['id']).
+                      filter_by(share_network_id=self.share_nw_dict['id']).
+                      first())
 
         self.assertIsNotNone(result)
 
@@ -2973,11 +2974,13 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
                                                      self.share_nw_dict['id'],
                                                      security_dict1['id'])
 
-        result = (db_api.model_query(
-                  self.fake_context,
-                  models.ShareNetworkSecurityServiceAssociation).
-                  filter_by(security_service_id=security_dict1['id']).
-                  filter_by(share_network_id=self.share_nw_dict['id']).first())
+        with db_api.context_manager.reader.using(self.fake_context):
+            result = (db_api.model_query(
+                      self.fake_context,
+                      models.ShareNetworkSecurityServiceAssociation).
+                      filter_by(security_service_id=security_dict1['id']).
+                      filter_by(share_network_id=self.share_nw_dict['id']).
+                      first())
 
         self.assertIsNone(result)
 
@@ -4330,7 +4333,8 @@ class PurgeDeletedTest(test.TestCase):
                           models.ShareNetwork, models.ShareAccessMapping,
                           models.ShareInstance, models.ShareServer,
                           models.ShareSnapshot, models.SecurityService]:
-                rows = db_api.model_query(self.context, model).count()
+                with db_api.context_manager.reader.using(self.context):
+                    rows = db_api.model_query(self.context, model).count()
                 self.assertEqual(num_left, rows)
 
     def test_purge_records_with_illegal_args(self):
@@ -4354,17 +4358,22 @@ class PurgeDeletedTest(test.TestCase):
         share = db_utils.create_share(share_type_id=type_id)
 
         db_api.purge_deleted_records(self.context, age_in_days=0)
-        type_row = db_api.model_query(self.context,
-                                      models.ShareTypes).count()
+        with db_api.context_manager.reader.using(self.context):
+            type_row = db_api.model_query(
+                self.context, models.ShareTypes
+            ).count()
         # share type1 should not be deleted
         self.assertEqual(1, type_row)
-        db_api.model_query(self.context, models.ShareInstance).delete()
+        with db_api.context_manager.writer.using(self.context):
+            db_api.model_query(self.context, models.ShareInstance).delete()
         db_api.share_delete(self.context, share['id'])
 
         db_api.purge_deleted_records(self.context, age_in_days=0)
-        s_row = db_api.model_query(self.context, models.Share).count()
-        type_row = db_api.model_query(self.context,
-                                      models.ShareTypes).count()
+        with db_api.context_manager.reader.using(self.context):
+            s_row = db_api.model_query(self.context, models.Share).count()
+            type_row = db_api.model_query(
+                self.context, models.ShareTypes
+            ).count()
         self.assertEqual(0, s_row + type_row)
 
 
@@ -4945,9 +4954,14 @@ class ShareResourcesAPITestCase(test.TestCase):
             self.context, filters={'share_id': share_id})
         share_groups = db_api.share_group_get_all(
             self.context, filters={'share_network_id': share_network_id})
-        share_servers = db_api._share_server_get_query(self.context).filter(
-            models.ShareServer.share_network_subnets.any(
-                id=share_net_subnets[0]['id'])).all()
+        with db_api.context_manager.reader.using(self.context):
+            share_servers = db_api._share_server_get_query(
+                self.context
+            ).filter(
+                models.ShareServer.share_network_subnets.any(
+                    id=share_net_subnets[0]['id']
+                )
+            ).all()
         self.assertEqual(3, len(share_instances))
         self.assertEqual(3, len(share_groups))
         self.assertEqual(3, len(share_servers))
@@ -5037,9 +5051,14 @@ class ShareResourcesAPITestCase(test.TestCase):
             self.context, filters={'share_id': share_id})
         share_groups = db_api.share_group_get_all(
             self.context, filters={'share_network_id': share_network_id})
-        share_servers = db_api._share_server_get_query(self.context).filter(
-            models.ShareServer.share_network_subnets.any(
-                id=share_net_subnets[0]['id'])).all()
+        with db_api.context_manager.reader.using(self.context):
+            share_servers = db_api._share_server_get_query(
+                self.context
+            ).filter(
+                models.ShareServer.share_network_subnets.any(
+                    id=share_net_subnets[0]['id']
+                )
+            ).all()
 
         updated_resources = [
             res for res in share_instances + share_groups + share_servers
@@ -5417,9 +5436,11 @@ class TransfersTestCase(test.TestCase):
         db_api.transfer_accept(new_ctxt.elevated(), transfer_id,
                                'new_user_id', 'new_project_id')
 
-        transfer = db_api.model_query(
-            new_ctxt.elevated(), models.Transfer,
-            read_deleted='yes').filter_by(id=transfer_id).first()
+        admin_context = new_ctxt.elevated()
+        with db_api.context_manager.reader.using(admin_context):
+            transfer = db_api.model_query(
+                admin_context, models.Transfer, read_deleted='yes',
+            ).filter_by(id=transfer_id).first()
         share = db_api.share_get(new_ctxt.elevated(), share['id'])
 
         self.assertEqual(share['project_id'], 'new_project_id')
@@ -5430,9 +5451,10 @@ class TransfersTestCase(test.TestCase):
         # then test rollback the transfer
         db_api.transfer_accept_rollback(new_ctxt.elevated(), transfer_id,
                                         self.user_id, self.project_id)
-        transfer = db_api.model_query(
-            new_ctxt.elevated(),
-            models.Transfer).filter_by(id=transfer_id).first()
+        with db_api.context_manager.reader.using(admin_context):
+            transfer = db_api.model_query(
+                admin_context, models.Transfer,
+            ).filter_by(id=transfer_id).first()
         share = db_api.share_get(new_ctxt.elevated(), share['id'])
 
         self.assertEqual(share['project_id'], self.project_id)
@@ -5578,10 +5600,11 @@ class ResourceLocksTestCase(test.TestCase):
         return_value = db_api.resource_lock_delete(self.ctxt, lock['id'])
 
         self.assertIsNone(return_value)
-        self.assertRaises(exception.ResourceLockNotFound,
-                          db_api._resource_lock_get,
-                          self.ctxt,
-                          lock_get['id'])
+        with db_api.context_manager.reader.using(self.ctxt):
+            self.assertRaises(exception.ResourceLockNotFound,
+                              db_api._resource_lock_get,
+                              self.ctxt,
+                              lock_get['id'])
 
     def test_resource_lock_get_invalid(self):
         self.assertRaises(exception.ResourceLockNotFound,
