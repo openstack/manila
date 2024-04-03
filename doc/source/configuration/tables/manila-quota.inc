@@ -16,27 +16,37 @@
 
    * - Configuration option = Default value
      - Description
-   * - **[DEFAULT]**
+   * - **[quota]**
      -
    * - ``max_age`` = ``0``
      - (Integer) Number of seconds between subsequent usage refreshes.
    * - ``max_gigabytes`` = ``10000``
      - (Integer) Maximum number of volume gigabytes to allow per host.
-   * - ``quota_driver`` = ``manila.quota.DbQuotaDriver``
+   * - ``driver`` = ``manila.quota.DbQuotaDriver``
      - (String) Default driver to use for quota checks.
-   * - ``quota_gigabytes`` = ``1000``
+   * - ``gigabytes`` = ``1000``
      - (Integer) Number of share gigabytes allowed per project.
-   * - ``quota_share_networks`` = ``10``
+   * - ``share_networks`` = ``10``
      - (Integer) Number of share-networks allowed per project.
-   * - ``quota_shares`` = ``50``
+   * - ``shares`` = ``50``
      - (Integer) Number of shares allowed per project.
-   * - ``quota_snapshot_gigabytes`` = ``1000``
+   * - ``snapshot_gigabytes`` = ``1000``
      - (Integer) Number of snapshot gigabytes allowed per project.
-   * - ``quota_snapshots`` = ``50``
+   * - ``snapshots`` = ``50``
      - (Integer) Number of share snapshots allowed per project.
-   * - ``quota_share_groups`` = ``50``
+   * - ``share_groups`` = ``50``
      - (Integer) Number of share groups allowed.
-   * - ``quota_share_group_snapshots`` = ``50``
+   * - ``share_group_snapshots`` = ``50``
      - (Integer) Number of share group snapshots allowed.
    * - ``reservation_expire`` = ``86400``
      - (Integer) Number of seconds until a reservation expires.
+   * - ``backups`` = ``10``
+     - (Integer) Number of share backups allowed per project.
+   * - ``backup_gigabytes`` = ``1000``
+     - (Integer) Total amount of storage, in gigabytes, allowed for backups per project.
+   * - ``per_share_gigabytes`` = ``-1``
+     - (Integer) Max size allowed per share, in gigabytes.
+   * - ``replica_gigabytes`` = ``1000``
+     - (Integer) Number of replica gigabytes allowed per project.
+   * - ``share_replicas`` = ``100``
+     - (Integer) Number of share-replicas allowed per project.
