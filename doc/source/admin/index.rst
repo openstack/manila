@@ -55,6 +55,7 @@ deployment.
    shared-file-systems-share-migration.rst
    shared-file-systems-share-replication.rst
    shared-file-systems-multi-backend.rst
+   shared-file-systems-healthcheck.rst
    shared-file-systems-networking.rst
    shared-file-systems-troubleshoot.rst
    shared-file-systems-profiling.rst
