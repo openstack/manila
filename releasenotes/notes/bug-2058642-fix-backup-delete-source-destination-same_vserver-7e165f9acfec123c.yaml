@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2058642
+    <https://bugs.launchpad.net/tempest/+bug/2058642>`_:
+    Fix the backup delete issue for NetApp driver when source and destination
+    vserver are same. Added the logic in resource cleanup part to delete
+    the vserver peering when source and destination vserver are not same.
