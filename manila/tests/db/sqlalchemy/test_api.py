@@ -3927,14 +3927,11 @@ class ServiceDatabaseAPITestCase(test.TestCase):
 
     def test_create__az_exists(self):
         """Ensure we use an AZ is it already exists."""
-        # there's no public AZ create method so we have to define one ourselves
-        @db_api.context_manager.writer
-        def availability_zone_create(context, name):
-            return db_api._availability_zone_create_if_not_exist(
-                context, name,
+        with db_api.context_manager.writer.using(self.ctxt):
+            az = db_api._availability_zone_create_if_not_exist(
+                self.ctxt, 'fake_zone',
             )
 
-        az = availability_zone_create(self.ctxt, 'fake_zone')
         service = db_api.service_create(self.ctxt, self.service_data)
 
         self.assertEqual(az.id, service.availability_zone_id)

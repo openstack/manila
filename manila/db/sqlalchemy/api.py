@@ -6140,9 +6140,7 @@ def share_type_extra_specs_update_or_create(context, share_type_id, specs):
 
 
 @context_manager.writer
-def ensure_availability_zone_exists(
-    context, values, *, strict=True,
-):
+def ensure_availability_zone_exists(context, values, *, strict=True):
     az_name = values.pop('availability_zone', None)
 
     if not az_name:
@@ -6165,11 +6163,9 @@ def availability_zone_get(context, id_or_name):
     return _availability_zone_get(context, id_or_name)
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
 @require_context
-def _availability_zone_get(context, id_or_name, session=None):
-    query = model_query(context, models.AvailabilityZone, session=session)
+def _availability_zone_get(context, id_or_name):
+    query = model_query(context, models.AvailabilityZone)
 
     if uuidutils.is_uuid_like(id_or_name):
         query = query.filter_by(id=id_or_name)
@@ -6184,23 +6180,15 @@ def _availability_zone_get(context, id_or_name, session=None):
     return result
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def _availability_zone_create_if_not_exist(context, name, session=None):
+def _availability_zone_create_if_not_exist(context, name):
     try:
-        return _availability_zone_get(context, name, session=session)
+        return _availability_zone_get(context, name)
     except exception.AvailabilityZoneNotFound:
         az = models.AvailabilityZone()
         az.update({'id': uuidutils.generate_uuid(), 'name': name})
-        # TODO(stephenfin): Remove this branch once all callers have been
-        # updated not to pass 'session'
-        if session is not None:
-            with session.begin():
-                az.save(session)
-        else:
-            az.save(context.session)
+        az.save(context.session)
     return az
 
 
