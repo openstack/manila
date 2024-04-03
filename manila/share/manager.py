@@ -599,8 +599,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     ctxt, share_instance['id'],
                     {'status': (
                         update_share_instances[share_instance['id']].
-                        get('status')),
-                     'host': share_instance['host']}
+                        get('status'))}
                 )
 
             update_export_location = (
