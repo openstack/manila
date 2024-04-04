@@ -81,7 +81,7 @@ context_manager.configure(__autocommit=True)
 
 
 def get_engine():
-    return context_manager._factory.get_legacy_facade().get_engine()
+    return context_manager.writer.get_engine()
 
 
 def get_backend():
