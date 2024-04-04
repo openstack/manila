@@ -84,10 +84,6 @@ def get_engine():
     return context_manager._factory.get_legacy_facade().get_engine()
 
 
-def get_session(**kwargs):
-    return context_manager._factory.get_legacy_facade().get_session(**kwargs)
-
-
 def get_backend():
     """The backend is this module itself."""
 
@@ -295,18 +291,12 @@ def model_query(context, model, *args, **kwargs):
 
     :param context: context to query under
     :param model: model to query. Must be a subclass of ModelBase.
-    :param session: if present, the session to use
     :param read_deleted: if present, overrides context's read_deleted field.
     :param project_only: if present and context is user-type, then restrict
             query to match the context's project_id.
     """
-    session = kwargs.get('session')
-
-    if hasattr(context, 'session') and context.session:
-        session = context.session
-
-    if not session:
-        session = get_session()
+    assert 'session' not in kwargs
+    assert hasattr(context, 'session') and context.session
 
     read_deleted = kwargs.get('read_deleted') or context.read_deleted
     project_only = kwargs.get('project_only')
@@ -323,7 +313,7 @@ def model_query(context, model, *args, **kwargs):
 
     return db_utils.model_query(
         model=model,
-        session=session,
+        session=context.session,
         args=args,
         **kwargs,
     )
@@ -1781,7 +1771,7 @@ def _share_instance_get(context, share_instance_id, with_share_data=False):
 
 @require_admin_context
 @context_manager.reader
-def share_instance_get_all(context, filters=None, session=None):
+def share_instance_get_all(context, filters=None):
     return _share_instance_get_all(context, filters=filters)
 
 
