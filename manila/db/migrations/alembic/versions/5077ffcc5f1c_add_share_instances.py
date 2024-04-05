@@ -125,14 +125,15 @@ def remove_share_instances_table(connection):
                 shares_table.c.id == share.id
             ).values(
                 {
-                    'host': instance['host'],
-                    'status': instance['status'],
-                    'scheduled_at': instance['scheduled_at'],
-                    'launched_at': instance['launched_at'],
-                    'terminated_at': instance['terminated_at'],
-                    'share_network_id': instance['share_network_id'],
-                    'share_server_id': instance['share_server_id'],
-                    'availability_zone': instance['availability_zone'],
+                    'host': instance._mapping['host'],
+                    'status': instance._mapping['status'],
+                    'scheduled_at': instance._mapping['scheduled_at'],
+                    'launched_at': instance._mapping['launched_at'],
+                    'terminated_at': instance._mapping['terminated_at'],
+                    'share_network_id': instance._mapping['share_network_id'],
+                    'share_server_id': instance._mapping['share_server_id'],
+                    'availability_zone':
+                        instance._mapping['availability_zone'],
                 }
             )
         )
@@ -210,8 +211,8 @@ def remove_snapshot_instances_table(connection):
                 snapshots_table.c.id == snapshot.id
             ).values(
                 {
-                    'status': snapshot_instance['status'],
-                    'progress': snapshot_instance['progress'],
+                    'status': snapshot_instance._mapping['status'],
+                    'progress': snapshot_instance._mapping['progress'],
                 }
             )
         )

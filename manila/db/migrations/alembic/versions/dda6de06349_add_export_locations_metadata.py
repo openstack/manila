@@ -40,7 +40,6 @@ LOG = log.getLogger(__name__)
 def upgrade():
     try:
         meta = sa.MetaData()
-        meta.bind = op.get_bind()
 
         # Add new 'is_admin_only' column in export locations table that will be
         # used for hiding admin export locations from common users in API.
@@ -62,14 +61,14 @@ def upgrade():
             sa.Column('uuid', sa.String(36)),
             sa.Column('is_admin_only', sa.Boolean),
         )
-        for record in el_table.select().execute():
+        for record in op.get_bind().execute(el_table.select()):
             # pylint: disable=no-value-for-parameter
-            el_table.update().values(
+            op.get_bind().execute(el_table.update().values(
                 is_admin_only=False,
                 uuid=uuidutils.generate_uuid(),
             ).where(
                 el_table.c.id == record.id,
-            ).execute()
+            ))
 
         # Make new 'uuid' column in export locations table not nullable.
         op.alter_column(

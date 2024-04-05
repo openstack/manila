@@ -70,24 +70,25 @@ def upgrade():
     for instance in connection.execute(instances_query):
 
         access_mappings_query = instance_access_table.select().where(
-            instance_access_table.c.share_instance_id == instance['id']
+            instance_access_table.c.share_instance_id ==
+            instance._mapping['id']
         ).where(instance_access_table.c.deleted == 'False')
 
         status = constants.STATUS_ACTIVE
 
         for access_rule in connection.execute(access_mappings_query):
 
-            if (access_rule['state'] == constants.STATUS_DELETING or
-                    access_rule['state'] not in priorities):
+            if (access_rule._mapping['state'] == constants.STATUS_DELETING or
+                    access_rule._mapping['state'] not in priorities):
                 continue
 
-            if priorities[access_rule['state']] > priorities[status]:
-                status = access_rule['state']
+            if priorities[access_rule._mapping['state']] > priorities[status]:
+                status = access_rule._mapping['state']
 
         # pylint: disable=no-value-for-parameter
         op.execute(
             share_instances_table.update().where(
-                share_instances_table.c.id == instance['id']
+                share_instances_table.c.id == instance._mapping['id']
             ).values({'access_rules_status': upgrade_data_mapping[status]})
         )
 
@@ -115,7 +116,7 @@ def downgrade():
 
         # NOTE(u_glide): We cannot determine if a rule is applied or not in
         # Manila, so administrator should manually handle such access rules.
-        if instance['access_rules_status'] == 'active':
+        if instance._mapping['access_rules_status'] == 'active':
             state = 'active'
         else:
             state = 'error'
@@ -123,7 +124,8 @@ def downgrade():
         # pylint: disable=no-value-for-parameter
         op.execute(
             instance_access_table.update().where(
-                instance_access_table.c.share_instance_id == instance['id']
+                instance_access_table.c.share_instance_id ==
+                instance._mapping['id']
             ).where(instance_access_table.c.deleted == 'False').values(
                 {'state': state}
             )
