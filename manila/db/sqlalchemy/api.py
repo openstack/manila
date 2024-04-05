@@ -73,11 +73,10 @@ _DEFAULT_SQL_CONNECTION = 'sqlite://'
 db_options.set_defaults(cfg.CONF,
                         connection=_DEFAULT_SQL_CONNECTION)
 
+
 context_manager = enginefacade.transaction_context()
 
-# FIXME(stephenfin): we need to remove reliance on autocommit semantics ASAP
-# since it's not compatible with SQLAlchemy 2.0
-context_manager.configure(__autocommit=True)
+context_manager.configure()
 
 
 def get_engine():

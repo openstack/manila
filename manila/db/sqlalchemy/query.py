@@ -28,11 +28,10 @@ class Query(orm.Query):
         return super(Query, self).soft_delete(synchronize_session)
 
 
-def get_maker(engine, autocommit=True, expire_on_commit=False):
+def get_maker(engine, expire_on_commit=False):
     """Return a SQLAlchemy sessionmaker using the given engine."""
     return sqlalchemy.orm.sessionmaker(bind=engine,
                                        class_=orm.Session,
-                                       autocommit=autocommit,
                                        expire_on_commit=expire_on_commit,
                                        query_cls=Query)
 
