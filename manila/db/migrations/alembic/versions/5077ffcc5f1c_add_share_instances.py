@@ -246,8 +246,9 @@ def upgrade_export_locations_table(connection):
     with op.batch_alter_table("share_export_locations") as batch_op:
         batch_op.drop_constraint('sel_id_fk', type_='foreignkey')
         batch_op.drop_column('share_id')
-        batch_op.rename_table('share_export_locations',
-                              'share_instance_export_locations')
+
+    op.rename_table(
+        'share_export_locations', 'share_instance_export_locations')
 
 
 def downgrade_export_locations_table(connection):
