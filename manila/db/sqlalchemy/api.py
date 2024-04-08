@@ -44,8 +44,7 @@ from oslo_utils import uuidutils
 from sqlalchemy import and_
 from sqlalchemy import MetaData
 from sqlalchemy import or_
-from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import subqueryload
+from sqlalchemy import orm
 from sqlalchemy.sql.expression import false
 from sqlalchemy.sql.expression import literal
 from sqlalchemy.sql.expression import true
@@ -1755,8 +1754,10 @@ def _share_instance_get(context, share_instance_id, with_share_data=False):
     ).filter_by(
         id=share_instance_id,
     ).options(
-        joinedload('export_locations').joinedload('_el_metadata_bare'),
-        joinedload('share_type'),
+        orm.joinedload(
+            models.ShareInstance.export_locations
+        ).joinedload(models.ShareInstanceExportLocations._el_metadata_bare),
+        orm.joinedload(models.ShareInstance.share_type),
     ).first()
     if result is None:
         raise exception.NotFound()
@@ -1779,7 +1780,7 @@ def _share_instance_get_all(context, filters=None):
     query = model_query(
         context, models.ShareInstance, read_deleted="no",
     ).options(
-        joinedload('export_locations'),
+        orm.joinedload(models.ShareInstance.export_locations),
     )
 
     filters = filters or {}
@@ -1802,8 +1803,8 @@ def _share_instance_get_all(context, filters=None):
 
     query = query.join(
         models.Share,
-        models.Share.id ==
-        models.ShareInstance.share_id)
+        models.Share.id == models.ShareInstance.share_id,
+    )
     is_soft_deleted = filters.get('is_soft_deleted')
     if is_soft_deleted:
         query = query.filter(models.Share.is_soft_deleted == true())
@@ -2047,8 +2048,10 @@ def _share_replica_get_with_filters(context, share_id=None, replica_id=None,
     if not context.is_admin:
         query = query.join(
             models.Share,
-            models.ShareInstance.share_id == models.Share.id).filter(
-            models.Share.project_id == context.project_id)
+            models.ShareInstance.share_id == models.Share.id
+        ).filter(
+            models.Share.project_id == context.project_id,
+        )
 
     if share_id is not None:
         query = query.filter(models.ShareInstance.share_id == share_id)
@@ -2066,7 +2069,9 @@ def _share_replica_get_with_filters(context, share_id=None, replica_id=None,
         query = query.filter(models.ShareInstance.status == status)
 
     if with_share_server:
-        query = query.options(joinedload('share_server'))
+        query = query.options(
+            orm.joinedload(models.ShareInstance.share_server),
+        )
 
     return query
 
@@ -2239,7 +2244,8 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
         query = query.join(
             models.ShareInstanceExportLocations,
             models.ShareInstanceExportLocations.share_instance_id ==
-            models.ShareInstance.id)
+            models.ShareInstance.id,
+        )
         if export_location_path:
             query = query.filter(
                 models.ShareInstanceExportLocations.path ==
@@ -2259,7 +2265,8 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
         query = query.join(
             models.ShareTypeExtraSpecs,
             models.ShareTypeExtraSpecs.share_type_id ==
-            models.ShareInstance.share_type_id)
+            models.ShareInstance.share_type_id,
+        )
         for k, v in filters['extra_specs'].items():
             query = query.filter(and_(models.ShareTypeExtraSpecs.key == k,
                                  models.ShareTypeExtraSpecs.value == v))
@@ -2320,7 +2327,9 @@ def _share_data_get_for_project(
         read_deleted="no",
     ).filter_by(project_id=project_id)
     if share_type_id:
-        query = query.join("instances").filter_by(share_type_id=share_type_id)
+        query = query.join(
+            models.Share.instances,
+        ).filter_by(share_type_id=share_type_id)
     elif user_id:
         query = query.filter_by(user_id=user_id)
     result = query.first()
@@ -2362,7 +2371,7 @@ def _share_get(context, share_id, **kwargs):
     result = model_query(
         context, models.Share, **kwargs,
     ).options(
-        joinedload('share_metadata')
+        orm.joinedload(models.Share.share_metadata),
     ).filter_by(id=share_id).first()
 
     if result is None:
@@ -2399,7 +2408,7 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     query = model_query(
         context, models.Share,
     ).options(
-        joinedload('share_metadata')
+        orm.joinedload(models.Share.share_metadata),
     ).join(
         models.ShareInstance,
         models.ShareInstance.share_id == models.Share.id
@@ -2453,7 +2462,7 @@ def share_get_all_expired(context):
     query = model_query(
         context, models.Share,
     ).options(
-        joinedload('share_metadata')
+        orm.joinedload(models.Share.share_metadata),
     ).join(
         models.ShareInstance,
         models.ShareInstance.share_id == models.Share.id,
@@ -2853,7 +2862,7 @@ def _share_access_get_query(context, values, read_deleted='no'):
         context, models.ShareAccessMapping,
         read_deleted=read_deleted
     ).options(
-        joinedload('share_access_rules_metadata')
+        orm.joinedload(models.ShareAccessMapping.share_access_rules_metadata),
     )
     return query.filter_by(**values)
 
@@ -2885,7 +2894,9 @@ def _share_access_metadata_get_item(context, access_id, key):
 def _share_access_metadata_get_query(context, access_id):
     return model_query(
         context, models.ShareAccessRulesMetadata, read_deleted="no",
-    ).filter_by(access_id=access_id).options(joinedload('access'))
+    ).filter_by(
+        access_id=access_id,
+    ).options(orm.joinedload(models.ShareAccessRulesMetadata.access))
 
 
 @require_context
@@ -3020,7 +3031,7 @@ def share_access_get_with_context(context, access_id):
     """Get access record."""
     access = _share_access_get_query(
         context, {'id': access_id}
-    ).options(joinedload('share')).first()
+    ).options(orm.joinedload(models.ShareAccessMapping.share)).first()
     if access:
         access['project_id'] = access['share']['project_id']
         return access
@@ -3398,7 +3409,9 @@ def _share_snapshot_instance_get_with_filters(context, instance_ids=None,
     if statuses is not None:
         query = query.filter(models.ShareSnapshotInstance.status.in_(statuses))
 
-    query = query.options(joinedload('share_group_snapshot'))
+    query = query.options(
+        orm.joinedload(models.ShareSnapshotInstance.share_group_snapshot),
+    )
     return query
 
 
@@ -3486,9 +3499,9 @@ def _share_snapshot_get(context, snapshot_id, project_only=True):
     ).filter_by(
         id=snapshot_id,
     ).options(
-        joinedload('share'),
-        joinedload('instances'),
-        joinedload('share_snapshot_metadata'),
+        orm.joinedload(models.ShareSnapshot.share),
+        orm.joinedload(models.ShareSnapshot.instances),
+        orm.joinedload(models.ShareSnapshot.share_snapshot_metadata),
     ).first()
 
     if not result:
@@ -3523,12 +3536,15 @@ def _share_snapshot_get_all_with_filters(context, project_id=None,
 
     if project_id:
         query = query.filter_by(project_id=project_id)
+
     if share_id:
         query = query.filter_by(share_id=share_id)
-    query = (query.options(joinedload('share'))
-             .options(joinedload('instances'))
-             .options(joinedload('share_snapshot_metadata'))
-             )
+
+    query = query.options(
+        orm.joinedload(models.ShareSnapshot.share),
+        orm.joinedload(models.ShareSnapshot.instances),
+        orm.joinedload(models.ShareSnapshot.share_snapshot_metadata),
+    )
 
     # Snapshots with no instances are filtered out.
     query = query.filter(
@@ -3552,10 +3568,12 @@ def _share_snapshot_get_all_with_filters(context, project_id=None,
                         'ek': usage_filter_keys}
             raise exception.InvalidInput(reason=msg)
         filters.pop('usage')
+
     if 'status' in filters:
         query = query.filter(models.ShareSnapshotInstance.status == (
             filters['status']))
         filters.pop('status')
+
     if 'metadata' in filters:
         for k, v in filters['metadata'].items():
             # pylint: disable=no-member
@@ -3766,10 +3784,11 @@ def share_snapshot_metadata_get_item(context, share_snapshot_id, key):
 
 
 def _share_snapshot_metadata_get_query(context, share_snapshot_id):
-    return (model_query(context, models.ShareSnapshotMetadata,
-                        read_deleted="no").
-            filter_by(share_snapshot_id=share_snapshot_id).
-            options(joinedload('share_snapshot')))
+    return model_query(
+        context, models.ShareSnapshotMetadata, read_deleted="no",
+    ).filter_by(
+        share_snapshot_id=share_snapshot_id,
+    ).options(orm.joinedload(models.ShareSnapshotMetadata.share_snapshot))
 
 
 def _share_snapshot_metadata_get(context, share_snapshot_id):
@@ -4214,7 +4233,9 @@ def share_snapshot_instance_export_locations_update(
 def _share_metadata_get_query(context, share_id):
     return model_query(
         context, models.ShareMetadata, read_deleted="no",
-    ).filter_by(share_id=share_id).options(joinedload('share'))
+    ).filter_by(
+        share_id=share_id,
+    ).options(orm.joinedload(models.ShareMetadata.share))
 
 
 @require_context
@@ -4339,7 +4360,7 @@ def _export_location_get_all(
     ).order_by(
         "updated_at",
     ).options(
-        joinedload("_el_metadata_bare"),
+        orm.joinedload(models.ShareInstanceExportLocations._el_metadata_bare),
     )
 
     if not include_admin_only:
@@ -4347,7 +4368,9 @@ def _export_location_get_all(
 
     if ignore_secondary_replicas:
         replica_state_attr = models.ShareInstance.replica_state
-        query = query.join("share_instance").filter(
+        query = query.join(
+            models.ShareInstanceExportLocations.share_instance,
+        ).filter(
             or_(replica_state_attr == None,  # noqa
                 replica_state_attr == constants.REPLICA_STATE_ACTIVE))
 
@@ -4421,12 +4444,14 @@ def _export_location_get_by_uuid(
     ).filter_by(
         uuid=export_location_uuid,
     ).options(
-        joinedload("_el_metadata_bare"),
+        orm.joinedload(models.ShareInstanceExportLocations._el_metadata_bare),
     )
 
     if ignore_secondary_replicas:
         replica_state_attr = models.ShareInstance.replica_state
-        query = query.join("share_instance").filter(
+        query = query.join(
+            models.ShareInstanceExportLocations.share_instance,
+        ).filter(
             or_(
                 replica_state_attr == None,  # noqa
                 replica_state_attr == constants.REPLICA_STATE_ACTIVE,
@@ -4744,9 +4769,9 @@ def _share_network_get_query(context):
     return model_query(
         context, models.ShareNetwork, project_only=True,
     ).options(
-        joinedload('share_instances'),
-        joinedload('security_services'),
-        subqueryload('share_network_subnets'),
+        orm.joinedload(models.ShareNetwork.share_instances),
+        orm.joinedload(models.ShareNetwork.security_services),
+        orm.subqueryload(models.ShareNetwork.share_network_subnets),
     )
 
 
@@ -4960,8 +4985,9 @@ def _count_share_networks(
         read_deleted="no",
     ).filter_by(project_id=project_id)
     if share_type_id:
-        query = query.join("share_instances").filter_by(
-            share_type_id=share_type_id)
+        query = query.join(
+            models.ShareNetwork.share_instances,
+        ).filter_by(share_type_id=share_type_id)
     elif user_id is not None:
         query = query.filter_by(user_id=user_id)
     return query.first()[0]
@@ -4975,9 +5001,11 @@ def _share_network_subnet_get_query(context):
     return model_query(
         context, models.ShareNetworkSubnet,
     ).options(
-        joinedload('share_servers'),
-        joinedload('share_network'),
-        joinedload('share_network_subnet_metadata'),
+        orm.joinedload(models.ShareNetworkSubnet.share_servers),
+        orm.joinedload(models.ShareNetworkSubnet.share_network),
+        orm.joinedload(
+            models.ShareNetworkSubnet.share_network_subnet_metadata
+        ),
     )
 
 
@@ -5154,7 +5182,9 @@ def _share_network_subnet_metadata_get_query(context, share_network_subnet_id):
         read_deleted="no",
     ).filter_by(
         share_network_subnet_id=share_network_subnet_id,
-    ).options(joinedload('share_network_subnet'))
+    ).options(
+        orm.joinedload(models.ShareNetworkSubnetMetadata.share_network_subnet),
+    )
 
 
 @require_context
@@ -5277,9 +5307,9 @@ def _share_server_get_query(context):
     return model_query(
         context, models.ShareServer,
     ).options(
-        joinedload('share_instances'),
-        joinedload('network_allocations'),
-        joinedload('share_network_subnets'),
+        orm.joinedload(models.ShareServer.share_instances),
+        orm.joinedload(models.ShareServer.network_allocations),
+        orm.joinedload(models.ShareServer.share_network_subnets),
     )
 
 
@@ -5797,10 +5827,10 @@ def _share_type_get_query(context, read_deleted=None, expected_fields=None):
         context,
         models.ShareTypes,
         read_deleted=read_deleted,
-    ).options(joinedload('extra_specs'))
+    ).options(orm.joinedload(models.ShareTypes.extra_specs))
 
     if 'projects' in expected_fields:
-        query = query.options(joinedload('projects'))
+        query = query.options(orm.joinedload(models.ShareTypes.projects))
 
     if not context.is_admin:
         the_filter = [models.ShareTypes.is_public == true()]
@@ -6064,7 +6094,7 @@ def _share_type_extra_specs_query(context, share_type_id):
         context, models.ShareTypeExtraSpecs, read_deleted="no",
     ).filter_by(
         share_type_id=share_type_id,
-    ).options(joinedload('share_type'))
+    ).options(orm.joinedload(models.ShareTypeExtraSpecs.share_type))
 
 
 @require_context
@@ -6090,7 +6120,11 @@ def share_type_extra_specs_delete(context, share_type_id, key):
 def _share_type_extra_specs_get_item(context, share_type_id, key):
     result = _share_type_extra_specs_query(
         context, share_type_id,
-    ).filter_by(key=key).options(joinedload('share_type')).first()
+    ).filter_by(
+        key=key,
+    ).options(
+        orm.joinedload(models.ShareTypeExtraSpecs.share_type),
+    ).first()
 
     if not result:
         raise exception.ShareTypeExtraSpecsNotFound(
@@ -6265,12 +6299,11 @@ def purge_deleted_records(context, age_in_days):
 
 
 def _share_group_get(context, share_group_id):
-    result = (model_query(context, models.ShareGroup,
-                          project_only=True,
-                          read_deleted='no').
-              filter_by(id=share_group_id).
-              options(joinedload('share_types')).
-              first())
+    result = model_query(
+        context, models.ShareGroup, project_only=True, read_deleted='no',
+    ).filter_by(
+        id=share_group_id,
+    ).options(orm.joinedload(models.ShareGroup.share_types)).first()
 
     if not result:
         raise exception.ShareGroupNotFound(share_group_id=share_group_id)
@@ -6327,14 +6360,16 @@ def _share_group_get_all(context, project_id=None, share_server_id=None,
         raise exception.InvalidInput(reason=msg)
 
     if detailed:
-        return query.options(joinedload('share_types')).all()
-    else:
-        query = query.with_entities(
-            models.ShareGroup.id, models.ShareGroup.name)
-        values = []
-        for sg_id, sg_name in query.all():
-            values.append({"id": sg_id, "name": sg_name})
-        return values
+        return query.options(
+            orm.joinedload(models.ShareGroup.share_types),
+        ).all()
+
+    query = query.with_entities(
+        models.ShareGroup.id, models.ShareGroup.name)
+    values = []
+    for sg_id, sg_name in query.all():
+        values.append({"id": sg_id, "name": sg_name})
+    return values
 
 
 @require_admin_context
@@ -6440,8 +6475,10 @@ def _count_share_groups(context, project_id, user_id=None, share_type_id=None):
         read_deleted="no",
     ).filter_by(project_id=project_id)
     if share_type_id:
-        query = query.join("share_group_share_type_mappings").filter_by(
-            share_type_id=share_type_id)
+        query = query.join(
+            # models.ShareGroupShareTypeMapping,
+            models.ShareGroup.share_types,
+        ).filter_by(share_type_id=share_type_id)
     elif user_id is not None:
         query = query.filter_by(user_id=user_id)
     return query.first()[0]
@@ -6458,9 +6495,10 @@ def _count_share_group_snapshots(
     ).filter_by(project_id=project_id)
     if share_type_id:
         query = query.join(
-            "share_group"
+            models.ShareGroupSnapshot.share_group,
         ).join(
-            "share_group_share_type_mappings"
+            # models.ShareGroupShareTypeMapping,
+            models.ShareGroup.share_types,
         ).filter_by(share_type_id=share_type_id)
     elif user_id is not None:
         query = query.filter_by(user_id=user_id)
@@ -6542,8 +6580,8 @@ def _share_group_snapshot_get(context, share_group_snapshot_id):
         project_only=True,
         read_deleted='no',
     ).options(
-        joinedload('share_group'),
-        joinedload('share_group_snapshot_members'),
+        orm.joinedload(models.ShareGroupSnapshot.share_group),
+        orm.joinedload(models.ShareGroupSnapshot.share_group_snapshot_members),
     ).filter_by(
         id=share_group_snapshot_id,
     ).first()
@@ -6594,16 +6632,18 @@ def _share_group_snapshot_get_all(
 
     if detailed:
         return query.options(
-            joinedload('share_group'),
-            joinedload('share_group_snapshot_members')
+            orm.joinedload(models.ShareGroupSnapshot.share_group),
+            orm.joinedload(
+                models.ShareGroupSnapshot.share_group_snapshot_members
+            ),
         ).all()
-    else:
-        query = query.with_entities(models.ShareGroupSnapshot.id,
-                                    models.ShareGroupSnapshot.name)
-        values = []
-        for sgs_id, sgs_name in query.all():
-            values.append({"id": sgs_id, "name": sgs_name})
-        return values
+
+    query = query.with_entities(models.ShareGroupSnapshot.id,
+                                models.ShareGroupSnapshot.name)
+    values = []
+    for sgs_id, sgs_name in query.all():
+        values.append({"id": sgs_id, "name": sgs_name})
+    return values
 
 
 @require_context
@@ -6792,12 +6832,12 @@ def _share_group_type_get_query(
         models.ShareGroupTypes,
         read_deleted=read_deleted
     ).options(
-        joinedload('group_specs'),
-        joinedload('share_types'),
+        orm.joinedload(models.ShareGroupTypes.group_specs),
+        orm.joinedload(models.ShareGroupTypes.share_types),
     )
 
     if 'projects' in expected_fields:
-        query = query.options(joinedload('projects'))
+        query = query.options(orm.joinedload(models.ShareGroupTypes.projects))
 
     if not context.is_admin:
         the_filter = [models.ShareGroupTypes.is_public == true()]
@@ -6904,8 +6944,8 @@ def _share_group_type_get_by_name(context, name):
         context,
         models.ShareGroupTypes,
     ).options(
-        joinedload('group_specs'),
-        joinedload('share_types'),
+        orm.joinedload(models.ShareGroupTypes.group_specs),
+        orm.joinedload(models.ShareGroupTypes.share_types),
     ).filter_by(
         name=name,
     ).first()
@@ -7033,7 +7073,7 @@ def _share_group_type_specs_query(context, type_id):
     ).filter_by(
         share_group_type_id=type_id,
     ).options(
-        joinedload('share_group_type'),
+        orm.joinedload(models.ShareGroupTypeSpecs.share_group_type),
     )
 
 
@@ -7067,7 +7107,7 @@ def _share_group_type_specs_get_item(context, type_id, key):
     ).filter_by(
         key=key,
     ).options(
-        joinedload('share_group_type'),
+        orm.joinedload(models.ShareGroupTypeSpecs.share_group_type),
     ).first()
 
     if not result:
