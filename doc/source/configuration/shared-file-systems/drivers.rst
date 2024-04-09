@@ -37,6 +37,7 @@ Share drivers
    drivers/windows-smb-driver.rst
    drivers/nexentastor5-driver.rst
    drivers/purestorage-flashblade-driver.rst
+   drivers/vastdata_driver.rst
 
 
 To use different share drivers for the Shared File Systems service, use the
