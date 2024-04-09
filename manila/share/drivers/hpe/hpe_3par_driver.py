@@ -357,7 +357,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
         source_file = inspect.getsourcefile(clazz)
         file_size = os.path.getsize(source_file)
 
-        sha1 = hashlib.sha1()
+        sha1 = hashlib.sha1(usedforsecurity=False)
         sha1.update(("blob %u\0" % file_size).encode('utf-8'))
 
         with open(source_file, 'rb') as f:
