@@ -64,9 +64,9 @@ class XMLAPIParser(object):
             func = self._get_func(action, self.tag)
             if func in vars(XMLAPIParser):
                 if action == 'start':
-                    eval('self.' + func)(elem, result)
+                    eval('self.' + func)(elem, result)  # nosec B307
                 elif action == 'end':
-                    eval('self.' + func)()
+                    eval('self.' + func)()  # nosec B307
 
         return result
 
