@@ -282,7 +282,8 @@ class RestClientURL(object):  # pylint: disable=R0902
 
         while retry < maxreqretries:
             try:
-                response = urlrequest.urlopen(req, timeout=self.timeout)
+                response = urlrequest.urlopen(req,  # nosec
+                                              timeout=self.timeout)
             except urlerror.HTTPError as err:
                 if err.code == http_client.NOT_FOUND:
                     log_debug_msg(self, 'REST Not Found: %s' % err.code)
