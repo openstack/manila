@@ -172,11 +172,13 @@ class TestNexentaNasDriver(test.TestCase):
         post.assert_any_call(
             self.request_params.url, data=self.request_params.build_post_args(
                 'volume', 'object_exists', self.volume),
-            headers=self.request_params.headers)
+            headers=self.request_params.headers,
+            timeout=60)
         post.assert_any_call(
             self.request_params.url, data=self.request_params.build_post_args(
                 'folder', 'object_exists', folder),
-            headers=self.request_params.headers)
+            headers=self.request_params.headers,
+            timeout=60)
 
     @mock.patch(PATH_TO_RPC)
     def test_create_share(self, post):
@@ -229,7 +231,8 @@ class TestNexentaNasDriver(test.TestCase):
                 parent_path,
                 share['name'],
                 create_folder_props),
-            headers=self.request_params.headers)
+            headers=self.request_params.headers,
+            timeout=60)
 
     @mock.patch(PATH_TO_RPC)
     def test_create_share__thick_provisioning(self, post):
@@ -259,7 +262,8 @@ class TestNexentaNasDriver(test.TestCase):
                 parent_path,
                 share['name'],
                 create_folder_props),
-            headers=self.request_params.headers)
+            headers=self.request_params.headers,
+            timeout=60)
 
     @mock.patch(PATH_TO_RPC)
     def test_create_share_from_snapshot(self, post):
@@ -285,7 +289,8 @@ class TestNexentaNasDriver(test.TestCase):
                 'clone',
                 snapshot_name,
                 '%s/%s/%s' % (self.volume, self.share, share['name'])),
-            headers=self.request_params.headers)
+            headers=self.request_params.headers,
+            timeout=60)
 
     @mock.patch(PATH_TO_RPC)
     def test_delete_share(self, post):
@@ -306,7 +311,8 @@ class TestNexentaNasDriver(test.TestCase):
                 'destroy',
                 folder.strip(),
                 '-r'),
-            headers=self.request_params.headers)
+            headers=self.request_params.headers,
+            timeout=60)
 
     @mock.patch(PATH_TO_RPC)
     def test_delete_share__exists_error(self, post):
@@ -354,7 +360,8 @@ class TestNexentaNasDriver(test.TestCase):
                 'set_child_prop',
                 '%s/%s/%s' % (self.volume, self.share, share['name']),
                 'quota', quota),
-            headers=self.request_params.headers)
+            headers=self.request_params.headers,
+            timeout=60)
 
     @mock.patch(PATH_TO_RPC)
     def test_extend_share__thick_provisoning(self, post):
@@ -382,7 +389,7 @@ class TestNexentaNasDriver(test.TestCase):
         post.assert_called_with(
             self.request_params.url, data=self.request_params.build_post_args(
                 'folder', 'create_snapshot', folder, snapshot['name'], '-r'),
-            headers=self.request_params.headers)
+            headers=self.request_params.headers, timeout=60)
 
     @mock.patch(PATH_TO_RPC)
     def test_delete_snapshot(self, post):
@@ -397,7 +404,8 @@ class TestNexentaNasDriver(test.TestCase):
                     self._get_share_path(snapshot['share_name']),
                     snapshot['name']),
                 ''),
-            headers=self.request_params.headers)
+            headers=self.request_params.headers,
+            timeout=60)
 
     @mock.patch(PATH_TO_RPC)
     def test_delete_snapshot__nexenta_error_1(self, post):
@@ -492,7 +500,8 @@ class TestNexentaNasDriver(test.TestCase):
                 'netstorsvc', 'share_folder',
                 'svc:/network/nfs/server:default',
                 self._get_share_path(share['name']), share_opts),
-            headers=self.request_params.headers)
+            headers=self.request_params.headers,
+            timeout=60)
         self.assertRaises(exception.ManilaException, self.drv.update_access,
                           self.ctx, share,
                           [access1, {'access_type': 'ip',
@@ -543,7 +552,8 @@ class TestNexentaNasDriver(test.TestCase):
                 'netstorsvc', 'share_folder',
                 'svc:/network/nfs/server:default',
                 self._get_share_path(share['name']), share_opts),
-            headers=self.request_params.headers)
+            headers=self.request_params.headers,
+            timeout=60)
 
         post.side_effect = my_side_effect
 
