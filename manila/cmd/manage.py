@@ -82,6 +82,7 @@ SHARE_SERVERS_UPDATE_HELP = ("List of share servers to be updated, separated "
                              "by commas.")
 SHARE_SERVERS_UPDATE_CAPABILITIES_HELP = (
     "List of share server capabilities to be updated, separated by commas.")
+SHARE_DELETE_HELP = ("Share ID to be deleted.")
 
 
 # Decorators for actions
@@ -401,6 +402,30 @@ class ShareCommands(object):
             'nhost': new_host,
         }
         print(msg % msg_args)
+
+    @args('--share_id', required=True, help=SHARE_DELETE_HELP)
+    def delete(self, share_id):
+        """Delete manila share from the database.
+
+           This command is useful after a share's manager service
+           has been decommissioned.
+        """
+        ctxt = context.get_admin_context()
+        share = db.share_get(ctxt, share_id)
+
+        active_replicas = []
+        # We delete "active" replicas at the end
+        for share_instance in share['instances']:
+            if share_instance['replica_state'] == "active":
+                active_replicas.append(share_instance)
+            else:
+                db.share_instance_delete(ctxt, share_instance['id'])
+        for share_instance in active_replicas:
+            db.share_instance_delete(ctxt, share_instance['id'])
+            print("Deleted share instance %s" % share_instance['id'])
+
+        # finally, clean up the share
+        print("Deleted share %s" % share_id)
 
 
 class ShareServerCommands(object):

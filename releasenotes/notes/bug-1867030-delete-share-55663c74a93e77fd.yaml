@@ -1,0 +1,5 @@
+---
+fixes:
+  -|
+    Launchpad `bug 1867030 <https://bugs.launchpad.net/manila/+bug/186730>`_
+    has been fixed for delete share.
