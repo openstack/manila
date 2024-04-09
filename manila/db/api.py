@@ -691,9 +691,10 @@ def share_snapshot_instance_delete(context, snapshot_instance_id):
 ####################
 
 
-def share_snapshot_create(context, values):
+def share_snapshot_create(context, values, create_snapshot_instance=True):
     """Create a snapshot from the values dictionary."""
-    return IMPL.share_snapshot_create(context, values)
+    return IMPL.share_snapshot_create(
+        context, values, create_snapshot_instance=create_snapshot_instance)
 
 
 def share_snapshot_get(context, snapshot_id, project_only=True):

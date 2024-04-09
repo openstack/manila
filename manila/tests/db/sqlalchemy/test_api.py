@@ -1829,8 +1829,9 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
             'status': expected_status,
             'metadata': {'foo': 'bar'}
         }
-        snapshots = db_api.share_snapshot_get_all(
-            self.ctxt, filters=filters)
+        snapshots = db_api.share_snapshot_get_all(self.ctxt, filters=filters)
+
+        self.assertEqual(1, len(snapshots))
 
         for snapshot in snapshots:
             s = snapshot.get('share_snapshot_metadata')
@@ -1841,8 +1842,6 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
             self.assertEqual(snapshot['status'], filters['status'])
             self.assertEqual(s[0]['key'], filter_meta_key)
             self.assertEqual(s[0]['value'], filter_meta_val)
-
-        self.assertEqual(1, len(snapshots))
 
     def test_share_snapshot_get_latest_for_share(self):
 
@@ -1890,7 +1889,7 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
     def test_share_snapshot_instance_get_all_with_filters_some(self, status):
         expected_status = status or (constants.STATUS_CREATING,
                                      constants.STATUS_DELETING)
-        expected_number = 1 if status else 3
+        expected_number = 1 if status else 2
         filters = {
             'snapshot_ids': 'fake_snapshot_id_1',
             'statuses': expected_status
@@ -1925,7 +1924,7 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
         }
         instances = db_api.share_snapshot_instance_get_all_with_filters(
             self.ctxt, filters)
-        self.assertEqual(6, len(instances))
+        self.assertEqual(4, len(instances))
 
     def test_share_snapshot_instance_create(self):
         snapshot = db_utils.create_snapshot(with_share=True)
