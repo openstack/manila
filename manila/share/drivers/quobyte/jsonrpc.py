@@ -82,16 +82,19 @@ class JsonRpc(object):
                                        json=post_data,
                                        auth=self._credentials,
                                        verify=self._ca_file,
-                                       cert=(self._cert_file, self._key_file))
+                                       cert=(self._cert_file, self._key_file),
+                                       timeout=60)
             else:
                 result = requests.post(url=self._url,
                                        json=post_data,
                                        auth=self._credentials,
-                                       verify=self._ca_file)
+                                       verify=self._ca_file,
+                                       timeout=60)
         else:
             result = requests.post(url=self._url,
                                    json=post_data,
-                                   auth=self._credentials)
+                                   auth=self._credentials,
+                                   timeout=60)
 
         # eval request response
         if result.status_code == codes['OK']:
