@@ -39,35 +39,35 @@ def upgrade():
     Add 'snapshot_support' extra spec to all share types and
     attr 'snapshot_support' to Share model.
     """
-    session = sa.orm.Session(bind=op.get_bind().connect())
 
-    es_table = table(
-        'share_type_extra_specs',
-        sa.Column('created_at', sa.DateTime),
-        sa.Column('deleted', sa.Integer),
-        sa.Column('share_type_id', sa.String(length=36)),
-        sa.Column('spec_key', sa.String(length=255)),
-        sa.Column('spec_value', sa.String(length=255)))
+    with sa.orm.Session(bind=op.get_bind()) as session:
 
-    st_table = table(
-        'share_types',
-        sa.Column('deleted', sa.Integer),
-        sa.Column('id', sa.Integer))
+        es_table = table(
+            'share_type_extra_specs',
+            sa.Column('created_at', sa.DateTime),
+            sa.Column('deleted', sa.Integer),
+            sa.Column('share_type_id', sa.String(length=36)),
+            sa.Column('spec_key', sa.String(length=255)),
+            sa.Column('spec_value', sa.String(length=255)))
 
-    # NOTE(vponomaryov): field 'deleted' is integer here.
-    existing_extra_specs = (session.query(es_table).
-                            filter(es_table.c.spec_key ==
-                                   constants.ExtraSpecs.SNAPSHOT_SUPPORT).
-                            filter(es_table.c.deleted == 0).
-                            all())
-    exclude_st_ids = [es.share_type_id for es in existing_extra_specs]
+        st_table = table(
+            'share_types',
+            sa.Column('deleted', sa.Integer),
+            sa.Column('id', sa.Integer))
 
-    # NOTE(vponomaryov): field 'deleted' is string here.
-    share_types = (session.query(st_table).
-                   filter(st_table.c.deleted.in_(('0', 'False', ))).
-                   filter(st_table.c.id.notin_(exclude_st_ids)).
-                   all())
-    session.close_all()
+        # NOTE(vponomaryov): field 'deleted' is integer here.
+        existing_extra_specs = (session.query(es_table).
+                                filter(es_table.c.spec_key ==
+                                       constants.ExtraSpecs.SNAPSHOT_SUPPORT).
+                                filter(es_table.c.deleted == 0).
+                                all())
+        exclude_st_ids = [es.share_type_id for es in existing_extra_specs]
+
+        # NOTE(vponomaryov): field 'deleted' is string here.
+        share_types = (session.query(st_table).
+                       filter(st_table.c.deleted.in_(('0', 'False', ))).
+                       filter(st_table.c.id.notin_(exclude_st_ids)).
+                       all())
 
     extra_specs = []
     now = timeutils.utcnow()
@@ -88,16 +88,16 @@ def upgrade():
     op.add_column('shares',
                   sa.Column('snapshot_support', sa.Boolean, default=True))
 
-    connection = op.get_bind().connect()
+    connection = op.get_bind()
     shares = sa.Table(
         'shares',
         sa.MetaData(),
-        autoload=True,
         autoload_with=connection)
 
     # pylint: disable=no-value-for-parameter
-    update = shares.update().where(shares.c.deleted == 'False').values(
-        snapshot_support=True)
+    update = shares.update().where(
+        shares.c.deleted == 'False'
+    ).values(snapshot_support=True)
     connection.execute(update)
 
 
@@ -107,11 +107,10 @@ def downgrade():
     Remove 'snapshot_support' extra spec from all share types and
     attr 'snapshot_support' from Share model.
     """
-    connection = op.get_bind().connect()
+    connection = op.get_bind()
     extra_specs = sa.Table(
         'share_type_extra_specs',
         sa.MetaData(),
-        autoload=True,
         autoload_with=connection)
 
     # pylint: disable=no-value-for-parameter

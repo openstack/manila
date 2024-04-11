@@ -32,7 +32,6 @@ LOG = log.getLogger(__name__)
 
 def upgrade():
     meta = MetaData()
-    meta.bind = op.get_bind()
 
     # New table
     messages = Table(
@@ -55,7 +54,7 @@ def upgrade():
         mysql_charset='utf8'
     )
 
-    messages.create()
+    messages.create(op.get_bind())
 
 
 def downgrade():

@@ -48,11 +48,11 @@ def upgrade():
 
     for instance in connection.execute(share_instances_table.select()):
         share = connection.execute(shares_table.select().where(
-            instance['share_id'] == shares_table.c.id)).first()
+            instance._mapping['share_id'] == shares_table.c.id)).first()
         # pylint: disable=no-value-for-parameter
         op.execute(share_instances_table.update().where(
-            share_instances_table.c.id == instance['id']).values(
-            {'share_type_id': share['share_type_id']}))
+            share_instances_table.c.id == instance._mapping['id']).values(
+            {'share_type_id': share._mapping['share_type_id']}))
 
     op.drop_column('shares', 'share_type_id')
 
@@ -75,11 +75,11 @@ def downgrade():
 
     for share in connection.execute(shares_table.select()):
         instance = connection.execute(share_instances_table.select().where(
-            share['id'] == share_instances_table.c.share_id)).first()
+            share._mapping['id'] == share_instances_table.c.share_id)).first()
         # pylint: disable=no-value-for-parameter
         op.execute(shares_table.update().where(
-            shares_table.c.id == instance['share_id']).values(
-            {'share_type_id': instance['share_type_id']}))
+            shares_table.c.id == instance._mapping['share_id']).values(
+            {'share_type_id': instance._mapping['share_type_id']}))
 
     op.drop_constraint('si_st_id_fk', 'share_instances', type_='foreignkey')
     op.drop_column('share_instances', 'share_type_id')

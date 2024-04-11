@@ -55,21 +55,22 @@ def upgrade():
         sa.Column('updated_at', sa.DateTime))
 
     export_locations = []
-    session = sa.orm.Session(bind=op.get_bind().connect())
-    for share in session.query(shares_table).all():
-        deleted = share.deleted if isinstance(share.deleted, int) else 0
-        export_locations.append({
-            'created_at': share.created_at,
-            'updated_at': share.updated_at,
-            'deleted_at': share.deleted_at,
-            'deleted': deleted,
-            'share_id': share.id,
-            'path': share.export_location,
-        })
-    op.bulk_insert(export_locations_table, export_locations)
 
-    op.drop_column('shares', 'export_location')
-    session.close_all()
+    with sa.orm.Session(bind=op.get_bind()) as session:
+
+        for share in session.query(shares_table).all():
+            deleted = share.deleted if isinstance(share.deleted, int) else 0
+            export_locations.append({
+                'created_at': share.created_at,
+                'updated_at': share.updated_at,
+                'deleted_at': share.deleted_at,
+                'deleted': deleted,
+                'share_id': share.id,
+                'path': share.export_location,
+            })
+        op.bulk_insert(export_locations_table, export_locations)
+
+        op.drop_column('shares', 'export_location')
 
 
 def downgrade():
@@ -90,23 +91,25 @@ def downgrade():
         sa.Column('deleted', sa.Integer))
 
     connection = op.get_bind()
-    session = sa.orm.Session(bind=connection.connect())
-    export_locations = session.query(
-        func.min(export_locations_table.c.updated_at),
-        export_locations_table.c.share_id,
-        export_locations_table.c.path).filter(
-            export_locations_table.c.deleted == 0).group_by(
-                export_locations_table.c.share_id,
-                export_locations_table.c.path).all()
 
-    shares = sa.Table('shares', sa.MetaData(),
-                      autoload=True, autoload_with=connection)
+    with sa.orm.Session(bind=connection) as session:
+        export_locations = session.query(
+            func.min(export_locations_table.c.updated_at),
+            export_locations_table.c.share_id,
+            export_locations_table.c.path).filter(
+                export_locations_table.c.deleted == 0).group_by(
+                    export_locations_table.c.share_id,
+                    export_locations_table.c.path).all()
 
-    for location in export_locations:
-        # pylint: disable=no-value-for-parameter
-        update = (shares.update().where(shares.c.id == location.share_id).
-                  values(export_location=location.path))
-        connection.execute(update)
+        shares = sa.Table(
+            'shares', sa.MetaData(),
+            autoload_with=connection)
 
-    op.drop_table('share_export_locations')
-    session.close_all()
+        for location in export_locations:
+            # pylint: disable=no-value-for-parameter
+            update = (
+                shares.update().where(shares.c.id == location.share_id).
+                values(export_location=location.path))
+            connection.execute(update)
+
+        op.drop_table('share_export_locations')

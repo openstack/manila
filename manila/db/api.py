@@ -314,15 +314,15 @@ def share_instance_create(context, share_id, values):
     return IMPL.share_instance_create(context, share_id, values)
 
 
-def share_instance_delete(context, instance_id, session=None,
+def share_instance_delete(context, instance_id,
                           need_to_update_usages=False):
     """Delete share instance."""
     return IMPL.share_instance_delete(
-        context, instance_id, session=session,
+        context, instance_id,
         need_to_update_usages=need_to_update_usages)
 
 
-def update_share_instance_quota_usages(context, instance_id, session=None):
+def update_share_instance_quota_usages(context, instance_id):
     """Update share instance quota usages"""
     return IMPL.update_share_instance_quota_usages(context, instance_id)
 
@@ -691,9 +691,10 @@ def share_snapshot_instance_delete(context, snapshot_instance_id):
 ####################
 
 
-def share_snapshot_create(context, values):
+def share_snapshot_create(context, values, create_snapshot_instance=True):
     """Create a snapshot from the values dictionary."""
-    return IMPL.share_snapshot_create(context, values)
+    return IMPL.share_snapshot_create(
+        context, values, create_snapshot_instance=create_snapshot_instance)
 
 
 def share_snapshot_get(context, snapshot_id, project_only=True):
@@ -772,10 +773,11 @@ def share_snapshot_access_get(context, access_id):
 
 
 def share_snapshot_access_get_all_for_snapshot_instance(
-        context, snapshot_instance_id, session=None):
+    context, snapshot_instance_id,
+):
     """Get all access rules related to a certain snapshot instance."""
     return IMPL.share_snapshot_access_get_all_for_snapshot_instance(
-        context, snapshot_instance_id, session)
+        context, snapshot_instance_id)
 
 
 def share_snapshot_access_get_all_for_share_snapshot(context,
@@ -996,24 +998,22 @@ def export_locations_update(
 
 ####################
 
-def export_location_metadata_get(context, export_location_uuid, session=None):
+def export_location_metadata_get(context, export_location_uuid):
     """Get all metadata of an export location."""
-    return IMPL.export_location_metadata_get(
-        context, export_location_uuid, session=session)
+    return IMPL.export_location_metadata_get(context, export_location_uuid)
 
 
-def export_location_metadata_delete(context, export_location_uuid, keys,
-                                    session=None):
+def export_location_metadata_delete(context, export_location_uuid, keys):
     """Delete metadata of an export location."""
     return IMPL.export_location_metadata_delete(
-        context, export_location_uuid, keys, session=session)
+        context, export_location_uuid, keys)
 
 
 def export_location_metadata_update(context, export_location_uuid, metadata,
-                                    delete, session=None):
+                                    delete):
     """Update metadata of an export location."""
     return IMPL.export_location_metadata_update(
-        context, export_location_uuid, metadata, delete, session=session)
+        context, export_location_uuid, metadata, delete)
 
 ####################
 
@@ -1646,11 +1646,10 @@ def share_replica_update(context, share_replica_id, values,
                                      with_share_data=with_share_data)
 
 
-def share_replica_delete(context, share_replica_id,
-                         need_to_update_usages=True):
+def share_replica_delete(context, replica_id, need_to_update_usages=True):
     """Deletes a share replica."""
     return IMPL.share_replica_delete(
-        context, share_replica_id, need_to_update_usages=need_to_update_usages)
+        context, replica_id, need_to_update_usages=need_to_update_usages)
 
 
 def purge_deleted_records(context, age_in_days):

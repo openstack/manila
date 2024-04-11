@@ -24,6 +24,7 @@ down_revision = '5237b6625330'
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 
 from manila.db.migrations import utils
 
@@ -113,7 +114,7 @@ def downgrade():
             ssi_table.join(
                 share_instances_table,
                 share_instances_table.c.id == ssi_table.c.share_instance_id
-            ).select(use_labels=True).where(
+            ).select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL).where(
                 ssi_table.c.share_group_snapshot_id.isnot(None),
             )):
         ported_data.append({

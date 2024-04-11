@@ -33,29 +33,27 @@ def upgrade():
 
     Add attribute 'revert_to_snapshot_support' to Share model.
     """
-    session = sa.orm.Session(bind=op.get_bind().connect())
+    with sa.orm.Session(bind=op.get_bind()) as session:
 
-    # Add create_share_from_snapshot_support attribute to shares table
-    op.add_column(
-        'shares',
-        sa.Column('revert_to_snapshot_support', sa.Boolean, default=False))
+        # Add create_share_from_snapshot_support attribute to shares table
+        op.add_column(
+            'shares',
+            sa.Column('revert_to_snapshot_support', sa.Boolean, default=False))
 
-    # Set revert_to_snapshot_support on each share
-    shares_table = sa.Table(
-        'shares',
-        sa.MetaData(),
-        sa.Column('id', sa.String(length=36)),
-        sa.Column('deleted', sa.String(length=36)),
-        sa.Column('revert_to_snapshot_support', sa.Boolean),
-    )
-    # pylint: disable=no-value-for-parameter
-    update = shares_table.update().where(
-        shares_table.c.deleted == 'False').values(
-            revert_to_snapshot_support=False)
-    session.execute(update)
-    session.commit()
-
-    session.close_all()
+        # Set revert_to_snapshot_support on each share
+        shares_table = sa.Table(
+            'shares',
+            sa.MetaData(),
+            sa.Column('id', sa.String(length=36)),
+            sa.Column('deleted', sa.String(length=36)),
+            sa.Column('revert_to_snapshot_support', sa.Boolean),
+        )
+        # pylint: disable=no-value-for-parameter
+        update = shares_table.update().where(
+            shares_table.c.deleted == 'False').values(
+                revert_to_snapshot_support=False)
+        session.execute(update)
+        session.commit()
 
 
 def downgrade():

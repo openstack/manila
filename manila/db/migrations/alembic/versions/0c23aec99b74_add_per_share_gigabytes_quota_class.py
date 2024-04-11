@@ -26,15 +26,12 @@ from alembic import op
 from manila.db.migrations import utils
 from oslo_log import log
 from oslo_utils import timeutils
-from sqlalchemy import MetaData
 
 LOG = log.getLogger(__name__)
 
 
 def upgrade():
-    meta = MetaData()
-    meta.bind = op.get_bind()
-    connection = op.get_bind().connect()
+    connection = op.get_bind()
     quota_classes_table = utils.load_table('quota_classes', connection)
 
     try:

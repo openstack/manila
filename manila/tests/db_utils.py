@@ -156,7 +156,12 @@ def create_snapshot(**kwargs):
         'provider_location': 'fake',
     }
     snapshot.update(kwargs)
-    return db.share_snapshot_create(context.get_admin_context(), snapshot)
+
+    return db.share_snapshot_create(
+        context.get_admin_context(),
+        snapshot,
+        create_snapshot_instance='instances' not in snapshot,
+    )
 
 
 def create_snapshot_instance(snapshot_id, **kwargs):

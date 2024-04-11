@@ -109,7 +109,8 @@ class ManilaMigrationsCheckers(migrations_data_checks.DbMigrationsData):
             post_downgrade = getattr(
                 self, "_post_downgrade_%s" % version.revision, None)
             if post_downgrade:
-                post_downgrade(self.engine)
+                with self.engine.begin() as conn:
+                    post_downgrade(conn)
 
         return True
 
@@ -128,14 +129,17 @@ class ManilaMigrationsCheckers(migrations_data_checks.DbMigrationsData):
                 pre_upgrade = getattr(
                     self, "_pre_upgrade_%s" % version, None)
                 if pre_upgrade:
-                    data = pre_upgrade(self.engine)
+                    with self.engine.begin() as conn:
+                        data = pre_upgrade(conn)
 
             self.migration_api.upgrade(version)
             self.assertEqual(version, self.migration_api.version())
+
             if with_data:
                 check = getattr(self, "_check_%s" % version, None)
                 if check:
-                    check(self.engine, data)
+                    with self.engine.begin() as conn:
+                        check(conn, data)
         except Exception as e:
             LOG.error("Failed to migrate to version %(version)s on engine "
                       "%(engine)s. Exception while running the migration: "
@@ -187,28 +191,30 @@ class TestManilaMigrationsMySQL(
                         return_value=self.engine):
             self._walk_versions(snake_walk=False, downgrade=False)
 
-        # sanity check
-        sanity_check = """SELECT count(*)
-                          FROM information_schema.tables
-                          WHERE table_schema = :database;"""
-        total = self.engine.execute(
-            text(sanity_check),
-            database=self.engine.url.database)
+        with self.engine.begin() as conn:
+            # sanity check
+            sanity_check = """SELECT count(*)
+                            FROM information_schema.tables
+                            WHERE table_schema = :database;"""
+            total = conn.execute(
+                text(sanity_check),
+                {"database": self.engine.url.database})
 
-        self.assertGreater(total.scalar(), 0, "No tables found. Wrong schema?")
+            self.assertGreater(
+                total.scalar(), 0, "No tables found. Wrong schema?")
 
-        noninnodb_query = """
-            SELECT count(*)
-            FROM information_schema.TABLES
-            WHERE table_schema = :database
-                AND engine != 'InnoDB'
-                AND table_name != 'alembic_version';"""
+            noninnodb_query = """
+                SELECT count(*)
+                FROM information_schema.TABLES
+                WHERE table_schema = :database
+                    AND engine != 'InnoDB'
+                    AND table_name != 'alembic_version';"""
 
-        count = self.engine.execute(
-            text(noninnodb_query),
-            database=self.engine.url.database
-        ).scalar()
-        self.assertEqual(0, count, "%d non InnoDB tables created" % count)
+            count = conn.execute(
+                text(noninnodb_query),
+                {"database": self.engine.url.database}
+            ).scalar()
+            self.assertEqual(0, count, "%d non InnoDB tables created" % count)
 
 
 class TestManilaMigrationsPostgreSQL(

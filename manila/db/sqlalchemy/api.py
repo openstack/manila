@@ -44,8 +44,7 @@ from oslo_utils import uuidutils
 from sqlalchemy import and_
 from sqlalchemy import MetaData
 from sqlalchemy import or_
-from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import subqueryload
+from sqlalchemy import orm
 from sqlalchemy.sql.expression import false
 from sqlalchemy.sql.expression import literal
 from sqlalchemy.sql.expression import true
@@ -73,19 +72,14 @@ _DEFAULT_SQL_CONNECTION = 'sqlite://'
 db_options.set_defaults(cfg.CONF,
                         connection=_DEFAULT_SQL_CONNECTION)
 
+
 context_manager = enginefacade.transaction_context()
 
-# FIXME(stephenfin): we need to remove reliance on autocommit semantics ASAP
-# since it's not compatible with SQLAlchemy 2.0
-context_manager.configure(__autocommit=True)
+context_manager.configure()
 
 
 def get_engine():
-    return context_manager._factory.get_legacy_facade().get_engine()
-
-
-def get_session(**kwargs):
-    return context_manager._factory.get_legacy_facade().get_session(**kwargs)
+    return context_manager.writer.get_engine()
 
 
 def get_backend():
@@ -295,18 +289,12 @@ def model_query(context, model, *args, **kwargs):
 
     :param context: context to query under
     :param model: model to query. Must be a subclass of ModelBase.
-    :param session: if present, the session to use
     :param read_deleted: if present, overrides context's read_deleted field.
     :param project_only: if present and context is user-type, then restrict
             query to match the context's project_id.
     """
-    session = kwargs.get('session')
-
-    if hasattr(context, 'session') and context.session:
-        session = context.session
-
-    if not session:
-        session = get_session()
+    assert 'session' not in kwargs
+    assert hasattr(context, 'session') and context.session
 
     read_deleted = kwargs.get('read_deleted') or context.read_deleted
     project_only = kwargs.get('project_only')
@@ -323,7 +311,7 @@ def model_query(context, model, *args, **kwargs):
 
     return db_utils.model_query(
         model=model,
-        session=session,
+        session=context.session,
         args=args,
         **kwargs,
     )
@@ -703,7 +691,7 @@ def service_update(context, service_id, values):
 
 
 @require_context
-@context_manager.reader
+@context_manager.reader.independent
 def quota_get_all_by_project_and_user(context, project_id, user_id):
     authorize_project_context(context, project_id)
     user_quotas = model_query(
@@ -723,7 +711,7 @@ def quota_get_all_by_project_and_user(context, project_id, user_id):
 
 
 @require_context
-@context_manager.reader
+@context_manager.reader.independent
 def quota_get_all_by_project_and_share_type(
     context, project_id, share_type_id,
 ):
@@ -748,7 +736,7 @@ def quota_get_all_by_project_and_share_type(
 
 
 @require_context
-@context_manager.reader
+@context_manager.reader.independent
 def quota_get_all_by_project(context, project_id):
     authorize_project_context(context, project_id)
     project_quotas = model_query(
@@ -764,7 +752,7 @@ def quota_get_all_by_project(context, project_id):
 
 
 @require_context
-@context_manager.reader
+@context_manager.reader.independent
 def quota_get_all(context, project_id):
     authorize_project_context(context, project_id)
 
@@ -776,7 +764,7 @@ def quota_get_all(context, project_id):
 
 
 @require_admin_context
-@context_manager.writer
+@context_manager.writer.independent
 def quota_create(
     context,
     project_id,
@@ -827,7 +815,7 @@ def quota_create(
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-@context_manager.writer
+@context_manager.writer.independent
 def quota_update(
     context,
     project_id,
@@ -1056,7 +1044,7 @@ def quota_usage_create(context, project_id, user_id, resource, in_use,
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-@context_manager.writer
+@context_manager.writer.independent
 def quota_usage_update(context, project_id, user_id, resource,
                        share_type_id=None, **kwargs):
     updates = {}
@@ -1188,7 +1176,7 @@ def quota_reserve(context, resources, project_quotas, user_quotas,
 
 # NOTE(stephenfin): Per above, we wrap the inner method here
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-@context_manager.writer
+@context_manager.writer.independent
 def _quota_reserve(context, resources, project_quotas, user_or_st_quotas,
                    deltas, expire, until_refresh,
                    max_age, project_id=None, user_id=None, share_type_id=None,
@@ -1431,7 +1419,7 @@ def _quota_reservations_query(context, reservations):
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-@context_manager.writer
+@context_manager.writer.independent
 def reservation_commit(context, reservations, project_id=None, user_id=None,
                        share_type_id=None):
     if share_type_id:
@@ -1457,7 +1445,7 @@ def reservation_commit(context, reservations, project_id=None, user_id=None,
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-@context_manager.writer
+@context_manager.writer.independent
 def reservation_rollback(context, reservations, project_id=None, user_id=None,
                          share_type_id=None):
     if share_type_id:
@@ -1481,7 +1469,7 @@ def reservation_rollback(context, reservations, project_id=None, user_id=None,
 
 
 @require_admin_context
-@context_manager.writer
+@context_manager.writer.independent
 def quota_destroy_all_by_project_and_user(context, project_id, user_id):
     model_query(
         context, models.ProjectUserQuota, read_deleted="no",
@@ -1503,7 +1491,7 @@ def quota_destroy_all_by_project_and_user(context, project_id, user_id):
 
 
 @require_admin_context
-@context_manager.writer
+@context_manager.writer.independent
 def quota_destroy_all_by_share_type(context, share_type_id, project_id=None):
     return _quota_destroy_all_by_share_type(
         context, share_type_id, project_id=project_id,
@@ -1551,7 +1539,7 @@ def _quota_destroy_all_by_share_type(context, share_type_id, project_id=None):
 
 
 @require_admin_context
-@context_manager.writer
+@context_manager.writer.independent
 def quota_destroy_all_by_project(context, project_id):
     model_query(
         context, models.Quota, read_deleted="no",
@@ -1645,155 +1633,154 @@ def _extract_snapshot_instance_values(values):
 
 
 @require_context
+@context_manager.writer
 def share_instance_create(context, share_id, values):
-    session = get_session()
-    with session.begin():
-        return _share_instance_create(context, share_id, values, session)
+    return _share_instance_create(context, share_id, values)
 
 
-def _share_instance_create(context, share_id, values, session):
+def _share_instance_create(context, share_id, values):
     if not values.get('id'):
         values['id'] = uuidutils.generate_uuid()
     values.update({'share_id': share_id})
 
     share_instance_ref = models.ShareInstance()
     share_instance_ref.update(values)
-    share_instance_ref.save(session=session)
+    share_instance_ref.save(session=context.session)
 
-    return share_instance_get(context, share_instance_ref['id'],
-                              session=session)
+    return _share_instance_get(context, share_instance_ref['id'])
 
 
 @require_context
 @require_availability_zone_exists(strict=False)
+@context_manager.writer
 def share_instance_update(context, share_instance_id, values,
                           with_share_data=False):
-    session = get_session()
-    with session.begin():
-        instance_ref = _share_instance_update(
-            context, share_instance_id, values, session
-        )
-        if with_share_data:
-            parent_share = share_get(context, instance_ref['share_id'],
-                                     session=session)
-            instance_ref.set_share_data(parent_share)
-        return instance_ref
+    instance_ref = _share_instance_update(
+        context, share_instance_id, values,
+    )
+    if with_share_data:
+        parent_share = _share_get(context, instance_ref['share_id'])
+        instance_ref.set_share_data(parent_share)
+
+    return instance_ref
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
-def _share_instance_update(context, share_instance_id, values, session=None):
-    share_instance_ref = _share_instance_get(
-        context, share_instance_id, session=session)
+def _share_instance_update(context, share_instance_id, values):
+    share_instance_ref = _share_instance_get(context, share_instance_id)
     share_instance_ref.update(values)
-    share_instance_ref.save(session=session or context.session)
+    share_instance_ref.save(session=context.session)
     return share_instance_ref
 
 
+@context_manager.writer
 def share_and_snapshot_instances_status_update(
-        context, values, share_instance_ids=None, snapshot_instance_ids=None,
-        current_expected_status=None):
+    context, values, share_instance_ids=None, snapshot_instance_ids=None,
+    current_expected_status=None,
+):
     updated_share_instances = None
     updated_snapshot_instances = None
-    session = get_session()
-    with session.begin():
-        if current_expected_status and share_instance_ids:
-            filters = {'instance_ids': share_instance_ids}
-            share_instances = share_instance_get_all(
-                context, filters=filters, session=session)
-            all_instances_are_compliant = all(
-                instance['status'] == current_expected_status
-                for instance in share_instances)
 
-            if not all_instances_are_compliant:
-                msg = _('At least one of the shares is not in the %(status)s '
-                        'status.') % {
-                    'status': current_expected_status
-                }
-                raise exception.InvalidShareInstance(reason=msg)
+    if current_expected_status and share_instance_ids:
+        filters = {'instance_ids': share_instance_ids}
+        share_instances = _share_instance_get_all(context, filters=filters)
+        all_instances_are_compliant = all(
+            instance['status'] == current_expected_status
+            for instance in share_instances)
 
-        if current_expected_status and snapshot_instance_ids:
-            filters = {'instance_ids': snapshot_instance_ids}
-            snapshot_instances = share_snapshot_instance_get_all_with_filters(
-                context, filters, session=session)
-            all_snap_instances_are_compliant = all(
-                snap_instance['status'] == current_expected_status
-                for snap_instance in snapshot_instances)
-            if not all_snap_instances_are_compliant:
-                msg = _('At least one of the snapshots is not in the '
-                        '%(status)s status.') % {
-                    'status': current_expected_status
-                }
-                raise exception.InvalidShareSnapshotInstance(reason=msg)
+        if not all_instances_are_compliant:
+            msg = _('At least one of the shares is not in the %(status)s '
+                    'status.') % {
+                'status': current_expected_status
+            }
+            raise exception.InvalidShareInstance(reason=msg)
 
-        if share_instance_ids:
-            updated_share_instances = share_instance_status_update(
-                context, share_instance_ids, values, session=session)
+    if current_expected_status and snapshot_instance_ids:
+        filters = {'instance_ids': snapshot_instance_ids}
+        snapshot_instances = _share_snapshot_instance_get_all_with_filters(
+            context, filters,
+        )
+        all_snap_instances_are_compliant = all(
+            snap_instance['status'] == current_expected_status
+            for snap_instance in snapshot_instances)
+        if not all_snap_instances_are_compliant:
+            msg = _('At least one of the snapshots is not in the '
+                    '%(status)s status.') % {
+                'status': current_expected_status
+            }
+            raise exception.InvalidShareSnapshotInstance(reason=msg)
 
-        if snapshot_instance_ids:
-            updated_snapshot_instances = (
-                share_snapshot_instances_status_update(
-                    context, snapshot_instance_ids, values, session=session))
+    if share_instance_ids:
+        updated_share_instances = _share_instance_status_update(
+            context, share_instance_ids, values,
+        )
+
+    if snapshot_instance_ids:
+        updated_snapshot_instances = _share_snapshot_instances_status_update(
+            context, snapshot_instance_ids, values,
+        )
 
     return updated_share_instances, updated_snapshot_instances
 
 
 @require_context
-def share_instance_status_update(
-        context, share_instance_ids, values, session=None):
-    session = session or get_session()
+@context_manager.writer
+def share_instance_status_update(context, share_instance_ids, values):
+    return _share_instance_status_update(context, share_instance_ids, values)
 
-    result = (
-        model_query(
-            context, models.ShareInstance, read_deleted="no",
-            session=session).filter(
-            models.ShareInstance.id.in_(share_instance_ids)).update(
-            values, synchronize_session=False))
+
+def _share_instance_status_update(context, share_instance_ids, values):
+    result = model_query(
+        context, models.ShareInstance, read_deleted="no",
+    ).filter(
+        models.ShareInstance.id.in_(share_instance_ids)
+    ).update(
+        values, synchronize_session=False,
+    )
     return result
 
 
 @require_context
-def share_instance_get(context, share_instance_id, session=None,
-                       with_share_data=False):
-    if session is None:
-        session = get_session()
-
+@context_manager.reader
+def share_instance_get(context, share_instance_id, with_share_data=False):
     return _share_instance_get(
-        context, share_instance_id, session=session,
+        context, share_instance_id,
         with_share_data=with_share_data,
     )
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
-def _share_instance_get(
-    context, share_instance_id, session=None, with_share_data=False,
-):
+def _share_instance_get(context, share_instance_id, with_share_data=False):
     result = model_query(
-        context, models.ShareInstance, session=session,
+        context, models.ShareInstance,
     ).filter_by(
         id=share_instance_id,
     ).options(
-        joinedload('export_locations').joinedload('_el_metadata_bare'),
-        joinedload('share_type'),
+        orm.joinedload(
+            models.ShareInstance.export_locations
+        ).joinedload(models.ShareInstanceExportLocations._el_metadata_bare),
+        orm.joinedload(models.ShareInstance.share_type),
     ).first()
     if result is None:
         raise exception.NotFound()
 
     if with_share_data:
-        parent_share = share_get(context, result['share_id'], session=session)
+        parent_share = _share_get(context, result['share_id'])
         result.set_share_data(parent_share)
 
     return result
 
 
 @require_admin_context
-def share_instance_get_all(context, filters=None, session=None):
-    session = session or get_session()
+@context_manager.reader
+def share_instance_get_all(context, filters=None):
+    return _share_instance_get_all(context, filters=filters)
+
+
+@require_admin_context
+def _share_instance_get_all(context, filters=None):
     query = model_query(
-        context, models.ShareInstance, session=session, read_deleted="no",
+        context, models.ShareInstance, read_deleted="no",
     ).options(
-        joinedload('export_locations'),
+        orm.joinedload(models.ShareInstance.export_locations),
     )
 
     filters = filters or {}
@@ -1816,8 +1803,8 @@ def share_instance_get_all(context, filters=None, session=None):
 
     query = query.join(
         models.Share,
-        models.Share.id ==
-        models.ShareInstance.share_id)
+        models.Share.id == models.ShareInstance.share_id,
+    )
     is_soft_deleted = filters.get('is_soft_deleted')
     if is_soft_deleted:
         query = query.filter(models.Share.is_soft_deleted == true())
@@ -1903,55 +1890,64 @@ def _update_share_instance_usages(context, share, instance_ref,
 
 
 @require_context
-def share_instance_delete(context, instance_id, session=None,
-                          need_to_update_usages=False):
-    if session is None:
-        session = get_session()
+@context_manager.writer
+def share_instance_delete(context, instance_id, need_to_update_usages=False):
+    _share_instance_delete(
+        context, instance_id,
+        need_to_update_usages=need_to_update_usages,
+    )
 
-    with session.begin():
-        export_locations_update(context, instance_id, [], delete=True)
-        instance_ref = share_instance_get(context, instance_id,
-                                          session=session)
-        is_replica = instance_ref['replica_state'] is not None
-        instance_ref.soft_delete(session=session, update_status=True)
-        share = share_get(context, instance_ref['share_id'], session=session)
-        if len(share.instances) == 0:
-            share_access_delete_all_by_share(context, share['id'])
-            session.query(models.ShareMetadata).filter_by(
-                share_id=share['id']).soft_delete()
-            share.soft_delete(session=session)
 
-        if need_to_update_usages:
-            _update_share_instance_usages(context, share, instance_ref,
-                                          is_replica=is_replica,
-                                          deferred_delete=False)
+def _share_instance_delete(context, instance_id,
+                           need_to_update_usages=False):
+
+    export_locations_update(context, instance_id, [], delete=True)
+    instance_ref = _share_instance_get(context, instance_id)
+    is_replica = instance_ref['replica_state'] is not None
+    instance_ref.soft_delete(session=context.session, update_status=True)
+
+    share = _share_get(context, instance_ref['share_id'])
+    if len(share.instances) == 0:
+
+        # NOTE(zzzeek) currently this potentially is required for current
+        # tempest runs to pass
+        with context_manager.writer.independent.using(context) as oob_session:
+            oob_session.query(models.ShareAccessMapping).filter_by(
+                share_id=share['id']
+            ).soft_delete()
+
+        context.session.query(models.ShareMetadata).filter_by(
+            share_id=share['id'],
+        ).soft_delete()
+        share.soft_delete(session=context.session)
+
+    if need_to_update_usages:
+        _update_share_instance_usages(context, share, instance_ref,
+                                      is_replica=is_replica,
+                                      deferred_delete=False)
 
 
 @require_context
-def update_share_instance_quota_usages(context, instance_id, session=None):
+@context_manager.writer
+def update_share_instance_quota_usages(context, instance_id):
     # This method is specifically written for deferred deletion share
     # instance usage.
-    session = session or get_session()
-
-    with session.begin():
-        instance_ref = share_instance_get(context, instance_id,
-                                          session=session)
-        is_replica = instance_ref['replica_state'] is not None
-        share = share_get(context, instance_ref['share_id'], session=session)
-        _update_share_instance_usages(context, share, instance_ref,
-                                      is_replica=is_replica,
-                                      deferred_delete=True)
+    instance_ref = _share_instance_get(context, instance_id)
+    is_replica = instance_ref['replica_state'] is not None
+    share = _share_get(context, instance_ref['share_id'])
+    _update_share_instance_usages(context, share, instance_ref,
+                                  is_replica=is_replica,
+                                  deferred_delete=True)
 
 
-def _set_instances_share_data(context, instances, session):
+def _set_instances_share_data(context, instances):
     if instances and not isinstance(instances, list):
         instances = [instances]
 
     instances_with_share_data = []
     for instance in instances:
         try:
-            parent_share = share_get(context, instance['share_id'],
-                                     session=session)
+            parent_share = _share_get(context, instance['share_id'])
         except exception.NotFound:
             continue
         instance.set_share_data(parent_share)
@@ -1960,10 +1956,10 @@ def _set_instances_share_data(context, instances, session):
 
 
 @require_admin_context
+@context_manager.reader
 def share_instance_get_all_by_host(context, host, with_share_data=False,
-                                   status=None, session=None):
+                                   status=None):
     """Retrieves all share instances hosted on a host."""
-    session = session or get_session()
     instances = (
         model_query(context, models.ShareInstance).filter(
             or_(
@@ -1978,11 +1974,12 @@ def share_instance_get_all_by_host(context, host, with_share_data=False,
     instances = instances.all()
 
     if with_share_data:
-        instances = _set_instances_share_data(context, instances, session)
+        instances = _set_instances_share_data(context, instances)
     return instances
 
 
 @require_context
+@context_manager.reader
 def share_instance_get_all_by_share_network(context, share_network_id):
     """Returns list of share instances that belong to given share network."""
     result = (
@@ -1994,10 +1991,10 @@ def share_instance_get_all_by_share_network(context, share_network_id):
 
 
 @require_context
+@context_manager.reader
 def share_instance_get_all_by_share_server(context, share_server_id,
                                            with_share_data=False):
     """Returns list of share instance with given share server."""
-    session = get_session()
     result = (
         model_query(context, models.ShareInstance).filter(
             models.ShareInstance.share_server_id == share_server_id,
@@ -2005,12 +2002,13 @@ def share_instance_get_all_by_share_server(context, share_server_id,
     )
 
     if with_share_data:
-        result = _set_instances_share_data(context, result, session)
+        result = _set_instances_share_data(context, result)
 
     return result
 
 
 @require_context
+@context_manager.reader
 def share_instance_get_all_by_share(context, share_id):
     """Returns list of share instances that belong to given share."""
     result = (
@@ -2022,6 +2020,7 @@ def share_instance_get_all_by_share(context, share_id):
 
 
 @require_context
+@context_manager.reader
 def share_instance_get_all_by_share_group_id(context, share_group_id):
     """Returns list of share instances that belong to given share group."""
     result = (
@@ -2042,16 +2041,17 @@ def share_instance_get_all_by_share_group_id(context, share_group_id):
 
 def _share_replica_get_with_filters(context, share_id=None, replica_id=None,
                                     replica_state=None, status=None,
-                                    with_share_server=True, session=None):
+                                    with_share_server=True):
 
-    query = model_query(context, models.ShareInstance, session=session,
-                        read_deleted="no")
+    query = model_query(context, models.ShareInstance, read_deleted="no")
 
     if not context.is_admin:
         query = query.join(
             models.Share,
-            models.ShareInstance.share_id == models.Share.id).filter(
-            models.Share.project_id == context.project_id)
+            models.ShareInstance.share_id == models.Share.id
+        ).filter(
+            models.Share.project_id == context.project_id,
+        )
 
     if share_id is not None:
         query = query.filter(models.ShareInstance.share_id == share_id)
@@ -2069,77 +2069,79 @@ def _share_replica_get_with_filters(context, share_id=None, replica_id=None,
         query = query.filter(models.ShareInstance.status == status)
 
     if with_share_server:
-        query = query.options(joinedload('share_server'))
+        query = query.options(
+            orm.joinedload(models.ShareInstance.share_server),
+        )
 
     return query
 
 
 @require_context
+@context_manager.reader
 def share_replicas_get_all(context, with_share_data=False,
-                           with_share_server=True, session=None):
+                           with_share_server=True):
     """Returns replica instances for all available replicated shares."""
-    session = session or get_session()
-
-    result = _share_replica_get_with_filters(
-        context, with_share_server=with_share_server, session=session).all()
-
-    if with_share_data:
-        result = _set_instances_share_data(context, result, session)
-
-    return result
-
-
-@require_context
-def share_replicas_get_all_by_share(context, share_id,
-                                    with_share_data=False,
-                                    with_share_server=False, session=None):
-    """Returns replica instances for a given share."""
-    session = session or get_session()
-
     result = _share_replica_get_with_filters(
         context, with_share_server=with_share_server,
-        share_id=share_id, session=session).all()
+    ).all()
 
     if with_share_data:
-        result = _set_instances_share_data(context, result, session)
+        result = _set_instances_share_data(context, result)
 
     return result
 
 
 @require_context
+@context_manager.reader
+def share_replicas_get_all_by_share(context, share_id,
+                                    with_share_data=False,
+                                    with_share_server=False,):
+    """Returns replica instances for a given share."""
+    result = _share_replica_get_with_filters(
+        context, with_share_server=with_share_server,
+        share_id=share_id,
+    ).all()
+
+    if with_share_data:
+        result = _set_instances_share_data(context, result)
+
+    return result
+
+
+@require_context
+@context_manager.reader
 def share_replicas_get_available_active_replica(context, share_id,
                                                 with_share_data=False,
-                                                with_share_server=False,
-                                                session=None):
+                                                with_share_server=False):
     """Returns an 'active' replica instance that is 'available'."""
-    session = session or get_session()
-
     result = _share_replica_get_with_filters(
         context, with_share_server=with_share_server, share_id=share_id,
         replica_state=constants.REPLICA_STATE_ACTIVE,
-        status=constants.STATUS_AVAILABLE, session=session).first()
+        status=constants.STATUS_AVAILABLE,
+    ).first()
 
     if result and with_share_data:
-        result = _set_instances_share_data(context, result, session)[0]
+        result = _set_instances_share_data(context, result)[0]
 
     return result
 
 
 @require_context
+@context_manager.reader
 def share_replica_get(context, replica_id, with_share_data=False,
-                      with_share_server=False, session=None):
+                      with_share_server=False):
     """Returns summary of requested replica if available."""
-    session = session or get_session()
-
     result = _share_replica_get_with_filters(
-        context, with_share_server=with_share_server,
-        replica_id=replica_id, session=session).first()
+        context,
+        with_share_server=with_share_server,
+        replica_id=replica_id,
+    ).first()
 
     if result is None:
         raise exception.ShareReplicaNotFound(replica_id=replica_id)
 
     if with_share_data:
-        result = _set_instances_share_data(context, result, session)[0]
+        result = _set_instances_share_data(context, result)[0]
 
     return result
 
@@ -2147,30 +2149,33 @@ def share_replica_get(context, replica_id, with_share_data=False,
 @require_context
 @require_availability_zone_exists(strict=False)
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def share_replica_update(context, share_replica_id, values,
-                         with_share_data=False, session=None):
+                         with_share_data=False):
     """Updates a share replica with specified values."""
-    session = session or get_session()
+    updated_share_replica = _share_instance_update(
+        context, share_replica_id, values,
+    )
 
-    with session.begin():
-        updated_share_replica = _share_instance_update(
-            context, share_replica_id, values, session=session)
-
-        if with_share_data:
-            updated_share_replica = _set_instances_share_data(
-                context, updated_share_replica, session)[0]
+    if with_share_data:
+        updated_share_replica = _set_instances_share_data(
+            context, updated_share_replica,
+        )[0]
 
     return updated_share_replica
 
 
 @require_context
-def share_replica_delete(context, share_replica_id, session=None,
-                         need_to_update_usages=True):
+@context_manager.writer
+def share_replica_delete(
+    context, replica_id, need_to_update_usages=True,
+):
     """Deletes a share replica."""
-    session = session or get_session()
 
-    share_instance_delete(context, share_replica_id, session=session,
-                          need_to_update_usages=need_to_update_usages)
+    _share_instance_delete(
+        context, replica_id,
+        need_to_update_usages=need_to_update_usages,
+    )
 
 
 ################
@@ -2239,7 +2244,8 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
         query = query.join(
             models.ShareInstanceExportLocations,
             models.ShareInstanceExportLocations.share_instance_id ==
-            models.ShareInstance.id)
+            models.ShareInstance.id,
+        )
         if export_location_path:
             query = query.filter(
                 models.ShareInstanceExportLocations.path ==
@@ -2259,7 +2265,8 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
         query = query.join(
             models.ShareTypeExtraSpecs,
             models.ShareTypeExtraSpecs.share_type_id ==
-            models.ShareInstance.share_type_id)
+            models.ShareInstance.share_type_id,
+        )
         for k, v in filters['extra_specs'].items():
             query = query.filter(and_(models.ShareTypeExtraSpecs.key == k,
                                  models.ShareTypeExtraSpecs.value == v))
@@ -2289,26 +2296,24 @@ def _metadata_refs(metadata_dict, meta_class):
 
 @require_context
 @require_availability_zone_exists(strict=False)
+@context_manager.writer
 def share_create(context, share_values, create_share_instance=True):
     values = copy.deepcopy(share_values)
     values = ensure_model_dict_has_id(values)
     values['share_metadata'] = _metadata_refs(values.get('metadata'),
                                               models.ShareMetadata)
-    session = get_session()
     share_ref = models.Share()
     share_instance_values, share_values = _extract_share_instance_values(
         values)
     share_ref.update(share_values)
+    share_ref.save(session=context.session)
 
-    with session.begin():
-        share_ref.save(session=session)
+    if create_share_instance:
+        _share_instance_create(context, share_ref['id'],
+                               share_instance_values)
 
-        if create_share_instance:
-            _share_instance_create(context, share_ref['id'],
-                                   share_instance_values, session=session)
-
-        # NOTE(u_glide): Do so to prevent errors with relationships
-        return share_get(context, share_ref['id'], session=session)
+    # NOTE(u_glide): Do so to prevent errors with relationships
+    return _share_get(context, share_ref['id'])
 
 
 @require_admin_context
@@ -2322,7 +2327,9 @@ def _share_data_get_for_project(
         read_deleted="no",
     ).filter_by(project_id=project_id)
     if share_type_id:
-        query = query.join("instances").filter_by(share_type_id=share_type_id)
+        query = query.join(
+            models.Share.instances,
+        ).filter_by(share_type_id=share_type_id)
     elif user_id:
         query = query.filter_by(user_id=user_id)
     result = query.first()
@@ -2331,48 +2338,40 @@ def _share_data_get_for_project(
 
 @require_context
 @require_availability_zone_exists(strict=False)
+@context_manager.writer
 def share_update(context, share_id, update_values):
-    session = get_session()
-
-    with session.begin():
-        return _share_update(context, share_id, update_values, session)
+    return _share_update(context, share_id, update_values)
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def _share_update(context, share_id, update_values, session=None):
+def _share_update(context, share_id, update_values):
     values = copy.deepcopy(update_values)
 
     share_instance_values, share_values = _extract_share_instance_values(
         values)
 
-    share_ref = _share_get(context, share_id, session=session)
+    share_ref = _share_get(context, share_id)
 
     _share_instance_update(
         context, share_ref.instance['id'], share_instance_values,
-        session=session)
+    )
 
     share_ref.update(share_values)
-    share_ref.save(session=session or context.session)
+    share_ref.save(session=context.session)
     return share_ref
 
 
 @require_context
-def share_get(context, share_id, session=None, **kwargs):
-    if session is None:
-        session = get_session()
-
-    return _share_get(context, share_id, session=session, **kwargs)
+@context_manager.reader
+def share_get(context, share_id, **kwargs):
+    return _share_get(context, share_id, **kwargs)
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
-def _share_get(context, share_id, session=None, **kwargs):
+def _share_get(context, share_id, **kwargs):
     result = model_query(
-        context, models.Share, session=session, **kwargs,
+        context, models.Share, **kwargs,
     ).options(
-        joinedload('share_metadata')
+        orm.joinedload(models.Share.share_metadata),
     ).filter_by(id=share_id).first()
 
     if result is None:
@@ -2398,8 +2397,6 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     :returns: list -- models.Share
     :raises: exception.InvalidInput
     """
-    session = get_session()
-
     if filters is None:
         filters = {}
 
@@ -2409,9 +2406,9 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
         sort_dir = 'desc'
 
     query = model_query(
-        context, models.Share, session=session,
+        context, models.Share,
     ).options(
-        joinedload('share_metadata')
+        orm.joinedload(models.Share.share_metadata),
     ).join(
         models.ShareInstance,
         models.ShareInstance.share_id == models.Share.id
@@ -2460,13 +2457,12 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
 
 
 @require_admin_context
+@context_manager.reader
 def share_get_all_expired(context):
-    session = get_session()
-
     query = model_query(
-        context, models.Share, session=session,
+        context, models.Share,
     ).options(
-        joinedload('share_metadata')
+        orm.joinedload(models.Share.share_metadata),
     ).join(
         models.ShareInstance,
         models.ShareInstance.share_id == models.Share.id,
@@ -2483,17 +2479,18 @@ def share_get_all_expired(context):
 
 
 @require_admin_context
+@context_manager.reader
 def share_get_all(context, filters=None, sort_key=None, sort_dir=None):
     project_id = filters.pop('project_id', None) if filters else None
     query = _share_get_all_with_filters(
         context,
         project_id=project_id,
         filters=filters, sort_key=sort_key, sort_dir=sort_dir)
-
     return query
 
 
 @require_admin_context
+@context_manager.reader
 def share_get_all_with_count(context, filters=None, sort_key=None,
                              sort_dir=None):
     count, query = _share_get_all_with_filters(
@@ -2504,6 +2501,7 @@ def share_get_all_with_count(context, filters=None, sort_key=None,
 
 
 @require_context
+@context_manager.reader
 def share_get_all_by_project(context, project_id, filters=None,
                              is_public=False, sort_key=None, sort_dir=None):
     """Returns list of shares with given project ID."""
@@ -2514,6 +2512,7 @@ def share_get_all_by_project(context, project_id, filters=None,
 
 
 @require_context
+@context_manager.reader
 def share_get_all_by_project_with_count(
         context, project_id, filters=None, is_public=False, sort_key=None,
         sort_dir=None):
@@ -2525,6 +2524,7 @@ def share_get_all_by_project_with_count(
 
 
 @require_context
+@context_manager.reader
 def share_get_all_by_share_group_id(context, share_group_id,
                                     filters=None, sort_key=None,
                                     sort_dir=None):
@@ -2536,6 +2536,7 @@ def share_get_all_by_share_group_id(context, share_group_id,
 
 
 @require_context
+@context_manager.reader
 def share_get_all_by_share_group_id_with_count(context, share_group_id,
                                                filters=None, sort_key=None,
                                                sort_dir=None):
@@ -2547,6 +2548,7 @@ def share_get_all_by_share_group_id_with_count(context, share_group_id,
 
 
 @require_context
+@context_manager.reader
 def share_get_all_by_share_server(context, share_server_id, filters=None,
                                   sort_key=None, sort_dir=None):
     """Returns list of shares with given share server."""
@@ -2557,6 +2559,7 @@ def share_get_all_by_share_server(context, share_server_id, filters=None,
 
 
 @require_context
+@context_manager.reader
 def share_get_all_soft_deleted(
         context, share_server_id, filters=None, sort_key=None, sort_dir=None):
     """Returns list of shares in recycle bin with given share server."""
@@ -2570,6 +2573,7 @@ def share_get_all_soft_deleted(
 
 
 @require_context
+@context_manager.reader
 def share_get_all_by_share_server_with_count(
         context, share_server_id, filters=None, sort_key=None, sort_dir=None):
     """Returns list of shares with given share server."""
@@ -2580,6 +2584,7 @@ def share_get_all_by_share_server_with_count(
 
 
 @require_context
+@context_manager.reader
 def share_get_all_soft_deleted_by_network(
         context, share_network_id, filters=None, sort_key=None, sort_dir=None):
     """Returns list of shares in recycle bin with given share network."""
@@ -2593,27 +2598,26 @@ def share_get_all_soft_deleted_by_network(
 
 
 @require_context
+@context_manager.writer
 def share_delete(context, share_id):
-    session = get_session()
+    share_ref = _share_get(context, share_id)
 
-    with session.begin():
-        share_ref = share_get(context, share_id, session)
+    if len(share_ref.instances) > 0:
+        msg = _("Share %(id)s has %(count)s share instances.") % {
+            'id': share_id, 'count': len(share_ref.instances)}
+        raise exception.InvalidShare(msg)
 
-        if len(share_ref.instances) > 0:
-            msg = _("Share %(id)s has %(count)s share instances.") % {
-                'id': share_id, 'count': len(share_ref.instances)}
-            raise exception.InvalidShare(msg)
+    share_ref.soft_delete(session=context.session)
 
-        share_ref.soft_delete(session=session)
-
-        (session.query(models.ShareMetadata).
-            filter_by(share_id=share_id).soft_delete())
+    context.session.query(models.ShareMetadata).filter_by(
+        share_id=share_id,
+    ).soft_delete()
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def share_soft_delete(context, share_id):
-    session = get_session()
     now_time = timeutils.utcnow()
     time_delta = datetime.timedelta(
         seconds=CONF.soft_deleted_share_retention_time)
@@ -2623,25 +2627,23 @@ def share_soft_delete(context, share_id):
         'scheduled_to_be_deleted_at': scheduled_to_be_deleted_at
     }
 
-    with session.begin():
-        share_ref = share_get(context, share_id, session=session)
-        share_ref.update(update_values)
-        share_ref.save(session=session)
+    share_ref = _share_get(context, share_id)
+    share_ref.update(update_values)
+    share_ref.save(session=context.session)
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def share_restore(context, share_id):
-    session = get_session()
     update_values = {
         'is_soft_deleted': False,
         'scheduled_to_be_deleted_at': None
     }
 
-    with session.begin():
-        share_ref = share_get(context, share_id, session=session)
-        share_ref.update(update_values)
-        share_ref.save(session=session)
+    share_ref = _share_get(context, share_id)
+    share_ref.update(update_values)
+    share_ref.save(session=context.session)
 
 
 ###################
@@ -2773,7 +2775,6 @@ def transfer_destroy(context, transfer_id, update_share_status=True):
     transfer_query.soft_delete()
 
 
-# TODO(stephenfin): Convert these once we convert the 'share_snapshot*' APIs
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
@@ -2812,7 +2813,6 @@ def transfer_accept(
     )
 
 
-# TODO(stephenfin): Convert these once we convert the 'share_*' APIs
 @require_context
 @context_manager.writer
 def transfer_accept_rollback(
@@ -2856,17 +2856,18 @@ def transfer_accept_rollback(
 ###################
 
 
-def _share_access_get_query(context, session, values, read_deleted='no'):
+def _share_access_get_query(context, values, read_deleted='no'):
     """Get access record."""
-    query = (model_query(
-        context, models.ShareAccessMapping, session=session,
-        read_deleted=read_deleted).options(
-            joinedload('share_access_rules_metadata')))
+    query = model_query(
+        context, models.ShareAccessMapping,
+        read_deleted=read_deleted
+    ).options(
+        orm.joinedload(models.ShareAccessMapping.share_access_rules_metadata),
+    )
     return query.filter_by(**values)
 
 
-def _share_instance_access_query(context, session, access_id=None,
-                                 instance_id=None):
+def _share_instance_access_query(context, access_id=None, instance_id=None):
     filters = {'deleted': 'False'}
 
     if access_id is not None:
@@ -2875,122 +2876,126 @@ def _share_instance_access_query(context, session, access_id=None,
     if instance_id is not None:
         filters.update({'share_instance_id': instance_id})
 
-    return model_query(context, models.ShareInstanceAccessMapping,
-                       session=session).filter_by(**filters)
+    return model_query(
+        context, models.ShareInstanceAccessMapping,
+    ).filter_by(**filters)
 
 
-def _share_access_metadata_get_item(context, access_id, key, session=None):
-    result = (_share_access_metadata_get_query(
-        context, access_id, session=session).filter_by(key=key).first())
+def _share_access_metadata_get_item(context, access_id, key):
+    result = _share_access_metadata_get_query(
+        context, access_id,
+    ).filter_by(key=key).first()
     if not result:
         raise exception.ShareAccessMetadataNotFound(
             metadata_key=key, access_id=access_id)
     return result
 
 
-def _share_access_metadata_get_query(context, access_id, session=None):
-    return (model_query(
-        context, models.ShareAccessRulesMetadata, session=session,
-        read_deleted="no").
-        filter_by(access_id=access_id).
-        options(joinedload('access')))
+def _share_access_metadata_get_query(context, access_id):
+    return model_query(
+        context, models.ShareAccessRulesMetadata, read_deleted="no",
+    ).filter_by(
+        access_id=access_id,
+    ).options(orm.joinedload(models.ShareAccessRulesMetadata.access))
 
 
 @require_context
+@context_manager.writer
 def share_access_metadata_update(context, access_id, metadata):
-    session = get_session()
+    # Now update all existing items with new values, or create new meta
+    # objects
+    for meta_key, meta_value in metadata.items():
 
-    with session.begin():
-        # Now update all existing items with new values, or create new meta
-        # objects
-        for meta_key, meta_value in metadata.items():
+        # update the value whether it exists or not
+        item = {"value": meta_value}
+        try:
+            meta_ref = _share_access_metadata_get_item(
+                context, access_id, meta_key,
+            )
+        except exception.ShareAccessMetadataNotFound:
+            meta_ref = models.ShareAccessRulesMetadata()
+            item.update({"key": meta_key, "access_id": access_id})
 
-            # update the value whether it exists or not
-            item = {"value": meta_value}
-            try:
-                meta_ref = _share_access_metadata_get_item(
-                    context, access_id, meta_key, session=session)
-            except exception.ShareAccessMetadataNotFound:
-                meta_ref = models.ShareAccessRulesMetadata()
-                item.update({"key": meta_key, "access_id": access_id})
+        meta_ref.update(item)
+        meta_ref.save(session=context.session)
 
-            meta_ref.update(item)
-            meta_ref.save(session=session)
-
-        return metadata
+    return metadata
 
 
 @require_context
+@context_manager.writer
 def share_access_metadata_delete(context, access_id, key):
-    session = get_session()
-    with session.begin():
-        metadata = _share_access_metadata_get_item(
-            context, access_id, key, session=session)
-
-        metadata.soft_delete(session)
+    metadata = _share_access_metadata_get_item(
+        context, access_id, key,
+    )
+    metadata.soft_delete(session=context.session)
 
 
 @require_context
+@context_manager.writer
 def share_access_create(context, values):
     values = ensure_model_dict_has_id(values)
-    session = get_session()
-    with session.begin():
-        values['share_access_rules_metadata'] = (
-            _metadata_refs(values.get('metadata'),
-                           models.ShareAccessRulesMetadata))
+    values['share_access_rules_metadata'] = _metadata_refs(
+        values.get('metadata'), models.ShareAccessRulesMetadata
+    )
 
-        access_ref = models.ShareAccessMapping()
-        access_ref.update(values)
-        access_ref.save(session=session)
+    access_ref = models.ShareAccessMapping()
+    access_ref.update(values)
+    access_ref.save(session=context.session)
 
-        parent_share = share_get(context, values['share_id'], session=session)
+    parent_share = _share_get(context, values['share_id'])
 
-        for instance in parent_share.instances:
-            vals = {
-                'share_instance_id': instance['id'],
-                'access_id': access_ref['id'],
-            }
-
-            _share_instance_access_create(vals, session)
-
-    return share_access_get(context, access_ref['id'])
-
-
-@require_context
-def share_instance_access_create(context, values, share_instance_id):
-    values = ensure_model_dict_has_id(values)
-    session = get_session()
-    with session.begin():
-        access_list = _share_access_get_query(
-            context, session, {
-                'share_id': values['share_id'],
-                'access_type': values['access_type'],
-                'access_to': values['access_to'],
-            }).all()
-        if len(access_list) > 0:
-            access_ref = access_list[0]
-        else:
-            access_ref = models.ShareAccessMapping()
-        access_ref.update(values)
-        access_ref.save(session=session)
-
-        vals = {
-            'share_instance_id': share_instance_id,
+    for instance in parent_share.instances:
+        values = {
+            'share_instance_id': instance['id'],
             'access_id': access_ref['id'],
         }
 
-        _share_instance_access_create(vals, session)
+        instance_access_ref = models.ShareInstanceAccessMapping()
+        instance_access_ref.update(ensure_model_dict_has_id(values))
+        instance_access_ref.save(session=context.session)
 
-    return share_access_get(context, access_ref['id'])
+    return _share_access_get(context, access_ref['id'])
 
 
 @require_context
-def share_instance_access_copy(context, share_id, instance_id, session=None):
-    """Copy access rules from share to share instance."""
-    session = session or get_session()
+@context_manager.writer
+def share_instance_access_create(context, values, share_instance_id):
+    values = ensure_model_dict_has_id(values)
+    access_list = _share_access_get_query(
+        context,
+        {
+            'share_id': values['share_id'],
+            'access_type': values['access_type'],
+            'access_to': values['access_to'],
+        }
+    ).all()
+    if len(access_list) > 0:
+        access_ref = access_list[0]
+    else:
+        access_ref = models.ShareAccessMapping()
+    access_ref.update(values)
+    access_ref.save(session=context.session)
 
+    values = {
+        'share_instance_id': share_instance_id,
+        'access_id': access_ref['id'],
+    }
+
+    instance_access_ref = models.ShareInstanceAccessMapping()
+    instance_access_ref.update(ensure_model_dict_has_id(values))
+    instance_access_ref.save(session=context.session)
+
+    return _share_access_get(context, access_ref['id'])
+
+
+@require_context
+@context_manager.writer
+def share_instance_access_copy(context, share_id, instance_id):
+    """Copy access rules from share to share instance."""
     share_access_rules = _share_access_get_query(
-        context, session, {'share_id': share_id}).all()
+        context, {'share_id': share_id}
+    ).all()
 
     for access_rule in share_access_rules:
         values = {
@@ -2998,25 +3003,22 @@ def share_instance_access_copy(context, share_id, instance_id, session=None):
             'access_id': access_rule['id'],
         }
 
-        _share_instance_access_create(values, session)
+        instance_access_ref = models.ShareInstanceAccessMapping()
+        instance_access_ref.update(ensure_model_dict_has_id(values))
+        instance_access_ref.save(session=context.session)
 
     return share_access_rules
 
 
-def _share_instance_access_create(values, session):
-    access_ref = models.ShareInstanceAccessMapping()
-    access_ref.update(ensure_model_dict_has_id(values))
-    access_ref.save(session=session)
-    return access_ref
-
-
 @require_context
-def share_access_get(context, access_id, session=None):
-    """Get access record."""
-    session = session or get_session()
+@context_manager.reader
+def share_access_get(context, access_id):
+    return _share_access_get(context, access_id)
 
-    access = _share_access_get_query(
-        context, session, {'id': access_id}).first()
+
+def _share_access_get(context, access_id):
+    """Get access record."""
+    access = _share_access_get_query(context, {'id': access_id}).first()
     if access:
         return access
     else:
@@ -3024,13 +3026,12 @@ def share_access_get(context, access_id, session=None):
 
 
 @require_context
-def share_access_get_with_context(context, access_id, session=None):
+@context_manager.reader
+def share_access_get_with_context(context, access_id):
     """Get access record."""
-    session = session or get_session()
-
     access = _share_access_get_query(
-        context, session,
-        {'id': access_id}).options(joinedload('share')).first()
+        context, {'id': access_id}
+    ).options(orm.joinedload(models.ShareAccessMapping.share)).first()
     if access:
         access['project_id'] = access['share']['project_id']
         return access
@@ -3039,31 +3040,32 @@ def share_access_get_with_context(context, access_id, session=None):
 
 
 @require_context
+@context_manager.reader
 def share_instance_access_get(context, access_id, instance_id,
                               with_share_access_data=True):
     """Get access record."""
-    session = get_session()
-
-    access = _share_instance_access_query(context, session, access_id,
-                                          instance_id).first()
+    access = _share_instance_access_query(
+        context, access_id, instance_id
+    ).first()
     if access is None:
         raise exception.NotFound()
 
     if with_share_access_data:
-        access = _set_instances_share_access_data(context, access, session)[0]
+        access = _set_instances_share_access_data(context, access)[0]
 
     return access
 
 
 @require_context
-def share_access_get_all_for_share(context, share_id, filters=None,
-                                   session=None):
+@context_manager.reader
+def share_access_get_all_for_share(context, share_id, filters=None):
     filters = filters or {}
-    session = session or get_session()
     share_access_mapping = models.ShareAccessMapping
-    query = (_share_access_get_query(
-        context, session, {'share_id': share_id}).filter(
-        models.ShareAccessMapping.instance_mappings.any()))
+    query = _share_access_get_query(
+        context, {'share_id': share_id}
+    ).filter(
+        models.ShareAccessMapping.instance_mappings.any()
+    )
 
     legal_filter_keys = ('id', 'access_type', 'access_key',
                          'access_to', 'access_level')
@@ -3071,8 +3073,11 @@ def share_access_get_all_for_share(context, share_id, filters=None,
     if 'metadata' in filters:
         for k, v in filters['metadata'].items():
             query = query.filter(
-                or_(models.ShareAccessMapping.
-                    share_access_rules_metadata.any(key=k, value=v)))
+                or_(
+                    models.ShareAccessMapping.
+                    share_access_rules_metadata.any(key=k, value=v)
+                )
+            )
 
     query = exact_filter(
         query, share_access_mapping, filters, legal_filter_keys)
@@ -3081,15 +3086,14 @@ def share_access_get_all_for_share(context, share_id, filters=None,
 
 
 @require_context
+@context_manager.reader
 def share_access_get_all_for_instance(context, instance_id, filters=None,
-                                      with_share_access_data=True,
-                                      session=None):
+                                      with_share_access_data=True):
     """Get all access rules related to a certain share instance."""
-    session = session or get_session()
     filters = copy.deepcopy(filters) if filters else {}
     filters.update({'share_instance_id': instance_id})
     legal_filter_keys = ('id', 'share_instance_id', 'access_id', 'state')
-    query = _share_instance_access_query(context, session)
+    query = _share_instance_access_query(context)
 
     query = exact_filter(
         query, models.ShareInstanceAccessMapping, filters, legal_filter_keys)
@@ -3098,46 +3102,50 @@ def share_access_get_all_for_instance(context, instance_id, filters=None,
 
     if with_share_access_data:
         instance_accesses = _set_instances_share_access_data(
-            context, instance_accesses, session)
+            context, instance_accesses
+        )
 
     return instance_accesses
 
 
-def _set_instances_share_access_data(context, instance_accesses, session):
+def _set_instances_share_access_data(context, instance_accesses):
     if instance_accesses and not isinstance(instance_accesses, list):
         instance_accesses = [instance_accesses]
 
     for instance_access in instance_accesses:
-        share_access = share_access_get(
-            context, instance_access['access_id'], session=session)
+        share_access = _share_access_get(
+            context, instance_access['access_id']
+        )
         instance_access.set_share_access_data(share_access)
 
     return instance_accesses
 
 
-def _set_instances_snapshot_access_data(context, instance_accesses, session):
+def _set_instances_snapshot_access_data(context, instance_accesses):
     if instance_accesses and not isinstance(instance_accesses, list):
         instance_accesses = [instance_accesses]
 
     for instance_access in instance_accesses:
-        snapshot_access = share_snapshot_access_get(
-            context, instance_access['access_id'], session=session)
+        snapshot_access = _share_snapshot_access_get(
+            context, instance_access['access_id']
+        )
         instance_access.set_snapshot_access_data(snapshot_access)
 
     return instance_accesses
 
 
 @require_context
+@context_manager.reader
 def share_access_get_all_by_type_and_access(context, share_id, access_type,
                                             access):
-    session = get_session()
-    return _share_access_get_query(context, session,
+    return _share_access_get_query(context,
                                    {'share_id': share_id,
                                     'access_type': access_type,
                                     'access_to': access}).all()
 
 
 @require_context
+@context_manager.reader
 def share_access_check_for_existing_access(context, share_id, access_type,
                                            access_to):
     return _check_for_existing_access(
@@ -3146,8 +3154,6 @@ def share_access_check_for_existing_access(context, share_id, access_type,
 
 def _check_for_existing_access(context, resource, resource_id, access_type,
                                access_to):
-
-    session = get_session()
     if resource == 'share':
         query_method = _share_access_get_query
         access_to_field = models.ShareAccessMapping.access_to
@@ -3155,77 +3161,75 @@ def _check_for_existing_access(context, resource, resource_id, access_type,
         query_method = _share_snapshot_access_get_query
         access_to_field = models.ShareSnapshotAccessMapping.access_to
 
-    with session.begin():
-        if access_type == 'ip':
-            rules = query_method(
-                context, session, {'%s_id' % resource: resource_id,
-                                   'access_type': access_type}).filter(
-                access_to_field.startswith(access_to.split('/')[0])).all()
+    if access_type == 'ip':
+        rules = query_method(
+            context,
+            {'%s_id' % resource: resource_id, 'access_type': access_type}
+        ).filter(access_to_field.startswith(access_to.split('/')[0])).all()
 
-            matching_rules = [
-                rule for rule in rules if
-                ipaddress.ip_network(str(access_to)) ==
-                ipaddress.ip_network(str(rule['access_to']))
-            ]
-            return len(matching_rules) > 0
-        else:
-            return query_method(
-                context, session, {'%s_id' % resource: resource_id,
-                                   'access_type': access_type,
-                                   'access_to': access_to}).count() > 0
+        matching_rules = [
+            rule for rule in rules if
+            ipaddress.ip_network(str(access_to)) ==
+            ipaddress.ip_network(str(rule['access_to']))
+        ]
+        return len(matching_rules) > 0
 
-
-@require_context
-def share_access_delete_all_by_share(context, share_id):
-    session = get_session()
-    with session.begin():
-        (session.query(models.ShareAccessMapping).
-            filter_by(share_id=share_id).soft_delete())
-
-
-@require_context
-def share_instance_access_delete(context, mapping_id):
-    session = get_session()
-    with session.begin():
-
-        mapping = (session.query(models.ShareInstanceAccessMapping).
-                   filter_by(id=mapping_id).first())
-
-        if not mapping:
-            exception.NotFound()
-
-        filters = {
-            'resource_id': mapping['access_id'],
-            'all_projects': True
+    return query_method(
+        context,
+        {
+            '%s_id' % resource: resource_id,
+            'access_type': access_type,
+            'access_to': access_to
         }
-        locks, __ = resource_lock_get_all(
-            context.elevated(), filters=filters
-        )
-        if locks:
-            for lock in locks:
-                resource_lock_delete(
-                    context.elevated(), lock['id']
-                )
+    ).count() > 0
 
-        mapping.soft_delete(session, update_status=True,
-                            status_field_name='state')
 
-        other_mappings = _share_instance_access_query(
-            context, session, mapping['access_id']).all()
+@require_context
+@context_manager.writer
+def share_instance_access_delete(context, mapping_id):
+    mapping = context.session.query(
+        models.ShareInstanceAccessMapping
+    ).filter_by(id=mapping_id).first()
 
-        # NOTE(u_glide): Remove access rule if all mappings were removed.
-        if len(other_mappings) == 0:
-            (session.query(models.ShareAccessRulesMetadata).filter_by(
-                access_id=mapping['access_id']).soft_delete())
+    if not mapping:
+        exception.NotFound()
 
-            (session.query(models.ShareAccessMapping).filter_by(
-                id=mapping['access_id']).soft_delete())
+    filters = {
+        'resource_id': mapping['access_id'],
+        'all_projects': True
+    }
+    locks, _ = resource_lock_get_all(
+        context.elevated(), filters=filters
+    )
+    if locks:
+        for lock in locks:
+            resource_lock_delete(
+                context.elevated(), lock['id']
+            )
+
+    mapping.soft_delete(
+        session=context.session, update_status=True,
+        status_field_name='state'
+    )
+
+    other_mappings = _share_instance_access_query(
+        context, mapping['access_id']
+    ).all()
+
+    # NOTE(u_glide): Remove access rule if all mappings were removed.
+    if len(other_mappings) == 0:
+        context.session.query(models.ShareAccessRulesMetadata).filter_by(
+            access_id=mapping['access_id']
+        ).soft_delete()
+        context.session.query(models.ShareAccessMapping).filter_by(
+            id=mapping['access_id']
+        ).soft_delete()
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def share_instance_access_update(context, access_id, instance_id, updates):
-    session = get_session()
     share_access_fields = ('access_type', 'access_to', 'access_key',
                            'access_level')
 
@@ -3236,25 +3240,27 @@ def share_instance_access_update(context, access_id, instance_id, updates):
     share_access_map_updates['updated_at'] = updated_at
     share_instance_access_map_updates['updated_at'] = updated_at
 
-    with session.begin():
-        share_access = _share_access_get_query(
-            context, session, {'id': access_id}).first()
-        share_access.update(share_access_map_updates)
-        share_access.save(session=session)
+    access_ref = _share_access_get_query(context, {'id': access_id}).first()
+    access_ref.update(share_access_map_updates)
+    access_ref.save(session=context.session)
 
-        access = _share_instance_access_query(
-            context, session, access_id, instance_id).first()
-        access.update(share_instance_access_map_updates)
-        access.save(session=session)
+    instance_access_ref = _share_instance_access_query(
+        context, access_id, instance_id).first()
+    instance_access_ref.update(share_instance_access_map_updates)
+    instance_access_ref.save(session=context.session)
 
-        return access
+    return instance_access_ref
 
 ###################
 
 
 @require_context
-def share_snapshot_instance_create(context, snapshot_id, values, session=None):
-    session = session or get_session()
+@context_manager.writer
+def share_snapshot_instance_create(context, snapshot_id, values):
+    return _share_snapshot_instance_create(context, snapshot_id, values)
+
+
+def _share_snapshot_instance_create(context, snapshot_id, values):
     values = copy.deepcopy(values)
     values['share_snapshot_metadata'] = _metadata_refs(
         values.get('metadata'), models.ShareSnapshotMetadata)
@@ -3267,17 +3273,15 @@ def share_snapshot_instance_create(context, snapshot_id, values, session=None):
 
     instance_ref = models.ShareSnapshotInstance()
     instance_ref.update(values)
-    instance_ref.save(session=session)
+    instance_ref.save(session=context.session)
 
-    return share_snapshot_instance_get(context, instance_ref['id'],
-                                       session=session)
+    return _share_snapshot_instance_get(context, instance_ref['id'])
 
 
 @require_context
+@context_manager.writer
 def share_snapshot_instance_update(context, instance_id, values):
-    session = get_session()
-    instance_ref = share_snapshot_instance_get(context, instance_id,
-                                               session=session)
+    instance_ref = _share_snapshot_instance_get(context, instance_id)
     _change_size_to_instance_size(values)
 
     # NOTE(u_glide): Ignore updates to custom properties
@@ -3286,66 +3290,82 @@ def share_snapshot_instance_update(context, instance_id, values):
             values.pop(extra_key)
 
     instance_ref.update(values)
-    instance_ref.save(session=session)
+    instance_ref.save(session=context.session)
     return instance_ref
 
 
 @require_context
-def share_snapshot_instance_delete(context, snapshot_instance_id,
-                                   session=None):
-    session = session or get_session()
+@context_manager.writer
+def share_snapshot_instance_delete(context, snapshot_instance_id):
+    snapshot_instance_ref = _share_snapshot_instance_get(
+        context, snapshot_instance_id
+    )
 
-    with session.begin():
+    access_rules = _share_snapshot_access_get_all_for_snapshot_instance(
+        context, snapshot_instance_id
+    )
+    for rule in access_rules:
+        _share_snapshot_instance_access_delete(
+            context, rule['access_id'], snapshot_instance_id,
+        )
 
-        snapshot_instance_ref = share_snapshot_instance_get(
-            context, snapshot_instance_id, session=session)
+    for el in snapshot_instance_ref.export_locations:
+        _share_snapshot_instance_export_location_delete(context, el['id'])
 
-        access_rules = share_snapshot_access_get_all_for_snapshot_instance(
-            context, snapshot_instance_id, session=session)
-        for rule in access_rules:
-            share_snapshot_instance_access_delete(
-                context, rule['access_id'], snapshot_instance_id)
-
-        for el in snapshot_instance_ref.export_locations:
-            share_snapshot_instance_export_location_delete(context, el['id'])
-
-        snapshot_instance_ref.soft_delete(
-            session=session, update_status=True)
-        snapshot = share_snapshot_get(
-            context, snapshot_instance_ref['snapshot_id'], session=session)
-        if len(snapshot.instances) == 0:
-            session.query(models.ShareSnapshotMetadata).filter_by(
-                share_snapshot_id=snapshot['id']).soft_delete()
-            snapshot.soft_delete(session=session)
+    snapshot_instance_ref.soft_delete(
+        session=context.session, update_status=True)
+    snapshot = _share_snapshot_get(
+        context, snapshot_instance_ref['snapshot_id'])
+    if len(snapshot.instances) == 0:
+        context.session.query(models.ShareSnapshotMetadata).filter_by(
+            share_snapshot_id=snapshot['id'],
+        ).soft_delete()
+        snapshot.soft_delete(session=context.session)
 
 
 @require_context
-def share_snapshot_instance_get(context, snapshot_instance_id, session=None,
+@context_manager.reader
+def share_snapshot_instance_get(context, snapshot_instance_id,
                                 with_share_data=False):
+    return _share_snapshot_instance_get(
+        context, snapshot_instance_id, with_share_data=with_share_data,
+    )
 
-    session = session or get_session()
 
+def _share_snapshot_instance_get(
+    context, snapshot_instance_id, with_share_data=False,
+):
     result = _share_snapshot_instance_get_with_filters(
-        context, instance_ids=[snapshot_instance_id], session=session).first()
+        context, instance_ids=[snapshot_instance_id],
+    ).first()
 
     if result is None:
         raise exception.ShareSnapshotInstanceNotFound(
             instance_id=snapshot_instance_id)
 
     if with_share_data:
-        result = _set_share_snapshot_instance_data(context, result, session)[0]
+        result = _set_share_snapshot_instance_data(context, result)[0]
 
     return result
 
 
 @require_context
-def share_snapshot_instance_get_all_with_filters(context, search_filters,
-                                                 with_share_data=False,
-                                                 session=None):
+@context_manager.reader
+def share_snapshot_instance_get_all_with_filters(
+    context, search_filters, with_share_data=False,
+):
     """Get snapshot instances filtered by known attrs, ignore unknown attrs.
 
     All filters accept list/tuples to filter on, along with simple values.
     """
+    return _share_snapshot_instance_get_all_with_filters(
+        context, search_filters, with_share_data=with_share_data,
+    )
+
+
+def _share_snapshot_instance_get_all_with_filters(
+    context, search_filters, with_share_data=False,
+):
     def listify(values):
         if values:
             if not isinstance(values, (list, tuple, set)):
@@ -3353,27 +3373,25 @@ def share_snapshot_instance_get_all_with_filters(context, search_filters,
             else:
                 return values
 
-    session = session or get_session()
     _known_filters = ('instance_ids', 'snapshot_ids', 'share_instance_ids',
                       'statuses')
 
     filters = {k: listify(search_filters.get(k)) for k in _known_filters}
 
     result = _share_snapshot_instance_get_with_filters(
-        context, session=session, **filters).all()
+        context, **filters,
+    ).all()
 
     if with_share_data:
-        result = _set_share_snapshot_instance_data(context, result, session)
+        result = _set_share_snapshot_instance_data(context, result)
 
     return result
 
 
 def _share_snapshot_instance_get_with_filters(context, instance_ids=None,
                                               snapshot_ids=None, statuses=None,
-                                              share_instance_ids=None,
-                                              session=None):
-
-    query = model_query(context, models.ShareSnapshotInstance, session=session,
+                                              share_instance_ids=None):
+    query = model_query(context, models.ShareSnapshotInstance,
                         read_deleted="no")
 
     if instance_ids is not None:
@@ -3391,17 +3409,19 @@ def _share_snapshot_instance_get_with_filters(context, instance_ids=None,
     if statuses is not None:
         query = query.filter(models.ShareSnapshotInstance.status.in_(statuses))
 
-    query = query.options(joinedload('share_group_snapshot'))
+    query = query.options(
+        orm.joinedload(models.ShareSnapshotInstance.share_group_snapshot),
+    )
     return query
 
 
-def _set_share_snapshot_instance_data(context, snapshot_instances, session):
+def _set_share_snapshot_instance_data(context, snapshot_instances):
     if snapshot_instances and not isinstance(snapshot_instances, list):
         snapshot_instances = [snapshot_instances]
 
     for snapshot_instance in snapshot_instances:
-        share_instance = share_instance_get(
-            context, snapshot_instance['share_instance_id'], session=session,
+        share_instance = _share_instance_get(
+            context, snapshot_instance['share_instance_id'],
             with_share_data=True)
         snapshot_instance['share'] = share_instance
 
@@ -3412,6 +3432,7 @@ def _set_share_snapshot_instance_data(context, snapshot_instances, session):
 
 
 @require_context
+@context_manager.writer
 def share_snapshot_create(context, create_values,
                           create_snapshot_instance=True):
     values = copy.deepcopy(create_values)
@@ -3423,25 +3444,25 @@ def share_snapshot_create(context, create_values,
     snapshot_instance_values, snapshot_values = (
         _extract_snapshot_instance_values(values)
     )
-    share_ref = share_get(context, snapshot_values.get('share_id'))
+    snapshot_ref.update(snapshot_values)
+
+    share_ref = _share_get(
+        context,
+        snapshot_values.get('share_id'),
+    )
     snapshot_instance_values.update(
         {'share_instance_id': share_ref.instance.id}
     )
 
-    snapshot_ref.update(snapshot_values)
-    session = get_session()
-    with session.begin():
-        snapshot_ref.save(session=session)
+    snapshot_ref.save(session=context.session)
 
-        if create_snapshot_instance:
-            share_snapshot_instance_create(
-                context,
-                snapshot_ref['id'],
-                snapshot_instance_values,
-                session=session
-            )
-        return share_snapshot_get(
-            context, snapshot_values['id'], session=session)
+    if create_snapshot_instance:
+        _share_snapshot_instance_create(
+            context,
+            snapshot_ref['id'],
+            snapshot_instance_values,
+        )
+    return _share_snapshot_get(context, snapshot_values['id'])
 
 
 @require_admin_context
@@ -3467,20 +3488,21 @@ def _snapshot_data_get_for_project(
 
 
 @require_context
-def share_snapshot_get(context, snapshot_id, project_only=True, session=None):
-    return _share_snapshot_get(
-        context, snapshot_id, project_only=project_only, session=session,
-    )
+@context_manager.reader
+def share_snapshot_get(context, snapshot_id, project_only=True):
+    return _share_snapshot_get(context, snapshot_id, project_only=project_only)
 
 
-def _share_snapshot_get(context, snapshot_id, project_only=True, session=None):
-    result = (model_query(context, models.ShareSnapshot, session=session,
-                          project_only=project_only).
-              filter_by(id=snapshot_id).
-              options(joinedload('share')).
-              options(joinedload('instances')).
-              options(joinedload('share_snapshot_metadata')).
-              first())
+def _share_snapshot_get(context, snapshot_id, project_only=True):
+    result = model_query(
+        context, models.ShareSnapshot, project_only=project_only,
+    ).filter_by(
+        id=snapshot_id,
+    ).options(
+        orm.joinedload(models.ShareSnapshot.share),
+        orm.joinedload(models.ShareSnapshot.instances),
+        orm.joinedload(models.ShareSnapshot.share_snapshot_metadata),
+    ).first()
 
     if not result:
         raise exception.ShareSnapshotNotFound(snapshot_id=snapshot_id)
@@ -3514,12 +3536,15 @@ def _share_snapshot_get_all_with_filters(context, project_id=None,
 
     if project_id:
         query = query.filter_by(project_id=project_id)
+
     if share_id:
         query = query.filter_by(share_id=share_id)
-    query = (query.options(joinedload('share'))
-             .options(joinedload('instances'))
-             .options(joinedload('share_snapshot_metadata'))
-             )
+
+    query = query.options(
+        orm.joinedload(models.ShareSnapshot.share),
+        orm.joinedload(models.ShareSnapshot.instances),
+        orm.joinedload(models.ShareSnapshot.share_snapshot_metadata),
+    )
 
     # Snapshots with no instances are filtered out.
     query = query.filter(
@@ -3543,10 +3568,12 @@ def _share_snapshot_get_all_with_filters(context, project_id=None,
                         'ek': usage_filter_keys}
             raise exception.InvalidInput(reason=msg)
         filters.pop('usage')
+
     if 'status' in filters:
         query = query.filter(models.ShareSnapshotInstance.status == (
             filters['status']))
         filters.pop('status')
+
     if 'metadata' in filters:
         for k, v in filters['metadata'].items():
             # pylint: disable=no-member
@@ -3591,6 +3618,7 @@ def _share_snapshot_get_all_with_filters(context, project_id=None,
 
 
 @require_admin_context
+@context_manager.reader
 def share_snapshot_get_all(context, filters=None, limit=None, offset=None,
                            sort_key=None, sort_dir=None):
     return _share_snapshot_get_all_with_filters(
@@ -3599,6 +3627,7 @@ def share_snapshot_get_all(context, filters=None, limit=None, offset=None,
 
 
 @require_admin_context
+@context_manager.reader
 def share_snapshot_get_all_with_count(context, filters=None, limit=None,
                                       offset=None, sort_key=None,
                                       sort_dir=None):
@@ -3610,6 +3639,7 @@ def share_snapshot_get_all_with_count(context, filters=None, limit=None,
 
 
 @require_context
+@context_manager.reader
 def share_snapshot_get_all_by_project(context, project_id, filters=None,
                                       limit=None, offset=None,
                                       sort_key=None, sort_dir=None):
@@ -3620,6 +3650,7 @@ def share_snapshot_get_all_by_project(context, project_id, filters=None,
 
 
 @require_context
+@context_manager.reader
 def share_snapshot_get_all_by_project_with_count(context, project_id,
                                                  filters=None, limit=None,
                                                  offset=None, sort_key=None,
@@ -3633,6 +3664,7 @@ def share_snapshot_get_all_by_project_with_count(context, project_id,
 
 
 @require_context
+@context_manager.reader
 def share_snapshot_get_all_for_share(
     context, share_id, filters=None, sort_key=None, sort_dir=None,
 ):
@@ -3651,8 +3683,8 @@ def _share_snapshot_get_all_for_share(
 
 
 @require_context
+@context_manager.reader
 def share_snapshot_get_latest_for_share(context, share_id):
-
     snapshots = _share_snapshot_get_all_with_filters(
         context, share_id=share_id, sort_key='created_at', sort_dir='desc')
     return snapshots[0] if snapshots else None
@@ -3660,17 +3692,13 @@ def share_snapshot_get_latest_for_share(context, share_id):
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def share_snapshot_update(context, snapshot_id, values):
-    session = get_session()
-    with session.begin():
-        return _share_snapshot_update(context, snapshot_id, values,
-                                      session=session)
+    return _share_snapshot_update(context, snapshot_id, values)
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
-def _share_snapshot_update(context, snapshot_id, values, session=None):
-    snapshot_ref = _share_snapshot_get(context, snapshot_id, session=session)
+def _share_snapshot_update(context, snapshot_id, values):
+    snapshot_ref = _share_snapshot_get(context, snapshot_id)
 
     instance_values, snapshot_values = (
         _extract_snapshot_instance_values(values)
@@ -3678,26 +3706,34 @@ def _share_snapshot_update(context, snapshot_id, values, session=None):
 
     if snapshot_values:
         snapshot_ref.update(snapshot_values)
-        snapshot_ref.save(session=session or context.session)
+        snapshot_ref.save(session=context.session)
 
     if instance_values:
         snapshot_ref.instance.update(instance_values)
-        snapshot_ref.instance.save(session=session or context.session)
+        snapshot_ref.instance.save(session=context.session)
 
     return snapshot_ref
 
 
 @require_context
+@context_manager.writer
 def share_snapshot_instances_status_update(
-        context, snapshot_instance_ids, values, session=None):
-    session = session or get_session()
+    context, snapshot_instance_ids, values,
+):
+    return _share_snapshot_instances_status_update(
+        context, snapshot_instance_ids, values,
+    )
 
-    result = (
-        model_query(
-            context, models.ShareSnapshotInstance,
-            read_deleted="no", session=session).filter(
-            models.ShareSnapshotInstance.id.in_(snapshot_instance_ids)
-            ).update(values, synchronize_session=False))
+
+def _share_snapshot_instances_status_update(
+    context, snapshot_instance_ids, values,
+):
+    result = model_query(
+        context, models.ShareSnapshotInstance,
+        read_deleted="no",
+    ).filter(
+        models.ShareSnapshotInstance.id.in_(snapshot_instance_ids)
+    ).update(values, synchronize_session=False)
 
     return result
 
@@ -3708,65 +3744,57 @@ def share_snapshot_instances_status_update(
 
 @require_context
 @require_share_snapshot_exists
+@context_manager.writer
 def share_snapshot_metadata_get(context, share_snapshot_id):
-    session = get_session()
-    return _share_snapshot_metadata_get(context,
-                                        share_snapshot_id, session=session)
+    return _share_snapshot_metadata_get(context, share_snapshot_id)
 
 
 @require_context
 @require_share_snapshot_exists
+@context_manager.writer
 def share_snapshot_metadata_delete(context, share_snapshot_id, key):
-    session = get_session()
     meta_ref = _share_snapshot_metadata_get_item(
-        context, share_snapshot_id, key, session=session)
-    meta_ref.soft_delete(session=session)
+        context, share_snapshot_id, key)
+    meta_ref.soft_delete(session=context.session)
 
 
 @require_context
 @require_share_snapshot_exists
+@context_manager.writer
 def share_snapshot_metadata_update(context, share_snapshot_id,
                                    metadata, delete):
-    session = get_session()
     return _share_snapshot_metadata_update(context, share_snapshot_id,
-                                           metadata, delete,
-                                           session=session)
+                                           metadata, delete)
 
 
-def share_snapshot_metadata_update_item(context, share_snapshot_id,
-                                        item):
-    session = get_session()
+@context_manager.writer
+def share_snapshot_metadata_update_item(context, share_snapshot_id, item):
     return _share_snapshot_metadata_update(context, share_snapshot_id,
-                                           item, delete=False,
-                                           session=session)
+                                           item, delete=False)
 
 
-def share_snapshot_metadata_get_item(context, share_snapshot_id,
-                                     key):
+@context_manager.reader
+def share_snapshot_metadata_get_item(context, share_snapshot_id, key):
 
-    session = get_session()
-    row = _share_snapshot_metadata_get_item(context, share_snapshot_id,
-                                            key, session=session)
+    row = _share_snapshot_metadata_get_item(context, share_snapshot_id, key)
     result = {}
     result[row['key']] = row['value']
 
     return result
 
 
-def _share_snapshot_metadata_get_query(context, share_snapshot_id,
-                                       session=None):
-    session = session or get_session()
-    return (model_query(context, models.ShareSnapshotMetadata,
-                        session=session,
-                        read_deleted="no").
-            filter_by(share_snapshot_id=share_snapshot_id).
-            options(joinedload('share_snapshot')))
+def _share_snapshot_metadata_get_query(context, share_snapshot_id):
+    return model_query(
+        context, models.ShareSnapshotMetadata, read_deleted="no",
+    ).filter_by(
+        share_snapshot_id=share_snapshot_id,
+    ).options(orm.joinedload(models.ShareSnapshotMetadata.share_snapshot))
 
 
-def _share_snapshot_metadata_get(context, share_snapshot_id, session=None):
-    session = session or get_session()
-    rows = _share_snapshot_metadata_get_query(context, share_snapshot_id,
-                                              session=session).all()
+def _share_snapshot_metadata_get(context, share_snapshot_id):
+    rows = _share_snapshot_metadata_get_query(
+        context, share_snapshot_id,
+    ).all()
 
     result = {}
     for row in rows:
@@ -3774,12 +3802,10 @@ def _share_snapshot_metadata_get(context, share_snapshot_id, session=None):
     return result
 
 
-def _share_snapshot_metadata_get_item(context, share_snapshot_id,
-                                      key, session=None):
-    session = session or get_session()
-    result = (_share_snapshot_metadata_get_query(
-        context, share_snapshot_id, session=session).filter_by(
-            key=key).first())
+def _share_snapshot_metadata_get_item(context, share_snapshot_id, key):
+    result = _share_snapshot_metadata_get_query(
+        context, share_snapshot_id).filter_by(
+            key=key).first()
     if not result:
         raise exception.MetadataItemNotFound
     return result
@@ -3787,76 +3813,72 @@ def _share_snapshot_metadata_get_item(context, share_snapshot_id,
 
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def _share_snapshot_metadata_update(context, share_snapshot_id,
-                                    metadata, delete, session=None):
-    session = session or get_session()
+                                    metadata, delete):
     delete = strutils.bool_from_string(delete)
-    with session.begin():
-        if delete:
-            original_metadata = _share_snapshot_metadata_get(
-                context, share_snapshot_id, session=session)
-            for meta_key, meta_value in original_metadata.items():
-                if meta_key not in metadata:
-                    meta_ref = _share_snapshot_metadata_get_item(
-                        context, share_snapshot_id, meta_key,
-                        session=session)
-                    meta_ref.soft_delete(session=session)
-        meta_ref = None
-        # Now update all existing items with new values, or create new meta
-        # objects
-        for meta_key, meta_value in metadata.items():
+    if delete:
+        original_metadata = _share_snapshot_metadata_get(
+            context, share_snapshot_id)
+        for meta_key, meta_value in original_metadata.items():
+            if meta_key not in metadata:
+                meta_ref = _share_snapshot_metadata_get_item(
+                    context, share_snapshot_id, meta_key,
+                )
+                meta_ref.soft_delete(session=context.session)
 
-            # update the value whether it exists or not
-            item = {"value": meta_value}
-            meta_ref = _share_snapshot_metadata_get_query(
-                context, share_snapshot_id,
-                session=session).filter_by(
-                key=meta_key).first()
-            if not meta_ref:
-                meta_ref = models.ShareSnapshotMetadata()
-                item.update({"key": meta_key,
-                             "share_snapshot_id": share_snapshot_id})
-            meta_ref.update(item)
-            meta_ref.save(session=session)
+    # Now update all existing items with new values, or create new meta
+    # objects
+    meta_ref = None
+    for meta_key, meta_value in metadata.items():
+        # update the value whether it exists or not
+        item = {"value": meta_value}
+        meta_ref = _share_snapshot_metadata_get_query(
+            context, share_snapshot_id,
+        ).filter_by(key=meta_key).first()
+        if not meta_ref:
+            meta_ref = models.ShareSnapshotMetadata()
+            item.update({"key": meta_key,
+                         "share_snapshot_id": share_snapshot_id})
+        meta_ref.update(item)
+        meta_ref.save(session=context.session)
 
-        return metadata
+    return metadata
 
 #################################
 
 
 @require_context
+@context_manager.writer
 def share_snapshot_access_create(context, values):
     values = ensure_model_dict_has_id(values)
-    session = get_session()
-    with session.begin():
-        access_ref = models.ShareSnapshotAccessMapping()
-        access_ref.update(values)
-        access_ref.save(session=session)
+    access_ref = models.ShareSnapshotAccessMapping()
+    access_ref.update(values)
+    access_ref.save(session=context.session)
 
-        snapshot = share_snapshot_get(context, values['share_snapshot_id'],
-                                      session=session)
+    snapshot = _share_snapshot_get(context, values['share_snapshot_id'])
 
-        for instance in snapshot.instances:
-            vals = {
-                'share_snapshot_instance_id': instance['id'],
-                'access_id': access_ref['id'],
-            }
+    for instance in snapshot.instances:
+        values = {
+            'share_snapshot_instance_id': instance['id'],
+            'access_id': access_ref['id'],
+        }
 
-            _share_snapshot_instance_access_create(vals, session)
+        instance_access_ref = models.ShareSnapshotInstanceAccessMapping()
+        instance_access_ref.update(ensure_model_dict_has_id(values))
+        instance_access_ref.save(session=context.session)
 
-    return share_snapshot_access_get(context, access_ref['id'])
+    return _share_snapshot_access_get(context, access_ref['id'])
 
 
-def _share_snapshot_access_get_query(context, session, filters,
-                                     read_deleted='no'):
-
-    query = model_query(context, models.ShareSnapshotAccessMapping,
-                        session=session, read_deleted=read_deleted)
+def _share_snapshot_access_get_query(context, filters, read_deleted='no'):
+    query = model_query(
+        context, models.ShareSnapshotAccessMapping, read_deleted=read_deleted
+    )
     return query.filter_by(**filters)
 
 
-def _share_snapshot_instance_access_get_query(context, session,
-                                              access_id=None,
-                                              share_snapshot_instance_id=None):
+def _share_snapshot_instance_access_get_query(
+    context, access_id=None, share_snapshot_instance_id=None,
+):
     filters = {'deleted': 'False'}
 
     if access_id is not None:
@@ -3864,25 +3886,36 @@ def _share_snapshot_instance_access_get_query(context, session,
 
     if share_snapshot_instance_id is not None:
         filters.update(
-            {'share_snapshot_instance_id': share_snapshot_instance_id})
+            {'share_snapshot_instance_id': share_snapshot_instance_id}
+        )
 
-    return model_query(context, models.ShareSnapshotInstanceAccessMapping,
-                       session=session).filter_by(**filters)
+    return model_query(
+        context, models.ShareSnapshotInstanceAccessMapping
+    ).filter_by(**filters)
 
 
 @require_context
-def share_snapshot_instance_access_get_all(context, access_id, session):
+@context_manager.reader
+def share_snapshot_instance_access_get_all(context, access_id):
+    return _share_snapshot_instance_access_get_all(context, access_id)
+
+
+def _share_snapshot_instance_access_get_all(context, access_id):
     rules = _share_snapshot_instance_access_get_query(
-        context, session, access_id=access_id).all()
+        context, access_id=access_id).all()
     return rules
 
 
 @require_context
-def share_snapshot_access_get(context, access_id, session=None):
-    session = session or get_session()
+@context_manager.reader
+def share_snapshot_access_get(context, access_id):
+    return _share_snapshot_access_get(context, access_id)
 
+
+def _share_snapshot_access_get(context, access_id):
     access = _share_snapshot_access_get_query(
-        context, session, {'id': access_id}).first()
+        context, {'id': access_id},
+    ).first()
 
     if access:
         return access
@@ -3890,26 +3923,21 @@ def share_snapshot_access_get(context, access_id, session=None):
         raise exception.NotFound()
 
 
-def _share_snapshot_instance_access_create(values, session):
-    access_ref = models.ShareSnapshotInstanceAccessMapping()
-    access_ref.update(ensure_model_dict_has_id(values))
-    access_ref.save(session=session)
-    return access_ref
-
-
 @require_context
+@context_manager.reader
 def share_snapshot_access_get_all_for_share_snapshot(context,
                                                      share_snapshot_id,
                                                      filters):
-    session = get_session()
     filters['share_snapshot_id'] = share_snapshot_id
     access_list = _share_snapshot_access_get_query(
-        context, session, filters).all()
+        context, filters
+    ).all()
 
     return access_list
 
 
 @require_context
+@context_manager.reader
 def share_snapshot_check_for_existing_access(context, share_snapshot_id,
                                              access_type, access_to):
     return _check_for_existing_access(
@@ -3917,15 +3945,26 @@ def share_snapshot_check_for_existing_access(context, share_snapshot_id,
 
 
 @require_context
+@context_manager.reader
 def share_snapshot_access_get_all_for_snapshot_instance(
-        context, snapshot_instance_id, filters=None,
-        with_snapshot_access_data=True, session=None):
+    context, snapshot_instance_id, filters=None,
+    with_snapshot_access_data=True,
+):
+    return _share_snapshot_access_get_all_for_snapshot_instance(
+        context, snapshot_instance_id, filters=filters,
+        with_snapshot_access_data=with_snapshot_access_data,
+    )
+
+
+def _share_snapshot_access_get_all_for_snapshot_instance(
+    context, snapshot_instance_id, filters=None,
+    with_snapshot_access_data=True,
+):
     """Get all access rules related to a certain snapshot instance."""
-    session = session or get_session()
     filters = copy.deepcopy(filters) if filters else {}
     filters.update({'share_snapshot_instance_id': snapshot_instance_id})
 
-    query = _share_snapshot_instance_access_get_query(context, session)
+    query = _share_snapshot_instance_access_get_query(context)
 
     legal_filter_keys = (
         'id', 'share_snapshot_instance_id', 'access_id', 'state')
@@ -3938,15 +3977,17 @@ def share_snapshot_access_get_all_for_snapshot_instance(
 
     if with_snapshot_access_data:
         instance_accesses = _set_instances_snapshot_access_data(
-            context, instance_accesses, session)
+            context, instance_accesses
+        )
 
     return instance_accesses
 
 
 @require_context
+@context_manager.writer
 def share_snapshot_instance_access_update(
-        context, access_id, instance_id, updates):
-
+    context, access_id, instance_id, updates
+):
     snapshot_access_fields = ('access_type', 'access_to')
     snapshot_access_map_updates, share_instance_access_map_updates = (
         _extract_subdict_by_fields(updates, snapshot_access_fields)
@@ -3956,126 +3997,135 @@ def share_snapshot_instance_access_update(
     snapshot_access_map_updates['updated_at'] = updated_at
     share_instance_access_map_updates['updated_at'] = updated_at
 
-    session = get_session()
-    with session.begin():
+    snapshot_access = _share_snapshot_access_get_query(
+        context, {'id': access_id}).first()
+    if not snapshot_access:
+        raise exception.NotFound()
+    snapshot_access.update(snapshot_access_map_updates)
+    snapshot_access.save(session=context.session)
 
-        snapshot_access = _share_snapshot_access_get_query(
-            context, session, {'id': access_id}).first()
-        if not snapshot_access:
-            raise exception.NotFound()
-        snapshot_access.update(snapshot_access_map_updates)
-        snapshot_access.save(session=session)
+    access = _share_snapshot_instance_access_get_query(
+        context, access_id=access_id,
+        share_snapshot_instance_id=instance_id).first()
+    if not access:
+        raise exception.NotFound()
+    access.update(share_instance_access_map_updates)
+    access.save(session=context.session)
 
-        access = _share_snapshot_instance_access_get_query(
-            context, session, access_id=access_id,
-            share_snapshot_instance_id=instance_id).first()
-        if not access:
-            raise exception.NotFound()
-        access.update(share_instance_access_map_updates)
-        access.save(session=session)
+    return access
 
+
+@require_context
+@context_manager.writer
+def share_snapshot_instance_access_get(
+    context, access_id, share_snapshot_instance_id,
+    with_snapshot_access_data=True
+):
+    access = _share_snapshot_instance_access_get_query(
+        context, access_id=access_id,
+        share_snapshot_instance_id=share_snapshot_instance_id
+    ).first()
+
+    if access is None:
+        raise exception.NotFound()
+
+    if with_snapshot_access_data:
+        return _set_instances_snapshot_access_data(context, access)[0]
+    else:
         return access
 
 
 @require_context
-def share_snapshot_instance_access_get(
-        context, access_id, share_snapshot_instance_id,
-        with_snapshot_access_data=True):
-
-    session = get_session()
-
-    with session.begin():
-        access = _share_snapshot_instance_access_get_query(
-            context, session, access_id=access_id,
-            share_snapshot_instance_id=share_snapshot_instance_id).first()
-
-        if access is None:
-            raise exception.NotFound()
-
-        if with_snapshot_access_data:
-            return _set_instances_snapshot_access_data(
-                context, access, session)[0]
-        else:
-            return access
-
-
-@require_context
+@context_manager.writer
 def share_snapshot_instance_access_delete(
-        context, access_id, snapshot_instance_id):
-    session = get_session()
-    with session.begin():
+    context, access_id, snapshot_instance_id
+):
+    return _share_snapshot_instance_access_delete(
+        context, access_id, snapshot_instance_id
+    )
 
-        rule = _share_snapshot_instance_access_get_query(
-            context, session, access_id=access_id,
-            share_snapshot_instance_id=snapshot_instance_id).first()
 
-        if not rule:
-            exception.NotFound()
+def _share_snapshot_instance_access_delete(
+    context, access_id, snapshot_instance_id
+):
+    rule = _share_snapshot_instance_access_get_query(
+        context, access_id=access_id,
+        share_snapshot_instance_id=snapshot_instance_id).first()
 
-        rule.soft_delete(session, update_status=True,
-                         status_field_name='state')
+    if not rule:
+        exception.NotFound()
 
-        other_mappings = share_snapshot_instance_access_get_all(
-            context, rule['access_id'], session)
+    rule.soft_delete(
+        session=context.session, update_status=True,
+        status_field_name='state')
 
-        if len(other_mappings) == 0:
-            (
-                session.query(models.ShareSnapshotAccessMapping)
-                .filter_by(id=rule['access_id'])
-                .soft_delete(update_status=True, status_field_name='state')
-            )
+    other_mappings = _share_snapshot_instance_access_get_all(
+        context, rule['access_id'])
+
+    if len(other_mappings) == 0:
+        context.session.query(
+            models.ShareSnapshotAccessMapping
+        ).filter_by(
+            id=rule['access_id']
+        ).soft_delete(
+            update_status=True, status_field_name='state'
+        )
 
 
 @require_context
+@context_manager.writer
 def share_snapshot_instance_export_location_create(context, values):
-
     values = ensure_model_dict_has_id(values)
-    session = get_session()
-    with session.begin():
-        ssiel = models.ShareSnapshotInstanceExportLocation()
-        ssiel.update(values)
-        ssiel.save(session=session)
+    ssiel = models.ShareSnapshotInstanceExportLocation()
+    ssiel.update(values)
+    ssiel.save(session=context.session)
 
-        return ssiel
+    return ssiel
 
 
-def _share_snapshot_instance_export_locations_get_query(context, session,
-                                                        values):
-    query = model_query(context, models.ShareSnapshotInstanceExportLocation,
-                        session=session)
+def _share_snapshot_instance_export_locations_get_query(context, values):
+    query = model_query(context, models.ShareSnapshotInstanceExportLocation)
     return query.filter_by(**values)
 
 
 @require_context
+@context_manager.reader
 def share_snapshot_export_locations_get(context, snapshot_id):
-    session = get_session()
-    snapshot = share_snapshot_get(context, snapshot_id, session=session)
+    snapshot = _share_snapshot_get(context, snapshot_id)
     ins_ids = [ins['id'] for ins in snapshot.instances]
     export_locations = _share_snapshot_instance_export_locations_get_query(
-        context, session, {}).filter(
+        context, {}).filter(
         models.ShareSnapshotInstanceExportLocation.
             share_snapshot_instance_id.in_(ins_ids)).all()
     return export_locations
 
 
 @require_context
+@context_manager.reader
 def share_snapshot_instance_export_locations_get_all(
-        context, share_snapshot_instance_id, session=None):
+    context, share_snapshot_instance_id,
+):
+    return _share_snapshot_instance_export_locations_get_all(
+        context, share_snapshot_instance_id,
+    )
 
-    if not session:
-        session = get_session()
+
+def _share_snapshot_instance_export_locations_get_all(
+    context, share_snapshot_instance_id,
+):
     export_locations = _share_snapshot_instance_export_locations_get_query(
-        context, session,
-        {'share_snapshot_instance_id': share_snapshot_instance_id}).all()
+        context,
+        {'share_snapshot_instance_id': share_snapshot_instance_id},
+    ).all()
     return export_locations
 
 
 @require_context
+@context_manager.reader
 def share_snapshot_instance_export_location_get(context, el_id):
-    session = get_session()
-
     export_location = _share_snapshot_instance_export_locations_get_query(
-        context, session, {'id': el_id}).first()
+        context, {'id': el_id},
+    ).first()
 
     if export_location:
         return export_location
@@ -4084,27 +4134,32 @@ def share_snapshot_instance_export_location_get(context, el_id):
 
 
 @require_context
+@context_manager.writer
 def share_snapshot_instance_export_location_delete(context, el_id):
-    session = get_session()
-    with session.begin():
+    return _share_snapshot_instance_export_location_delete(context, el_id)
 
-        el = _share_snapshot_instance_export_locations_get_query(
-            context, session, {'id': el_id}).first()
 
-        if not el:
-            exception.NotFound()
+def _share_snapshot_instance_export_location_delete(context, el_id):
+    el = _share_snapshot_instance_export_locations_get_query(
+        context, {'id': el_id}).first()
 
-        el.soft_delete(session=session)
+    if not el:
+        exception.NotFound()
+
+    el.soft_delete(session=context.session)
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
 def share_snapshot_instance_export_locations_update(
-        context, share_snapshot_instance_id, export_locations, delete):
+    context, share_snapshot_instance_id, export_locations, delete,
+):
     # NOTE(dviroel): Lets keep this backward compatibility for driver that
     # may still return export_locations as string
     if not isinstance(export_locations, (list, tuple, set)):
         export_locations = (export_locations, )
+
     export_locations_as_dicts = []
     for el in export_locations:
         export_location = el
@@ -4117,14 +4172,12 @@ def share_snapshot_instance_export_locations_update(
             raise exception.ManilaException(
                 _("Wrong export location type '%s'.") % type(export_location))
         export_locations_as_dicts.append(export_location)
+
     export_locations = export_locations_as_dicts
-
     export_locations_paths = [el['path'] for el in export_locations]
-
-    session = get_session()
-
-    current_el_rows = share_snapshot_instance_export_locations_get_all(
-        context, share_snapshot_instance_id, session=session)
+    current_el_rows = _share_snapshot_instance_export_locations_get_all(
+        context, share_snapshot_instance_id,
+    )
 
     def get_path_list_from_rows(rows):
         return set([row['path'] for row in rows])
@@ -4144,13 +4197,13 @@ def share_snapshot_instance_export_locations_update(
 
     for el in current_el_rows:
         if delete and el['path'] not in export_locations_paths:
-            el.soft_delete(session)
+            el.soft_delete(session=context.session)
         else:
             updated_at = indexed_update_time[el['path']]
             el.update({
                 'updated_at': updated_at,
             })
-            el.save(session=session)
+            el.save(session=context.session)
 
     # Now add new export locations
     for el in export_locations:
@@ -4166,11 +4219,13 @@ def share_snapshot_instance_export_locations_update(
             'updated_at': indexed_update_time[el['path']],
             'is_admin_only': el.get('is_admin_only', False),
         })
-        location_ref.save(session=session)
+        location_ref.save(session=context.session)
 
     return get_path_list_from_rows(
-        share_snapshot_instance_export_locations_get_all(
-            context, share_snapshot_instance_id, session=session))
+        _share_snapshot_instance_export_locations_get_all(
+            context, share_snapshot_instance_id,
+        )
+    )
 
 #################################
 
@@ -4178,7 +4233,9 @@ def share_snapshot_instance_export_locations_update(
 def _share_metadata_get_query(context, share_id):
     return model_query(
         context, models.ShareMetadata, read_deleted="no",
-    ).filter_by(share_id=share_id).options(joinedload('share'))
+    ).filter_by(
+        share_id=share_id,
+    ).options(orm.joinedload(models.ShareMetadata.share))
 
 
 @require_context
@@ -4303,7 +4360,7 @@ def _export_location_get_all(
     ).order_by(
         "updated_at",
     ).options(
-        joinedload("_el_metadata_bare"),
+        orm.joinedload(models.ShareInstanceExportLocations._el_metadata_bare),
     )
 
     if not include_admin_only:
@@ -4311,7 +4368,9 @@ def _export_location_get_all(
 
     if ignore_secondary_replicas:
         replica_state_attr = models.ShareInstance.replica_state
-        query = query.join("share_instance").filter(
+        query = query.join(
+            models.ShareInstanceExportLocations.share_instance,
+        ).filter(
             or_(replica_state_attr == None,  # noqa
                 replica_state_attr == constants.REPLICA_STATE_ACTIVE))
 
@@ -4385,12 +4444,14 @@ def _export_location_get_by_uuid(
     ).filter_by(
         uuid=export_location_uuid,
     ).options(
-        joinedload("_el_metadata_bare"),
+        orm.joinedload(models.ShareInstanceExportLocations._el_metadata_bare),
     )
 
     if ignore_secondary_replicas:
         replica_state_attr = models.ShareInstance.replica_state
-        query = query.join("share_instance").filter(
+        query = query.join(
+            models.ShareInstanceExportLocations.share_instance,
+        ).filter(
             or_(
                 replica_state_attr == None,  # noqa
                 replica_state_attr == constants.REPLICA_STATE_ACTIVE,
@@ -4409,11 +4470,20 @@ def _export_location_get_by_uuid(
 def export_locations_update(
     context, share_instance_id, export_locations, delete,
 ):
+    return _export_locations_update(
+        context, share_instance_id, export_locations, delete,
+    )
+
+
+def _export_locations_update(
+    context, share_instance_id, export_locations, delete,
+):
     # NOTE(u_glide):
     # Backward compatibility code for drivers,
     # which return single export_location as string
     if not isinstance(export_locations, (list, tuple, set)):
         export_locations = (export_locations, )
+
     export_locations_as_dicts = []
     for el in export_locations:
         # NOTE(vponomaryov): transform old export locations view to new one
@@ -4654,7 +4724,7 @@ def security_service_get(context, id, **kwargs):
 
 
 @require_context
-def _security_service_get(context, id, session=None, **kwargs):
+def _security_service_get(context, id, **kwargs):
     result = _security_service_get_query(
         context,
         **kwargs,
@@ -4699,9 +4769,9 @@ def _share_network_get_query(context):
     return model_query(
         context, models.ShareNetwork, project_only=True,
     ).options(
-        joinedload('share_instances'),
-        joinedload('security_services'),
-        subqueryload('share_network_subnets'),
+        orm.joinedload(models.ShareNetwork.share_instances),
+        orm.joinedload(models.ShareNetwork.security_services),
+        orm.subqueryload(models.ShareNetwork.share_network_subnets),
     )
 
 
@@ -4915,8 +4985,9 @@ def _count_share_networks(
         read_deleted="no",
     ).filter_by(project_id=project_id)
     if share_type_id:
-        query = query.join("share_instances").filter_by(
-            share_type_id=share_type_id)
+        query = query.join(
+            models.ShareNetwork.share_instances,
+        ).filter_by(share_type_id=share_type_id)
     elif user_id is not None:
         query = query.filter_by(user_id=user_id)
     return query.first()[0]
@@ -4930,9 +5001,11 @@ def _share_network_subnet_get_query(context):
     return model_query(
         context, models.ShareNetworkSubnet,
     ).options(
-        joinedload('share_servers'),
-        joinedload('share_network'),
-        joinedload('share_network_subnet_metadata'),
+        orm.joinedload(models.ShareNetworkSubnet.share_servers),
+        orm.joinedload(models.ShareNetworkSubnet.share_network),
+        orm.joinedload(
+            models.ShareNetworkSubnet.share_network_subnet_metadata
+        ),
     )
 
 
@@ -5109,7 +5182,9 @@ def _share_network_subnet_metadata_get_query(context, share_network_subnet_id):
         read_deleted="no",
     ).filter_by(
         share_network_subnet_id=share_network_subnet_id,
-    ).options(joinedload('share_network_subnet'))
+    ).options(
+        orm.joinedload(models.ShareNetworkSubnetMetadata.share_network_subnet),
+    )
 
 
 @require_context
@@ -5232,9 +5307,9 @@ def _share_server_get_query(context):
     return model_query(
         context, models.ShareServer,
     ).options(
-        joinedload('share_instances'),
-        joinedload('network_allocations'),
-        joinedload('share_network_subnets'),
+        orm.joinedload(models.ShareServer.share_instances),
+        orm.joinedload(models.ShareServer.network_allocations),
+        orm.joinedload(models.ShareServer.share_network_subnets),
     )
 
 
@@ -5459,21 +5534,18 @@ def share_server_get_all_unused_deletable(context, host, updated_before):
     return result
 
 
-def _share_server_backend_details_get_item(context,
-                                           share_server_id,
-                                           key, session=None):
-    result = (_share_server_backend_details_get_query(
-        context, share_server_id, session=session).filter_by(key=key).first())
+def _share_server_backend_details_get_item(context, share_server_id, key):
+    result = _share_server_backend_details_get_query(
+        context, share_server_id,
+    ).filter_by(key=key).first()
     if not result:
         raise exception.ShareServerBackendDetailsNotFound()
     return result
 
 
-def _share_server_backend_details_get_query(context,
-                                            share_server_id,
-                                            session=None):
+def _share_server_backend_details_get_query(context, share_server_id):
     return (model_query(
-        context, models.ShareServerBackendDetails, session=session,
+        context, models.ShareServerBackendDetails,
         read_deleted="no").
         filter_by(share_server_id=share_server_id))
 
@@ -5489,7 +5561,7 @@ def share_server_backend_details_set(context, share_server_id, server_details):
         item = {"value": meta_value}
         try:
             meta_ref = _share_server_backend_details_get_item(
-                context, share_server_id, meta_key, session=context.session)
+                context, share_server_id, meta_key)
         except exception.ShareServerBackendDetailsNotFound:
             meta_ref = models.ShareServerBackendDetails()
             item.update({"key": meta_key, "share_server_id": share_server_id})
@@ -5755,10 +5827,10 @@ def _share_type_get_query(context, read_deleted=None, expected_fields=None):
         context,
         models.ShareTypes,
         read_deleted=read_deleted,
-    ).options(joinedload('extra_specs'))
+    ).options(orm.joinedload(models.ShareTypes.extra_specs))
 
     if 'projects' in expected_fields:
-        query = query.options(joinedload('projects'))
+        query = query.options(orm.joinedload(models.ShareTypes.projects))
 
     if not context.is_admin:
         the_filter = [models.ShareTypes.is_public == true()]
@@ -6022,7 +6094,7 @@ def _share_type_extra_specs_query(context, share_type_id):
         context, models.ShareTypeExtraSpecs, read_deleted="no",
     ).filter_by(
         share_type_id=share_type_id,
-    ).options(joinedload('share_type'))
+    ).options(orm.joinedload(models.ShareTypeExtraSpecs.share_type))
 
 
 @require_context
@@ -6048,7 +6120,11 @@ def share_type_extra_specs_delete(context, share_type_id, key):
 def _share_type_extra_specs_get_item(context, share_type_id, key):
     result = _share_type_extra_specs_query(
         context, share_type_id,
-    ).filter_by(key=key).options(joinedload('share_type')).first()
+    ).filter_by(
+        key=key,
+    ).options(
+        orm.joinedload(models.ShareTypeExtraSpecs.share_type),
+    ).first()
 
     if not result:
         raise exception.ShareTypeExtraSpecsNotFound(
@@ -6087,9 +6163,7 @@ def share_type_extra_specs_update_or_create(context, share_type_id, specs):
 
 
 @context_manager.writer
-def ensure_availability_zone_exists(
-    context, values, *, strict=True,
-):
+def ensure_availability_zone_exists(context, values, *, strict=True):
     az_name = values.pop('availability_zone', None)
 
     if not az_name:
@@ -6112,11 +6186,9 @@ def availability_zone_get(context, id_or_name):
     return _availability_zone_get(context, id_or_name)
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
 @require_context
-def _availability_zone_get(context, id_or_name, session=None):
-    query = model_query(context, models.AvailabilityZone, session=session)
+def _availability_zone_get(context, id_or_name):
+    query = model_query(context, models.AvailabilityZone)
 
     if uuidutils.is_uuid_like(id_or_name):
         query = query.filter_by(id=id_or_name)
@@ -6131,23 +6203,15 @@ def _availability_zone_get(context, id_or_name, session=None):
     return result
 
 
-# TODO(stephenfin): Remove the 'session' argument once all callers have been
-# converted
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def _availability_zone_create_if_not_exist(context, name, session=None):
+def _availability_zone_create_if_not_exist(context, name):
     try:
-        return _availability_zone_get(context, name, session=session)
+        return _availability_zone_get(context, name)
     except exception.AvailabilityZoneNotFound:
         az = models.AvailabilityZone()
         az.update({'id': uuidutils.generate_uuid(), 'name': name})
-        # TODO(stephenfin): Remove this branch once all callers have been
-        # updated not to pass 'session'
-        if session is not None:
-            with session.begin():
-                az.save(session)
-        else:
-            az.save(context.session)
+        az.save(context.session)
     return az
 
 
@@ -6235,12 +6299,11 @@ def purge_deleted_records(context, age_in_days):
 
 
 def _share_group_get(context, share_group_id):
-    result = (model_query(context, models.ShareGroup,
-                          project_only=True,
-                          read_deleted='no').
-              filter_by(id=share_group_id).
-              options(joinedload('share_types')).
-              first())
+    result = model_query(
+        context, models.ShareGroup, project_only=True, read_deleted='no',
+    ).filter_by(
+        id=share_group_id,
+    ).options(orm.joinedload(models.ShareGroup.share_types)).first()
 
     if not result:
         raise exception.ShareGroupNotFound(share_group_id=share_group_id)
@@ -6297,14 +6360,16 @@ def _share_group_get_all(context, project_id=None, share_server_id=None,
         raise exception.InvalidInput(reason=msg)
 
     if detailed:
-        return query.options(joinedload('share_types')).all()
-    else:
-        query = query.with_entities(
-            models.ShareGroup.id, models.ShareGroup.name)
-        values = []
-        for sg_id, sg_name in query.all():
-            values.append({"id": sg_id, "name": sg_name})
-        return values
+        return query.options(
+            orm.joinedload(models.ShareGroup.share_types),
+        ).all()
+
+    query = query.with_entities(
+        models.ShareGroup.id, models.ShareGroup.name)
+    values = []
+    for sg_id, sg_name in query.all():
+        values.append({"id": sg_id, "name": sg_name})
+    return values
 
 
 @require_admin_context
@@ -6410,8 +6475,10 @@ def _count_share_groups(context, project_id, user_id=None, share_type_id=None):
         read_deleted="no",
     ).filter_by(project_id=project_id)
     if share_type_id:
-        query = query.join("share_group_share_type_mappings").filter_by(
-            share_type_id=share_type_id)
+        query = query.join(
+            # models.ShareGroupShareTypeMapping,
+            models.ShareGroup.share_types,
+        ).filter_by(share_type_id=share_type_id)
     elif user_id is not None:
         query = query.filter_by(user_id=user_id)
     return query.first()[0]
@@ -6428,9 +6495,10 @@ def _count_share_group_snapshots(
     ).filter_by(project_id=project_id)
     if share_type_id:
         query = query.join(
-            "share_group"
+            models.ShareGroupSnapshot.share_group,
         ).join(
-            "share_group_share_type_mappings"
+            # models.ShareGroupShareTypeMapping,
+            models.ShareGroup.share_types,
         ).filter_by(share_type_id=share_type_id)
     elif user_id is not None:
         query = query.filter_by(user_id=user_id)
@@ -6512,8 +6580,8 @@ def _share_group_snapshot_get(context, share_group_snapshot_id):
         project_only=True,
         read_deleted='no',
     ).options(
-        joinedload('share_group'),
-        joinedload('share_group_snapshot_members'),
+        orm.joinedload(models.ShareGroupSnapshot.share_group),
+        orm.joinedload(models.ShareGroupSnapshot.share_group_snapshot_members),
     ).filter_by(
         id=share_group_snapshot_id,
     ).first()
@@ -6564,16 +6632,18 @@ def _share_group_snapshot_get_all(
 
     if detailed:
         return query.options(
-            joinedload('share_group'),
-            joinedload('share_group_snapshot_members')
+            orm.joinedload(models.ShareGroupSnapshot.share_group),
+            orm.joinedload(
+                models.ShareGroupSnapshot.share_group_snapshot_members
+            ),
         ).all()
-    else:
-        query = query.with_entities(models.ShareGroupSnapshot.id,
-                                    models.ShareGroupSnapshot.name)
-        values = []
-        for sgs_id, sgs_name in query.all():
-            values.append({"id": sgs_id, "name": sgs_name})
-        return values
+
+    query = query.with_entities(models.ShareGroupSnapshot.id,
+                                models.ShareGroupSnapshot.name)
+    values = []
+    for sgs_id, sgs_name in query.all():
+        values.append({"id": sgs_id, "name": sgs_name})
+    return values
 
 
 @require_context
@@ -6762,12 +6832,12 @@ def _share_group_type_get_query(
         models.ShareGroupTypes,
         read_deleted=read_deleted
     ).options(
-        joinedload('group_specs'),
-        joinedload('share_types'),
+        orm.joinedload(models.ShareGroupTypes.group_specs),
+        orm.joinedload(models.ShareGroupTypes.share_types),
     )
 
     if 'projects' in expected_fields:
-        query = query.options(joinedload('projects'))
+        query = query.options(orm.joinedload(models.ShareGroupTypes.projects))
 
     if not context.is_admin:
         the_filter = [models.ShareGroupTypes.is_public == true()]
@@ -6874,8 +6944,8 @@ def _share_group_type_get_by_name(context, name):
         context,
         models.ShareGroupTypes,
     ).options(
-        joinedload('group_specs'),
-        joinedload('share_types'),
+        orm.joinedload(models.ShareGroupTypes.group_specs),
+        orm.joinedload(models.ShareGroupTypes.share_types),
     ).filter_by(
         name=name,
     ).first()
@@ -6939,7 +7009,7 @@ def share_group_type_destroy(context, type_id):
 ###############################
 
 
-def _share_group_type_access_query(context,):
+def _share_group_type_access_query(context):
     return model_query(
         context,
         models.ShareGroupTypeProjects,
@@ -7003,7 +7073,7 @@ def _share_group_type_specs_query(context, type_id):
     ).filter_by(
         share_group_type_id=type_id,
     ).options(
-        joinedload('share_group_type'),
+        orm.joinedload(models.ShareGroupTypeSpecs.share_group_type),
     )
 
 
@@ -7037,7 +7107,7 @@ def _share_group_type_specs_get_item(context, type_id, key):
     ).filter_by(
         key=key,
     ).options(
-        joinedload('share_group_type'),
+        orm.joinedload(models.ShareGroupTypeSpecs.share_group_type),
     ).first()
 
     if not result:

@@ -35,7 +35,6 @@ LOG = log.getLogger(__name__)
 def upgrade():
     migrate_engine = op.get_bind().engine
     meta = MetaData()
-    meta.bind = migrate_engine
 
     services = Table(
         'services', meta,
@@ -76,16 +75,10 @@ def upgrade():
         Column('deleted', Integer, default=0),
         Column('id', Integer(), primary_key=True),
         Column('class_name',
-               String(length=255,
-                      convert_unicode=True,
-                      unicode_error=None,
-                      _warn_on_bytestring=False),
+               String(length=255),
                index=True),
         Column('resource',
-               String(length=255,
-                      convert_unicode=True,
-                      unicode_error=None,
-                      _warn_on_bytestring=False)),
+               String(length=255)),
         Column('hard_limit', Integer(), nullable=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
@@ -100,14 +93,10 @@ def upgrade():
         Column('id', Integer(), primary_key=True),
         Column('user_id', String(length=255)),
         Column('project_id',
-               String(length=255, convert_unicode=True,
-                      unicode_error=None,
-                      _warn_on_bytestring=False),
+               String(length=255),
                index=True),
         Column('resource',
-               String(length=255, convert_unicode=True,
-                      unicode_error=None,
-                      _warn_on_bytestring=False)),
+               String(length=255)),
         Column('in_use', Integer(), nullable=False),
         Column('reserved', Integer(), nullable=False),
         Column('until_refresh', Integer(), nullable=True),
@@ -124,21 +113,14 @@ def upgrade():
         Column('id', Integer(), primary_key=True),
         Column('user_id', String(length=255)),
         Column('uuid',
-               String(length=36,
-                      convert_unicode=True,
-                      unicode_error=None,
-                      _warn_on_bytestring=False),
+               String(length=36),
                nullable=False),
         Column('usage_id', Integer(), nullable=False),
         Column('project_id',
-               String(length=255, convert_unicode=True,
-                      unicode_error=None,
-                      _warn_on_bytestring=False),
+               String(length=255),
                index=True),
         Column('resource',
-               String(length=255, convert_unicode=True,
-                      unicode_error=None,
-                      _warn_on_bytestring=False)),
+               String(length=255)),
         Column('delta', Integer(), nullable=False),
         Column('expire', DateTime(timezone=False)),
         ForeignKeyConstraint(['usage_id'], ['quota_usages.id']),
@@ -387,10 +369,11 @@ def upgrade():
               share_snapshots, share_server_backend_details,
               share_metadata, volume_types, volume_type_extra_specs]
 
-    for table in tables:
-        if not table.exists():
+    with migrate_engine.begin() as conn:
+        for table in tables:
+
             try:
-                table.create()
+                table.create(conn, checkfirst=True)
             except Exception:
                 LOG.info(repr(table))
                 LOG.exception('Exception while creating table.')
