@@ -16,6 +16,8 @@
             timeout: 5400
         - openstack-tox-cover:
             voting: false
+        - manila-tox-py311-with-sqlalchemy-20:
+            voting: false
         - manila-tempest-plugin-dummy-no-dhss
         - manila-tempest-plugin-dummy-dhss
         - manila-tempest-plugin-container:
@@ -32,6 +34,22 @@
       jobs:
         - manila-tempest-plugin-dummy-no-dhss
         - manila-tempest-plugin-dummy-dhss
+
+# Non-voting job while SQLAlchemy 2.0 is still blocked by upper-constraints
+- job:
+    name: manila-tox-py311-with-sqlalchemy-20
+    parent: openstack-tox-py311
+    description: |
+      Run unit tests with SQLAlchemy 2.x, alembic and oslo.db.
+      Takes advantage of the base tox job's install-siblings feature.
+    branches: stable/2024.1
+    required-projects:
+      - name: github.com/sqlalchemy/sqlalchemy
+        override-checkout: rel_2_0_29
+      - name: github.com/sqlalchemy/alembic
+        override-checkout: rel_1_13_1
+      - name: openstack/oslo.db
+        override-checkout: 15.0.0
 
 - job:
     name: manila-tox-genconfig
