@@ -148,7 +148,7 @@ def fixup_access_rule(access_rule):
     :return: access_rule
     """
     if access_rule['access_to'] == '0.0.0.0/0':
-        access_rule['access_to'] = '0.0.0.0'
+        access_rule['access_to'] = '0.0.0.0'  # nosec B104
         LOG.debug("Set access_to field to '0.0.0.0' in ganesha back end.")
 
     return access_rule

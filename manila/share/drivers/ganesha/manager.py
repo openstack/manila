@@ -622,7 +622,8 @@ class GaneshaManager(object):
                 bumpcode = ''
             out = self.execute(
                 "sqlite3", self.ganesha_db_path,
-                bumpcode + 'select * from ganesha where key = "exportid";',
+                bumpcode + 'select * from ganesha '  # nosec B608
+                'where key = "exportid";',
                 run_as_root=False)[0]
             match = re.search(r'\Aexportid\|(\d+)$', out)
             if not match:
