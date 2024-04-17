@@ -66,6 +66,9 @@ class ShareSnapshotAPITest(test.TestCase):
                          stubs.stub_snapshot_get)
         self.mock_object(share_api.API, 'snapshot_update',
                          stubs.stub_snapshot_update)
+        self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True)
+        )
         self.snp_example = {
             'share_id': 100,
             'size': 12,
