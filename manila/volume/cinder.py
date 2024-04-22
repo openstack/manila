@@ -44,6 +44,8 @@ cinder_opts = [
                help='Number of cinderclient retries on failed HTTP calls.'),
     cfg.StrOpt('endpoint_type',
                default='publicURL',
+               choices=['publicURL', 'internalURL', 'adminURL',
+                        'public', 'internal', 'admin'],
                help='Endpoint type to be used with cinder client calls.'),
     cfg.StrOpt('region_name',
                help='Region name for connecting to cinder.'),

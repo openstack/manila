@@ -100,7 +100,7 @@ class NeutronclientTestCase(test.TestCase):
         data = {
             'neutron': {
                 'url': 'http://localhost:9696',
-                'endpoint_type': 'foo_endpoint_type',
+                'endpoint_type': 'internalURL',
                 'region_name': 'foo_region_name',
             }
         }
@@ -127,7 +127,7 @@ class NeutronclientTestCase(test.TestCase):
         data = {
             'neutron': {
                 'url': 'http://localhost:9696',
-                'endpoint_type': 'foo_endpoint_type',
+                'endpoint_type': 'internalURL',
                 'region_name': 'foo_region_name',
             }
         }

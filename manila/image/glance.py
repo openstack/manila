@@ -37,6 +37,8 @@ glance_opts = [
                help='Region name for connecting to glance.'),
     cfg.StrOpt('endpoint_type',
                default='publicURL',
+               choices=['publicURL', 'internalURL', 'adminURL',
+                        'public', 'internal', 'admin'],
                help='Endpoint type to be used with glance client calls.'),
     ]
 
