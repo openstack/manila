@@ -7902,7 +7902,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.snapmirror_restore_vol.assert_called_once_with(
             source_path=mock.ANY,
             dest_path=mock.ANY,
-            source_snapshot=mock.ANY)
+            source_snapshot=mock.ANY,
+            des_cluster=mock.ANY,
+        )
 
     def test_restore_backup_continue(self):
         vserver_client = mock.Mock()
