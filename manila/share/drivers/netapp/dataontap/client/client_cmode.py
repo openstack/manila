@@ -6258,7 +6258,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def snapmirror_restore_vol(self, source_path=None, dest_path=None,
                                source_vserver=None, dest_vserver=None,
                                source_volume=None, dest_volume=None,
-                               source_snapshot=None):
+                               des_cluster=None, source_snapshot=None):
         """Restore snapshot copy from destination volume to source volume"""
         self._ensure_snapmirror_v2()
 
