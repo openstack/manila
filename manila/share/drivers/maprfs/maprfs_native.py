@@ -45,6 +45,7 @@ maprfs_native_share_opts = [
                default="mapr",
                help='Cluster admin user ssh login name.'),
     cfg.StrOpt('maprfs_ssh_pw',
+               secret=True,
                help='Cluster node SSH login password, '
                     'This parameter is not necessary, if '
                     '\'maprfs_ssh_private_key\' is configured.'),
