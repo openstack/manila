@@ -55,6 +55,7 @@ hdfs_native_share_opts = [
     cfg.StrOpt('hdfs_ssh_name',
                help='HDFS namenode ssh login name.'),
     cfg.StrOpt('hdfs_ssh_pw',
+               secret=True,
                help='HDFS namenode SSH login password, '
                     'This parameter is not necessary, if '
                     '\'hdfs_ssh_private_key\' is configured.'),
