@@ -30,6 +30,7 @@ EMC_NAS_OPTS = [
     cfg.StrOpt('emc_nas_login',
                help='User name for the EMC server.'),
     cfg.StrOpt('emc_nas_password',
+               secret=True,
                help='Password for the EMC server.'),
     cfg.HostAddressOpt('emc_nas_server',
                        help='EMC server hostname or IP address.'),
