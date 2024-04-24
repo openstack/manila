@@ -23,8 +23,8 @@ import paramiko
 
 from manila import exception
 from manila.share.drivers.hitachi.hnas import ssh
+from manila import ssh_utils
 from manila import test
-from manila import utils as mutils
 
 
 CONF = cfg.CONF
@@ -1506,7 +1506,7 @@ class HNASSSHTestCase(test.TestCase):
                          mock.Mock(side_effect=[
                              putils.ProcessExecutionError(stderr=msg),
                              putils.ProcessExecutionError(stderr='Invalid!')]))
-        self.mock_object(mutils.SSHPool, "item",
+        self.mock_object(ssh_utils.SSHPool, "item",
                          mock.Mock(return_value=paramiko.SSHClient()))
         self.mock_object(paramiko.SSHClient, "set_missing_host_key_policy")
 

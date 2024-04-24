@@ -128,7 +128,7 @@ class SSHExecutorTestCase(test.TestCase):
     @ddt.unpack
     def test_call_ssh_exec_object_with_run_as_root(
             self, run_as_root, expected_prefix):
-        with mock.patch.object(ganesha_utils.utils, 'SSHPool'):
+        with mock.patch.object(ganesha_utils.ssh_utils, 'SSHPool'):
             self.execute = ganesha_utils.SSHExecutor()
         fake_ssh_object = mock.Mock()
         self.mock_object(self.execute.pool, 'get',

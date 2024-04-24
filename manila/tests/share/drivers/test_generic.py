@@ -31,6 +31,7 @@ from manila import exception
 import manila.share.configuration
 from manila.share.drivers import generic
 from manila.share import share_types
+from manila import ssh_utils
 from manila import test
 from manila.tests import fake_compute
 from manila.tests import fake_service_instance
@@ -1227,14 +1228,16 @@ class GenericShareDriverTestCase(test.TestCase):
         ssh.get_transport().is_active = mock.Mock(return_value=True)
         ssh_pool = mock.Mock()
         ssh_pool.create = mock.Mock(return_value=ssh)
-        self.mock_object(utils, 'SSHPool', mock.Mock(return_value=ssh_pool))
+        self.mock_object(ssh_utils,
+                         'SSHPool',
+                         mock.Mock(return_value=ssh_pool))
         self.mock_object(processutils, 'ssh_execute',
                          mock.Mock(return_value=ssh_output))
         self._driver.ssh_connections = {}
 
         result = self._driver._ssh_exec(self.server, cmd)
 
-        utils.SSHPool.assert_called_once_with(
+        ssh_utils.SSHPool.assert_called_once_with(
             self.server['ip'], 22, ssh_conn_timeout, self.server['username'],
             self.server['password'], self.server['pk_path'], max_size=1)
         ssh_pool.create.assert_called_once_with()

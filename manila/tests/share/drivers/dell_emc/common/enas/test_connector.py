@@ -23,10 +23,10 @@ from oslo_concurrency import processutils
 from manila import exception
 from manila.share import configuration as conf
 from manila.share.drivers.dell_emc.common.enas import connector
+from manila import ssh_utils
 from manila import test
 from manila.tests.share.drivers.dell_emc.common.enas import fakes
 from manila.tests.share.drivers.dell_emc.common.enas import utils as enas_utils
-from manila import utils
 
 
 class XMLAPIConnectorTestData(object):
@@ -165,12 +165,12 @@ class CmdConnectorTest(test.TestCase):
         self.configuration.emc_ssl_cert_path = None
 
         self.sshpool = MockSSHPool()
-        with mock.patch.object(utils, "SSHPool",
+        with mock.patch.object(ssh_utils, "SSHPool",
                                mock.Mock(return_value=self.sshpool)):
             self.CmdHelper = connector.SSHConnector(
                 configuration=self.configuration, debug=False)
 
-            utils.SSHPool.assert_called_once_with(
+            ssh_utils.SSHPool.assert_called_once_with(
                 ip=fakes.FakeData.emc_nas_server,
                 port=22,
                 conn_timeout=None,
@@ -207,7 +207,7 @@ class CmdConnectorTest(test.TestCase):
 
         sshpool = MockSSHPool()
 
-        with mock.patch.object(utils, "SSHPool",
+        with mock.patch.object(ssh_utils, "SSHPool",
                                mock.Mock(return_value=sshpool)):
             self.CmdHelper = connector.SSHConnector(self.configuration)
 
@@ -216,7 +216,7 @@ class CmdConnectorTest(test.TestCase):
                               cmd_list,
                               True)
 
-            utils.SSHPool.assert_called_once_with(
+            ssh_utils.SSHPool.assert_called_once_with(
                 ip=fakes.FakeData.emc_nas_server,
                 port=22,
                 conn_timeout=None,
