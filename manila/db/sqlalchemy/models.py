@@ -1142,9 +1142,11 @@ class ShareServer(BASE, ManilaBase):
                     'ShareInstance.deleted == "False")')
 
     share_groups = orm.relationship(
-        "ShareGroup", backref='share_server', primaryjoin='and_('
-        'ShareServer.id == ShareGroup.share_server_id,'
-        'ShareGroup.deleted == "False")')
+        "ShareGroup",
+        backref='share_server',
+        primaryjoin='and_('
+                    'ShareServer.id == ShareGroup.share_server_id,'
+                    'ShareGroup.deleted == "False")')
 
     _backend_details = orm.relationship(
         "ShareServerBackendDetails",
