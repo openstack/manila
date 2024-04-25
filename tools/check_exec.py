@@ -30,6 +30,9 @@ executable = []
 for root, mydir, myfile in os.walk(directory):
     for f in myfile:
         path = os.path.join(root, f)
+        if os.path.islink(path):
+            # permissions are irrelevant for symlinked files
+            continue
         mode = os.lstat(path).st_mode
         if stat.S_IXUSR & mode:
             executable.append(path)
