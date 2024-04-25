@@ -19,6 +19,8 @@ import os
 from oslo_policy import opts
 from oslo_service import wsgi
 
+# some of these are imported for their side-effects
+from manila.api import openstack  # noqa
 from manila.common import config
 
 CONF = config.CONF
@@ -81,6 +83,8 @@ def set_defaults(conf):
     _safe_set_of_opts(conf, 'qnap_poolname', 'Storage Pool 1')
 
     _safe_set_of_opts(conf, 'unity_server_meta_pool', 'nas_server_pool')
+
+    conf.set_default('response_validation', 'error', group='api')
 
 
 def _safe_set_of_opts(conf, *args, **kwargs):

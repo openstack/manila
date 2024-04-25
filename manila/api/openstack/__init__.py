@@ -27,15 +27,53 @@ from manila.api.openstack import wsgi
 from manila.i18n import _
 
 openstack_api_opts = [
-    cfg.StrOpt('project_id_regex',
-               default=r"[0-9a-f\-]+",
-               help=r'The validation regex for project_ids used in urls. '
-                    r'This defaults to [0-9a-f\\-]+ if not set, '
-                    r'which matches normal uuids created by keystone.'),
+    cfg.StrOpt(
+        'project_id_regex',
+        default=r'[0-9a-f\-]+',
+        help=(
+            r'The validation regex for project_ids used in URLs. '
+            r'This defaults to [0-9a-f\\-]+ if not set, '
+            r'which matches normal uuids created by keystone.'
+        ),
+    ),
+]
+validation_opts = [
+    cfg.StrOpt(
+        'response_validation',
+        choices=(
+            (
+                'error',
+                'Raise a HTTP 500 (Server Error) for responses that fail '
+                'schema validation',
+            ),
+            (
+                'warn',
+                'Log a warning for responses that fail schema validation',
+            ),
+            (
+                'ignore',
+                'Ignore schema validation failures',
+            ),
+        ),
+        default='warn',
+        help="""\
+Configure validation of API responses.
+
+``warn`` is the current recommendation for production environments. If you find
+it necessary to enable the ``ignore`` option, please report the issues you are
+seeing to the Manila team so we can improve our schemas.
+
+``error`` should not be used in a production environment. This is because
+schema validation happens *after* the response body has been generated, meaning
+any side effects will still happen and the call may be non-idempotent despite
+the user receiving a HTTP 500 error.
+""",
+    ),
 ]
 
 CONF = cfg.CONF
 CONF.register_opts(openstack_api_opts)
+CONF.register_opts(validation_opts, group='api')
 LOG = log.getLogger(__name__)
 
 
