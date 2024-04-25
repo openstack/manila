@@ -209,7 +209,7 @@ class ResourceLockApiTest(test.TestCase):
             url, version=resource_locks.RESOURCE_LOCKS_MIN_API_VERSION)
         req.environ['manila.context'] = self.ctxt
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.index,
                           req)
 
@@ -226,7 +226,7 @@ class ResourceLockApiTest(test.TestCase):
             url, version=resource_locks.RESOURCE_LOCKS_MIN_API_VERSION)
         req.environ['manila.context'] = self.ctxt
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.index,
                           req)
 
@@ -343,7 +343,7 @@ class ResourceLockApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           self.req,
-                          body)
+                          body=body)
 
     def test_create_visibility_already_locked(self):
         self.mock_object(self.controller, '_check_body')
@@ -364,7 +364,7 @@ class ResourceLockApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPConflict,
                           self.controller.create,
                           self.req,
-                          body)
+                          body=body)
 
     def test_create(self):
         self.mock_object(self.controller, '_check_body')
@@ -382,7 +382,9 @@ class ResourceLockApiTest(test.TestCase):
                          'create',
                          mock.Mock(return_value=expected_lock))
 
-        actual_lock = self.controller.create(self.req, body)['resource_lock']
+        actual_lock = self.controller.create(
+            self.req, body=body
+        )['resource_lock']
 
         self.controller.resource_locks_api.create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
@@ -415,7 +417,7 @@ class ResourceLockApiTest(test.TestCase):
         actual_lock = self.controller.update(
             self.req,
             '04512dae-18c2-45b5-bbab-50b775ba6f1d',
-            body
+            body=body
         )['resource_lock']
 
         self.controller.resource_locks_api.update.assert_called_once_with(
