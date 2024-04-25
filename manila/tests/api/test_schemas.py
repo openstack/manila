@@ -10,7 +10,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import jsonschema.exceptions
+
 from manila.api.v2 import router
+from manila.api.validation import validators
 from manila import test
 
 
@@ -19,11 +22,19 @@ class SchemaTest(test.TestCase):
     def setUp(self):
         super().setUp()
         self.router = router.APIRouter()
+        self.meta_schema = validators._SchemaValidator.validator_org
 
     def test_schemas(self):
         missing_request_schemas = set()
         missing_query_schemas = set()
         missing_response_schemas = set()
+        invalid_schemas = set()
+
+        def _validate_schema(func, schema):
+            try:
+                self.meta_schema.check_schema(schema)
+            except jsonschema.exceptions.SchemaError:
+                invalid_schemas.add(func.__qualname__)
 
         def _validate_func(func, method):
             if getattr(func, 'removed', False):
@@ -33,14 +44,20 @@ class SchemaTest(test.TestCase):
                 # request body validation
                 if not hasattr(func, '_request_body_schema'):
                     missing_request_schemas.add(func.__qualname__)
+                else:
+                    _validate_schema(func, func._request_body_schema)
             elif method in ("GET",):
                 # request query string validation
                 if not hasattr(func, '_request_query_schema'):
                     missing_query_schemas.add(func.__qualname__)
+                else:
+                    _validate_schema(func, func._request_query_schema)
 
             # response body validation
             if not hasattr(func, '_response_body_schema'):
                 missing_response_schemas.add(func.__qualname__)
+            else:
+                _validate_schema(func, func._response_body_schema)
 
         for route in self.router.map.matchlist:
             if 'controller' not in route.defaults:
