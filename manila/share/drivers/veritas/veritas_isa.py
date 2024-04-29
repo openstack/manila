@@ -141,8 +141,10 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         index = int(length / 2)
         name1 = name[:index]
         name2 = name[index:]
-        crc1 = hashlib.md5(name1.encode('utf-8')).hexdigest()[:8]
-        crc2 = hashlib.md5(name2.encode('utf-8')).hexdigest()[:8]
+        crc1 = hashlib.md5(name1.encode('utf-8'),
+                           usedforsecurity=False).hexdigest()[:8]
+        crc2 = hashlib.md5(name2.encode('utf-8'),
+                           usedforsecurity=False).hexdigest()[:8]
         return crc1 + '-' + crc2
 
     def _get_va_snap_name(self, name):
