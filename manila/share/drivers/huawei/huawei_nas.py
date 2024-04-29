@@ -14,8 +14,7 @@
 #    under the License.
 
 """Huawei Nas Driver for Huawei storage arrays."""
-from xml.etree import ElementTree as ET
-
+from defusedxml import ElementTree as ET
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils

@@ -10,6 +10,7 @@
 pbr>=5.5.0 # Apache-2.0
 
 alembic>=1.4.2 # MIT
+defusedxml>=0.7.1 # PSFL
 eventlet>=0.26.1 # MIT
 greenlet>=0.4.16 # MIT
 lxml>=4.5.2 # BSD
