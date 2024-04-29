@@ -53,7 +53,8 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         req_get_mock.assert_called_once_with(
             url='http://test',
             auth=auth.HTTPBasicAuth("me", "team"),
-            json=mock.ANY)
+            json=mock.ANY,
+            timeout=60)
 
     def test_jsonrpc_init_with_ca(self):
         foofile = tempfile.TemporaryFile()
@@ -98,7 +99,8 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         mock_req_get.assert_called_once_with(
             url=self.rpc._url,
             json=mock.ANY,  # not checking here as of undefined order in dict
-            auth=self.rpc._credentials)
+            auth=self.rpc._credentials,
+            timeout=60)
         self.assertEqual("Sweet gorilla of Manila", result)
 
     @mock.patch.object(requests, "post",
@@ -119,7 +121,8 @@ class QuobyteJsonRpcTestCase(test.TestCase):
             json=mock.ANY,  # not checking here as of undefined order in dict
             auth=self.rpc._credentials,
             verify=False,
-            cert=(fake_cert_file, fake_key_file))
+            cert=(fake_cert_file, fake_key_file),
+            timeout=60)
         self.assertEqual("Sweet gorilla of Manila", result)
 
     @mock.patch.object(requests, "post",
@@ -137,7 +140,8 @@ class QuobyteJsonRpcTestCase(test.TestCase):
             url=self.rpc._url,
             json=mock.ANY,  # not checking here as of undefined order in dict
             auth=self.rpc._credentials,
-            verify=fake_ca_file)
+            verify=fake_ca_file,
+            timeout=60)
         self.assertEqual("Sweet gorilla of Manila", result)
 
     @mock.patch.object(jsonrpc.JsonRpc, "_checked_for_application_error",
@@ -158,7 +162,8 @@ class QuobyteJsonRpcTestCase(test.TestCase):
             url=self.rpc._url,
             json=mock.ANY,  # not checking here as of undefined order in dict
             auth=self.rpc._credentials,
-            verify=fake_ca_file)
+            verify=fake_ca_file,
+            timeout=60)
         mock_check.assert_called_once_with(
             {'result': 'Sweet gorilla of Manila'}, [42])
         self.assertEqual("Sweet gorilla of Manila", result)
@@ -171,7 +176,8 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         req_get_mock.assert_called_once_with(
             url=self.rpc._url,
             json=mock.ANY,  # not checking here as of undefined order in dict
-            auth=self.rpc._credentials)
+            auth=self.rpc._credentials,
+            timeout=60)
 
     @mock.patch.object(requests, "post",
                        return_value=FakeResponse(
@@ -183,7 +189,8 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         req_get_mock.assert_called_once_with(
             url=self.rpc._url,
             json=mock.ANY,  # not checking here as of undefined order in dict
-            auth=self.rpc._credentials)
+            auth=self.rpc._credentials,
+            timeout=60)
 
     def test_checked_for_application_error(self):
         resultdict = {"result": "Sweet gorilla of Manila"}
