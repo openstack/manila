@@ -3644,12 +3644,19 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def _get_share_instances_with_deferred_deletion(self, ctxt):
         share_instances = self.db.share_instance_get_all(
-            ctxt, filters={'status': constants.STATUS_DEFERRED_DELETING})
+            ctxt,
+            filters={
+                'status': constants.STATUS_DEFERRED_DELETING,
+                'host': self.host,
+            })
 
         share_instances_error_deferred_deleting = (
             self.db.share_instance_get_all(
                 ctxt,
-                filters={'status': constants.STATUS_ERROR_DEFERRED_DELETING}))
+                filters={
+                    'status': constants.STATUS_ERROR_DEFERRED_DELETING,
+                    'host': self.host,
+                }))
         updated_del = timeutils.utcnow() - datetime.timedelta(minutes=30)
         for share_instance in share_instances_error_deferred_deleting:
             if share_instance.get('updated_at') < updated_del:
