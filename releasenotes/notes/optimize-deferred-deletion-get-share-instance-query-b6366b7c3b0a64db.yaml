@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    The periodic database queries made by the share manager service to
+    process deferred deletion of shares has been fixed to consider the
+    host in addition to the share's state. This both improves performance
+    of the periodic task, as well as fixes incorrect behavior where
+    incorrect shares are retrieved by the query.
