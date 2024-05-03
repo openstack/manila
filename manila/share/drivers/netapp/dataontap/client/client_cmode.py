@@ -1682,7 +1682,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             self.configure_dns(security_service)
 
         config_name = hashlib.md5(
-            security_service['id'].encode("latin-1")).hexdigest()
+            security_service['id'].encode("latin-1"),
+            usedforsecurity=False).hexdigest()
         api_args = {
             'ldap-client-config': config_name,
             'tcp-port': '389',
@@ -1742,7 +1743,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def _delete_ldap_client(self, security_service):
         config_name = (
-            hashlib.md5(security_service['id'].encode("latin-1")).hexdigest())
+            hashlib.md5(security_service['id'].encode("latin-1"),
+                        usedforsecurity=False).hexdigest())
         api_args = {'ldap-client-config': config_name}
         self.send_request('ldap-client-delete', api_args)
 
@@ -1750,7 +1752,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def configure_ldap(self, security_service, timeout=30):
         """Configures LDAP on Vserver."""
         config_name = hashlib.md5(
-            security_service['id'].encode("latin-1")).hexdigest()
+            security_service['id'].encode("latin-1"),
+            usedforsecurity=False).hexdigest()
         self._create_ldap_client(security_service)
         self._enable_ldap_client(config_name, timeout=timeout)
 
@@ -1778,7 +1781,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         new_config_name = (
             hashlib.md5(
-                new_security_service['id'].encode("latin-1")).hexdigest())
+                new_security_service['id'].encode("latin-1"),
+                usedforsecurity=False).hexdigest())
         # Create ldap config with the new client
         api_args = {'client-config': new_config_name, 'client-enabled': 'true'}
         self.send_request('ldap-config-create', api_args)
@@ -1791,7 +1795,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 current_config_name = (
                     hashlib.md5(
                         current_security_service['id'].encode(
-                            "latin-1")).hexdigest())
+                            "latin-1"),
+                        usedforsecurity=False).hexdigest())
                 msg = _("An error occurred while deleting original LDAP "
                         "client configuration %(current_config)s. "
                         "Error details: %(e_msg)s")
