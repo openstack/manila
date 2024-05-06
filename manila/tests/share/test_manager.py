@@ -10094,8 +10094,17 @@ class ShareManagerTestCase(test.TestCase):
             self.context, fake_share_network['id'])
         mock_subnet_get.assert_called_once_with(
             self.context, fake_dest_share_server['id'])
-        mock_allocations_get.assert_called_once_with(
-            self.context, fake_dest_share_server['id'])
+
+        if need_network_allocation:
+            mock_allocations_get.assert_called_once_with(
+                self.context, fake_dest_share_server['id'])
+        else:
+            mock_allocations_get.assert_has_calls(
+                calls=[
+                    mock.call(self.context, fake_dest_share_server['id']),
+                    mock.call(self.context, fake_source_share_server['id']),
+                ]
+            )
 
         if not need_network_allocation:
             mock_form_server_setup_info.assert_called_once_with(

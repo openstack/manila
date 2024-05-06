@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    When performing a share server migration without new share network,
+    reused allocations are properly updated with new share_server_id.
+  - |
+    In NetApp driver functions related to share server migration,
+    vserver_name is now retrieved directly from backend_details instead
+    of templating. This way, vserver_name is correct even for share
+    servers that have already been migrated once.

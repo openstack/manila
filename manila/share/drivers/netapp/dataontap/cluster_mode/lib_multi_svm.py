@@ -1284,8 +1284,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         # 1. Checks if both source and destination clients support SVM Migrate.
         if (dest_client.is_svm_migrate_supported()
                 and src_client.is_svm_migrate_supported()):
-            source_share_server_name = self._get_vserver_name(
-                source_share_server['identifier'])
+            source_share_server_name = (
+                source_share_server["backend_details"]["vserver_name"])
 
             # Check if the migration is supported.
             try:
@@ -1523,8 +1523,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         # Prepare the migration request.
         src_cluster_name = src_client.get_cluster_name()
-        source_share_server_name = self._get_vserver_name(
-            source_share_server['identifier'])
+        source_share_server_name = (
+            source_share_server["backend_details"]["vserver_name"])
 
         # 3. Send the migration request to ONTAP.
         try:
