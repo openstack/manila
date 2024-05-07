@@ -14,10 +14,7 @@
 #    under the License.
 
 import re
-try:
-    from urllib.request import parse_http_list   # noqa
-except ImportError:
-    from urllib2 import parse_http_list   # noqa
+from urllib.request import parse_http_list
 
 import paste.urlmap
 
