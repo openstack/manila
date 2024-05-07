@@ -20,11 +20,8 @@
 Manage hosts in the current zone.
 """
 
+import collections
 import re
-try:
-    from UserDict import IterableUserDict  # noqa
-except ImportError:
-    from collections import UserDict as IterableUserDict  # noqa
 
 from oslo_config import cfg
 from oslo_log import log
@@ -86,7 +83,7 @@ CONF.import_opt('max_over_subscription_ratio', 'manila.share.driver')
 LOG = log.getLogger(__name__)
 
 
-class ReadOnlyDict(IterableUserDict):
+class ReadOnlyDict(collections.UserDict):
     """A read-only dict."""
 
     def __init__(self, source=None):
@@ -111,7 +108,7 @@ class ReadOnlyDict(IterableUserDict):
     def update(self, source=None):
         if source is None:
             return
-        elif isinstance(source, IterableUserDict):
+        elif isinstance(source, collections.UserDict):
             self.data = source.data
         elif isinstance(source, type({})):
             self.data = source
