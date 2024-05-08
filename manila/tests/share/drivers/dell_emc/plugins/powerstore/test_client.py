@@ -14,7 +14,7 @@
 # under the License.
 
 import json
-import pathlib
+import os
 
 import requests_mock
 
@@ -58,13 +58,11 @@ class TestClient(test.TestCase):
 
         self._mock_url = "https://%s/api/rest" % self.REST_IP
         self.client = client.PowerStoreClient(**self.CLIENT_OPTIONS)
-        self.mockup_file_base = (
-            str(pathlib.Path.cwd())
-            + "/manila/tests/share/drivers/dell_emc/plugins/powerstore/mockup/"
-        )
+        self.mockup_file_base = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), 'mockup')
 
     def _getJsonFile(self, filename):
-        f = open(self.mockup_file_base + filename)
+        f = open(os.path.join(self.mockup_file_base, filename))
         data = json.load(f)
         f.close()
         return data
