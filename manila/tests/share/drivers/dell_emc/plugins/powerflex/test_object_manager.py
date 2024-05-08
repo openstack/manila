@@ -15,7 +15,7 @@
 
 from http import client as http_client
 import json
-import pathlib
+import os
 
 import ddt
 import requests_mock
@@ -36,10 +36,8 @@ class StorageObjectManagerTestCase(test.TestCase):
         self.manager = manager.StorageObjectManager(
             self._mock_url, username="admin", password="pwd", export_path=None
         )
-        self.mockup_file_base = (
-            str(pathlib.Path.cwd())
-            + "/manila/tests/share/drivers/dell_emc/plugins/powerflex/mockup/"
-        )
+        self.mockup_file_base = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), 'mockup')
 
     @ddt.data(False, True)
     def test__get_headers(self, got_token):
@@ -51,7 +49,7 @@ class StorageObjectManagerTestCase(test.TestCase):
         )
 
     def _getJsonFile(self, filename):
-        f = open(self.mockup_file_base + filename)
+        f = open(os.path.join(self.mockup_file_base, filename))
         data = json.load(f)
         f.close()
         return data
