@@ -282,7 +282,7 @@ class RestClientURL(object):  # pylint: disable=R0902
 
         while retry < maxreqretries:
             try:
-                response = urlrequest.urlopen(req,  # nosec
+                response = urlrequest.urlopen(req,  # nosec B310
                                               timeout=self.timeout)
             except urlerror.HTTPError as err:
                 if err.code == http_client.NOT_FOUND:
