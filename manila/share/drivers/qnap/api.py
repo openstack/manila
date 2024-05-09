@@ -79,7 +79,7 @@ class QnapAPIExecutor(object):
     def _prepare_connection(self, isSSL, ip, port):
         if isSSL:
             if hasattr(ssl, '_create_unverified_context'):
-                context = ssl._create_unverified_context()  # nosec B314
+                context = ssl._create_unverified_context()  # nosec B323
                 connection = http_client.HTTPSConnection(ip,
                                                          port=port,
                                                          context=context)
