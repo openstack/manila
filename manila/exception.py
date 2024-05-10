@@ -199,6 +199,10 @@ class InvalidCapacity(Invalid):
     message = _("Invalid capacity: %(name)s = %(value)s.")
 
 
+class ValidationError(Invalid):
+    message = "%(detail)s"
+
+
 class NotFound(ManilaException):
     message = _("Resource could not be found.")
     code = 404
