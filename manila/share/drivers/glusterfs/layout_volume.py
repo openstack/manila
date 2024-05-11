@@ -21,8 +21,8 @@ import re
 import shutil
 import string
 import tempfile
-import xml.etree.cElementTree as etree
 
+from defusedxml import ElementTree as etree
 from oslo_config import cfg
 from oslo_log import log
 

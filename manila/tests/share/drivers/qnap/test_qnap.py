@@ -17,12 +17,8 @@ from http import client as http_client
 import time
 from unittest import mock
 
-try:
-    import xml.etree.cElementTree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
-
 import ddt
+from defusedxml import ElementTree as etree
 from eventlet import greenthread
 from oslo_config import cfg
 
@@ -269,7 +265,7 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
 
     def get_share_info_return_value(self):
         """Return the share info form get_share_info method."""
-        root = ET.fromstring(fakes.FAKE_RES_DETAIL_DATA_SHARE_INFO)
+        root = etree.fromstring(fakes.FAKE_RES_DETAIL_DATA_SHARE_INFO)
 
         share_list = root.find('Volume_Info')
         share_info_tree = share_list.findall('row')
@@ -278,7 +274,7 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
 
     def get_snapshot_info_return_value(self):
         """Return the snapshot info form get_snapshot_info method."""
-        root = ET.fromstring(fakes.FAKE_RES_DETAIL_DATA_SNAPSHOT)
+        root = etree.fromstring(fakes.FAKE_RES_DETAIL_DATA_SNAPSHOT)
 
         snapshot_list = root.find('SnapshotList')
         snapshot_info_tree = snapshot_list.findall('row')
@@ -287,7 +283,7 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
 
     def get_specific_volinfo_return_value(self):
         """Return the volume info form get_specific_volinfo method."""
-        root = ET.fromstring(fakes.FAKE_RES_DETAIL_DATA_VOLUME_INFO)
+        root = etree.fromstring(fakes.FAKE_RES_DETAIL_DATA_VOLUME_INFO)
 
         volume_list = root.find('Volume_Info')
         volume_info_tree = volume_list.findall('row')
@@ -296,7 +292,7 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
 
     def get_specific_poolinfo_return_value(self):
         """Get specific pool info."""
-        root = ET.fromstring(fakes.FAKE_RES_DETAIL_DATA_SPECIFIC_POOL_INFO)
+        root = etree.fromstring(fakes.FAKE_RES_DETAIL_DATA_SPECIFIC_POOL_INFO)
 
         pool_list = root.find('Pool_Index')
         pool_info_tree = pool_list.findall('row')
@@ -305,7 +301,7 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
 
     def get_host_list_return_value(self):
         """Get host list."""
-        root = ET.fromstring(fakes.FAKE_RES_DETAIL_DATA_GET_HOST_LIST)
+        root = etree.fromstring(fakes.FAKE_RES_DETAIL_DATA_GET_HOST_LIST)
 
         hosts = []
         host_list = root.find('host_list')

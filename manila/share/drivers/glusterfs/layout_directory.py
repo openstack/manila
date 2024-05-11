@@ -18,9 +18,9 @@
 import math
 import os
 
+from defusedxml import ElementTree as etree
 from oslo_config import cfg
 from oslo_log import log
-import xml.etree.cElementTree as etree
 
 from manila import exception
 from manila.i18n import _

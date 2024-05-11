@@ -22,7 +22,7 @@ import re
 import ssl
 from urllib import parse as urlparse
 
-from defusedxml import ElementTree as ET
+from defusedxml import ElementTree as etree
 from oslo_log import log as logging
 
 from manila import exception
@@ -104,7 +104,7 @@ class QnapAPIExecutor(object):
         data = response.read()
         LOG.debug('response data: %s', data)
 
-        root = ET.fromstring(data)
+        root = etree.fromstring(data)
 
         display_model_name = root.find('model/displayModelName').text
         internal_model_name = root.find('model/internalModelName').text
@@ -154,7 +154,7 @@ class QnapAPIExecutor(object):
         url = ('/cgi-bin/authLogin.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
 
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
@@ -221,7 +221,7 @@ class QnapAPIExecutor(object):
         url = ('/cgi-bin/wizReq.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
 
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
@@ -258,7 +258,7 @@ class QnapAPIExecutor(object):
         url = ('/cgi-bin/disk/disk_manage.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
 
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
@@ -283,7 +283,7 @@ class QnapAPIExecutor(object):
 
         res_details = self._execute_and_get_response_details(self.ip, url)
 
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
         if root.find('result').text < '0':
@@ -317,7 +317,7 @@ class QnapAPIExecutor(object):
         url = ('/cgi-bin/disk/disk_manage.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
 
@@ -354,7 +354,7 @@ class QnapAPIExecutor(object):
         url = ('/cgi-bin/disk/disk_manage.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
 
@@ -382,7 +382,7 @@ class QnapAPIExecutor(object):
         url = ('/cgi-bin/disk/snapshot.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
         if root.find('result').text < '0':
@@ -424,7 +424,7 @@ class QnapAPIExecutor(object):
         url = ('/cgi-bin/disk/snapshot.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
 
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
@@ -446,7 +446,7 @@ class QnapAPIExecutor(object):
         url = ('/cgi-bin/disk/snapshot.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
         # snapshot not exist
@@ -478,7 +478,7 @@ class QnapAPIExecutor(object):
         url = ('/cgi-bin/disk/snapshot.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
         if root.find('result').text < '0':
@@ -518,7 +518,7 @@ class QnapAPIExecutor(object):
         url = ('/cgi-bin/priv/privWizard.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
 
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
@@ -541,7 +541,7 @@ class QnapAPIExecutor(object):
                sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
         if root.find('result').text < '0':
@@ -577,7 +577,7 @@ class QnapAPIExecutor(object):
                sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
         if root.find('result').text < '0':
@@ -601,7 +601,7 @@ class QnapAPIExecutor(object):
                sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
         if root.find('result').text < '0':
@@ -623,7 +623,7 @@ class QnapAPIExecutor(object):
                sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
         if root.find('result').text < '0':
@@ -646,7 +646,7 @@ class QnapAPIExecutor(object):
         url = ('/cgi-bin/priv/privWizard.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
         if root.find('result').text < '0':
@@ -677,7 +677,7 @@ class QnapAPIExecutorTS(QnapAPIExecutor):
         url = ('/cgi-bin/disk/snapshot.cgi?%s' % sanitized_params)
 
         res_details = self._execute_and_get_response_details(self.ip, url)
-        root = ET.fromstring(res_details['data'])
+        root = etree.fromstring(res_details['data'])
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
         if root.find('result').text < '0':
