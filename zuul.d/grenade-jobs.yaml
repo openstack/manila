@@ -91,4 +91,4 @@
     vars:
       # Move this forward when a new release cycle start. grenade_from_branch
       # should be always N-2 from master.
-      grenade_from_branch: stable/2023.1
+      grenade_from_branch: stable/2024.1
