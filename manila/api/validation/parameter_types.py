@@ -10,7 +10,22 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-"""Common parameter types for validating API requests/responses."""
+"""Common parameter types for validating API requests."""
+
+from manila.common import constants
+
+
+def single_param(schema):
+    """Macro function to support query params that allow only one value."""
+    ret = multi_params(schema)
+    ret['maxItems'] = 1
+    return ret
+
+
+def multi_params(schema):
+    """Macro function to support query params that allow multiple values."""
+    return {'type': 'array', 'items': schema}
+
 
 boolean = {
     'type': ['boolean', 'string'],
@@ -42,4 +57,20 @@ boolean = {
         'n',
         'f',
     ],
+}
+
+positive_integer = {
+    'type': ['integer', 'string'],
+    'pattern': '^[0-9]*$',
+    'minimum': 1,
+    'maximum': constants.DB_MAX_INT,
+    'minLength': 1,
+}
+
+non_negative_integer = {
+    'type': ['integer', 'string'],
+    'pattern': '^[0-9]*$',
+    'minimum': 0,
+    'maximum': constants.DB_MAX_INT,
+    'minLength': 1,
 }

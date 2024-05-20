@@ -29,6 +29,8 @@ from webob import exc
 
 from manila.api import common
 from manila.api.openstack import wsgi
+from manila.api.schemas import resource_locks as schema
+from manila.api import validation
 from manila.api.views import resource_locks as resource_locks_view
 from manila.common import constants
 from manila import exception
@@ -39,6 +41,7 @@ from manila import utils
 RESOURCE_LOCKS_MIN_API_VERSION = '2.81'
 
 
+@validation.validated
 class ResourceLocksController(wsgi.Controller):
     """The Resource Locks API controller for the OpenStack API."""
 
@@ -92,6 +95,8 @@ class ResourceLocksController(wsgi.Controller):
 
     @wsgi.Controller.api_version(RESOURCE_LOCKS_MIN_API_VERSION)
     @wsgi.Controller.authorize('get_all')
+    @validation.request_query_schema(schema.index_request_query)
+    @validation.response_body_schema(schema.index_response_body)
     def index(self, req):
         """Returns a list of locks, transformed through view builder."""
         context = req.environ['manila.context']
@@ -131,6 +136,8 @@ class ResourceLocksController(wsgi.Controller):
 
     @wsgi.Controller.api_version(RESOURCE_LOCKS_MIN_API_VERSION)
     @wsgi.Controller.authorize('get')
+    @validation.request_query_schema(schema.show_request_query)
+    @validation.response_body_schema(schema.show_response_body)
     def show(self, req, id):
         """Return an existing resource lock by ID."""
         context = req.environ['manila.context']
@@ -143,6 +150,7 @@ class ResourceLocksController(wsgi.Controller):
     @wsgi.Controller.api_version(RESOURCE_LOCKS_MIN_API_VERSION)
     @wsgi.Controller.authorize
     @wsgi.action("delete")
+    @validation.response_body_schema(schema.delete_response_body)
     def delete(self, req, id):
         """Delete an existing resource lock."""
         context = req.environ['manila.context']
@@ -154,6 +162,8 @@ class ResourceLocksController(wsgi.Controller):
 
     @wsgi.Controller.api_version(RESOURCE_LOCKS_MIN_API_VERSION)
     @wsgi.Controller.authorize
+    @validation.request_body_schema(schema.create_request_body)
+    @validation.response_body_schema(schema.create_response_body)
     def create(self, req, body):
         """Create a resource lock."""
         context = req.environ['manila.context']
@@ -180,6 +190,8 @@ class ResourceLocksController(wsgi.Controller):
 
     @wsgi.Controller.api_version(RESOURCE_LOCKS_MIN_API_VERSION)
     @wsgi.Controller.authorize
+    @validation.request_body_schema(schema.update_request_body)
+    @validation.response_body_schema(schema.update_response_body)
     def update(self, req, id, body):
         """Update an existing resource lock."""
         context = req.environ['manila.context']
