@@ -1,0 +1,24 @@
+---
+upgrade:
+  - |
+    The service now requires a user's "scope" to be defined with the OpenStack
+    Identity service (Keystone) by the virtue of default Role Based Access
+    Control (RBAC). This is being done in addition to changing the
+    RBAC rules for GET requests to permit users possessing the "reader" role.
+    The Default value of config options ``[oslo_policy] enforce_scope`` and
+    ``[oslo_policy] oslo_policy.enforce_new_defaults`` has now changed
+    to ``True``. This means that, if you are using system scoped tokens to
+    access Manila's API, requests will fail with HTTP 403. Users must
+    obtain a project scoped token to interact with the Manila API. You
+    may also provide users with "reader" role where appropriate if they
+    intend to make read-only API requests to Manila.  If you would like to
+    disable these changes, modify ``manila.conf`` file to set::
+
+      [oslo_policy]
+      enforce_new_defaults=False
+      enforce_scope=False
+
+    However, be aware that you may not be able to disable these options in
+    the future. Please see `OpenStack's Consistent and Secure Default RBAC
+    goal <https://governance.openstack
+    .org/tc/goals/selected/consistent-and-secure-rbac.html>`_ for more details
