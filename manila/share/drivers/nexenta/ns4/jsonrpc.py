@@ -83,7 +83,7 @@ class NexentaJSONProxy(object):
             'Authorization': 'Basic %s' % auth,
         }
         LOG.debug('Sending JSON data: %s', data)
-        r = requests.post(self.url, data=data, headers=headers)
+        r = requests.post(self.url, data=data, headers=headers, timeout=60)
         response = json.loads(r.content) if r.content else None
         LOG.debug('Got response: %s', response)
         if response.get('error') is not None:
