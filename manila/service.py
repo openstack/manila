@@ -352,7 +352,7 @@ class WSGIService(service.ServiceBase):
         if not rpc.initialized():
             rpc.init(CONF)
         self.app = self.loader.load_app(name)
-        self.host = getattr(CONF, '%s_listen' % name, "0.0.0.0")
+        self.host = getattr(CONF, '%s_listen' % name, "0.0.0.0")  # nosec B104
         self.port = getattr(CONF, '%s_listen_port' % name, 0)
         self.workers = getattr(CONF, '%s_workers' % name, None)
         self.use_ssl = getattr(CONF, '%s_use_ssl' % name, False)

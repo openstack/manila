@@ -31,6 +31,8 @@
             voting: false
         - manila-rally-ss:
             voting: false
+        - manila-tox-bandit:
+            voting: false
     gate:
       jobs:
         - manila-tox-py311-with-sqlalchemy-2x
@@ -98,3 +100,12 @@
         GLOBAL_VENV: false
     required-projects:
       - openstack/rally-openstack
+
+- job:
+  # Security testing for known issues
+    name: manila-tox-bandit
+    parent: openstack-tox
+    timeout: 2400
+    vars:
+      tox_envlist: bandit
+    irrelevant-files: *irrelevant-files
