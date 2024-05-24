@@ -1831,6 +1831,10 @@ class NetAppCmodeFileStorageLibrary(object):
                          self._get_backend_snapshot_name(snapshot['id']))
         LOG.debug('Restoring snapshot %s', snapshot_name)
         vserver_client.restore_snapshot(share_name, snapshot_name)
+        volume = vserver_client.get_volume(share_name)
+
+        # When calculating the size, round up to the next GB.
+        return int(math.ceil(float(volume['size']) / units.Gi))
 
     @na_utils.trace
     def delete_snapshot(self, context, snapshot, share_server=None,

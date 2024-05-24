@@ -3463,11 +3463,12 @@ class ShareManager(manager.SchedulerDependentManager):
             context, snapshot_instance, snapshot=snapshot)
 
         try:
-            self.driver.revert_to_snapshot(context,
-                                           snapshot_instance_dict,
-                                           share_access_rules,
-                                           snapshot_access_rules,
-                                           share_server=share_server)
+            updated_share_size = self.driver.revert_to_snapshot(
+                context,
+                snapshot_instance_dict,
+                share_access_rules,
+                snapshot_access_rules,
+                share_server=share_server)
         except Exception as excep:
             with excutils.save_and_reraise_exception():
 
@@ -3496,15 +3497,37 @@ class ShareManager(manager.SchedulerDependentManager):
                     resource_id=share_id,
                     exception=excep)
 
+        # fail-safe in case driver returned size is None or invalid
+        if not updated_share_size:
+            updated_share_size = snapshot['size']
+        else:
+            try:
+                int(updated_share_size)
+            except ValueError:
+                updated_share_size = snapshot['size']
+
         if reservations:
-            QUOTAS.commit(
-                context, reservations, project_id=project_id, user_id=user_id,
-                share_type_id=share_type_id,
-            )
+            if updated_share_size == snapshot['size']:
+                QUOTAS.commit(
+                    context, reservations, project_id=project_id,
+                    user_id=user_id, share_type_id=share_type_id,
+                )
+            else:
+                # NOTE(kpdev): The driver tells us that the share size wasn't
+                # modified to the snapshot's size; so no need to commit quota
+                # changes
+                QUOTAS.rollback(
+                    context, reservations, project_id=project_id,
+                    user_id=user_id, share_type_id=share_type_id,
+                )
+                if updated_share_size != share['size']:
+                    LOG.error("Driver returned an unexpected size %d on "
+                              "revert to snapshot operation. You need to "
+                              "adjust the quota", updated_share_size)
 
         self.db.share_update(
             context, share_id,
-            {'status': constants.STATUS_AVAILABLE, 'size': snapshot['size']})
+            {'status': constants.STATUS_AVAILABLE, 'size': updated_share_size})
         self.db.share_snapshot_update(
             context, snapshot_id, {'status': constants.STATUS_AVAILABLE})
 

@@ -2449,6 +2449,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
+        vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
         fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
         if use_snap_provider_location:
             fake_snapshot['provider_location'] = 'fake-provider-location'
@@ -2458,7 +2459,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result = self.library.revert_to_snapshot(
             self.context, fake_snapshot, share_server=fake.SHARE_SERVER)
 
-        self.assertIsNone(result)
+        self.assertIsNotNone(result)
         share_name = self.library._get_backend_share_name(
             fake_snapshot['share_id'])
         snapshot_name = (self.library._get_backend_snapshot_name(
