@@ -4407,6 +4407,22 @@ class ShareManager(manager.SchedulerDependentManager):
             self.db.share_server_update(context, server_id,
                                         {'status': constants.STATUS_DELETING})
             try:
+                LOG.debug("Deleting network of share server '%s'", server_id)
+                share_net = None
+                share_net_subnet = None
+                if subnet_id:
+                    try:
+                        share_net_subnet = self.db.share_network_subnet_get(
+                            context, subnet_id)
+                        share_net = self.db.share_network_get(
+                            context, share_net_subnet['share_network_id'])
+                    except Exception:
+                        LOG.warning('Share network subnet not found during '
+                                    'deletion of share server.')
+                self.driver.deallocate_network(context, share_server['id'],
+                                               share_net,
+                                               share_net_subnet)
+
                 LOG.debug("Deleting share server '%s'", server_id)
                 security_services = []
                 for ss_name in constants.SECURITY_SERVICES_ALLOWED_TYPES:
@@ -4431,7 +4447,6 @@ class ShareManager(manager.SchedulerDependentManager):
         LOG.info(
             "Share server '%s' has been deleted successfully.",
             share_server['id'])
-        self.driver.deallocate_network(context, share_server['id'])
 
     @add_hooks
     @utils.require_driver_initialized

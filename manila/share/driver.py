@@ -958,10 +958,13 @@ class ShareDriver(object):
             self.admin_network_api.allocate_network(
                 context, share_server, **kwargs)
 
-    def deallocate_network(self, context, share_server_id):
+    def deallocate_network(self, context, share_server_id, share_network=None,
+                           share_network_subnet=None):
         """Deallocate network resources for the given share server."""
         if self.get_network_allocations_number():
-            self.network_api.deallocate_network(context, share_server_id)
+            self.network_api.deallocate_network(
+                context, share_server_id, share_network=share_network,
+                share_network_subnet=share_network_subnet)
 
     def choose_share_server_compatible_with_share(self, context, share_servers,
                                                   share, snapshot=None,
