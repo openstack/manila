@@ -2675,6 +2675,17 @@ class ShareAPITestCase(test.TestCase):
             db_api.share_snapshot_get.assert_called_once_with(
                 self.context, 'fakeid')
 
+    def test_get_snapshot_non_admin_deferred_state(self):
+        fake_get_snap = {
+            'fake_key': 'fake_val', 'status': 'deferred_deleting'
+        }
+        with mock.patch.object(db_api, 'share_snapshot_get',
+                               mock.Mock(return_value=fake_get_snap)):
+            self.mock_object(
+                policy, 'check_policy', mock.Mock(side_effect=[True, False]))
+            self.assertRaises(exception.NotFound, self.api.get_snapshot,
+                              self.context, 'fakeid')
+
     def test_create_from_snapshot_not_available(self):
         snapshot = db_utils.create_snapshot(
             with_share=True, status=constants.STATUS_ERROR)
@@ -2898,6 +2909,44 @@ class ShareAPITestCase(test.TestCase):
                 self.context, 'share', 'get', share, do_raise=False)
             db_api.share_get.assert_called_once_with(
                 self.context, 'fakeid')
+
+    def test_get_admin_deferred_state(self):
+        rv = {
+            'id': 'fake_id',
+            'is_public': False,
+            'name': 'bar',
+            'status': constants.STATUS_ERROR_DEFERRED_DELETING,
+            'project_id': 'fake_pid_2',
+            'share_server_id': 'fake_server_3',
+        }
+
+        self.mock_object(db_api, 'share_get',
+                         mock.Mock(return_value=rv))
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=True)
+        self.mock_object(
+            policy, 'check_policy', mock.Mock(side_effect=[True, True]))
+        share = self.api.get(ctx, 'fake_id')
+        self.assertEqual(rv, share)
+
+    def test_get_non_admin_deferred_state(self):
+        rv = {
+            'id': 'fake_id',
+            'is_public': False,
+            'name': 'bar',
+            'status': constants.STATUS_ERROR_DEFERRED_DELETING,
+            'project_id': 'fake_pid_2',
+            'share_server_id': 'fake_server_3',
+        }
+
+        self.mock_object(db_api, 'share_get',
+                         mock.Mock(return_value=rv))
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
+        self.mock_object(
+            policy, 'check_policy', mock.Mock(side_effect=[True, False]))
+
+        self.assertRaises(
+            exception.NotFound,
+            self.api.get, ctx, 'fake_id')
 
     def test_get_not_authorized(self):
         share = db_utils.create_share(

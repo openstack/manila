@@ -278,11 +278,15 @@ share_snapshot_policies = [
         name=BASE_POLICY_NAME % 'list_snapshots_in_deferred_deletion_states',
         check_str=base.ADMIN,
         scope_types=['project'],
-        description="List share snapshots whose deletion has been deferred",
+        description="List (or get) snapshots whose deletion has been deferred",
         operations=[
             {
                 'method': 'GET',
                 'path': '/v2/snapshots',
+            },
+            {
+                'method': 'GET',
+                'path': '/snapshots/{snapshot_id}'
             }
         ],
         deprecated_rule=deprecated_list_snapshots_in_deferred_deletion_states

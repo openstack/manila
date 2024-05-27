@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Share and snapshot in deferred deletion states will be hidden from non-admin
+    user in show API along-with existing list API. For more details, please check
+    Launchpad `bug 2067456 <https://bugs.launchpad.net/manila/+bug/2067456>`_

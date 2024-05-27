@@ -2213,13 +2213,21 @@ class API(base.Base):
         return self.db.share_snapshot_update(context, snapshot['id'], fields)
 
     def get(self, context, share_id):
-        rv = self.db.share_get(context, share_id)
-        if not rv['is_public']:
+        share = self.db.share_get(context, share_id)
+        if not share['is_public']:
             authorized = policy.check_policy(
-                context, 'share', 'get', rv, do_raise=False)
+                context, 'share', 'get', share, do_raise=False)
             if not authorized:
                 raise exception.NotFound()
-        return rv
+        if share['status'] in (
+            constants.STATUS_DEFERRED_DELETING,
+                constants.STATUS_ERROR_DEFERRED_DELETING):
+            policy_str = "list_shares_in_deferred_deletion_states"
+            authorized = policy.check_policy(
+                context, 'share', policy_str, share, do_raise=False)
+            if not authorized:
+                raise exception.NotFound()
+        return share
 
     def get_all(self, context, search_opts=None, sort_key='created_at',
                 sort_dir='desc'):
@@ -2329,7 +2337,17 @@ class API(base.Base):
 
     def get_snapshot(self, context, snapshot_id):
         policy.check_policy(context, 'share_snapshot', 'get_snapshot')
-        return self.db.share_snapshot_get(context, snapshot_id)
+        snapshot = self.db.share_snapshot_get(context, snapshot_id)
+        if snapshot.get('status') in (
+            constants.STATUS_DEFERRED_DELETING,
+                constants.STATUS_ERROR_DEFERRED_DELETING):
+            policy_str = "list_snapshots_in_deferred_deletion_states"
+            authorized = policy.check_policy(
+                context, 'share_snapshot', policy_str,
+                snapshot, do_raise=False)
+            if not authorized:
+                raise exception.NotFound()
+        return snapshot
 
     def get_all_snapshots(self, context, search_opts=None, limit=None,
                           offset=None, sort_key='share_id', sort_dir='desc'):
