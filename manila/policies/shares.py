@@ -669,12 +669,16 @@ shares_policies = [
         name=BASE_POLICY_NAME % 'list_shares_in_deferred_deletion_states',
         check_str=base.ADMIN,
         scope_types=['project'],
-        description="List shares whose deletion has been deferred",
+        description="List (or get) shares whose deletion has been deferred",
         operations=[
             {
                 'method': 'GET',
                 'path': '/v2/shares',
             },
+            {
+                'method': 'GET',
+                'path': '/shares/{share_id}',
+            }
         ],
         deprecated_rule=deprecated_list_shares_in_deferred_deletion_states
     ),
