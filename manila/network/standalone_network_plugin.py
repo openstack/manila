@@ -314,7 +314,8 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                 self.db.network_allocation_create(context, data))
         return allocations
 
-    def deallocate_network(self, context, share_server_id):
+    def deallocate_network(self, context, share_server_id,
+                           share_network=None, share_network_subnet=None):
         """Deallocate network resources for share server."""
         allocations = self.db.network_allocations_get_for_share_server(
             context, share_server_id)
