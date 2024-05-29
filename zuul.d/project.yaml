@@ -10,7 +10,6 @@
     queue: manila
     check:
       jobs:
-        - manila-tox-py311-with-sqlalchemy-2x
         - manila-tox-genconfig
         - openstack-tox-pylint:
             voting: false
@@ -35,25 +34,8 @@
             voting: false
     gate:
       jobs:
-        - manila-tox-py311-with-sqlalchemy-2x
         - manila-tempest-plugin-dummy-no-dhss
         - manila-tempest-plugin-dummy-dhss
-
-# Temporary job until SQLAlchemy 2.0 is no longer blocked by upper-requirements
-- job:
-    name: manila-tox-py311-with-sqlalchemy-2x
-    parent: openstack-tox-py311
-    description: |
-      Run unit tests with main branch of SQLAlchemy, alembic and oslo.db.
-      Takes advantage of the base tox job's install-siblings feature.
-    # The job only tests the latest and shouldn't be run on the stable branches
-    branches: master
-    required-projects:
-      - name: github.com/sqlalchemy/sqlalchemy
-        override-checkout: main
-      - name: github.com/sqlalchemy/alembic
-        override-checkout: main
-      - name: openstack/oslo.db
 
 - job:
     name: manila-tox-genconfig
