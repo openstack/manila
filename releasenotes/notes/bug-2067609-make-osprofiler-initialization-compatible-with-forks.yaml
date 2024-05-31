@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    OSprofiler is now initialized after forking because at
+    least its opentelemetry driver loses tracing context
+    when process is forked.
