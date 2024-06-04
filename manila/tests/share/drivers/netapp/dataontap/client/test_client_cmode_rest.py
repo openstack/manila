@@ -6912,7 +6912,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
     def test_snapmirror_restore_vol(self):
         uuid = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST["uuid"]
         body = {
-            "destination": {"path": fake.SM_DEST_PATH},
+            "destination": {"path": fake.SM_DEST_PATH,
+                            "cluster": {"name": fake.CLUSTER_NAME}},
             "source_snapshot": fake.SNAPSHOT_NAME
         }
         snapmirror_info = [{'destination-vserver': "fake_des_vserver",
@@ -6920,12 +6921,13 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                             'relationship-status': "idle",
                             'uuid': uuid}]
 
-        self.mock_object(self.client, 'get_snapmirror_destinations',
+        self.mock_object(self.client, 'get_snapmirrors',
                          mock.Mock(return_value=snapmirror_info))
         self.mock_object(self.client, 'send_request')
         self.client.snapmirror_restore_vol(source_path=fake.SM_SOURCE_PATH,
                                            dest_path=fake.SM_DEST_PATH,
-                                           source_snapshot=fake.SNAPSHOT_NAME)
+                                           source_snapshot=fake.SNAPSHOT_NAME,
+                                           des_cluster=fake.CLUSTER_NAME)
         self.client.send_request.assert_called_once_with(
             f'/snapmirror/relationships/{uuid}/restore', 'post', body=body)
 

@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2059399
+    <https://bugs.launchpad.net/manila/+bug/2059399>`_:
+    Fix the backup restore issue for NetApp driver for REST client.
+    Backup restore is failing across the ONTAP cluster for REST client.
+    Added the logic to use to destination vserver client for REST client
+    to restore the backup and modify the restore lib for cmode REST
+    client accordingly.
