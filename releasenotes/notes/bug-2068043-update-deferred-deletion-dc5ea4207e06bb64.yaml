@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    When deferred deletion is enabled, Manila will attempt regular deletion.
+    While quota is released, and these objects (shares, snapshots) are hidden
+    from the user. Any error during deferred deletion will put resource in
+    `error_deferred_deleting` state. After that, it will be handled in
+    periodic task. Also, Manila will make sure snapshot instances are deleted
+    before share instance delete. For more details, please check
+    Launchpad `bug 2068043 <https://bugs.launchpad.net/manila/+bug/2068043>`_
