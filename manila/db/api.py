@@ -1534,9 +1534,12 @@ def count_share_groups_in_share_network(context, share_network_id):
     return IMPL.count_share_groups_in_share_network(context, share_network_id)
 
 
-def count_share_group_snapshot_members_in_share(context, share_id):
+def count_share_group_snapshot_members_in_share(
+    context, share_id, include_deferred_deleting=True
+):
     """Returns the number of group snapshot members linked to the share."""
-    return IMPL.count_share_group_snapshot_members_in_share(context, share_id)
+    return IMPL.count_share_group_snapshot_members_in_share(
+        context, share_id, include_deferred_deleting=include_deferred_deleting)
 
 
 def share_group_snapshot_get(context, share_group_snapshot_id):

@@ -1392,7 +1392,7 @@ class API(base.Base):
 
         share_group_snapshot_members_count = (
             self.db.count_share_group_snapshot_members_in_share(
-                context, share_id))
+                context, share_id, include_deferred_deleting=False))
         if share_group_snapshot_members_count:
             msg = (
                 _("Share still has %d dependent share group snapshot "
@@ -2187,13 +2187,15 @@ class API(base.Base):
         if force and deferred_delete:
             deferred_delete = False
 
-        status = constants.STATUS_DELETING
-        if deferred_delete:
-            status = constants.STATUS_DEFERRED_DELETING
-
-        for snapshot_instance in snapshot_instances:
-            self.db.share_snapshot_instance_update(
-                context, snapshot_instance['id'], {'status': status})
+        current_status = snapshot['aggregate_status']
+        if current_status not in (constants.STATUS_DEFERRED_DELETING,
+                                  constants.STATUS_ERROR_DEFERRED_DELETING):
+            new_status = constants.STATUS_DELETING
+            if deferred_delete:
+                new_status = constants.STATUS_DEFERRED_DELETING
+            for snapshot_instance in snapshot_instances:
+                self.db.share_snapshot_instance_update(
+                    context, snapshot_instance['id'], {'status': new_status})
 
         if share['has_replicas']:
             self.share_rpcapi.delete_replicated_snapshot(
