@@ -309,7 +309,7 @@ netapp_backup_opts = [
                      'are enabled, create separate config sections for each '
                      'backup type specifying the "netapp_backup_vserver", '
                      '"netapp_backup_backend_section_name", '
-                     '"netapp_backup_share", and '
+                     '"netapp_backup_volume", and '
                      '"netapp_snapmirror_job_timeout" as appropriate.'
                      ' Example- netapp_enabled_backup_types = eng_backup,'
                      ' finance_backup'),
@@ -322,7 +322,7 @@ netapp_backup_opts = [
                help='vserver name of backend that is use for backup the share.'
                     ' When user provide vserver value then backup volume will '
                     ' be created under this vserver '),
-    cfg.StrOpt('netapp_backup_share',
+    cfg.StrOpt('netapp_backup_volume',
                default='',
                help='Specify backup share name in case user wanted to backup '
                     'the share. Some case user has dedicated volume for backup'

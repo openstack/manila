@@ -3994,8 +3994,10 @@ SNAPMIRROR_GET_ITER_RESPONSE_REST = {
                 "name": "hourly",
             },
             "transfer": {
-                "state": "success"
-            }
+                "state": "success",
+                "bytes_transferred": "3352",
+            },
+            "last_transfer_type": "update",
         }
     ],
     "num_records": 1,
@@ -4012,7 +4014,10 @@ REST_GET_SNAPMIRRORS_RESPONSE = [{
     'uuid': FAKE_UUID,
     'policy-type': 'async',
     'schedule': 'hourly',
-    'transferring-state': 'success'
+    'transferring-state': 'success',
+    'is-healthy': 'true',
+    'last-transfer-size': '3352',
+    'last-transfer-type': 'update',
 }]
 
 FAKE_CIFS_RECORDS = {

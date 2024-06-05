@@ -73,20 +73,20 @@ def get_backend_configuration(backend_name):
     return config
 
 
-def get_backup_configuration(backup_name):
+def get_backup_configuration(backup_type):
     config_stanzas = CONF.list_all_sections()
-    if backup_name not in config_stanzas:
-        msg = _("Could not find backend stanza %(backup_name)s in "
+    if backup_type not in config_stanzas:
+        msg = _("Could not find backup_type stanza %(backup_type)s in "
                 "configuration which is required for backup workflows "
                 "with the source share. Available stanzas are "
                 "%(stanzas)s")
         params = {
             "stanzas": config_stanzas,
-            "backend_name": backup_name,
+            "backup_type": backup_type,
         }
         raise exception.BadConfigurationException(reason=msg % params)
     config = configuration.Configuration(driver.share_opts,
-                                         config_group=backup_name)
+                                         config_group=backup_type)
     config.append_config_values(na_opts.netapp_backup_opts)
     return config
 

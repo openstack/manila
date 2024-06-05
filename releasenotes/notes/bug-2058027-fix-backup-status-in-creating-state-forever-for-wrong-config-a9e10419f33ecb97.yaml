@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2058027
+    <https://bugs.launchpad.net/manila/+bug/2058027>`_:
+    Fix the issue for NetApp driver for backup feature. Backup status
+    update used to fail when administrator misconfigured backup settings
+    configuration or SnapMirror relationship created during backup
+    creation was not in healthy state.

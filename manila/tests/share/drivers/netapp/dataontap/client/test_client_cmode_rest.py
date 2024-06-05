@@ -2220,7 +2220,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                  ':' + fake.SM_DEST_VOLUME),
             'fields': 'state,source.svm.name,source.path,destination.svm.name,'
                       'destination.path,transfer.end_time,uuid,policy.type,'
-                      'transfer_schedule.name,transfer.state'
+                      'transfer_schedule.name,transfer.state,'
+                      'last_transfer_type,transfer.bytes_transferred,healthy'
         }
 
         mock_send_request.assert_called_once_with('/snapmirror/relationships',
@@ -2252,7 +2253,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                  ':' + fake.SM_DEST_VOLUME),
             'fields': 'state,source.svm.name,source.path,destination.svm.name,'
                       'destination.path,transfer.end_time,uuid,policy.type,'
-                      'transfer_schedule.name,transfer.state'
+                      'transfer_schedule.name,transfer.state,'
+                      'last_transfer_type,transfer.bytes_transferred,healthy'
         }
 
         mock_send_request.assert_called_once_with('/snapmirror/relationships',
@@ -2280,7 +2282,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                  ':' + fake.SM_DEST_VOLUME),
             'fields': 'state,source.svm.name,source.path,destination.svm.name,'
                       'destination.path,transfer.end_time,uuid,policy.type,'
-                      'transfer_schedule.name,transfer.state'
+                      'transfer_schedule.name,transfer.state,'
+                      'last_transfer_type,transfer.bytes_transferred,healthy'
         }
 
         mock_send_request.assert_called_once_with('/snapmirror/relationships',
