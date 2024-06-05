@@ -4964,7 +4964,9 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # Delete the vserver peering
         try:
-            src_vserver_client.delete_vserver_peer(src_vserver, des_vserver)
+            if src_vserver != des_vserver:
+                src_vserver_client.delete_vserver_peer(src_vserver,
+                                                       des_vserver)
         except netapp_api.NaApiError:
             pass
 
