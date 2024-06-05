@@ -3524,7 +3524,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
             # Snapshots are locked by clone(s), so split the clone(s)
             snapshot_children = self.get_clone_children_for_snapshot(
-                volume_name, snapshot_name)
+                volume_name, DELETED_PREFIX + snapshot_name)
             for snapshot_child in snapshot_children:
                 self.volume_clone_split_start(snapshot_child['name'])
 
