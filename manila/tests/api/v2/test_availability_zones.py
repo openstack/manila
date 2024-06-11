@@ -15,6 +15,7 @@
 from unittest import mock
 
 import ddt
+from oslo_utils.fixture import uuidsentinel as uuids
 
 from manila.api.v2 import availability_zones
 from manila import context
@@ -49,16 +50,16 @@ class AvailabilityZonesAPITest(test.TestCase):
     def test_index(self, version, controller):
         azs = [
             {
-                "id": "fake_id1",
+                "id": uuids.fake_id1,
                 "name": "fake_name1",
-                "created_at": "fake_created_at",
-                "updated_at": "fake_updated_at",
+                "created_at": "2023-05-03T13:10:50.000000",
+                "updated_at": None,
             },
             {
-                "id": "fake_id2",
+                "id": uuids.fake_id2,
                 "name": "fake_name2",
-                "created_at": "fake_created_at",
-                "updated_at": "fake_updated_at",
+                "created_at": "2023-05-03T13:10:50.000000",
+                "updated_at": "2023-05-04T23:56:01.000000",
                 "deleted": "False",
                 "redundant_key": "redundant_value",
             },
