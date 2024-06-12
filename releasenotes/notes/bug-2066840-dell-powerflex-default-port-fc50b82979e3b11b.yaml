@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    PowerFlex Driver `bug #2066840
+    <https://bugs.launchpad.net/manila/+bug/2066840>`_:
+    The default port value of 443 has been added for
+    the PowerFlex NAS backend.

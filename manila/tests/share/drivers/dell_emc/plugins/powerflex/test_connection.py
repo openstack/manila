@@ -47,7 +47,7 @@ class PowerFlexTest(test.TestCase):
             if value == "dell_nas_backend_host":
                 return "192.168.0.110"
             elif value == "dell_nas_backend_port":
-                return "443"
+                return 443
             elif value == "dell_nas_login":
                 return "admin"
             elif value == "dell_nas_password":
