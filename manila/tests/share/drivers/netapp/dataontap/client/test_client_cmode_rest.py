@@ -804,6 +804,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         fake_lif = [{
             'uuid': lif_info['uuid'],
+            'administrative-status': 'up' if lif_info['enabled'] else 'down',
             'address': lif_info['ip']['address'],
             'home-node': lif_info['location']['home_node']['name'],
             'home-port': lif_info['location']['home_port']['name'],

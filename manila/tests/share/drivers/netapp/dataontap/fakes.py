@@ -845,6 +845,7 @@ LIF_NAMES = []
 LIF_ADDRESSES = ['10.10.10.10', '10.10.10.20']
 LIFS = (
     {'address': LIF_ADDRESSES[0],
+     'administrative-status': 'up',
      'home-node': CLUSTER_NODES[0],
      'home-port': 'e0c',
      'interface-name': 'os_132dbb10-9a36-46f2-8d89-3d909830c356',
@@ -853,6 +854,7 @@ LIFS = (
      'vserver': VSERVER1
      },
     {'address': LIF_ADDRESSES[1],
+     'administrative-status': 'up',
      'home-node': CLUSTER_NODES[1],
      'home-port': 'e0c',
      'interface-name': 'os_7eabdeed-bad2-46ea-bd0f-a33884c869e0',

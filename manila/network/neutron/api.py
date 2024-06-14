@@ -196,12 +196,15 @@ class API(object):
             except ks_exec.ConnectFailure as kse:
                 raise kse
 
+    @utils.retry(retry_param=ks_exec.ConnectFailure, retries=5)
     def delete_port(self, port_id):
         try:
             self.client.delete_port(port_id)
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
+        except ks_exec.ConnectFailure as e:
+            raise e
 
     def delete_subnet(self, subnet_id):
         try:

@@ -1844,7 +1844,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertListEqual([], result)
 
     def test_disable_network_interface(self):
-        interface_name = fake.NETWORK_INTERFACES[0]['interface_name']
+        interface_name = fake.NETWORK_INTERFACES[0]['interface-name']
         vserver_name = fake.VSERVER_NAME
         expected_api_args = {
             'administrative-status': 'down',
@@ -1860,7 +1860,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'net-interface-modify', expected_api_args)
 
     def test_delete_network_interface(self):
-        interface_name = fake.NETWORK_INTERFACES[0]['interface_name']
+        interface_name = fake.NETWORK_INTERFACES[0]['interface-name']
         vserver_name = fake.VSERVER_NAME
         expected_api_args = {
             'interface-name': interface_name,
