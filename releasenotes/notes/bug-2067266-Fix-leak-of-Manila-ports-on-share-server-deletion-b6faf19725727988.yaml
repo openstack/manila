@@ -6,5 +6,6 @@ fixes:
     trying to delete ports before share server deletion. Second, after ports
     from Manila db entries are deleted, query is made to neutron to get ports
     which are allocated for share server and missing in db. And then try to
-    delete those ports. For more details please check
+    delete those ports. Also made sure that the interfaces are disabled since
+    neutron ports are already deleted. For more details please check
     Launchpad `bug 2067266 <https://bugs.launchpad.net/manila/+bug/2067266>`_

@@ -341,6 +341,9 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
                 LOG.warning("Failed to list ports using neutron API during "
                             "deallocate_network.")
             for port in ports:
+                LOG.debug(f"Deleting orphaned port {port['id']} belonging to "
+                          f"share server {share_server_id} in neutron "
+                          f"network {share_network_subnet['neutron_net_id']}")
                 self._delete_port(context, port, ignore_db=True)
 
     def _get_port_create_args(self, share_server, share_network_subnet,
@@ -403,8 +406,9 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         try:
             self.neutron_api.delete_port(port['id'])
         except exception.NetworkException:
-            self.db.network_allocation_update(
-                context, port['id'], {'status': constants.STATUS_ERROR})
+            if not ignore_db:
+                self.db.network_allocation_update(
+                    context, port['id'], {'status': constants.STATUS_ERROR})
             raise
         else:
             if not ignore_db:
