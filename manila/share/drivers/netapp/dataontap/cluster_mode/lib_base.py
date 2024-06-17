@@ -4636,13 +4636,25 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.NetAppException("Not able to find vserver "
                                             " and volume from SnpMirror"
                                             " relationship.")
+        backend_name = self._get_backend(backup)
+        des_vserver_client = self._get_api_client_for_backend(
+            backend_name,
+            vserver=des_vserver,
+        )
+        vserver_client = src_vserver_client
+        backend_config = data_motion.get_backend_configuration(
+            backend_name)
+        if not backend_config.netapp_use_legacy_client:
+            vserver_client = des_vserver_client
         snap_name = self._get_backup_snapshot_name(backup,
                                                    share_instance['id'])
         source_path = src_vserver + ":" + src_vol_name
         des_path = des_vserver + ":" + des_vol
-        src_vserver_client.snapmirror_restore_vol(source_path=des_path,
-                                                  dest_path=source_path,
-                                                  source_snapshot=snap_name)
+        source_cluster = src_vserver_client.get_cluster_name()
+        vserver_client.snapmirror_restore_vol(source_path=des_path,
+                                              dest_path=source_path,
+                                              source_snapshot=snap_name,
+                                              des_cluster=source_cluster)
 
     @na_utils.trace
     def restore_backup_continue(self, context, backup,

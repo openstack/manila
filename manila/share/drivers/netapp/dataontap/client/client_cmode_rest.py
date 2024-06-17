@@ -5402,15 +5402,9 @@ class NetAppRestClient(object):
     def snapmirror_restore_vol(self, source_path=None, dest_path=None,
                                source_vserver=None, dest_vserver=None,
                                source_volume=None, dest_volume=None,
-                               source_snapshot=None):
+                               des_cluster=None, source_snapshot=None):
         """Restore snapshot copy from destination volume to source volume"""
-        snapmirror_info = self.get_snapmirror_destinations(dest_path,
-                                                           source_path,
-                                                           dest_vserver,
-                                                           source_vserver,
-                                                           dest_volume,
-                                                           source_volume,
-                                                           )
+        snapmirror_info = self.get_snapmirrors(dest_path, source_path)
         if not snapmirror_info:
             msg = _("There is no relationship between source "
                     "'%(source_path)s' and destination cluster"
@@ -5420,7 +5414,8 @@ class NetAppRestClient(object):
                         }
             raise exception.NetAppException(msg % msg_args)
         uuid = snapmirror_info[0].get('uuid')
-        body = {"destination": {"path": dest_path},
+        body = {"destination": {"path": dest_path,
+                                "cluster": {"name": des_cluster}},
                 "source_snapshot": source_snapshot}
         try:
             self.send_request(f"/snapmirror/relationships/{uuid}/restore",
