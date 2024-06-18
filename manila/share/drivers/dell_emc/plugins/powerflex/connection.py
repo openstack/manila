@@ -44,7 +44,8 @@ POWERFLEX_OPTS = [
                help='Protection domain to use.'),
     cfg.StrOpt('dell_nas_backend_host',
                help='Dell NAS backend hostname or IP address.'),
-    cfg.StrOpt('dell_nas_backend_port',
+    cfg.IntOpt('dell_nas_backend_port',
+               default=443,
                help='Port number to use with the Dell NAS backend.'),
     cfg.StrOpt('dell_nas_server',
                help='Root directory or NAS server which owns the shares.'),
@@ -100,8 +101,7 @@ class PowerFlexStorageConnection(driver.StorageConnection):
         get_config_value = config.safe_get
         self.verify_certificate = get_config_value("dell_ssl_cert_verify")
         self.rest_ip = get_config_value("dell_nas_backend_host")
-        self.rest_port = (int(get_config_value("dell_nas_backend_port")) or
-                          443)
+        self.rest_port = get_config_value("dell_nas_backend_port")
         self.nas_server = get_config_value("dell_nas_server")
         self.storage_pool = get_config_value("powerflex_storage_pool")
         self.protection_domain = get_config_value(
