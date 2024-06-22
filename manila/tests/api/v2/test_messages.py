@@ -213,5 +213,6 @@ class MessageApiTest(test.TestCase):
             version=messages.MESSAGES_QUERY_BY_TIMESTAMP,
             base_url='http://localhost/share/v2')
         req.environ['manila.context'] = self.ctxt
-        self.assertRaises(webob.exc.HTTPBadRequest,
+
+        self.assertRaises(exception.ValidationError,
                           self.controller.index, req)

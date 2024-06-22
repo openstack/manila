@@ -26,6 +26,8 @@ from webob import exc
 
 from manila.api import common
 from manila.api.openstack import wsgi
+from manila.api.schemas import messages as schema
+from manila.api import validation
 from manila.api.views import messages as messages_view
 from manila import exception
 from manila.i18n import _
@@ -35,9 +37,9 @@ MESSAGES_BASE_MICRO_VERSION = '2.37'
 MESSAGES_QUERY_BY_TIMESTAMP = '2.52'
 
 
+@validation.validated
 class MessagesController(wsgi.Controller):
     """The User Messages API controller for the OpenStack API."""
-
     _view_builder_class = messages_view.ViewBuilder
     resource_name = 'message'
 
@@ -47,6 +49,8 @@ class MessagesController(wsgi.Controller):
 
     @wsgi.Controller.api_version(MESSAGES_BASE_MICRO_VERSION)
     @wsgi.Controller.authorize('get')
+    @validation.request_query_schema(schema.show_request_query)
+    @validation.response_body_schema(schema.show_response_body)
     def show(self, req, id):
         """Return the given message."""
         context = req.environ['manila.context']
@@ -61,6 +65,7 @@ class MessagesController(wsgi.Controller):
     @wsgi.Controller.api_version(MESSAGES_BASE_MICRO_VERSION)
     @wsgi.Controller.authorize
     @wsgi.action("delete")
+    @validation.response_body_schema(schema.delete_response_body)
     def delete(self, req, id):
         """Delete a message."""
         context = req.environ['manila.context']
@@ -75,6 +80,8 @@ class MessagesController(wsgi.Controller):
 
     @wsgi.Controller.api_version(MESSAGES_BASE_MICRO_VERSION, '2.51')
     @wsgi.Controller.authorize('get_all')
+    @validation.request_query_schema(schema.index_request_query)
+    @validation.response_body_schema(schema.index_response_body)
     def index(self, req):
         """Returns a list of messages, transformed through view builder."""
         context = req.environ['manila.context']
@@ -96,6 +103,8 @@ class MessagesController(wsgi.Controller):
 
     @wsgi.Controller.api_version(MESSAGES_QUERY_BY_TIMESTAMP)   # noqa: F811
     @wsgi.Controller.authorize('get_all')
+    @validation.request_query_schema(schema.index_request_query_v252)
+    @validation.response_body_schema(schema.index_response_body)
     def index(self, req):  # pylint: disable=function-redefined  # noqa F811
         """Returns a list of messages, transformed through view builder."""
         context = req.environ['manila.context']
