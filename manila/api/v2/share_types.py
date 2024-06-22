@@ -214,7 +214,7 @@ class ShareTypesController(wsgi.Controller):
             self._notify_share_type_error(context, 'share_type.create',
                                           notifier_err)
 
-            raise webob.exc.HTTPConflict(explanation=err.message)
+            raise webob.exc.HTTPConflict(explanation=err.msg)
         except exception.NotFound as err:
             notifier_err = dict(share_types=share_type,
                                 error_message=err.message)
