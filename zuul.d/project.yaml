@@ -32,6 +32,9 @@
             voting: false
         - manila-tox-bandit:
             voting: false
+        # Test OpenAPI spec generation.
+        - codegenerator-openapi-shared-file-system-tips-with-api-ref:
+            voting: false
     gate:
       jobs:
         - manila-tempest-plugin-dummy-no-dhss
