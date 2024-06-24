@@ -14,6 +14,8 @@
 #    under the License.
 
 from manila.api.openstack import wsgi
+from manila.api.schemas import availability_zones as schema
+from manila.api import validation
 from manila.api.views import availability_zones as availability_zones_views
 from manila import db
 
@@ -35,6 +37,7 @@ class AvailabilityZoneMixin(object):
         return self._view_builder.detail_list(views)
 
 
+@validation.validated
 class AvailabilityZoneControllerLegacy(AvailabilityZoneMixin, wsgi.Controller):
     """Deprecated Availability Zone API controller.
 
@@ -43,10 +46,13 @@ class AvailabilityZoneControllerLegacy(AvailabilityZoneMixin, wsgi.Controller):
     """
 
     @wsgi.Controller.api_version('1.0', '2.6')
+    @validation.request_query_schema(schema.index_request_query)
+    @validation.response_body_schema(schema.index_response_body)
     def index(self, req):
         return self._index(req)
 
 
+@validation.validated
 class AvailabilityZoneController(AvailabilityZoneMixin, wsgi.Controller):
     """Availability Zone API controller.
 
@@ -55,6 +61,8 @@ class AvailabilityZoneController(AvailabilityZoneMixin, wsgi.Controller):
     """
 
     @wsgi.Controller.api_version('2.7')
+    @validation.request_query_schema(schema.index_request_query)
+    @validation.response_body_schema(schema.index_response_body)
     def index(self, req):
         return self._index(req)
 
