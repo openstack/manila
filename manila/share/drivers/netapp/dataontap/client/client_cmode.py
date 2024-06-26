@@ -22,6 +22,7 @@ import re
 import time
 
 from oslo_log import log
+from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import units
 from oslo_utils import uuidutils
@@ -2053,7 +2054,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     }
                 }
             }
-            result = self.send_request('kerberos-config-get', api_args)
+            result = None
+            # Catch the exception in case kerberos is not configured with LIF.
+            try:
+                result = self.send_request('kerberos-config-get', api_args)
+            except netapp_api.NaApiError as e:
+                with excutils.save_and_reraise_exception() as exc_context:
+                    if "entry doesn't exist" in e.message:
+                        exc_context.reraise = False
+                        return False
 
             attributes = result.get_child_by_name('attributes')
             kerberos_info = attributes.get_child_by_name(
