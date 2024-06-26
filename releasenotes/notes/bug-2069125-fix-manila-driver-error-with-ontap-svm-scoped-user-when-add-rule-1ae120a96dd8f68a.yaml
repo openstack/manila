@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2069125
+    <https://bugs.launchpad.net/manila/+bug/2069125>`_:
+    Fixed the issue for the NetApp ONTAP driver in the ZAPI workflow,
+    where certain vserver accounts failed to add access rules for a share
+    when the vserver network interface was not configured with kerberos.
