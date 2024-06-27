@@ -3468,6 +3468,35 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with('sis-enable',
                                                          sis_enable_args)
 
+    def test_enable_dedup_already_enabled(self):
+        side_effect = netapp_api.NaApiError(
+            code=netapp_api.OPERATION_ALREADY_ENABLED,
+            message='It has already been enabled')
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=side_effect))
+
+        self.client.enable_dedup(fake.SHARE_NAME)
+
+        sis_enable_args = {'path': '/vol/%s' % fake.SHARE_NAME}
+
+        self.client.send_request.assert_called_once_with('sis-enable',
+                                                         sis_enable_args)
+
+    def test_enable_dedup_currently_active(self):
+        side_effect = netapp_api.NaApiError(
+            code=netapp_api.OPERATION_ALREADY_ENABLED,
+            message='The sis operation is currently active')
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=side_effect))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.enable_dedup,
+                          fake.SHARE_NAME)
+
     def test_disable_dedup(self):
 
         self.mock_object(self.client, 'send_request')
@@ -3478,6 +3507,19 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_request.assert_called_once_with('sis-disable',
                                                          sis_disable_args)
+
+    def test_disable_dedup_currently_active(self):
+        side_effect = netapp_api.NaApiError(
+            code=netapp_api.OPERATION_ALREADY_ENABLED,
+            message='The sis operation is currently active')
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=side_effect))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.disable_dedup,
+                          fake.SHARE_NAME)
 
     def test_enable_compression(self):
 
