@@ -2327,16 +2327,50 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return api_args
 
     @na_utils.trace
+    @manila_utils.retry(retry_param=exception.NetAppException,
+                        interval=3,
+                        retries=5,
+                        backoff_rate=1)
     def enable_dedup(self, volume_name):
         """Enable deduplication on volume."""
         api_args = {'path': '/vol/%s' % volume_name}
-        self.send_request('sis-enable', api_args)
+        try:
+            self.send_request('sis-enable', api_args)
+            return
+        except netapp_api.NaApiError as e:
+            enabled_msg = "has already been enabled"
+            if (e.code == netapp_api.OPERATION_ALREADY_ENABLED and
+                    enabled_msg in e.message):
+                return
+            active_msg = "sis operation is currently active"
+            if (e.code == netapp_api.OPERATION_ALREADY_ENABLED and
+                    active_msg in e.message):
+                msg = _('Unable to enable dedup. Will retry the '
+                        'operation. Error details: %s') % e.message
+                LOG.warning(msg)
+                raise exception.NetAppException(msg=msg)
+            raise e
 
     @na_utils.trace
+    @manila_utils.retry(retry_param=exception.NetAppException,
+                        interval=3,
+                        retries=5,
+                        backoff_rate=1)
     def disable_dedup(self, volume_name):
         """Disable deduplication on volume."""
         api_args = {'path': '/vol/%s' % volume_name}
-        self.send_request('sis-disable', api_args)
+        try:
+            self.send_request('sis-disable', api_args)
+            return
+        except netapp_api.NaApiError as e:
+            active_msg = "sis operation is currently active"
+            if (e.code == netapp_api.OPERATION_ALREADY_ENABLED and
+                    active_msg in e.message):
+                msg = _('Unable to disable dedup. Will retry the '
+                        'operation. Error details: %s') % e.message
+                LOG.warning(msg)
+                raise exception.NetAppException(msg=msg)
+            raise e
 
     @na_utils.trace
     def enable_compression(self, volume_name):
