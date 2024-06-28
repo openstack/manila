@@ -21,7 +21,7 @@ def _load_parameters():
     global _PARAMETERS_YAML
 
     p = pathlib.Path(__file__).with_name('parameters.yaml')
-    with p.open('r') as f:
+    with p.open(mode='r', encoding="utf-8") as f:
         _PARAMETERS_YAML = yaml.safe_load(f)
 
 
