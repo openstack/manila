@@ -45,6 +45,15 @@ class FakeNeutronClient(object):
     def list_ports(self, **search_opts):
         pass
 
+    def create_port_binding(self, port_id, body):
+        return body
+
+    def delete_port_binding(self, port_id, host_id):
+        pass
+
+    def activate_port_binding(self, port_id, host_id):
+        pass
+
     def list_networks(self):
         pass
 
@@ -534,6 +543,30 @@ class NeutronApiTest(test.TestCase):
         # Verify results
         self.neutron_api.client.update_port.assert_called_once_with(
             port_id, {'port': fixed_ips})
+        self.assertTrue(clientv20.Client.called)
+
+    def test_bind_port_to_host(self):
+        port_id = 'test_port'
+        host = 'test_host'
+        vnic_type = 'test_vnic_type'
+
+        port = self.neutron_api.bind_port_to_host(port_id, host, vnic_type)
+
+        self.assertEqual(host, port['host'])
+        self.assertTrue(clientv20.Client.called)
+
+    def test_delete_port_binding(self):
+        port_id = 'test_port'
+        host = 'test_host'
+        self.neutron_api.delete_port_binding(port_id, host)
+        self.assertTrue(clientv20.Client.called)
+
+    def test_activate_port_binding(self):
+        port_id = 'test_port'
+        host = 'test_host'
+
+        self.neutron_api.activate_port_binding(port_id, host)
+
         self.assertTrue(clientv20.Client.called)
 
     def test_router_update_routes(self):

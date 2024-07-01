@@ -66,6 +66,19 @@ CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 
+class PortBindingAlreadyExistsClient(neutron_client_exc.Conflict):
+    pass
+
+
+# We need to monkey-patch neutronclient.common.exceptions module, to make
+# neutron client to raise error specific exceptions. E.g. exception
+# PortBindingAlreadyExistsClient is raised for Neutron API error
+# PortBindingAlreadyExists. If not defined, a general exception of type
+# Conflict will be raised.
+neutron_client_exc.PortBindingAlreadyExistsClient = \
+    PortBindingAlreadyExistsClient
+
+
 def list_opts():
     return client_auth.AuthClientLoader.list_opts(NEUTRON_GROUP)
 
@@ -335,6 +348,32 @@ class API(object):
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
+
+    def bind_port_to_host(self, port_id, host, vnic_type):
+        """Add an inactive binding to existing port."""
+
+        try:
+            data = {"binding": {"host": host, "vnic_type": vnic_type}}
+            return self.client.create_port_binding(port_id, data)['binding']
+        except neutron_client_exc.PortBindingAlreadyExistsClient as e:
+            LOG.warning('Port binding already exists: %s', e)
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(
+                code=e.status_code, message=e.message)
+
+    def delete_port_binding(self, port_id, host):
+        try:
+            return self.client.delete_port_binding(port_id, host)
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(
+                code=e.status_code, message=e.message)
+
+    def activate_port_binding(self, port_id, host):
+        try:
+            return self.client.activate_port_binding(port_id, host)
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(
+                code=e.status_code, message=e.message)
 
     def show_router(self, router_id):
         try:

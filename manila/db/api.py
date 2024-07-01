@@ -1317,6 +1317,12 @@ def share_server_backend_details_set(context, share_server_id, server_details):
                                                  server_details)
 
 
+def share_server_backend_details_get_item(context, share_server_id, meta_key):
+    """Get backend details."""
+    return IMPL.share_server_backend_details_get_item(context, share_server_id,
+                                                      meta_key)
+
+
 def share_server_backend_details_delete(context, share_server_id):
     """Delete backend details DB records for a share server."""
     return IMPL.share_server_backend_details_delete(context, share_server_id)

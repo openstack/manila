@@ -6162,6 +6162,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(message=e.message)
             msg = (_('Failed to check migration support. Reason: '
                      '%s' % e.message))
+            LOG.error(msg)
             raise exception.NetAppException(msg)
 
     @na_utils.trace
