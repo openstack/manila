@@ -38,6 +38,7 @@ from oslo_utils import units
 from manila import exception
 from manila.i18n import _
 from manila.share import driver
+from manila import ssh_utils
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -124,14 +125,14 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             min_size = self.configuration.ssh_min_pool_conn
             max_size = self.configuration.ssh_max_pool_conn
 
-            ssh_pool = utils.SSHPool(host,
-                                     hdfs_ssh_port,
-                                     ssh_conn_timeout,
-                                     hdfs_ssh_name,
-                                     password=password,
-                                     privatekey=privatekey,
-                                     min_size=min_size,
-                                     max_size=max_size)
+            ssh_pool = ssh_utils.SSHPool(host,
+                                         hdfs_ssh_port,
+                                         ssh_conn_timeout,
+                                         hdfs_ssh_name,
+                                         password=password,
+                                         privatekey=privatekey,
+                                         min_size=min_size,
+                                         max_size=max_size)
             ssh = ssh_pool.create()
             self.ssh_connections[host] = (ssh_pool, ssh)
         else:

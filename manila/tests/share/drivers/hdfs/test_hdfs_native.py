@@ -24,6 +24,7 @@ from manila import context
 from manila import exception
 import manila.share.configuration as config
 import manila.share.drivers.hdfs.hdfs_native as hdfs_native
+from manila import ssh_utils
 from manila import test
 from manila.tests import fake_share
 from manila import utils
@@ -438,11 +439,13 @@ class HDFSNativeShareDriverTestCase(test.TestCase):
         ssh.get_transport().is_active = mock.Mock(return_value=True)
         ssh_pool = mock.Mock()
         ssh_pool.create = mock.Mock(return_value=ssh)
-        self.mock_object(utils, 'SSHPool', mock.Mock(return_value=ssh_pool))
+        self.mock_object(ssh_utils,
+                         'SSHPool',
+                         mock.Mock(return_value=ssh_pool))
         self.mock_object(processutils, 'ssh_execute',
                          mock.Mock(return_value=ssh_output))
         result = self._driver._run_ssh(self.local_ip, cmd_list)
-        utils.SSHPool.assert_called_once_with(
+        ssh_utils.SSHPool.assert_called_once_with(
             self._driver.configuration.hdfs_namenode_ip,
             self._driver.configuration.hdfs_ssh_port,
             self._driver.configuration.ssh_conn_timeout,
@@ -464,14 +467,16 @@ class HDFSNativeShareDriverTestCase(test.TestCase):
         ssh.get_transport().is_active = mock.Mock(return_value=True)
         ssh_pool = mock.Mock()
         ssh_pool.create = mock.Mock(return_value=ssh)
-        self.mock_object(utils, 'SSHPool', mock.Mock(return_value=ssh_pool))
+        self.mock_object(ssh_utils,
+                         'SSHPool',
+                         mock.Mock(return_value=ssh_pool))
         self.mock_object(processutils, 'ssh_execute',
                          mock.Mock(side_effect=Exception))
         self.assertRaises(exception.HDFSException,
                           self._driver._run_ssh,
                           self.local_ip,
                           cmd_list)
-        utils.SSHPool.assert_called_once_with(
+        ssh_utils.SSHPool.assert_called_once_with(
             self._driver.configuration.hdfs_namenode_ip,
             self._driver.configuration.hdfs_ssh_port,
             self._driver.configuration.ssh_conn_timeout,

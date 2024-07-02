@@ -31,6 +31,7 @@ from manila import exception
 from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers import service_instance
+from manila import ssh_utils
 from manila import utils
 from manila import volume
 
@@ -144,13 +145,13 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         connection = self.ssh_connections.get(server['instance_id'])
         ssh_conn_timeout = self.configuration.ssh_conn_timeout
         if not connection:
-            ssh_pool = utils.SSHPool(server['ip'],
-                                     22,
-                                     ssh_conn_timeout,
-                                     server['username'],
-                                     server.get('password'),
-                                     server.get('pk_path'),
-                                     max_size=1)
+            ssh_pool = ssh_utils.SSHPool(server['ip'],
+                                         22,
+                                         ssh_conn_timeout,
+                                         server['username'],
+                                         server.get('password'),
+                                         server.get('pk_path'),
+                                         max_size=1)
             ssh = ssh_pool.create()
             self.ssh_connections[server['instance_id']] = (ssh_pool, ssh)
         else:

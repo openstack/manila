@@ -48,6 +48,7 @@ from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers.helpers import NFSHelper
 from manila.share import share_types
+from manila import ssh_utils
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -175,14 +176,14 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             min_size = self.configuration.ssh_min_pool_conn
             max_size = self.configuration.ssh_max_pool_conn
 
-            self.sshpool = utils.SSHPool(host,
-                                         gpfs_ssh_port,
-                                         ssh_conn_timeout,
-                                         gpfs_ssh_login,
-                                         password=password,
-                                         privatekey=privatekey,
-                                         min_size=min_size,
-                                         max_size=max_size)
+            self.sshpool = ssh_utils.SSHPool(host,
+                                             gpfs_ssh_port,
+                                             ssh_conn_timeout,
+                                             gpfs_ssh_login,
+                                             password=password,
+                                             privatekey=privatekey,
+                                             min_size=min_size,
+                                             max_size=max_size)
         try:
             with self.sshpool.item() as ssh:
                 return self._gpfs_ssh_execute(

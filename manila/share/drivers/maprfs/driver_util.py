@@ -26,6 +26,7 @@ from oslo_log import log
 from manila.common import constants
 from manila import exception
 from manila.i18n import _
+from manila import ssh_utils
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -92,14 +93,14 @@ class BaseDriverUtil(object):
             min_size = self.configuration.ssh_min_pool_conn
             max_size = self.configuration.ssh_max_pool_conn
 
-            ssh_pool = utils.SSHPool(host,
-                                     remote_ssh_port,
-                                     ssh_conn_timeout,
-                                     ssh_name,
-                                     password=password,
-                                     privatekey=private_key,
-                                     min_size=min_size,
-                                     max_size=max_size)
+            ssh_pool = ssh_utils.SSHPool(host,
+                                         remote_ssh_port,
+                                         ssh_conn_timeout,
+                                         ssh_name,
+                                         password=password,
+                                         privatekey=private_key,
+                                         min_size=min_size,
+                                         max_size=max_size)
             ssh = ssh_pool.create()
             self.ssh_connections[host] = (ssh_pool, ssh)
         else:
