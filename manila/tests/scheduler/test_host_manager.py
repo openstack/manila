@@ -1229,9 +1229,10 @@ class PoolStateTestCase(test.TestCase):
     @ddt.unpack
     def test_update_from_share_capability(self, share_capability, instances):
         fake_context = context.RequestContext('user', 'project', is_admin=True)
+        sizes = [instance['size'] or 0 for instance in instances]
         self.mock_object(
-            db, 'share_instance_get_all_by_host',
-            mock.Mock(return_value=instances))
+            db, 'share_instance_sizes_sum_by_host',
+            mock.Mock(return_value=sum(sizes)))
         fake_pool = host_manager.PoolState('host1', None, 'pool0')
         self.assertIsNone(fake_pool.free_capacity_gb)
 
@@ -1254,19 +1255,19 @@ class PoolStateTestCase(test.TestCase):
             self.assertEqual(thin_provisioned, fake_pool.thin_provisioning)
             if 'provisioned_capacity_gb' not in share_capability or (
                     share_capability['provisioned_capacity_gb'] is None):
-                db.share_instance_get_all_by_host.assert_called_once_with(
-                    fake_context, fake_pool.host, with_share_data=True)
+                db.share_instance_sizes_sum_by_host.assert_called_once_with(
+                    fake_context, fake_pool.host)
                 if len(instances) > 0:
                     self.assertEqual(4, fake_pool.provisioned_capacity_gb)
                 else:
                     self.assertEqual(0, fake_pool.provisioned_capacity_gb)
             else:
-                self.assertFalse(db.share_instance_get_all_by_host.called)
+                self.assertFalse(db.share_instance_sizes_sum_by_host.called)
                 self.assertEqual(share_capability['provisioned_capacity_gb'],
                                  fake_pool.provisioned_capacity_gb)
         else:
             self.assertFalse(fake_pool.thin_provisioning)
-            self.assertFalse(db.share_instance_get_all_by_host.called)
+            self.assertFalse(db.share_instance_sizes_sum_by_host.called)
             if 'provisioned_capacity_gb' not in share_capability or (
                     share_capability['provisioned_capacity_gb'] is None):
                 self.assertIsNone(fake_pool.provisioned_capacity_gb)
