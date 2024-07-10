@@ -5172,7 +5172,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             fake.SHARE_NAME, fake.SNAPSHOT_NAME,
             'deleted_manila_' + fake.SNAPSHOT_NAME)
         mock_get_clone_children_for_snapshot.assert_called_once_with(
-            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+            fake.SHARE_NAME, 'deleted_manila_' + fake.SNAPSHOT_NAME)
         mock_volume_clone_split_start.assert_has_calls([
             mock.call(fake.CDOT_CLONE_CHILD_1),
             mock.call(fake.CDOT_CLONE_CHILD_2),
