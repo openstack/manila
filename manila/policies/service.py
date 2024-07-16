@@ -34,6 +34,12 @@ deprecated_service_update = policy.DeprecatedRule(
     deprecated_reason=DEPRECATED_REASON,
     deprecated_since=versionutils.deprecated.WALLABY
 )
+deprecated_service_ensure = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'ensure_shares',
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2024.2/Dalmatian'
+)
 
 
 service_policies = [
@@ -78,6 +84,19 @@ service_policies = [
             },
         ],
         deprecated_rule=deprecated_service_update
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'ensure_shares',
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description="Run ensure shares for a manila-share binary.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/services/ensure',
+            }
+        ],
+        deprecated_rule=deprecated_service_ensure
     ),
 ]
 

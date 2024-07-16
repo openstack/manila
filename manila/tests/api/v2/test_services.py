@@ -17,6 +17,7 @@
 
 import datetime
 from unittest import mock
+import webob
 
 import ddt
 from oslo_utils import timeutils
@@ -158,6 +159,7 @@ fake_response_service_list_with_disabled_reason = {'services': [
         'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),
     },
 ]}
+ENSURE_SHARES_VERSION = "2.86"
 
 
 def fake_service_get_all(context):
@@ -386,3 +388,99 @@ class ServicesTest(test.TestCase):
 
         self.assertRaises(
             exception.VersionNotFoundForAPIMethod, controller().index, req)
+
+    def test_ensure_shares_no_host_param(self):
+        req = fakes.HTTPRequest.blank(
+            '/fooproject/services/ensure', version=ENSURE_SHARES_VERSION)
+        body = {}
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.ensure_shares,
+            req,
+            body
+        )
+
+    def test_ensure_shares_host_not_found(self):
+        req = fakes.HTTPRequest.blank(
+            '/fooproject/services/ensure', version=ENSURE_SHARES_VERSION)
+        req_context = req.environ['manila.context']
+        body = {'host': 'host1'}
+
+        mock_service_get = self.mock_object(
+            db, 'service_get_by_args',
+            mock.Mock(side_effect=exception.NotFound())
+        )
+
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller.ensure_shares,
+            req,
+            body
+        )
+        mock_service_get.assert_called_once_with(
+            req_context,
+            body['host'],
+            'manila-share'
+        )
+
+    def test_ensure_shares_conflict(self):
+        req = fakes.HTTPRequest.blank(
+            '/fooproject/services/ensure', version=ENSURE_SHARES_VERSION)
+        req_context = req.environ['manila.context']
+        body = {'host': 'host1'}
+        fake_service = {'id': 'fake_service_id'}
+
+        mock_service_get = self.mock_object(
+            db,
+            'service_get_by_args',
+            mock.Mock(return_value=fake_service)
+        )
+        mock_ensure = self.mock_object(
+            self.controller.service_api,
+            'ensure_shares',
+            mock.Mock(side_effect=webob.exc.HTTPConflict)
+        )
+
+        self.assertRaises(
+            webob.exc.HTTPConflict,
+            self.controller.ensure_shares,
+            req,
+            body
+        )
+        mock_service_get.assert_called_once_with(
+            req_context,
+            body['host'],
+            'manila-share'
+        )
+        mock_ensure.assert_called_once_with(
+            req_context, fake_service, body['host']
+        )
+
+    def test_ensure_shares(self):
+        req = fakes.HTTPRequest.blank(
+            '/fooproject/services/ensure', version=ENSURE_SHARES_VERSION)
+        req_context = req.environ['manila.context']
+        body = {'host': 'host1'}
+        fake_service = {'id': 'fake_service_id'}
+
+        mock_service_get = self.mock_object(
+            db,
+            'service_get_by_args',
+            mock.Mock(return_value=fake_service)
+        )
+        mock_ensure = self.mock_object(
+            self.controller.service_api, 'ensure_shares',
+        )
+
+        response = self.controller.ensure_shares(req, body)
+
+        self.assertEqual(202, response.status_int)
+        mock_service_get.assert_called_once_with(
+            req_context,
+            body['host'],
+            'manila-share'
+        )
+        mock_ensure.assert_called_once_with(
+            req_context, fake_service, body['host']
+        )

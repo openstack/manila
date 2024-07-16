@@ -147,6 +147,8 @@ class ShareRpcAPITestCase(test.TestCase):
                 and method in src_dest_share_server_methods):
             share_server = expected_msg.pop('dest_share_server', None)
             expected_msg['dest_share_server_id'] = share_server['id']
+        if method == 'ensure_driver_resources':
+            expected_msg['skip_backend_info_check'] = True
 
         if 'host' in kwargs:
             host = kwargs['host']
@@ -527,3 +529,11 @@ class ShareRpcAPITestCase(test.TestCase):
             dest_host=self.fake_host,
             share_network_id='fake_net_id',
             new_share_network_subnet_id='new_share_network_subnet_id')
+
+    def test_ensure_driver_resources(self):
+        self._test_share_api(
+            'ensure_driver_resources',
+            rpc_method='cast',
+            version='1.29',
+            host=self.fake_host,
+        )

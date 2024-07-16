@@ -264,7 +264,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.28'
+    RPC_API_VERSION = '1.29'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -401,7 +401,8 @@ class ShareManager(manager.SchedulerDependentManager):
         """
         return self.driver.initialized
 
-    def ensure_driver_resources(self, ctxt):
+    def ensure_driver_resources(self, ctxt, skip_backend_info_check=False):
+        update_instances_status = CONF.update_shares_status_on_ensure
         old_backend_info = self.db.backend_info_get(ctxt, self.host)
         old_backend_info_hash = (old_backend_info.get('info_hash')
                                  if old_backend_info is not None else None)
@@ -409,31 +410,33 @@ class ShareManager(manager.SchedulerDependentManager):
         new_backend_info_hash = None
         backend_info_implemented = True
         update_share_instances = []
-        try:
-            new_backend_info = self.driver.get_backend_info(ctxt)
-        except Exception as e:
-            if not isinstance(e, NotImplementedError):
-                LOG.exception(
-                    "The backend %(host)s could not get backend info.",
-                    {'host': self.host})
-                raise
-            else:
-                backend_info_implemented = False
-                LOG.debug(
-                    ("The backend %(host)s does not support get backend"
-                     " info method."),
-                    {'host': self.host})
+        if not skip_backend_info_check:
+            try:
+                new_backend_info = self.driver.get_backend_info(ctxt)
+            except Exception as e:
+                if not isinstance(e, NotImplementedError):
+                    LOG.exception(
+                        "The backend %(host)s could not get backend info.",
+                        {'host': self.host})
+                    raise
+                else:
+                    backend_info_implemented = False
+                    LOG.debug(
+                        ("The backend %(host)s does not support get backend"
+                         " info method."),
+                        {'host': self.host})
 
-        if new_backend_info:
-            new_backend_info_hash = hashlib.sha1(str(
-                sorted(new_backend_info.items())).encode('utf-8')).hexdigest()
-        if (old_backend_info_hash == new_backend_info_hash and
-                backend_info_implemented):
-            LOG.debug(
-                ("Ensure shares is being skipped because the %(host)s's old "
-                 "backend info is the same as its new backend info."),
-                {'host': self.host})
-            return
+            if new_backend_info:
+                new_backend_info_hash = hashlib.sha1(
+                    str(sorted(new_backend_info.items())).encode(
+                        'utf-8')).hexdigest()
+            if ((old_backend_info_hash == new_backend_info_hash and
+                    backend_info_implemented) and not skip_backend_info_check):
+                LOG.debug(
+                    ("Ensure shares is being skipped because the %(host)s's "
+                     "old backend info is the same as its new backend info."),
+                    {'host': self.host})
+                return
 
         share_instances = self.db.share_instance_get_all_by_host(
             ctxt, self.host)
@@ -467,7 +470,19 @@ class ShareManager(manager.SchedulerDependentManager):
                 ctxt, share_instance)
             update_share_instances.append(share_instance_dict)
 
+        do_service_status_update = False
         if update_share_instances:
+            # No reason to update the shares status if nothing will be done.
+            do_service_status_update = True
+            service = self.db.service_get_by_args(
+                ctxt, self.host, 'manila-share')
+            self.db.service_update(ctxt, service['id'], {'ensuring': True})
+            if update_instances_status:
+                for instance in update_share_instances:
+                    self.db.share_instance_update(
+                        ctxt, instance['id'],
+                        {'status': constants.STATUS_ENSURING}
+                    )
             try:
                 update_share_instances = self.driver.ensure_shares(
                     ctxt, update_share_instances) or {}
@@ -494,10 +509,11 @@ class ShareManager(manager.SchedulerDependentManager):
             share_instance_update_dict = (
                 update_share_instances[share_instance['id']]
             )
-            if share_instance_update_dict.get('status'):
+            backend_provided_status = share_instance_update_dict.get('status')
+            if backend_provided_status:
                 self.db.share_instance_update(
                     ctxt, share_instance['id'],
-                    {'status': share_instance_update_dict.get('status'),
+                    {'status': backend_provided_status,
                      'host': share_instance['host']}
                 )
             metadata_updates = share_instance_update_dict.get('metadata')
@@ -568,6 +584,13 @@ class ShareManager(manager.SchedulerDependentManager):
                             "Unexpected error occurred while updating "
                             "access rules for snapshot instance %s.",
                             snap_instance['id'])
+            if not backend_provided_status and update_instances_status:
+                self.db.share_instance_update(
+                    ctxt, share_instance['id'],
+                    {'status': constants.STATUS_AVAILABLE}
+                )
+        if do_service_status_update:
+            self.db.service_update(ctxt, service['id'], {'ensuring': False})
 
     def _ensure_share(self, ctxt, share_instance):
         export_locations = None
