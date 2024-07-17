@@ -20,6 +20,7 @@ class ReplicationViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
     _collection_name = 'share_replicas'
+    _collection_route_name = "share-replicas"
     _collection_links = 'share_replica_links'
 
     _detail_version_modifiers = [
