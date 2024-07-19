@@ -104,3 +104,5 @@ each back end.
    nexentastor5_driver
    ../configuration/shared-file-systems/drivers/windows-smb-driver
    zadara_driver
+   ../configuration/shared-file-systems/drivers/vastdata_driver
+

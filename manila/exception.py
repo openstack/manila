@@ -1194,3 +1194,20 @@ class ShareBackupSizeExceedsAvailableQuota(QuotaError):
 class NetappActiveIQWeigherRequiredParameter(ManilaException):
     message = _("%(config)s configuration of the NetAppActiveIQ weigher "
                 "must be set.")
+
+
+# Vastdata Storage driver
+class VastApiException(ManilaException):
+    message = _("Rest api error: %(reason)s.")
+
+
+class VastApiRetry(ManilaException):
+    message = _("Rest api retry: %(reason)s.")
+
+
+class VastShareNotFound(ShareBackendException):
+    message = _("Share %(name)s could not be found.")
+
+
+class VastDriverException(ShareBackendException):
+    message = _("Vast driver error: %(reason)s.")
