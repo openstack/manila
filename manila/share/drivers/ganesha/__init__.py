@@ -50,7 +50,7 @@ class NASHelperBase(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, share_server=None, sub_name=None):
         """Update access rules of share."""
 
     def get_backend_info(self, context):
@@ -122,15 +122,15 @@ class GaneshaNASHelper(NASHelperBase):
 
         return self._load_conf_dir(ganesha_utils.path_from(__file__, "conf"))
 
-    def _fsal_hook(self, base_path, share, access):
+    def _fsal_hook(self, base_path, share, access, sub_name=None):
         """Subclass this to create FSAL block."""
         return {}
 
-    def _cleanup_fsal_hook(self, base_path, share, access):
+    def _cleanup_fsal_hook(self, base_path, share, access, sub_name=None):
         """Callback for FSAL specific cleanup after removing an export."""
         pass
 
-    def _allow_access(self, base_path, share, access):
+    def _allow_access(self, base_path, share, access, sub_name=None):
         """Allow access to the share."""
         ganesha_utils.validate_access_rule(
             self.supported_access_types, self.supported_access_levels,
@@ -151,7 +151,8 @@ class GaneshaNASHelper(NASHelperBase):
                 'CLIENT': {
                     'Clients': access['access_to']
                 },
-                'FSAL': self._fsal_hook(base_path, share, access)
+                'FSAL': self._fsal_hook(
+                    base_path, share, access, sub_name=sub_name)
             }
         })
         self.ganesha.add_export(export_name, cf)
@@ -161,7 +162,7 @@ class GaneshaNASHelper(NASHelperBase):
         self.ganesha.remove_export("%s--%s" % (share['name'], access['id']))
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, share_server=None, sub_name=None):
         """Update access rules of share."""
         rule_state_map = {}
         if not (add_rules or delete_rules):
@@ -223,16 +224,16 @@ class GaneshaNASHelper2(GaneshaNASHelper):
         else:
             self.export_template = self._default_config_hook()
 
-    def _get_export_path(self, share):
+    def _get_export_path(self, share, sub_name=None):
         """Subclass this to return export path."""
         raise NotImplementedError()
 
-    def _get_export_pseudo_path(self, share):
+    def _get_export_pseudo_path(self, share, sub_name=None):
         """Subclass this to return export pseudo path."""
         raise NotImplementedError()
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, share_server=None, sub_name=None):
         """Update access rules of share.
 
         Creates an export per share. Modifies access rules of shares by
@@ -243,6 +244,7 @@ class GaneshaNASHelper2(GaneshaNASHelper):
         existing_access_rules = []
         rule_state_map = {}
 
+        # TODO(carloss): check if share['name'] can cause us troubles
         if self.ganesha.check_export_exists(share['name']):
             confdict = self.ganesha._read_export(share['name'])
             existing_access_rules = confdict["EXPORT"]["CLIENT"]
@@ -301,16 +303,20 @@ class GaneshaNASHelper2(GaneshaNASHelper):
                     ganesha_utils.patch(confdict, self.export_template, {
                         'EXPORT': {
                             'Export_Id': self.ganesha.get_export_id(),
-                            'Path': self._get_export_path(share),
-                            'Pseudo': self._get_export_pseudo_path(share),
+                            'Path': self._get_export_path(
+                                share, sub_name=sub_name),
+                            'Pseudo': self._get_export_pseudo_path(
+                                share, sub_name=sub_name),
                             'Tag': share['name'],
                             'CLIENT': clients,
-                            'FSAL': self._fsal_hook(None, share, None)
+                            'FSAL': self._fsal_hook(
+                                None, share, None, sub_name=sub_name
+                            )
                         }
                     })
                     self.ganesha.add_export(share['name'], confdict)
         else:
             # No clients have access to the share. Remove export.
             self.ganesha.remove_export(share['name'])
-            self._cleanup_fsal_hook(None, share, None)
+            self._cleanup_fsal_hook(None, share, None, sub_name=sub_name)
         return rule_state_map

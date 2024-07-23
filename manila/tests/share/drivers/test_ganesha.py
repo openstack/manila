@@ -244,11 +244,11 @@ class GaneshaNASHelperTestCase(test.TestCase):
                                          self.access)
         self._helper.ganesha.get_export_id.assert_called_once_with()
         self._helper._fsal_hook.assert_called_once_with(
-            fake_basepath, self.share, self.access)
+            fake_basepath, self.share, self.access, sub_name=None)
         mock_ganesha_utils_patch.assert_called_once_with(
             {}, self._helper.export_template, fake_output_template)
         self._helper._fsal_hook.assert_called_once_with(
-            fake_basepath, self.share, self.access)
+            fake_basepath, self.share, self.access, sub_name=None)
         self._helper.ganesha.add_export.assert_called_once_with(
             fake_export_name, fake_output_template)
         self.assertIsNone(ret)
@@ -488,11 +488,12 @@ class GaneshaNASHelper2TestCase(test.TestCase):
 
         mock_gh.check_export_exists.assert_called_once_with('fakename')
         mock_gh.get_export_id.assert_called_once_with()
-        self._helper._get_export_path.assert_called_once_with(self.share)
+        self._helper._get_export_path.assert_called_once_with(
+            self.share, sub_name=None)
         (self._helper._get_export_pseudo_path.assert_called_once_with(
-            self.share))
+            self.share, sub_name=None))
         self._helper._fsal_hook.assert_called_once_with(
-            None, self.share, None)
+            None, self.share, None, sub_name=None)
         mock_gh.add_export.assert_called_once_with(
             'fakename', result_confdict)
         self.assertFalse(mock_gh.update_export.called)
@@ -546,7 +547,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
         mock_gh.check_export_exists.assert_called_once_with('fakename')
         mock_gh.remove_export.assert_called_once_with('fakename')
         self._helper._cleanup_fsal_hook.assert_called_once_with(
-            None, self.share, None)
+            None, self.share, None, sub_name=None)
         self.assertFalse(mock_gh.add_export.called)
         self.assertFalse(mock_gh.update_export.called)
 

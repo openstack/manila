@@ -12,8 +12,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
 import json
+import math
 from unittest import mock
 
 import ddt
@@ -92,10 +92,14 @@ class CephFSDriverTestCase(test.TestCase):
         self.mock_object(driver, 'NFSClusterProtocolHelper')
 
         driver.ceph_default_target = ('mon-mgr', )
+        self.fake_private_storage = mock.Mock()
+        self.mock_object(self.fake_private_storage, 'get',
+                         mock.Mock(return_value=None))
 
         self._driver = (
             driver.CephFSDriver(execute=self._execute,
-                                configuration=self.fake_conf))
+                                configuration=self.fake_conf,
+                                private_storage=self.fake_private_storage))
         self._driver.protocol_helper = mock.Mock()
 
         type(self._driver).volname = mock.PropertyMock(return_value='cephfs')
@@ -137,6 +141,36 @@ class CephFSDriverTestCase(test.TestCase):
         self._driver.protocol_helper.init_helper.assert_called_once_with()
 
         self.assertEqual(DEFAULT_VOLUME_MODE, self._driver._cephfs_volume_mode)
+
+    def test__get_sub_name(self):
+        sub_name = self._driver._get_subvolume_name(self._share["id"])
+        self.assertEqual(sub_name, self._share["id"])
+
+    def test__get_sub_name_has_other_name(self):
+        expected_sub_name = 'user_specified_subvolume_name'
+        self.mock_object(
+            self._driver.private_storage, 'get',
+            mock.Mock(return_value=expected_sub_name)
+        )
+        sub_name = self._driver._get_subvolume_name(self._share["id"])
+        self.assertEqual(expected_sub_name, sub_name)
+
+    def test__get_sub_snapshot_name(self):
+        sub_name = self._driver._get_subvolume_snapshot_name(
+            self._snapshot["id"]
+        )
+        self.assertEqual(sub_name, self._snapshot["id"])
+
+    def test__get_sub_snapshot_name_has_other_name(self):
+        expected_sub_snap_name = 'user_specified_subvolume_snapshot_name'
+        self.mock_object(
+            self._driver.private_storage, 'get',
+            mock.Mock(return_value=expected_sub_snap_name)
+        )
+        sub_name = self._driver._get_subvolume_snapshot_name(
+            self._snapshot["id"]
+        )
+        self.assertEqual(expected_sub_snap_name, sub_name)
 
     @ddt.data(
         ('{"version": "ceph version 16.2.4"}', 'pacific'),
@@ -216,6 +250,302 @@ class CephFSDriverTestCase(test.TestCase):
                           self._context,
                           share)
 
+    def _setup_manage_subvolume_test(self):
+        fake_els = [
+            {'path': 'fake/path'}
+        ]
+        share_with_el = fake_share.fake_share(export_locations=fake_els)
+        expected_subvolume_info_argdict = {
+            "vol_name": self._driver.volname,
+            "sub_name": fake_els[0]["path"],
+        }
+        subvolume_info_mock_result = {
+            'atime': '2024-07-23 16:50:03',
+            'bytes_pcent': '0.00',
+            'bytes_quota': 2147483648,
+            'bytes_used': 0,
+            'created_at': '2024-07-23 16:50:03',
+            'ctime': '2024-07-23 17:24:49',
+            'data_pool': 'cephfs.cephfs.data',
+            'features': ['snapshot-clone', 'snapshot-autoprotect'],
+            'gid': 0,
+            'mode': 755,
+            'mon_addrs': ['10.0.0.1:6342'],
+            'mtime': '2024-07-23 16:50:03',
+            'path': '/volumes/_nogroup/subbvol/475a-4972-9f6b-fe025a8d383f',
+            'pool_namespace': 'fsvolumes_cephfs',
+            'state': 'complete',
+            'type': 'subvolume',
+            'uid': 0
+        }
+
+        return (
+            share_with_el, expected_subvolume_info_argdict,
+            subvolume_info_mock_result
+        )
+
+    def test_manage_existing_no_subvolume_name(self):
+        self.assertRaises(
+            exception.ShareBackendException,
+            self._driver.manage_existing,
+            {
+                'id': 'fake_project_uuid_1',
+                'export_locations': [{'path': None}]
+            },
+            {}
+        )
+
+    def test_manage_existing_subvolume_not_found(self):
+        driver.rados_command.side_effect = exception.ShareBackendException(
+            msg="does not exist"
+        )
+        fake_els = [
+            {'path': 'fake/path'}
+        ]
+        share_with_el = fake_share.fake_share(export_locations=fake_els)
+        expected_info_argdict = {
+            "vol_name": self._driver.volname,
+            "sub_name": fake_els[0]["path"],
+        }
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self._driver.manage_existing,
+            share_with_el,
+            {}
+        )
+
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client, "fs subvolume info",
+            expected_info_argdict,
+            json_obj=True
+        )
+
+    def test_manage_existing_subvolume_infinite_no_provided_size(self):
+        share_with_el, expected_info_argdict, subvolume_info = (
+            self._setup_manage_subvolume_test()
+        )
+        subvolume_info['bytes_quota'] = "infinite"
+        driver.rados_command.return_value = subvolume_info
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self._driver.manage_existing,
+            share_with_el,
+            {}
+        )
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client, "fs subvolume info",
+            expected_info_argdict,
+            json_obj=True
+        )
+
+    @ddt.data(
+        exception.ShareShrinkingPossibleDataLoss,
+        exception.ShareBackendException
+    )
+    def test_manage_existing_subvolume_infinite_size(self, expected_exception):
+        share_with_el, expected_info_argdict, subvolume_info = (
+            self._setup_manage_subvolume_test()
+        )
+        subvolume_info['bytes_quota'] = "infinite"
+        driver.rados_command.return_value = subvolume_info
+        new_size = 1
+
+        mock_resize = self.mock_object(
+            self._driver, '_resize_share',
+            mock.Mock(side_effect=expected_exception('fake'))
+        )
+
+        self.assertRaises(
+            expected_exception,
+            self._driver.manage_existing,
+            share_with_el,
+            {'size': new_size}
+        )
+
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client, "fs subvolume info",
+            expected_info_argdict,
+            json_obj=True
+        )
+        mock_resize.assert_called_once_with(
+            share_with_el, new_size, no_shrink=True
+        )
+
+    @ddt.data(True, False)
+    def test_manage_existing(self, current_size_is_smaller):
+        share_with_el, expected_info_argdict, subvolume_info = (
+            self._setup_manage_subvolume_test()
+        )
+        if current_size_is_smaller:
+            # set this to half gb, to ensure it will turn into 1gb
+            subvolume_info['bytes_quota'] = 536870912
+        subvolume_name = share_with_el["export_locations"][0]["path"]
+        expected_share_metadata = {"subvolume_name": subvolume_name}
+        expected_share_updates = {
+            "size": int(
+                math.ceil(int(subvolume_info['bytes_quota']) / units.Gi)),
+            "export_locations": subvolume_name
+        }
+
+        driver.rados_command.return_value = subvolume_info
+        self.mock_object(
+            self._driver, '_get_export_locations',
+            mock.Mock(return_value=subvolume_name))
+        mock_resize_share = self.mock_object(self._driver, '_resize_share')
+
+        share_updates = self._driver.manage_existing(share_with_el, {})
+
+        self.assertEqual(expected_share_updates, share_updates)
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client, "fs subvolume info",
+            expected_info_argdict,
+            json_obj=True
+        )
+        self._driver.private_storage.update.assert_called_once_with(
+            share_with_el['id'], expected_share_metadata
+        )
+        self._driver._get_export_locations.assert_called_once_with(
+            share_with_el, subvolume_name=subvolume_name
+        )
+        if current_size_is_smaller:
+            mock_resize_share.assert_called_once_with(
+                share_with_el, 1, no_shrink=True
+            )
+        else:
+            mock_resize_share.assert_not_called()
+
+    def test_manage_existing_snapshot_no_snapshot_name(self):
+        self.assertRaises(
+            exception.ShareBackendException,
+            self._driver.manage_existing_snapshot,
+            {
+                'id': 'fake_project_uuid_1',
+                'provider_location': None,
+            },
+            {}
+        )
+
+    def test_manage_existing_snapshot_subvolume_not_found(self):
+        driver.rados_command.side_effect = exception.ShareBackendException(
+            msg="does not exist"
+        )
+        snapshot_instance = {
+            'id': 'fake_project_uuid_1',
+            'provider_location': 'fake/provider/location',
+            'share_instance_id': 'fake_share_instance_id'
+        }
+        expected_info_argdict = {
+            "vol_name": self._driver.volname,
+            "sub_name": snapshot_instance["share_instance_id"]
+        }
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self._driver.manage_existing_snapshot,
+            snapshot_instance,
+            {}
+        )
+
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client, "fs subvolume info",
+            expected_info_argdict,
+            json_obj=True
+        )
+
+    def test_manage_existing_snapshot_snapshot_not_found(self):
+        _, expected_info_argdict, subvolume_info = (
+            self._setup_manage_subvolume_test()
+        )
+        expected_snapshot_name = 'fake/provider/location'
+        snapshot_instance = {
+            'id': 'fake_project_uuid_1',
+            'provider_location': expected_snapshot_name,
+            'share_instance_id': 'fake_share_instance_id'
+        }
+        expected_info_argdict = {
+            "vol_name": self._driver.volname,
+            "sub_name": snapshot_instance["share_instance_id"]
+        }
+        expected_snap_info_argdict = {
+            "vol_name": self._driver.volname,
+            "sub_name": snapshot_instance["share_instance_id"],
+            "snap_name": expected_snapshot_name
+        }
+        driver.rados_command.side_effect = [
+            subvolume_info,
+            exception.ShareBackendException(msg="does not exist")
+        ]
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self._driver.manage_existing_snapshot,
+            snapshot_instance,
+            {}
+        )
+        driver.rados_command.assert_has_calls([
+            mock.call(
+                self._driver.rados_client, "fs subvolume info",
+                expected_info_argdict, json_obj=True
+            ),
+            mock.call(
+                self._driver.rados_client, "fs subvolume snapshot info",
+                expected_snap_info_argdict,
+                json_obj=True
+            )
+        ])
+
+    def test_manage_existing_snapshot(self):
+        _, expected_info_argdict, subvolume_info = (
+            self._setup_manage_subvolume_test()
+        )
+        expected_snapshot_name = 'fake_snapshot_name'
+        snapshot_instance = {
+            'id': 'fake_project_uuid_1',
+            'provider_location': expected_snapshot_name,
+            'share_instance_id': 'fake_share_instance_id',
+            'snapshot_id': 'fake_snapshot_id'
+        }
+        expected_info_argdict = {
+            "vol_name": self._driver.volname,
+            "sub_name": snapshot_instance["share_instance_id"]
+        }
+        expected_snap_info_argdict = {
+            "vol_name": self._driver.volname,
+            "sub_name": snapshot_instance["share_instance_id"],
+            "snap_name": expected_snapshot_name
+        }
+        driver.rados_command.side_effect = [
+            subvolume_info,
+            {'name': expected_snapshot_name}
+        ]
+        expected_result = {
+            'provider_location': expected_snapshot_name
+        }
+
+        result = self._driver.manage_existing_snapshot(
+            snapshot_instance,
+            {}
+        )
+
+        self.assertEqual(expected_result, result)
+
+        driver.rados_command.assert_has_calls([
+            mock.call(
+                self._driver.rados_client, "fs subvolume info",
+                expected_info_argdict, json_obj=True
+            ),
+            mock.call(
+                self._driver.rados_client, "fs subvolume snapshot info",
+                expected_snap_info_argdict, json_obj=True
+            )
+        ])
+        self.fake_private_storage.update.assert_called_once_with(
+            snapshot_instance['snapshot_id'],
+            {"subvolume_snapshot_name": expected_snapshot_name}
+        )
+
     def test_update_access(self):
         alice = {
             'id': 'instance_mapping_id1',
@@ -233,7 +563,7 @@ class CephFSDriverTestCase(test.TestCase):
 
         self._driver.protocol_helper.update_access.assert_called_once_with(
             self._context, self._share, access_rules, add_rules, delete_rules,
-            share_server=None)
+            share_server=None, sub_name=self._share['id'])
 
     def test_ensure_shares(self):
         self._driver.protocol_helper.reapply_rules_while_ensuring_shares = True
@@ -417,6 +747,11 @@ class CephFSDriverTestCase(test.TestCase):
         snapshot_remove_dict_2 = snapshot_remove_dict.copy()
         snapshot_remove_dict_2.update(
             {"snap_name": self._snapshot["snapshot_id"]})
+
+        self.mock_object(
+            self._driver,
+            '_get_subvolume_snapshot_name',
+            mock.Mock(return_value=self._snapshot["snapshot_id"]))
 
         self._driver.delete_snapshot(self._context,
                                      self._snapshot,
@@ -714,7 +1049,7 @@ class NativeProtocolHelperTestCase(test.TestCase):
         driver.rados_command.return_value = 'native-zorilla'
 
         auth_key = self._native_protocol_helper._allow_access(
-            self._context, self._share, rule)
+            self._context, self._share, rule, sub_name=self._share['id'])
 
         self.assertEqual("native-zorilla", auth_key)
 
@@ -723,22 +1058,32 @@ class NativeProtocolHelperTestCase(test.TestCase):
             access_allow_prefix, access_allow_dict)
 
     def test_allow_access_wrong_type(self):
-        self.assertRaises(exception.InvalidShareAccessType,
-                          self._native_protocol_helper._allow_access,
-                          self._context, self._share, {
-                              'access_level': constants.ACCESS_LEVEL_RW,
-                              'access_type': 'RHUBARB',
-                              'access_to': 'alice'
-                          })
+        self.assertRaises(
+            exception.InvalidShareAccessType,
+            self._native_protocol_helper._allow_access,
+            self._context,
+            self._share,
+            {
+                'access_level': constants.ACCESS_LEVEL_RW,
+                'access_type': 'RHUBARB',
+                'access_to': 'alice'
+            },
+            self._share['id']
+        )
 
     def test_allow_access_same_cephx_id_as_manila_service(self):
-        self.assertRaises(exception.InvalidShareAccess,
-                          self._native_protocol_helper._allow_access,
-                          self._context, self._share, {
-                              'access_level': constants.ACCESS_LEVEL_RW,
-                              'access_type': 'cephx',
-                              'access_to': 'manila',
-                          })
+        self.assertRaises(
+            exception.InvalidShareAccess,
+            self._native_protocol_helper._allow_access,
+            self._context,
+            self._share,
+            {
+                'access_level': constants.ACCESS_LEVEL_RW,
+                'access_type': 'cephx',
+                'access_to': 'manila',
+            },
+            self._share['id']
+        )
 
     def test_allow_access_to_preexisting_ceph_user(self):
         msg = ("auth ID: admin exists and not created by "
@@ -752,7 +1097,9 @@ class NativeProtocolHelperTestCase(test.TestCase):
                               'access_level': constants.ACCESS_LEVEL_RW,
                               'access_type': 'cephx',
                               'access_to': 'admin'
-                          })
+                          },
+                          self._share['id']
+                          )
 
     def test_deny_access(self):
         access_deny_prefix = "fs subvolume deauthorize"
@@ -767,11 +1114,16 @@ class NativeProtocolHelperTestCase(test.TestCase):
 
         evict_dict = access_deny_dict
 
-        self._native_protocol_helper._deny_access(self._context, self._share, {
-            'access_level': 'rw',
-            'access_type': 'cephx',
-            'access_to': 'alice'
-        })
+        self._native_protocol_helper._deny_access(
+            self._context,
+            self._share,
+            {
+                'access_level': 'rw',
+                'access_type': 'cephx',
+                'access_to': 'alice'
+            },
+            sub_name=self._share['id']
+        )
 
         driver.rados_command.assert_has_calls([
             mock.call(self._native_protocol_helper.rados_client,
@@ -802,11 +1154,16 @@ class NativeProtocolHelperTestCase(test.TestCase):
             "auth_id": "alice",
         }
 
-        self._native_protocol_helper._deny_access(self._context, self._share, {
-            'access_level': 'rw',
-            'access_type': 'cephx',
-            'access_to': 'alice'
-        })
+        self._native_protocol_helper._deny_access(
+            self._context,
+            self._share,
+            {
+                'access_level': 'rw',
+                'access_type': 'cephx',
+                'access_to': 'alice'
+            },
+            sub_name=self._share['id']
+        )
 
         driver.rados_command.assert_called_once_with(
             self._native_protocol_helper.rados_client,
@@ -868,7 +1225,9 @@ class NativeProtocolHelperTestCase(test.TestCase):
             self._share,
             access_rules=[alice, manila, admin, dabo],
             add_rules=[alice, manila, admin, dabo],
-            delete_rules=[bob])
+            delete_rules=[bob],
+            sub_name=self._share['id']
+        )
 
         expected_access_updates = {
             'accessid1': {'access_key': 'abc123'},
@@ -878,11 +1237,14 @@ class NativeProtocolHelperTestCase(test.TestCase):
         }
         self.assertEqual(expected_access_updates, access_updates)
         self._native_protocol_helper._allow_access.assert_has_calls(
-            [mock.call(self._context, self._share, alice),
-             mock.call(self._context, self._share, manila),
-             mock.call(self._context, self._share, admin)])
+            [mock.call(self._context, self._share, alice,
+                       sub_name=self._share['id']),
+             mock.call(self._context, self._share, manila,
+                       sub_name=self._share['id']),
+             mock.call(self._context, self._share, admin,
+                       sub_name=self._share['id'])])
         self._native_protocol_helper._deny_access.assert_called_once_with(
-            self._context, self._share, bob)
+            self._context, self._share, bob, sub_name=self._share['id'])
         self.assertEqual(
             3, self._native_protocol_helper.message_api.create.call_count)
 
@@ -936,7 +1298,7 @@ class NativeProtocolHelperTestCase(test.TestCase):
 
         access_updates = self._native_protocol_helper.update_access(
             self._context, self._share, access_rules=[alice], add_rules=[],
-            delete_rules=[])
+            delete_rules=[], sub_name=self._share['id'])
 
         self.assertEqual(
             {'accessid1': {'access_key': 'abc123'}}, access_updates)
@@ -1237,7 +1599,9 @@ class NFSProtocolHelperTestCase(test.TestCase):
 
         driver.rados_command.return_value = 'ganesha-zorilla'
 
-        ret = self._nfs_helper._fsal_hook(None, self._share, None)
+        ret = self._nfs_helper._fsal_hook(
+            None, self._share, None, self._share['id']
+        )
 
         driver.rados_command.assert_called_once_with(
             self._nfs_helper.rados_client,
@@ -1254,7 +1618,9 @@ class NFSProtocolHelperTestCase(test.TestCase):
             "auth_id": "ganesha-fakeid",
         }
 
-        ret = self._nfs_helper._cleanup_fsal_hook(None, self._share, None)
+        ret = self._nfs_helper._cleanup_fsal_hook(
+            None, self._share, None, self._share['id']
+        )
 
         driver.rados_command.assert_called_once_with(
             self._nfs_helper.rados_client,
@@ -1384,7 +1750,9 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
 
         inbuf = json.dumps(export).encode('utf-8')
 
-        self._nfscluster_protocol_helper._allow_access(self._share, clients)
+        self._nfscluster_protocol_helper._allow_access(
+            self._share, clients, sub_name=self._share['id']
+        )
 
         driver.rados_command.assert_called_once_with(
             self._rados_client,
@@ -1400,7 +1768,9 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
             "pseudo_path": "ganesha:/foo/bar"
         }
 
-        self._nfscluster_protocol_helper._deny_access(self._share)
+        self._nfscluster_protocol_helper._deny_access(
+            self._share, self._share['id']
+        )
 
         driver.rados_command.assert_called_once_with(
             self._rados_client,
