@@ -250,12 +250,6 @@ netapp_data_motion_opts = [
                     '"destination" host will be the one that will be '
                     'considered when creating a new replica, or promoting '
                     'a replica'),
-    cfg.IntOpt('netapp_snapmirror_last_transfer_size_limit',
-               min=512,
-               default=1024,  # One MB
-               help='This option set the last transfer size limit (in KB) '
-                    'of snapmirror to decide whether replica is in sync or '
-                    'out of sync.'),
     cfg.IntOpt('netapp_volume_move_cutover_timeout',
                min=0,
                default=3600,  # One Hour,

@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    Removed the check for the last transfer size during updating replica state
+    in the ONTAP driver. Also removed the corresponding option
+    `netapp_snapmirror_last_transfer_size_limit`. See `launchpad bug 2066031
+    <https://bugs.launchpad.net/manila/+bug/2066031>`_ for more details.
