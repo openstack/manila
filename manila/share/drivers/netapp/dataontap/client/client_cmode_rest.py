@@ -968,10 +968,11 @@ class NetAppRestClient(object):
             qos_policy_group=qos_policy_group, encrypt=encrypt,
             adaptive_qos_policy_group=adaptive_qos_policy_group,
             mount_point_name=mount_point_name, **options)
-
-        self.update_volume_efficiency_attributes(volume_name,
-                                                 dedup_enabled,
-                                                 compression_enabled)
+        efficiency_policy = options.get('efficiency_policy', None)
+        self.update_volume_efficiency_attributes(
+            volume_name, dedup_enabled, compression_enabled,
+            efficiency_policy=efficiency_policy
+        )
         if max_files is not None:
             self.set_volume_max_files(volume_name, max_files)
 
@@ -1113,7 +1114,8 @@ class NetAppRestClient(object):
     @na_utils.trace
     def update_volume_efficiency_attributes(self, volume_name, dedup_enabled,
                                             compression_enabled,
-                                            is_flexgroup=None):
+                                            is_flexgroup=False,
+                                            efficiency_policy=None):
         """Update dedupe & compression attributes to match desired values."""
 
         efficiency_status = self.get_volume_efficiency_status(volume_name)
@@ -1129,6 +1131,9 @@ class NetAppRestClient(object):
             self.enable_compression_async(volume_name)
         elif not compression_enabled and efficiency_status['compression']:
             self.disable_compression_async(volume_name)
+
+        self.apply_volume_efficiency_policy(
+            volume_name, efficiency_policy=efficiency_policy)
 
     @na_utils.trace
     def enable_dedupe_async(self, volume_name):
@@ -1180,6 +1185,21 @@ class NetAppRestClient(object):
         }
         # update volume efficiency
         self.send_request(f'/storage/volumes/{uuid}', 'patch', body=body)
+
+    @na_utils.trace
+    def apply_volume_efficiency_policy(self, volume_name,
+                                       efficiency_policy=None):
+        if efficiency_policy:
+            """Apply volume efficiency policy to FlexVol"""
+            volume = self._get_volume_by_args(vol_name=volume_name)
+            uuid = volume['uuid']
+
+            body = {
+                'efficiency': {'policy': efficiency_policy}
+            }
+
+            # update volume efficiency policy only if policy_name is provided
+            self.send_request(f'/storage/volumes/{uuid}', 'patch', body=body)
 
     @na_utils.trace
     def set_volume_max_files(self, volume_name, max_files):
@@ -2513,12 +2533,13 @@ class NetAppRestClient(object):
 
         self.send_request('/storage/volumes/' + volume['uuid'],
                           'patch', body=body)
-
+        # Extract efficiency_policy from provisioning_options
+        efficiency_policy = options.get('efficiency_policy', None)
         # Efficiency options must be handled separately
-        self.update_volume_efficiency_attributes(volume_name,
-                                                 dedup_enabled,
-                                                 compression_enabled,
-                                                 is_flexgroup=is_flexgroup)
+        self.update_volume_efficiency_attributes(
+            volume_name, dedup_enabled, compression_enabled,
+            is_flexgroup=is_flexgroup, efficiency_policy=efficiency_policy
+        )
 
     @na_utils.trace
     def start_volume_move(self, volume_name, vserver, destination_aggregate,

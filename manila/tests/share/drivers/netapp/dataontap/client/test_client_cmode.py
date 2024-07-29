@@ -3203,10 +3203,13 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(
             self.client, '_get_create_volume_api_args',
             mock.Mock(return_value={}))
+        options = {'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME}
 
         self.client.create_volume(
             fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100,
-            max_files=fake.MAX_FILES if set_max_files else None)
+            max_files=fake.MAX_FILES if set_max_files else None,
+            **options
+        )
 
         volume_create_args = {
             'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
@@ -3219,8 +3222,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
             None, None)
         self.client.send_request.assert_called_with('volume-create',
                                                     volume_create_args)
-        (self.client.update_volume_efficiency_attributes.
-            assert_called_once_with(fake.SHARE_NAME, False, False))
+        (
+            self.client.update_volume_efficiency_attributes.
+            assert_called_once_with
+            (fake.SHARE_NAME, False, False,
+             efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME)
+        )
         if set_max_files:
             self.client.set_volume_max_files.assert_called_once_with(
                 fake.SHARE_NAME, fake.MAX_FILES)
@@ -3587,6 +3594,50 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.connection.send_request.assert_called_once_with(
             'sis-set-config-async', sis_set_config_args)
 
+    def test_apply_volume_efficiency_policy_with_policy(self):
+        self.mock_object(self.client, 'send_request')
+        self.client.apply_volume_efficiency_policy(
+            fake.SHARE_NAME, fake.VOLUME_EFFICIENCY_POLICY_NAME
+        )
+
+        volume_efficiency_config_args = {
+            'path': '/vol/%s' % fake.SHARE_NAME,
+            'policy-name': fake.VOLUME_EFFICIENCY_POLICY_NAME
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'sis-set-config', volume_efficiency_config_args)
+
+    def test_apply_volume_efficiency_policy_without_policy(self):
+        self.mock_object(self.client, 'send_request')
+        self.client.apply_volume_efficiency_policy(
+            fake.SHARE_NAME, None
+        )
+
+        self.client.send_request.assert_not_called()
+
+    def test_apply_volume_efficiency_policy_async_with_policy(self):
+        self.mock_object(self.client.connection, 'send_request')
+        self.client.apply_volume_efficiency_policy_async(
+            fake.SHARE_NAME, fake.VOLUME_EFFICIENCY_POLICY_NAME
+        )
+
+        volume_efficiency_config_args = {
+            'path': '/vol/%s' % fake.SHARE_NAME,
+            'policy-name': fake.VOLUME_EFFICIENCY_POLICY_NAME
+        }
+
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-set-config-async', volume_efficiency_config_args)
+
+    def test_apply_volume_efficiency_policy_async_without_policy(self):
+        self.mock_object(self.client.connection, 'send_request')
+        self.client.apply_volume_efficiency_policy_async(
+            fake.SHARE_NAME
+        )
+
+        self.client.connection.send_request.assert_not_called()
+
     def test_get_volume_efficiency_status(self):
 
         api_response = netapp_api.NaElement(fake.SIS_GET_ITER_RESPONSE)
@@ -3727,7 +3778,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             'volume-modify-iter', volume_modify_iter_api_args)
         mock_update_volume_efficiency_attributes.assert_called_once_with(
-            fake.SHARE_NAME, False, False, is_flexgroup=is_flexgroup)
+            fake.SHARE_NAME, False, False,
+            is_flexgroup=is_flexgroup, efficiency_policy=None
+        )
 
     @ddt.data((fake.QOS_POLICY_GROUP_NAME, None),
               (None, fake.ADAPTIVE_QOS_POLICY_GROUP_NAME))
@@ -3738,6 +3791,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(self.client, 'send_request')
         mock_update_volume_efficiency_attributes = self.mock_object(
             self.client, 'update_volume_efficiency_attributes')
+        options = {'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME}
 
         self.client.modify_volume(
             fake.SHARE_AGGREGATE_NAME,
@@ -3751,7 +3805,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
             qos_policy_group=qos_group,
             adaptive_qos_policy_group=adaptive_qos_group,
             autosize_attributes=fake.VOLUME_AUTOSIZE_ATTRS,
-            hide_snapdir=True)
+            hide_snapdir=True,
+            **options
+        )
 
         volume_modify_iter_api_args = {
             'query': {
@@ -3801,30 +3857,52 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             'volume-modify-iter', volume_modify_iter_api_args)
         mock_update_volume_efficiency_attributes.assert_called_once_with(
-            fake.SHARE_NAME, True, False, is_flexgroup=False)
+            fake.SHARE_NAME, True, False,
+            is_flexgroup=False,
+            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME
+        )
 
     @ddt.data(
-        {'existing': (True, True), 'desired': (True, True), 'fg': False},
-        {'existing': (True, True), 'desired': (False, False), 'fg': False},
-        {'existing': (True, True), 'desired': (True, False), 'fg': False},
-        {'existing': (True, False), 'desired': (True, False), 'fg': False},
-        {'existing': (True, False), 'desired': (False, False), 'fg': False},
-        {'existing': (True, False), 'desired': (True, True), 'fg': False},
-        {'existing': (False, False), 'desired': (False, False), 'fg': False},
-        {'existing': (False, False), 'desired': (True, False), 'fg': False},
-        {'existing': (False, False), 'desired': (True, True), 'fg': False},
-        {'existing': (True, True), 'desired': (True, True), 'fg': True},
-        {'existing': (True, True), 'desired': (False, False), 'fg': True},
-        {'existing': (True, True), 'desired': (True, False), 'fg': True},
-        {'existing': (True, False), 'desired': (True, False), 'fg': True},
-        {'existing': (True, False), 'desired': (False, False), 'fg': True},
-        {'existing': (True, False), 'desired': (True, True), 'fg': True},
-        {'existing': (False, False), 'desired': (False, False), 'fg': True},
-        {'existing': (False, False), 'desired': (True, False), 'fg': True},
-        {'existing': (False, False), 'desired': (True, True), 'fg': True},
+        {'existing': (True, True), 'desired': (True, True), 'fg': False,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (True, True), 'desired': (False, False), 'fg': False,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (True, True), 'desired': (True, False), 'fg': False,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (True, False), 'desired': (True, False), 'fg': False,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (True, False), 'desired': (False, False), 'fg': False,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (True, False), 'desired': (True, True), 'fg': False,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (False, False), 'desired': (False, False), 'fg': False,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (False, False), 'desired': (True, False), 'fg': False,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (False, False), 'desired': (True, True), 'fg': False,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (True, True), 'desired': (True, True), 'fg': True,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (True, True), 'desired': (False, False), 'fg': True,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (True, True), 'desired': (True, False), 'fg': True,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (True, False), 'desired': (True, False), 'fg': True,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (True, False), 'desired': (False, False), 'fg': True,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (True, False), 'desired': (True, True), 'fg': True,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (False, False), 'desired': (False, False), 'fg': True,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (False, False), 'desired': (True, False), 'fg': True,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
+        {'existing': (False, False), 'desired': (True, True), 'fg': True,
+         'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME},
     )
     @ddt.unpack
-    def test_update_volume_efficiency_attributes(self, existing, desired, fg):
+    def test_update_volume_efficiency_attributes(self, existing, desired, fg,
+                                                 efficiency_policy):
 
         existing_dedupe = existing[0]
         existing_compression = existing[1]
@@ -3850,10 +3928,17 @@ class NetAppClientCmodeTestCase(test.TestCase):
         mock_disable_dedup = self.mock_object(self.client, 'disable_dedup')
         mock_disable_dedup_async = self.mock_object(self.client,
                                                     'disable_dedupe_async')
+        mock_apply_volume_efficiency_policy = (
+            self.mock_object(self.client, 'apply_volume_efficiency_policy'))
+        mock_apply_volume_efficiency_policy_async = (
+            self.mock_object(self.client,
+                             'apply_volume_efficiency_policy_async'
+                             )
+        )
 
         self.client.update_volume_efficiency_attributes(
             fake.SHARE_NAME, desired_dedupe, desired_compression,
-            is_flexgroup=fg)
+            is_flexgroup=fg, efficiency_policy=efficiency_policy)
 
         if existing_dedupe == desired_dedupe:
             if fg:
@@ -3898,6 +3983,11 @@ class NetAppClientCmodeTestCase(test.TestCase):
             else:
                 self.assertTrue(mock_enable_compression.called)
                 self.assertFalse(mock_disable_compression.called)
+
+        if fg:
+            self.assertTrue(mock_apply_volume_efficiency_policy_async.called)
+        else:
+            self.assertTrue(mock_apply_volume_efficiency_policy.called)
 
     def test_set_volume_size(self):
 

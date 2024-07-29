@@ -1624,21 +1624,23 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_wait_for_flexgroup_deployment = self.mock_object(
             self.library, 'wait_for_flexgroup_deployment')
         aggr_list = [fake.AGGREGATE]
-
+        options = {'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME}
         self.library._create_flexgroup_share(vserver_client, aggr_list,
                                              fake.SHARE_NAME, 100, 10,
-                                             max_files=max_files)
+                                             max_files=max_files, **options)
 
         start_timeout = (self.library.configuration.
                          netapp_flexgroup_aggregate_not_busy_timeout)
         mock_wait_for_start.assert_called_once_with(
             start_timeout, vserver_client, aggr_list, fake.SHARE_NAME, 100,
-            10, None)
+            10, None, efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME)
         mock_wait_for_flexgroup_deployment.assert_called_once_with(
             vserver_client, fake.JOB_ID, 2)
-        (vserver_client.update_volume_efficiency_attributes.
-            assert_called_once_with(fake.SHARE_NAME, False, False,
-                                    is_flexgroup=True))
+        vserver_client.update_volume_efficiency_attributes.assert_called_once_with(  # noqa
+            fake.SHARE_NAME, False, False,
+            is_flexgroup=True,
+            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME
+        )
         if max_files:
             vserver_client.set_volume_max_files.assert_called_once_with(
                 fake.SHARE_NAME, max_files)
@@ -1876,6 +1878,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'fpolicy_extensions_to_exclude': None,
             'fpolicy_extensions_to_include': None,
             'fpolicy_file_operations': None,
+            'efficiency_policy': None,
         }
 
         self.assertEqual(expected, result)

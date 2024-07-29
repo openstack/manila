@@ -118,6 +118,7 @@ class NetAppCmodeFileStorageLibrary(object):
         'netapp:fpolicy_extensions_to_exclude':
             'fpolicy_extensions_to_exclude',
         'netapp:fpolicy_file_operations': 'fpolicy_file_operations',
+        'netapp:efficiency_policy': 'efficiency_policy',
     }
 
     # Maps standard extra spec keys to legacy NetApp keys
@@ -1137,6 +1138,7 @@ class NetAppCmodeFileStorageLibrary(object):
                   'provisioning options %(options)s',
                   {'share': share_name, 'pool': pool_name,
                    'options': provisioning_options})
+
         if self._is_flexgroup_pool(pool_name):
             aggr_list = self._get_flexgroup_aggregate_list(pool_name)
             self._create_flexgroup_share(
@@ -1195,9 +1197,11 @@ class NetAppCmodeFileStorageLibrary(object):
         timeout = self.configuration.netapp_flexgroup_volume_online_timeout
         self.wait_for_flexgroup_deployment(vserver_client, job_info['jobid'],
                                            timeout)
+        efficiency_policy = provisioning_options.get('efficiency_policy', None)
 
         vserver_client.update_volume_efficiency_attributes(
-            share_name, dedup_enabled, compression_enabled, is_flexgroup=True)
+            share_name, dedup_enabled, compression_enabled, is_flexgroup=True,
+            efficiency_policy=efficiency_policy)
 
         if max_files is not None:
             vserver_client.set_volume_max_files(share_name, max_files)

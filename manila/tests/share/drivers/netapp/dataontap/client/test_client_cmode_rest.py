@@ -1036,17 +1036,22 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         mock_update = self.mock_object(
             self.client, 'update_volume_efficiency_attributes')
         mock_max_files = self.mock_object(self.client, 'set_volume_max_files')
+        options = {'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME}
         self.client.create_volume(fake.SHARE_AGGREGATE_NAME,
                                   fake.VOLUME_NAMES[0], fake.SHARE_SIZE,
-                                  max_files=1)
+                                  max_files=1, **options)
 
         mock_create_volume_async.assert_called_once_with(
             [fake.SHARE_AGGREGATE_NAME], fake.VOLUME_NAMES[0], fake.SHARE_SIZE,
             is_flexgroup=False, thin_provisioned=False, snapshot_policy=None,
             language=None, max_files=1, snapshot_reserve=None,
             volume_type='rw', qos_policy_group=None, encrypt=False,
-            adaptive_qos_policy_group=None, mount_point_name=None)
-        mock_update.assert_called_once_with(fake.VOLUME_NAMES[0], False, False)
+            adaptive_qos_policy_group=None, mount_point_name=None,
+            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME
+        )
+        mock_update.assert_called_once_with(
+            fake.VOLUME_NAMES[0], False, False,
+            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME)
         mock_max_files.assert_called_once_with(fake.VOLUME_NAMES[0], 1)
 
     def test_create_volume_async(self):
@@ -1186,6 +1191,46 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             f'/storage/volumes/{uuid}', 'patch', body=body)
         self.client._get_volume_by_args.assert_called_once_with(
             vol_name=fake.VOLUME_NAMES[0])
+
+    def test_apply_volume_efficiency_policy(self):
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        uuid = volume["uuid"]
+        return_value = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=return_value))
+
+        body = {
+            'efficiency': {'policy': fake.VOLUME_EFFICIENCY_POLICY_NAME}
+        }
+
+        self.client.apply_volume_efficiency_policy(
+            fake.VOLUME_NAMES[0],
+            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME
+        )
+
+        self.client.send_request.assert_called_once_with(
+            f'/storage/volumes/{uuid}', 'patch', body=body)
+        self.client._get_volume_by_args.assert_called_once_with(
+            vol_name=fake.VOLUME_NAMES[0])
+
+    def test_apply_volume_efficiency_none_policy(self):
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        return_value = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=return_value))
+
+        self.client.apply_volume_efficiency_policy(
+            fake.VOLUME_NAMES[0],
+            efficiency_policy=None
+        )
+
+        self.client._get_volume_by_args.assert_not_called()
 
     def test_set_volume_max_files(self):
         volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
@@ -2313,7 +2358,9 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             '/storage/volumes/' + volume['uuid'], 'patch', body=body)
         mock_update_volume_efficiency_attributes.assert_called_once_with(
-            fake.SHARE_NAME, False, False, is_flexgroup=is_flexgroup)
+            fake.SHARE_NAME, False, False,
+            is_flexgroup=is_flexgroup, efficiency_policy=None
+        )
 
     @ddt.data((fake.QOS_POLICY_GROUP_NAME, None),
               (None, fake.ADAPTIVE_QOS_POLICY_GROUP_NAME))
@@ -2328,6 +2375,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
         self.mock_object(self.client, '_get_volume_by_args',
                          mock.Mock(return_value=volume))
+        options = {'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME}
 
         self.client.modify_volume(
             fake.SHARE_AGGREGATE_NAME,
@@ -2341,7 +2389,9 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             qos_policy_group=qos_group,
             adaptive_qos_policy_group=adaptive_qos_group,
             autosize_attributes=fake.VOLUME_AUTOSIZE_ATTRS,
-            hide_snapdir=True)
+            hide_snapdir=True,
+            **options
+        )
 
         qos_policy_name = qos_group or adaptive_qos_group
         body = {
@@ -2363,7 +2413,10 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             '/storage/volumes/' + volume['uuid'], 'patch', body=body)
         mock_update_volume_efficiency_attributes.assert_called_once_with(
-            fake.SHARE_NAME, True, False, is_flexgroup=False)
+            fake.SHARE_NAME, True, False,
+            is_flexgroup=False,
+            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME
+        )
 
     def test__parse_timestamp(self):
         test_time_str = '2022-11-25T14:41:20+00:00'
@@ -2778,16 +2831,29 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         dis_dedupe = self.mock_object(self.client, 'disable_dedupe_async')
         en_comp = self.mock_object(self.client, 'enable_compression_async')
         dis_comp = self.mock_object(self.client, 'disable_compression_async')
+        apply_efficiency_policy = self.mock_object(
+            self.client, 'apply_volume_efficiency_policy'
+        )
 
-        self.client.update_volume_efficiency_attributes(fake.VOLUME_NAMES[0],
-                                                        status, status)
+        self.client.update_volume_efficiency_attributes(
+            fake.VOLUME_NAMES[0],
+            status, status,
+            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME)
 
         if status:
             en_dedupe.assert_called_once_with(fake.VOLUME_NAMES[0])
             en_comp.assert_called_once_with(fake.VOLUME_NAMES[0])
+            apply_efficiency_policy.assert_called_once_with(
+                fake.VOLUME_NAMES[0],
+                efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME
+            )
         else:
             dis_dedupe.assert_called_once_with(fake.VOLUME_NAMES[0])
             dis_comp.assert_called_once_with(fake.VOLUME_NAMES[0])
+            apply_efficiency_policy.assert_called_once_with(
+                fake.VOLUME_NAMES[0],
+                efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME
+            )
 
     def test_trigger_volume_move_cutover(self):
         query = {

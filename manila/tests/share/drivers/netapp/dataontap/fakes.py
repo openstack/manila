@@ -115,6 +115,7 @@ FPOLICY_EXT_TO_EXCLUDE = 'jpg,mp3'
 FPOLICY_EXT_TO_EXCLUDE_LIST = ['jpg', 'mp3']
 BACKUP_TYPE = "fake_backup_type"
 MOUNT_POINT_NAME = 'fake_mp'
+VOLUME_EFFICIENCY_POLICY_NAME = 'fake_volume_efficiency_policy'
 
 JOB_ID = '123'
 JOB_STATE = 'success'
@@ -408,6 +409,7 @@ PROVISIONING_OPTIONS_STRING = {
     'fpolicy_extensions_to_exclude': None,
     'fpolicy_extensions_to_include': None,
     'fpolicy_file_operations': None,
+    'efficiency_policy': None
 }
 
 PROVISIONING_OPTIONS_STRING_MISSING_SPECS = {
@@ -418,6 +420,7 @@ PROVISIONING_OPTIONS_STRING_MISSING_SPECS = {
     'fpolicy_extensions_to_exclude': None,
     'fpolicy_extensions_to_include': None,
     'fpolicy_file_operations': None,
+    'efficiency_policy': None,
 }
 
 PROVISIONING_OPTIONS_STRING_DEFAULT = {
@@ -428,6 +431,7 @@ PROVISIONING_OPTIONS_STRING_DEFAULT = {
     'fpolicy_extensions_to_exclude': None,
     'fpolicy_extensions_to_include': None,
     'fpolicy_file_operations': None,
+    'efficiency_policy': None,
 }
 
 SHORT_BOOLEAN_EXTRA_SPEC = {
@@ -439,6 +443,7 @@ STRING_EXTRA_SPEC = {
     'netapp:language': 'en-US',
     'netapp:max_files': 5000,
     'netapp:adaptive_qos_policy_group': None,
+    'netapp:efficiency_policy': None,
 }
 
 SHORT_STRING_EXTRA_SPEC = {
