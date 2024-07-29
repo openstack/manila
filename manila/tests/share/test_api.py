@@ -650,6 +650,70 @@ class ShareAPITestCase(test.TestCase):
         self._get_all_filter_metadata_or_extra_specs_invalid(key='extra_specs')
 
     @ddt.data(True, False)
+    def test_update_metadata_from_share_type_extra_specs(self, with_metadata):
+        share_type = fakes.fake_share_type(
+            extra_specs={
+                'driver_handles_share_servers': 'False',
+                'fake_driver:dedupe': 'True',
+                'fake_driver:encrypt': 'True',
+                'fake_driver:snapshot_policy': 'daily',
+                'provisioning:max_share_size': '10',
+            }
+        )
+
+        user_metadata = {}
+        if with_metadata:
+            user_metadata = {
+                'snapshot_policy': 'monthly',
+                'tag': 't1',
+                'max_share_size': '5',
+            }
+
+        CONF.set_default(
+            "driver_updatable_metadata",
+            ['dedupe', 'snapshot_policy', 'thin_provisioning'],
+        )
+
+        result = self.api.update_metadata_from_share_type_extra_specs(
+            self.context,
+            share_type,
+            user_metadata
+        )
+
+        if with_metadata:
+            self.assertEqual(
+                result,
+                {'dedupe': 'True', 'snapshot_policy': 'monthly', 'tag': 't1',
+                 'max_share_size': '5'})
+        else:
+            self.assertEqual(
+                result,
+                {'dedupe': 'True', 'snapshot_policy': 'daily'})
+
+    def test_update_share_from_metadata(self):
+        CONF.set_default(
+            "driver_updatable_metadata",
+            ['dedupe', 'snapshot_policy', 'thin_provisioning'],
+        )
+        metadata = {
+            'dedupe': 'True',
+            'snapshot_policy': 'monthly',
+            'max_share_size': '10'
+        }
+        backend_metadata = {
+            k: v for k, v in metadata.items() if k != 'max_share_size'}
+
+        self.mock_object(self.api, 'get', mock.Mock(return_value='fake_share'))
+        mock_call = self.mock_object(
+            self.api.share_rpcapi,
+            'update_share_from_metadata'
+        )
+
+        self.api.update_share_from_metadata(self.context, 'fake_id', metadata)
+        mock_call.assert_called_once_with(
+            self.context, 'fake_share', backend_metadata)
+
+    @ddt.data(True, False)
     def test_create_public_and_private_share(self, is_public):
         share, share_data = self._setup_create_mocks(is_public=is_public)
         az = share_data.pop('availability_zone')

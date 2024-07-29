@@ -264,7 +264,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.27'
+    RPC_API_VERSION = '1.28'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -6755,3 +6755,25 @@ class ShareManager(manager.SchedulerDependentManager):
         # order to properly update share network status.
         self._check_share_network_update_finished(
             context, share_network_id=share_network['id'])
+
+    def update_share_from_metadata(self, context, share_id, metadata):
+        share = self.db.share_get(context, share_id)
+        share_instance = self._get_share_instance(context, share)
+        try:
+            self.driver.update_share_from_metadata(context, share_instance,
+                                                   metadata)
+            self.message_api.create(
+                context,
+                message_field.Action.UPDATE_METADATA,
+                share['project_id'],
+                resource_type=message_field.Resource.SHARE,
+                resource_id=share_id,
+                detail=message_field.Detail.UPDATE_METADATA_SUCCESS)
+        except Exception:
+            self.message_api.create(
+                context,
+                message_field.Action.UPDATE_METADATA,
+                share['project_id'],
+                resource_type=message_field.Resource.SHARE,
+                resource_id=share_id,
+                detail=message_field.Detail.UPDATE_METADATA_FAILURE)

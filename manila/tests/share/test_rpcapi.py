@@ -391,6 +391,13 @@ class ShareRpcAPITestCase(test.TestCase):
                              host='fake_host',
                              reservations={'fake': 'fake'})
 
+    def test_update_share_from_metadata(self):
+        self._test_share_api('update_share_from_metadata',
+                             rpc_method='cast',
+                             version='1.28',
+                             share=self.fake_share,
+                             metadata={'fake': 'fake'})
+
     def test_create_replicated_snapshot(self):
         self._test_share_api('create_replicated_snapshot',
                              rpc_method='cast',

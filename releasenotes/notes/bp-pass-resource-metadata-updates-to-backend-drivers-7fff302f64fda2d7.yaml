@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    OpenStack operators can now make use of a new config option named
+    `driver_updatable_metadata` to determine which share metadata updates the
+    back end driver needs to be notified about. The config option contains
+    list of share metadata keys. When the share's metadata gets updated and
+    Manila identifies that the new metadata keys match the metadata keys from
+    the provided list, the share back end will be notified and it will apply
+    the necessary changes. The result will be communicated through user
+    messages.

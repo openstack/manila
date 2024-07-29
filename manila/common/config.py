@@ -141,6 +141,12 @@ global_opts = [
                 default=constants.AdminOnlyMetadata.SCHEDULER_FILTERS,
                 help='Metadata keys that should only be manipulated by '
                      'administrators.'),
+    cfg.ListOpt('driver_updatable_metadata',
+                default=[],
+                help='Metadata keys that will decide which share metadata '
+                     '(element of the list is <driver_updatable_key>, '
+                     'i.e max_files) can be passed to share drivers as part '
+                     'of metadata create/update operations.'),
 ]
 
 CONF.register_opts(global_opts)

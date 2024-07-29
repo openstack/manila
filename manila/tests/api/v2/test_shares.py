@@ -2251,6 +2251,53 @@ class ShareAPITest(test.TestCase):
         common.remove_invalid_options(ctx, search_opts, allowed_opts)
         self.assertEqual(expected_opts, search_opts)
 
+    def test_create_metadata(self):
+        id = 'fake_share_id'
+        body = {'metadata': {'key1': 'val1', 'key2': 'val2'}}
+        mock_validate = self.mock_object(
+            self.controller, '_validate_metadata_for_update',
+            mock.Mock(return_value=body['metadata']))
+        mock_create = self.mock_object(
+            self.controller, '_create_metadata',
+            mock.Mock(return_value=body))
+        self.mock_object(share_api.API, 'update_share_from_metadata')
+
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/metadata' % id)
+
+        res = self.controller.create_metadata(req, id, body)
+        self.assertEqual(body, res)
+        mock_validate.assert_called_once_with(req, id, body['metadata'],
+                                              delete=False)
+        mock_create.assert_called_once_with(req, id, body)
+
+    def test_update_all_metadata(self):
+        id = 'fake_share_id'
+        body = {'metadata': {'key1': 'val1', 'key2': 'val2'}}
+        mock_validate = self.mock_object(
+            self.controller, '_validate_metadata_for_update',
+            mock.Mock(return_value=body['metadata']))
+        mock_update = self.mock_object(
+            self.controller, '_update_all_metadata',
+            mock.Mock(return_value=body))
+        self.mock_object(share_api.API, 'update_share_from_metadata')
+
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/metadata' % id)
+        res = self.controller.update_all_metadata(req, id, body)
+        self.assertEqual(body, res)
+        mock_validate.assert_called_once_with(req, id, body['metadata'])
+        mock_update.assert_called_once_with(req, id, body)
+
+    def test_delete_metadata(self):
+        mock_delete = self.mock_object(
+            self.controller, '_delete_metadata', mock.Mock())
+
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/metadata/fake_key' % id)
+        self.controller.delete_metadata(req, id, 'fake_key')
+        mock_delete.assert_called_once_with(req, id, 'fake_key')
+
 
 def _fake_access_get(self, ctxt, access_id):
 

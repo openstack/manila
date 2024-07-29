@@ -3732,3 +3732,16 @@ class ShareDriver(object):
         :param share_server: share server in case of dhss_true
         """
         raise NotImplementedError()
+
+    def update_share_from_metadata(self, context, share, metadata):
+        """Update the share from metadata.
+
+        Driver must implement this method if needs to perform some action
+        on given resource (i.e. share) based on provided metadata.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param share: Share instance model with share data.
+        :param metadata: Dict contains key-value pair where driver will
+            perform necessary action based on key.
+        """
+        raise NotImplementedError()
