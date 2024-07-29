@@ -2534,6 +2534,19 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('vserver-modify', vserver_modify_args)])
 
+    def test_update_showmount(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        fake_showmount = 'true'
+        self.client.update_showmount(fake_showmount)
+
+        nfs_service_modify_args = {
+            'showmount': fake_showmount,
+        }
+        self.client.send_request.assert_called_once_with(
+            'nfs-service-modify', nfs_service_modify_args)
+
     @ddt.data({'tcp-max-xfer-size': 10000}, {}, None)
     def test_enable_nfs(self, nfs_config):
 
@@ -3489,6 +3502,32 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume-get-iter', volume_get_iter_args)
 
         self.assertFalse(result)
+
+    def test_update_volume_snapshot_policy(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.update_volume_snapshot_policy(fake.SHARE_NAME,
+                                                  fake.SNAPSHOT_POLICY_NAME)
+
+        volume_modify_iter_api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-snapshot-attributes': {
+                        'snapshot-policy': fake.SNAPSHOT_POLICY_NAME,
+                    },
+                },
+            },
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'volume-modify-iter', volume_modify_iter_api_args)
 
     def test_enable_dedup(self):
 

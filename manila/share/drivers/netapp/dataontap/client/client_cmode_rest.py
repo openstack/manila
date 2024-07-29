@@ -1111,6 +1111,18 @@ class NetAppRestClient(object):
         }
 
     @na_utils.trace
+    def update_volume_snapshot_policy(self, volume_name, snapshot_policy):
+        """Set snapshot policy for the specified volume."""
+        volume = self._get_volume_by_args(vol_name=volume_name)
+        uuid = volume['uuid']
+
+        body = {
+            'snapshot_policy.name': snapshot_policy
+        }
+        # update snapshot policy
+        self.send_request(f'/storage/volumes/{uuid}', 'patch', body=body)
+
+    @na_utils.trace
     def update_volume_efficiency_attributes(self, volume_name, dedup_enabled,
                                             compression_enabled,
                                             is_flexgroup=None):
@@ -4685,6 +4697,26 @@ class NetAppRestClient(object):
                     'err_msg': e.message,
                 }
                 raise exception.NetAppException(msg % msg_args)
+
+    @na_utils.trace
+    def update_showmount(self, showmount):
+        """Update show mount for vserver. """
+        # Get SVM UUID.
+        query = {
+            'name': self.vserver,
+            'fields': 'uuid'
+        }
+        res = self.send_request('/svm/svms', 'get', query=query)
+        if not res.get('records'):
+            msg = _('Vserver %s not found.') % self.vserver
+            raise exception.NetAppException(msg)
+        svm_id = res.get('records')[0]['uuid']
+
+        body = {
+            'showmount_enabled': showmount,
+        }
+        self.send_request(f'/protocols/nfs/services/{svm_id}', 'patch',
+                          body=body)
 
     @na_utils.trace
     def enable_nfs(self, versions, nfs_config=None):

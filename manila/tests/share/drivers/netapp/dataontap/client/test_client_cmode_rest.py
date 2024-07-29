@@ -2766,6 +2766,23 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                           self.client.get_job_state,
                           'fake_uuid')
 
+    def test_update_volume_snapshot_policy(self):
+        return_uuid = {
+            'uuid': 'fake_uuid'
+        }
+        mock_get_vol = self.mock_object(self.client, '_get_volume_by_args',
+                                        mock.Mock(return_value=return_uuid))
+        mock_sr = self.mock_object(self.client, 'send_request')
+
+        self.client.update_volume_snapshot_policy('fake_volume_name',
+                                                  fake.SNAPSHOT_POLICY_NAME)
+        body = {
+            'snapshot_policy.name': fake.SNAPSHOT_POLICY_NAME
+        }
+        mock_sr.assert_called_once_with('/storage/volumes/fake_uuid',
+                                        'patch', body=body)
+        mock_get_vol.assert_called_once_with(vol_name='fake_volume_name')
+
     @ddt.data(True, False)
     def test_update_volume_efficiency_attributes(self, status):
         response = {
@@ -4498,6 +4515,31 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             fake.VSERVER_NAME, fake.VSERVER_PEER_NAME)
         self.client.send_request.assert_called_once_with(
             '/svm/peers/fake_uuid', 'delete', enable_tunneling=False)
+
+    def test_update_showmount(self):
+        query = {
+            'name': fake.VSERVER_NAME,
+            'fields': 'uuid'
+        }
+        response_svm = fake.SVMS_LIST_SIMPLE_RESPONSE_REST
+        self.client.vserver = fake.VSERVER_NAME
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=[response_svm, None]))
+
+        fake_showmount = 'true'
+        self.client.update_showmount(fake_showmount)
+
+        svm_id = response_svm.get('records')[0]['uuid']
+
+        body = {
+            'showmount_enabled': fake_showmount,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('/svm/svms', 'get', query=query),
+            mock.call(f'/protocols/nfs/services/{svm_id}',
+                      'patch', body=body)
+        ])
 
     @ddt.data({'tcp-max-xfer-size': 10000}, {}, None)
     def test_enable_nfs(self, nfs_config):

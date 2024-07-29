@@ -8905,3 +8905,23 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(mock_des_client,
                          'list_volume_snapshots',
                          mock.Mock(return_value=snap_list))
+
+    def test_update_share_from_metadata(self):
+        metadata = {
+            "snapshot_policy": "daily",
+            "showmount": "True",
+        }
+
+        share_instance = fake.SHARE_INSTANCE
+        mock_update_volume_snapshot_policy = self.mock_object(
+            self.library, 'update_volume_snapshot_policy')
+        mock_update_showmount = self.mock_object(
+            self.library, 'update_showmount')
+
+        self.library.update_share_from_metadata(self.context, share_instance,
+                                                metadata)
+
+        mock_update_volume_snapshot_policy.assert_called_once_with(
+            share_instance, "daily", share_server=None)
+        mock_update_showmount.assert_called_once_with(
+            share_instance, "True", share_server=None)

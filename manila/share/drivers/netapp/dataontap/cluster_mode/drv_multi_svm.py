@@ -398,3 +398,8 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
 
     def delete_backup(self, context, backup, share, **kwargs):
         return self.library.delete_backup(context, backup, share, **kwargs)
+
+    def update_share_from_metadata(self, context, share, metadata,
+                                   share_server=None):
+        self.library.update_share_from_metadata(
+            context, share, metadata, share_server=share_server)

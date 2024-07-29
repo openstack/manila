@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The NetApp ONTAP driver is now able to update the current `snapshot_policy`
+    and/or both `showmount` configurations in a pre-created share. Please use
+    the share metadata set feature to update these values.

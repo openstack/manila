@@ -6759,9 +6759,10 @@ class ShareManager(manager.SchedulerDependentManager):
     def update_share_from_metadata(self, context, share_id, metadata):
         share = self.db.share_get(context, share_id)
         share_instance = self._get_share_instance(context, share)
+        share_server = self._get_share_server(context, share_instance)
         try:
             self.driver.update_share_from_metadata(context, share_instance,
-                                                   metadata)
+                                                   metadata, share_server)
             self.message_api.create(
                 context,
                 message_field.Action.UPDATE_METADATA,

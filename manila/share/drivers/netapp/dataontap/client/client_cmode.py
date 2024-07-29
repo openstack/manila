@@ -1601,6 +1601,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(msg % security_service['type'])
 
     @na_utils.trace
+    def update_showmount(self, showmount):
+        """Update show mount for vserver. """
+        nfs_service_modify_arg = {
+            'showmount': showmount
+        }
+        self.send_request('nfs-service-modify', nfs_service_modify_arg)
+
+    @na_utils.trace
     def enable_nfs(self, versions, nfs_config=None):
         """Enables NFS on Vserver."""
         self.send_request('nfs-enable')
@@ -2325,6 +2333,27 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             api_args['encrypt'] = 'false'
 
         return api_args
+
+    @na_utils.trace
+    def update_volume_snapshot_policy(self, volume_name, snapshot_policy):
+        """Set snapshot policy for the specified volume."""
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-snapshot-attributes': {
+                        'snapshot-policy': snapshot_policy,
+                    },
+                },
+            },
+        }
+        self.send_request('volume-modify-iter', api_args)
 
     @na_utils.trace
     @manila_utils.retry(retry_param=exception.NetAppException,
