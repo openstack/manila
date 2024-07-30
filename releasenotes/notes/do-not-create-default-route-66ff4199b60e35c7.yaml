@@ -1,0 +1,4 @@
+---
+fixes:
+  - default route for service subnet wouldn't be created if
+    connect_share_server_to_tenant_network is on
