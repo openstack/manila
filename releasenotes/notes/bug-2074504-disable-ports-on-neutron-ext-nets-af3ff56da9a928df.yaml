@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    When using Neutron networks tagged as `external` (unmanaged
+    provider networks) as share networks, Manila now creates ports
+    with `admin_state_up=False` (disabled). This change addresses
+    ARP failures that can occur when using OVN as the Neutron ML2
+    plugin. For more information, refer to `bug 2074504
+    <https://bugs.launchpad.net/manila/+bug/2074504>`_.

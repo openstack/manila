@@ -123,14 +123,17 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
 
     def include_network_info(self, share_network_subnet):
         """Includes share-network-subnet with plugin specific data."""
-        self._store_neutron_net_info(None, share_network_subnet, save_db=False)
+        self._store_and_get_neutron_net_info(None,
+                                             share_network_subnet,
+                                             save_db=False)
 
-    def _store_neutron_net_info(self, context, share_network_subnet,
-                                save_db=True):
-        self._save_neutron_network_data(context, share_network_subnet,
-                                        save_db=save_db)
+    def _store_and_get_neutron_net_info(self, context, share_network_subnet,
+                                        save_db=True):
+        is_external_network = self._save_neutron_network_data(
+            context, share_network_subnet, save_db=save_db)
         self._save_neutron_subnet_data(context, share_network_subnet,
                                        save_db=save_db)
+        return is_external_network
 
     def allocate_network(self, context, share_server, share_network=None,
                          share_network_subnet=None, **kwargs):
@@ -156,17 +159,23 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         self._verify_share_network(share_server['id'], share_network)
         self._verify_share_network_subnet(share_server['id'],
                                           share_network_subnet)
-        self._store_neutron_net_info(context, share_network_subnet)
+        is_external_network = self._store_and_get_neutron_net_info(
+            context, share_network_subnet)
 
         allocation_count = kwargs.get('count', 1)
         device_owner = kwargs.get('device_owner', 'share')
 
         ports = []
         for current_count in range(0, allocation_count):
-            ports.append(self._create_port(
-                         context, share_server, share_network,
-                         share_network_subnet, device_owner,
-                         current_count))
+            ports.append(
+                self._create_port(context,
+                                  share_server,
+                                  share_network,
+                                  share_network_subnet,
+                                  device_owner,
+                                  current_count,
+                                  is_external_network=is_external_network),
+            )
 
         return ports
 
@@ -176,7 +185,7 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
 
         self._verify_share_network_subnet(share_server['id'],
                                           share_network_subnet)
-        self._store_neutron_net_info(context, share_network_subnet)
+        self._store_and_get_neutron_net_info(context, share_network_subnet)
 
         # We begin matching the allocations to known neutron ports and
         # finally return the non-consumed allocations
@@ -334,22 +343,36 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
                 self._delete_port(context, port, ignore_db=True)
 
     def _get_port_create_args(self, share_server, share_network_subnet,
-                              device_owner, count=0):
+                              device_owner, count=0,
+                              is_external_network=False):
         return {
             "network_id": share_network_subnet['neutron_net_id'],
             "subnet_id": share_network_subnet['neutron_subnet_id'],
             "device_owner": 'manila:' + device_owner,
             "device_id": share_server.get('id'),
-            "name": share_server.get('id') + '_' + str(count)
+            "name": share_server.get('id') + '_' + str(count),
+            # NOTE (gouthamr): we create disabled ports with external networks
+            # since the actual ports are not managed by neutron. The ports
+            # neutron creates merely assist in IPAM.
+            "admin_state_up": not is_external_network,
         }
 
     def _create_port(self, context, share_server, share_network,
-                     share_network_subnet, device_owner, count=0):
+                     share_network_subnet, device_owner, count=0,
+                     is_external_network=False):
         create_args = self._get_port_create_args(
-            share_server, share_network_subnet, device_owner, count)
+            share_server, share_network_subnet, device_owner, count,
+            is_external_network=is_external_network)
 
         port = self.neutron_api.create_port(
             share_network['project_id'], **create_args)
+
+        if is_external_network:
+            msg = (
+                f"Port '{port['id']}' is disabled to prevent improper "
+                f"routing on an external network."
+            )
+            LOG.info(msg)
 
         ip_address = self._get_matched_ip_address(
             port['fixed_ips'], share_network_subnet['ip_version'])
@@ -402,6 +425,7 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
             share_network_subnet['neutron_net_id'])
         segmentation_id = None
         network_type = None
+        is_external_network = net_info.get('router:external', False)
 
         if self._is_neutron_multi_segment(share_network_subnet, net_info):
             # we have a multi segment network and need to identify the
@@ -435,6 +459,8 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         if self.label != 'admin' and save_db:
             self.db.share_network_subnet_update(
                 context, share_network_subnet['id'], provider_nw_dict)
+
+        return is_external_network
 
     def _save_neutron_subnet_data(self, context, share_network_subnet,
                                   save_db=True):
@@ -601,10 +627,13 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
         raise exception.NetworkBindException(msg)
 
     def _get_port_create_args(self, share_server, share_network_subnet,
-                              device_owner, count=0):
+                              device_owner, count=0,
+                              is_external_network=False):
         arguments = super(
             NeutronBindNetworkPlugin, self)._get_port_create_args(
-            share_server, share_network_subnet, device_owner, count)
+            share_server, share_network_subnet, device_owner, count,
+            is_external_network=is_external_network
+        )
         arguments['host_id'] = self.config.neutron_host_id
         arguments['binding:vnic_type'] = self.config.neutron_vnic_type
         if self.binding_profiles:
