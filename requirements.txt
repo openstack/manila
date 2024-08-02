@@ -46,5 +46,5 @@ python-cinderclient>=4.0.1 # Apache-2.0
 python-novaclient>=17.2.1 # Apache-2.0
 python-glanceclient>=3.2.2 # Apache-2.0
 WebOb>=1.8.6 # MIT
-cachetools>=5.3.3 # MIT
-packaging>=24.1 # Apache-2.0
+cachetools>=4.2.1 # MIT
+packaging>=20.9 # Apache-2.0
