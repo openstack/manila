@@ -103,9 +103,10 @@ def service_get_all(context, disabled=None):
     return IMPL.service_get_all(context, disabled)
 
 
-def service_get_all_by_topic(context, topic):
+def service_get_all_by_topic(context, topic, consider_disabled=False):
     """Get all services for a given topic."""
-    return IMPL.service_get_all_by_topic(context, topic)
+    return IMPL.service_get_all_by_topic(context, topic,
+                                         consider_disabled=consider_disabled)
 
 
 def service_get_all_share_sorted(context):

@@ -530,6 +530,19 @@ class FakeHostManager(host_manager.HostManager):
                       'storage_protocol': 'GLUSTERFS',
                       'vendor_name': 'Dummy',
                       },
+            'host7': {'total_capacity_gb': 'unknown',
+                      'free_capacity_gb': 'unknown',
+                      'allocated_capacity_gb': 1548,
+                      'thin_provisioning': False,
+                      'reserved_percentage': 5,
+                      'reserved_snapshot_percentage': 2,
+                      'reserved_share_extend_percentage': 5,
+                      'snapshot_support': True,
+                      'create_share_from_snapshot_support': True,
+                      'timestamp': None,
+                      'storage_protocol': 'NFS_CIFS',
+                      'vendor_name': 'Dummy',
+                      },
         }
 
 
@@ -563,6 +576,9 @@ def mock_host_manager_db_calls(mock_obj, disabled=None):
              availability_zone=FAKE_AZ_3, availability_zone_id=FAKE_AZ_3['id'],
              updated_at=timeutils.utcnow()),
         dict(id=6, host='host6', topic='share', disabled=False,
+             availability_zone=FAKE_AZ_4, availability_zone_id=FAKE_AZ_4['id'],
+             updated_at=timeutils.utcnow()),
+        dict(id=7, host='host7', topic='share', disabled=True,
              availability_zone=FAKE_AZ_4, availability_zone_id=FAKE_AZ_4['id'],
              updated_at=timeutils.utcnow()),
     ]
