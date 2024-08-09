@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    NetApp Driver: The NetApp Driver now supports the creation of WORM
+    shares using the SnapLock feature. To create these shares, set the
+    'netapp:snaplock_type' in the share type extra specs, along with the
+    SnapLock related retention period extra specs.
+

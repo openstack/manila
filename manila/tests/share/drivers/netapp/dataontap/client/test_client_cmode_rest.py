@@ -28,6 +28,7 @@ from manila.share.drivers.netapp.dataontap.client import rest_api as netapp_api
 from manila.share.drivers.netapp import utils as netapp_utils
 from manila import test
 from manila.tests.share.drivers.netapp.dataontap.client import fakes as fake
+from manila import utils
 
 
 @ddt.ddt
@@ -573,7 +574,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         result = self.client.get_aggregate(fake.SHARE_AGGREGATE_NAME)
 
         fields = ('name,block_storage.primary.raid_type,'
-                  'block_storage.storage_type')
+                  'block_storage.storage_type,snaplock_type')
 
         self.client._get_aggregates.assert_has_calls([
             mock.call(
@@ -585,6 +586,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'raid-type': response[0]['block_storage']['primary']['raid_type'],
             'is-hybrid':
                 response[0]['block_storage']['storage_type'] == 'hybrid',
+            'snaplock-type': response[0]['snaplock_type'],
+            'is-snaplock': response[0]['is_snaplock']
         }
 
         self.assertEqual(expected, result)
@@ -949,7 +952,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'qos-policy-group-name': fake_volume.get('qos', {})
             .get('policy', {})
             .get('name'),
-            'style-extended': fake_volume.get('style', '')
+            'style-extended': fake_volume.get('style', ''),
+            'snaplock-type': fake_volume.get('snaplock', {}).get('type', '')
         }
 
         self.mock_object(self.client, 'send_request',
@@ -1039,15 +1043,16 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         options = {'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME}
         self.client.create_volume(fake.SHARE_AGGREGATE_NAME,
                                   fake.VOLUME_NAMES[0], fake.SHARE_SIZE,
-                                  max_files=1, **options)
-
+                                  max_files=1, snaplock_type="enterprise",
+                                  **options)
         mock_create_volume_async.assert_called_once_with(
             [fake.SHARE_AGGREGATE_NAME], fake.VOLUME_NAMES[0], fake.SHARE_SIZE,
             is_flexgroup=False, thin_provisioned=False, snapshot_policy=None,
             language=None, max_files=1, snapshot_reserve=None,
             volume_type='rw', qos_policy_group=None, encrypt=False,
             adaptive_qos_policy_group=None, mount_point_name=None,
-            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME
+            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME,
+            snaplock_type="enterprise",
         )
         mock_update.assert_called_once_with(
             fake.VOLUME_NAMES[0], False, False,
@@ -1081,7 +1086,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.client._get_create_volume_body.assert_called_once_with(
             fake.VOLUME_NAMES[0], False, None, None, None, 'rw', None, False,
-            None, None)
+            None, None, None)
         self.client.send_request.assert_called_once_with(
             '/storage/volumes', 'post', body=body, wait_on_accepted=True)
         self.assertEqual(expected_result, result)
@@ -2346,7 +2351,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
         self.mock_object(self.client, '_get_volume_by_args',
                          mock.Mock(return_value=volume))
-
+        self.mock_object(self.client, '_is_snaplock_enabled_volume',
+                         mock.Mock(return_value=True))
         aggr = fake.SHARE_AGGREGATE_NAME
         if is_flexgroup:
             aggr = list(fake.SHARE_AGGREGATE_NAMES)
@@ -2376,6 +2382,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.mock_object(self.client, '_get_volume_by_args',
                          mock.Mock(return_value=volume))
         options = {'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME}
+        self.mock_object(self.client, '_is_snaplock_enabled_volume',
+                         mock.Mock(return_value=True))
 
         self.client.modify_volume(
             fake.SHARE_AGGREGATE_NAME,
@@ -2771,13 +2779,14 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         expected = {
             'type': 'fake_type',
             'guarantee.type': ('none' if thin_provisioned else 'volume'),
-            'nas.path': '/%s' % fake.VOLUME_NAMES[0],
+            'nas.path': '/%s' % fake.SHARE_MOUNT_POINT,
             'snapshot_policy.name': fake.SNAPSHOT_POLICY_NAME,
             'language': 'fake_language',
             'space.snapshot.reserve_percent': 'fake_percent',
             'qos.policy.name': fake.QOS_POLICY_GROUP_NAME,
             'svm.name': 'fake_vserver',
-            'encryption.enabled': 'true'
+            'encryption.enabled': 'true',
+            'snaplock.type': 'compliance',
         }
 
         self.mock_object(self.client.connection, 'get_vserver',
@@ -2790,7 +2799,9 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                                   'fake_type',
                                                   fake.QOS_POLICY_GROUP_NAME,
                                                   True,
-                                                  fake.QOS_POLICY_GROUP_NAME)
+                                                  fake.QOS_POLICY_GROUP_NAME,
+                                                  fake.SHARE_MOUNT_POINT,
+                                                  "compliance")
         self.assertEqual(expected, res)
 
     def test_get_job_state(self):
@@ -6620,7 +6631,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'qos-policy-group-name': fake_volume.get('qos', {})
             .get('policy', {})
             .get('name', ''),
-            'style-extended': fake_volume.get('style', '')
+            'style-extended': fake_volume.get('style', ''),
+            'snaplock-type': fake_volume.get('snaplock', {}).get('type', '')
         }
         result = self.client.get_volume(fake.VOLUME_NAMES[0])
         self.assertEqual(expected, result)
@@ -7095,3 +7107,128 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             body["retention"] = [{"label": 'backup', "count": 30}]
         self.client.send_request.assert_called_once_with(
             '/snapmirror/policies/', 'post', body=body)
+
+    def test_is_snaplock_compliance_clock_configured(self):
+        self.mock_object(self.client,
+                         '_get_cluster_node_uuid',
+                         mock.Mock(return_value="uuid"))
+        api_response = {'time': 'Thu Aug 08 00:51:30 EDT 2024 -04:00'}
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+        result = self.client.is_snaplock_compliance_clock_configured(
+            "test_node"
+        )
+        self.assertIs(True, result)
+
+    def test_is_snaplock_compliance_clock_configured_negative(self):
+        self.mock_object(self.client,
+                         '_get_cluster_node_uuid',
+                         mock.Mock(return_value="uuid"))
+        api_response = {'time': "not configured"}
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+        result = self.client.is_snaplock_compliance_clock_configured(
+            "test_node"
+        )
+        self.assertIs(False, result)
+
+    @ddt.data({'options': {'snaplock_autocommit_period': "4hours",
+                           'snaplock_min_retention_period': "6days",
+                           'snaplock_max_retention_period': "8months",
+                           'snaplock_default_retention_period': "8days"},
+               },
+              {'options': {'snaplock_autocommit_period': "4hours",
+                           'snaplock_min_retention_period': "6days",
+                           'snaplock_max_retention_period': "8months",
+                           'snaplock_default_retention_period': "min"},
+               },
+              {'options': {'snaplock_autocommit_period': "4hours",
+                           'snaplock_min_retention_period': "6days",
+                           'snaplock_max_retention_period': "8months",
+                           'snaplock_default_retention_period': "max"},
+               },
+              )
+    @ddt.unpack
+    def test_set_snaplock_attributes(self, options):
+        self.mock_object(self.client, 'send_request')
+
+        body = {
+            'snaplock.autocommit_period':
+                utils.convert_time_duration_to_iso_format(
+                    options.get('snaplock_autocommit_period')),
+            'snaplock.retention.minimum':
+                utils.convert_time_duration_to_iso_format(
+                    options.get('snaplock_min_retention_period')),
+            'snaplock.retention.maximum':
+                utils.convert_time_duration_to_iso_format(
+                    options.get('snaplock_max_retention_period')),
+        }
+        if options.get('snaplock_default_retention_period') == "min":
+            body['snaplock.retention.default'] = (
+                utils.convert_time_duration_to_iso_format(
+                    options.get('snaplock_min_retention_period'))
+            )
+        elif options.get('snaplock_default_retention_period') == 'max':
+            body['snaplock.retention.default'] = (
+                utils.convert_time_duration_to_iso_format(
+                    options.get('snaplock_max_retention_period'))
+            )
+        else:
+            body['snaplock.retention.default'] = (
+                utils.convert_time_duration_to_iso_format(
+                    options.get('snaplock_default_retention_period'))
+            )
+
+        self.mock_object(self.client,
+                         '_get_volume_by_args',
+                         mock.Mock(return_value={'uuid': fake.FAKE_UUID}))
+        self.client.set_snaplock_attributes(fake.SHARE_NAME, **options)
+
+        vol_uid = fake.FAKE_UUID
+        self.client.send_request.assert_called_once_with(
+            f'/storage/volumes/{vol_uid}', 'patch', body=body)
+
+    def test_set_snaplock_attributes_none(self):
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client,
+                         '_get_volume_by_args',
+                         mock.Mock(return_value={'uuid': fake.FAKE_UUID}))
+        options = {'snaplock_autocommit_period': None,
+                   'snaplock_min_retention_period': None,
+                   'snaplock_max_retention_period': None,
+                   'snaplock_default_retention_period': None,
+                   }
+        self.client.set_snaplock_attributes(fake.SHARE_NAME, **options)
+        self.client.send_request.assert_not_called()
+
+    def test__get_cluster_node_uuid(self):
+        response = {'records': [{'uuid': fake.FAKE_UUID}]}
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=response))
+
+        result = self.client._get_cluster_node_uuid("fake_node")
+        self.assertEqual(result, fake.FAKE_UUID)
+
+    @ddt.data("compliance", "enterprise")
+    def test__is_snaplock_enabled_volume_true(self, snaplock_type):
+        vol_attr = {'snaplock-type': snaplock_type}
+        self.mock_object(self.client,
+                         'get_volume',
+                         mock.Mock(return_value=vol_attr))
+        result = self.client._is_snaplock_enabled_volume(
+            fake.SHARE_AGGREGATE_NAMES
+        )
+        self.assertIs(True, result)
+
+    def test__is_snaplock_enabled_volume_false(self):
+        vol_attr = {'snaplock-type': "non-snaplock"}
+        self.mock_object(self.client,
+                         'get_volume',
+                         mock.Mock(return_value=vol_attr))
+        result = self.client._is_snaplock_enabled_volume(
+            fake.SHARE_AGGREGATE_NAMES
+        )
+        self.assertIs(False, result)

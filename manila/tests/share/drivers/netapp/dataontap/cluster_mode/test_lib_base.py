@@ -156,6 +156,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(
             self.library._client, 'get_nfs_config_default',
             mock.Mock(return_value=fake.NFS_CONFIG_DEFAULT))
+        self.mock_object(self.library._client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=['node1', 'node2']))
         self.mock_object(
             self.library, '_check_snaprestore_license',
             mock.Mock(return_value=True))
@@ -163,10 +166,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library,
             '_get_licenses',
             mock.Mock(return_value=fake.LICENSES))
+
         mock_get_api_client.features.TRANSFER_LIMIT_NFS_CONFIG = True
-
         self.library.do_setup(self.context)
-
         self.assertEqual(fake.LICENSES, self.library._licenses)
         mock_get_api_client.assert_called_once_with()
         (self.library._client.check_for_cluster_credentials.
@@ -178,6 +180,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library._client,
                          'check_for_cluster_credentials',
                          mock.Mock(return_value=True))
+        self.mock_object(self.library._client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=['node1', 'node2']))
         self.mock_object(
             self.library, '_check_snaprestore_license',
             mock.Mock(return_value=True))
@@ -543,11 +548,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.library._cache_pool_status = na_utils.DataCache(60)
         self.library._have_cluster_creds = True
-
         result = self.library._get_pools(
             get_filter_function=fake.fake_get_filter_function,
             goodness_function='goodness')
-
         self.assertListEqual(fake_pool, result)
         mock_find_aggr.assert_called_once_with()
         mock_get_flexgroup_aggr.assert_called_once_with()
@@ -574,7 +577,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._ssc_stats = fake.SSC_INFO_VSERVER_CREDS
         self.library._perf_library.get_node_utilization_for_pool = (
             mock.Mock(return_value=50.0))
-
+        self.mock_object(self.library,
+                         '_get_aggregate_snaplock_type',
+                         mock.Mock(return_value="compliance"))
         result = self.library._get_pool(
             fake_pool['pool_name'], fake_pool['total_capacity_gb'],
             fake_pool['free_capacity_gb'], fake_pool['allocated_capacity_gb'])
@@ -593,6 +598,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._ssc_stats = fake.SSC_INFO
         self.library._perf_library.get_node_utilization_for_pool = (
             mock.Mock(return_value=30.0))
+        self.mock_object(self.library,
+                         '_get_aggregate_snaplock_type',
+                         mock.Mock(return_value="compliance"))
 
         result = self.library._get_pool(
             fake_pool['pool_name'], fake_pool['total_capacity_gb'],
@@ -604,6 +612,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         total_gb, free_gb, used_gb = self.library._get_flexvol_pool_space(
             fake.AGGREGATE_CAPACITIES, fake.AGGREGATES[0])
+        self.mock_object(self.library,
+                         '_get_aggregate_snaplock_type',
+                         mock.Mock(return_value="compliance"))
 
         self.assertEqual(total_gb, fake.POOLS[0]['total_capacity_gb'])
         self.assertEqual(free_gb, fake.POOLS[0]['free_capacity_gb'])
@@ -1506,6 +1517,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         provisioning_options = copy.deepcopy(
             fake.PROVISIONING_OPTIONS_WITH_FPOLICY)
         provisioning_options['hide_snapdir'] = hide_snapdir
+        provisioning_options['snaplock_type'] = "compliance"
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
             return_value=fake.SHARE_NAME))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
@@ -1627,13 +1639,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         options = {'efficiency_policy': fake.VOLUME_EFFICIENCY_POLICY_NAME}
         self.library._create_flexgroup_share(vserver_client, aggr_list,
                                              fake.SHARE_NAME, 100, 10,
-                                             max_files=max_files, **options)
-
+                                             max_files=max_files,
+                                             snaplock_type="compliance",
+                                             **options)
         start_timeout = (self.library.configuration.
                          netapp_flexgroup_aggregate_not_busy_timeout)
         mock_wait_for_start.assert_called_once_with(
             start_timeout, vserver_client, aggr_list, fake.SHARE_NAME, 100,
-            10, None, efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME)
+            10, None, "compliance",
+            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME)
         mock_wait_for_flexgroup_deployment.assert_called_once_with(
             vserver_client, fake.JOB_ID, 2)
         vserver_client.update_volume_efficiency_attributes.assert_called_once_with(  # noqa
@@ -1667,14 +1681,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         aggr_list = [fake.AGGREGATE]
 
         result = self.library.wait_for_start_create_flexgroup(
-            20, vserver_client, aggr_list, fake.SHARE_NAME, 1, 10)
+            20, vserver_client, aggr_list, fake.SHARE_NAME, 1, 10,
+            fake.MOUNT_POINT_NAME, "compliance")
 
         self.assertEqual(job, result)
         vserver_client.create_volume_async.assert_called_once_with(
             aggr_list, fake.SHARE_NAME, 1, is_flexgroup=True,
             snapshot_reserve=10,
             auto_provisioned=self.library._is_flexgroup_auto,
-            mount_point_name=None)
+            mount_point_name=fake.MOUNT_POINT_NAME,
+            snaplock_type="compliance")
 
     def test_wait_for_start_create_flexgroup_timeout(self):
         vserver_client = mock.Mock()
@@ -1686,7 +1702,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(
             exception.NetAppException,
             self.library.wait_for_start_create_flexgroup, 10,
-            vserver_client, aggr_list, fake.SHARE_NAME, 1, 10)
+            vserver_client, aggr_list, fake.SHARE_NAME, 1, 10,
+            fake.MOUNT_POINT_NAME, "compliance")
 
     def test_wait_for_flexgroup_deployment(self):
         vserver_client = mock.Mock()
@@ -1879,6 +1896,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'fpolicy_extensions_to_include': None,
             'fpolicy_file_operations': None,
             'efficiency_policy': None,
+            'snaplock_type': None,
+            'snaplock_autocommit_period': None,
+            'snaplock_min_retention_period': None,
+            'snaplock_max_retention_period': None,
+            'snaplock_default_retention_period': None,
         }
 
         self.assertEqual(expected, result)
@@ -2018,6 +2040,87 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           self.library._check_fpolicy_file_operations,
                           fake.SHARE,
                           invalid_ops)
+
+    @ddt.data('15minutes', '4hours', "8days", "5months", "2years")
+    def test__check_snaplock_attributes_autocommit_period(self, duration):
+        result = self.library._check_snaplock_attributes(
+            fake.SHARE, "netapp:snaplock_autocommit_period", duration)
+        self.assertIsNone(result)
+
+    @ddt.data('15minutes', '4hours', "8days", "5months", "2years")
+    def test__check_snaplock_attributes_min_retention_period(self, duration):
+        result = self.library._check_snaplock_attributes(
+            fake.SHARE, "netapp:snaplock_min_retention_period", duration)
+        self.assertIsNone(result)
+
+    @ddt.data('15minutes', '4hours', "8days", "5months", "2years",
+              "infinite")
+    def test__check_snaplock_attributes_max_retention_period(self, duration):
+        result = self.library._check_snaplock_attributes(
+            fake.SHARE, "netapp:snaplock_max_retention_period", duration)
+        self.assertIsNone(result)
+
+    @ddt.data('15minutes', '4hours', "8days", "5months", "2years",
+              "infinite", "min", "max")
+    def test__check_snaplock_attributes_default_retention_period(self,
+                                                                 duration):
+        result = self.library._check_snaplock_attributes(
+            fake.SHARE, "netapp:snaplock_default_retention_period", duration)
+        self.assertIsNone(result)
+
+    def test__check_snaplock_attributes_autocommit_period_negative(self):
+        self.assertRaises(exception.NetAppException,
+                          self.library._check_snaplock_attributes,
+                          fake.SHARE,
+                          "netapp:snaplock_autocommit_period",
+                          "invalid_period",
+                          )
+
+    def test__check_snaplock_attributes_min_retention_period_negative(self):
+        self.assertRaises(exception.NetAppException,
+                          self.library._check_snaplock_attributes,
+                          fake.SHARE,
+                          "netapp:snaplock_min_retention_period",
+                          "invalid_period",
+                          )
+
+    def test__check_snaplock_attributes_max_retention_period_negative(self):
+        self.assertRaises(exception.NetAppException,
+                          self.library._check_snaplock_attributes,
+                          fake.SHARE,
+                          "netapp:snaplock_max_retention_period",
+                          "invalid_period",
+                          )
+
+    def test__check_snaplock_attributes_default_retention_period_neg(self):
+        self.assertRaises(exception.NetAppException,
+                          self.library._check_snaplock_attributes,
+                          fake.SHARE,
+                          "netapp:snaplock_default_retention_period",
+                          "invalid_period",
+                          )
+
+    def test__check_snaplock_compatibility_true(self):
+        self.library._have_cluster_creds = True
+        self.library._is_snaplock_compliance_configured = True
+        self.mock_object(self.client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=(["node1", "node2"])))
+        result = self.library._check_snaplock_compatibility()
+        self.assertIsNone(result)
+
+    def test__check_snaplock_compatibility_false(self):
+        self.library._have_cluster_creds = True
+        self.library._is_snaplock_compliance_configured = False
+        self.mock_object(self.client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=(["node1", "node2"])))
+        self.assertRaises(exception.NetAppException,
+                          self.library._check_snaplock_compatibility)
+
+    def test__check_snaplock_compatibility_not_cluster_scope(self):
+        self.library._have_cluster_creds = False
+        self.library._check_snaplock_compatibility()
 
     def test_allocate_container_no_pool(self):
 
@@ -3740,6 +3843,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 'netapp_raid_type': 'raid4',
                 'netapp_disk_type': ['FCAL'],
                 'netapp_hybrid_aggregate': 'false',
+                'netapp_snaplock_type': ['compliance', 'enterprise'],
             },
             fake.AGGREGATES[1]: {
                 'netapp_aggregate': fake.AGGREGATES[1],
@@ -3747,6 +3851,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 'netapp_raid_type': 'raid_dp',
                 'netapp_disk_type': ['SATA', 'SSD'],
                 'netapp_hybrid_aggregate': 'true',
+                'netapp_snaplock_type': ['compliance', 'enterprise'],
             },
             fake.FLEXGROUP_POOL_NAME: {
                 'netapp_aggregate': fake.FLEXGROUP_POOL['netapp_aggregate'],
@@ -3754,9 +3859,56 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 'netapp_raid_type': 'raid4 raid_dp',
                 'netapp_disk_type': ['FCAL', 'SATA', 'SSD'],
                 'netapp_hybrid_aggregate': 'false true',
+                'netapp_snaplock_type': fake.FLEXGROUP_POOL[
+                    'netapp_snaplock_type']
             },
         }
 
+        self.assertEqual(expected, self.library._ssc_stats)
+
+    def test_update_ssc_info_non_unified_aggr(self):
+
+        self.library._flexgroup_pools = fake.FLEXGROUP_POOL_OPT
+        self.library._client.features.UNIFIED_AGGR = False
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+        self.mock_object(self.library,
+                         '_get_flexgroup_aggr_set',
+                         mock.Mock(return_value=fake.FLEXGROUP_AGGR_SET))
+        self.mock_object(self.library,
+                         '_get_aggregate_info',
+                         mock.Mock(return_value=fake.SSC_INFO_MAP))
+
+        self.library._update_ssc_info()
+
+        expected = {
+            fake.AGGREGATES[0]: {
+                'netapp_aggregate': fake.AGGREGATES[0],
+                'netapp_flexgroup': False,
+                'netapp_raid_type': 'raid4',
+                'netapp_disk_type': ['FCAL'],
+                'netapp_hybrid_aggregate': 'false',
+                'netapp_snaplock_type': 'compliance',
+            },
+            fake.AGGREGATES[1]: {
+                'netapp_aggregate': fake.AGGREGATES[1],
+                'netapp_flexgroup': False,
+                'netapp_raid_type': 'raid_dp',
+                'netapp_disk_type': ['SATA', 'SSD'],
+                'netapp_hybrid_aggregate': 'true',
+                'netapp_snaplock_type': 'enterprise',
+            },
+            fake.FLEXGROUP_POOL_NAME: {
+                'netapp_aggregate': fake.FLEXGROUP_POOL['netapp_aggregate'],
+                'netapp_flexgroup': True,
+                'netapp_raid_type': 'raid4 raid_dp',
+                'netapp_disk_type': ['FCAL', 'SATA', 'SSD'],
+                'netapp_hybrid_aggregate': 'false true',
+                'netapp_snaplock_type': 'compliance enterprise',
+            },
+        }
         self.assertEqual(expected, self.library._ssc_stats)
 
     def test_update_ssc_info_no_aggregates(self):
@@ -3783,6 +3935,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_aggregate_info',
                          mock.Mock(return_value=fake.SSC_INFO_MAP))
+        self.mock_object(self.client,
+                         'get_vserver_aggr_snaplock_type',
+                         mock.Mock(return_value='compliance'))
 
         self.library._update_ssc_info()
 
@@ -3790,10 +3945,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.AGGREGATES[0]: {
                 'netapp_aggregate': fake.AGGREGATES[0],
                 'netapp_flexgroup': False,
+                'netapp_snaplock_type': ['compliance', 'enterprise'],
             },
             fake.AGGREGATES[1]: {
                 'netapp_aggregate': fake.AGGREGATES[1],
                 'netapp_flexgroup': False,
+                'netapp_snaplock_type': ['compliance', 'enterprise'],
             },
             fake.FLEXGROUP_POOL_NAME: {
                 'netapp_aggregate': fake.FLEXGROUP_POOL['netapp_aggregate'],
@@ -3819,12 +3976,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 'netapp_disk_type': 'FCAL',
                 'netapp_hybrid_aggregate': 'false',
                 'netapp_is_home': False,
+                'netapp_snaplock_type': 'compliance',
             },
             fake.AGGREGATES[1]: {
                 'netapp_raid_type': 'raid_dp',
                 'netapp_disk_type': ['SATA', 'SSD'],
                 'netapp_hybrid_aggregate': 'true',
                 'netapp_is_home': True,
+                'netapp_snaplock_type': 'enterprise',
             },
         }
 
@@ -6477,6 +6636,41 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             [mock.call(share_server=fake.SHARE_SERVER),
              mock.call(share_server='dst_srv')])
 
+    def test_migration_check_compatibility_snaplock_not_compatible(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(data_motion, 'get_backend_configuration')
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            side_effect=[
+                'destination_backend', 'destination_pool', 'source_pool']))
+        mock_dm = mock.Mock()
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm))
+        self.mock_object(self.library, 'is_flexgroup_destination_host',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library,
+                         '_is_snaplock_compatible_for_migration',
+                         mock.Mock(return_value=False)
+                         )
+        migration_compatibility = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        expected_compatibility = {
+            'compatible': False,
+            'writable': False,
+            'nondisruptive': False,
+            'preserve_metadata': False,
+            'preserve_snapshots': False,
+        }
+        self.assertDictEqual(expected_compatibility, migration_compatibility)
+
     def test_migration_start(self):
         mock_info_log = self.mock_object(lib_base.LOG, 'info')
         source_snapshots = mock.Mock()
@@ -8929,3 +9123,48 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             share_instance, "daily", share_server=None)
         mock_update_showmount.assert_called_once_with(
             share_instance, "True", share_server=None)
+
+    def test__get_aggregate_snaplock_type_cluster_scope(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.client,
+                         'get_aggregate',
+                         mock.Mock(return_value={
+                             'snaplock-type': 'compliance'
+                         }))
+        result = self.library._get_aggregate_snaplock_type(fake.AGGREGATE)
+        self.assertEqual(result, "compliance")
+
+    def test__get_aggregate_snaplock_type_vserver_scope(self):
+        self.library._have_cluster_creds = False
+        self.mock_object(self.client,
+                         'get_vserver_aggr_snaplock_type',
+                         mock.Mock(return_value='enterprise'))
+        result = self.library._get_aggregate_snaplock_type(fake.AGGREGATE)
+        self.assertEqual(result, "enterprise")
+
+    def test__is_snaplock_compatible_for_migration_for_unified_aggr(self):
+        self.library._client.features.UNIFIED_AGGR = True
+        result = self.library._is_snaplock_compatible_for_migration(
+            fake.AGGREGATE,
+            fake.AGGR_POOL_NAME
+        )
+        self.assertTrue(result)
+
+    def test__is_snaplock_compatible_for_migration_for_non_snaplock(self):
+        self.library._client.features.UNIFIED_AGGR = False
+        self.library._client.features.SNAPLOCK = False
+
+        result = self.library._is_snaplock_compatible_for_migration(
+            fake.AGGREGATE,
+            fake.AGGR_POOL_NAME
+        )
+        self.assertTrue(result)
+
+    def test__is_snaplock_compatible_for_migration_non_unified_aggr(self):
+        self.library._client.features.UNIFIED_AGGR = False
+        self.library._client.features.SNAPLOCK = True
+        result = self.library._is_snaplock_compatible_for_migration(
+            fake.AGGREGATE,
+            fake.AGGR_POOL_NAME
+        )
+        self.assertTrue(result)
