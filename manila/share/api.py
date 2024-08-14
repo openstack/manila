@@ -427,6 +427,10 @@ class API(base.Base):
                         "(%(group)s).") % params
                 raise exception.InvalidParameterValue(msg)
 
+        if share_type:
+            metadata = self.update_metadata_from_share_type_extra_specs(
+                context, share_type, metadata)
+
         options = {
             'size': size,
             'user_id': context.user_id,
@@ -514,6 +518,48 @@ class API(base.Base):
         share = self.db.share_get(context, share['id'])
 
         return share
+
+    def update_metadata_from_share_type_extra_specs(self, context, share_type,
+                                                    user_metadata):
+        extra_specs = share_type.get('extra_specs', {})
+        if not extra_specs:
+            return user_metadata
+
+        driver_keys = getattr(CONF, 'driver_updatable_metadata', [])
+        if not driver_keys:
+            return user_metadata
+
+        metadata_from_share_type = {}
+        for k, v in extra_specs.items():
+            try:
+                prefix, metadata_key = k.split(':')
+            except Exception:
+                continue
+
+            # consider prefix only with valid storage driver
+            if prefix.lower() == 'provisioning':
+                continue
+
+            if metadata_key in driver_keys:
+                metadata_from_share_type.update({metadata_key: v})
+
+        metadata_from_share_type.update(user_metadata)
+        return metadata_from_share_type
+
+    def update_share_from_metadata(self, context, share_id, metadata):
+        driver_keys = getattr(CONF, 'driver_updatable_metadata', [])
+        if not driver_keys:
+            return
+
+        driver_metadata = {}
+        for k, v in metadata.items():
+            if k in driver_keys:
+                driver_metadata.update({k: v})
+
+        if driver_metadata:
+            share = self.get(context, share_id)
+            self.share_rpcapi.update_share_from_metadata(context, share,
+                                                         driver_metadata)
 
     def get_share_attributes_from_share_type(self, share_type):
         """Determine share attributes from the share type.

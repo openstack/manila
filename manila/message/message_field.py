@@ -37,6 +37,7 @@ class Action(object):
     UPDATE_ACCESS_RULES = ('010', _('update access rules'))
     ADD_UPDATE_SECURITY_SERVICE = ('011', _('add or update security service'))
     TRANSFER_ACCEPT = ('026', _('transfer accept'))
+    UPDATE_METADATA = ('027', _('update_metadata'))
     ALL = (
         ALLOCATE_HOST,
         CREATE,
@@ -50,6 +51,7 @@ class Action(object):
         UPDATE_ACCESS_RULES,
         ADD_UPDATE_SECURITY_SERVICE,
         TRANSFER_ACCEPT,
+        UPDATE_METADATA,
     )
 
 
@@ -154,6 +156,14 @@ class Detail(object):
           "request. Share back end services are not "
           "ready yet. Contact your administrator in case "
           "retrying does not help."))
+    UPDATE_METADATA_SUCCESS = (
+        '029',
+        _("Metadata passed to share driver successfully performed required "
+          "operation."))
+    UPDATE_METADATA_FAILURE = (
+        '030',
+        _("Metadata passed to share driver failed to perform required "
+          "operation."))
 
     ALL = (
         UNKNOWN_ERROR,
@@ -184,6 +194,8 @@ class Detail(object):
         DRIVER_FAILED_TRANSFER_ACCEPT,
         SHARE_NETWORK_PORT_QUOTA_LIMIT_EXCEEDED,
         SHARE_BACKEND_NOT_READY_YET,
+        UPDATE_METADATA_SUCCESS,
+        UPDATE_METADATA_FAILURE,
     )
 
     # Exception and detail mappings
