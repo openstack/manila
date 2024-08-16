@@ -1,0 +1,12 @@
+---
+upgrades:
+  - |
+    Creating access rules with a deletion lock will now result in the share
+    being locked alongside in order to avoid disconnections. For more details,
+    please refer to
+    `launchpad bug 2075967 <https://bugs.launchpad.net/manila/+bug/2075967>`_.
+fixes:
+  - |
+    When creating access rules with a deletion lock, the shares will also be
+    locked to prevent disconnections. For more details, please refer to
+    `launchpad bug 2075967 <https://bugs.launchpad.net/manila/+bug/2075967>`_.

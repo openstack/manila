@@ -516,7 +516,9 @@ Grant and revoke share access
   ``--lock-visibility`` and ``--lock-deletion`` in the Manila OpenStack command
   for creating access rules. A reason (``--lock-reason``) can also be provided.
   Only the user that placed the lock, system administrators and services will
-  be able to manipulate such access rules.
+  be able to manipulate such access rules. In case the deletion of the access
+  rule was locked, Manila will also place an additional lock on the share, to
+  ensure it will not be deleted and cause disconnections.
 
 Allow read-write access
 ~~~~~~~~~~~~~~~~~~~~~~~

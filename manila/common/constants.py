@@ -293,6 +293,8 @@ DISALLOWED_STATUS_WHEN_LOCKING_ACCESS_RULES = (
     ACCESS_STATE_DELETED,
 )
 
+SHARE_LOCKED_BY_ACCESS_LOCK_REASON = 'Locked by access lock: %(lock_id)s'
+
 
 class ExtraSpecs(object):
 
