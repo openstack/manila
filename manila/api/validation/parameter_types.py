@@ -74,3 +74,13 @@ non_negative_integer = {
     'maximum': constants.DB_MAX_INT,
     'minLength': 1,
 }
+
+metadata = {
+    'type': ['object', 'null'],
+    'patternProperties': {
+        '^[a-zA-Z0-9-_:. ]{1,255}$': {
+            'type': 'string'
+        }
+    },
+    'additionalProperties': False
+}

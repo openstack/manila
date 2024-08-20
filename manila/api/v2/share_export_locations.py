@@ -18,7 +18,9 @@ from oslo_log import log
 from webob import exc
 
 from manila.api.openstack import wsgi
+from manila.api.schemas import share_export_locations as schema
 from manila.api.v2 import metadata
+from manila.api import validation
 from manila.api.views import export_locations as export_locations_views
 from manila.db import api as db_api
 from manila import exception
@@ -29,6 +31,7 @@ LOG = log.getLogger(__name__)
 CONF = cfg.CONF
 
 
+@validation.validated
 class ShareExportLocationController(wsgi.Controller,
                                     metadata.MetadataController):
     """The Share Export Locations API controller."""
@@ -82,22 +85,40 @@ class ShareExportLocationController(wsgi.Controller,
         return self._view_builder.detail(req, export_location)
 
     @wsgi.Controller.api_version('2.9', '2.46')
+    @validation.request_query_schema(schema.empty_query_schema)
+    @validation.response_body_schema(schema.index_response_body, '2.9', '2.13')
+    @validation.response_body_schema(schema.index_response_body_v214, '2.14')
     def index(self, req, share_id):
         """Return a list of export locations for share."""
         return self._index(req, share_id)
 
     @wsgi.Controller.api_version('2.47')  # noqa: F811
+    # NOTE(jonathon): The new microversion removes secondary replicas from
+    # the results but doesn't change the schema, so we can re-use the schema
+    @validation.request_query_schema(schema.empty_query_schema)
+    @validation.response_body_schema(
+        schema.index_response_body_v214, '2.14', '2.86')
+    @validation.response_body_schema(schema.index_response_body_v287, '2.87')
     def index(self, req, share_id):  # pylint: disable=function-redefined  # noqa F811
         """Return a list of export locations for share."""
         return self._index(req, share_id,
                            ignore_secondary_replicas=True)
 
     @wsgi.Controller.api_version('2.9', '2.46')
+    @validation.request_query_schema(schema.empty_query_schema)
+    @validation.response_body_schema(schema.show_response_body, '2.9', '2.13')
+    @validation.response_body_schema(schema.show_response_body_v214, '2.14')
     def show(self, req, share_id, export_location_uuid):
         """Return data about the requested export location."""
         return self._show(req, share_id, export_location_uuid)
 
     @wsgi.Controller.api_version('2.47')  # noqa: F811
+    # NOTE(jonathon): The new microversion removes secondary replicas from
+    # the results but doesn't change the schema, so we can re-use the schema
+    @validation.request_query_schema(schema.empty_query_schema)
+    @validation.response_body_schema(
+        schema.show_response_body_v214, '2.14', '2.86')
+    @validation.response_body_schema(schema.show_response_body_v287, '2.87')
     def show(self, req, share_id,  # pylint: disable=function-redefined  # noqa F811
              export_location_uuid):
         """Return data about the requested export location."""
@@ -137,6 +158,8 @@ class ShareExportLocationController(wsgi.Controller,
 
     @wsgi.Controller.api_version("2.87")
     @wsgi.Controller.authorize("get_metadata")
+    @validation.request_query_schema(schema.empty_query_schema)
+    @validation.response_body_schema(schema.show_metadata_response_body)
     def index_metadata(self, req, share_id, resource_id):
         """Returns the list of metadata for a given share export location."""
         context = req.environ['manila.context']
@@ -145,6 +168,8 @@ class ShareExportLocationController(wsgi.Controller,
 
     @wsgi.Controller.api_version("2.87")
     @wsgi.Controller.authorize("update_metadata")
+    @validation.request_body_schema(schema.create_metadata_response_body)
+    @validation.response_body_schema(schema.create_metadata_response_body)
     def create_metadata(self, req, share_id, resource_id, body):
         """Create metadata for a given share export location."""
         _metadata = self._validate_metadata_for_update(req, resource_id,
@@ -157,6 +182,8 @@ class ShareExportLocationController(wsgi.Controller,
 
     @wsgi.Controller.api_version("2.87")
     @wsgi.Controller.authorize("update_metadata")
+    @validation.request_body_schema(schema.update_metadata_request_body)
+    @validation.response_body_schema(schema.update_metadata_response_body)
     def update_all_metadata(self, req, share_id, resource_id, body):
         """Update entire metadata for a given share export location."""
         _metadata = self._validate_metadata_for_update(req, resource_id,
@@ -168,6 +195,8 @@ class ShareExportLocationController(wsgi.Controller,
 
     @wsgi.Controller.api_version("2.87")
     @wsgi.Controller.authorize("update_metadata")
+    @validation.request_body_schema(schema.update_metadata_request_body)
+    @validation.response_body_schema(schema.update_metadata_response_body)
     def update_metadata_item(self, req, share_id, resource_id, body, key):
         """Update metadata item for a given share export location."""
         _metadata = self._validate_metadata_for_update(req, resource_id,
@@ -180,6 +209,8 @@ class ShareExportLocationController(wsgi.Controller,
 
     @wsgi.Controller.api_version("2.87")
     @wsgi.Controller.authorize("get_metadata")
+    @validation.request_query_schema(schema.empty_query_schema)
+    @validation.response_body_schema(schema.show_metadata_response_body)
     def show_metadata(self, req, share_id, resource_id, key):
         """Show metadata for a given share export location."""
         context = req.environ['manila.context']
@@ -188,6 +219,7 @@ class ShareExportLocationController(wsgi.Controller,
 
     @wsgi.Controller.api_version("2.87")
     @wsgi.Controller.authorize("delete_metadata")
+    @validation.response_body_schema(schema.delete_metadata_response_body)
     def delete_metadata(self, req, share_id, resource_id, key):
         """Delete metadata for a given share export location."""
         context = req.environ['manila.context']

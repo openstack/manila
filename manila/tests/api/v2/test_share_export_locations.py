@@ -250,6 +250,27 @@ class ShareExportLocationsAPITest(test.TestCase):
             index_result['export_locations'][0]['id']
         )
 
+    @ddt.data('2.86', '2.87')
+    def test_index_metadata(self, version):
+        req = self._get_request(version, use_admin_context=True)
+        index_result = self.controller.index(req, self.share['id'])
+        if version == '2.86':
+            assert 'metadata' not in index_result['export_locations'][0]
+        elif version == '2.87':
+            assert 'metadata' in index_result['export_locations'][0]
+
+    @ddt.data('2.86', '2.87')
+    def test_show_metadata(self, version):
+        req = self._get_request(version, use_admin_context=True)
+        index_result = self.controller.index(req, self.share['id'])
+        el_id = index_result['export_locations'][0]['id']
+        show_result = self.controller.show(req, self.share['id'], el_id)
+
+        if version == '2.86':
+            assert 'metadata' not in show_result['export_location']
+        elif version == '2.87':
+            assert 'metadata' in show_result['export_location']
+
     def test_validate_metadata_for_update(self):
         index_result = self.controller.index(self.req, self.share['id'])
         el_id = index_result['export_locations'][0]['id']
@@ -303,7 +324,7 @@ class ShareExportLocationsAPITest(test.TestCase):
             version="2.87", use_admin_context=True)
 
         res = self.controller.create_metadata(req, self.share['id'], el_id,
-                                              body)
+                                              body=body)
         self.assertEqual(body, res)
         mock_validate.assert_called_once_with(req, el_id, body['metadata'],
                                               delete=False)
@@ -326,7 +347,7 @@ class ShareExportLocationsAPITest(test.TestCase):
             version="2.87", use_admin_context=True)
 
         res = self.controller.update_all_metadata(req, self.share['id'], el_id,
-                                                  body)
+                                                  body=body)
         self.assertEqual(body, res)
         mock_validate.assert_called_once_with(req, el_id, body['metadata'])
         mock_update.assert_called_once_with(req, el_id, body)
