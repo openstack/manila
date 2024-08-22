@@ -2958,8 +2958,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(self.client, 'send_request',
                          mock.Mock(return_value=api_response))
         self.mock_object(self.client,
-                         'list_network_interfaces',
-                         mock.Mock(return_value=['lif1']))
+                         'get_network_interfaces',
+                         mock.Mock(return_value=[{'interface-name': 'lif1'}]))
 
         result = self.client.is_kerberos_enabled()
 
@@ -2975,7 +2975,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertTrue(result)
         self.client.send_request.assert_called_once_with(
             'kerberos-config-get', kerberos_config_get_args)
-        self.client.list_network_interfaces.assert_called_once()
+        self.client.get_network_interfaces.assert_called_once()
 
     def test_get_kerberos_service_principal_name(self):
 
