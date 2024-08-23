@@ -34,7 +34,7 @@ from manila import exception
 
 CONTEXT = context.get_admin_context()
 driver_opts = {}
-FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+FAKE_UUID = '123e4567-e89b-12d3-a456-426614174000'
 FAKE_UUIDS = {}
 host = 'host_name'
 identifier = '7cf7c200-d3af-4e05-b87e-9167c95dfcad'

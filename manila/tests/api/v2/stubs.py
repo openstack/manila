@@ -29,7 +29,7 @@ def stub_message(id, **kwargs):
         'message_level': message_levels.ERROR,
         'request_id': FAKE_UUID,
         'resource_type': message_field.Resource.SHARE,
-        'resource_id': 'fake_uuid',
+        'resource_id': FAKE_UUID,
         'updated_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
                                         tzinfo=iso8601.UTC),
         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1,

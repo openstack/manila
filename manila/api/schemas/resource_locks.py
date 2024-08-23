@@ -117,10 +117,13 @@ index_request_query = {
             'default': 'created_at',
             'description': helpers.description('sort_key_resource_locks'),
         }),
-        # TODO(stephenfin): Make this an enum of ['asc', 'desc']
         'sort_dir': parameter_types.multi_params({
             'type': 'string',
             'default': 'desc',
+            # TODO(stephenfin): This should be an enum, but we currently treat
+            # anything != 'desc' as 'asc'. We should make this stricter in a
+            # future microversion.
+            # 'enum': ['asc', 'desc'],
             'description': helpers.description('sort_dir'),
         }),
         'with_count': parameter_types.multi_params(parameter_types.boolean),
@@ -144,7 +147,7 @@ index_request_query = {
         'user_id': parameter_types.multi_params({
             'type': ['string', 'null'],
             'format': 'uuid',
-            'description': helpers.description('resource_lock_user_id_query')
+            'description': helpers.description('resource_lock_user_id_query'),
         }),
         'resource_id': parameter_types.multi_params({
             'type': ['string', 'null'],
