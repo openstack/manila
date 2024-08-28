@@ -2046,16 +2046,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     '8.3 or later.')
             raise exception.NetAppException(msg)
 
-        lifs = self.list_network_interfaces()
-        if not lifs:
+        lifs_info = self.get_network_interfaces(protocols=['NFS', 'CIFS'])
+        if len(lifs_info) == 0:
             LOG.debug("There are no LIFs configured for this Vserver. "
                       "Kerberos is disabled.")
             return False
 
         # NOTE(dviroel): All LIFs must have kerberos enabled
-        for lif in lifs:
+        for lif in lifs_info:
             api_args = {
-                'interface-name': lif,
+                'interface-name': lif.get('interface-name'),
                 'desired-attributes': {
                     'kerberos-config-info': {
                         'is-kerberos-enabled': None,

@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2073766
+    <https://bugs.launchpad.net/manila/+bug/2073766>`_:
+    Kerberos can only be configured for the SVM data network interface.
+    Therefore, this fix excludes the vserver management network interface
+    for certain SVM accounts when checking the SVM Kerberos configuration
+    for network interfaces.
