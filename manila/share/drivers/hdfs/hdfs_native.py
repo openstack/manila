@@ -27,7 +27,7 @@ Configuration Requirements:
 
 import math
 import os
-import pipes
+import shlex
 import socket
 
 from oslo_concurrency import processutils
@@ -115,7 +115,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         return self._run_ssh(host, cmd, check_exit_code)
 
     def _run_ssh(self, host, cmd_list, check_exit_code=False):
-        command = ' '.join(pipes.quote(cmd_arg) for cmd_arg in cmd_list)
+        command = ' '.join(shlex.quote(cmd_arg) for cmd_arg in cmd_list)
         connection = self.ssh_connections.get(host)
         if not connection:
             hdfs_ssh_name = self.configuration.hdfs_ssh_name
