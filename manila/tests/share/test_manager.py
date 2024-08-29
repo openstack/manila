@@ -7930,9 +7930,12 @@ class ShareManagerTestCase(test.TestCase):
                 mock.ANY, share, snapshot, reservations, share_access_rules,
                 snapshot_access_rules, share_id=share_id)
 
-    @ddt.data(None, 'fake_reservations')
-    def test__revert_to_snapshot(self, reservations):
-
+    @ddt.data((None, False),
+              (None, True),
+              ('fake_reservations', False),
+              ('fake_reservations', True))
+    @ddt.unpack
+    def test__revert_to_snapshot(self, reservations, revert_return_share_size):
         mock_quotas_rollback = self.mock_object(quota.QUOTAS, 'rollback')
         mock_quotas_commit = self.mock_object(quota.QUOTAS, 'commit')
         self.mock_object(
@@ -7944,14 +7947,15 @@ class ShareManagerTestCase(test.TestCase):
         share = fakes.fake_share(
             id=share_id, instance={'id': 'fake_instance_id',
                                    'share_type_id': 'fake_share_type_id'},
-            project_id='fake_project', user_id='fake_user', size=2)
+            project_id='fake_project', user_id='fake_user',
+            size=5 if revert_return_share_size else 3)
         snapshot_instance = fakes.fake_snapshot_instance(
             share_id=share_id, share=share, name='fake_snapshot',
             share_instance=share['instance'])
         snapshot = fakes.fake_snapshot(
             id='fake_snapshot_id', share_id=share_id, share=share,
             instance=snapshot_instance, project_id='fake_project',
-            user_id='fake_user', size=1)
+            user_id='fake_user', size=4)
         share_access_rules = []
         snapshot_access_rules = []
 
@@ -7965,6 +7969,8 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.db, 'share_update')
         mock_share_snapshot_update = self.mock_object(
             self.share_manager.db, 'share_snapshot_update')
+        mock_driver.revert_to_snapshot.return_value = (
+            5 if revert_return_share_size else None)
 
         self.share_manager._revert_to_snapshot(self.context, share, snapshot,
                                                reservations,
@@ -7978,19 +7984,27 @@ class ShareManagerTestCase(test.TestCase):
             share_access_rules, snapshot_access_rules,
             share_server=None)
 
-        self.assertFalse(mock_quotas_rollback.called)
         if reservations:
-            mock_quotas_commit.assert_called_once_with(
-                mock.ANY, reservations, project_id='fake_project',
-                user_id='fake_user',
-                share_type_id=(
-                    snapshot_instance['share_instance']['share_type_id']))
+            if revert_return_share_size:
+                mock_quotas_rollback.assert_called_once_with(
+                    mock.ANY, reservations, project_id='fake_project',
+                    user_id='fake_user',
+                    share_type_id=(
+                        snapshot_instance['share_instance']['share_type_id']))
+            else:
+                self.assertFalse(mock_quotas_rollback.called)
+                mock_quotas_commit.assert_called_once_with(
+                    mock.ANY, reservations, project_id='fake_project',
+                    user_id='fake_user',
+                    share_type_id=(
+                        snapshot_instance['share_instance']['share_type_id']))
         else:
             self.assertFalse(mock_quotas_commit.called)
 
         mock_share_update.assert_called_once_with(
             mock.ANY, share_id,
-            {'status': constants.STATUS_AVAILABLE, 'size': snapshot['size']})
+            {'status': constants.STATUS_AVAILABLE,
+             'size': 5 if revert_return_share_size else 4})
         mock_share_snapshot_update.assert_called_once_with(
             mock.ANY, 'fake_snapshot_id',
             {'status': constants.STATUS_AVAILABLE})

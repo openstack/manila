@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    When reverting shares to snapshots that are larger or smaller than
+    the share, some storage systems such as NetApp ONTAP always defer
+    to the larger of the two sizes. Manila's share manager interface now
+    accounts for this behavior, and adjusts project quotas appropriately.
+    For more details, please check
+    Launchpad `bug 2064502 <https://bugs.launchpad.net/manila/+bug/2064502>`_
