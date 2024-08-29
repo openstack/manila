@@ -14,7 +14,7 @@
 #    under the License.
 
 import os
-import pipes
+import shlex
 
 from oslo_concurrency import processutils
 from oslo_log import log
@@ -72,7 +72,7 @@ class SSHExecutor(object):
         # method. So implement workaround to enable or disable 'run as root'
         # behavior.
         run_as_root = kwargs.pop('run_as_root', False)
-        cmd = ' '.join(pipes.quote(a) for a in args)
+        cmd = ' '.join(shlex.quote(a) for a in args)
         if run_as_root:
             cmd = ' '.join(['sudo', cmd])
         ssh = self.pool.get()

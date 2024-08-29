@@ -14,7 +14,7 @@
 #    under the License.
 
 from http import cookiejar as http_cookiejar
-import pipes
+import shlex
 from urllib import error as url_error
 from urllib import request as url_request
 
@@ -147,7 +147,7 @@ class SSHConnector(object):
                                          password=self.password)
 
     def run_ssh(self, cmd_list, check_exit_code=False):
-        command = ' '.join(pipes.quote(cmd_arg) for cmd_arg in cmd_list)
+        command = ' '.join(shlex.quote(cmd_arg) for cmd_arg in cmd_list)
 
         with self.sshpool.item() as ssh:
             try:
