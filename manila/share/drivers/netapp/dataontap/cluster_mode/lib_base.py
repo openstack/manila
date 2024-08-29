@@ -64,9 +64,9 @@ class Backup(Enum):
     BACKUP_TYPE = "backup_type"
     BACKEND_NAME = "netapp_backup_backend_section_name"
     DES_VSERVER = "netapp_backup_vserver"
-    DES_VOLUME = "netapp_backup_share"
+    DES_VOLUME = "netapp_backup_volume"
     SM_LABEL = "backup"
-    DES_VSERVER_PREFIX = "backup_vserver"
+    DES_VSERVER_PREFIX = "backup"
     DES_VOLUME_PREFIX = "backup_volume"
     VOLUME_TYPE = "dp"
     SM_POLICY = "os_backup_policy"
@@ -4349,13 +4349,24 @@ class NetAppCmodeFileStorageLibrary(object):
                                             " from command line or API.")
 
         # check the backend is related to NetApp
-        backup_config = data_motion.get_backup_configuration(backup_type)
+        try:
+            backup_config = data_motion.get_backup_configuration(backup_type)
+        except exception.BadConfigurationException:
+            msg = _("Could not find backup_type '%(backup_type)s' stanza"
+                    " in config file") % {'backup_type': backup_type}
+            raise exception.BadConfigurationException(reason=msg)
         backend_name = backup_config.safe_get(Backup.BACKEND_NAME.value)
-        backend_config = data_motion.get_backend_configuration(
-            backend_name)
+        try:
+            backend_config = data_motion.get_backend_configuration(
+                backend_name
+            )
+        except exception.BadConfigurationException:
+            msg = _("Could not find backend '%(backend_name)s' stanza"
+                    " in config file") % {'backend_name': backend_name}
+            raise exception.BadConfigurationException(reason=msg)
         if (backend_config.safe_get("netapp_storage_family")
                 != 'ontap_cluster'):
-            err_msg = _("Wrong vendor backend %s is provided, provide"
+            err_msg = _("Wrong vendor backend '%s' is provided, provide"
                         " only NetApp backend.") % backend_name
             raise exception.BackupException(err_msg)
 
@@ -4392,16 +4403,17 @@ class NetAppCmodeFileStorageLibrary(object):
         # Get the destination vserver and volume for relationship
         source_path = f"{src_vserver}:{src_vol}"
         snapmirror_info = src_vserver_client.get_snapmirror_destinations(
-            source_path=source_path)
+            source_path=source_path
+        )
         if len(snapmirror_info) > 1:
-            err_msg = _("Source path %(path)s has more than one relationships."
-                        " To create the share backup, delete the all source"
-                        " volume's SnapMirror relationships using 'snapmirror'"
-                        " ONTAP CLI or System Manger.")
+            msg = _("Source path '%(path)s' has more than one relationships."
+                    " To create the share backup, delete the all source"
+                    " volume's SnapMirror relationships using 'snapmirror'"
+                    " ONTAP CLI or System Manager.")
             msg_args = {
                 'path': source_path
             }
-            raise exception.NetAppException(err_msg % msg_args)
+            raise exception.NetAppException(msg % msg_args)
         elif len(snapmirror_info) == 1:
             des_vserver, des_volume = self._get_destination_vserver_and_vol(
                 src_vserver_client, source_path, False)
@@ -4430,7 +4442,8 @@ class NetAppCmodeFileStorageLibrary(object):
                 if share_server:
                     self._delete_backup_vserver(backup, des_vserver)
 
-                msg = _("Failed to create a volume in vserver %(des_vserver)s")
+                msg = _("Failed to create a volume in vserver '%(des_vserver)s"
+                        "'")
                 msg_args = {'des_vserver': des_vserver}
                 raise exception.NetAppException(msg % msg_args)
 
@@ -4450,8 +4463,7 @@ class NetAppCmodeFileStorageLibrary(object):
                     Backup.SM_LABEL.value)
             ]
             if len(snap_list_with_backup) == 1:
-                self.is_volume_backup_before = True
-
+                self._set_volume_has_backup_before(True)
             policy_name = f"{Backup.SM_POLICY.value}_{share_instance['id']}"
             try:
                 des_vserver_client.create_snapmirror_policy(
@@ -4489,9 +4501,9 @@ class NetAppCmodeFileStorageLibrary(object):
                                                   des_volume,
                                                   share_server=share_server)
                 msg = _("SnapVault relationship creation or initialization"
-                        " failed between source %(source_vserver)s:"
-                        "%(source_volume)s and destination %(des_vserver)s:"
-                        "%(des_volume)s  for share id %(share_id)s.")
+                        " failed between source '%(source_vserver)s:"
+                        "%(source_volume)s' and destination '%(des_vserver)s:"
+                        "%(des_volume)s' for share id %(share_id)s.")
 
                 msg_args = {
                     'source_vserver': src_vserver,
@@ -4563,7 +4575,7 @@ class NetAppCmodeFileStorageLibrary(object):
             }
             msg = _("There is no SnapMirror relationship available for"
                     " source path '%(source_path)s' and destination path"
-                    " '%(des_path)s' yet.") % msg_args
+                    " '%(des_path)s' yet.")
             LOG.warning(msg, msg_args)
             return progress_status
         LOG.debug("SnapMirror details %s:", snapmirror_info)
@@ -4581,6 +4593,22 @@ class NetAppCmodeFileStorageLibrary(object):
                       {'progress_status': progress_status})
             return progress_status
 
+        if snapmirror_info[0].get("is-healthy") == 'false':
+            self._resource_cleanup_for_backup(backup,
+                                              share_instance,
+                                              des_vserver,
+                                              des_vol,
+                                              share_server=share_server)
+            msg_args = {
+                'source_path': source_path,
+                'des_path': des_path,
+            }
+            msg = _("There is an issue with SnapMirror relationship with"
+                    " source path '%(source_path)s' and destination path"
+                    " '%(des_path)s'. Make sure destination volume is or was "
+                    "not part of any other SnapMirror relationship.")
+            raise exception.NetAppException(message=msg % msg_args)
+
         # Verify that snapshot is transferred to destination volume
         snap_name = self._get_backup_snapshot_name(backup,
                                                    share_instance['id'])
@@ -4588,7 +4616,7 @@ class NetAppCmodeFileStorageLibrary(object):
                                                        des_vol,
                                                        snap_name)
         LOG.debug("Snapshot '%(snap_name)s' transferred successfully to"
-                  " destination", {'snap_name': snap_name})
+                  " destination.", {'snap_name': snap_name})
         # previously if volume was part of some relationship and if we delete
         # all the backup of share then last snapshot will be left on
         # destination volume, and we can't delete that snapshot due to ONTAP
@@ -4610,11 +4638,11 @@ class NetAppCmodeFileStorageLibrary(object):
                     snap_to_delete = snap_list_with_backup[1]
                 else:
                     snap_to_delete = snap_list_with_backup[0]
-                self.is_volume_backup_before = False
+                self._set_volume_has_backup_before(False)
                 des_vserver_client.delete_snapshot(des_vol, snap_to_delete,
                                                    True)
                 LOG.debug("Previous snapshot %{snap_name}s deleted"
-                          " successfully. ", {'snap_name': snap_to_delete})
+                          " successfully.", {'snap_name': snap_to_delete})
         return progress_status
 
     @na_utils.trace
@@ -4675,7 +4703,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 "total_progress": Backup.TOTAL_PROGRESS_ZERO.value
             }
             return progress_status
-        LOG.debug("SnapMirror relationship of type RST is deleted")
+        LOG.debug("SnapMirror relationship of type RST is deleted.")
         snap_name = self._get_backup_snapshot_name(backup,
                                                    share_instance['id'])
         snapshot_list = src_vserver_client.list_volume_snapshots(src_vol_name)
@@ -4698,7 +4726,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 share_server=share_server,
             )
         except exception.VserverNotFound:
-            LOG.warning("Vserver associated with share %s was not found.",
+            LOG.warning("Vserver associated with share '%s' was not found.",
                         share_instance['id'])
             return
         src_vol_name = self._get_backend_share_name(share_instance['id'])
@@ -4761,13 +4789,17 @@ class NetAppCmodeFileStorageLibrary(object):
                 des_vserver_client.get_snapshot(des_vol, snap_name)
                 is_snapshot_deleted = self._is_snapshot_deleted(False)
             except (SnapshotResourceNotFound, netapp_api.NaApiError):
-                LOG.debug("Snapshot %s deleted successfully.", snap_name)
+                LOG.debug("Snapshot '%s' deleted successfully.", snap_name)
         if not is_snapshot_deleted:
             err_msg = _("Snapshot '%(snapshot_name)s' is not deleted"
                         " successfully on ONTAP."
                         % {"snapshot_name": snap_name})
             LOG.exception(err_msg)
             raise exception.NetAppException(err_msg)
+
+    @na_utils.trace
+    def _set_volume_has_backup_before(self, value):
+        self.is_volume_backup_before = value
 
     @na_utils.trace
     def _is_snapshot_deleted(self, is_deleted):
@@ -4838,14 +4870,15 @@ class NetAppCmodeFileStorageLibrary(object):
                 des_vserver_client)
             if not des_aggr:
                 msg = _("Not able to find any aggregate from ONTAP"
-                        " to create the volume")
+                        " to create the volume. Make sure aggregates are"
+                        " added to destination vserver")
                 raise exception.NetAppException(msg)
             src_vol = self._get_backend_share_name(share_instance['id'])
             vol_attr = src_vserver_client.get_volume(src_vol)
             source_vol_size = vol_attr.get('size')
             vol_size_in_gb = int(source_vol_size) / units.Gi
             share_id = share_instance['id'].replace('-', '_')
-            des_volume = f"backup_volume_{share_id}"
+            des_volume = f"{Backup.DES_VOLUME_PREFIX.value}_{share_id}"
             des_vserver_client.create_volume(des_aggr, des_volume,
                                              vol_size_in_gb, volume_type='dp')
             return des_volume
@@ -4859,7 +4892,7 @@ class NetAppCmodeFileStorageLibrary(object):
         snapmirror_info = src_vserver_client.get_snapmirror_destinations(
             source_path=source_path)
         if validate_relation and len(snapmirror_info) != 1:
-            msg = _("There are more then one relationship with the source."
+            msg = _("There are more then one relationship with the source"
                     " '%(source_path)s'." % {'source_path': source_path})
             raise exception.NetAppException(msg)
         if len(snapmirror_info) == 1:
