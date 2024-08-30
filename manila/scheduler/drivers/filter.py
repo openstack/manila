@@ -27,6 +27,7 @@ from manila import exception
 from manila.i18n import _
 from manila.message import api as message_api
 from manila.message import message_field
+from manila import policy
 from manila.scheduler.drivers import base
 from manila.scheduler import scheduler_options
 from manila.share import share_types
@@ -240,7 +241,16 @@ class FilterScheduler(base.Scheduler):
 
         # Note: remember, we are using an iterator here. So only
         # traverse this list once.
-        hosts = self.host_manager.get_all_host_states_share(elevated)
+        consider_disabled = False
+        if policy.check_is_host_admin(context) and filter_properties.get(
+                'scheduler_hints', {}).get('only_host'):
+            # Admin user can schedule share on disabled host
+            consider_disabled = True
+
+        hosts = self.host_manager.get_all_host_states_share(
+            elevated,
+            consider_disabled=consider_disabled
+        )
         if not hosts:
             msg = _("There are no hosts to fulfill this "
                     "provisioning request. Are share "

@@ -169,7 +169,7 @@ class HostManagerTestCase(test.TestCase):
                 host = share_node['host']
                 self.assertEqual(share_node, host_state_map[host].service)
             db.service_get_all_by_topic.assert_called_once_with(
-                fake_context, topic)
+                fake_context, topic, consider_disabled=False)
 
     def test_get_pools_no_pools(self):
         fake_context = context.RequestContext('user', 'project')

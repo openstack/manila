@@ -631,18 +631,23 @@ class HostManager(object):
                   {'service_name': service_name, 'host': host,
                    'cap': capabilities})
 
-    def _update_host_state_map(self, context):
-
+    def _update_host_state_map(self, context, consider_disabled=False):
         # Get resource usage across the available share nodes:
         topic = CONF.share_topic
-        share_services = db.service_get_all_by_topic(context, topic)
+        share_services = db.service_get_all_by_topic(
+            context,
+            topic,
+            consider_disabled=consider_disabled,
+        )
 
         active_hosts = set()
         for service in share_services:
             host = service['host']
 
             # Warn about down services and remove them from host_state_map
-            if not utils.service_is_up(service) or service['disabled']:
+            is_down = not utils.service_is_up(service)
+            is_disabled = (not consider_disabled and service['disabled'])
+            if is_down or is_disabled:
                 LOG.warning("Share service is down. (host: %s).", host)
                 continue
 
@@ -668,7 +673,7 @@ class HostManager(object):
                      "scheduler cache.", {'host': host})
             self.host_state_map.pop(host, None)
 
-    def get_all_host_states_share(self, context):
+    def get_all_host_states_share(self, context, consider_disabled=False):
         """Returns a dict of all the hosts the HostManager knows about.
 
         Each of the consumable resources in HostState are
@@ -678,7 +683,10 @@ class HostManager(object):
           {'192.168.1.100': HostState(), ...}
         """
 
-        self._update_host_state_map(context)
+        self._update_host_state_map(
+            context,
+            consider_disabled=consider_disabled,
+        )
 
         # Build a pool_state map and return that map instead of host_state_map
         all_pools = {}

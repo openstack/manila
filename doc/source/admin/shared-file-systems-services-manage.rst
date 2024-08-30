@@ -13,4 +13,5 @@ items that have field ``binary`` equal to ``manila-share``. Also, you can
 enable or disable share services using raw API requests. Disabling means that
 share services are excluded from the scheduler cycle and new shares will not
 be placed on the disabled back end. However, shares from this service stay
-available.
+available. With 2024.2 release, admin can schedule share on disabled back end
+using ``only_host`` scheduler hint.

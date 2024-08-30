@@ -641,6 +641,35 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
                           sched.schedule_create_replica,
                           self.context, request_spec, {})
 
+    @mock.patch('manila.db.service_get_all_by_topic')
+    def test__schedule_share_with_disabled_host(
+            self, _mock_service_get_all_by_topic):
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fake_context = context.RequestContext('user', 'project',
+                                              is_admin=True)
+        fake_type = {'name': 'NFS'}
+        request_spec = {
+            'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {},
+            'share_type': fake_type,
+            'share_id': 'fake-id1',
+        }
+        filter_properties = {
+            'scheduler_hints': {'only_host': 'host7#_pool0'}
+        }
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic,
+                                         disabled=True)
+
+        weighed_host = sched._schedule_share(
+            fake_context, request_spec,
+            filter_properties=filter_properties)
+
+        self.assertIsNotNone(weighed_host)
+        self.assertIsNotNone(weighed_host.obj)
+        self.assertEqual('host7', weighed_host.obj.host.split('#')[0])
+        self.assertTrue(_mock_service_get_all_by_topic.called)
+
     def test_schedule_create_replica(self):
         sched = fakes.FakeFilterScheduler()
         request_spec = fakes.fake_replica_request_spec()

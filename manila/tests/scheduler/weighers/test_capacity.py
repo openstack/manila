@@ -54,7 +54,7 @@ class CapacityWeigherTestCase(test.TestCase):
                                          disabled=disabled)
         host_states = self.host_manager.get_all_host_states_share(ctxt)
         _mock_service_get_all_by_topic.assert_called_once_with(
-            ctxt, CONF.share_topic)
+            ctxt, CONF.share_topic, consider_disabled=False)
         return host_states
 
     # NOTE(xyang): If thin_provisioning = True and

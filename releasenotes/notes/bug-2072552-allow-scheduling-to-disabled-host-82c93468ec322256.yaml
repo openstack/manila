@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Manila now allows OpenStack administrators to schedule shares on hosts
+    that are currently running and marked as under maintenance (`disabled`)
+    through the `only_host` scheduler hint. For more details, please refer to
+    `launchpad bug 2072552 <https://bugs.launchpad.net/manila/+bug/2072552>`_
