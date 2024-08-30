@@ -16,6 +16,7 @@
 
 import ipaddress
 import json
+import math
 import re
 import socket
 import sys
@@ -144,7 +145,7 @@ cephfs_opts = [
                     "ensure all of the shares it has created during "
                     "startup. Ensuring would re-export shares and this "
                     "action isn't always required, unless something has "
-                    "been administratively modified on CephFS.")
+                    "been administratively modified on CephFS."),
 ]
 
 cephfsnfs_opts = [
@@ -241,6 +242,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         self._ceph_mon_version = None
         self.configuration.append_config_values(cephfs_opts)
         self.configuration.append_config_values(cephfsnfs_opts)
+        self.private_storage = kwargs.get('private_storage')
 
         try:
             int(self.configuration.cephfs_volume_mode, 8)
@@ -333,17 +335,36 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         """
         return gigs * units.Gi
 
-    def _get_export_locations(self, share):
+    def _get_subvolume_name(self, share_id):
+        try:
+            subvolume_name = self.private_storage.get(
+                share_id, "subvolume_name")
+        except Exception:
+            return share_id
+        # Subvolume name could be None, so in case it is, return share_id
+        return subvolume_name or share_id
+
+    def _get_subvolume_snapshot_name(self, snapshot_id):
+        try:
+            subvolume_snapshot_name = self.private_storage.get(
+                snapshot_id, "subvolume_snapshot_name"
+            )
+        except Exception:
+            return snapshot_id
+        return subvolume_snapshot_name or snapshot_id
+
+    def _get_export_locations(self, share, subvolume_name=None):
         """Get the export location for a share.
 
         :param share: a manila share.
         :return: the export location for a share.
         """
 
+        subvolume_name = subvolume_name or share["id"]
         # get path of FS subvolume/share
         argdict = {
             "vol_name": self.volname,
-            "sub_name": share["id"]
+            "sub_name": subvolume_name
         }
         if share['share_group_id'] is not None:
             argdict.update({"group_name": share["share_group_id"]})
@@ -490,14 +511,174 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         return self._get_export_locations(share)
 
-    def _need_to_cancel_clone(self, share):
+    def _get_subvolume_size_in_gb(self, subvolume_size):
+        """Returns the size of the subvolume in GB."""
+        # There is a chance that we would end up with 2.5gb for example, so
+        # we round it up
+        return int(math.ceil(int(subvolume_size) / units.Gi))
+
+    def manage_existing(self, share, driver_options):
+        # bring FS subvolume/share under manila management
+        LOG.debug("[%(be)s]: manage_existing: id=%(id)s.",
+                  {"be": self.backend_name, "id": share['id']})
+
+        # Subvolume name must be provided.
+        subvolume_name = share['export_locations'][0]['path']
+        if not subvolume_name:
+            raise exception.ShareBackendException(
+                "The subvolume name must be provided as a 'export_path' while "
+                "managing shares.")
+
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": subvolume_name,
+        }
+
+        subvolume_info = {}
+        # Try to get the subvolume info in the ceph backend
+        try:
+            subvolume_info = rados_command(
+                self.rados_client, "fs subvolume info", argdict, json_obj=True)
+        except exception.ShareBackendException as e:
+            # Couldn't find a subvolume with the name provided.
+            if 'does not exist' in str(e).lower():
+                msg = ("Subvolume %(subvol)s cannot be found on the "
+                       "backend." % {'subvol': subvolume_name})
+                raise exception.ShareBackendException(msg=msg)
+
+        # Check if share mode matches
+        if subvolume_info.get('mode') != self._cephfs_volume_mode:
+            LOG.info("Subvolume %(subvol)s mode is different from what is "
+                     "configured in Manila.")
+
+        subvolume_size = subvolume_info.get('bytes_quota')
+
+        # We need to resize infinite subvolumes, as Manila doesn't support it
+        if isinstance(subvolume_size, str) and subvolume_size == "infinite":
+            try:
+                # Default resize gb must be configured
+                new_size = driver_options.get('size')
+                if not new_size or new_size <= 0:
+                    msg = ("subvolume %s has infinite size and a valid "
+                           "integer value was not added to the driver_options "
+                           "arg. Please provide a 'size' in the driver "
+                           "options and try again." % subvolume_name)
+                    raise exception.ShareBackendException(msg=msg)
+
+                # Attempt resizing the subvolume
+                self._resize_share(share, new_size, no_shrink=True)
+                subvolume_size = new_size
+            except exception.ShareShrinkingPossibleDataLoss:
+                msg = ("Could not resize the subvolume using the provided "
+                       "size, as data could be lost. Please update it and "
+                       "try again.")
+                LOG.exception(msg)
+                raise
+            except exception.ShareBackendException:
+                raise
+        else:
+            if int(subvolume_size) % units.Gi == 0:
+                # subvolume_size is an integer GB, no need to resize subvolume
+                subvolume_size = self._get_subvolume_size_in_gb(subvolume_size)
+            else:
+                # subvolume size is not an integer GB. need to resize subvolume
+                new_size_gb = self._get_subvolume_size_in_gb(subvolume_size)
+                LOG.info(
+                    "Subvolume %(subvol)s is being resized to %(new_size)s "
+                    "GB.", {
+                        'subvol': subvolume_name,
+                        'new_size': new_size_gb
+                    }
+                )
+                self._resize_share(share, new_size_gb, no_shrink=True)
+                subvolume_size = new_size_gb
+
+        share_metadata = {"subvolume_name": subvolume_name}
+        self.private_storage.update(share['id'], share_metadata)
+
+        export_locations = self._get_export_locations(
+            share, subvolume_name=subvolume_name
+        )
+
+        managed_share = {
+            "size": subvolume_size,
+            "export_locations": export_locations
+        }
+        return managed_share
+
+    def manage_existing_snapshot(self, snapshot, driver_options):
+        # bring FS subvolume/share under manila management
+        LOG.debug("[%(be)s]: manage_existing_snapshot: id=%(id)s.",
+                  {"be": self.backend_name, "id": snapshot['id']})
+
+        # Subvolume name must be provided.
+        sub_snapshot_name = snapshot.get('provider_location', None)
+        if not sub_snapshot_name:
+            raise exception.ShareBackendException(
+                "The subvolume snapshot name must be provided as the "
+                "'provider_location' while managing snapshots.")
+
+        sub_name = self._get_subvolume_name(snapshot['share_instance_id'])
+
+        argdict = {
+            "vol_name": self.volname,
+            "sub_name": sub_name,
+        }
+
+        # Try to get the subvolume info in the ceph backend, this is useful for
+        # us to get the size for the snapshot.
+        try:
+            rados_command(
+                self.rados_client, "fs subvolume info", argdict, json_obj=True)
+        except exception.ShareBackendException as e:
+            # Couldn't find a subvolume with the name provided.
+            if 'does not exist' in str(e).lower():
+                msg = ("Subvolume %(subvol)s cannot be found on the "
+                       "backend." % {'subvol': sub_name})
+                raise exception.ShareBackendException(msg=msg)
+
+        sub_snap_info_argdict = {
+            "vol_name": self.volname,
+            "sub_name": sub_name,
+            "snap_name": sub_snapshot_name
+        }
+        # Shares/subvolumes already managed by manila will never have
+        # infinite as their bytes_quota, so no need for extra precaution.
+        try:
+            managed_subvolume_snapshot = rados_command(
+                self.rados_client, "fs subvolume snapshot info",
+                sub_snap_info_argdict, json_obj=True
+            )
+        except exception.ShareBackendException as e:
+            # Couldn't find a subvolume snapshot with the name provided.
+            if 'does not exist' in str(e).lower():
+                msg = ("Subvolume snapshot %(snap)s cannot be found on the "
+                       "backend." % {'snap': sub_snapshot_name})
+                raise exception.ShareBackendException(msg=msg)
+
+        snapshot_metadata = {"subvolume_snapshot_name": sub_snapshot_name}
+        self.private_storage.update(
+            snapshot['snapshot_id'], snapshot_metadata
+        )
+
+        # NOTE(carloss): fs subvolume snapshot info command does not return
+        # the snapshot size, so we reuse the share size until this is not
+        # available for us.
+        managed_snapshot = {'provider_location': sub_snapshot_name}
+        if managed_subvolume_snapshot.get('bytes_quota') is not None:
+            managed_snapshot['size'] = self._get_subvolume_size_in_gb(
+                managed_subvolume_snapshot['bytes_quota'])
+
+        return managed_snapshot
+
+    def _need_to_cancel_clone(self, share, clone_name):
         # Is there an ongoing clone operation that needs to be canceled
         # so we can delete the share?
         need_to_cancel_clone = False
 
         argdict = {
             "vol_name": self.volname,
-            "clone_name": share["id"],
+            "clone_name": clone_name,
         }
         if share['share_group_id'] is not None:
             argdict.update({"group_name": share["share_group_id"]})
@@ -522,11 +703,12 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                   {"be": self.backend_name, "id": share['id'],
                    "gr": share['share_group_id']})
 
-        if self._need_to_cancel_clone(share):
+        clone_name = self._get_subvolume_name(share['id'])
+        if self._need_to_cancel_clone(share, clone_name):
             try:
                 argdict = {
                     "vol_name": self.volname,
-                    "clone_name": share["id"],
+                    "clone_name": clone_name,
                     "force": True,
                 }
                 if share['share_group_id'] is not None:
@@ -539,7 +721,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         argdict = {
             "vol_name": self.volname,
-            "sub_name": share["id"],
+            "sub_name": self._get_subvolume_name(share["id"]),
             # We want to clean up the share even if the subvolume is
             # not in a good state.
             "force": True,
@@ -551,9 +733,10 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
+        sub_name = self._get_subvolume_name(share['id'])
         return self.protocol_helper.update_access(
             context, share, access_rules, add_rules, delete_rules,
-            share_server=share_server)
+            share_server=share_server, sub_name=sub_name)
 
     def get_backend_info(self, context):
         return self.protocol_helper.get_backend_info(context)
@@ -586,39 +769,17 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                     }
         return share_updates
 
-    def extend_share(self, share, new_size, share_server=None):
-        # resize FS subvolume/share
-        LOG.debug("[%(be)s]: extend_share: share=%(id)s, size=%(sz)s.",
-                  {"be": self.backend_name, "id": share['id'],
-                   "sz": new_size})
-
+    def _resize_share(self, share, new_size, no_shrink=False):
         argdict = {
             "vol_name": self.volname,
-            "sub_name": share["id"],
+            "sub_name": self._get_subvolume_name(share["id"]),
             "new_size": self._to_bytes(new_size),
-        }
-        if share['share_group_id'] is not None:
-            argdict.update({"group_name": share["share_group_id"]})
-
-        LOG.debug("extend_share {id} {size}",
-                  {"id": share['id'], "size": new_size})
-
-        rados_command(self.rados_client, "fs subvolume resize", argdict)
-
-    def shrink_share(self, share, new_size, share_server=None):
-        # resize FS subvolume/share
-        LOG.debug("[%(be)s]: shrink_share: share=%(id)s, size=%(sz)s.",
-                  {"be": self.backend_name, "id": share['id'],
-                   "sz": new_size})
-
-        argdict = {
-            "vol_name": self.volname,
-            "sub_name": share["id"],
-            "new_size": self._to_bytes(new_size),
-            "no_shrink": True,
         }
         if share["share_group_id"] is not None:
             argdict.update({"group_name": share["share_group_id"]})
+
+        if no_shrink:
+            argdict.update({"no_shrink": True})
 
         try:
             rados_command(self.rados_client, "fs subvolume resize", argdict)
@@ -627,6 +788,22 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                 raise exception.ShareShrinkingPossibleDataLoss(
                     share_id=share['id'])
             raise
+
+    def extend_share(self, share, new_size, share_server=None):
+        # resize FS subvolume/share
+        LOG.debug("[%(be)s]: extend_share: share=%(id)s, size=%(sz)s.",
+                  {"be": self.backend_name, "id": share['id'],
+                   "sz": new_size})
+
+        self._resize_share(share, new_size)
+
+    def shrink_share(self, share, new_size, share_server=None):
+        # resize FS subvolume/share
+        LOG.debug("[%(be)s]: shrink_share: share=%(id)s, size=%(sz)s.",
+                  {"be": self.backend_name, "id": share['id'],
+                   "sz": new_size})
+
+        self._resize_share(share, new_size, no_shrink=True)
 
     def create_snapshot(self, context, snapshot, share_server=None):
         # create a FS snapshot
@@ -637,24 +814,29 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         argdict = {
             "vol_name": self.volname,
-            "sub_name": snapshot["share_id"],
+            "sub_name": self._get_subvolume_name(snapshot["share_id"]),
             "snap_name": snapshot["snapshot_id"],
         }
 
         rados_command(
             self.rados_client, "fs subvolume snapshot create", argdict)
 
+        return {"provider_location": snapshot["snapshot_id"]}
+
     def delete_snapshot(self, context, snapshot, share_server=None):
         # delete a FS snapshot
         LOG.debug("[%(be)s]: delete_snapshot: snapshot=%(id)s.",
                   {"be": self.backend_name, "id": snapshot['id']})
 
+        snapshot_name = self._get_subvolume_snapshot_name(
+            snapshot['snapshot_id']
+        )
         # FIXME(vkmc) remove this in CC (next tick) release.
         legacy_snap_name = "_".join([snapshot["snapshot_id"], snapshot["id"]])
 
         argdict_legacy = {
             "vol_name": self.volname,
-            "sub_name": snapshot["share_id"],
+            "sub_name": self._get_subvolume_name(snapshot["share_id"]),
             "snap_name": legacy_snap_name,
             "force": True,
         }
@@ -665,7 +847,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         # in case it's a snapshot with new naming, retry remove with new name
         argdict = argdict_legacy.copy()
-        argdict.update({"snap_name": snapshot["snapshot_id"]})
+        argdict.update({"snap_name": snapshot_name})
         rados_command(self.rados_client, "fs subvolume snapshot rm", argdict)
 
     def create_share_group(self, context, sg_dict, share_server=None):
@@ -729,9 +911,10 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
     def _get_clone_status(self, share):
         """Check the status of a newly cloned share."""
+        clone_name = self._get_subvolume_name(share["id"])
         argdict = {
             "vol_name": self.volname,
-            "clone_name": share["id"]
+            "clone_name": clone_name
         }
         if share['share_group_id'] is not None:
             argdict.update({"group_name": share["share_group_id"]})
@@ -787,9 +970,10 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         argdict = {
             "vol_name": self.volname,
-            "sub_name": parent_share["id"],
-            "snap_name": snapshot["snapshot_id"],
-            "target_sub_name": share["id"]
+            "sub_name": self._get_subvolume_name(parent_share["id"]),
+            "snap_name": self._get_subvolume_snapshot_name(
+                snapshot["snapshot_id"]),
+            "target_sub_name": self._get_subvolume_name(share["id"])
         }
         if share['share_group_id'] is not None:
             argdict.update({"group_name": share["share_group_id"]})
@@ -878,7 +1062,8 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
     def get_optional_share_creation_data(self, share, share_server=None):
         return {"metadata": {"__mount_options": f"fs={self.volname}"}}
 
-    def _allow_access(self, context, share, access, share_server=None):
+    def _allow_access(self, context, share, access, share_server=None,
+                      sub_name=None):
         if access['access_type'] != CEPHX_ACCESS_TYPE:
             raise exception.InvalidShareAccessType(type=access['access_type'])
 
@@ -897,7 +1082,7 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
 
         argdict = {
             "vol_name": self.volname,
-            "sub_name": share["id"],
+            "sub_name": sub_name,
             "auth_id": ceph_auth_id,
             "tenant_id": share["project_id"],
         }
@@ -925,7 +1110,8 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
 
         return auth_result
 
-    def _deny_access(self, context, share, access, share_server=None):
+    def _deny_access(self, context, share, access, share_server=None,
+                     sub_name=None):
         if access['access_type'] != CEPHX_ACCESS_TYPE:
             LOG.warning("Invalid access type '%(type)s', "
                         "ignoring in deny.",
@@ -934,7 +1120,7 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
 
         argdict = {
             "vol_name": self.volname,
-            "sub_name": share["id"],
+            "sub_name": sub_name,
             "auth_id": access['access_to']
         }
         if share["share_group_id"] is not None:
@@ -953,12 +1139,12 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
         rados_command(self.rados_client, "fs subvolume evict", argdict)
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, share_server=None, sub_name=None):
         access_updates = {}
 
         argdict = {
             "vol_name": self.volname,
-            "sub_name": share["id"],
+            "sub_name": sub_name,
         }
         if share["share_group_id"] is not None:
             argdict.update({"group_name": share["share_group_id"]})
@@ -995,7 +1181,9 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
         # backend are in sync.
         for rule in add_rules:
             try:
-                access_key = self._allow_access(context, share, rule)
+                access_key = self._allow_access(
+                    context, share, rule, sub_name=sub_name
+                )
             except (exception.InvalidShareAccessLevel,
                     exception.InvalidShareAccessType):
                 self.message_api.create(
@@ -1033,7 +1221,7 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
                 })
 
         for rule in delete_rules:
-            self._deny_access(context, share, rule)
+            self._deny_access(context, share, rule, sub_name=sub_name)
 
         return access_updates
 
@@ -1077,11 +1265,11 @@ class NFSProtocolHelperMixin():
     def get_optional_share_creation_data(self, share, share_server=None):
         return {}
 
-    def _get_export_path(self, share):
+    def _get_export_path(self, share, sub_name=None):
         """Callback to provide export path."""
         argdict = {
             "vol_name": self.volname,
-            "sub_name": share["id"]
+            "sub_name": sub_name or share["id"]
         }
         if share["share_group_id"] is not None:
             argdict.update({"group_name": share["share_group_id"]})
@@ -1091,9 +1279,9 @@ class NFSProtocolHelperMixin():
 
         return path
 
-    def _get_export_pseudo_path(self, share):
+    def _get_export_pseudo_path(self, share, sub_name=None):
         """Callback to provide pseudo path."""
-        return self._get_export_path(share)
+        return self._get_export_path(share, sub_name=sub_name)
 
     def get_configured_ip_versions(self):
         if not self.configured_ip_versions:
@@ -1171,13 +1359,13 @@ class NFSProtocolHelper(NFSProtocolHelperMixin, ganesha.GaneshaNASHelper2):
         ganesha_utils.patch(dconf, self._load_conf_dir(conf_dir))
         return dconf
 
-    def _fsal_hook(self, base, share, access):
+    def _fsal_hook(self, base, share, access, sub_name=None):
         """Callback to create FSAL subblock."""
         ceph_auth_id = ''.join(['ganesha-', share['id']])
 
         argdict = {
             "vol_name": self.volname,
-            "sub_name": share["id"],
+            "sub_name": sub_name,
             "auth_id": ceph_auth_id,
             "access_level": "rw",
             "tenant_id": share["project_id"],
@@ -1199,13 +1387,13 @@ class NFSProtocolHelper(NFSProtocolHelperMixin, ganesha.GaneshaNASHelper2):
             'Filesystem': self.volname
         }
 
-    def _cleanup_fsal_hook(self, base, share, access):
+    def _cleanup_fsal_hook(self, base, share, access, sub_name=None):
         """Callback for FSAL specific cleanup after removing an export."""
         ceph_auth_id = ''.join(['ganesha-', share['id']])
 
         argdict = {
             "vol_name": self.volname,
-            "sub_name": share["id"],
+            "sub_name": sub_name,
             "auth_id": ceph_auth_id,
         }
         if share["share_group_id"] is not None:
@@ -1329,12 +1517,12 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
         """Returns an error if prerequisites aren't met."""
         return
 
-    def _allow_access(self, share, access):
+    def _allow_access(self, share, access, sub_name=None):
         """Allow access to the share."""
         export = {
-            "path": self._get_export_path(share),
+            "path": self._get_export_path(share, sub_name=sub_name),
             "cluster_id": self.nfs_clusterid,
-            "pseudo": self._get_export_pseudo_path(share),
+            "pseudo": self._get_export_pseudo_path(share, sub_name=sub_name),
             "squash": "none",
             "security_label": True,
             "protocols": [4],
@@ -1354,18 +1542,19 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
         rados_command(self.rados_client,
                       "nfs export apply", argdict, inbuf=inbuf)
 
-    def _deny_access(self, share):
+    def _deny_access(self, share, sub_name=None):
         """Deny access to the share."""
 
         argdict = {
             "cluster_id": self.nfs_clusterid,
-            "pseudo_path": self._get_export_pseudo_path(share)
+            "pseudo_path": self._get_export_pseudo_path(
+                share, sub_name=sub_name)
         }
 
         rados_command(self.rados_client, "nfs export rm", argdict)
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, share_server=None, sub_name=None):
         """Update access rules of share.
 
         Creates an export per share. Modifies access rules of shares by
@@ -1407,10 +1596,10 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
                 })
 
             if clients:  # empty list if no rules passed validation
-                self._allow_access(share, clients)
+                self._allow_access(share, clients, sub_name=sub_name)
         else:
             # no clients have access to the share. remove export
-            self._deny_access(share)
+            self._deny_access(share, sub_name=sub_name)
 
         return rule_state_map
 
