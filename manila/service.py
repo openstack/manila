@@ -132,7 +132,6 @@ class Service(service.Service):
         self.saved_args, self.saved_kwargs = args, kwargs
         self.coordinator = coordination
 
-        setup_profiler(binary, host)
         self.rpcserver = None
 
     def start(self):
@@ -141,6 +140,7 @@ class Service(service.Service):
                  {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
         ctxt = context.get_admin_context()
+        setup_profiler(self.binary, self.host)
 
         try:
             service_ref = db.service_get_by_args(ctxt,
@@ -362,7 +362,6 @@ class WSGIService(service.ServiceBase):
                 "greater than 1.  Input value ignored.", {'name': name})
             # Reset workers to default
             self.workers = None
-        setup_profiler(name, self.host)
 
         self.server = wsgi.Server(
             CONF,
@@ -403,6 +402,7 @@ class WSGIService(service.ServiceBase):
         :returns: None
 
         """
+        setup_profiler(self.name, self.host)
         if self.manager:
             self.manager.init_host()
         self.server.start()
