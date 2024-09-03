@@ -208,6 +208,11 @@ class ShareManagerTestCase(test.TestCase):
                 'reapply_access_rules': driver_needs_to_reapply_rules,
             },
         }
+        fake_service = {'id': 'fake_service_id', 'binary': 'manila-share'}
+        self.mock_object(self.share_manager.db,
+                         'service_get_by_args',
+                         mock.Mock(return_value=fake_service))
+        self.mock_object(self.share_manager.db, 'service_update')
         mock_backend_info_update = self.mock_object(
             self.share_manager.db, 'backend_info_update')
         mock_share_get_all_by_host = self.mock_object(
@@ -263,6 +268,23 @@ class ShareManagerTestCase(test.TestCase):
             mock.call(utils.IsAMatcher(context.RequestContext),
                       instances[2]),
         ])
+        self.share_manager.db.service_get_by_args.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            self.share_manager.host,
+            'manila-share'
+        )
+        self.share_manager.db.service_update.assert_has_calls([
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                fake_service['id'],
+                {'ensuring': True}
+            ),
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                fake_service['id'],
+                {'ensuring': False}
+            )
+        ])
         if driver_needs_to_reapply_rules:
             # don't care if share_instance['access_rules_status'] is "syncing"
             mock_reset_rules_method.assert_has_calls([
@@ -301,6 +323,11 @@ class ShareManagerTestCase(test.TestCase):
                 'metadata': metadata_updates,
             },
         }
+        fake_service = {'id': 'fake_service_id', 'binary': 'manila-share'}
+        self.mock_object(self.share_manager.db,
+                         'service_get_by_args',
+                         mock.Mock(return_value=fake_service))
+        self.mock_object(self.share_manager.db, 'service_update')
         mock_backend_info_update = self.mock_object(
             self.share_manager.db, 'backend_info_update')
         mock_share_get_all_by_host = self.mock_object(
@@ -359,6 +386,23 @@ class ShareManagerTestCase(test.TestCase):
         ])
         # none of the share instances in the fake data have syncing rules
         mock_reset_rules_method.assert_not_called()
+        self.share_manager.db.service_get_by_args.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            self.share_manager.host,
+            'manila-share'
+        )
+        self.share_manager.db.service_update.assert_has_calls([
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                fake_service['id'],
+                {'ensuring': True}
+            ),
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                fake_service['id'],
+                {'ensuring': False}
+            )
+        ])
 
     def test_init_host_with_no_shares(self):
         self.mock_object(self.share_manager.db,
@@ -520,6 +564,7 @@ class ShareManagerTestCase(test.TestCase):
         }
         instances[0]['access_rules_status'] = ''
         instances[2]['access_rules_status'] = ''
+        fake_service = {'id': 'fake_service_id', 'binary': 'manila-share'}
         self.mock_object(self.share_manager.db,
                          'backend_info_get',
                          mock.Mock(return_value=old_backend_info))
@@ -530,6 +575,10 @@ class ShareManagerTestCase(test.TestCase):
         mock_share_get_all_by_host = self.mock_object(
             self.share_manager.db, 'share_instance_get_all_by_host',
             mock.Mock(return_value=instances))
+        self.mock_object(self.share_manager.db,
+                         'service_get_by_args',
+                         mock.Mock(return_value=fake_service))
+        self.mock_object(self.share_manager.db, 'service_update')
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(side_effect=[instances[0], instances[2],
                                                 instances[4]]))
@@ -607,6 +656,23 @@ class ShareManagerTestCase(test.TestCase):
                  mock.call(mock.ANY, instances[2]['id'],
                            share_server=share_server),
              ]))
+            self.share_manager.db.service_get_by_args.assert_called_once_with(
+                utils.IsAMatcher(context.RequestContext),
+                self.share_manager.host,
+                'manila-share'
+            )
+            self.share_manager.db.service_update.assert_has_calls([
+                mock.call(
+                    utils.IsAMatcher(context.RequestContext),
+                    fake_service['id'],
+                    {'ensuring': True}
+                ),
+                mock.call(
+                    utils.IsAMatcher(context.RequestContext),
+                    fake_service['id'],
+                    {'ensuring': False}
+                )
+            ])
 
     @ddt.data(("some_hash", {"db_version": "test_version"}),
               ("ddd86ec90923b686597501e2f2431f3af59238c0",
@@ -623,6 +689,7 @@ class ShareManagerTestCase(test.TestCase):
             new_backend_info else None)
         mock_backend_info_update = self.mock_object(
             self.share_manager.db, 'backend_info_update')
+        fake_service = {'id': 'fake_service_id', 'binary': 'manila-share'}
         self.mock_object(
             self.share_manager.db, 'backend_info_get',
             mock.Mock(return_value=old_backend_info))
@@ -630,6 +697,10 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=new_backend_info))
         self.mock_object(self.share_manager, 'publish_service_capabilities',
                          mock.Mock())
+        self.mock_object(self.share_manager.db,
+                         'service_get_by_args',
+                         mock.Mock(return_value=fake_service))
+        self.mock_object(self.share_manager.db, 'service_update')
         mock_ensure_shares = self.mock_object(
             self.share_manager.driver, 'ensure_shares')
         mock_share_instance_get_all_by_host = self.mock_object(
@@ -665,6 +736,7 @@ class ShareManagerTestCase(test.TestCase):
 
         instances = self._setup_init_mocks(setup_access_rules=False)
         share_server = fakes.fake_share_server_get()
+        fake_service = {'id': 'fake_service_id', 'binary': 'manila-share'}
         self.mock_object(self.share_manager.db,
                          'share_instance_get_all_by_host',
                          mock.Mock(return_value=instances))
@@ -683,6 +755,10 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager, '_get_share_server_dict',
                          mock.Mock(return_value=share_server))
         self.mock_object(self.share_manager, 'publish_service_capabilities')
+        self.mock_object(self.share_manager.db,
+                         'service_get_by_args',
+                         mock.Mock(return_value=fake_service))
+        self.mock_object(self.share_manager.db, 'service_update')
         self.mock_object(manager.LOG, 'error')
         self.mock_object(manager.LOG, 'info')
 
@@ -730,6 +806,23 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY,
             {'id': instances[1]['id'], 'status': instances[1]['status']},
         )
+        self.share_manager.db.service_get_by_args.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            self.share_manager.host,
+            'manila-share'
+        )
+        self.share_manager.db.service_update.assert_has_calls([
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                fake_service['id'],
+                {'ensuring': True}
+            ),
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                fake_service['id'],
+                {'ensuring': False}
+            )
+        ])
 
     def _get_share_instance_dict(self, share_instance, **kwargs):
         # TODO(gouthamr): remove method when the db layer returns primitives
@@ -775,11 +868,16 @@ class ShareManagerTestCase(test.TestCase):
             raise exception.ManilaException(message="Fake raise")
 
         instances = self._setup_init_mocks(setup_access_rules=False)
+        fake_service = {'id': 'fake_service_id', 'binary': 'manila-share'}
         mock_ensure_share = self.mock_object(
             self.share_manager.driver, 'ensure_share')
         self.mock_object(self.share_manager.db,
                          'share_instance_get_all_by_host',
                          mock.Mock(return_value=instances))
+        self.mock_object(self.share_manager.db,
+                         'service_get_by_args',
+                         mock.Mock(return_value=fake_service))
+        self.mock_object(self.share_manager.db, 'service_update')
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(side_effect=[instances[0], instances[2],
                                                 instances[3]]))
@@ -807,6 +905,20 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager._ensure_share_instance_has_pool.assert_has_calls([
             mock.call(utils.IsAMatcher(context.RequestContext), instances[0]),
             mock.call(utils.IsAMatcher(context.RequestContext), instances[2]),
+        ])
+        self.share_manager.db.service_get_by_args.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), self.share_manager.host,
+            'manila-share'
+        )
+        self.share_manager.db.service_update.assert_has_calls([
+            mock.call(
+                utils.IsAMatcher(context.RequestContext), fake_service['id'],
+                {'ensuring': True}
+            ),
+            mock.call(
+                utils.IsAMatcher(context.RequestContext), fake_service['id'],
+                {'ensuring': False}
+            )
         ])
         self.share_manager.driver.ensure_shares.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
@@ -854,11 +966,16 @@ class ShareManagerTestCase(test.TestCase):
             instances[4]['id']: {'status': 'available'}
         }
         smanager = self.share_manager
+        fake_service = {'id': 'fake_service_id', 'binary': 'manila-share'}
         self.mock_object(smanager.db, 'share_instance_get_all_by_host',
                          mock.Mock(return_value=instances))
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(side_effect=[instances[0], instances[2],
                                                 instances[4]]))
+        self.mock_object(self.share_manager.db,
+                         'service_get_by_args',
+                         mock.Mock(return_value=fake_service))
+        self.mock_object(self.share_manager.db, 'service_update')
         self.mock_object(self.share_manager.driver, 'ensure_share',
                          mock.Mock(return_value=None))
         self.mock_object(self.share_manager.driver, 'ensure_shares',
@@ -914,6 +1031,23 @@ class ShareManagerTestCase(test.TestCase):
         ])
         manager.LOG.exception.assert_has_calls([
             mock.call(mock.ANY, mock.ANY),
+        ])
+        self.share_manager.db.service_get_by_args.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            self.share_manager.host,
+            'manila-share'
+        )
+        self.share_manager.db.service_update.assert_has_calls([
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                fake_service['id'],
+                {'ensuring': True}
+            ),
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                fake_service['id'],
+                {'ensuring': False}
+            )
         ])
 
     def test_create_share_instance_from_snapshot_with_server(self):

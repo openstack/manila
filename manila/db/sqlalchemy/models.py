@@ -72,6 +72,7 @@ class Service(BASE, ManilaBase):
     availability_zone_id = Column(String(36),
                                   ForeignKey('availability_zones.id'),
                                   nullable=True)
+    ensuring = Column(Boolean, default=False)
 
     availability_zone = orm.relationship(
         "AvailabilityZone",

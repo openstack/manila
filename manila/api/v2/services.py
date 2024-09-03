@@ -14,13 +14,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import http.client as http_client
 from oslo_utils import strutils
 import webob.exc
 
 from manila.api.openstack import wsgi
 from manila.api.views import services as services_views
 from manila import db
+from manila import exception
 from manila.i18n import _
+from manila import policy
+from manila.services import api as service_api
 
 
 class ServiceMixin(object):
@@ -34,7 +38,7 @@ class ServiceMixin(object):
     _view_builder_class = services_views.ViewBuilder
 
     @wsgi.Controller.authorize("index")
-    def _index(self, req):
+    def _index(self, req, support_ensure_shares=False):
         """Return a list of all running services."""
 
         context = req.environ['manila.context']
@@ -42,7 +46,7 @@ class ServiceMixin(object):
 
         services = []
         for service in all_services:
-            service = {
+            service_data = {
                 'id': service['id'],
                 'binary': service['binary'],
                 'host': service['host'],
@@ -52,7 +56,9 @@ class ServiceMixin(object):
                 'state': service['state'],
                 'updated_at': service['updated_at'],
             }
-            services.append(service)
+            if support_ensure_shares:
+                service_data['ensuring'] = service['ensuring']
+            services.append(service_data)
 
         search_opts = [
             'host',
@@ -141,9 +147,17 @@ class ServiceController(ServiceMixin, wsgi.Controller):
     Registered under API URL 'services'.
     """
 
-    @wsgi.Controller.api_version('2.7')
+    def __init__(self):
+        super().__init__()
+        self.service_api = service_api.API()
+
+    @wsgi.Controller.api_version('2.7', '2.85')
     def index(self, req):
         return self._index(req)
+
+    @wsgi.Controller.api_version('2.86') # noqa
+    def index(self, req): # pylint: disable=function-redefined  # noqa F811
+        return self._index(req, support_ensure_shares=True)
 
     @wsgi.Controller.api_version('2.7', '2.82')
     def update(self, req, id, body):
@@ -152,6 +166,32 @@ class ServiceController(ServiceMixin, wsgi.Controller):
     @wsgi.Controller.api_version('2.83') # noqa
     def update(self, req, id, body): # pylint: disable=function-redefined  # noqa F811
         return self._update(req, id, body)
+
+    @wsgi.Controller.api_version('2.86')
+    @wsgi.Controller.authorize
+    def ensure_shares(self, req, body):
+        """Starts ensure shares for a given manila-share binary."""
+        context = req.environ['manila.context']
+
+        policy.check_policy(context, 'service', 'ensure_shares')
+        host = body.get('host', None)
+        if not host:
+            raise webob.exc.HTTPBadRequest('Missing host parameter.')
+
+        try:
+            # The only binary supported is Manila share.
+            service = db.service_get_by_args(context, host, 'manila-share')
+        except exception.NotFound:
+            raise webob.exc.HTTPNotFound(
+                "manila-share binary for '%s' host not found" % id
+            )
+
+        try:
+            self.service_api.ensure_shares(context, service, host)
+        except webob.exc.HTTPConflict:
+            raise
+
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 def create_resource_legacy():

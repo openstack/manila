@@ -21,6 +21,7 @@ class ViewBuilder(common.ViewBuilder):
     _collection_name = "services"
     _detail_version_modifiers = [
         "add_disabled_reason_field",
+        "add_ensuring_field",
     ]
 
     def summary(self, request, service):
@@ -49,3 +50,7 @@ class ViewBuilder(common.ViewBuilder):
         service_dict.pop('disabled', None)
         service_dict['status'] = service.get('status')
         service_dict['disabled_reason'] = service.get('disabled_reason')
+
+    @common.ViewBuilder.versioned_method("2.86")
+    def add_ensuring_field(self, context, service_dict, service):
+        service_dict['ensuring'] = service.get('ensuring')

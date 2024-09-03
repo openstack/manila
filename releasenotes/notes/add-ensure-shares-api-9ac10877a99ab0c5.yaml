@@ -1,0 +1,16 @@
+---
+features:
+  - |
+    A new API to start the ensure shares procedure for Manila has been added.
+    Through this API, OpenStack administrators will be able to recalculate the
+    shares' export location without restarting the shares manager service.
+    Additionally, a new configuration option named
+    `update_shares_status_on_ensure` is now available to help OpenStack
+    administrators determine whether the shares' status should be modified
+    during the ensure shares procedure or not.
+upgrade:
+  - |
+    When restarting the service on an upgrade, when ensure shares is being run
+    it will automatically transition the shares status to `ensuring`. In case
+    you would like to prevent it, please change the value of the
+    `update_shares_status_on_ensure` configuration option.

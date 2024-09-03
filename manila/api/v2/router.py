@@ -102,6 +102,13 @@ class APIRouter(manila.api.openstack.APIRouter):
         mapper.resource("service",
                         "services",
                         controller=self.resources["services"])
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("services",
+                           "%s/services/ensure-shares" % path_prefix,
+                           controller=self.resources["services"],
+                           action="ensure_shares",
+                           conditions={"method": ["POST"]})
 
         self.resources["quota_sets_legacy"] = (
             quota_sets.create_resource_legacy())

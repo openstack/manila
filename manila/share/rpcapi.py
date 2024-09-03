@@ -89,6 +89,7 @@ class ShareAPI(object):
             restore_backup() methods
         1.27 - Update delete_share_instance() and delete_snapshot() methods
         1.28 - Add update_share_from_metadata() method
+        1.29 - Add ensure_shares()
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -97,7 +98,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.28')
+        self.client = rpc.get_client(target, version_cap='1.29')
 
     def create_share_instance(self, context, share_instance, host,
                               request_spec, filter_properties,
@@ -540,3 +541,12 @@ class ShareAPI(object):
                                  'update_share_from_metadata',
                                  share_id=share['id'],
                                  metadata=metadata)
+
+    def ensure_driver_resources(self, context, host):
+        host = utils.extract_host(host)
+        call_context = self.client.prepare(server=host, version='1.29')
+        return call_context.cast(
+            context,
+            'ensure_driver_resources',
+            skip_backend_info_check=True
+        )

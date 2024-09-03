@@ -458,3 +458,7 @@ user documentation.
 2.85
 ----
    Added ``backup_type`` field to share backup object.
+
+2.86
+----
+   Added ensure shares API.
