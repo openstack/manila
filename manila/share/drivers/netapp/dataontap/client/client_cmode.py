@@ -2255,9 +2255,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         self.send_request('volume-create', api_args)
 
-        self.update_volume_efficiency_attributes(volume_name,
-                                                 dedup_enabled,
-                                                 compression_enabled)
+        efficiency_policy = options.get('efficiency_policy', None)
+        self.update_volume_efficiency_attributes(
+            volume_name, dedup_enabled, compression_enabled,
+            efficiency_policy=efficiency_policy
+        )
         if max_files is not None:
             self.set_volume_max_files(volume_name, max_files)
 
@@ -2448,6 +2450,28 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'enable-compression': 'false'
         }
         self.connection.send_request('sis-set-config-async', api_args)
+
+    @na_utils.trace
+    def apply_volume_efficiency_policy(self, volume_name,
+                                       efficiency_policy=None):
+        """Apply efficiency policy to FlexVol/FlexGroup volume."""
+        if efficiency_policy:
+            api_args = {
+                'path': f'/vol/{volume_name}',
+                'policy-name': efficiency_policy
+            }
+            self.send_request('sis-set-config', api_args)
+
+    @na_utils.trace
+    def apply_volume_efficiency_policy_async(self, volume_name,
+                                             efficiency_policy=None):
+        """Apply efficiency policy to FlexVol volume asynchronously."""
+        if efficiency_policy:
+            api_args = {
+                'path': f'/vol/{volume_name}',
+                'policy-name': efficiency_policy
+            }
+            self.connection.send_request('sis-set-config-async', api_args)
 
     @na_utils.trace
     def get_volume_efficiency_status(self, volume_name):
@@ -2736,17 +2760,18 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 not hide_snapdir).lower()
 
         self.send_request('volume-modify-iter', api_args)
-
+        efficiency_policy = options.get('efficiency_policy', None)
         # Efficiency options must be handled separately
-        self.update_volume_efficiency_attributes(volume_name,
-                                                 dedup_enabled,
-                                                 compression_enabled,
-                                                 is_flexgroup=is_flexgroup)
+        self.update_volume_efficiency_attributes(
+            volume_name, dedup_enabled, compression_enabled,
+            is_flexgroup=is_flexgroup, efficiency_policy=efficiency_policy
+        )
 
     @na_utils.trace
     def update_volume_efficiency_attributes(self, volume_name, dedup_enabled,
                                             compression_enabled,
-                                            is_flexgroup=False):
+                                            is_flexgroup=False,
+                                            efficiency_policy=None):
         """Update dedupe & compression attributes to match desired values."""
         efficiency_status = self.get_volume_efficiency_status(volume_name)
 
@@ -2776,6 +2801,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 self.disable_compression_async(volume_name)
             else:
                 self.disable_compression(volume_name)
+
+        if is_flexgroup:
+            self.apply_volume_efficiency_policy_async(
+                volume_name, efficiency_policy=efficiency_policy)
+        else:
+            self.apply_volume_efficiency_policy(
+                volume_name, efficiency_policy=efficiency_policy)
 
     @na_utils.trace
     def volume_exists(self, volume_name):

@@ -77,6 +77,7 @@ MAX_FILES = 5000
 LANGUAGE = 'fake_language'
 SNAPSHOT_POLICY_NAME = 'fake_snapshot_policy'
 EXPORT_POLICY_NAME = 'fake_export_policy'
+VOLUME_EFFICIENCY_POLICY_NAME = 'fake_volume_efficiency_policy'
 DELETED_EXPORT_POLICIES = {
     VSERVER_NAME: [
         'deleted_manila_fake_policy_1',

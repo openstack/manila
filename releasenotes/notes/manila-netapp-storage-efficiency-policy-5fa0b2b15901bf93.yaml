@@ -1,0 +1,10 @@
+features:
+  - |
+    It is now possible to specify pre-created NetApp efficiency
+    policies through the use of the `netapp:efficiency_policy` share type
+    extra spec.
+    In the case of DHSS=True, the share server is not available upfront for
+    efficiency policy creation. Users can retype to apply the policy, or if the
+    share-network is constant (i.e., one share service is created for one share
+    network), they can create an efficiency policy for the share server and
+    apply it to DHSS=True shares.
