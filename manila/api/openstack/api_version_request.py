@@ -211,13 +211,14 @@ REST_API_VERSION_HISTORY = """
     * 2.90 - Added encryption key reference option to share create API.
     * 2.91 - Added support for targeted restores via the share backup API
     * 2.92 - Added mount_point_name to share manage API.
+    * 2.93 - Added support for filtering services by 'ensuring'.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.92"
+_MAX_API_VERSION = "2.93"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

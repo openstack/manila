@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added support for filtering services by their status
+    (`enabled` and `disabled`) and wheter the service is being ensured or not.

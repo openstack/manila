@@ -489,3 +489,7 @@ user documentation.
 2.92
 ----
   Added ``mount_point_name`` option to share manage API.
+
+2.93
+----
+  Added support for filtering services through the ``ensuring`` field.
