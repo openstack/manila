@@ -756,7 +756,9 @@ Allow access to the share with ``user`` access type:
   for creating access rules. A reason (``--lock-reason``) can also be provided.
   Only the user that placed the lock, system administrators and services will
   be able to view sensitive fields of, or manipulate such access rules by
-  virtue of default RBAC.
+  virtue of default RBAC. In case the deletion of the access rule was locked,
+  Manila will also place an additional lock on the share, to ensure it will
+  not be deleted and cause disconnections.
 
 To verify that the access rules (ACL) were configured correctly for a share,
 you list permissions for a share:

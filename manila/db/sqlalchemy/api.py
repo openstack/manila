@@ -3205,6 +3205,23 @@ def share_instance_access_delete(context, mapping_id):
     )
     if locks:
         for lock in locks:
+            if lock['resource_action'] == constants.RESOURCE_ACTION_DELETE:
+                lock_reason = (
+                    constants.SHARE_LOCKED_BY_ACCESS_LOCK_REASON % {
+                        'lock_id': lock['id']
+                    }
+                )
+                share_filters = {
+                    'all_projects': True,
+                    'lock_reason': lock_reason
+                }
+                share_locks, _ = resource_lock_get_all(
+                    context.elevated(), filters=share_filters
+                ) or []
+                for share_lock in share_locks:
+                    resource_lock_delete(
+                        context.elevated(), share_lock['id']
+                    )
             resource_lock_delete(
                 context.elevated(), lock['id']
             )

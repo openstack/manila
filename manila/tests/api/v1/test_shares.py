@@ -1127,8 +1127,21 @@ class ShareActionsTest(test.TestCase):
             'id': 'fake',
             'access_type': 'ip',
             'access_to': '127.0.0.1',
+            'share_id': 'fake_share_id'
         }
-        self.mock_object(resource_locks.API, 'create')
+        mock_deletion_lock_create = mock.Mock()
+        lock_id = 'fake_lock_id'
+        if lock_deletion:
+            mock_deletion_lock_create = mock.Mock(
+                side_effect=[
+                    {'id': lock_id},
+                    {'id': f'{lock_id}2'},
+                    {'id': f'{lock_id}3'}
+                ]
+            )
+        self.mock_object(
+            resource_locks.API, 'create', mock_deletion_lock_create
+        )
 
         id = 'fake_share_id'
         req = fakes.HTTPRequest.blank(
@@ -1147,6 +1160,10 @@ class ShareActionsTest(test.TestCase):
 
         restrict_calls = []
         if lock_deletion:
+            share_lock_reason = (
+                constants.SHARE_LOCKED_BY_ACCESS_LOCK_REASON %
+                {'lock_id': lock_id}
+            )
             restrict_calls.append(
                 mock.call(
                     context, resource_id=access['id'],
@@ -1154,6 +1171,14 @@ class ShareActionsTest(test.TestCase):
                     resource_action=constants.RESOURCE_ACTION_DELETE,
                     resource=access,
                     lock_reason=lock_reason
+                )
+            )
+            restrict_calls.append(
+                mock.call(
+                    context, resource_id=access['share_id'],
+                    resource_type='share',
+                    resource_action=constants.RESOURCE_ACTION_DELETE,
+                    lock_reason=share_lock_reason
                 )
             )
         if lock_visibility:
@@ -1245,13 +1270,14 @@ class ShareActionsTest(test.TestCase):
     @ddt.unpack
     def test_allow_access_visibility_restrictions(self, lock_visibility,
                                                   lock_deletion, lock_reason):
-        access = {'id': 'fake'}
+        access = {'id': 'fake', 'share_id': 'fake_share_id'}
+        expected_access = {'access': {'fake_key': 'fake_value'}}
         self.mock_object(share_api.API,
                          'allow_access',
                          mock.Mock(return_value=access))
         self.mock_object(self.controller._access_view_builder, 'view',
-                         mock.Mock(return_value={'access': {'fake': 'fake'}}))
-        self.mock_object(resource_locks.API, 'create')
+                         mock.Mock(return_value=expected_access))
+        self.mock_object(self.controller, '_create_access_locks')
 
         id = 'fake_share_id'
         body = {
@@ -1263,7 +1289,6 @@ class ShareActionsTest(test.TestCase):
                 'lock_reason': lock_reason
             }
         }
-        expected = {'access': {'fake': 'fake'}}
         req = fakes.HTTPRequest.blank(
             '/tenant1/shares/%s/action' % id, version='2.82')
         context = req.environ['manila.context']
@@ -1274,31 +1299,13 @@ class ShareActionsTest(test.TestCase):
             req, id, body, lock_visibility=lock_visibility,
             lock_deletion=lock_deletion, lock_reason=lock_reason)
 
-        self.assertEqual(expected, res)
+        self.assertEqual(expected_access, res)
         self.mock_policy_check.assert_called_once_with(
             context, 'share', 'allow_access')
-        restrict_calls = []
-        if lock_deletion:
-            restrict_calls.append(
-                mock.call(
-                    context, resource_id=access['id'],
-                    resource_type='access_rule',
-                    resource_action=constants.RESOURCE_ACTION_DELETE,
-                    resource=access,
-                    lock_reason=lock_reason
-                )
-            )
-        if lock_visibility:
-            restrict_calls.append(
-                mock.call(
-                    context, resource_id=access['id'],
-                    resource_type='access_rule',
-                    resource_action=constants.RESOURCE_ACTION_SHOW,
-                    resource=access,
-                    lock_reason=lock_reason
-                )
-            )
-        resource_locks.API.create.assert_has_calls(restrict_calls)
+        self.controller._create_access_locks.assert_called_once_with(
+            context, access, lock_deletion=lock_deletion,
+            lock_visibility=lock_visibility, lock_reason=lock_reason
+        )
 
     def test_allow_access_with_network_id(self):
         share_network = db_utils.create_share_network()

@@ -216,6 +216,47 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
         self.assertRaises(exception.NotFound, db_api.share_instance_access_get,
                           self.ctxt, access['id'], share['instance']['id'])
 
+    def test_share_instance_access_delete_with_locks(self):
+        share = db_utils.create_share()
+        access = db_utils.create_access(share_id=share['id'],
+                                        metadata={'key1': 'v1'})
+
+        # create a share and an access lock to ensure they'll be deleted
+        access_lock = db_utils.create_lock(resource_id=access['id'])
+        share_lock_reason = (
+            constants.SHARE_LOCKED_BY_ACCESS_LOCK_REASON %
+            {'lock_id': access_lock['id']}
+        )
+        share_lock = db_utils.create_lock(
+            resource_id=share['id'], lock_reason=share_lock_reason
+        )
+
+        # create another share lock, to ensure it won't be deleted
+        unrelated_share_lock = db_utils.create_lock(resource_id=share['id'])
+
+        instance_access_mapping = db_api.share_instance_access_get(
+            self.ctxt, access['id'], share.instance['id'])
+
+        db_api.share_instance_access_delete(
+            self.ctxt, instance_access_mapping['id'])
+
+        rules = db_api.share_access_get_all_for_instance(
+            self.ctxt, share.instance['id'])
+        unrelated_share_lock_get = (
+            db_api.resource_lock_get(self.ctxt, unrelated_share_lock['id'])
+        )
+        self.assertEqual([], rules)
+        self.assertEqual(unrelated_share_lock['id'],
+                         unrelated_share_lock_get['id'])
+
+        # ensure the access rules and the locks have been dropped
+        self.assertRaises(exception.NotFound, db_api.share_instance_access_get,
+                          self.ctxt, access['id'], share['instance']['id'])
+        self.assertRaises(exception.NotFound, db_api.resource_lock_get,
+                          self.ctxt, access_lock['id'])
+        self.assertRaises(exception.NotFound, db_api.resource_lock_get,
+                          self.ctxt, share_lock['id'])
+
     def test_one_share_with_two_share_instance_access_delete(self):
         metadata = {'key2': 'v2', 'key3': 'v3'}
         share = db_utils.create_share()

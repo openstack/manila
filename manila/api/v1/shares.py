@@ -476,29 +476,52 @@ class ShareMixin(object):
         access['project_id'] = context.project_id
         access['user_id'] = context.user_id
 
-        def raise_lock_failed(access, lock_action):
+        def raise_lock_failed(resource_id, lock_action,
+                              resource_type='access rule'):
             word_mapping = {
                 constants.RESOURCE_ACTION_SHOW: 'visibility',
                 constants.RESOURCE_ACTION_DELETE: 'deletion'
             }
-            msg = _("Failed to lock the %(action)s of the access rule "
-                    "%(rule)s.") % {
+            msg = _("Failed to lock the %(action)s of the %(resource_type)s "
+                    "%(resource_id)s.") % {
                 'action': word_mapping[lock_action],
-                'rule': access['id']
+                'resource_id': resource_id,
+                'resource_type': resource_type
             }
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        deletion_lock = {}
+        access_deletion_lock = {}
+        share_deletion_lock = {}
 
         if lock_deletion:
             try:
-                deletion_lock = self.resource_locks_api.create(
+                access_deletion_lock = self.resource_locks_api.create(
                     context, resource_id=access['id'],
                     resource_type='access_rule',
                     resource_action=constants.RESOURCE_ACTION_DELETE,
                     resource=access, lock_reason=lock_reason)
             except Exception:
-                raise_lock_failed(access, constants.RESOURCE_ACTION_DELETE)
+                raise_lock_failed(
+                    access['id'], constants.RESOURCE_ACTION_DELETE
+                )
+            try:
+                share_lock_reason = (
+                    constants.SHARE_LOCKED_BY_ACCESS_LOCK_REASON % {
+                        'lock_id': access_deletion_lock['id']
+                    }
+                )
+                share_deletion_lock = self.resource_locks_api.create(
+                    context, resource_id=access['share_id'],
+                    resource_type='share',
+                    resource_action=constants.RESOURCE_ACTION_DELETE,
+                    lock_reason=share_lock_reason)
+            except Exception:
+                self.resource_locks_api.delete(
+                    context, access_deletion_lock['id'])
+                raise_lock_failed(
+                    access['share_id'], constants.RESOURCE_ACTION_DELETE,
+                    resource_type='share'
+                )
 
         if lock_visibility:
             try:
@@ -510,10 +533,13 @@ class ShareMixin(object):
             except Exception:
                 # If a deletion lock was placed and the visibility wasn't,
                 # we should rollback the deletion lock.
-                if deletion_lock:
+                if access_deletion_lock:
                     self.resource_locks_api.delete(
-                        context, deletion_lock['id'])
-                raise_lock_failed(access, constants.RESOURCE_ACTION_SHOW)
+                        context, access_deletion_lock['id'])
+                if share_deletion_lock:
+                    self.resource_locks_api.delete(
+                        context, share_deletion_lock['id'])
+                raise_lock_failed(access['id'], constants.RESOURCE_ACTION_SHOW)
 
     @wsgi.Controller.authorize('allow_access')
     def _allow_access(self, req, id, body, enable_ceph=False,
