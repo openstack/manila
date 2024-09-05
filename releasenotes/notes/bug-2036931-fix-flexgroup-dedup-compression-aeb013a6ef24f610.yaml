@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp driver: fixed FlexGroup share creation while modifying the dedup
+    and compression configurations. For more details please refer to
+    `launchpad bug #2036931 <https://bugs.launchpad.net/manila/+bug/2036931>`
