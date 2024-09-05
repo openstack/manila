@@ -617,3 +617,25 @@ def write_remote_file(ssh, filename, contents, as_root=False):
     stdin.close()
     stdin.channel.shutdown_write()
     ssh.exec_command(cmd2)
+
+
+def convert_time_duration_to_iso_format(time_duration):
+    """Covert time duration to ISO 8601 format"""
+    unit_mapping = {
+        'minutes': 'M',
+        'hours': 'H',
+        'days': 'D',
+        'months': 'M',
+        'years': 'Y',
+    }
+    pattern = re.compile(r'(\d+)\s*(minutes|hours|days|months|years)')
+    match = pattern.match(time_duration)
+    if not match:
+        raise exception.ManilaException(
+            f"Invalid time duration format: {time_duration}")
+    value, unit = match.groups()
+    if unit in ["minutes", "hours", "days"]:
+        iso_format = f"PT{value}{unit_mapping[unit]}"
+    else:
+        iso_format = f"P{value}{unit_mapping[unit]}"
+    return iso_format

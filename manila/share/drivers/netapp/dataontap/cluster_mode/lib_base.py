@@ -119,6 +119,15 @@ class NetAppCmodeFileStorageLibrary(object):
             'fpolicy_extensions_to_exclude',
         'netapp:fpolicy_file_operations': 'fpolicy_file_operations',
         'netapp:efficiency_policy': 'efficiency_policy',
+        'netapp_snaplock_type': 'snaplock_type',
+        'netapp:snaplock_autocommit_period':
+            'snaplock_autocommit_period',
+        'netapp:snaplock_min_retention_period':
+            'snaplock_min_retention_period',
+        'netapp:snaplock_max_retention_period':
+            'snaplock_max_retention_period',
+        'netapp:snaplock_default_retention_period':
+            'snaplock_default_retention_period',
     }
 
     # Maps standard extra spec keys to legacy NetApp keys
@@ -154,6 +163,8 @@ class NetAppCmodeFileStorageLibrary(object):
         'link', 'lookup', 'open', 'read', 'write', 'rename', 'rename_dir',
         'setattr', 'symlink']
 
+    SNAPLOCK_TYPE = ['compliance', 'enterprise']
+
     def __init__(self, driver_name, **kwargs):
         na_utils.validate_driver_instantiation(**kwargs)
 
@@ -184,6 +195,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self._cache_pool_status = None
         self._flexgroup_pools = {}
         self._is_flexgroup_auto = False
+        self._is_snaplock_compliance_configured = False
 
         self._app_version = kwargs.get('app_version', 'unknown')
 
@@ -203,6 +215,14 @@ class NetAppCmodeFileStorageLibrary(object):
         self._have_cluster_creds = self._client.check_for_cluster_credentials()
         if self._have_cluster_creds is True:
             self._set_cluster_info()
+            # Set SnapLock compliance clock configured on both the nodes
+            nodes = self._client.list_cluster_nodes()
+            for node in nodes:
+                self._is_snaplock_compliance_configured = (
+                    self._client.is_snaplock_compliance_clock_configured(node)
+                )
+                if not self._is_snaplock_compliance_configured:
+                    break
 
         self._licenses = self._get_licenses()
         self._revert_to_snapshot_support = self._check_snaprestore_license()
@@ -493,7 +513,6 @@ class NetAppCmodeFileStorageLibrary(object):
                 aggr_space, aggr_list)
 
             pool = self._get_pool(pool_name, total_gb, free_gb, used_gb)
-
             cached_pools.append(pool)
             pool_with_func = copy.deepcopy(pool)
             pool_with_func['filter_function'] = filter_function
@@ -517,7 +536,6 @@ class NetAppCmodeFileStorageLibrary(object):
 
         netapp_flexvol_encryption = self._cluster_info.get(
             'nve_support', False)
-
         reserved_percentage = self.configuration.reserved_share_percentage
         reserved_snapshot_percentage = (
             self.configuration.reserved_share_from_snapshot_percentage or
@@ -552,7 +570,7 @@ class NetAppCmodeFileStorageLibrary(object):
             'revert_to_snapshot_support': self._revert_to_snapshot_support,
             'security_service_update_support': True,
             'share_server_multiple_subnet_support': True,
-            'mount_point_name_support': True
+            'mount_point_name_support': True,
         }
 
         # Add storage service catalog data.
@@ -1126,6 +1144,9 @@ class NetAppCmodeFileStorageLibrary(object):
         provisioning_options = self._get_provisioning_options_for_share(
             share, vserver, vserver_client=vserver_client, set_qos=set_qos)
 
+        if provisioning_options.get('snaplock_type'):
+            self._check_snaplock_compatibility()
+
         if replica:
             # If this volume is intended to be a replication destination,
             # create it as the 'data-protection' type
@@ -1181,14 +1202,16 @@ class NetAppCmodeFileStorageLibrary(object):
     def _create_flexgroup_share(self, vserver_client, aggr_list, share_name,
                                 size, snapshot_reserve, dedup_enabled=False,
                                 compression_enabled=False, max_files=None,
-                                mount_point_name=None, **provisioning_options):
+                                mount_point_name=None, snaplock_type=None,
+                                **provisioning_options):
         """Create a FlexGroup share using async API with job."""
 
         start_timeout = (
             self.configuration.netapp_flexgroup_aggregate_not_busy_timeout)
         job_info = self.wait_for_start_create_flexgroup(
             start_timeout, vserver_client, aggr_list, share_name, size,
-            snapshot_reserve, mount_point_name, **provisioning_options)
+            snapshot_reserve, mount_point_name, snaplock_type,
+            **provisioning_options)
 
         if not job_info['jobid'] or job_info['error-code']:
             msg = "Error creating FlexGroup share: %s."
@@ -1206,11 +1229,16 @@ class NetAppCmodeFileStorageLibrary(object):
         if max_files is not None:
             vserver_client.set_volume_max_files(share_name, max_files)
 
+        if snaplock_type is not None:
+            vserver_client.set_snaplock_attributes(share_name,
+                                                   **provisioning_options)
+
     @na_utils.trace
     def wait_for_start_create_flexgroup(self, start_timeout, vserver_client,
                                         aggr_list, share_name, size,
                                         snapshot_reserve,
-                                        mount_point_name=None,
+                                        mount_point_name,
+                                        snaplock_type,
                                         **provisioning_options):
         """Wait for starting create FlexGroup volume succeed.
 
@@ -1225,6 +1253,7 @@ class NetAppCmodeFileStorageLibrary(object):
         :param size: size to be provisioned.
         :param snapshot_reserve: snapshot reserve option.
         :param mount_point_name: junction_path_name.
+        :param snaplock_type: SnapLock type
         :param provisioning_options: other provision not required options.
         """
 
@@ -1241,6 +1270,7 @@ class NetAppCmodeFileStorageLibrary(object):
                     snapshot_reserve=snapshot_reserve,
                     auto_provisioned=self._is_flexgroup_auto,
                     mount_point_name=mount_point_name,
+                    snaplock_type=snaplock_type,
                     **provisioning_options)
             except netapp_api.NaApiError as e:
                 with excutils.save_and_reraise_exception() as raise_ctxt:
@@ -1328,12 +1358,25 @@ class NetAppCmodeFileStorageLibrary(object):
             self._check_fpolicy_file_operations(
                 share, extra_specs['netapp:fpolicy_file_operations'])
 
+        # Validate extra_specs for SnapLock
+        snaplock_attributes = [
+            'netapp:snaplock_autocommit_period',
+            'netapp:snaplock_min_retention_period',
+            'netapp:snaplock_max_retention_period',
+            'netapp:snaplock_default_retention_period'
+        ]
+        for attribute in snaplock_attributes:
+            if attribute in extra_specs:
+                self._check_snaplock_attributes(share, attribute,
+                                                extra_specs[attribute])
+
     @na_utils.trace
     def _check_if_max_files_is_valid(self, share, value):
         """Check if max_files has a valid value."""
         if int(value) < 0:
             args = {'value': value, 'key': 'netapp:max_files',
-                    'type_id': share['share_type_id'], 'share_id': share['id']}
+                    'type_id': share['share_type_id'],
+                    'share_id': share['id']}
             msg = _('Invalid value "%(value)s" for extra_spec "%(key)s" '
                     'in share_type %(type_id)s for share %(share_id)s.')
             raise exception.NetAppException(msg % args)
@@ -1353,6 +1396,65 @@ class NetAppCmodeFileStorageLibrary(object):
                 raise exception.NetAppException(msg % args)
 
     @na_utils.trace
+    def _check_snaplock_attributes(self, share, key, value):
+        """Validate the SnapLock retention periods"""
+        valid_units_for_period = ["minutes", "hours", "days",
+                                  "months", "years"]
+        pattern = re.compile(r'^\d+\s*(minutes|hours|days|months|years)$')
+        common_msg = ("a number followed suffix, valid suffix are: "
+                      f"{valid_units_for_period}. For example, a value"
+                      f" if '2hours' represents a {key}"
+                      " of 2 hours.")
+
+        if key == 'netapp:snaplock_autocommit_period':
+            is_matched = pattern.match(value)
+            extra_msg = (f"The value of the {key} should be"
+                         f" {common_msg} ")
+            if not is_matched:
+                self._raise_snaplock_exception(share, key, value, extra_msg)
+        elif (key == 'netapp:snaplock_min_retention_period'
+              or key == 'netapp:snaplock_max_retention_period'):
+            is_matched = pattern.match(value) or value == "infinite"
+            extra_msg = (f"The value of the {key} should be "
+                         f"'infinite' or {common_msg}")
+            if not is_matched:
+                self._raise_snaplock_exception(share, key, value, extra_msg)
+        elif key == 'netapp:snaplock_default_retention_period':
+            is_matched = (pattern.match(value) or value == "infinite"
+                          or value == "min" or value == "max")
+            extra_msg = (f"The value of the {key} should be "
+                         f"'infinite', 'min', 'max', or {common_msg}")
+            if not is_matched:
+                self._raise_snaplock_exception(share, key, value, extra_msg)
+
+    def _raise_snaplock_exception(self, share, key, value, extra_msg):
+        args = {'value': value,
+                'extra_spec': key,
+                'type_id': share['share_type_id'],
+                'share_id': share['id'],
+                'extra_msg': extra_msg}
+        msg = _('Invalid value "%(value)s" for extra_spec '
+                '"%(extra_spec)s" in share_type %(type_id)s for share '
+                '%(share_id)s. %(extra_msg)s')
+        raise exception.NetAppException(msg % args)
+
+    @na_utils.trace
+    def _check_snaplock_compatibility(self):
+        """Check SnapLock license and compliance clock sync with the nodes"""
+        # Check SnapLock license is enabled on cluster
+        if self._have_cluster_creds:
+            if 'snaplock' not in self._licenses:
+                exception.NetAppException("SnapLock License is not"
+                                          " available on ONTAP")
+            if not self._is_snaplock_compliance_configured:
+                msg = _('Compliance clock is not configured for one'
+                        ' of the nodes.')
+                raise exception.NetAppException(msg)
+        else:
+            LOG.warning("Unable to verify if SnapLock is enabled for"
+                        " the cluster.")
+
+    @na_utils.trace
     def _check_boolean_extra_specs_validity(self, share, specs,
                                             keys_of_interest):
         # cDOT compression requires deduplication.
@@ -1364,7 +1466,8 @@ class NetAppCmodeFileStorageLibrary(object):
                         'netapp:compression': compression}
                 type_id = share['share_type_id']
                 share_id = share['id']
-                args = {'type_id': type_id, 'share_id': share_id, 'spec': spec}
+                args = {'type_id': type_id, 'share_id': share_id,
+                        'spec': spec}
                 msg = _('Invalid combination of extra_specs in share_type '
                         '%(type_id)s for share %(share_id)s: %(spec)s: '
                         'deduplication must be enabled in order for '
@@ -2457,30 +2560,51 @@ class NetAppCmodeFileStorageLibrary(object):
                     'netapp_flexgroup': True,
                 }
 
+        # Add the SnapLock info for FlexVol
+        for aggr_name in aggregate_names:
+            if self._client.features.UNIFIED_AGGR:
+                snaplock_dict = {'netapp_snaplock_type': self.SNAPLOCK_TYPE}
+            else:
+                snaplock_dict = {
+                    'netapp_snaplock_type':
+                        self._get_aggregate_snaplock_type(aggr_name)
+                }
+            ssc_stats[aggr_name].update(snaplock_dict)
+
         # Add aggregate specs for pools
         aggr_set = set(aggregate_names).union(self._get_flexgroup_aggr_set())
         if self._have_cluster_creds and aggr_set:
             aggr_info = self._get_aggregate_info(aggr_set)
 
             # FlexVol pools
+            aggr_info_flexvol = copy.deepcopy(aggr_info)
             for aggr_name in aggregate_names:
-                ssc_stats[aggr_name].update(aggr_info[aggr_name])
+                if self._client.features.UNIFIED_AGGR:
+                    aggr_info_flexvol[aggr_name]['netapp_snaplock_type'] = \
+                        self.SNAPLOCK_TYPE
+                ssc_stats[aggr_name].update(aggr_info_flexvol[aggr_name])
 
             # FlexGroup pools
             for pool_name, aggr_list in flexgroup_pools.items():
                 raid_type = set()
                 hybrid = set()
                 disk_type = set()
+                snaplock_type = set()
                 for aggr in aggr_list:
                     raid_type.add(aggr_info[aggr]['netapp_raid_type'])
                     hybrid.add(aggr_info[aggr]['netapp_hybrid_aggregate'])
                     disk_type = disk_type.union(
                         aggr_info[aggr]['netapp_disk_type'])
+                    snaplock_type.add(aggr_info[aggr]['netapp_snaplock_type'])
 
                 ssc_stats[pool_name].update({
                     'netapp_raid_type': " ".join(sorted(raid_type)),
                     'netapp_hybrid_aggregate': " ".join(sorted(hybrid)),
                     'netapp_disk_type': sorted(list(disk_type)),
+                    'netapp_snaplock_type': self.SNAPLOCK_TYPE
+                    if self._client.features.UNIFIED_AGGR
+                    else " ".join(sorted(snaplock_type)),
+
                 })
 
         self._ssc_stats = ssc_stats
@@ -2504,6 +2628,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'netapp_hybrid_aggregate': hybrid,
                 'netapp_disk_type': disk_types,
                 'netapp_is_home': aggregate.get('is-home'),
+                'netapp_snaplock_type': aggregate.get('snaplock-type'),
             }
 
         return aggr_info
@@ -3398,6 +3523,17 @@ class NetAppCmodeFileStorageLibrary(object):
                                                       dm_session):
                     msg = _("Cannot migrate share because the destination "
                             "pool is FlexGroup type.")
+                    raise exception.NetAppException(msg)
+
+                # Check the source/destination pool SnapLock type, for
+                # ONTAP version < 9.10.1
+                if not self._is_snaplock_compatible_for_migration(
+                        source_pool,
+                        destination_aggregate
+                ):
+                    msg = _("Cannot migrate share because the source and "
+                            "destination pool support different SnapLock"
+                            " type.")
                     raise exception.NetAppException(msg)
 
                 # Validate new extra-specs are valid on the destination
@@ -5048,3 +5184,29 @@ class NetAppCmodeFileStorageLibrary(object):
             update_func = getattr(self, metadata_update_func_map.get(k))
             if update_func:
                 update_func(share, v, share_server=share_server)
+
+    @na_utils.trace
+    def _get_aggregate_snaplock_type(self, aggr_name):
+        if self._have_cluster_creds:
+            aggr_attributes = self._client.get_aggregate(aggr_name)
+            snaplock_type = aggr_attributes.get('snaplock-type')
+
+        else:
+            snaplock_type = self._client.get_vserver_aggr_snaplock_type(
+                aggr_name,
+            )
+        return snaplock_type
+
+    @na_utils.trace
+    def _is_snaplock_compatible_for_migration(self, source_pool, des_pool):
+        if self._client.features.UNIFIED_AGGR:
+            return True
+        if (self.configuration.netapp_use_legacy_client
+                and self._client.features.SNAPLOCK):
+            source_snaplock_type = self._ssc_stats.get(source_pool, {}).get(
+                'netapp_snaplock_type')
+            des_snaplock_type = self._ssc_stats.get(des_pool, {}).get(
+                'netapp_snaplock_type')
+            if source_snaplock_type != des_snaplock_type:
+                return False
+        return True

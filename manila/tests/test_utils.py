@@ -778,3 +778,20 @@ class TestAllTenantsValueCase(test.TestCase):
         search_opts = {'all_tenants': 'wonk'}
         self.assertRaises(exception.InvalidInput, utils.is_all_tenants,
                           search_opts)
+
+    @ddt.data(
+        ("8minutes", "PT8M"),
+        ("10hours", "PT10H"),
+        ("6months", "P6M"),
+        ("2years", "P2Y")
+    )
+    @ddt.unpack
+    def test_convert_time_duration_to_iso_format(self,
+                                                 time_duration, expected):
+        result = utils.convert_time_duration_to_iso_format(time_duration)
+        self.assertEqual(expected, result)
+
+    def test_convert_time_duration_to_iso_format_negative(self):
+        self.assertRaises(exception.ManilaException,
+                          utils.convert_time_duration_to_iso_format,
+                          'invalid_duration')
