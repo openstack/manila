@@ -13,23 +13,33 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_config import cfg
+from oslo_log import log
 from webob import exc
 
 from manila.api.openstack import wsgi
+from manila.api.v2 import metadata
 from manila.api.views import export_locations as export_locations_views
 from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
 from manila import policy
 
+LOG = log.getLogger(__name__)
+CONF = cfg.CONF
 
-class ShareExportLocationController(wsgi.Controller):
+
+class ShareExportLocationController(wsgi.Controller,
+                                    metadata.MetadataController):
     """The Share Export Locations API controller."""
 
     def __init__(self):
         self._view_builder_class = export_locations_views.ViewBuilder
         self.resource_name = 'share_export_location'
         super(ShareExportLocationController, self).__init__()
+        self._conf_admin_only_metadata_keys = getattr(
+            CONF, 'admin_only_el_metadata', []
+        )
 
     def _verify_share(self, context, share_id):
         try:
@@ -93,6 +103,96 @@ class ShareExportLocationController(wsgi.Controller):
         """Return data about the requested export location."""
         return self._show(req, share_id, export_location_uuid,
                           ignore_secondary_replicas=True)
+
+    def _validate_metadata_for_update(self, req, share_export_location,
+                                      metadata, delete=True):
+        persistent_keys = set(self._conf_admin_only_metadata_keys)
+        context = req.environ['manila.context']
+        if set(metadata).intersection(persistent_keys):
+            try:
+                policy.check_policy(
+                    context, 'share_export_location',
+                    'update_admin_only_metadata')
+            except exception.PolicyNotAuthorized:
+                msg = _("Cannot set or update admin only metadata.")
+                LOG.exception(msg)
+                raise exc.HTTPForbidden(explanation=msg)
+            persistent_keys = []
+
+        current_export_metadata = db_api.export_location_metadata_get(
+            context, share_export_location)
+        if delete:
+            _metadata = metadata
+            for key in persistent_keys:
+                if key in current_export_metadata:
+                    _metadata[key] = current_export_metadata[key]
+        else:
+            metadata_copy = metadata.copy()
+            for key in persistent_keys:
+                metadata_copy.pop(key, None)
+            _metadata = current_export_metadata.copy()
+            _metadata.update(metadata_copy)
+
+        return _metadata
+
+    @wsgi.Controller.api_version("2.87")
+    @wsgi.Controller.authorize("get_metadata")
+    def index_metadata(self, req, share_id, resource_id):
+        """Returns the list of metadata for a given share export location."""
+        context = req.environ['manila.context']
+        self._verify_share(context, share_id)
+        return self._index_metadata(req, resource_id)
+
+    @wsgi.Controller.api_version("2.87")
+    @wsgi.Controller.authorize("update_metadata")
+    def create_metadata(self, req, share_id, resource_id, body):
+        """Create metadata for a given share export location."""
+        _metadata = self._validate_metadata_for_update(req, resource_id,
+                                                       body['metadata'],
+                                                       delete=False)
+        body['metadata'] = _metadata
+        context = req.environ['manila.context']
+        self._verify_share(context, share_id)
+        return self._create_metadata(req, resource_id, body)
+
+    @wsgi.Controller.api_version("2.87")
+    @wsgi.Controller.authorize("update_metadata")
+    def update_all_metadata(self, req, share_id, resource_id, body):
+        """Update entire metadata for a given share export location."""
+        _metadata = self._validate_metadata_for_update(req, resource_id,
+                                                       body['metadata'])
+        body['metadata'] = _metadata
+        context = req.environ['manila.context']
+        self._verify_share(context, share_id)
+        return self._update_all_metadata(req, resource_id, body)
+
+    @wsgi.Controller.api_version("2.87")
+    @wsgi.Controller.authorize("update_metadata")
+    def update_metadata_item(self, req, share_id, resource_id, body, key):
+        """Update metadata item for a given share export location."""
+        _metadata = self._validate_metadata_for_update(req, resource_id,
+                                                       body['metadata'],
+                                                       delete=False)
+        body['metadata'] = _metadata
+        context = req.environ['manila.context']
+        self._verify_share(context, share_id)
+        return self._update_metadata_item(req, resource_id, body, key)
+
+    @wsgi.Controller.api_version("2.87")
+    @wsgi.Controller.authorize("get_metadata")
+    def show_metadata(self, req, share_id, resource_id, key):
+        """Show metadata for a given share export location."""
+        context = req.environ['manila.context']
+        self._verify_share(context, share_id)
+        return self._show_metadata(req, resource_id, key)
+
+    @wsgi.Controller.api_version("2.87")
+    @wsgi.Controller.authorize("delete_metadata")
+    def delete_metadata(self, req, share_id, resource_id, key):
+        """Delete metadata for a given share export location."""
+        context = req.environ['manila.context']
+        self._verify_share(context, share_id)
+        return self._delete_metadata(req, resource_id, key)
 
 
 def create_resource():

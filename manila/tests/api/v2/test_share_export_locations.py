@@ -249,3 +249,98 @@ class ShareExportLocationsAPITest(test.TestCase):
             self.share['id'],
             index_result['export_locations'][0]['id']
         )
+
+    def test_validate_metadata_for_update(self):
+        index_result = self.controller.index(self.req, self.share['id'])
+        el_id = index_result['export_locations'][0]['id']
+        metadata = {"foo": "bar", "preferred": "False"}
+
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/export_locations/%s/metadata' % (
+                self.share_instance_id, el_id),
+            version="2.87", use_admin_context=True)
+        result = self.controller._validate_metadata_for_update(
+            req, el_id, metadata)
+
+        self.assertEqual(metadata, result)
+
+    def test_validate_metadata_for_update_invalid(self):
+        index_result = self.controller.index(self.req, self.share['id'])
+        el_id = index_result['export_locations'][0]['id']
+        metadata = {"foo": "bar", "preferred": "False"}
+
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(
+                side_effect=exception.PolicyNotAuthorized(
+                    action="update_admin_only_metadata")))
+
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/export_locations/%s/metadata' % (
+                self.share_instance_id, el_id),
+            version="2.87", use_admin_context=False)
+
+        self.assertRaises(exc.HTTPForbidden,
+                          self.controller._validate_metadata_for_update,
+                          req, el_id, metadata)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], 'share_export_location',
+            'update_admin_only_metadata')
+
+    def test_create_metadata(self):
+        index_result = self.controller.index(self.req, self.share['id'])
+        el_id = index_result['export_locations'][0]['id']
+        body = {'metadata': {'key1': 'val1', 'key2': 'val2'}}
+        mock_validate = self.mock_object(
+            self.controller, '_validate_metadata_for_update',
+            mock.Mock(return_value=body['metadata']))
+        mock_create = self.mock_object(
+            self.controller, '_create_metadata',
+            mock.Mock(return_value=body))
+
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/export_locations/%s/metadata' % (
+                self.share_instance_id, el_id),
+            version="2.87", use_admin_context=True)
+
+        res = self.controller.create_metadata(req, self.share['id'], el_id,
+                                              body)
+        self.assertEqual(body, res)
+        mock_validate.assert_called_once_with(req, el_id, body['metadata'],
+                                              delete=False)
+        mock_create.assert_called_once_with(req, el_id, body)
+
+    def test_update_all_metadata(self):
+        index_result = self.controller.index(self.req, self.share['id'])
+        el_id = index_result['export_locations'][0]['id']
+        body = {'metadata': {'key1': 'val1', 'key2': 'val2'}}
+        mock_validate = self.mock_object(
+            self.controller, '_validate_metadata_for_update',
+            mock.Mock(return_value=body['metadata']))
+        mock_update = self.mock_object(
+            self.controller, '_update_all_metadata',
+            mock.Mock(return_value=body))
+
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/export_locations/%s/metadata' % (
+                self.share_instance_id, el_id),
+            version="2.87", use_admin_context=True)
+
+        res = self.controller.update_all_metadata(req, self.share['id'], el_id,
+                                                  body)
+        self.assertEqual(body, res)
+        mock_validate.assert_called_once_with(req, el_id, body['metadata'])
+        mock_update.assert_called_once_with(req, el_id, body)
+
+    def test_delete_metadata(self):
+        index_result = self.controller.index(self.req, self.share['id'])
+        el_id = index_result['export_locations'][0]['id']
+        mock_delete = self.mock_object(
+            self.controller, '_delete_metadata', mock.Mock())
+
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/export_locations/%s/metadata/fake_key' % (
+                self.share_instance_id, el_id),
+            version="2.87", use_admin_context=True)
+        self.controller.delete_metadata(req, self.share['id'], el_id,
+                                        'fake_key')
+        mock_delete.assert_called_once_with(req, el_id, 'fake_key')

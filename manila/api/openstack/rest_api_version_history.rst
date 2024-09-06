@@ -462,3 +462,8 @@ user documentation.
 2.86
 ----
    Added ensure shares API.
+
+2.87
+----
+  Added Metadata API methods (GET, PUT, POST, DELETE)
+  to Share Export Locations.

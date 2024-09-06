@@ -152,6 +152,10 @@ global_opts = [
                 help='Whether Manila should update the status of all shares '
                      'within a backend during ongoing ensure_shares '
                      'run.'),
+    cfg.ListOpt('admin_only_el_metadata',
+                default=constants.AdminOnlyMetadata.EXPORT_LOCATION_KEYS,
+                help='Metadata keys for export locations that should only be '
+                     'manipulated by administrators.'),
 ]
 
 CONF.register_opts(global_opts)

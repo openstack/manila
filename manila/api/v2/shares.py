@@ -627,9 +627,9 @@ class ShareController(wsgi.Controller,
 
     def _validate_metadata_for_update(self, req, share_id, metadata,
                                       delete=True):
-        admin_metadata_ignore_keys = set(self._conf_admin_only_metadata_keys)
+        persistent_keys = set(self._conf_admin_only_metadata_keys)
         context = req.environ['manila.context']
-        if set(metadata).intersection(admin_metadata_ignore_keys):
+        if set(metadata).intersection(persistent_keys):
             try:
                 policy.check_policy(
                     context, 'share', 'update_admin_only_metadata')
@@ -637,17 +637,17 @@ class ShareController(wsgi.Controller,
                 msg = _("Cannot set or update admin only metadata.")
                 LOG.exception(msg)
                 raise exc.HTTPForbidden(explanation=msg)
-            admin_metadata_ignore_keys = []
+            persistent_keys = []
 
         current_share_metadata = db.share_metadata_get(context, share_id)
         if delete:
             _metadata = metadata
-            for key in admin_metadata_ignore_keys:
+            for key in persistent_keys:
                 if key in current_share_metadata:
                     _metadata[key] = current_share_metadata[key]
         else:
             metadata_copy = metadata.copy()
-            for key in admin_metadata_ignore_keys:
+            for key in persistent_keys:
                 metadata_copy.pop(key, None)
             _metadata = current_share_metadata.copy()
             _metadata.update(metadata_copy)

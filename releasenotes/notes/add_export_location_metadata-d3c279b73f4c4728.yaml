@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added share export location metadata capabilities including
+    create, update all, update single, show and delete metadata.
+    Allows configuration of `admin_only_el_metadata`,
+    such that keys in this list are able to be manipulated only by
+    those with admin privileges. By default, this includes
+    "preferred" key.

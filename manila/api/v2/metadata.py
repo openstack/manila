@@ -28,36 +28,42 @@ class MetadataController(object):
         "share": "share_get",
         "share_snapshot": "share_snapshot_get",
         "share_network_subnet": "share_network_subnet_get",
+        "share_export_location": "export_location_get_by_uuid",
     }
 
     resource_metadata_get = {
         "share": "share_metadata_get",
         "share_snapshot": "share_snapshot_metadata_get",
         "share_network_subnet": "share_network_subnet_metadata_get",
+        "share_export_location": "export_location_metadata_get",
     }
 
     resource_metadata_get_item = {
         "share": "share_metadata_get_item",
         "share_snapshot": "share_snapshot_metadata_get_item",
         "share_network_subnet": "share_network_subnet_metadata_get_item",
+        "share_export_location": "export_location_metadata_get_item",
     }
 
     resource_metadata_update = {
         "share": "share_metadata_update",
         "share_snapshot": "share_snapshot_metadata_update",
         "share_network_subnet": "share_network_subnet_metadata_update",
+        "share_export_location": "export_location_metadata_update",
     }
 
     resource_metadata_update_item = {
         "share": "share_metadata_update_item",
         "share_snapshot": "share_snapshot_metadata_update_item",
         "share_network_subnet": "share_network_subnet_metadata_update_item",
+        "share_export_location": "export_location_metadata_update_item",
     }
 
     resource_metadata_delete = {
         "share": "share_metadata_delete",
         "share_snapshot": "share_snapshot_metadata_delete",
         "share_network_subnet": "share_network_subnet_metadata_delete",
+        "share_export_location": "export_location_metadata_delete",
     }
 
     resource_policy_get = {
@@ -72,10 +78,13 @@ class MetadataController(object):
 
     def _get_resource(self, context, resource_id,
                       for_modification=False, parent_id=None):
-        if self.resource_name in ['share', 'share_network_subnet']:
-            # we would allow retrieving some "public" resources
-            # across project namespaces except share snapshots,
-            # project_only=True is hard coded
+        if self.resource_name in ['share', 'share_network_subnet',
+                                  'share_export_location']:
+            # some resources don't have a "project_id" field (like
+            # share_export_location or share_network_subnet),
+            # and sometimes we want to retrieve "public" resources
+            # (like shares), so avoid hard coding project_only=True in the
+            # lookup where necessary
             kwargs = {}
         else:
             kwargs = {'project_only': True}
@@ -86,23 +95,25 @@ class MetadataController(object):
                 kwargs["parent_id"] = parent_id
             res = get_res_method(context, resource_id, **kwargs)
 
-            get_policy = self.resource_policy_get[self.resource_name]
-            if res.get('is_public') is False:
-                authorized = policy.check_policy(context,
-                                                 self.resource_name,
-                                                 get_policy,
-                                                 res,
-                                                 do_raise=False)
-                if not authorized:
-                    # Raising NotFound to prevent existence detection
-                    raise exception.NotFound()
-            elif for_modification:
-                # a public resource's metadata can be viewed, but not
-                # modified by non owners
-                policy.check_policy(context,
-                                    self.resource_name,
-                                    get_policy,
-                                    res)
+            if self.resource_name not in ["share_export_location"]:
+                get_policy = self.resource_policy_get[self.resource_name]
+                # skip policy check for export locations
+                if res.get('is_public') is False:
+                    authorized = policy.check_policy(context,
+                                                     self.resource_name,
+                                                     get_policy,
+                                                     res,
+                                                     do_raise=False)
+                    if not authorized:
+                        # Raising NotFound to prevent existence detection
+                        raise exception.NotFound()
+                elif for_modification:
+                    # a public resource's metadata can be viewed, but not
+                    # modified by non owners
+                    policy.check_policy(context,
+                                        self.resource_name,
+                                        get_policy,
+                                        res)
         except exception.NotFound:
             msg = _('%s not found.' % self.resource_name.capitalize())
             raise exc.HTTPNotFound(explanation=msg)
@@ -120,6 +131,7 @@ class MetadataController(object):
 
     @wsgi.response(200)
     def _index_metadata(self, req, resource_id, parent_id=None):
+        """Lists existing metadata."""
         context = req.environ['manila.context']
         metadata = self._get_metadata(context, resource_id,
                                       parent_id=parent_id)

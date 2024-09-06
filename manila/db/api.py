@@ -1004,6 +1004,13 @@ def export_location_metadata_get(context, export_location_uuid):
     return IMPL.export_location_metadata_get(context, export_location_uuid)
 
 
+def export_location_metadata_get_item(context, export_location_uuid, key):
+    """Get metadata item for a share export location."""
+    return IMPL.export_location_metadata_get_item(context,
+                                                  export_location_uuid,
+                                                  key)
+
+
 def export_location_metadata_delete(context, export_location_uuid, keys):
     """Delete metadata of an export location."""
     return IMPL.export_location_metadata_delete(
@@ -1015,6 +1022,14 @@ def export_location_metadata_update(context, export_location_uuid, metadata,
     """Update metadata of an export location."""
     return IMPL.export_location_metadata_update(
         context, export_location_uuid, metadata, delete)
+
+
+def export_location_metadata_update_item(context, export_location_uuid,
+                                         metadata):
+    """Update metadata item if it exists, otherwise create it."""
+    return IMPL.export_location_metadata_update_item(context,
+                                                     export_location_uuid,
+                                                     metadata)
 
 ####################
 
