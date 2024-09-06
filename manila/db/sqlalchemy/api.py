@@ -2233,6 +2233,7 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
         else:
             query = query.filter(models.Share.project_id == project_id)
 
+    safe_regex_filter, db_regexp_op = _get_regexp_ops(CONF.database.connection)
     display_name = filters.get('display_name')
     if display_name:
         query = query.filter(
@@ -2240,8 +2241,10 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
     else:
         display_name = filters.get('display_name~')
         if display_name:
-            query = query.filter(models.Share.display_name.op('LIKE')(
-                u'%' + display_name + u'%'))
+            query = query.filter(
+                models.Share.display_name.op(db_regexp_op)(
+                    _get_filter_value_by_op(
+                        db_regexp_op, display_name, safe_regex_filter)))
 
     display_description = filters.get('display_description')
     if display_description:
@@ -2250,8 +2253,10 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
     else:
         display_description = filters.get('display_description~')
         if display_description:
-            query = query.filter(models.Share.display_description.op('LIKE')(
-                u'%' + display_description + u'%'))
+            query = query.filter(
+                models.Share.display_description.op(db_regexp_op)(
+                    _get_filter_value_by_op(
+                        db_regexp_op, display_description, safe_regex_filter)))
 
     export_location_id = filters.pop('export_location_id', None)
     export_location_path = filters.pop('export_location_path', None)
@@ -2292,8 +2297,57 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
                 constants.STATUS_DEFERRED_DELETING),
             models.ShareInstance.status != (
                 constants.STATUS_ERROR_DEFERRED_DELETING)))
-
     return query
+
+
+def _get_filter_value_by_op(op, filter_value, safe_regex_filter):
+    if op == 'LIKE':
+        return u'%' + filter_value + u'%'
+    else:
+        return safe_regex_filter(filter_value)
+
+
+def _safe_regex_mysql(raw_string):
+    """Make regex safe to mysql.
+
+    Certain items like '|' are interpreted raw by mysql REGEX. If you
+    search for a single | then you trigger an error because it's
+    expecting content on either side.
+
+    For consistency sake we escape all '|'. This does mean we wouldn't
+    support something like foo|bar to match completely different
+    things, however, one can argue putting such complicated regex into
+    name search probably means you are doing this wrong.
+    """
+    return raw_string.replace('|', '\\|')
+
+
+def _get_regexp_ops(connection):
+    """Return safety filter and db opts for regex."""
+    regexp_op_map = {
+        'postgresql': '~',
+        'mysql': 'REGEXP',
+        'sqlite': 'REGEXP'
+    }
+    regex_safe_filters = {
+        'mysql': _safe_regex_mysql
+    }
+    db_type = _db_connection_type(connection)
+
+    return (regex_safe_filters.get(db_type, lambda x: x),
+            regexp_op_map.get(db_type, 'LIKE'))
+
+
+def _db_connection_type(db_connection):
+    """Returns a lowercase symbol for the db type.
+
+    This is useful when we need to change what we are doing per DB
+    (like handling regexes). In a CellsV2 world it probably needs to
+    do something better than use the database configuration string.
+    """
+
+    db_string = db_connection.split(':')[0].split('+')[0]
+    return db_string.lower()
 
 
 def _metadata_refs(metadata_dict, meta_class):
