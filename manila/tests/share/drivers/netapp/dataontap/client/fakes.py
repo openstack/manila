@@ -3114,7 +3114,7 @@ SNAPLOCK_CLOCK_CONFIG_2 = etree.XML("""
         </compliance-clock-info>
     </snaplock-node-compliance-clock>
   </results>""" % {
-    'clock_info': 'not configured'
+    'clock_info': 'ComplianceClock is not configured'
 })
 
 FAKE_XML1 = """<options>\

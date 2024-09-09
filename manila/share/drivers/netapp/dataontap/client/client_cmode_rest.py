@@ -5581,8 +5581,8 @@ class NetAppRestClient(object):
                     options.get(share_type_attr))
 
         if all(value is None for value in body.values()):
-            LOG.debug("All SnapLock attributes are None, doesn't"
-                      " updated SnapLock attributes")
+            LOG.debug("All SnapLock attributes are None, not"
+                      " updating SnapLock attributes")
             return
 
         volume = self._get_volume_by_args(vol_name=volume_name)

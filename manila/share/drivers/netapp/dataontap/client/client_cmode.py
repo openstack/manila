@@ -6476,8 +6476,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 api_args[na_api_attr] = options.get(share_type_attr)
 
         if all(value is None for value in api_args.values()):
-            LOG.debug("All SnapLock attributes are None, doesn't"
-                      " updated SnapLock attributes")
+            LOG.debug("All SnapLock attributes are None, not"
+                      " updating SnapLock attributes")
             return
 
         api_args['volume'] = volume_name
