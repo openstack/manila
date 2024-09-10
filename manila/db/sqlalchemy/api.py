@@ -5618,6 +5618,17 @@ def share_server_backend_details_set(context, share_server_id, server_details):
 
 
 @require_context
+@context_manager.reader
+def share_server_backend_details_get_item(context, share_server_id, meta_key):
+    try:
+        meta_ref = _share_server_backend_details_get_item(
+            context, share_server_id, meta_key)
+    except exception.ShareServerBackendDetailsNotFound:
+        return None
+    return meta_ref.get('value')
+
+
+@require_context
 @context_manager.writer
 def share_server_backend_details_delete(context, share_server_id):
     return _share_server_backend_details_delete(context, share_server_id)
@@ -5784,7 +5795,7 @@ def network_allocations_get_for_share_server(
         share_server_id=share_server_id,
     )
     if label:
-        if label != 'admin':
+        if label == 'user':
             query = query.filter(or_(
                 # NOTE(vponomaryov): we treat None as alias for 'user'.
                 models.NetworkAllocation.label == None,  # noqa

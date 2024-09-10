@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added support for share server migrations between different physical
+    networks. It is achieved by creating an inactive port binding on the target
+    host during share server migration, then cut it over to target host during
+    migration-complete step.

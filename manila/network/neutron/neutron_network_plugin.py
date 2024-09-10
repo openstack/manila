@@ -26,6 +26,7 @@ from manila.i18n import _
 from manila import network
 from manila.network.neutron import api as neutron_api
 from manila.network.neutron import constants as neutron_constants
+from manila.share import utils as share_utils
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -716,6 +717,70 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                     }
                     ports[num] = self.db.network_allocation_update(
                         context, port['id'], port_info)
+        return ports
+
+    @utils.retry(retry_param=exception.NetworkException, retries=20)
+    def _wait_for_network_segment(self, share_server, host):
+        network_id = share_server['share_network_subnet']['neutron_net_id']
+        network = self.neutron_api.get_network(network_id)
+        for segment in network['segments']:
+            if segment['provider:physical_network'] == (
+                    self.config.neutron_physical_net_name):
+                return segment['provider:segmentation_id']
+        msg = _('Network segment not found on host %s') % host
+        raise exception.NetworkException(msg)
+
+    def extend_network_allocations(self, context, share_server):
+        """Extend network to target host.
+
+        This will create port bindings on target host without activating them.
+        If network segment does not exist on target host, it will be created.
+
+        :return: list of port bindings with new segmentation id on target host
+        """
+        vnic_type = self.config.neutron_vnic_type
+        host_id = self.config.neutron_host_id
+
+        active_port_bindings = (
+            self.db.network_allocations_get_for_share_server(
+                context, share_server['id'], label='user'))
+        if len(active_port_bindings) == 0:
+            raise exception.NetworkException(
+                'Can not extend network with no active bindings')
+
+        # Create port binding on destination backend. It's safe to call neutron
+        # api bind_port_to_host if the port is already bound to destination
+        # host.
+        for port in active_port_bindings:
+            self.neutron_api.bind_port_to_host(port['id'], host_id,
+                                               vnic_type)
+
+        # Wait for network segment to be created on destination host.
+        vlan = self._wait_for_network_segment(share_server, host_id)
+        for port in active_port_bindings:
+            port['segmentation_id'] = vlan
+
+        return active_port_bindings
+
+    def delete_extended_allocations(self, context, share_server):
+        host_id = self.config.neutron_host_id
+        ports = self.db.network_allocations_get_for_share_server(
+            context, share_server['id'], label='user')
+        for port in ports:
+            try:
+                self.neutron_api.delete_port_binding(port['id'], host_id)
+            except exception.NetworkException as e:
+                msg = 'Failed to delete port binding on port %{port}s: %{err}s'
+                LOG.warning(msg, {'port': port['id'], 'err': e})
+
+    def cutover_network_allocations(self, context, src_share_server):
+        src_host = share_utils.extract_host(src_share_server['host'], 'host')
+        dest_host = self.config.neutron_host_id
+        ports = self.db.network_allocations_get_for_share_server(
+            context, src_share_server['id'], label='user')
+        for port in ports:
+            self.neutron_api.activate_port_binding(port['id'], dest_host)
+            self.neutron_api.delete_port_binding(port['id'], src_host)
         return ports
 
 
