@@ -2779,8 +2779,7 @@ resource_lock_resource_action:
     The action pertaining to a resource that the resource lock prevents. For
     example, if a resource lock prevents deletion of a share, the value of
     ``resource_action`` is ``delete``. Resource locks are not supported for
-    all API actions. Currently support only exists for ``delete``, and for
-    specific resources.
+    all API actions.
   in: body
   required: true
   type: string
@@ -2800,8 +2799,7 @@ resource_lock_resource_action_optional:
     The action pertaining to a resource that the resource lock prevents. For
     example, if a resource lock prevents deletion of a share, the value of
     ``resource_action`` is ``delete``. Resource locks are not supported for
-    all API actions. Currently support only exists for ``delete``, and for
-    specific resources.
+    all API actions.
   in: body
   required: false
   type: string

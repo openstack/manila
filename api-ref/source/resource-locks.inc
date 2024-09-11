@@ -187,7 +187,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - service_token: service_token_locks
-   - resource_id: resource_lock_id_path
+   - resource_lock_id: resource_lock_id_path
 
 
 Response Parameters
@@ -250,7 +250,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - service_token: service_token_locks
-   - resource_id: resource_lock_id_path
+   - resource_lock_id: resource_lock_id_path
    - resource_lock: resource_lock_object
    - resource_action: resource_lock_resource_action_optional
    - lock_reason: resource_lock_lock_reason_optional
@@ -322,4 +322,4 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - service_token: service_token_locks
-   - resource_id: resource_lock_id_path
+   - resource_lock_id: resource_lock_id_path
