@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Share manager drivers can now update export location metadata
+    (such as the `preferred` attribute) during the `ensure_shares`
+    routine. (`Launchpad bug: 2053100 <https://launchpad.net/bugs/2053100>`_)
