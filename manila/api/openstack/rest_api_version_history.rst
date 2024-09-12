@@ -471,3 +471,9 @@ user documentation.
 2.88
 ----
   Allows updating the access rule's access type.
+
+
+2.89
+----
+  Added support for passing share network subnet metadata updates to share
+  backend driver.

@@ -12,7 +12,10 @@ commands. You can create multiple subnets in a share network, and if you do
 not specify an availability zone, the subnet you are creating will be
 considered default by the Shared File Systems service. The default subnet
 spans all availability zones. You cannot have more than one default subnet
-per share network.
+per share network. During share server migration, metadata belonging to the
+old share network subnet is ignored when moving to a new share network. Since
+metadata updates are passed to backend driver, with migration of share network
+these metadata updates will no longer be available to new share network.
 
 
 .. important::

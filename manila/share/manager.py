@@ -272,7 +272,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.29'
+    RPC_API_VERSION = '1.30'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -6880,8 +6880,9 @@ class ShareManager(manager.SchedulerDependentManager):
         current_subnets = [subnet for subnet in current_subnets
                            if subnet['id'] != new_share_network_subnet_id]
         share_servers = (
-            self.db.share_server_get_all_by_host_and_share_subnet(
-                context, self.host, new_share_network_subnet_id))
+            self.db.share_server_get_all_by_host_and_or_share_subnet(
+                context, host=self.host,
+                share_subnet_id=new_share_network_subnet_id))
         for share_server in share_servers:
 
             share_server_id = share_server['id']
@@ -6956,4 +6957,41 @@ class ShareManager(manager.SchedulerDependentManager):
                 share['project_id'],
                 resource_type=message_field.Resource.SHARE,
                 resource_id=share_id,
+                detail=message_field.Detail.UPDATE_METADATA_FAILURE)
+
+    def update_share_network_subnet_from_metadata(self, context,
+                                                  share_network_id,
+                                                  share_network_subnet_id,
+                                                  share_server_id,
+                                                  metadata):
+        share_network = self.db.share_network_get(context, share_network_id)
+        share_network_subnet = self.db.share_network_subnet_get(
+            context, share_network_subnet_id)
+        share_server = self.db.share_server_get(context, share_server_id)
+
+        try:
+            self.driver.update_share_network_subnet_from_metadata(
+                context,
+                share_network,
+                share_network_subnet,
+                share_server,
+                metadata)
+            self.message_api.create(
+                context,
+                message_field.Action.UPDATE_METADATA,
+                share_network['project_id'],
+                resource_type=message_field.Resource.SHARE_NETWORK_SUBNET,
+                resource_id=share_network_subnet_id,
+                detail=message_field.Detail.UPDATE_METADATA_SUCCESS)
+        except Exception as e:
+            if isinstance(e, NotImplementedError):
+                LOG.debug("Not passing the updates of share network subnet "
+                          "metadata to share driver since the required driver "
+                          "interface is not implemented.")
+            self.message_api.create(
+                context,
+                message_field.Action.UPDATE_METADATA,
+                share_network['project_id'],
+                resource_type=message_field.Resource.SHARE_NETWORK_SUBNET,
+                resource_id=share_network_subnet_id,
                 detail=message_field.Detail.UPDATE_METADATA_FAILURE)

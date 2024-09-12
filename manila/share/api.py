@@ -566,6 +566,34 @@ class API(base.Base):
             self.share_rpcapi.update_share_from_metadata(context, share,
                                                          driver_metadata)
 
+    def update_share_network_subnet_from_metadata(self, context,
+                                                  share_network_id,
+                                                  share_network_subnet_id,
+                                                  metadata):
+        driver_keys = getattr(CONF, 'driver_updatable_subnet_metadata', [])
+        if not driver_keys:
+            return
+
+        driver_metadata = {}
+        for k, v in metadata.items():
+            if k in driver_keys:
+                driver_metadata.update({k: v})
+
+        if driver_metadata:
+            share_servers = (
+                self.db.share_server_get_all_by_host_and_or_share_subnet(
+                    context,
+                    host=None,
+                    share_subnet_id=share_network_subnet_id))
+            for share_server in share_servers:
+                self.share_rpcapi.update_share_network_subnet_from_metadata(
+                    context,
+                    share_network_id,
+                    share_network_subnet_id,
+                    share_server,
+                    driver_metadata
+                )
+
     def get_share_attributes_from_share_type(self, share_type):
         """Determine share attributes from the share type.
 

@@ -5533,14 +5533,13 @@ def share_server_get_all_by_host_and_share_subnet_valid(
 
 @require_context
 @context_manager.reader
-def share_server_get_all_by_host_and_share_subnet(
-    context, host, share_subnet_id,
+def share_server_get_all_by_host_and_or_share_subnet(
+    context, host=None, share_subnet_id=None,
 ):
-    result = _share_server_get_query(
-        context,
-    ).filter_by(
-        host=host,
-    ).filter(
+    result = _share_server_get_query(context)
+    if host:
+        result = result.filter_by(host=host)
+    result = result.filter(
         models.ShareServer.share_network_subnets.any(id=share_subnet_id)
     ).all()
 

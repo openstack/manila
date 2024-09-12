@@ -695,6 +695,32 @@ class ShareAPITestCase(test.TestCase):
                 result,
                 {'dedupe': 'True', 'snapshot_policy': 'daily'})
 
+    def test_update_share_network_subnet_from_metadata(self):
+        CONF.set_default(
+            "driver_updatable_subnet_metadata",
+            ['dedupe', 'snapshot_policy', 'thin_provisioning'],
+        )
+        metadata = {
+            'test_key': 'True',
+            'snapshot_policy': 'monthly',
+        }
+        backend_metadata = {
+            k: v for k, v in
+            metadata.items() if k in CONF.driver_updatable_subnet_metadata}
+
+        self.mock_object(
+            db_api, 'share_server_get_all_by_host_and_or_share_subnet',
+            mock.Mock(return_value=['fake_share_server']))
+        mock_call = self.mock_object(
+            self.api.share_rpcapi,
+            'update_share_network_subnet_from_metadata')
+
+        self.api.update_share_network_subnet_from_metadata(
+            self.context, 'fake_sn_id', 'fake_sn_subnet_id', metadata)
+        mock_call.assert_called_once_with(
+            self.context, 'fake_sn_id', 'fake_sn_subnet_id',
+            'fake_share_server', backend_metadata)
+
     def test_update_share_from_metadata(self):
         CONF.set_default(
             "driver_updatable_metadata",

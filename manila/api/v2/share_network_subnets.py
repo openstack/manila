@@ -15,7 +15,7 @@
 
 from http import client as http_client
 
-from manila.api import common
+from oslo_config import cfg
 from oslo_db import exception as db_exception
 from oslo_log import log
 import webob
@@ -29,10 +29,13 @@ from manila.api.views import share_network_subnets as subnet_views
 from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
+from manila.message import api as message_api
+from manila.message import message_field
 from manila import share
 from manila.share import rpcapi as share_rpcapi
 
 LOG = log.getLogger(__name__)
+CONF = cfg.CONF
 
 
 class ShareNetworkSubnetController(wsgi.Controller,
@@ -46,6 +49,7 @@ class ShareNetworkSubnetController(wsgi.Controller,
         super(ShareNetworkSubnetController, self).__init__()
         self.share_rpcapi = share_rpcapi.ShareAPI()
         self.share_api = share.API()
+        self.message_api = message_api.API()
 
     @wsgi.Controller.api_version("2.51")
     @wsgi.Controller.authorize
@@ -137,7 +141,7 @@ class ShareNetworkSubnetController(wsgi.Controller,
         data['share_network_id'] = share_network_id
         multiple_subnet_support = (req.api_version_request >=
                                    api_version.APIVersionRequest("2.70"))
-        share_network, existing_subnets = common.validate_subnet_create(
+        share_network, existing_subnets = api_common.validate_subnet_create(
             context, share_network_id, data, multiple_subnet_support)
 
         # create subnet operation on subnets with share servers means that an
@@ -169,6 +173,15 @@ class ShareNetworkSubnetController(wsgi.Controller,
             try:
                 share_network_subnet = db_api.share_network_subnet_create(
                     context, data)
+                metadata_support = (req.api_version_request >=
+                                    api_version.APIVersionRequest("2.89"))
+                if metadata_support and data.get('metadata'):
+                    context = req.environ['manila.context']
+                    self.share_api.update_share_network_subnet_from_metadata(
+                        context,
+                        share_network_id,
+                        share_network_subnet['id'],
+                        data.get('metadata'))
             except db_exception.DBError as e:
                 msg = _('Could not create the share network subnet.')
                 LOG.error(e)
@@ -210,23 +223,47 @@ class ShareNetworkSubnetController(wsgi.Controller,
     @wsgi.Controller.authorize("update_metadata")
     def create_metadata(self, req, share_network_id, resource_id, body):
         """Create metadata for a given share network subnet."""
-        return self._create_metadata(req, resource_id, body,
-                                     parent_id=share_network_id)
+        metadata = self._create_metadata(req, resource_id, body,
+                                         parent_id=share_network_id)
+        if req.api_version_request >= api_version.APIVersionRequest("2.89"):
+            context = req.environ['manila.context']
+            self.share_api.update_share_network_subnet_from_metadata(
+                context,
+                share_network_id,
+                resource_id,
+                metadata.get('metadata'))
+        return metadata
 
     @wsgi.Controller.api_version("2.78")
     @wsgi.Controller.authorize("update_metadata")
     def update_all_metadata(self, req, share_network_id, resource_id, body):
         """Update entire metadata for a given share network subnet."""
-        return self._update_all_metadata(req, resource_id, body,
-                                         parent_id=share_network_id)
+        metadata = self._update_all_metadata(req, resource_id, body,
+                                             parent_id=share_network_id)
+        if req.api_version_request >= api_version.APIVersionRequest("2.89"):
+            context = req.environ['manila.context']
+            self.share_api.update_share_network_subnet_from_metadata(
+                context,
+                share_network_id,
+                resource_id,
+                metadata.get('metadata'))
+        return metadata
 
     @wsgi.Controller.api_version("2.78")
     @wsgi.Controller.authorize("update_metadata")
     def update_metadata_item(self, req, share_network_id, resource_id, body,
                              key):
         """Update metadata item for a given share network subnet."""
-        return self._update_metadata_item(req, resource_id, body, key,
-                                          parent_id=share_network_id)
+        metadata = self._update_metadata_item(req, resource_id, body, key,
+                                              parent_id=share_network_id)
+        if req.api_version_request >= api_version.APIVersionRequest("2.89"):
+            context = req.environ['manila.context']
+            self.share_api.update_share_network_subnet_from_metadata(
+                context,
+                share_network_id,
+                resource_id,
+                metadata.get('metadata'))
+        return metadata
 
     @wsgi.Controller.api_version("2.78")
     @wsgi.Controller.authorize("get_metadata")
@@ -239,6 +276,20 @@ class ShareNetworkSubnetController(wsgi.Controller,
     @wsgi.Controller.authorize("delete_metadata")
     def delete_metadata(self, req, share_network_id, resource_id, key):
         """Delete metadata for a given share network subnet."""
+        if req.api_version_request >= api_version.APIVersionRequest("2.89"):
+            driver_keys = getattr(
+                CONF, 'driver_updatable_subnet_metadata', [])
+            if key in driver_keys:
+                context = req.environ['manila.context']
+                share_network = db_api.share_network_get(
+                    context, share_network_id)
+                self.message_api.create(
+                    context,
+                    message_field.Action.UPDATE_METADATA,
+                    share_network['project_id'],
+                    resource_type=message_field.Resource.SHARE_NETWORK_SUBNET,
+                    resource_id=resource_id,
+                    detail=message_field.Detail.UPDATE_METADATA_NOT_DELETED)
         return self._delete_metadata(req, resource_id, key,
                                      parent_id=share_network_id)
 

@@ -49,6 +49,7 @@ class ShareRpcAPITestCase(test.TestCase):
         host = 'fake_host'
         share_server = db_utils.create_share_server(host=host)
         share_network_subnet = {
+            'id': 'fake share network subnet',
             'availability_zone_id': 'fake_az_id',
             'neutron_net_id': 'fake_neutron_net_id',
             'neutron_subnet_id': 'fake_neutron_subnet_id',
@@ -130,7 +131,8 @@ class ShareRpcAPITestCase(test.TestCase):
             expected_msg['snapshot_instance_id'] = snapshot_instance['id']
         share_server_id_methods = [
             'manage_share_server', 'unmanage_share_server',
-            'share_server_migration_start', 'share_server_migration_check']
+            'share_server_migration_start', 'share_server_migration_check',
+            'update_share_network_subnet_from_metadata']
         src_dest_share_server_methods = [
             'share_server_migration_cancel',
             'share_server_migration_get_progress',
@@ -399,6 +401,16 @@ class ShareRpcAPITestCase(test.TestCase):
                              version='1.28',
                              share=self.fake_share,
                              metadata={'fake': 'fake'})
+
+    def test_update_share_network_subnet_from_metadata(self):
+        self._test_share_api(
+            'update_share_network_subnet_from_metadata',
+            rpc_method='cast',
+            version='1.30',
+            share_network_id='fake_net_id',
+            share_network_subnet_id=self.fake_share_network_subnet['id'],
+            share_server=self.fake_share_server,
+            metadata={'fake': 'fake'})
 
     def test_create_replicated_snapshot(self):
         self._test_share_api('create_replicated_snapshot',

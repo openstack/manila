@@ -114,6 +114,8 @@
      - (List) The affinity keys are default to ensure backwards compatibility. Update the list with metadata items that should only be manipulated by people allowed by the "update_admin_only_metadata" policy.
    * - ``driver_updatable_metadata`` = ``None``
      - (List) Metadata keys that will decide which share metadata can be passed to share drivers as part of metadata create/update operations.
+   * - ``driver_updatable_subnet_metadata`` = ``None``
+     - (List) Metadata keys that will decide which share network_subnet_metadata can be passed to share drivers as part of metadata create/update operations.
    * - **[coordination]**
      -
    * - ``backend_url`` = ``file://$state_path``

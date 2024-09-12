@@ -1297,12 +1297,12 @@ def share_server_get_all_by_host_and_share_subnet_valid(
     )
 
 
-def share_server_get_all_by_host_and_share_subnet(
-    context, host, share_subnet_id,
+def share_server_get_all_by_host_and_or_share_subnet(
+    context, host=None, share_subnet_id=None,
 ):
-    """Get share server DB records by host and share net."""
-    return IMPL.share_server_get_all_by_host_and_share_subnet(
-        context, host, share_subnet_id,
+    """Get share server DB records by host and/or share net."""
+    return IMPL.share_server_get_all_by_host_and_or_share_subnet(
+        context, host=host, share_subnet_id=share_subnet_id,
     )
 
 

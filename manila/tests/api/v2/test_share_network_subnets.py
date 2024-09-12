@@ -17,6 +17,7 @@ import copy
 from unittest import mock
 
 import ddt
+from oslo_config import cfg
 from oslo_db import exception as db_exception
 
 from manila.api import common
@@ -29,6 +30,9 @@ from manila import test
 from manila.tests.api import fakes
 from manila.tests import db_utils
 from webob import exc
+
+CONF = cfg.CONF
+
 
 fake_az = {
     'id': 'ae525e12-07e8-4ddc-a2fd-4a89ad4a65ff',
@@ -505,48 +509,87 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
         mock_index.assert_called_once_with(req, self.subnet['id'],
                                            parent_id=self.share_network['id'])
 
-    def test_create_metadata(self):
-        req = fakes.HTTPRequest.blank('/subnets/', version="2.78")
+    @ddt.data("2.78", "2.89")
+    def test_create_metadata(self, version):
+        req = fakes.HTTPRequest.blank('/subnets/', version=version)
+        context = req.environ['manila.context']
         mock_index = self.mock_object(
             self.controller, '_create_metadata',
-            mock.Mock(return_value='fake_metadata'))
+            mock.Mock(return_value={'metadata': 'fake_metadata'}))
+        mock_update = self.mock_object(
+            self.controller.share_api,
+            'update_share_network_subnet_from_metadata')
 
         body = 'fake_metadata_body'
         result = self.controller.create_metadata(req, self.share_network['id'],
                                                  self.subnet['id'], body)
 
-        self.assertEqual('fake_metadata', result)
+        self.assertEqual('fake_metadata', result['metadata'])
         mock_index.assert_called_once_with(req, self.subnet['id'], body,
                                            parent_id=self.share_network['id'])
+        metadata_support = (req.api_version_request >=
+                            api_version.APIVersionRequest("2.89"))
+        if metadata_support:
+            mock_update.assert_called_once_with(
+                context, self.share_network['id'],
+                self.subnet['id'], 'fake_metadata')
+        else:
+            mock_update.assert_not_called()
 
-    def test_update_all_metadata(self):
-        req = fakes.HTTPRequest.blank('/subnets/', version="2.78")
+    @ddt.data("2.78", "2.89")
+    def test_update_all_metadata(self, version):
+        req = fakes.HTTPRequest.blank('/subnets/', version=version)
+        context = req.environ['manila.context']
         mock_index = self.mock_object(
             self.controller, '_update_all_metadata',
-            mock.Mock(return_value='fake_metadata'))
+            mock.Mock(return_value={'metadata': 'fake_metadata'}))
+        mock_update = self.mock_object(
+            self.controller.share_api,
+            'update_share_network_subnet_from_metadata')
 
         body = 'fake_metadata_body'
         result = self.controller.update_all_metadata(
             req, self.share_network['id'], self.subnet['id'], body)
 
-        self.assertEqual('fake_metadata', result)
+        self.assertEqual('fake_metadata', result['metadata'])
         mock_index.assert_called_once_with(req, self.subnet['id'], body,
                                            parent_id=self.share_network['id'])
+        metadata_support = (req.api_version_request >=
+                            api_version.APIVersionRequest("2.89"))
+        if metadata_support:
+            mock_update.assert_called_once_with(
+                context, self.share_network['id'],
+                self.subnet['id'], 'fake_metadata')
+        else:
+            mock_update.assert_not_called()
 
-    def test_update_metadata_item(self):
-        req = fakes.HTTPRequest.blank('/subnets/', version="2.78")
+    @ddt.data("2.78", "2.89")
+    def test_update_metadata_item(self, version):
+        req = fakes.HTTPRequest.blank('/subnets/', version=version)
+        context = req.environ['manila.context']
         mock_index = self.mock_object(
             self.controller, '_update_metadata_item',
-            mock.Mock(return_value='fake_metadata'))
+            mock.Mock(return_value={'metadata': 'fake_metadata'}))
+        mock_update = self.mock_object(
+            self.controller.share_api,
+            'update_share_network_subnet_from_metadata')
 
         body = 'fake_metadata_body'
         key = 'fake_key'
         result = self.controller.update_metadata_item(
             req, self.share_network['id'], self.subnet['id'], body, key)
 
-        self.assertEqual('fake_metadata', result)
+        self.assertEqual('fake_metadata', result['metadata'])
         mock_index.assert_called_once_with(req, self.subnet['id'], body, key,
                                            parent_id=self.share_network['id'])
+        metadata_support = (req.api_version_request >=
+                            api_version.APIVersionRequest("2.89"))
+        if metadata_support:
+            mock_update.assert_called_once_with(
+                context, self.share_network['id'],
+                self.subnet['id'], 'fake_metadata')
+        else:
+            mock_update.assert_not_called()
 
     def test_show_metadata(self):
         req = fakes.HTTPRequest.blank('/subnets/', version="2.78")
@@ -562,16 +605,32 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
         mock_index.assert_called_once_with(req, self.subnet['id'], key,
                                            parent_id=self.share_network['id'])
 
-    def test_delete_metadata(self):
-        req = fakes.HTTPRequest.blank('/subnets/', version="2.78")
+    @ddt.data("2.78", "2.89")
+    def test_delete_metadata(self, version):
+        req = fakes.HTTPRequest.blank('/subnets/', version=version)
+        context = req.environ['manila.context']
         mock_index = self.mock_object(
             self.controller, '_delete_metadata',
             mock.Mock(return_value='fake_metadata'))
+        mock_sn_get = self.mock_object(
+            db_api, 'share_network_get', mock.Mock(
+                return_value=self.share_network))
 
         key = 'fake_key'
+        CONF.set_default(
+            "driver_updatable_subnet_metadata", ['fake_key', 'fake_key2'])
+
         result = self.controller.delete_metadata(
             req, self.share_network['id'], self.subnet['id'], key)
 
         self.assertEqual('fake_metadata', result)
         mock_index.assert_called_once_with(req, self.subnet['id'], key,
                                            parent_id=self.share_network['id'])
+
+        metadata_support = (req.api_version_request >=
+                            api_version.APIVersionRequest("2.89"))
+        if metadata_support:
+            mock_sn_get.assert_called_once_with(
+                context, self.share_network['id'])
+        else:
+            mock_sn_get.assert_not_called()

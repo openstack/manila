@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    OpenStack operators can now make use of a new config option named
+    `driver_updatable_subnet_metadata` to determine which share network
+    subnet metadata updates the back end driver needs to be notified about.
+    The config option contains list of share network subnet metadata keys.
+    When the share network subnet's metadata gets updated and Manila
+    identifies that the new metadata keys match the metadata keys from the
+    provided list, the share back end will be notified and it will apply
+    the necessary changes. The result will be communicated through user
+    messages. This feature is supported from microversion '2.89'. Since,
+    with share network migration, metadata belonging to the old share network
+    subnet is ignored when moving to a new share network, updates will not
+    be passed to new share servers.

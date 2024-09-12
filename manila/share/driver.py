@@ -3752,3 +3752,21 @@ class ShareDriver(object):
         :param share_server: Reference to the share server.
         """
         raise NotImplementedError()
+
+    def update_share_network_subnet_from_metadata(self, context,
+                                                  share_network,
+                                                  share_network_subnet,
+                                                  share_server, metadata):
+        """Update the share network subnet from metadata.
+
+        Driver must implement this method if it can perform some action on
+        given resource (i.e. share network subnet) based on provided metadata.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param share_network: share network model
+        :param share_network_subnet: share network subnet model
+        :param share_server: share-server model.
+        :param metadata: Dict contains key-value pair where driver will
+            perform necessary action based on key.
+        """
+        raise NotImplementedError()

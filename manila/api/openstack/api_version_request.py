@@ -206,13 +206,15 @@ REST_API_VERSION_HISTORY = """
     * 2.86 - Add ensure share API.
     * 2.87 - Added Share export location metadata API
     * 2.88 - Added support for update Share access rule.
+    * 2.89 - Added support for passing Share network subnet metadata updates
+             to driver.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.88"
+_MAX_API_VERSION = "2.89"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

@@ -89,6 +89,8 @@ dummy_opts = [
             "create_backup": "1.50",
             "restore_backup": "1.50",
 
+            "update_share_network_subnet_from_metadata": "0.5",
+
         },
     ),
 ]
@@ -1061,4 +1063,14 @@ class DummyDriver(driver.ShareDriver):
         LOG.debug("Updated share %(share)s. Metadata %(metadata)s "
                   "applied successfully.",
                   {'share': share_instance['share_id'],
+                   'metadata': metadata})
+
+    @slow_me_down
+    def update_share_network_subnet_from_metadata(self, context,
+                                                  share_network,
+                                                  share_network_subnet,
+                                                  share_servers, metadata):
+        LOG.debug("Updated share network subnet %(sn_sub)s. Metadata "
+                  "%(metadata)s applied successfully.",
+                  {'sn_sub': share_network_subnet['id'],
                    'metadata': metadata})
