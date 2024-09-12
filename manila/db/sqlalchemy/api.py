@@ -4308,9 +4308,17 @@ def share_export_locations_update(context, share_instance_id, export_locations,
                 'deleted': 0,
             })
             el.save(session=session)
-            if el['el_metadata']:
+
+            new_export_metadata = next(
+                exl.get('metadata', {})
+                for exl in export_locations
+                if exl['path'] == el['path']
+            )
+            new_export_metadata = new_export_metadata or el['el_metadata']
+
+            if new_export_metadata:
                 export_location_metadata_update(
-                    context, el['uuid'], el['el_metadata'], session=session)
+                    context, el['uuid'], new_export_metadata, session=session)
 
     # Now add new export locations
     for el in export_locations:
