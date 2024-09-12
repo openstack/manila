@@ -2318,6 +2318,65 @@ class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
         # actual result should contain locations in exact same order
         self.assertEqual(actual_result, update_locations)
 
+    def test_update_export_locations_with_metadata(self):
+        share = db_utils.create_share()
+        original_export_locations = [
+            {
+                'path': 'fake1/1/',
+                'is_admin_only': True,
+                'metadata': {
+                    'foo': 'bar',
+                    'preferred': '1'
+                },
+            },
+            {
+                'path': 'fake2/1/',
+                'is_admin_only': True,
+                'metadata': {
+                    'clem': 'son',
+                    'preferred': '0'
+                },
+            },
+        ]
+
+        # add initial locations
+        db_api.export_locations_update(
+            self.ctxt, share.instance['id'], original_export_locations, False)
+
+        updated_export_locations = [
+            {
+                'path': 'fake1/1/',
+                'is_admin_only': True,
+                'metadata': {
+                    'foo': 'quz',
+                    'preferred': '0'
+                },
+            },
+            {
+                'path': 'fake2/1/',
+                'is_admin_only': True,
+                'metadata': {
+                    'clem': 'son',
+                    'preferred': '1',
+                },
+            },
+        ]
+
+        # update locations
+        db_api.export_locations_update(
+            self.ctxt, share.instance['id'], updated_export_locations, True)
+        actual_result = db_api.export_location_get_all_by_share_id(
+            self.ctxt, share['id'])
+
+        actual_export_locations = [
+            {
+                'path': el['path'],
+                'is_admin_only': el['is_admin_only'],
+                'metadata': el['el_metadata'],
+            } for el in actual_result
+        ]
+        self.assertEqual(updated_export_locations, actual_export_locations)
+
     def test_update_string(self):
         share = db_utils.create_share()
         initial_location = 'fake1/1/'
