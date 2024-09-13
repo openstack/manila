@@ -34,6 +34,7 @@ tegile_opts = [
     cfg.StrOpt('tegile_nas_login',
                help='User name for the Tegile NAS server.'),
     cfg.StrOpt('tegile_nas_password',
+               secret=True,
                help='Password for the Tegile NAS server.'),
     cfg.StrOpt('tegile_default_project',
                help='Create shares in this project')]
