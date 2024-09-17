@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2080951
+    <https://bugs.launchpad.net/manila/+bug/2080951>`_:
+    Fixed the share creation workflow via REST.
+    Changed the order of dedupe/compression to disable compression first followed
+    by disabling dedupe so that the share creation workflow goes through.

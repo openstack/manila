@@ -1146,16 +1146,16 @@ class NetAppRestClient(object):
         efficiency_status = self.get_volume_efficiency_status(volume_name)
         # cDOT compression requires dedup to be enabled
         dedup_enabled = dedup_enabled or compression_enabled
-        # enable/disable dedup if needed
-        if dedup_enabled and not efficiency_status['dedupe']:
-            self.enable_dedupe_async(volume_name)
-        elif not dedup_enabled and efficiency_status['dedupe']:
-            self.disable_dedupe_async(volume_name)
         # enable/disable compression if needed
         if compression_enabled and not efficiency_status['compression']:
             self.enable_compression_async(volume_name)
         elif not compression_enabled and efficiency_status['compression']:
             self.disable_compression_async(volume_name)
+        # enable/disable dedup if needed
+        if dedup_enabled and not efficiency_status['dedupe']:
+            self.enable_dedupe_async(volume_name)
+        elif not dedup_enabled and efficiency_status['dedupe']:
+            self.disable_dedupe_async(volume_name)
 
         self.apply_volume_efficiency_policy(
             volume_name, efficiency_policy=efficiency_policy)
