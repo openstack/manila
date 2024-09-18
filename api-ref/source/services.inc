@@ -63,6 +63,7 @@ Response parameters
    - state: service_state_response
    - updated_at: updated_at
    - disabled_reason: service_disable_reason_response
+   - ensuring: service_ensuring_response
 
 Response example
 ----------------
@@ -178,3 +179,45 @@ Response example
 
 .. literalinclude:: samples/service-disable-response.json
    :language: javascript
+
+
+Ensure shares (Since API Version 2.86)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v2/services/ensure-shares
+
+Starts the ensure shares procedure for a manila-share binary.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - host: service_ensure_shares_host_request
+
+Request example
+---------------
+
+.. literalinclude:: samples/service-ensure-shares-request.json
+   :language: javascript
+
+Response parameters
+-------------------
+
+There is no body content for the response.
