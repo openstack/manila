@@ -23,7 +23,6 @@ from manila.api.views import services as services_views
 from manila import db
 from manila import exception
 from manila.i18n import _
-from manila import policy
 from manila.services import api as service_api
 
 
@@ -173,7 +172,6 @@ class ServiceController(ServiceMixin, wsgi.Controller):
         """Starts ensure shares for a given manila-share binary."""
         context = req.environ['manila.context']
 
-        policy.check_policy(context, 'service', 'ensure_shares')
         host = body.get('host', None)
         if not host:
             raise webob.exc.HTTPBadRequest('Missing host parameter.')
