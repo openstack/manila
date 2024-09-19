@@ -104,6 +104,7 @@ Response parameters
    - preferred: export_location_preferred
    - created_at: created_at
    - updated_at: updated_at
+   - metadata: metadata
 
 Response example
 ----------------
