@@ -130,3 +130,5 @@
      - (List) Check the presence of a file based on a port to determine if an application is running on a port. Expects a "port:path" list of strings. Used by DisableByFilesPortsHealthcheck plugin.
    * - ``path`` = ``/healthcheck``
      - (String) DEPRECATED: The path to respond to healtcheck requests on.
+   * - ``update_shares_status_on_ensure`` = ``True``
+     - (Boolean) Defines whether Manila should update the status of the shares when ensuring shares or not.
