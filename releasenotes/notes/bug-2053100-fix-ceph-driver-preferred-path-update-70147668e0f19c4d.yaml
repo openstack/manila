@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The CephFS driver used to set the "preferred" export path incorrectly.
+    It is now fixed to set it as part of export location metadata.
+    See `Launchpad bug 2053100 <https://launchpad.net/bugs/2053100>`_
+    for more details.
