@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Added tracing to SQLAlchemy engine if profiler is enabled and
+    profiler.trace_sqlalchemy is set to true.
