@@ -99,7 +99,7 @@ however, their state is presented here for ease of access.
 +-----------------------+---------+----------------------+
 | 2024.1 ("Caracal")    | Reef    | Reef                 |
 +-----------------------+---------+----------------------+
-| 2024.2 ("Dalmation")  | Reef    | Reef                 |
+| 2024.2 ("Dalmatian")  | Reef    | Reef                 |
 +-----------------------+---------+----------------------+
 
 Additionally, it is expected that the version of the Ceph client
