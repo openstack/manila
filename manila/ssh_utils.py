@@ -12,13 +12,13 @@
 
 """Ssh utilities."""
 
+import hashlib
 import logging
 import os
 
 from eventlet import pools
 from oslo_config import cfg
 from oslo_log import log
-from oslo_utils.secretutils import md5
 
 from manila import exception
 from manila.i18n import _
@@ -44,7 +44,7 @@ def get_fingerprint(self):
     TODO(carloss) Remove this when paramiko is patched.
     See https://github.com/paramiko/paramiko/pull/1928
     """
-    return md5(self.asbytes(), usedforsecurity=False).digest()
+    return hashlib.md5(self.asbytes(), usedforsecurity=False).digest()
 
 
 if paramiko is None:
