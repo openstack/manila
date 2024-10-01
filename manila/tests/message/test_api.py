@@ -37,7 +37,7 @@ class MessageApiTest(test.TestCase):
     @mock.patch.object(timeutils, 'utcnow')
     def test_create(self, mock_utcnow):
         CONF.set_override('message_ttl', 300)
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         mock_utcnow.return_value = now
         expected_expires_at = now + datetime.timedelta(
             seconds=300)

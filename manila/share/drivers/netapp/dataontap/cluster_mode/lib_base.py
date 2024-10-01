@@ -2882,7 +2882,9 @@ class NetAppCmodeFileStorageLibrary(object):
         # than twice the replication schedule.
         if (last_update_timestamp and
             (timeutils.is_older_than(
-                datetime.datetime.utcfromtimestamp(last_update_timestamp)
+                datetime.datetime.fromtimestamp(
+                    last_update_timestamp,
+                    tz=datetime.timezone.utc).replace(tzinfo=None)
                 .isoformat(), (2 * self._snapmirror_schedule)))):
             return constants.REPLICA_STATE_OUT_OF_SYNC
 
