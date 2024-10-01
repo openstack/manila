@@ -4437,7 +4437,7 @@ class ShareManager(manager.SchedulerDependentManager):
     @add_hooks
     @utils.require_driver_initialized
     def update_access(self, context, share_instance_id):
-        """Allow/Deny access to some share."""
+        """Allow/Deny/Update access to some share."""
         share_instance = self._get_share_instance(context, share_instance_id)
         share_server_id = share_instance.get('share_server_id')
 

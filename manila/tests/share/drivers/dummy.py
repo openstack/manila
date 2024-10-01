@@ -327,7 +327,7 @@ class DummyDriver(driver.ShareDriver):
 
     @slow_me_down
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Update access rules for given share."""
         for rule in add_rules + access_rules:
             share_proto = share["share_proto"].lower()

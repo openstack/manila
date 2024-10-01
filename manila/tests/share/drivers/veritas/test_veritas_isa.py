@@ -283,7 +283,7 @@ class ACCESSShareDriverTestCase(test.TestCase):
     def test_update_access_for_allow(self):
         self.mock_object(self._driver, '_access_api')
         self._driver.update_access(self._context, self.share, [],
-                                   [self.access], [])
+                                   [self.access], [], [])
         self.assertEqual(2, self._driver._access_api.call_count)
 
     def test_update_access_for_allow_negative(self):
@@ -292,22 +292,22 @@ class ACCESSShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.ShareBackendException,
                           self._driver.update_access,
                           self._context,
-                          self.share, [], [self.access], [])
+                          self.share, [], [self.access], [], [])
 
         self.assertRaises(exception.InvalidShareAccess,
                           self._driver.update_access,
                           self._context,
-                          self.share, [], [self.access2], [])
+                          self.share, [], [self.access2], [], [])
 
         self.assertRaises(exception.InvalidShareAccessLevel,
                           self._driver.update_access,
                           self._context,
-                          self.share, [], [self.access3], [])
+                          self.share, [], [self.access3], [], [])
 
     def test_update_access_for_deny(self):
         self.mock_object(self._driver, '_access_api')
         self._driver.update_access(self._context, self.share,
-                                   [], [], [self.access])
+                                   [], [], [self.access], [])
         self.assertEqual(2, self._driver._access_api.call_count)
 
     def test_update_access_for_deny_negative(self):
@@ -316,19 +316,19 @@ class ACCESSShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.ShareBackendException,
                           self._driver.update_access,
                           self._context,
-                          self.share, [], [], [self.access])
+                          self.share, [], [], [self.access], [])
 
     def test_update_access_for_deny_for_invalid_access_type(self):
         self.mock_object(self._driver, '_access_api')
         self._driver.update_access(self._context, self.share,
-                                   [], [], [self.access2])
+                                   [], [], [self.access2], [])
         self.assertEqual(0, self._driver._access_api.call_count)
 
     def test_update_access_for_empty_rule_list(self):
         self.mock_object(self._driver, '_allow_access')
         self.mock_object(self._driver, '_deny_access')
         self._driver.update_access(self._context, self.share,
-                                   [], [], [])
+                                   [], [], [], [])
         self.assertEqual(0, self._driver._allow_access.call_count)
         self.assertEqual(0, self._driver._deny_access.call_count)
 
@@ -351,7 +351,7 @@ class ACCESSShareDriverTestCase(test.TestCase):
         a_rule = self._driver._return_access_lists_difference([self.access4],
                                                               existing_a_rules)
         self._driver.update_access(self._context, self.share,
-                                   [self.access4], [], [])
+                                   [self.access4], [], [], [])
 
         self.assertEqual(d_rule, existing_a_rules)
         self.assertEqual(a_rule, [self.access4])

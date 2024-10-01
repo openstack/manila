@@ -144,6 +144,38 @@ class ShareAccessesController(wsgi.Controller, wsgi.AdminActionsMixin):
     def index(self, req): # pylint: disable=function-redefined  # noqa F811
         return self._index(req, support_for_access_filters=True)
 
+    @wsgi.Controller.api_version('2.88')
+    @wsgi.Controller.authorize('update')
+    def update(self, req, id, body):
+        """Update access_level about the given share access rule."""
+        context = req.environ['manila.context']
+        if not self.is_valid_body(body, 'update_access'):
+            raise webob.exc.HTTPBadRequest()
+
+        access_data = body['update_access']
+        access_level = access_data.get('access_level', None)
+        if not access_level:
+            msg = _("Invalid input. Missing 'access_level' in "
+                    "update request.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        if access_level not in constants.ACCESS_LEVELS:
+            msg = _("Invalid or unsupported share access "
+                    "level: %s.") % access_level
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        share_access = self._get_share_access(context, id)
+        if access_level == share_access.access_level:
+            return self._view_builder.view(req, share_access)
+
+        share = self.share_api.get(context, share_access.share_id)
+        values = {
+            'access_level': access_level,
+        }
+        access = self.share_api.update_access(
+            context, share, share_access, values)
+        return self._view_builder.view(req, access)
+
 
 def create_resource():
     return wsgi.Resource(ShareAccessesController())

@@ -692,10 +692,10 @@ class AS13000ShareDriverTestCase(test.TestCase):
                                      'send_rest_api')
         if use_access:
             self.driver.update_access(self._ctxt, share_instance,
-                                      access_rules, [], [])
+                                      access_rules, [], [], [])
         else:
             self.driver.update_access(self._ctxt, share_instance,
-                                      [], add_rules, del_rules)
+                                      [], add_rules, del_rules, [])
 
         access_clients = [{'name': rule['access_to'],
                            'type': 0 if share_proto == 'nfs' else 1,

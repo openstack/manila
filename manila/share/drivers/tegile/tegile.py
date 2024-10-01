@@ -402,7 +402,7 @@ class TegileShareDriver(driver.ShareDriver):
 
     @debugger
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         if not (add_rules or delete_rules):
             # Recovery mode
             pool, project, share_name = (

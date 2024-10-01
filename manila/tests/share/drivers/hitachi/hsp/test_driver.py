@@ -81,7 +81,7 @@ class HitachiHSPTestCase(test.TestCase):
             side_effect=add_rule))
 
         self._driver.update_access('context', self.fake_share_instance, [],
-                                   access_list, [])
+                                   access_list, [], [])
 
         self.assertTrue(self.mock_log.debug.called)
 
@@ -113,7 +113,7 @@ class HitachiHSPTestCase(test.TestCase):
 
         self.assertRaises(exception.HSPBackendException,
                           self._driver.update_access, 'context',
-                          self.fake_share_instance, [], access_list, [])
+                          self.fake_share_instance, [], access_list, [], [])
 
         rest.HSPRestBackend.get_file_system.assert_called_once_with(
             self.fake_share_instance['id'])
@@ -147,7 +147,7 @@ class HitachiHSPTestCase(test.TestCase):
         self.mock_object(rest.HSPRestBackend, "add_access_rule")
 
         self._driver.update_access('context', self.fake_share_instance,
-                                   access_list, [], [])
+                                   access_list, [], [], [])
 
         self.assertTrue(self.mock_log.debug.called)
 
@@ -191,7 +191,7 @@ class HitachiHSPTestCase(test.TestCase):
                          mock.Mock(return_value=fakes.hsp_rules))
 
         self._driver.update_access('context', self.fake_share_instance, [], [],
-                                   delete_rules)
+                                   delete_rules, [])
 
         self.assertTrue(self.mock_log.debug.called)
 
@@ -231,7 +231,7 @@ class HitachiHSPTestCase(test.TestCase):
 
         self.assertRaises(exception.HSPBackendException,
                           self._driver.update_access, 'context',
-                          self.fake_share_instance, [], [], delete_rules)
+                          self.fake_share_instance, [], [], delete_rules, [])
 
         self.assertTrue(self.mock_log.debug.called)
 
@@ -262,9 +262,9 @@ class HitachiHSPTestCase(test.TestCase):
                          mock.Mock(return_value=fakes.hsp_rules))
 
         if is_recovery:
-            access_args = [access_list, [], []]
+            access_args = [access_list, [], [], []]
         else:
-            access_args = [[], access_list, []]
+            access_args = [[], access_list, [], []]
 
         self.assertRaises(exception.InvalidShareAccess,
                           self._driver.update_access, 'context',
@@ -287,7 +287,7 @@ class HitachiHSPTestCase(test.TestCase):
 
         self.assertRaises(exception.ShareResourceNotFound,
                           self._driver.update_access, 'context',
-                          self.fake_share_instance, access_list, [], [])
+                          self.fake_share_instance, access_list, [], [], [])
 
         rest.HSPRestBackend.get_file_system.assert_called_once_with(
             self.fake_share_instance['id'])

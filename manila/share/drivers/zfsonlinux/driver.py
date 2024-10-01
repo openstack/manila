@@ -704,7 +704,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
     @ensure_share_server_not_provided
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Updates access rules for given share."""
         dataset_name = self._get_dataset_name(share)
         executor = self._get_shell_executor_by_host(share['host'])

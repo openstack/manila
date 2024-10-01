@@ -512,7 +512,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         """Ensure that storage are mounted and exported."""
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Update access rules for given share."""
         helper = self._get_helper(share)
         location = self._get_share_path(share)

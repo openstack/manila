@@ -167,7 +167,7 @@ class HitachiHSPDriver(driver.ShareDriver):
                   {'shr': share['id']})
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
 
         LOG.debug("Updating access rules for share: %(shr)s.",
                   {'shr': share['id']})

@@ -2983,6 +2983,15 @@ def share_access_create(context, values):
 
 @require_context
 @context_manager.writer
+def share_access_update(context, access_id, values):
+    access_ref = _share_access_get(context, access_id)
+    access_ref.update(values)
+    access_ref.save(session=context.session)
+    return access_ref
+
+
+@require_context
+@context_manager.writer
 def share_instance_access_create(context, values, share_instance_id):
     values = ensure_model_dict_has_id(values)
     access_list = _share_access_get_query(

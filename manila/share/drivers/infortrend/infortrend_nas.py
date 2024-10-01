@@ -350,7 +350,7 @@ class InfortrendNAS(object):
         return any(subfolder['name'] == share_name for subfolder in subfolders)
 
     def update_access(self, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         self._evict_unauthorized_clients(share, access_rules, share_server)
         access_dict = {}
         for access in access_rules:

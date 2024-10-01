@@ -145,7 +145,7 @@ class MacrosanNasDriver(driver.ShareDriver):
 
     @debug_trace
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Update access rules list.
 
         :param context: Current context
@@ -155,6 +155,8 @@ class MacrosanNasDriver(driver.ShareDriver):
                added. access_rules already contains these rules.
         :param delete_rules: Empty List or List of access rules which should be
                removed. access_rules doesn't contain these rules.
+        :param update_rules: Empty List or List of access rules which should be
+               updated. access_rules already contains these rules.
         :param share_server: Not used by this driver.
 
         :returns: None, or a dictionary of ``access_id``, ``access_key`` as

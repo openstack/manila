@@ -367,7 +367,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             LOG.warning(exc)
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Update access rules for given share.
 
         This driver has two different behaviors according to parameters:
@@ -388,6 +388,8 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                added. access_rules already contains these rules.
         :param delete_rules: Empty List or List of access rules which should be
                removed. access_rules doesn't contain these rules.
+        :param update_rules: Empty List or List of access rules which should be
+               updated. access_rules already contains these rules.
         :param share_server: None or Share server model
         """
         share_export_location = self._get_mount_point_name(share)

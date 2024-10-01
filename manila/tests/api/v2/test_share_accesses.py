@@ -15,6 +15,7 @@
 
 from unittest import mock
 
+import copy
 import ddt
 from webob import exc
 
@@ -237,3 +238,39 @@ class ShareAccessesAPITest(test.TestCase):
             self.controller.show,
             self._get_show_request(version=version),
             self.access['id'])
+
+    def _get_update_request(self, access_id=None):
+        access_id = access_id or self.access['id']
+        req = fakes.HTTPRequest.blank(
+            '/v2/share-access-rules/%s' % access_id, version="2.88",
+            experimental=True)
+        return req
+
+    def test_update_access_level(self):
+        update_share_access = copy.deepcopy(self.access)
+        update_share_access.update({'access_level': 'ro'})
+        self.mock_object(
+            self.controller.share_api, 'update_access',
+            mock.Mock(return_value=update_share_access))
+
+        body = {'update_access': {'access_level': 'ro'}}
+        url = self._get_update_request()
+        ret = self.controller.update(url, self.access['id'], body=body)
+        self.assertEqual(update_share_access['access_level'],
+                         ret['access']['access_level'])
+
+    def test_update_access_level_invalid_access_level(self):
+        body = {'access': {'access_level': 'fake_access'}}
+        self.assertRaises(
+            exc.HTTPBadRequest,
+            self.controller.update,
+            self._get_update_request(), self.access['id'],
+            body=body)
+
+    def test_update_access_level_invalid_update_request(self):
+        body = {'access': {'access_key': 'xxxx'}}
+        self.assertRaises(
+            exc.HTTPBadRequest,
+            self.controller.update,
+            self._get_update_request(), self.access['id'],
+            body=body)

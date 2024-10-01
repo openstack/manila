@@ -565,6 +565,11 @@ def share_access_create(context, values):
     return IMPL.share_access_create(context, values)
 
 
+def share_access_update(context, access_id, values):
+    """Update access to share."""
+    return IMPL.share_access_update(context, access_id, values)
+
+
 def share_access_get(context, access_id):
     """Get share access rule."""
     return IMPL.share_access_get(context, access_id)

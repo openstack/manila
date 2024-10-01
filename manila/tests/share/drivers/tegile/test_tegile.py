@@ -730,7 +730,8 @@ class TegileShareDriverTestCase(test.TestCase):
                                    test_share,
                                    access_rules=access_rules,
                                    add_rules=add_rules,
-                                   delete_rules=delete_rules)
+                                   delete_rules=delete_rules,
+                                   update_rules=None)
 
         allow_params = (
             '%s/%s/%s/%s' % (

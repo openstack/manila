@@ -111,9 +111,9 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
         self.library.unmanage_snapshot(snapshot, share_server=share_server)
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, **kwargs):
+                      delete_rules, update_rules, **kwargs):
         self.library.update_access(context, share, access_rules, add_rules,
-                                   delete_rules, **kwargs)
+                                   delete_rules, update_rules, **kwargs)
 
     def _update_share_stats(self, data=None):
         data = self.library.get_share_stats(

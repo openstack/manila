@@ -809,7 +809,7 @@ class V3StorageConnection(driver.HuaweiBase):
                                                   share_proto)
 
     def update_access(self, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Update access rules list."""
         if not (add_rules or delete_rules):
             self.clear_access(share, share_server)
@@ -1789,7 +1789,8 @@ class V3StorageConnection(driver.HuaweiBase):
         cleared_old_active_access = True
 
         try:
-            self.update_access(replica, access_rules, [], [], share_server)
+            self.update_access(replica, access_rules,
+                               [], [], [], share_server)
         except Exception:
             LOG.warning('Failed to set access rules to '
                         'new active replica %s.',

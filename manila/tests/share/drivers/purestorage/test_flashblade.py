@@ -361,7 +361,7 @@ class FlashBladeDriverTestCase(FlashBladeDriverTestCaseBase):
         }
 
         rule_map = self.driver.update_access(
-            None, test_nfs_share, access_rules, [], []
+            None, test_nfs_share, access_rules, [], [], []
         )
         self.assertEqual(expected_rule_map, rule_map)
 

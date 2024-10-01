@@ -37,6 +37,12 @@ deprecated_access_rule_index = policy.DeprecatedRule(
     deprecated_reason=DEPRECATED_REASON,
     deprecated_since=versionutils.deprecated.WALLABY
 )
+deprecated_access_rule_update = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2025.1/Epoxy'
+)
 
 
 share_access_rule_policies = [
@@ -66,6 +72,19 @@ share_access_rule_policies = [
             }
         ],
         deprecated_rule=deprecated_access_rule_index
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'update',
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['project'],
+        description="Update access rules of a given share.",
+        operations=[
+            {
+                'method': 'PUT',
+                'path': '/share-access-rules/{share_access_id}'
+            }
+        ],
+        deprecated_rule=deprecated_access_rule_update
     ),
 ]
 

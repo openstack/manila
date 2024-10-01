@@ -2555,6 +2555,30 @@ class API(base.Base):
             context, conditionally_change=conditionally_change,
             share_instance_id=share_instance['id'])
 
+    def update_access(self, ctx, share, access, values):
+
+        if self._any_invalid_share_instance(share, allow_on_error_state=True):
+            msg = _("Access rules cannot be updated while the share, "
+                    "any of its replicas or migration copies lacks a valid "
+                    "host or is in an invalid state.")
+            raise exception.InvalidShare(message=msg)
+
+        access = self.db.share_access_update(ctx, access['id'], values)
+        for share_instance in share.instances:
+            self.update_access_to_instance(ctx, share_instance, access)
+
+        return access
+
+    def update_access_to_instance(self, context, share_instance, access):
+        self._conditionally_transition_share_instance_access_rules_status(
+            context, share_instance)
+        updates = {'state': constants.ACCESS_STATE_QUEUED_TO_UPDATE}
+        self.access_helper.get_and_update_share_instance_access_rule(
+            context, access['id'], updates=updates,
+            share_instance_id=share_instance['id'])
+
+        self.share_rpcapi.update_access(context, share_instance)
+
     def deny_access(self, ctx, share, access, allow_on_error_state=False):
         """Deny access to share."""
 

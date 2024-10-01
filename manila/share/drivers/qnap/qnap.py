@@ -627,7 +627,7 @@ class QnapShareDriver(driver.ShareDriver):
 
     @utils.synchronized('qnap-update_access')
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         if not (add_rules or delete_rules):
             volName = self.private_storage.get(share['id'], 'volName')
             LOG.debug('volName: %s', volName)

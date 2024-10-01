@@ -159,7 +159,8 @@ class GlusterfsShareDriverBaseTestCase(test.TestCase):
                 ] for r in rs
             ] for rs in (inset, outset))
 
-        _driver.update_access(self.fake_context, self.fake_share, *in_rules)
+        _driver.update_access(
+            self.fake_context, self.fake_share, *in_rules, [])
 
         _layout._share_manager.assert_called_once_with(self.fake_share)
         _driver._update_access_via_manager.assert_called_once_with(

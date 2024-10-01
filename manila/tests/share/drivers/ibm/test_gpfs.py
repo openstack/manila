@@ -460,6 +460,7 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                                    ["ignored"],
                                    [self.access],
                                    [],
+                                   [],
                                    share_server=None)
 
         self._helper_fake.allow_access.assert_called_once_with(
@@ -478,6 +479,7 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                                    ["ignored"],
                                    [],
                                    [self.access],
+                                   [],
                                    share_server=None)
 
         self._helper_fake.deny_access.assert_called_once_with(
@@ -500,6 +502,7 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                                    ["ignore"],
                                    [access_1],
                                    [access_2],
+                                   [],
                                    share_server=None)
 
         self.assertFalse(self._helper_fake.resync_access.called)
@@ -522,6 +525,7 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._driver.update_access(self._context,
                                    self.share,
                                    [access_1, access_2],
+                                   [],
                                    [],
                                    [],
                                    share_server=None)

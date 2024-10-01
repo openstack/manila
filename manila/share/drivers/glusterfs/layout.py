@@ -115,7 +115,7 @@ class GlusterfsShareDriverBase(driver.ShareDriver):
         return validator
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Update access rules for given share.
 
         Driver supports 2 different cases in this method:
@@ -125,9 +125,10 @@ class GlusterfsShareDriverBase(driver.ShareDriver):
         This recovery is made at driver start up.
 
         2. Adding/Deleting of several access rules - 'access_rules' contains
-        all access_rules, 'add_rules' and 'delete_rules' contain rules which
-        should be added/deleted. Driver can ignore rules in 'access_rules' and
-        apply only rules from 'add_rules' and 'delete_rules'.
+        all access_rules, 'add_rules' and 'delete_rules' and 'update_rules'
+        contain rules which should be added/deleted/updated. Driver can
+        ignore rules in 'access_rules' and apply only rules from 'add_rules',
+        'delete_rules' and 'update_rules'.
         """
         gluster_mgr = self.layout._share_manager(share)
 

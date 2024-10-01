@@ -214,7 +214,7 @@ class WindowsSMBHelperTestCase(test.TestCase):
             exception.InvalidShareAccess,
             self._win_smb_helper.update_access,
             mock.sentinel.server, mock.sentinel.share_name,
-            [invalid_access_rule], [], [])
+            [invalid_access_rule], [], [], [])
 
     def test_update_access_invalid_level(self):
         invalid_access_rule = dict(self._FAKE_RW_ACC_RULE,
@@ -223,7 +223,7 @@ class WindowsSMBHelperTestCase(test.TestCase):
             exception.InvalidShareAccessLevel,
             self._win_smb_helper.update_access,
             mock.sentinel.server, mock.sentinel.share_name,
-            [], [invalid_access_rule], [])
+            [], [invalid_access_rule], [], [])
 
     @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
                        '_revoke_share_access')
@@ -235,7 +235,7 @@ class WindowsSMBHelperTestCase(test.TestCase):
 
         self._win_smb_helper.update_access(
             mock.sentinel.server, mock.sentinel.share_name,
-            [], [], delete_rules)
+            [], [], delete_rules, [])
 
         mock_revoke.assert_called_once_with(
             mock.sentinel.server, mock.sentinel.share_name,
@@ -256,7 +256,7 @@ class WindowsSMBHelperTestCase(test.TestCase):
 
         self._win_smb_helper.update_access(
             mock.sentinel.server, mock.sentinel.share_name,
-            [], added_rules, deleted_rules)
+            [], added_rules, deleted_rules, [])
 
         mock_revoke.assert_has_calls(
             [mock.call(mock.sentinel.server, mock.sentinel.share_name,
@@ -291,7 +291,7 @@ class WindowsSMBHelperTestCase(test.TestCase):
 
         self._win_smb_helper.update_access(
             mock.sentinel.server, mock.sentinel.share_name,
-            all_rules, [], [])
+            all_rules, [], [], [])
 
         mock_get_access_rules.assert_called_once_with(
             mock.sentinel.server, mock.sentinel.share_name)

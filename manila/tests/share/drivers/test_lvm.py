@@ -483,6 +483,7 @@ class LVMShareDriverTestCase(test.TestCase):
         self._driver.update_access(self._context, self.share, access_rules,
                                    add_rules=add_rules,
                                    delete_rules=delete_rules,
+                                   update_rules=None,
                                    share_server=self.server)
         (self._driver._helpers[self.share['share_proto']].
             update_access.assert_called_once_with(

@@ -231,7 +231,8 @@ class EMCShareFrameworkTestCase(test.TestCase):
         access = mock.Mock()
         self.driver.allow_access(context, share, access, share_server)
         self.driver.deny_access(context, share, access, share_server)
-        self.driver.update_access(context, share, None, None, share_server)
+        self.driver.update_access(context, share, None, None,
+                                  None, share_server)
         self.driver.check_for_setup_error()
         self.driver.get_network_allocations_number()
         self.driver._teardown_server(None)

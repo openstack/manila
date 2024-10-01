@@ -247,7 +247,8 @@ class ShareInstanceAccessTestCase(test.TestCase):
 
         expected_filters = {
             'state': (constants.ACCESS_STATE_APPLYING,
-                      constants.ACCESS_STATE_DENYING),
+                      constants.ACCESS_STATE_DENYING,
+                      constants.ACCESS_STATE_UPDATING),
         }
         self.assertIsNone(retval)
         mock_debug_log.assert_called_once()
@@ -273,17 +274,21 @@ class ShareInstanceAccessTestCase(test.TestCase):
 
         expected_rule_filter_1 = {
             'state': (constants.ACCESS_STATE_APPLYING,
-                      constants.ACCESS_STATE_DENYING),
+                      constants.ACCESS_STATE_DENYING,
+                      constants.ACCESS_STATE_UPDATING),
         }
         expected_rule_filter_2 = {
             'state': (constants.ACCESS_STATE_QUEUED_TO_APPLY,
-                      constants.ACCESS_STATE_QUEUED_TO_DENY),
+                      constants.ACCESS_STATE_QUEUED_TO_DENY,
+                      constants.ACCESS_STATE_QUEUED_TO_UPDATE),
         }
         expected_conditionally_change = {
             constants.ACCESS_STATE_QUEUED_TO_APPLY:
                 constants.ACCESS_STATE_APPLYING,
             constants.ACCESS_STATE_QUEUED_TO_DENY:
                 constants.ACCESS_STATE_DENYING,
+            constants.ACCESS_STATE_QUEUED_TO_UPDATE:
+                constants.ACCESS_STATE_UPDATING,
         }
         self.assertIsNone(retval)
         mock_debug_log.assert_called_once()
@@ -320,17 +325,21 @@ class ShareInstanceAccessTestCase(test.TestCase):
 
         expected_rule_filter_1 = {
             'state': (constants.ACCESS_STATE_APPLYING,
-                      constants.ACCESS_STATE_DENYING),
+                      constants.ACCESS_STATE_DENYING,
+                      constants.ACCESS_STATE_UPDATING),
         }
         expected_rule_filter_2 = {
             'state': (constants.ACCESS_STATE_QUEUED_TO_APPLY,
-                      constants.ACCESS_STATE_QUEUED_TO_DENY),
+                      constants.ACCESS_STATE_QUEUED_TO_DENY,
+                      constants.ACCESS_STATE_QUEUED_TO_UPDATE),
         }
         expected_conditionally_change = {
             constants.ACCESS_STATE_QUEUED_TO_APPLY:
                 constants.ACCESS_STATE_APPLYING,
             constants.ACCESS_STATE_QUEUED_TO_DENY:
                 constants.ACCESS_STATE_DENYING,
+            constants.ACCESS_STATE_QUEUED_TO_UPDATE:
+                constants.ACCESS_STATE_UPDATING,
         }
         expected_get_and_update_calls = []
         if delete_all_rules:
@@ -422,7 +431,8 @@ class ShareInstanceAccessTestCase(test.TestCase):
         expected_filters_1 = {
             'state': (constants.ACCESS_STATE_APPLYING,
                       constants.ACCESS_STATE_ACTIVE,
-                      constants.ACCESS_STATE_DENYING),
+                      constants.ACCESS_STATE_DENYING,
+                      constants.ACCESS_STATE_UPDATING),
         }
         expected_filters_2 = {'state': constants.STATUS_ERROR}
         expected_get_and_update_calls = [
@@ -478,6 +488,7 @@ class ShareInstanceAccessTestCase(test.TestCase):
             expected_conditional_state_updates = {
                 constants.ACCESS_STATE_APPLYING: access_state,
                 constants.ACCESS_STATE_DENYING: access_state,
+                constants.ACCESS_STATE_UPDATING: access_state,
                 constants.ACCESS_STATE_ACTIVE: access_state,
             }
             expected_access_rule_update_calls = [
@@ -497,6 +508,7 @@ class ShareInstanceAccessTestCase(test.TestCase):
             self.assertFalse(one_access_rule_update_call.called)
             expected_conditionally_change = {
                 constants.ACCESS_STATE_APPLYING: constants.ACCESS_STATE_ACTIVE,
+                constants.ACCESS_STATE_UPDATING: constants.ACCESS_STATE_ACTIVE,
             }
             expected_get_and_update_calls.append(
                 mock.call(self.context, share_instance_id=share_instance_id,
@@ -570,17 +582,21 @@ class ShareInstanceAccessTestCase(test.TestCase):
         }
         expected_filters_3 = {
             'state': (constants.ACCESS_STATE_QUEUED_TO_APPLY,
-                      constants.ACCESS_STATE_QUEUED_TO_DENY),
+                      constants.ACCESS_STATE_QUEUED_TO_DENY,
+                      constants.ACCESS_STATE_QUEUED_TO_UPDATE),
         }
         expected_conditionally_change_3 = {
             constants.ACCESS_STATE_QUEUED_TO_APPLY:
                 constants.ACCESS_STATE_APPLYING,
             constants.ACCESS_STATE_QUEUED_TO_DENY:
                 constants.ACCESS_STATE_DENYING,
+            constants.ACCESS_STATE_QUEUED_TO_UPDATE:
+                constants.ACCESS_STATE_UPDATING,
         }
         expected_conditionally_change_4 = {
             constants.ACCESS_STATE_APPLYING: constants.ACCESS_STATE_ERROR,
             constants.ACCESS_STATE_DENYING: constants.ACCESS_STATE_ERROR,
+            constants.ACCESS_STATE_UPDATING: constants.ACCESS_STATE_ERROR,
         }
         expected_get_and_update_calls = [
             mock.call(self.context, filters=expected_filters_1,
@@ -701,13 +717,16 @@ class ShareInstanceAccessTestCase(test.TestCase):
 
         expected_filter = {
             'state': (constants.ACCESS_STATE_QUEUED_TO_APPLY,
-                      constants.ACCESS_STATE_QUEUED_TO_DENY),
+                      constants.ACCESS_STATE_QUEUED_TO_DENY,
+                      constants.ACCESS_STATE_QUEUED_TO_UPDATE),
         }
         expected_conditionally_change = {
             constants.ACCESS_STATE_QUEUED_TO_APPLY:
                 constants.ACCESS_STATE_APPLYING,
             constants.ACCESS_STATE_QUEUED_TO_DENY:
                 constants.ACCESS_STATE_DENYING,
+            constants.ACCESS_STATE_QUEUED_TO_UPDATE:
+                constants.ACCESS_STATE_UPDATING,
         }
 
         self.assertEqual(expected_needs_refresh, needs_refresh)
@@ -740,9 +759,12 @@ class ShareInstanceAccessTestCase(test.TestCase):
         pass_add_rules, fail_add_rules = self._get_pass_rules_and_fail_rules()
         pass_delete_rules, fail_delete_rules = (
             self._get_pass_rules_and_fail_rules())
+        pass_update_rules, fail_update_rules = (
+            self._get_pass_rules_and_fail_rules())
         test_rules = pass_rules + fail_rules
         test_add_rules = pass_add_rules + fail_add_rules
         test_delete_rules = pass_delete_rules + fail_delete_rules
+        test_update_rules = pass_update_rules + fail_update_rules
 
         fake_expect_driver_update_rules = pass_rules
         update_access_call = self.mock_object(
@@ -754,6 +776,7 @@ class ShareInstanceAccessTestCase(test.TestCase):
                 access_rules_to_be_on_share=test_rules,
                 add_rules=test_add_rules,
                 delete_rules=test_delete_rules,
+                update_rules=test_update_rules,
                 rules_to_be_removed_from_db=test_rules,
                 share_server=None))
 
@@ -761,12 +784,14 @@ class ShareInstanceAccessTestCase(test.TestCase):
             update_access_call.assert_called_once_with(
                 self.context, share_instance,
                 pass_rules, add_rules=pass_add_rules,
-                delete_rules=pass_delete_rules, share_server=None)
+                delete_rules=pass_delete_rules,
+                update_rules=pass_update_rules,
+                share_server=None)
         else:
             update_access_call.assert_called_once_with(
                 self.context, share_instance, test_rules,
                 add_rules=test_add_rules, delete_rules=test_delete_rules,
-                share_server=None)
+                update_rules=test_update_rules, share_server=None)
         self.assertEqual(fake_expect_driver_update_rules, driver_update_rules)
 
     def _get_pass_rules_and_fail_rules(self):

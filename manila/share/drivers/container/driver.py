@@ -190,7 +190,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         pass
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         server_id = self._get_container_name(share_server["id"])
         share_name = self._get_share_name(share)
         LOG.debug("Updating access to share %(share)s at "
