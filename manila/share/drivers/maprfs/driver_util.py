@@ -17,7 +17,7 @@ Utility for processing MapR cluster operations
 """
 
 import json
-import pipes
+import shlex
 import socket
 
 from oslo_concurrency import processutils
@@ -82,7 +82,7 @@ class BaseDriverUtil(object):
                     raise exception.ProcessExecutionError(str(e))
 
     def _run_ssh(self, host, cmd_list, check_exit_code=False):
-        command = ' '.join(pipes.quote(cmd_arg) for cmd_arg in cmd_list)
+        command = ' '.join(shlex.quote(cmd_arg) for cmd_arg in cmd_list)
         connection = self.ssh_connections.get(host)
         if connection is None:
             ssh_name = self.configuration.maprfs_ssh_name
@@ -123,7 +123,7 @@ class BaseDriverUtil(object):
     @staticmethod
     def _as_user(cmd, user):
         return ['sudo', 'su', '-', user, '-c',
-                ' '.join(pipes.quote(cmd_arg) for cmd_arg in cmd)]
+                ' '.join(shlex.quote(cmd_arg) for cmd_arg in cmd)]
 
     @staticmethod
     def _add_params(cmd, **kwargs):

@@ -26,7 +26,6 @@ from manila.share.drivers.ganesha import manager
 from manila import test
 from manila import utils
 
-
 test_export_id = 101
 test_name = 'fakefile'
 test_path = '/fakedir0/export.d/fakefile.conf'
@@ -349,7 +348,7 @@ class GaneshaManagerTestCase(test.TestCase):
             self._manager._get_export_rados_object_name('fakeobj'))
 
     def test_write_tmp_conf_file(self):
-        self.mock_object(manager.pipes, 'quote',
+        self.mock_object(manager.shlex, 'quote',
                          mock.Mock(side_effect=['fakedata',
                                                 test_tmp_path]))
         test_args = [
@@ -371,7 +370,7 @@ class GaneshaManagerTestCase(test.TestCase):
         self._manager.execute.assert_has_calls([
             mock.call(*test_args[0]),
             mock.call(*test_args[1], **test_kwargs)])
-        manager.pipes.quote.assert_has_calls([
+        manager.shlex.quote.assert_has_calls([
             mock.call('fakedata'),
             mock.call(test_tmp_path)])
         self.assertEqual(test_tmp_path, ret)
