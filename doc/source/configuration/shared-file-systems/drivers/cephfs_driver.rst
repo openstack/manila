@@ -49,6 +49,8 @@ The following operations are supported with CephFS backend:
   * ``read-only`` and ``read-write`` access levels are supported.
 
 - Extend/shrink share
+- Manage/unmanage shares
+- Manage/unmanage share snapshots
 - Create, delete, update and list snapshot
 - Create, delete, update and list share groups
 - Delete and list share group snapshots
@@ -509,6 +511,28 @@ Note the export location of the share:
 The export location of the share contains the IP address of the NFS-Ganesha
 server and the path to be mounted. It is of the form,
 ``{NFS-Ganesha server address}:{path to be mounted}``
+
+
+Managing existing shares and snapshots
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Starting from the 2024.2 (Dalmatian) release, it is possible to bring both
+CephFS Native and NFS shares (subvolumes) that already exist in the Ceph
+Storage under Manila's management. The workflow will be slightly different when
+compared to the original approach:
+
+- The :ref:`share adoption process<manage_share>` should be used, but the name
+  of the subvolume must be supplied as the ``export path`` parameter, so that
+  the driver can appropriately locate the subvolume and manage it.
+- The subvolume's ``subvolume_mode`` will not be overwritten by manila.
+- The subvolumes will not be renamed in the Ceph Storage, and at the end of the
+  manage operation, their names will be preserved.
+- In case the subvolume has its current allocated size (``bytes_quota``) set
+  as infinite, please make sure specify a new ``size`` within the
+  ``driver_options`` parameter. The driver will attempt to resize the share
+  using the provided size and will fail if it is not enough.
+- While managing CephFS Snapshots, the CephFS driver will consider the size of
+  the parent share and account it as the snapshot's quota.
 
 
 Allowing access to shares
