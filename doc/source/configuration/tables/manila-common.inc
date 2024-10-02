@@ -110,6 +110,10 @@
      - (Boolean) Treat X-Forwarded-For as the canonical remote address. Only enable this if you have a sanitizing proxy.
    * - ``wsgi_keep_alive`` = ``True``
      - (Boolean) If False, closes the client socket connection explicitly. Setting it to True to maintain backward compatibility. Recommended setting is set it to False.
+   * - ``admin_only_metadata`` = ``__affinity_same_host,__affinity_different_host``
+     - (List) The affinity keys are default to ensure backwards compatibility. Update the list with metadata items that should only be manipulated by people allowed by the "update_admin_only_metadata" policy.
+   * - ``driver_updatable_metadata`` = ``None``
+     - (List) Metadata keys that will decide which share metadata can be passed to share drivers as part of metadata create/update operations.
    * - **[coordination]**
      -
    * - ``backend_url`` = ``file://$state_path``
@@ -126,5 +130,3 @@
      - (List) Check the presence of a file based on a port to determine if an application is running on a port. Expects a "port:path" list of strings. Used by DisableByFilesPortsHealthcheck plugin.
    * - ``path`` = ``/healthcheck``
      - (String) DEPRECATED: The path to respond to healtcheck requests on.
-   * - ``admin_only_metadata`` = ``__affinity_same_host,__affinity_different_host``
-     - (List) The affinity keys are default to ensure backwards compatibility. Update the list with metadata items that should only be manipulated by people allowed by the "update_admin_only_metadata" policy.
