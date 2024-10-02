@@ -3377,11 +3377,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             fake.PARENT_SNAPSHOT_NAME,
             split=split)
 
-        if split:
-            self.client.volume_clone_split_start.assert_called_once_with(
-                fake.SHARE_NAME)
-        else:
-            self.assertFalse(self.client.volume_clone_split_start.called)
+        self.assertFalse(self.client.volume_clone_split_start.called)
 
         self.client.send_request.assert_called_once_with(
             '/storage/volumes', 'post', body=body)
