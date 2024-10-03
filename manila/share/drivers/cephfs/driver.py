@@ -1051,8 +1051,9 @@ class NFSProtocolHelperMixin():
             export_location = {
                 'path': export_path,
                 'is_admin_only': False,
-                'metadata': {},
-                'preferred': export_ip['preferred']
+                'metadata': {
+                    'preferred': export_ip['preferred'],
+                },
             }
             export_locations.append(export_location)
         return export_locations
@@ -1195,7 +1196,7 @@ class NFSProtocolHelper(NFSProtocolHelperMixin, ganesha.GaneshaNASHelper2):
             ganesha_export_ips = [self.ganesha_host]
 
         export_ips = []
-        for ip in ganesha_export_ips:
+        for ip in set(ganesha_export_ips):
             export_ips.append({'ip': ip, 'preferred': False})
 
         return export_ips
@@ -1254,7 +1255,7 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
             ganesha_server_ips = (
                 [ganesha_server_ips] if ganesha_server_ips else [])
 
-        return ganesha_server_ips
+        return set(ganesha_server_ips)
 
     def _get_export_ips(self):
         """Get NFS cluster export ips."""
@@ -1289,13 +1290,15 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
             raise exception.ShareBackendException(msg=msg)
 
         export_ips = []
-        for ip in ceph_nfs_export_ips:
+        for ip in set(ceph_nfs_export_ips):
             export_ips.append({'ip': ip, 'preferred': True})
 
         # It's possible for deployers to state additional
         # NFS interfaces directly via manila.conf. If they do,
         # these are represented as non-preferred export paths.
         # This is mostly to allow NFS-Ganesha server migrations.
+        ganesha_export_ips = (eip for eip in ganesha_export_ips
+                              if eip not in ceph_nfs_export_ips)
         for ip in ganesha_export_ips:
             export_ips.append({'ip': ip, 'preferred': False})
 
