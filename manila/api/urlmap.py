@@ -16,6 +16,7 @@
 import re
 from urllib.request import parse_http_list
 
+from oslo_utils import netutils
 import paste.urlmap
 
 from manila.api.openstack import wsgi
@@ -239,13 +240,11 @@ class URLMap(paste.urlmap.URLMap):
 
     def __call__(self, environ, start_response):
         host = environ.get('HTTP_HOST', environ.get('SERVER_NAME')).lower()
-        if ':' in host:
-            host, port = host.split(':', 1)
+        if environ['wsgi.url_scheme'] == 'http':
+            default_port = '80'
         else:
-            if environ['wsgi.url_scheme'] == 'http':
-                port = '80'
-            else:
-                port = '443'
+            default_port = '443'
+        host, port = netutils.parse_host_port(host, default_port)
 
         path_info = environ['PATH_INFO']
         path_info = self.normalize_url(path_info, False)[1]

@@ -21,6 +21,7 @@ import socket
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import netutils
 from oslo_utils import strutils
 
 from manila import exception as manila_exception
@@ -485,7 +486,7 @@ class ZadaraVPSAShareDriver(driver.ShareDriver):
         ctrl = self.vpsa._get_active_controller_details()
         if not ctrl:
             raise manila_exception.ZadaraVPSANoActiveController()
-        ipv4_support = False if ':' in ctrl['ip'] else True
+        ipv4_support = not netutils.is_valid_ipv6(ctrl['ip'])
 
         # VPSA backend pool
         single_pool = dict(
@@ -773,7 +774,7 @@ class ZadaraVPSAShareDriver(driver.ShareDriver):
         if not ctrl:
             raise manila_exception.ZadaraVPSANoActiveController()
 
-        if ':' in ctrl['ip']:
+        if netutils.is_valid_ipv6(ctrl['ip']):
             return [6]
         else:
             return [4]

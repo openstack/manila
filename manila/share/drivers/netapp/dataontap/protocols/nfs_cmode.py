@@ -18,6 +18,7 @@ NetApp cDOT NFS protocol helper class.
 import uuid
 
 from oslo_log import log
+from oslo_utils import netutils
 
 from manila.common import constants
 from manila import exception
@@ -33,10 +34,7 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
 
     @staticmethod
     def _escaped_address(address):
-        if ':' in address:
-            return '[%s]' % address
-        else:
-            return address
+        return netutils.escape_ipv6(address)
 
     @na_utils.trace
     def create_share(self, share, share_name,

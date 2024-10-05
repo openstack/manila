@@ -24,6 +24,7 @@ import re
 from lxml import etree
 from oslo_log import log
 from oslo_serialization import jsonutils
+from oslo_utils import netutils
 import requests
 from requests.adapters import HTTPAdapter
 from requests import auth
@@ -461,9 +462,7 @@ class ZapiClient(BaseClient):
 
     def _get_url(self):
         """Get the base url to send the request."""
-        host = self._host
-        if ':' in host:
-            host = '[%s]' % host
+        host = netutils.escape_ipv6(self._host)
         return '%s://%s:%s/%s' % (self._protocol, host, self._port, self._url)
 
     def _build_headers(self):
@@ -599,9 +598,7 @@ class RestClient(BaseClient):
 
     def _get_base_url(self):
         """Get the base URL for REST requests."""
-        host = self._host
-        if ':' in host:
-            host = '[%s]' % host
+        host = netutils.escape_ipv6(self._host)
         return '%s://%s:%s/api/' % (self._protocol, host, self._port)
 
     def _build_headers(self):

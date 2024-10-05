@@ -20,6 +20,7 @@ from unittest import mock
 
 import ddt
 from oslo_serialization import jsonutils
+from oslo_utils import netutils
 import requests
 from requests import auth
 
@@ -218,7 +219,7 @@ class NetAppRestApiServerTests(test.TestCase):
     def test__get_base_url(self, host, port, protocol):
         client = netapp_api.RestNaServer(host, port=port,
                                          transport_type=protocol)
-        expected_host = f'[{host}]' if ':' in host else host
+        expected_host = netutils.escape_ipv6(host)
         expected_url = '%s://%s:%s/api' % (protocol, expected_host, port)
 
         url = client._get_base_url()

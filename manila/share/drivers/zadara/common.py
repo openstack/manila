@@ -18,6 +18,7 @@ import re
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import netutils
 import requests
 
 LOG = logging.getLogger(__name__)
@@ -329,10 +330,7 @@ class ZadaraVPSAConnection(object):
 
     def _get_target_host(self, vpsa_host):
         """Helper for target host formatting."""
-        ipv6_without_brackets = ':' in vpsa_host and vpsa_host[-1] != ']'
-        if ipv6_without_brackets:
-            return ('[%s]' % vpsa_host)
-        return ('%s' % vpsa_host)
+        return netutils.escape_ipv6(vpsa_host)
 
     def _get_active_controller_details(self):
         """Return details of VPSA's active controller."""

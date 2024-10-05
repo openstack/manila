@@ -23,6 +23,7 @@ as defined in manila.conf to provision shares.
 import re
 
 from oslo_log import log
+from oslo_utils import netutils
 
 from manila import exception
 from manila.i18n import _
@@ -168,7 +169,7 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
         interfaces = vserver_client.get_network_interfaces()
         for interface in interfaces:
             address = interface['address']
-            if ':' in address:
+            if netutils.is_valid_ipv6(address):
                 ipv6 = True
             else:
                 ipv4 = True
