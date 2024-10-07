@@ -10,6 +10,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import copy
+
+from manila.api.validation import parameter_types
+
+
 soft_delete_request_body = {
     'type': 'object',
     'properties': {
@@ -32,6 +37,61 @@ restore_request_body = {
     'additionalProperties': False,
 }
 
+extend_request_body = {
+    'type': 'object',
+    'properties': {
+        'os-extend': {
+            'type': 'object',
+            'properties': {
+                'new_size': parameter_types.non_negative_integer,
+            },
+            'required': ['new_size'],
+            # TODO(stephenfin): Set to False in a future microversion
+            'additionalProperties': True,
+        }
+    },
+    'required': ['os-extend'],
+    'additionalProperties': False,
+}
+
+extend_request_body_v27 = copy.deepcopy(extend_request_body)
+extend_request_body_v27['properties']['extend'] = (
+    extend_request_body_v27['properties'].pop('os-extend')
+)
+extend_request_body_v27['required'] = ['extend']
+
+extend_request_body_v264 = copy.deepcopy(extend_request_body_v27)
+extend_request_body_v264['properties']['extend']['properties'].update({
+    'force': parameter_types.boolean
+})
+
+shrink_request_body = {
+    'type': 'object',
+    'properties': {
+        'os-shrink': {
+            'type': 'object',
+            'properties': {
+                'new_size': parameter_types.non_negative_integer,
+            },
+            'required': ['new_size'],
+            # TODO(stephenfin): Set to False in a future microversion
+            'additionalProperties': True,
+        }
+    },
+    'required': ['os-shrink'],
+    'additionalProperties': False,
+}
+
+shrink_request_body_v27 = copy.deepcopy(shrink_request_body)
+shrink_request_body_v27['properties']['shrink'] = (
+    shrink_request_body_v27['properties'].pop('os-shrink')
+)
+shrink_request_body_v27['required'] = ['shrink']
+
 soft_delete_response_body = {'type': 'null'}
 
 restore_response_body = {'type': 'null'}
+
+extend_response_body = {'type': 'null'}
+
+shrink_response_body = {'type': 'null'}
