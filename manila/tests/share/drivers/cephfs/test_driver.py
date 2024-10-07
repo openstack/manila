@@ -255,32 +255,42 @@ class CephFSDriverTestCase(test.TestCase):
             },
 
         ]
+        share_backend_info = {'metadata': {'__mount_options': 'fs=cephfs'}}
+        metadata = share_backend_info.get('metadata')
         expected_updates = {
             shares[0]['id']: {
                 'status': constants.STATUS_ERROR,
                 'reapply_access_rules': True,
+                'metadata': metadata,
             },
             shares[1]['id']: {
                 'export_locations': export_locations[0],
                 'reapply_access_rules': True,
+                'metadata': metadata,
             },
             shares[2]['id']: {
                 'export_locations': export_locations[1],
                 'reapply_access_rules': True,
+                'metadata': metadata,
             }
         }
         err_message = (f"Error ENOENT: subvolume {self._share['id']} does "
                        f"not exist")
         expected_exception = exception.ShareBackendException(err_message)
+
         self.mock_object(
             self._driver, '_get_export_locations',
             mock.Mock(side_effect=[expected_exception] + export_locations))
+        self.mock_object(
+            self._driver, 'get_optional_share_creation_data',
+            mock.Mock(return_value=share_backend_info))
 
         actual_updates = self._driver.ensure_shares(self._context, shares)
 
         self.assertEqual(3, self._driver._get_export_locations.call_count)
         self._driver._get_export_locations.assert_has_calls([
             mock.call(shares[0]), mock.call(shares[1]), mock.call(shares[2])])
+        self.assertTrue(self._driver.get_optional_share_creation_data.called)
         self.assertEqual(expected_updates, actual_updates)
 
     def test_delete_share(self):
