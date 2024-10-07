@@ -283,6 +283,82 @@ class ShareManagerTestCase(test.TestCase):
             (self.share_manager.access_helper.update_access_rules
              .assert_not_called())
 
+    def test_ensure_driver_resources_share_metadata_updates(self):
+        old_hash = {'info_hash': '1e5ff444cfdc4a154126ddebc0223ffeae2d10c9'}
+        self.mock_object(self.share_manager.db,
+                         'backend_info_get',
+                         mock.Mock(return_value=old_hash))
+        self.mock_object(self.share_manager.driver,
+                         'get_backend_info',
+                         mock.Mock(return_value={'val': 'newval'}))
+        instances, rules = self._setup_init_mocks()
+        metadata_updates = {'update_meta_key': 'update_meta_val'}
+        fake_update_instances = {
+            instances[0]['id']: {
+                'metadata': metadata_updates,
+            },
+            instances[2]['id']: {
+                'metadata': metadata_updates,
+            },
+        }
+        mock_backend_info_update = self.mock_object(
+            self.share_manager.db, 'backend_info_update')
+        self.mock_object(
+            self.share_manager.db, 'share_instances_get_all_by_host',
+            mock.Mock(return_value=[instances[0], instances[2], instances[4]]))
+        self.mock_object(self.share_manager.db, 'share_instance_get',
+                         mock.Mock(side_effect=[instances[0], instances[2],
+                                                instances[4]]))
+        self.mock_object(self.share_manager.db, 'share_metadata_update')
+        mock_ensure_shares = self.mock_object(
+            self.share_manager.driver, 'ensure_shares',
+            mock.Mock(return_value=fake_update_instances))
+        self.mock_object(self.share_manager, '_ensure_share_instance_has_pool')
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value='share_server'))
+        self.mock_object(self.share_manager,
+                         '_get_share_server_dict',
+                         mock.Mock(return_value='share_server'))
+        mock_reset_rules_method = self.mock_object(
+            self.share_manager.access_helper, 'reset_rules_to_queueing_states')
+
+        dict_instances = [self._get_share_instance_dict(
+            instance, share_server='share_server') for instance in instances]
+
+        self.share_manager.ensure_driver_resources(self.context)
+
+        mock_backend_info_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            self.share_manager.host,
+            '7026776d9aaf3563799b8bbe1a020ea8cbd4dd22')
+        mock_ensure_shares.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            [dict_instances[0], dict_instances[2], dict_instances[4]])
+        self.share_manager._ensure_share_instance_has_pool.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext),
+                      instances[0]),
+            mock.call(utils.IsAMatcher(context.RequestContext),
+                      instances[2]),
+            mock.call(utils.IsAMatcher(context.RequestContext),
+                      instances[4]),
+        ])
+        self.share_manager.db.share_metadata_update.assert_has_calls([
+            mock.call(
+                self.context, instances[0]['share_id'], metadata_updates, False
+            ),
+            mock.call(
+                self.context, instances[2]['share_id'], metadata_updates, False
+            ),
+        ])
+        self.share_manager._get_share_server.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext),
+                      instances[0]),
+            mock.call(utils.IsAMatcher(context.RequestContext),
+                      instances[2]),
+        ])
+        # none of the share instances in the fake data have syncing rules
+        mock_reset_rules_method.assert_not_called()
+
     def test_init_host_with_no_shares(self):
         self.mock_object(self.share_manager.db,
                          'share_instances_get_all_by_host',
@@ -2704,6 +2780,7 @@ class ShareManagerTestCase(test.TestCase):
         driver_mock.choose_share_server_compatible_with_share.return_value = (
             share_srv
         )
+        driver_mock.get_optional_share_creation_data.return_value = {}
         self.share_manager.driver = driver_mock
         self.share_manager.driver.\
             dhss_mandatory_security_service_association = {}
@@ -2791,6 +2868,35 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager._setup_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), fake_server,
             fake_metadata)
+
+    def test_create_share_instance_with_backend_provided_metadata(self):
+        """Test share can be created and share server is created."""
+        share_type = db_utils.create_share_type()
+        share = db_utils.create_share(share_type_id=share_type['id'],
+                                      availability_zone=None)
+        share_id = share['id']
+        share_backend_info_return = {
+            'metadata': {'meta_key': 'meta_val'}
+        }
+        share_metadata = share_backend_info_return['metadata']
+
+        self.mock_object(
+            self.share_manager.driver, 'get_optional_share_creation_data',
+            mock.Mock(return_value=share_backend_info_return)
+        )
+        self.mock_object(db, 'share_metadata_update')
+
+        self.share_manager.create_share_instance(self.context,
+                                                 share.instance['id'])
+
+        self.assertEqual(share_id, db.share_get(context.get_admin_context(),
+                         share_id).id)
+        shr = db.share_get(self.context, share_id)
+        self.assertEqual(constants.STATUS_AVAILABLE, shr['status'])
+        (self.share_manager.driver.get_optional_share_creation_data
+         .assert_called_once())
+        db.share_metadata_update.assert_called_once_with(
+            mock.ANY, share_id, share_metadata, False)
 
     def test_create_share_instance_update_replica_state(self):
         share_net = db_utils.create_share_network()
