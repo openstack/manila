@@ -2886,15 +2886,6 @@ class NetAppCmodeFileStorageLibrary(object):
                 .isoformat(), (2 * self._snapmirror_schedule)))):
             return constants.REPLICA_STATE_OUT_OF_SYNC
 
-        replica_backend = share_utils.extract_host(replica['host'],
-                                                   level='backend_name')
-        config = data_motion.get_backend_configuration(replica_backend)
-        config_size = (int(config.safe_get(
-            'netapp_snapmirror_last_transfer_size_limit')) * units.Ki)
-        last_transfer_size = int(snapmirror.get('last-transfer-size', 0))
-        if last_transfer_size > config_size:
-            return constants.REPLICA_STATE_OUT_OF_SYNC
-
         last_transfer_error = snapmirror.get('last-transfer-error', None)
         if last_transfer_error:
             LOG.debug('Found last-transfer-error: %(error)s for replica: '
