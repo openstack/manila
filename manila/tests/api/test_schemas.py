@@ -11,10 +11,13 @@
 # under the License.
 
 import jsonschema.exceptions
+from oslo_log import log
 
 from manila.api.v2 import router
 from manila.api.validation import validators
 from manila import test
+
+LOG = log.getLogger(__name__)
 
 
 class SchemaTest(test.TestCase):
@@ -34,6 +37,7 @@ class SchemaTest(test.TestCase):
             try:
                 self.meta_schema.check_schema(schema)
             except jsonschema.exceptions.SchemaError:
+                LOG.exception('schema validation failed')
                 invalid_schemas.add(func.__qualname__)
 
         def _validate_func(func, method):
@@ -151,4 +155,10 @@ class SchemaTest(test.TestCase):
             raise self.failureException(
                 f"Found API resources without response body schemas: "
                 f"{sorted(missing_response_schemas)}"
+            )
+
+        if invalid_schemas:
+            raise self.failureException(
+                f"Found API resources with invalid schemas: "
+                f"{sorted(invalid_schemas)}"
             )

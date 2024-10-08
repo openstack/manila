@@ -42,7 +42,8 @@ create_request_body = {
                 },
                 'resource_type': {
                     'type': ['string', 'null'],
-                    'enum': constants.RESOURCE_LOCK_RESOURCE_TYPES + (None,),
+                    'enum': list(constants.RESOURCE_LOCK_RESOURCE_TYPES)
+                    + [None],
                     'default': constants.SHARE_RESOURCE_TYPE,
                     'description': helpers.description(
                         'resource_lock_resource_type'
@@ -50,7 +51,8 @@ create_request_body = {
                 },
                 'resource_action': {
                     'type': ['string', 'null'],
-                    'enum': constants.RESOURCE_LOCK_RESOURCE_ACTIONS + (None,),
+                    'enum': list(constants.RESOURCE_LOCK_RESOURCE_ACTIONS)
+                    + [None],
                     'default': constants.RESOURCE_ACTION_DELETE,
                     'description': helpers.description(
                         'resource_lock_resource_action_create_optional'
@@ -74,7 +76,8 @@ update_request_body = {
             'properties': {
                 'resource_action': {
                     'type': ['string', 'null'],
-                    'enum': constants.RESOURCE_LOCK_RESOURCE_ACTIONS + (None,),
+                    'enum': list(constants.RESOURCE_LOCK_RESOURCE_ACTIONS)
+                    + [None],
                     'description': helpers.description(
                         'resource_lock_resource_action_optional'
                     ),
@@ -158,14 +161,14 @@ index_request_query = {
         }),
         'resource_action': parameter_types.multi_params({
             'type': ['string', 'null'],
-            'enum': constants.RESOURCE_LOCK_RESOURCE_ACTIONS + (None,),
+            'enum': list(constants.RESOURCE_LOCK_RESOURCE_ACTIONS) + [None],
             'description': helpers.description(
                 'resource_lock_resource_action_query'
             ),
         }),
         'resource_type': parameter_types.multi_params({
             'type': ['string', 'null'],
-            'enum': constants.RESOURCE_LOCK_RESOURCE_TYPES + (None,),
+            'enum': list(constants.RESOURCE_LOCK_RESOURCE_TYPES) + [None],
             'description': helpers.description(
                 'resource_lock_resource_type_query'
             ),
@@ -228,7 +231,7 @@ _resource_lock_response = {
         },
         'resource_type': {
             'type': 'string',
-            'enum': constants.RESOURCE_LOCK_RESOURCE_TYPES,
+            'enum': list(constants.RESOURCE_LOCK_RESOURCE_TYPES),
             'description': helpers.description('resource_lock_resource_type'),
         },
         'resource_id': {
@@ -238,7 +241,7 @@ _resource_lock_response = {
         },
         'resource_action': {
             'type': 'string',
-            'enum': constants.RESOURCE_LOCK_RESOURCE_ACTIONS,
+            'enum': list(constants.RESOURCE_LOCK_RESOURCE_ACTIONS),
             'description': helpers.description(
                 'resource_lock_resource_action'
             ),
