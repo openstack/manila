@@ -455,15 +455,15 @@ user documentation.
 ----
    Added optional ``mount_point_name`` field to share.
 
-2.85
-----
+2.85 (Maximum in 2024.1/Caracal)
+--------------------------------
    Added ``backup_type`` field to share backup object.
 
 2.86
 ----
    Added ensure shares API.
 
-2.87
-----
+2.87 (Maximum in 2024.2/Dalmatian)
+----------------------------------
   Added Metadata API methods (GET, PUT, POST, DELETE)
   to Share Export Locations.
