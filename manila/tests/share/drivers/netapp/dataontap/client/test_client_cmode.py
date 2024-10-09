@@ -2988,7 +2988,91 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertTrue(result)
         self.client.send_request.assert_called_once_with(
             'kerberos-config-get', kerberos_config_get_args)
-        self.client.get_network_interfaces.assert_called_once()
+        self.client.get_network_interfaces.assert_called_once_with(
+            protocols=['NFS', 'CIFS'])
+
+    def test_is_kerberos_enabled_exception_raise(self):
+        self.client.features.add_feature('KERBEROS_VSERVER')
+        api_response = netapp_api.NaElement(
+            fake.KERBEROS_CONFIG_GET_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(side_effect=[api_response,
+                                   netapp_api.NaApiError('foobar')]))
+        self.mock_object(self.client,
+                         'get_network_interfaces',
+                         mock.Mock(return_value=[{'interface-name': 'lif1'},
+                                                 {'interface-name': 'lif2'},
+                                                 {'interface-name': 'lif3'}]))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.is_kerberos_enabled)
+
+        kerberos_config_get_args_lif1 = {
+            'interface-name': 'lif1',
+            'desired-attributes': {
+                'kerberos-config-info': {
+                    'is-kerberos-enabled': None,
+                }
+            }
+        }
+
+        kerberos_config_get_args_lif2 = {
+            'interface-name': 'lif2',
+            'desired-attributes': {
+                'kerberos-config-info': {
+                    'is-kerberos-enabled': None,
+                }
+            }
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('kerberos-config-get', kerberos_config_get_args_lif1),
+            mock.call('kerberos-config-get', kerberos_config_get_args_lif2),
+        ])
+        self.client.get_network_interfaces.assert_called_once_with(
+            protocols=['NFS', 'CIFS'])
+
+    def test_is_kerberos_enabled_exception_return_false(self):
+        self.client.features.add_feature('KERBEROS_VSERVER')
+        api_response = netapp_api.NaElement(
+            fake.KERBEROS_CONFIG_GET_RESPONSE)
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=[api_response, netapp_api.NaApiError(
+                message="entry doesn't exist")]))
+        self.mock_object(self.client,
+                         'get_network_interfaces',
+                         mock.Mock(return_value=[{'interface-name': 'lif1'},
+                                                 {'interface-name': 'lif2'},
+                                                 {'interface-name': 'lif3'}]))
+
+        result = self.client.is_kerberos_enabled()
+
+        kerberos_config_get_args_lif1 = {
+            'interface-name': 'lif1',
+            'desired-attributes': {
+                'kerberos-config-info': {
+                    'is-kerberos-enabled': None,
+                }
+            }
+        }
+
+        kerberos_config_get_args_lif2 = {
+            'interface-name': 'lif2',
+            'desired-attributes': {
+                'kerberos-config-info': {
+                    'is-kerberos-enabled': None,
+                }
+            }
+        }
+
+        self.assertFalse(result)
+        self.client.send_request.assert_has_calls([
+            mock.call('kerberos-config-get', kerberos_config_get_args_lif1),
+            mock.call('kerberos-config-get', kerberos_config_get_args_lif2),
+        ])
+        self.client.get_network_interfaces.assert_called_once_with(
+            protocols=['NFS', 'CIFS'])
 
     def test_get_kerberos_service_principal_name(self):
 
