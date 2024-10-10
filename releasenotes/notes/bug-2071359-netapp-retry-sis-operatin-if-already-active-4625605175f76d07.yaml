@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver will now retry the sis operation (e.g. dedupe) if sis
+    operation is currently active. This is needed because NetApp turns on
+    efficiency (by default) on latest hardware which causes conflicting sis
+    operation when Manila tries to turn it off. For more details, please check
+    Launchpad `bug #2071359 <https://bugs.launchpad.net/manila/+bug/2071359>`_
