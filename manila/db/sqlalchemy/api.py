@@ -6621,16 +6621,32 @@ def count_share_groups_in_share_network(context, share_network_id):
 
 @require_context
 @context_manager.reader
-def count_share_group_snapshot_members_in_share(context, share_id):
-    return model_query(
+def count_share_group_snapshot_members_in_share(
+    context, share_id, include_deferred_deleting=True
+):
+    query = model_query(
         context, models.ShareSnapshotInstance,
         project_only=True, read_deleted="no",
     ).join(
         models.ShareInstance,
         models.ShareInstance.id == (
             models.ShareSnapshotInstance.share_instance_id),
-    ).filter(
+    )
+
+    if include_deferred_deleting:
+        # consider deferred deleting states in query
+        return query.filter(
+            models.ShareInstance.share_id == share_id,
+        ).count()
+
+    deferred_delete_states = [
+        constants.STATUS_DEFERRED_DELETING,
+        constants.STATUS_ERROR_DEFERRED_DELETING,
+    ]
+    return query.filter(
         models.ShareInstance.share_id == share_id,
+        and_(models.ShareSnapshotInstance.status.not_in(
+             deferred_delete_states))
     ).count()
 
 
