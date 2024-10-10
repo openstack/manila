@@ -35,7 +35,6 @@ macrosan_opts = [
                default='manila',
                help='Username for the Macrosan NAS server.'),
     cfg.StrOpt('macrosan_nas_password',
-               default=None,
                secret=True,
                help='Password for the Macrosan NAS server.'),
     cfg.StrOpt('macrosan_nas_http_protocol',

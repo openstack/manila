@@ -31,13 +31,11 @@ infortrend_nas_opts = [
                default='manila',
                help='User for the Infortrend NAS server.'),
     cfg.StrOpt('infortrend_nas_password',
-               default=None,
                secret=True,
                help='Password for the Infortrend NAS server. '
                'This is not necessary '
                'if infortrend_nas_ssh_key is set.'),
     cfg.StrOpt('infortrend_nas_ssh_key',
-               default=None,
                help='SSH key for the Infortrend NAS server. '
                'This is not necessary '
                'if infortrend_nas_password is set.'),
