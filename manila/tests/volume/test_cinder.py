@@ -57,7 +57,7 @@ class CinderclientTestCase(test.TestCase):
         data = {
             'cinder': {
                 'http_retries': 3,
-                'endpoint_type': 'foo_endpoint_type',
+                'endpoint_type': 'internalURL',
                 'region_name': 'foo_region_name',
             }
         }
@@ -82,7 +82,7 @@ class CinderclientTestCase(test.TestCase):
         data = {
             'cinder': {
                 'http_retries': 3,
-                'endpoint_type': 'foo_endpoint_type',
+                'endpoint_type': 'internalURL',
                 'region_name': 'foo_region_name',
             }
         }

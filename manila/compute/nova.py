@@ -40,6 +40,8 @@ nova_opts = [
                help='Version of Nova API to be used.'),
     cfg.StrOpt('endpoint_type',
                default='publicURL',
+               choices=['publicURL', 'internalURL', 'adminURL',
+                        'public', 'internal', 'admin'],
                help='Endpoint type to be used with nova client calls.'),
     cfg.StrOpt('region_name',
                help='Region name for connecting to nova.'),

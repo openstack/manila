@@ -136,7 +136,7 @@ class NovaclientTestCase(test.TestCase):
         data = {
             'nova': {
                 'api_microversion': 'foo_api_microversion',
-                'endpoint_type': 'foo_endpoint_type',
+                'endpoint_type': 'internalURL',
                 'region_name': 'foo_region_name',
             }
         }
@@ -161,7 +161,7 @@ class NovaclientTestCase(test.TestCase):
         data = {
             'nova': {
                 'api_microversion': 'foo_api_microversion',
-                'endpoint_type': 'foo_endpoint_type',
+                'endpoint_type': 'internalURL',
                 'region_name': 'foo_region_name',
             }
         }

@@ -55,6 +55,8 @@ neutron_opts = [
     cfg.StrOpt(
         'endpoint_type',
         default='publicURL',
+        choices=['publicURL', 'internalURL', 'adminURL',
+                 'public', 'internal', 'admin'],
         help='Endpoint type to be used with neutron client calls.'),
     cfg.StrOpt(
         'region_name',
