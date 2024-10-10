@@ -136,6 +136,19 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
             for share_server in subnet['share_servers']:
                 self.share_rpcapi.delete_share_server(context, share_server)
 
+        for security_service in share_network['security_services']:
+            try:
+                db_api.share_network_remove_security_service(
+                    context,
+                    id,
+                    security_service['id'])
+            except Exception:
+                LOG.exception(
+                    "Failed to delete security association of network "
+                    "{net_id} and security service "
+                    "{sec_id}".format(net_id=id,
+                                      sec_id=security_service['id']))
+
         db_api.share_network_delete(context, id)
 
         try:
