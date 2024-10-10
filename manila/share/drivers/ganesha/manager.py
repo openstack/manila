@@ -15,8 +15,8 @@
 
 import io
 import os
-import pipes
 import re
+import shlex
 import sys
 
 from oslo_log import log
@@ -294,7 +294,7 @@ class GaneshaManager(object):
                             fname + ".XXXXXX")[0][:-1]
         self.execute(
             'sh', '-c',
-            'echo %s > %s' % (pipes.quote(data), pipes.quote(tmpf)),
+            'echo %s > %s' % (shlex.quote(data), shlex.quote(tmpf)),
             message='writing ' + tmpf)
         return tmpf
 
@@ -640,5 +640,5 @@ class GaneshaManager(object):
     def reset_exports(self):
         """Delete all export files."""
         self.execute('sh', '-c',
-                     'rm -f %s/*.conf' % pipes.quote(self.ganesha_export_dir))
+                     'rm -f %s/*.conf' % shlex.quote(self.ganesha_export_dir))
         self._mkindex()
