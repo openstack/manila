@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    Administrator can now configure new policy `list_all_projects` for share
+    and share snapshot. This policy is applicable for listing of respective
+    resources in all projects. Please check `launchpad bug 2084532
+    <https://bugs.launchpad.net/manila/+bug/2084532>`_ for more details.

@@ -100,6 +100,12 @@ deprecated_list_snapshots_in_deferred_deletion_states = policy.DeprecatedRule(
     deprecated_reason=DEPRECATED_REASON,
     deprecated_since='2024.1/Caracal'
 )
+deprecated_list_all_projects = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'list_all_projects',
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2025.1/Epoxy'
+)
 
 share_snapshot_policies = [
     policy.DocumentedRuleDefault(
@@ -131,6 +137,23 @@ share_snapshot_policies = [
             }
         ],
         deprecated_rule=deprecated_snapshot_get_all
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'list_all_projects',
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description="List share snapshots by all projects.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/snapshots?all_tenants=1',
+            },
+            {
+                'method': 'GET',
+                'path': '/snapshots/detail?all_tenants=1',
+            }
+        ],
+        deprecated_rule=deprecated_list_all_projects
     ),
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'force_delete',
