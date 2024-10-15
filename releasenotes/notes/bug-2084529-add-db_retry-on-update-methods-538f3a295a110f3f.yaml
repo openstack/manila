@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Added db_retry on deadlock for various database update methods.
+    Please check `launchpad bug 2084529
+    <https://bugs.launchpad.net/manila/+bug/2084529>`_ for more details.
