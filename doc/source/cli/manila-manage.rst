@@ -121,9 +121,10 @@ Manila Config
 Manila Service
 ~~~~~~~~~~~~~~
 
-``manila-manage service list``
+``manila-manage service list [--format_output table|json|yaml]``
 
-    Returns list of manila services.
+    Returns list of manila services. Output format could be modified using `--format_output` option.
+    It can be `table`, `json` or `yaml`. Defaults to `table`.
 
 Manila Version
 ~~~~~~~~~~~~~~
