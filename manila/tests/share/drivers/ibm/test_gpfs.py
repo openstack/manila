@@ -221,7 +221,7 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
 
     def test_setup_helpers(self):
         self._driver._helpers = {}
-        CONF.set_default('gpfs_share_helpers', ['CES=fakenfs'])
+        CONF.set_default('gpfs_share_helpers', {'CES': 'fakenfs'})
         self.mock_object(gpfs.importutils, 'import_class',
                          mock.Mock(return_value=self._helper_fake))
         self._driver._setup_helpers()

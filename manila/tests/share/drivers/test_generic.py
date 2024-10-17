@@ -221,7 +221,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_setup_helpers(self):
         self._driver._helpers = {}
-        CONF.set_default('share_helpers', ['NFS=fakenfs'])
+        CONF.set_default('share_helpers', {'NFS': 'fakenfs'})
         self.mock_object(generic.importutils, 'import_class',
                          mock.Mock(return_value=self._helper_nfs))
         self._driver._setup_helpers()
@@ -237,7 +237,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_setup_helpers_no_helpers(self):
         self._driver._helpers = {}
-        CONF.set_default('share_helpers', [])
+        CONF.set_default('share_helpers', {})
         self.assertRaises(exception.ManilaException,
                           self._driver._setup_helpers)
 

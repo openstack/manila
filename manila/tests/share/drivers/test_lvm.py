@@ -130,7 +130,7 @@ class LVMShareDriverTestCase(test.TestCase):
         fake_utils.fake_execute_clear_log()
 
     def test_do_setup(self):
-        CONF.set_default('lvm_share_helpers', ['NFS=fakenfs'])
+        CONF.set_default('lvm_share_helpers', {'NFS': 'fakenfs'})
         lvm.importutils = mock.Mock()
         lvm.importutils.import_class.return_value = self._helper_nfs
         self._driver.do_setup(self._context)

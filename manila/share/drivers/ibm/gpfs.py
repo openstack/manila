@@ -36,6 +36,7 @@ import shlex
 import socket
 
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
@@ -91,12 +92,13 @@ gpfs_share_opts = [
                     'is configured.'),
     cfg.StrOpt('gpfs_ssh_private_key',
                help='Path to GPFS server SSH private key for login.'),
-    cfg.ListOpt('gpfs_share_helpers',
-                default=[
-                    'KNFS=manila.share.drivers.ibm.gpfs.KNFSHelper',
-                    'CES=manila.share.drivers.ibm.gpfs.CESHelper',
-                ],
-                help='Specify list of share export helpers.'),
+    cfg.Opt('gpfs_share_helpers',
+            type=types.Dict(key_value_separator='='),
+            default={
+                'KNFS': 'manila.share.drivers.ibm.gpfs.KNFSHelper',
+                'CES': 'manila.share.drivers.ibm.gpfs.CESHelper',
+            },
+            help='Specify list of share export helpers.'),
 ]
 
 
@@ -278,8 +280,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
     def _setup_helpers(self):
         """Initializes protocol-specific NAS drivers."""
         self._helpers = {}
-        for helper_str in self.configuration.gpfs_share_helpers:
-            share_proto, _, import_str = helper_str.partition('=')
+        helpers = self.configuration.gpfs_share_helpers
+        for share_proto, import_str in helpers.items():
             helper = importutils.import_class(import_str)
             self._helpers[share_proto.upper()] = helper(self._gpfs_execute,
                                                         self.configuration)

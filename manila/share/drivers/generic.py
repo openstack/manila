@@ -20,6 +20,7 @@ import time
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import units
@@ -63,12 +64,13 @@ share_opts = [
     cfg.StrOpt('service_instance_smb_config_path',
                default='$share_mount_path/smb.conf',
                help="Path to SMB config in service instance."),
-    cfg.ListOpt('share_helpers',
-                default=[
-                    'CIFS=manila.share.drivers.helpers.CIFSHelperIPAccess',
-                    'NFS=manila.share.drivers.helpers.NFSHelper',
-                ],
-                help='Specify list of share export helpers.'),
+    cfg.Opt('share_helpers',
+            type=types.Dict(key_value_separator='='),
+            default={
+                'CIFS': 'manila.share.drivers.helpers.CIFSHelperIPAccess',
+                'NFS': 'manila.share.drivers.helpers.NFSHelper',
+            },
+            help='Specify list of share export helpers.'),
     cfg.StrOpt('share_volume_fstype',
                default='ext4',
                choices=['ext4', 'ext3'],
@@ -206,8 +208,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Initializes protocol-specific NAS drivers."""
         helpers = self.configuration.share_helpers
         if helpers:
-            for helper_str in helpers:
-                share_proto, __, import_str = helper_str.partition('=')
+            for share_proto, import_str in helpers.items():
                 helper = importutils.import_class(import_str)
                 self._helpers[share_proto.upper()] = helper(
                     self._execute,

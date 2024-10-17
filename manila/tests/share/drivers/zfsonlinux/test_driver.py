@@ -199,7 +199,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
     def test__setup_helpers(self):
         mock_import_class = self.mock_object(
             zfs_driver.importutils, 'import_class')
-        self.configuration.zfs_share_helpers = ['FOO=foo.module.WithHelper']
+        self.configuration.zfs_share_helpers = {'FOO': 'foo.module.WithHelper'}
 
         result = self.driver._setup_helpers()
 
@@ -212,7 +212,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             {'FOO': mock_import_class.return_value.return_value})
 
     def test__setup_helpers_error(self):
-        self.configuration.zfs_share_helpers = []
+        self.configuration.zfs_share_helpers = {}
         self.assertRaises(
             exception.BadConfigurationException, self.driver._setup_helpers)
 

@@ -25,6 +25,7 @@ import re
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import timeutils
@@ -56,12 +57,13 @@ share_opts = [
     cfg.StrOpt('lvm_share_volume_group',
                default='lvm-shares',
                help='Name for the VG that will contain exported shares.'),
-    cfg.ListOpt('lvm_share_helpers',
-                default=[
-                    'CIFS=manila.share.drivers.helpers.CIFSHelperUserAccess',
-                    'NFS=manila.share.drivers.helpers.NFSHelper',
-                ],
-                help='Specify list of share export helpers.'),
+    cfg.Opt('lvm_share_helpers',
+            type=types.Dict(key_value_separator='='),
+            default={
+                'CIFS': 'manila.share.drivers.helpers.CIFSHelperUserAccess',
+                'NFS': 'manila.share.drivers.helpers.NFSHelper',
+            },
+            help='Specify list of share export helpers.'),
 ]
 
 CONF = cfg.CONF
@@ -217,8 +219,8 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
     def _setup_helpers(self):
         """Initializes protocol-specific NAS drivers."""
         self._helpers = {}
-        for helper_str in self.configuration.lvm_share_helpers:
-            share_proto, _, import_str = helper_str.partition('=')
+        helpers = self.configuration.lvm_share_helpers
+        for share_proto, import_str in helpers.items():
             helper = importutils.import_class(import_str)
             # TODO(rushiagr): better way to handle configuration
             #                 instead of just passing to the helper

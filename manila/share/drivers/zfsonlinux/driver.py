@@ -23,6 +23,7 @@ import os
 import time
 
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import strutils
@@ -97,11 +98,12 @@ zfsonlinux_opts = [
         "zfs_ssh_private_key_path",
         help="Path to SSH private key that should be used for SSH'ing ZFS "
              "storage host. Not used for replication operations. Optional."),
-    cfg.ListOpt(
+    cfg.Opt(
         "zfs_share_helpers",
-        default=[
-            "NFS=manila.share.drivers.zfsonlinux.utils.NFSviaZFSHelper",
-        ],
+        type=types.Dict(key_value_separator='='),
+        default={
+            "NFS": "manila.share.drivers.zfsonlinux.utils.NFSviaZFSHelper",
+        },
         help="Specify list of share export helpers for ZFS storage. "
              "It should look like following: "
              "'FOO_protocol=foo.FooClass,BAR_protocol=bar.BarClass'. "
@@ -296,8 +298,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         self._helpers = {}
         helpers = self.configuration.zfs_share_helpers
         if helpers:
-            for helper_str in helpers:
-                share_proto, __, import_str = helper_str.partition('=')
+            for share_proto, import_str in helpers.items():
                 helper = importutils.import_class(import_str)
                 self._helpers[share_proto.upper()] = helper(
                     self.configuration)
