@@ -732,6 +732,9 @@ function install_manilaclient {
     else
         pip_install python-manilaclient
     fi
+    if [[ "$GLOBAL_VENV" == "True" ]]; then
+        sudo ln -sf /opt/stack/data/venv/bin/manila /usr/local/bin
+    fi
 }
 
 # install_manila - Collect source and prepare
