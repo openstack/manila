@@ -22,9 +22,7 @@
             voting: false
         - manila-tempest-plugin-lvm-fips:
             voting: false
-        # (TODO) gouthamr: unskip this grenade job when trunk is 2025.1 since
-        # this is different from the job below only during SLURP releases
-        # - manila-grenade
+        - manila-grenade
         - manila-grenade-skip-level-always
         - manila-rally-no-ss:
             voting: false
