@@ -333,7 +333,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             self._client.create_vserver_dp_destination(
                 vserver_name,
                 aggregate_names,
-                ipspace_name)
+                ipspace_name,
+                self.configuration.netapp_delete_retention_hours)
             # Set up port and broadcast domain for the current ipspace
             self._create_port_and_broadcast_domain(
                 ipspace_name, network_info[0])
@@ -347,7 +348,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 self.configuration.netapp_root_volume,
                 aggr_set,
                 ipspace_name,
-                self.configuration.netapp_security_cert_expire_days)
+                self.configuration.netapp_security_cert_expire_days,
+                self.configuration.netapp_delete_retention_hours)
 
             vserver_client = self._get_api_client(vserver=vserver_name)
 

@@ -80,6 +80,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontapi_1_191 = ontapi_version >= (1, 191)
         ontap_9_10 = self.get_system_version()['version-tuple'] >= (9, 10, 0)
         ontap_9_10_1 = self.get_system_version()['version-tuple'] >= (9, 10, 1)
+        ontap_9_11_1 = self.get_system_version()['version-tuple'] >= (9, 11, 1)
 
         self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
         self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
@@ -106,6 +107,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.features.add_feature('SVM_MIGRATE', supported=ontap_9_10)
         self.features.add_feature('SNAPLOCK', supported=ontapi_1_100)
         self.features.add_feature('UNIFIED_AGGR', supported=ontap_9_10_1)
+        self.features.add_feature('DELETE_RETENTION_HOURS',
+                                  supported=ontap_9_11_1)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -181,10 +184,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def create_vserver(self, vserver_name, root_volume_aggregate_name,
                        root_volume_name, aggregate_names, ipspace_name,
-                       security_cert_expire_days):
+                       security_cert_expire_days, delete_retention_hours):
         """Creates new vserver and assigns aggregates."""
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
+            delete_retention_hours,
             root_volume_name=root_volume_name,
             root_volume_aggregate_name=root_volume_aggregate_name,
             root_volume_security_style='unix',
@@ -193,14 +197,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def create_vserver_dp_destination(self, vserver_name, aggregate_names,
-                                      ipspace_name):
+                                      ipspace_name, delete_retention_hours):
         """Creates new 'dp_destination' vserver and assigns aggregates."""
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
-            subtype='dp_destination')
+            delete_retention_hours, subtype='dp_destination')
 
     @na_utils.trace
     def _create_vserver(self, vserver_name, aggregate_names, ipspace_name,
+                        delete_retention_hours,
                         root_volume_name=None, root_volume_aggregate_name=None,
                         root_volume_security_style=None,
                         name_server_switch=None, subtype=None):
@@ -235,6 +240,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'aggr-list': aggr_list,
             'vserver-name': vserver_name,
         }
+        if (delete_retention_hours != 0 and
+                self.features.DELETE_RETENTION_HOURS):
+            modify_args.update(
+                {'volume-delete-retention-hours': delete_retention_hours})
+
         self.send_request('vserver-modify', modify_args)
 
     @na_utils.trace
