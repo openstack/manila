@@ -21,13 +21,13 @@
 Unit Tests for remote procedure calls using queue
 """
 
-from datetime import datetime
 from datetime import timedelta
 from unittest import mock
 
 import ddt
 from oslo_config import cfg
 from oslo_service import wsgi
+from oslo_utils import timeutils
 
 from manila import context
 from manila import db
@@ -300,9 +300,9 @@ class ServiceTestCase(test.TestCase):
 
             if cleanup_interval_done:
                 service_ref_stopped['updated_at'] = (
-                    datetime.utcnow() - timedelta(minutes=10))
+                    timeutils.utcnow() - timedelta(minutes=10))
             else:
-                service_ref_stopped['updated_at'] = datetime.utcnow()
+                service_ref_stopped['updated_at'] = timeutils.utcnow()
             mock_db.service_get_all_by_topic.return_value = [
                 service_ref_stopped]
             serv.stop()

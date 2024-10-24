@@ -102,8 +102,9 @@ class ViewBuilder(common.ViewBuilder):
         return limits
 
     def _build_rate_limit(self, rate_limit):
-        _get_utc = datetime.datetime.utcfromtimestamp
-        next_avail = _get_utc(rate_limit["resetTime"])
+        next_avail = datetime.datetime.fromtimestamp(
+            rate_limit["resetTime"],
+            tz=datetime.timezone.utc).replace(tzinfo=None)
         return {
             "verb": rate_limit["verb"],
             "value": rate_limit["value"],

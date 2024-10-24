@@ -120,7 +120,7 @@ class ShareAPITestCase(test.TestCase):
         self.mock_object(quota.QUOTAS, 'reserve',
                          lambda *args, **kwargs: None)
 
-        self.dt_utc = datetime.datetime.utcnow()
+        self.dt_utc = timeutils.utcnow()
         self.mock_object(timeutils, 'utcnow',
                          mock.Mock(return_value=self.dt_utc))
         self.mock_object(share_api.policy, 'check_policy')

@@ -93,7 +93,7 @@ class ShareGroupsAPITestCase(test.TestCase):
         self.mock_object(self.api, 'share_api', self.share_api)
         self.mock_object(self.api, 'scheduler_rpcapi', self.scheduler_rpcapi)
 
-        dt_utc = datetime.datetime.utcnow()
+        dt_utc = timeutils.utcnow()
         self.mock_object(timeutils, 'utcnow', mock.Mock(return_value=dt_utc))
         self.fake_share_type = {
             'name': 'default',
