@@ -41,6 +41,7 @@ from oslo_utils import importutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
+import sqlalchemy as sa
 from sqlalchemy import and_
 from sqlalchemy import MetaData
 from sqlalchemy import or_
@@ -76,6 +77,14 @@ db_options.set_defaults(cfg.CONF,
 context_manager = enginefacade.transaction_context()
 
 context_manager.configure()
+
+if (
+    osprofiler_sqlalchemy and
+    CONF.profiler.enabled and
+    CONF.profiler.trace_sqlalchemy
+):
+    context_manager.append_on_engine_create(
+        lambda engine: osprofiler_sqlalchemy.add_tracing(sa, engine, "db"))
 
 
 def get_engine():
