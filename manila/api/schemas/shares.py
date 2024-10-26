@@ -88,6 +88,17 @@ shrink_request_body_v27['properties']['shrink'] = (
 )
 shrink_request_body_v27['required'] = ['shrink']
 
+unmanage_request_body = {
+    'type': 'object',
+    'properties': {
+        # TODO(stephenfin): We should restrict this to 'null' in a future
+        # microversion
+        'unmanage': {},
+    },
+    'required': ['unmanage'],
+    'additionalProperties': False,
+}
+
 soft_delete_response_body = {'type': 'null'}
 
 restore_response_body = {'type': 'null'}
@@ -95,3 +106,5 @@ restore_response_body = {'type': 'null'}
 extend_response_body = {'type': 'null'}
 
 shrink_response_body = {'type': 'null'}
+
+unmanage_response_body = {'type': 'null'}

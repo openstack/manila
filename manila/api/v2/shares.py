@@ -582,32 +582,27 @@ class ShareController(wsgi.Controller,
         """Shrink size of a share."""
         return self._shrink(req, id, body)
 
-    @wsgi.Controller.api_version('2.7', '2.7')
+    @wsgi.Controller.api_version('2.7')
     def manage(self, req, body):
-        body.get('share', {}).pop('is_public', None)
-        detail = self._manage(req, body, allow_dhss_true=False)
+        if req.api_version_request < api_version.APIVersionRequest('2.8'):
+            body.get('share', {}).pop('is_public', None)
+
+        allow_dhss_true = False
+        if req.api_version_request >= api_version.APIVersionRequest('2.49'):
+            allow_dhss_true = True
+
+        detail = self._manage(req, body, allow_dhss_true=allow_dhss_true)
         return detail
 
-    @wsgi.Controller.api_version("2.8", "2.48")  # noqa
-    def manage(self, req, body):  # pylint: disable=function-redefined  # noqa F811
-        detail = self._manage(req, body, allow_dhss_true=False)
-        return detail
-
-    @wsgi.Controller.api_version("2.49")  # noqa
-    def manage(self, req, body):  # pylint: disable=function-redefined  # noqa F811
-        detail = self._manage(req, body, allow_dhss_true=True)
-        return detail
-
-    @wsgi.Controller.api_version('2.7', '2.48')
+    @wsgi.Controller.api_version('2.7')
     @wsgi.action('unmanage')
-    def unmanage(self, req, id, body=None):
-        return self._unmanage(req, id, body, allow_dhss_true=False)
-
-    @wsgi.Controller.api_version('2.49')  # noqa
-    @wsgi.action('unmanage')
-    def unmanage(self, req, id,  # pylint: disable=function-redefined # noqa F811
-                 body=None):
-        return self._unmanage(req, id, body, allow_dhss_true=True)
+    @validation.request_body_schema(schema.unmanage_request_body)
+    @validation.response_body_schema(schema.unmanage_response_body)
+    def unmanage(self, req, id, body):
+        allow_dhss_true = False
+        if req.api_version_request >= api_version.APIVersionRequest('2.49'):
+            allow_dhss_true = True
+        return self._unmanage(req, id, body, allow_dhss_true=allow_dhss_true)
 
     @wsgi.Controller.api_version('2.27')
     @wsgi.action('revert')
