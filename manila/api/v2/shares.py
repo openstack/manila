@@ -23,10 +23,12 @@ from webob import exc
 from manila.api import common
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
+from manila.api.schemas import shares as schema
 from manila.api.v1 import share_manage
 from manila.api.v1 import share_unmanage
 from manila.api.v1 import shares
 from manila.api.v2 import metadata
+from manila.api import validation
 from manila.api.views import share_accesses as share_access_views
 from manila.api.views import share_migration as share_migration_views
 from manila.api.views import shares as share_views
@@ -291,6 +293,8 @@ class ShareController(wsgi.Controller,
     @wsgi.Controller.api_version('2.69')
     @wsgi.action('soft_delete')
     @wsgi.Controller.authorize('soft_delete')
+    @validation.request_body_schema(schema.soft_delete_request_body)
+    @validation.response_body_schema(schema.soft_delete_response_body)
     def share_soft_delete(self, req, id, body):
         """Soft delete a share."""
         context = req.environ['manila.context']
@@ -314,6 +318,8 @@ class ShareController(wsgi.Controller,
     @wsgi.Controller.api_version('2.69')
     @wsgi.action('restore')
     @wsgi.Controller.authorize("restore")
+    @validation.request_body_schema(schema.restore_request_body)
+    @validation.response_body_schema(schema.restore_response_body)
     def share_restore(self, req, id, body):
         """Restore a share from recycle bin."""
         context = req.environ['manila.context']
