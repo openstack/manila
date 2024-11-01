@@ -754,6 +754,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'security_service_update_support': False,
             'share_server_multiple_subnet_support': False,
             'network_allocation_update_support': False,
+            'share_replicas_migration_support': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -834,6 +835,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'share_server_multiple_subnet_support': False,
             'network_allocation_update_support': False,
             'mount_snapshot_support': False,
+            'share_replicas_migration_support': False,
             'share_group_stats': {
                 'consistent_snapshot_support': None,
             },
@@ -885,6 +887,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'security_service_update_support': False,
             'share_server_multiple_subnet_support': False,
             'network_allocation_update_support': False,
+            'share_replicas_migration_support': False,
             'mount_snapshot_support': False,
             'share_group_stats': {
                 'consistent_snapshot_support': None,

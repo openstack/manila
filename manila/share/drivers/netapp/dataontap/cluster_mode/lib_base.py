@@ -571,6 +571,7 @@ class NetAppCmodeFileStorageLibrary(object):
             'security_service_update_support': True,
             'share_server_multiple_subnet_support': True,
             'mount_point_name_support': True,
+            'share_replicas_migration_support': True,
         }
 
         # Add storage service catalog data.

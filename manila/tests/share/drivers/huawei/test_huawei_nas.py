@@ -2439,6 +2439,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             "security_service_update_support": False,
             "share_server_multiple_subnet_support": False,
             "network_allocation_update_support": False,
+            "share_replicas_migration_support": False,
         }
 
         if replication_support:

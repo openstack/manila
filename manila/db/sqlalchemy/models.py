@@ -1120,6 +1120,8 @@ class ShareServer(BASE, ManilaBase):
         Boolean, nullable=False, default=False)
     network_allocation_update_support = Column(
         Boolean, nullable=False, default=False)
+    share_replicas_migration_support = Column(
+        Boolean, nullable=False, default=False)
     status = Column(Enum(
         constants.STATUS_INACTIVE, constants.STATUS_ACTIVE,
         constants.STATUS_ERROR, constants.STATUS_DELETING,
