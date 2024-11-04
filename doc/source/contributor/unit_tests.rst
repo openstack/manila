@@ -15,7 +15,7 @@ To run all unit tests simply run::
 
     tox
 
-This will create a virtual environment, load all the packages from
+This will create a virtual environment [#f1]_, load all the packages from
 test-requirements.txt and run all unit tests as well as run flake8 and hacking
 checks against the code.
 
@@ -62,7 +62,7 @@ Gotchas
 **Running Tests from Shared Folders**
 
 If you are running the unit tests from a shared folder, you may see tests start
-to fail or stop completely as a result of Python lockfile issues [#f3]_. You
+to fail or stop completely as a result of Python lockfile issues [#f2]_. You
 can get around this by manually setting or updating the following line in
 ``manila/tests/conf_fixture.py``::
 
@@ -76,7 +76,4 @@ a shared folder.
 .. [#f1] See :doc:`development.environment` for more details about the use of
    virtualenv.
 
-.. [#f2] There is an effort underway to use a fake DB implementation for the
-   unit tests. See https://lists.launchpad.net/openstack/msg05604.html
-
-.. [#f3] See Vish's comment in this bug report: https://bugs.launchpad.net/manila/+bug/882933
+.. [#f2] See Vish's comment in this bug report: https://bugs.launchpad.net/manila/+bug/882933
