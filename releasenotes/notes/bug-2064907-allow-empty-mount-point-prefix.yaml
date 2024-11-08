@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Allow using an empty prefix for shares created with mount_point_name.
+  - |
+    Allow configuring default mount_point_name prefix through an option.

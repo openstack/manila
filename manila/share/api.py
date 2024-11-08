@@ -58,6 +58,11 @@ share_api_opts = [
                      'CreateFromSnapshotFilter is enabled and to have hosts '
                      'reporting replication_domain option.'
                 ),
+    cfg.StrOpt('default_mount_point_prefix',
+               default='{project_id}_',
+               help='Default prefix that will be used if none is provided'
+                    'through share_type extra specs. Prefix will only be'
+                    'used if share_type support mount_point_name.'),
     cfg.BoolOpt('is_deferred_deletion_enabled',
                 default=False,
                 help='Whether to delete shares and share snapshots in a '
@@ -1192,13 +1197,16 @@ class API(base.Base):
                                  mount_point_name=None):
         prefix = share_type.get('extra_specs').get(
             constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX)
-        prefix = prefix or context.project_id
-        prefix = prefix.format(context.to_dict())
-        mount_point_name = f"{prefix}_{mount_point_name}"
+        if prefix is None:
+            prefix = CONF.default_mount_point_prefix
+
+        mount_point_name_template = f"{prefix}{mount_point_name}"
+        mount_point_name = mount_point_name_template.format(
+            **context.to_dict())
 
         if mount_point_name and (
                 not re.match(
-                    r'^[a-zA-Z0-9_]*$', mount_point_name)
+                    r'^[a-zA-Z0-9_-]*$', mount_point_name)
                 or len(mount_point_name) > 255
         ):
             msg = _("Invalid mount_point_name: %s")

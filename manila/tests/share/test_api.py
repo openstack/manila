@@ -971,10 +971,33 @@ class ShareAPITestCase(test.TestCase):
             availability_zones=az,
             mount_point_name='fake_mp')
 
+    def test_configure_default_prefix(self):
+        share_type = {'extra_specs': {}}
+        conf = dict(DEFAULT=dict(default_mount_point_prefix="manila_"))
+        with test_utils.create_temp_config_with_opts(conf):
+            self.context.project_id = 'project_id'
+            mount_point_name = 'mount_point'
+            result = self.api._prefix_mount_point_name(
+                share_type, self.context, mount_point_name
+            )
+            self.assertEqual(result, 'manila_mount_point')
+
+    def test_configure_empty_default_prefix(self):
+        share_type = {'extra_specs': {}}
+        conf = dict(DEFAULT=dict(default_mount_point_prefix=""))
+        with test_utils.create_temp_config_with_opts(conf):
+            self.context.project_id = 'project_id'
+            mount_point_name = 'mount_point'
+            result = self.api._prefix_mount_point_name(
+                share_type, self.context, mount_point_name
+            )
+            self.assertEqual(result, 'mount_point')
+
     def test_prefix_with_valid_mount_point_name(self):
         share_type = {
             'extra_specs': {
-                constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX: 'prefix',
+                constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX:
+                    'prefix_',
             }
         }
         self.context.project_id = 'project_id'
@@ -983,6 +1006,19 @@ class ShareAPITestCase(test.TestCase):
             share_type, self.context, mount_point_name
         )
         self.assertEqual(result, 'prefix_mount_point')
+
+    def test_empty_prefix_with_valid_mount_point_name(self):
+        share_type = {
+            'extra_specs': {
+                constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX: '',
+            }
+        }
+        self.context.project_id = 'project_id'
+        mount_point_name = 'mount_point'
+        result = self.api._prefix_mount_point_name(
+            share_type, self.context, mount_point_name
+        )
+        self.assertEqual(result, 'mount_point')
 
     def test_prefix_with_valid_missing_extra_spec_mount_point_name(self):
         share_type = {
