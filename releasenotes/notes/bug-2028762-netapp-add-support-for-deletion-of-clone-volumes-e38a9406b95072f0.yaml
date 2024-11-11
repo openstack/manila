@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Netapp ONTAP driver now handles a case where a volume to be deleted has
+    one or more clones. The clones are splitted by bringing the volume online
+    and then made offline to delete it. For more details, please refer to
+    `launchpad bug #2086762 <https://bugs.launchpad.net/manila/+bug/2086762>`_.

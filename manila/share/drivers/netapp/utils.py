@@ -54,6 +54,10 @@ FLEXGROUP_DEFAULT_POOL_NAME = 'flexgroup_auto'
 
 ABSOLUTE_MAX_INODES = 2_040_109_45
 
+CLONE_SPLIT_STATUS_ONGOING = 'ongoing'
+CLONE_SPLIT_STATUS_UNKNOWN = 'unknown'
+CLONE_SPLIT_STATUS_FINISHED = 'finished'
+
 
 class NetAppDriverException(exception.ShareBackendException):
     message = _("NetApp Manila Driver exception.")

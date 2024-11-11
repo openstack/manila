@@ -130,6 +130,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         self._client.prune_deleted_nfs_export_policies()
         self._client.prune_deleted_snapshots()
         self._client.remove_unused_qos_policy_groups()
+        self._client.prune_deleted_volumes()
 
         (super(NetAppCmodeMultiSVMFileStorageLibrary, self).
             _handle_housekeeping_tasks())

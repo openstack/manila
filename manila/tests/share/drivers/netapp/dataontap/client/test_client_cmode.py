@@ -5226,6 +5226,27 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('volume-mount', volume_mount_args)])
 
+    def test_online_volume(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.online_volume(fake.SHARE_NAME)
+
+        volume_online_args = {'name': fake.SHARE_NAME}
+
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-online', volume_online_args)])
+
+    def test_online_volume_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error()))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.online_volume,
+                          fake.SHARE_NAME)
+
     def test_offline_volume(self):
 
         self.mock_object(self.client, 'send_request')
@@ -5257,7 +5278,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          'send_request',
                          mock.Mock(side_effect=self._mock_api_error()))
 
-        self.assertRaises(netapp_api.NaApiError,
+        self.assertRaises(exception.NetAppException,
                           self.client.offline_volume,
                           fake.SHARE_NAME)
 
@@ -5376,9 +5397,47 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.delete_volume(fake.SHARE_NAME)
 
         volume_destroy_args = {'name': fake.SHARE_NAME}
-
         self.client.send_request.assert_has_calls([
             mock.call('volume-destroy', volume_destroy_args)])
+
+    def test_rename_volume(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.rename_volume(
+            fake.SHARE_NAME,
+            client_cmode.DELETED_PREFIX + fake.SHARE_NAME)
+        volume_rename_args = {
+            'volume': fake.SHARE_NAME,
+            'new-volume-name': client_cmode.DELETED_PREFIX + fake.SHARE_NAME,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-rename', volume_rename_args)])
+
+    def test_soft_delete_volume(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.soft_delete_volume(fake.SHARE_NAME)
+
+        volume_destroy_args = {'name': fake.SHARE_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-destroy', volume_destroy_args)])
+
+    def test_soft_delete_volume_error(self):
+
+        self.mock_object(
+            self.client, 'send_request',
+            self._mock_api_error(code=netapp_api.EVOLDEL_NOT_ALLOW_BY_CLONE))
+        mock_rename = self.mock_object(self.client, 'rename_volume')
+
+        self.client.soft_delete_volume(fake.SHARE_NAME)
+
+        volume_destroy_args = {'name': fake.SHARE_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-destroy', volume_destroy_args)])
+        mock_rename.assert_called_once_with(
+            fake.SHARE_NAME, client_cmode.DELETED_PREFIX + fake.SHARE_NAME)
 
     def test_create_snapshot(self):
 

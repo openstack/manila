@@ -1647,6 +1647,129 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         mock_sr.assert_called_once_with(f'/storage/volumes/{uuid}', 'delete')
 
+    def test_soft_delete_volume_error(self):
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+        self.mock_object(
+            self.client, 'send_request',
+            self._mock_api_error(
+                code=netapp_api.EREST_VOLDEL_NOT_ALLOW_BY_CLONE))
+        mock_rename = self.mock_object(self.client, 'rename_volume')
+
+        # Get volume UUID.
+        uuid = volume['uuid']
+
+        self.client.soft_delete_volume('fake_volume_name')
+
+        self.client.send_request.assert_called_once_with(
+            f'/storage/volumes/{uuid}', 'delete')
+        mock_rename.assert_called_once_with(
+            'fake_volume_name',
+            client_cmode_rest.DELETED_PREFIX + 'fake_volume_name')
+
+    def test_soft_delete_volume_error_return_errors(self):
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+        self.mock_object(
+            self.client, 'send_request',
+            self._mock_api_error(
+                code=netapp_api.EREST_VOLDEL_NOT_ALLOW_BY_CLONE))
+
+        ret = self.client.soft_delete_volume('fake_volume_name',
+                                             return_errors=True)
+        self.assertEqual('del_not_allow_by_clone', ret)
+
+    def test_prune_deleted_volumes_no_clones_online(self):
+        api_response = [fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST]
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        self.mock_object(self.client, 'get_deleted_volumes_to_prune',
+                         mock.Mock(return_value=api_response))
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+        self.mock_object(self.client, 'send_request')
+
+        self.mock_object(
+            copy, 'deepcopy', mock.Mock(return_value=self.client))
+        mock_get_clones = self.mock_object(
+            self.client, 'get_clones_of_parent_volume',
+            mock.Mock(return_value=[]))
+
+        self.client.prune_deleted_volumes()
+
+        mock_get_clones.assert_called_once_with(
+            api_response[0]['svm']['name'], api_response[0]['name'])
+
+    def test_prune_deleted_volumes_no_clones_offline(self):
+        response = [fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST]
+        api_response = copy.deepcopy(response)
+        api_response[0]['state'] = 'offline'
+
+        self.mock_object(self.client, 'get_deleted_volumes_to_prune',
+                         mock.Mock(return_value=api_response))
+        self.mock_object(
+            copy, 'deepcopy', mock.Mock(return_value=self.client))
+        mock_get_clones = self.mock_object(
+            self.client, 'get_clones_of_parent_volume',
+            mock.Mock(return_value=[]))
+        mock_delete = self.mock_object(
+            self.client, 'delete_volume',
+            mock.Mock(return_value='success'))
+
+        self.client.prune_deleted_volumes()
+
+        mock_get_clones.assert_called_once_with(
+            api_response[0]['svm']['name'], api_response[0]['name'])
+        mock_delete.assert_called()
+
+    def test_prune_deleted_volumes_clones_online(self):
+        api_response = [fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST]
+        self.mock_object(self.client, 'get_deleted_volumes_to_prune',
+                         mock.Mock(return_value=api_response))
+        self.mock_object(
+            copy, 'deepcopy', mock.Mock(return_value=self.client))
+        mock_get_clones = self.mock_object(
+            self.client, 'get_clones_of_parent_volume',
+            mock.Mock(return_value=['fake_clone']))
+        mock_status = self.mock_object(
+            self.client, 'volume_clone_split_status',
+            mock.Mock(return_value='unknown'))
+        mock_start = self.mock_object(
+            self.client, 'volume_clone_split_start')
+
+        self.client.prune_deleted_volumes()
+
+        mock_get_clones.assert_called_once_with(
+            api_response[0]['svm']['name'], api_response[0]['name'])
+        mock_status.assert_called_once_with('fake_clone')
+        mock_start.assert_called_once_with('fake_clone')
+
+    def test_prune_deleted_volumes_clones_offline(self):
+        response = [fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST]
+        api_response = copy.deepcopy(response)
+        api_response[0]['state'] = 'offline'
+
+        self.mock_object(self.client, 'get_deleted_volumes_to_prune',
+                         mock.Mock(return_value=api_response))
+        self.mock_object(
+            copy, 'deepcopy', mock.Mock(return_value=self.client))
+        mock_get_clones = self.mock_object(
+            self.client, 'get_clones_of_parent_volume',
+            mock.Mock(return_value=['fake_clone']))
+        mock_online = self.mock_object(self.client, 'online_volume')
+
+        self.client.prune_deleted_volumes()
+
+        mock_get_clones.assert_called_once_with(
+            api_response[0]['svm']['name'], api_response[0]['name'])
+        mock_online.assert_has_calls([
+            mock.call(api_response[0]['name']),
+            mock.call('fake_clone'),
+        ])
+
     def test__unmount_volume(self):
         volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
 
@@ -1661,6 +1784,19 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client._unmount_volume('fake_volume_name')
         mock_send_request.assert_called_once_with(
             f'/storage/volumes/{uuid}', 'patch', body=body)
+
+    def test_online_volume(self):
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        uuid = volume['uuid']
+
+        body = {'state': 'online'}
+        self.client.online_volume('fake_volume_name')
+        mock_send_request.assert_called_once_with(f'/storage/volumes/{uuid}',
+                                                  'patch', body=body)
 
     def test_offline_volume(self):
         volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
