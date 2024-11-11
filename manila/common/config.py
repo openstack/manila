@@ -29,7 +29,6 @@ import socket
 from oslo_config import cfg
 from oslo_log import log
 from oslo_middleware import cors
-from oslo_policy import opts as policy_opts
 from oslo_utils import netutils
 
 from manila.common import constants
@@ -207,5 +206,3 @@ def set_lib_defaults():
                        'DELETE',
                        'PATCH']
     )
-    # Update default value of oslo.policy policy_file config option.
-    policy_opts.set_defaults(CONF, 'policy.yaml')
