@@ -6224,32 +6224,12 @@ class ShareManager(manager.SchedulerDependentManager):
         dest_snss = self.db.share_network_subnet_get_all_by_share_server_id(
             context, dest_share_server['id'])
 
+        existing_allocations = (
+            self.db.network_allocations_get_for_share_server(
+                context, dest_share_server['id']))
+        migration_reused_network_allocations = len(existing_allocations) == 0
         migration_extended_network_allocations = (
             CONF.server_migration_extend_neutron_network)
-
-        # NOTE: Network allocations are extended to the destination host on
-        # previous (migration_start) step, i.e. port bindings are created on
-        # destination host with existing ports. The network allocations will be
-        # cut over on this (migration_complete) step, i.e. port bindings on
-        # destination host will be activated and bindings on source host will
-        # be deleted.
-        if migration_extended_network_allocations:
-            updated_allocations = (
-                self.driver.network_api.cutover_network_allocations(
-                    context, source_share_server))
-            segmentation_id = self.db.share_server_backend_details_get_item(
-                context, dest_share_server['id'], 'segmentation_id')
-            alloc_update = {
-                'segmentation_id': segmentation_id,
-                'share_server_id': dest_share_server['id']
-            }
-            subnet_update = {
-                'segmentation_id': segmentation_id,
-            }
-
-        migration_reused_network_allocations = (len(
-            self.db.network_allocations_get_for_share_server(
-                context, dest_share_server['id'])) == 0)
 
         server_to_get_allocations = (
             dest_share_server
@@ -6263,30 +6243,52 @@ class ShareManager(manager.SchedulerDependentManager):
             context, source_share_server, dest_share_server, share_instances,
             snapshot_instances, new_network_allocations)
 
+        alloc_update = {
+            'share_server_id': dest_share_server['id']
+        }
+        subnet_update = {}
+
         if migration_extended_network_allocations:
-            for alloc in updated_allocations:
-                self.db.network_allocation_update(context, alloc['id'],
-                                                  alloc_update)
-            for subnet in dest_snss:
-                self.db.share_network_subnet_update(context, subnet['id'],
-                                                    subnet_update)
-        elif not migration_reused_network_allocations:
+            # NOTE: Network allocations are extended to the destination host on
+            # previous (migration_start) step, i.e. port bindings are created
+            # on destination host with existing ports. The network allocations
+            # will be cut over on this (migration_complete) step, i.e. port
+            # bindings on destination host will be activated and bindings on
+            # source host will be deleted.
+            updated_allocations = (
+                self.driver.network_api.cutover_network_allocations(
+                    context, source_share_server))
+            segmentation_id = self.db.share_server_backend_details_get_item(
+                context, dest_share_server['id'], 'segmentation_id')
+            alloc_update.update({
+                'segmentation_id': segmentation_id
+            })
+            subnet_update.update({
+                'segmentation_id': segmentation_id,
+            })
+        elif migration_reused_network_allocations:
+            updated_allocations = (
+                self.db.network_allocations_get_for_share_server(
+                    context, source_share_server["id"]))
+        else:
             network_allocations = []
             for net_allocation in new_network_allocations:
                 network_allocations += net_allocation['network_allocations']
 
-            all_allocations = [
-                network_allocations,
-                new_network_allocations[0]['admin_network_allocations']
+            updated_allocations = [
+                *network_allocations,
+                *new_network_allocations[0]['admin_network_allocations']
             ]
-            for allocations in all_allocations:
-                for allocation in allocations:
-                    allocation_id = allocation['id']
-                    values = {
-                        'share_server_id': dest_share_server['id']
-                    }
-                    self.db.network_allocation_update(
-                        context, allocation_id, values)
+
+        for allocation in updated_allocations:
+            allocation_id = allocation['id']
+            self.db.network_allocation_update(
+                context, allocation_id, alloc_update)
+
+        if subnet_update:
+            for subnet in dest_snss:
+                self.db.share_network_subnet_update(context, subnet['id'],
+                                                    subnet_update)
 
         # If share server doesn't have an identifier, we didn't ask the driver
         # to create a brand new server - this was a nondisruptive migration

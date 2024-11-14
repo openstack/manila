@@ -2307,8 +2307,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         if svm_migrate_supported:
             mock_src_is_svm_migrate_supported.assert_called_once()
             mock_find_matching_aggregates.assert_called_once()
-            mock_get_vserver_name.assert_called_once_with(
-                fake.SHARE_SERVER['id'])
+            mock_get_vserver_name.assert_not_called()
             mock_svm_migration_check_svm_mig.assert_called_once_with(
                 fake.CLUSTER_NAME, fake.VSERVER1, fake.SHARE_SERVER,
                 fake.AGGREGATES, self.mock_dest_client)
@@ -2346,8 +2345,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_dest_is_svm_migrate_supported.assert_called_once()
         mock_src_is_svm_migrate_supported.assert_called_once()
         mock_find_matching_aggregates.assert_called_once()
-        mock_get_vserver_name.assert_called_once_with(
-            fake.SHARE_SERVER['id'])
+        mock_get_vserver_name.assert_not_called()
         mock_svm_migration_check_svm_mig.assert_called_once_with(
             fake.CLUSTER_NAME, fake.VSERVER1, fake.SHARE_SERVER,
             fake.AGGREGATES, self.mock_dest_client)
@@ -2714,9 +2712,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=fake.IPSPACE))
         mock_create_port = self.mock_object(
             self.library, '_create_port_and_broadcast_domain')
-        mock_get_vserver_name = self.mock_object(
-            self.library, '_get_vserver_name',
-            mock.Mock(return_value=fake.VSERVER1))
         mock_get_cluster_name = self.mock_object(
             self.mock_src_client, 'get_cluster_name',
             mock.Mock(return_value=fake.CLUSTER_NAME))
@@ -2740,11 +2735,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             node_name, fake.NODE_DATA_PORT, segmentation_id)
         mock_create_port.assert_called_once_with(
             fake.IPSPACE, network_info)
-        mock_get_vserver_name.assert_called_once_with(
-            self.fake_src_share_server['id'])
         self.assertTrue(mock_get_cluster_name.called)
         mock_svm_migration_start.assert_called_once_with(
-            fake.CLUSTER_NAME, fake.VSERVER1, fake.AGGREGATES,
+            fake.CLUSTER_NAME, self.fake_src_vserver, fake.AGGREGATES,
             dest_ipspace=fake.IPSPACE)
         self.assertTrue(mock_get_aggregates.called)
         self.assertEqual(expected_server_info, server_info)
@@ -2809,11 +2802,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             node_name, fake.NODE_DATA_PORT, segmentation_id)
         mock_create_port.assert_called_once_with(
             fake.IPSPACE, network_info)
-        mock_get_vserver_name.assert_called_once_with(
-            self.fake_src_share_server['id'])
+        mock_get_vserver_name.assert_not_called()
         self.assertTrue(mock_get_cluster_name.called)
         mock_svm_migration_start.assert_called_once_with(
-            fake.CLUSTER_NAME, fake.VSERVER1, fake.AGGREGATES,
+            fake.CLUSTER_NAME, self.fake_src_vserver, fake.AGGREGATES,
             dest_ipspace=fake.IPSPACE)
         self.assertTrue(mock_get_aggregates.called)
         mock_delete_ipspace.assert_called_once_with(fake.IPSPACE)
