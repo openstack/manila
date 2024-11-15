@@ -2,11 +2,11 @@
 Vastdata Share Driver
 ====================================
 
-Vastdata can be used as a storage back end for the OpenStack Shared
-File System service. Shares in the Shared File System service are
-mapped 1:1 to Vastdata volumes. Access is provided via NFS protocol
-and IP-based authentication. The `Vastdata <https://www.vastdata.com>`__
-Manila driver uses the Vastdata API service.
+VAST Share Driver integrates OpenStack with
+`VAST Data <https://www.vastdata.com>`__'s Storage System.
+Shares in the Shared File System service
+are mapped to directories on VAST,
+and are accessed via NFS protocol using a Virtual IP Pool.
 
 Supported shared filesystems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -24,7 +24,7 @@ The following operations are supported:
 
 -  Allow share access.
 
--  Deny share access.
+- Deny share access.
 
 - Extend a share.
 
@@ -34,7 +34,7 @@ The following operations are supported:
 Requirements
 ~~~~~~~~~~~~
 
--  Trash API must be enabled on Vastdata cluster.
+- The Trash Folder Access functionality must be enabled on the VAST cluster.
 
 Driver options
 ~~~~~~~~~~~~~~
@@ -45,13 +45,14 @@ share driver.
 .. include:: ../../tables/manila-vastdata.inc
 
 
-Vastdata driver configuration example
+VAST Share Driver configuration example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following parameters shows a sample subset of the ``manila.conf`` file,
-which configures two backends and the relevant ``[DEFAULT]`` options. A real
-configuration would include additional ``[DEFAULT]`` options and additional
-sections that are not discussed in this document:
+The following example shows parameters in the ``manila.conf`` file
+that are used to configure VAST Share Driver.
+They include two options under ``[DEFAULT]`` and parameters under ``[vast]``.
+Note that a real ``manila.conf`` file would also include
+other parameters that are not specific to VAST Share Driver.
 
 .. code-block:: ini
 
@@ -72,12 +73,59 @@ sections that are not discussed in this document:
    vast_root_export = {root_export}
 
 
-Restrictions
-------------
+Restart of the ``manila-share`` service is needed for the configuration
+changes to take effect.
 
-The Vastdata driver has the following restrictions:
 
-- Only IP access type is supported for NFS.
+Pre-configurations for share support
+--------------------------------------------------
+
+To create a file share, you need to:
+
+Create the share type:
+
+.. code-block:: console
+
+    openstack share type create ${share_type_name} False \
+        --extra-specs share_backend_name=${share_backend_name}
+
+Create an NFS share:
+
+.. code-block:: console
+
+    openstack share create NFS ${size} --name ${share_name} --share-type ${share_type_name}
+
+Pre-Configurations for Snapshot support
+--------------------------------------------------
+
+The share type must have the following parameter specified:
+
+- snapshot_support = True
+
+You can specify it when creating a new share type:
+
+.. code-block:: console
+
+    openstack share type create ${share_type_name} false \
+        --snapshot-support=true \
+        --extra-specs share_backend_name=${share_backend_name}
+
+Or you can add it to an existing share type:
+
+.. code-block:: console
+
+    openstack share type set ${share_type_name} --extra-specs snapshot_support=True
+
+
+To snapshot a share and create share from the snapshot
+------------------------------------------------------
+
+Create a share using a share type with snapshot_support=True.
+Then, create a snapshot of the share using the command:
+
+.. code-block:: console
+
+    openstack share snapshot create ${source_share_name} --name ${target_snapshot_name}
 
 
 The :mod:`manila.share.drivers.vastdata.driver` Module
