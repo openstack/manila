@@ -169,7 +169,7 @@ class VASTShareDriver(driver.ShareDriver):
         return f"{root}/manila-{share_id}"
 
     def create_share(self, context, share, share_server=None):
-        return self._ensure_share(share)[0]
+        return self._ensure_share(share)
 
     def delete_share(self, context, share, share_server=None):
         """Called to delete a share"""
