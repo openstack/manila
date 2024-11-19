@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    While displaying and deleting access rules, manila was limiting the search
+    for locks to the context of the request. Now, manila will search within
+    all of the projects for locks and properly apply visibility and deletion
+    restrictions. For more details, please refer to
+    `launchpad bug #2089061 <https://bugs.launchpad.net/manila/+bug/2089061>`_.
