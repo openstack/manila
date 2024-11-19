@@ -517,3 +517,45 @@ class ResourceLockApiTest(test.TestCase):
             utils.IsAMatcher(context.RequestContext),
             'd767d3cd-1187-404a-a91f-8b172e0e768e'
         )
+
+    def test_ensure_context_can_delete_lock_policy_fails(self):
+        lock = {'id': 'd767d3cd-1187-404a-a91f-8b172e0e768e'}
+        self.mock_object(
+            self.lock_api.db, 'resource_lock_get', mock.Mock(return_value=lock)
+        )
+        self.mock_object(
+            policy,
+            'check_policy',
+            mock.Mock(side_effect=exception.PolicyNotAuthorized(
+                action="resource_lock:delete")),
+        )
+
+        self.assertRaises(
+            exception.NotAuthorized,
+            self.lock_api.ensure_context_can_delete_lock,
+            self.ctxt,
+            'd767d3cd-1187-404a-a91f-8b172e0e768e')
+
+        self.lock_api.db.resource_lock_get.assert_called_once_with(
+            self.ctxt, 'd767d3cd-1187-404a-a91f-8b172e0e768e'
+        )
+        policy.check_policy.assert_called_once_with(
+            self.ctxt, 'resource_lock', 'delete', lock)
+
+    def test_ensure_context_can_delete_lock(self):
+        lock = {'id': 'd767d3cd-1187-404a-a91f-8b172e0e768e'}
+        self.mock_object(
+            self.lock_api.db, 'resource_lock_get', mock.Mock(return_value=lock)
+        )
+        self.mock_object(policy, 'check_policy')
+        self.mock_object(self.lock_api, '_check_allow_lock_manipulation')
+
+        self.lock_api.ensure_context_can_delete_lock(
+            self.ctxt,
+            'd767d3cd-1187-404a-a91f-8b172e0e768e')
+
+        self.lock_api.db.resource_lock_get.assert_called_once_with(
+            self.ctxt, 'd767d3cd-1187-404a-a91f-8b172e0e768e'
+        )
+        policy.check_policy.assert_called_once_with(
+            self.ctxt, 'resource_lock', 'delete', lock)
