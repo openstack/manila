@@ -615,12 +615,14 @@ class ShareMixin(object):
         unrestrict = access_data.get('unrestrict', False)
         search_opts = {
             'resource_id': access_id,
-            'resource_action': constants.RESOURCE_ACTION_DELETE
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'all_projects': True,
         }
 
         locks, locks_count = (
             self.resource_locks_api.get_all(
-                context, search_opts=search_opts, show_count=True) or []
+                context.elevated(), search_opts=search_opts,
+                show_count=True) or []
         )
 
         # no locks placed, nothing to do
@@ -646,7 +648,9 @@ class ShareMixin(object):
             try:
                 self.resource_locks_api.ensure_context_can_delete_lock(
                     context, lock['id'])
-            except exception.NotAuthorized:
+            except (exception.NotAuthorized, exception.ResourceLockNotFound):
+                # If it is not found, then it means that the context doesn't
+                # have access to this resource and should be denied.
                 non_deletable_locks.append(lock)
 
         if non_deletable_locks:
