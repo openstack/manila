@@ -522,6 +522,7 @@ QUOTA_SYNC_FUNCTIONS = {
 ###################
 
 @require_admin_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_resources_host_update(context, current_host, new_host):
     """Updates the 'host' attribute of resources"""
@@ -1663,6 +1664,7 @@ def _share_instance_create(context, share_id, values):
 
 @require_context
 @require_availability_zone_exists(strict=False)
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_instance_update(context, share_instance_id, values,
                           with_share_data=False):
@@ -1683,6 +1685,7 @@ def _share_instance_update(context, share_instance_id, values):
     return share_instance_ref
 
 
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_and_snapshot_instances_status_update(
     context, values, share_instance_ids=None, snapshot_instance_ids=None,
@@ -1734,6 +1737,7 @@ def share_and_snapshot_instances_status_update(
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_instance_status_update(context, share_instance_ids, values):
     return _share_instance_status_update(context, share_instance_ids, values)
@@ -2349,6 +2353,7 @@ def _share_data_get_for_project(
 
 @require_context
 @require_availability_zone_exists(strict=False)
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_update(context, share_id, update_values):
     return _share_update(context, share_id, update_values)
@@ -2911,6 +2916,7 @@ def _share_access_metadata_get_query(context, access_id):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_access_metadata_update(context, access_id, metadata):
     # Now update all existing items with new values, or create new meta
@@ -3307,6 +3313,7 @@ def _share_snapshot_instance_create(context, snapshot_id, values):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_snapshot_instance_update(context, instance_id, values):
     instance_ref = _share_snapshot_instance_get(context, instance_id)
@@ -3744,6 +3751,7 @@ def _share_snapshot_update(context, snapshot_id, values):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_snapshot_instances_status_update(
     context, snapshot_instance_ids, values,
@@ -4012,6 +4020,7 @@ def _share_snapshot_access_get_all_for_snapshot_instance(
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_snapshot_instance_access_update(
     context, access_id, instance_id, updates
@@ -4859,6 +4868,7 @@ def share_network_delete(context, id):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_network_update(context, id, values):
     network_ref = _share_network_get(context, id)
@@ -5002,6 +5012,7 @@ def share_network_remove_security_service(context, id, security_service_id):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_network_update_security_service(
     context, id, current_security_service_id, new_security_service_id,
@@ -5404,6 +5415,7 @@ def share_server_delete(context, id):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_server_update(context, id, values):
     server_ref = _share_server_get(context, id)
@@ -5662,6 +5674,7 @@ def _share_server_backend_details_delete(context, share_server_id):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_servers_update(context, share_server_ids, values):
     result = model_query(
@@ -5705,6 +5718,7 @@ def driver_private_data_get(context, entity_id, key=None, default=None):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def driver_private_data_update(
     context, entity_id, details, delete_existing=False,
@@ -5829,6 +5843,7 @@ def network_allocations_get_for_share_server(
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def network_allocation_update(context, id, values, read_deleted=None):
     alloc_ref = _network_allocation_get(context, id, read_deleted=read_deleted)
@@ -6504,6 +6519,7 @@ def share_group_create(context, values):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_group_update(context, share_group_id, values):
     share_group_ref = _share_group_get(
@@ -6777,6 +6793,7 @@ def share_group_snapshot_create(context, values):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_group_snapshot_update(context, share_group_snapshot_id, values):
     share_group_ref = _share_group_snapshot_get(
@@ -6850,6 +6867,7 @@ def share_group_snapshot_member_create(context, values):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def share_group_snapshot_member_update(context, member_id, values):
     _change_size_to_instance_size(values)
@@ -7348,6 +7366,7 @@ def backend_info_create(context, host, value):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def backend_info_update(context, host, value=None, delete_existing=False):
     """Remove backend info for host name."""
@@ -7409,6 +7428,7 @@ def async_operation_data_get(context, entity_id, key=None, default=None):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def async_operation_data_update(
     context, entity_id, details, delete_existing=False,
@@ -7608,6 +7628,7 @@ def resource_lock_create(context, kwargs):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @context_manager.writer
 def resource_lock_update(context, lock_id, kwargs):
     """Update a resource lock."""
