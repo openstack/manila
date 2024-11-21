@@ -20,7 +20,6 @@ import sys
 
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_policy import opts
 from oslo_policy import policy
 from oslo_utils import excutils
 
@@ -30,16 +29,6 @@ from manila import policies
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 _ENFORCER = None
-
-
-# TODO(gmann): Remove setting the default value of config policy_file
-# 'policy_file' once oslo_policy change its default value to what
-# is overridden here.
-DEFAULT_POLICY_FILE = 'policy.yaml'
-opts.set_defaults(CONF, DEFAULT_POLICY_FILE)
-opts.set_defaults(
-    cfg.CONF,
-    DEFAULT_POLICY_FILE)
 
 
 def reset():
