@@ -51,8 +51,6 @@ dict_constructor_with_list_copy_re = re.compile(r".*\bdict\((\[)?(\(|\[)")
 assert_no_xrange_re = re.compile(r"\s*xrange\s*\(")
 assert_True = re.compile(r".*assertEqual\(True, .*\)")
 no_log_warn = re.compile(r"\s*LOG.warn\(.*")
-third_party_mock = re.compile(r"^import.mock")
-from_third_party_mock = re.compile(r"^from.mock.import")
 
 
 class BaseASTChecker(ast.NodeVisitor):
@@ -283,15 +281,4 @@ def no_log_warn_check(logical_line):
     """
     msg = ("M338: LOG.warn is deprecated, use LOG.warning.")
     if re.match(no_log_warn, logical_line):
-        yield (0, msg)
-
-
-@core.flake8ext
-def no_third_party_mock(logical_line):
-    # We should only use unittest.mock, not the third party mock library that
-    # was needed for py2 support.
-    if (re.match(third_party_mock, logical_line) or
-            re.match(from_third_party_mock, logical_line)):
-        msg = ('M339: Unit tests should use the standard library "mock" '
-               'module, not the third party mock library.')
         yield (0, msg)
