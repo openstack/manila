@@ -55,10 +55,11 @@ class ShareAccessesController(wsgi.Controller, wsgi.AdminActionsMixin):
         search_opts = {
             'resource_id': id,
             'resource_action': constants.RESOURCE_ACTION_SHOW,
-            'resource_type': 'access_rule'
+            'resource_type': 'access_rule',
+            'all_projects': True,
         }
         locks, count = self.resource_locks_api.get_all(
-            context, search_opts, show_count=True)
+            context.elevated(), search_opts, show_count=True)
 
         if count:
             return self.resource_locks_api.access_is_restricted(context,

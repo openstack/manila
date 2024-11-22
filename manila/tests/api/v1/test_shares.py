@@ -1367,6 +1367,7 @@ class ShareActionsTest(test.TestCase):
 
         self.mock_object(share_api.API, "deny_access", _stub_deny_access)
         self.mock_object(share_api.API, "access_get", _fake_access_get)
+        self.mock_object(self.controller, '_check_for_access_rule_locks')
 
         id = 'fake_share_id'
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
@@ -1384,14 +1385,20 @@ class ShareActionsTest(test.TestCase):
         share_network = db_utils.create_share_network()
         share = db_utils.create_share(share_network_id=share_network['id'])
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(self.controller, '_check_for_access_rule_locks')
 
         id = 'fake_share_id'
-        body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
+        access_data = {"access_id": 'fake_acces_id'}
+        body = {"os-deny_access": access_data}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
 
         res = self.controller._deny_access(req, id, body)
 
         self.assertEqual(202, res.status_int)
+        self.controller._check_for_access_rule_locks.assert_called_once_with(
+            req.environ['manila.context'], access_data,
+            access_data['access_id'], id
+        )
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], 'share', 'deny_access')
 
@@ -1401,6 +1408,7 @@ class ShareActionsTest(test.TestCase):
 
         self.mock_object(share_api.API, "deny_access", _stub_deny_access)
         self.mock_object(share_api.API, "access_get", _fake_access_get)
+        self.mock_object(self.controller, '_check_for_access_rule_locks')
 
         id = 'super_fake_share_id'
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
@@ -1448,12 +1456,14 @@ class ShareActionsTest(test.TestCase):
         access_id = 'fake_access_id'
         share_id = 'fake_share_id'
 
+        self.mock_object(context, 'elevated', mock.Mock(return_value=context))
         self.controller._check_for_access_rule_locks(
             context, {}, access_id, share_id)
 
         delete_search_opts = {
             'resource_id': access_id,
-            'resource_action': constants.RESOURCE_ACTION_DELETE
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'all_projects': True,
         }
 
         resource_locks.API.get_all.assert_called_once_with(
@@ -1472,6 +1482,7 @@ class ShareActionsTest(test.TestCase):
         access_id = 'fake_access_id'
         share_id = 'fake_share_id'
 
+        self.mock_object(context, 'elevated', mock.Mock(return_value=context))
         self.assertRaises(
             webob.exc.HTTPForbidden,
             self.controller._check_for_access_rule_locks,
@@ -1479,7 +1490,8 @@ class ShareActionsTest(test.TestCase):
 
         delete_search_opts = {
             'resource_id': access_id,
-            'resource_action': constants.RESOURCE_ACTION_DELETE
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'all_projects': True,
         }
 
         resource_locks.API.get_all.assert_called_once_with(
@@ -1504,6 +1516,7 @@ class ShareActionsTest(test.TestCase):
         access_id = 'fake_access_id'
         share_id = 'fake_share_id'
 
+        self.mock_object(context, 'elevated', mock.Mock(return_value=context))
         self.assertRaises(
             webob.exc.HTTPForbidden,
             self.controller._check_for_access_rule_locks,
@@ -1511,7 +1524,8 @@ class ShareActionsTest(test.TestCase):
 
         delete_search_opts = {
             'resource_id': access_id,
-            'resource_action': constants.RESOURCE_ACTION_DELETE
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'all_projects': True,
         }
 
         resource_locks.API.get_all.assert_called_once_with(
@@ -1542,6 +1556,7 @@ class ShareActionsTest(test.TestCase):
         access_id = 'fake_access_id'
         share_id = 'fake_share_id'
 
+        self.mock_object(context, 'elevated', mock.Mock(return_value=context))
         self.assertRaises(
             webob.exc.HTTPForbidden,
             self.controller._check_for_access_rule_locks,
@@ -1549,7 +1564,8 @@ class ShareActionsTest(test.TestCase):
         )
         delete_search_opts = {
             'resource_id': access_id,
-            'resource_action': constants.RESOURCE_ACTION_DELETE
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'all_projects': True,
         }
         resource_locks.API.get_all.assert_called_once_with(
             context, search_opts=delete_search_opts, show_count=True
@@ -1576,15 +1592,19 @@ class ShareActionsTest(test.TestCase):
         access_id = 'fake_access_id'
         share_id = 'fake_share_id'
 
+        self.mock_object(context, 'elevated', mock.Mock(return_value=context))
         self.controller._check_for_access_rule_locks(
             context, {'unrestrict': True}, access_id, share_id)
 
         delete_search_opts = {
             'resource_id': access_id,
-            'resource_action': constants.RESOURCE_ACTION_DELETE
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'all_projects': True,
         }
         resource_locks.API.get_all.assert_called_once_with(
-            context, search_opts=delete_search_opts, show_count=True)
+            context.elevated(), search_opts=delete_search_opts,
+            show_count=True
+        )
         (resource_locks.API.ensure_context_can_delete_lock
             .assert_called_once_with(
                 context, locks[0]['id']))
