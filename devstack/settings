@@ -97,10 +97,6 @@ MANILA_SERVICE_SECGROUP="manila-service"
 # migrations again.
 MANILA_USE_DOWNGRADE_MIGRATIONS=${MANILA_USE_DOWNGRADE_MIGRATIONS:-"False"}
 
-# Toggle for deploying manila-api service under Apache web server with enabled
-# 'mod_wsgi' plugin.
-MANILA_USE_MOD_WSGI=${MANILA_USE_MOD_WSGI:-False}
-
 # Toggle for deploying manila-api service with uWSGI
 # Set it as True, because starting with Pike it is requirement from
 # 'governance' project. See:

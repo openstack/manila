@@ -79,22 +79,6 @@ function cleanup_manila {
     fi
 }
 
-# _config_manila_apache_wsgi() - Configure manila-api wsgi application.
-function _config_manila_apache_wsgi {
-    local manila_api_apache_conf
-    local venv_path=""
-    manila_api_apache_conf=$(apache_site_config_for manila-api)
-
-    sudo cp $MANILA_DIR/devstack/apache-manila.template $manila_api_apache_conf
-    sudo sed -e "
-        s|%APACHE_NAME%|$APACHE_NAME|g;
-        s|%MANILA_BIN_DIR%|$MANILA_BIN_DIR|g;
-        s|%PORT%|$REAL_MANILA_SERVICE_PORT|g;
-        s|%APIWORKERS%|$API_WORKERS|g;
-        s|%USER%|$STACK_USER|g;
-    " -i $manila_api_apache_conf
-}
-
 # configure_backends - Configures backends enabled by MANILA_ENABLED_BACKENDS
 function configure_backends {
     # Configure MANILA_ENABLED_BACKENDS backends
@@ -326,10 +310,6 @@ function configure_manila {
 
     if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
         write_uwsgi_config "$MANILA_UWSGI_CONF" "$MANILA_WSGI" "/share" "" "manila-api"
-    fi
-
-    if [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
-        _config_manila_apache_wsgi
     fi
 
     if [[ "$MANILA_ENFORCE_SCOPE" == True ]] ; then
@@ -841,22 +821,9 @@ function start_manila_api {
     # as the preferred way to deploy manila. See
     # https://governance.openstack.org/tc/goals/pike/deploy-api-in-wsgi.html#uwsgi-vs-mod-wsgi
     # for more details
-    if [ $(trueorfalse False MANILA_USE_UWSGI) == True ] && [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
-        MSG="Both MANILA_USE_UWSGI and MANILA_USE_MOD_WSGI are set to True.
-            Using UWSGI as the preferred option
-            Set MANILA_USE_UWSGI to False to deploy manila api with MOD_WSGI"
-        warn $LINENO $MSG
-    fi
-
     if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
         echo "Deploying with UWSGI"
         run_process m-api "$(which uwsgi) --ini $MANILA_UWSGI_CONF --procname-prefix manila-api"
-    elif [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
-        echo "Deploying with MOD_WSGI"
-        install_apache_wsgi
-        enable_apache_site manila-api
-        restart_apache_server
-        tail_log m-api /var/log/$APACHE_NAME/manila_api.log
     else
         echo "Deploying with built-in server"
         run_process m-api "$MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
@@ -906,16 +873,9 @@ function start_manila {
 
 # stop_manila - Stop running processes
 function stop_manila {
-    # Disable manila api service
-    if [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
-        disable_apache_site manila-api
-        restart_apache_server
-    else
-        stop_process m-api
-    fi
-
+    local serv
     # Kill all other manila processes
-    for serv in m-sch m-shr m-dat; do
+    for serv in m-api m-sch m-shr m-dat; do
         stop_process $serv
     done
 }
