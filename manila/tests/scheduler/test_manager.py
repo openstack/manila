@@ -37,6 +37,7 @@ from manila.share import share_types
 from manila import test
 from manila.tests import db_utils
 from manila.tests import fake_share as fakes
+from manila import utils
 
 CONF = cfg.CONF
 
@@ -203,16 +204,40 @@ class SchedulerManagerTestCase(test.TestCase):
 
         mock_expire.assert_called_once_with(self.context)
 
-    def test_periodic_tasks(self):
-        self.assertEqual(2, self.mock_periodic_task.call_count)
+    @mock.patch.object(db, 'service_get_all', mock.Mock())
+    @mock.patch.object(db, 'service_update', mock.Mock())
+    @mock.patch.object(utils, "service_is_up", mock.Mock())
+    def test__mark_services_as_down(self):
+        db.service_get_all.return_value = [
+            {"id": 1, "state": "up"},
+            {"id": 2, "state": "up"},
+            {"id": 3, "state": "stopped"},
+            {"id": 4, "state": "stopped"},
+            {"id": 5, "state": "down"},
+            {"id": 6, "state": "down"},
+        ]
+        utils.service_is_up.side_effect = [False, True] * 3
 
-        self.assertEqual(2, len(self.periodic_tasks))
+        self.manager._mark_services_as_down(self.context)
+
+        db.service_get_all.assert_called_once_with(self.context)
+        self.assertEqual(6, utils.service_is_up.call_count)
+        db.service_update.assert_called_once_with(
+            self.context, 1, {"state": "down"})
+
+    def test_periodic_tasks(self):
+        self.assertEqual(3, self.mock_periodic_task.call_count)
+
+        self.assertEqual(3, len(self.periodic_tasks))
         self.assertEqual(
             self.periodic_tasks[0].__name__,
             self.manager._expire_reservations.__name__)
         self.assertEqual(
             self.periodic_tasks[1].__name__,
             self.manager._clean_expired_messages.__name__)
+        self.assertEqual(
+            self.periodic_tasks[2].__name__,
+            self.manager._mark_services_as_down.__name__)
 
     def test_get_pools(self):
         """Ensure get_pools exists and calls base_scheduler.get_pools."""

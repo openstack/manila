@@ -40,6 +40,7 @@ from manila import quota
 from manila import rpc
 from manila.share import rpcapi as share_rpcapi
 from manila.share import share_types
+from manila import utils
 
 LOG = log.getLogger(__name__)
 QUOTAS = quota.QUOTAS
@@ -322,6 +323,15 @@ class SchedulerManager(manager.Manager):
     @coordination.synchronized('locked-clean-expired-messages')
     def _clean_expired_messages(self, context):
         self.message_api.cleanup_expired_messages(context)
+
+    @periodic_task.periodic_task(spacing=CONF.service_down_time,
+                                 run_immediately=True)
+    @coordination.synchronized('locked-mark-services-as-down')
+    def _mark_services_as_down(self, context):
+        for svc in db.service_get_all(context):
+            if not utils.service_is_up(svc):
+                if svc["state"] not in ("down", "stopped"):
+                    db.service_update(context, svc['id'], {"state": "down"})
 
     def extend_share(self, context, share_id, new_size, reservations,
                      request_spec=None, filter_properties=None):
