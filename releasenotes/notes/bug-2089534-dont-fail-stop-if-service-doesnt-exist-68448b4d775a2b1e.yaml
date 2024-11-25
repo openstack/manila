@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed an issue where stopping a service would produce unhelpful database traceback if a
+    service entry didn't exist in the database for the service.

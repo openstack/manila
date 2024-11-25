@@ -254,8 +254,12 @@ class Service(service.Service):
         except Exception:
             pass
 
-        db.service_update(context.get_admin_context(),
-                          self.service_id, {'state': 'stopped'})
+        try:
+            db.service_update(context.get_admin_context(),
+                              self.service_id, {'state': 'stopped'})
+        except exception.NotFound:
+            LOG.warning('Service stopped that has no database entry.')
+
         if self.coordinator:
             try:
                 coordination.LOCK_COORDINATOR.stop()
