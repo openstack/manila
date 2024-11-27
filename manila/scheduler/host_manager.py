@@ -160,6 +160,7 @@ class HostState(object):
         self.network_allocation_update_support = False
         self.share_server_multiple_subnet_support = False
         self.mount_point_name_support = False
+        self.share_replicas_migration_support = False
 
         # PoolState for all pools
         self.pools = {}
@@ -365,6 +366,10 @@ class HostState(object):
             pool_cap['share_server_multiple_subnet_support'] = (
                 self.share_server_multiple_subnet_support)
 
+        if 'share_replicas_migration_support' not in pool_cap:
+            pool_cap['share_replicas_migration_support'] = (
+                self.share_replicas_migration_support)
+
         if self.ipv4_support is not None:
             pool_cap['ipv4_support'] = self.ipv4_support
 
@@ -400,6 +405,8 @@ class HostState(object):
             'network_allocation_update_support', False)
         self.share_server_multiple_subnet_support = capability.get(
             'share_server_multiple_subnet_support', False)
+        self.share_replicas_migration_support = capability.get(
+            'share_replicas_migration_support', False)
 
     def consume_from_share(self, share):
         """Incrementally update host state from an share."""
@@ -506,6 +513,8 @@ class PoolState(HostState):
                 'network_allocation_update_support', False)
             self.share_server_multiple_subnet_support = capability.get(
                 'share_server_multiple_subnet_support', False)
+            self.share_replicas_migration_support = capability.get(
+                'share_replicas_migration_support', False)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet

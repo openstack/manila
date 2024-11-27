@@ -292,6 +292,7 @@ class ShareDriver(object):
         # property will be saved in every new share server.
         self.network_allocation_update_support = False
         self.dhss_mandatory_security_service_association = {}
+        self.share_replicas_migration_support = False
 
         self.pools = []
         if self.configuration:
@@ -1357,6 +1358,8 @@ class ShareDriver(object):
                 self.network_allocation_update_support),
             share_server_multiple_subnet_support=False,
             mount_point_name_support=False,
+            share_replicas_migration_support=(
+                self.share_replicas_migration_support),
         )
         if isinstance(data, dict):
             common.update(data)

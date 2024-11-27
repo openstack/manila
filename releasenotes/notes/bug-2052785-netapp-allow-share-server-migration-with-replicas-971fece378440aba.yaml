@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Netapp ONTAP driver now allows migration of share server even if one or
+    more shares on share server has replicas. For more details, please check
+    `Launchpad bug #2052785 <https://bugs.launchpad.net/manila/+bug/2052785>`_

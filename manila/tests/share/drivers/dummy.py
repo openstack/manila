@@ -147,6 +147,7 @@ class DummyDriver(driver.ShareDriver):
         self.migration_progress = {}
         self.security_service_update_support = True
         self.network_allocation_update_support = True
+        self.share_replicas_migration_support = True
 
     def _verify_configuration(self):
         allowed_driver_methods = [m for m in dir(self) if m[0] != '_']

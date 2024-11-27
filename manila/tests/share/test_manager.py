@@ -3469,6 +3469,7 @@ class ShareManagerTestCase(test.TestCase):
             'status': constants.STATUS_CREATING,
             'security_service_update_support': False,
             'network_allocation_update_support': False,
+            'share_replicas_migration_support': False,
         }
         fake_metadata = {
             'migration_destination': True,
@@ -7421,7 +7422,8 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext), fake_share_server['id'],
             {'status': constants.STATUS_ACTIVE,
              'identifier': driver_return[0] or share_server['id'],
-             'network_allocation_update_support': False}
+             'network_allocation_update_support': False,
+             'share_replicas_migration_support': False}
         )
         mock_set_backend_details.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), share_server['id'],

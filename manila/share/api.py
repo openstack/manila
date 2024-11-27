@@ -3090,7 +3090,9 @@ class API(base.Base):
                             'share_status': share['status']}
                 raise exception.InvalidShareServer(reason=msg)
 
-            if share.has_replicas:
+            if (not share_server.get(
+                    'share_replicas_migration_support', False) and
+                    share.has_replicas):
                 msg = _('Share %s has replicas. Remove the replicas of all '
                         'shares in the share server before attempting to '
                         'migrate it.') % share['id']

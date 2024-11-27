@@ -1081,6 +1081,7 @@ POOLS = [
         'netapp_flexgroup': False,
         'netapp_cluster_name': 'fake_cluster_name',
         'netapp_snaplock_type': 'compliance',
+        'share_replicas_migration_support': True,
     },
     {
         'pool_name': AGGREGATES[1],
@@ -1111,6 +1112,7 @@ POOLS = [
         'netapp_flexgroup': False,
         'netapp_cluster_name': 'fake_cluster_name',
         'netapp_snaplock_type': 'compliance',
+        'share_replicas_migration_support': True
     },
 ]
 
@@ -1141,6 +1143,7 @@ POOLS_VSERVER_CREDS = [
         'security_service_update_support': True,
         'share_server_multiple_subnet_support': True,
         'netapp_flexgroup': False,
+        'share_replicas_migration_support': True
     },
     {
         'pool_name': AGGREGATES[1],
@@ -1164,6 +1167,7 @@ POOLS_VSERVER_CREDS = [
         'security_service_update_support': True,
         'share_server_multiple_subnet_support': True,
         'netapp_flexgroup': False,
+        'share_replicas_migration_support': True
     },
 ]
 

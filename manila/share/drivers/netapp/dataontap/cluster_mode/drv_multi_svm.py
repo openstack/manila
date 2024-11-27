@@ -45,6 +45,7 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
         # NetApp driver supports multiple subnets including update existing
         # share servers.
         self.network_allocation_update_support = True
+        self.share_replicas_migration_support = True
 
     def do_setup(self, context):
         self.library.do_setup(context)

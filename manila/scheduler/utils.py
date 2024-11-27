@@ -68,7 +68,9 @@ def generate_stats(host_state, properties):
         'share_server_multiple_subnet_support': (
             host_state.share_server_multiple_subnet_support),
         'mount_point_name_support': (
-            host_state.mount_point_name_support)
+            host_state.mount_point_name_support),
+        'share_replicas_migration_support': (
+            host_state.share_replicas_migration_support),
     }
 
     host_caps = host_state.capabilities
