@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Allow filtering shares on mount_point_name property.
