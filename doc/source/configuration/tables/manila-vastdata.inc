@@ -10,13 +10,13 @@
 
 .. _manila-vastdata:
 
-.. list-table:: Description of Vastdata share driver configuration options
+.. list-table:: Description of VAST share driver configuration options
    :header-rows: 1
    :class: config-ref-table
 
    * - Configuration option = Default value
      - Description
-   * - **[DEFAULT]**
+   * - **[vast]**
      -
    * - ``vast_mgmt_host`` =
      - (String) Hostname or IP address VAST storage system management VIP.
