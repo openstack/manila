@@ -192,12 +192,18 @@ class VASTShareDriverTestCase(unittest.TestCase):
                 mock_rest.views.ensure.assert_called_once_with(
                     name="fakeid", path="/fake/manila-fakeid", policy_id=1
                 )
-                self.assertDictEqual(
+                self.assertListEqual(
                     location,
-                    {
-                        'path': '1.1.1.0:/fake/manila-fakeid',
-                        'is_admin_only': False
-                    }
+                    [
+                        {
+                            'path': '1.1.1.0:/fake/manila-fakeid',
+                            'is_admin_only': False
+                        },
+                        {
+                            'path': '1.1.1.1:/fake/manila-fakeid',
+                            'is_admin_only': False
+                        },
+                    ]
                 )
                 if not policy:
                     mock_rest.views.update.assert_called_once_with(

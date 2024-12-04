@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Launchpad bug #2037422 <https://bugs.launchpad.net/manila/+bug/2088269>`_:
+    Fixed an issue within the VASTData driver that made only one export path
+    available for mounting, regardless if more mount paths were available. Now,
+    the amount of export locations will correspond to the way the storage is
+    configured for better load balancing.
