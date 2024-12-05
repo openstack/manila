@@ -305,6 +305,7 @@ class GenericShareDriverTestCase(test.TestCase):
         server = {'instance_id': 'fake_server_id'}
         mount_path = self._driver._get_mount_path(self.share)
         volume = {'mountpoint': 'fake_mount_point'}
+        device_path = volume['mountpoint']
         self.mock_object(self._driver, '_is_device_mounted',
                          mock.Mock(return_value=False))
         self.mock_object(self._driver, '_add_mount_permanently')
@@ -316,7 +317,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._is_device_mounted.assert_called_once_with(
             mount_path, server, volume)
         self._driver._add_mount_permanently.assert_called_once_with(
-            self.share.id, server)
+            self.share.id, device_path, server)
         self._driver._ssh_exec.assert_called_once_with(
             server, (
                 'sudo', 'mkdir', '-p', mount_path,
@@ -490,17 +491,29 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertFalse(result)
 
     def test_add_mount_permanently(self):
-        self.mock_object(self._driver, '_ssh_exec')
-        self._driver._add_mount_permanently(self.share.id, self.server)
+        device_path = '/fake/mount/path'
+        device_uuid = 'fake_disk_uuid'
+        formated_device_uuid = f"UUID={device_uuid}"
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(return_value=(device_uuid, '')))
+        self._driver._add_mount_permanently(self.share.id, device_path,
+                                            self.server)
         self._driver._ssh_exec.assert_has_calls([
             mock.call(
                 self.server,
                 ['grep', self.share.id, const.MOUNT_FILE_TEMP,
                  '|', 'sudo', 'tee', '-a', const.MOUNT_FILE]),
+            mock.call(self.server, ['lsblk', '-o', 'uuid',
+                      '-n', device_path]),
+            mock.call(
+                self.server,
+                ['sudo', 'sed', '-i', "s@{}@{}@".format(device_path,
+                 formated_device_uuid), const.MOUNT_FILE]),
             mock.call(self.server, ['sudo', 'mount', '-a'])
         ])
 
     def test_add_mount_permanently_raise_error_on_add(self):
+        device_path = 'fake_device_path'
         self.mock_object(
             self._driver, '_ssh_exec',
             mock.Mock(side_effect=exception.ProcessExecutionError))
@@ -508,6 +521,7 @@ class GenericShareDriverTestCase(test.TestCase):
             exception.ShareBackendException,
             self._driver._add_mount_permanently,
             self.share.id,
+            device_path,
             self.server
         )
         self._driver._ssh_exec.assert_called_once_with(

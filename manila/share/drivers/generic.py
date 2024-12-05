@@ -286,7 +286,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     return True
         return False
 
-    def _add_mount_permanently(self, share_id, server_details):
+    def _add_mount_permanently(self, share_id, device_path, server_details):
         """Add mount permanently for mounted filesystems."""
         try:
             self._ssh_exec(
@@ -294,6 +294,17 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 ['grep', share_id, const.MOUNT_FILE_TEMP,
                  '|', 'sudo', 'tee', '-a', const.MOUNT_FILE],
             )
+            output, __ = self._ssh_exec(
+                server_details,
+                ['lsblk', '-o', 'uuid', '-n', device_path])
+            if output:
+                device_uuid = f"UUID={output.strip()}"
+                self._ssh_exec(
+                    server_details,
+                    ['sudo', 'sed', '-i', "s@{}@{}@".format(device_path,
+                                                            device_uuid),
+                     const.MOUNT_FILE]
+                )
         except exception.ProcessExecutionError as e:
             LOG.error("Failed to add 'Share-%(share_id)s' mount "
                       "permanently on server '%(instance_id)s'.",
@@ -363,7 +374,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                         '&&', 'sudo', 'mount', device_path, mount_path,
                     )
                     self._ssh_exec(server_details, mount_cmd)
-                    self._add_mount_permanently(share.id, server_details)
+                    self._add_mount_permanently(share.id, device_path,
+                                                server_details)
                 else:
                     LOG.warning("Mount point '%(path)s' already exists on "
                                 "server '%(server)s'.", log_data)
