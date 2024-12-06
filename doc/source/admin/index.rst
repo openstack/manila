@@ -68,6 +68,7 @@ deployment.
    group_capabilities_and_extra_specs
    export_location_metadata
    shared-file-systems-share-backup-management.rst
+   shared-file-systems-services-manage.rst
 
 Supported share back ends
 -------------------------
