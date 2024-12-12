@@ -185,15 +185,12 @@ class API(base.Base):
 
     @translate_server_exception
     def instance_volumes_list(self, context, instance_id):
-        from manila.volume import cinder
 
         volumes = novaclient(context).volumes.get_server_volumes(instance_id)
 
-        for volume in volumes:
-            volume_data = cinder.cinderclient(context).volumes.get(volume.id)
-            volume.name = volume_data.name
-
-        return volumes
+        # NOTE(pas-ha): Nova API 2.89 dropped 'id' field of the volume object,
+        # so we use 'volumeId' field that is present in all API versions.
+        return [volume.volumeId for volume in volumes]
 
     @translate_server_exception
     def server_update(self, context, instance_id, name):
