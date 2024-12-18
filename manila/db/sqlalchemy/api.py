@@ -1678,8 +1678,12 @@ def share_instance_update(context, share_instance_id, values,
     return instance_ref
 
 
-def _share_instance_update(context, share_instance_id, values):
-    share_instance_ref = _share_instance_get(context, share_instance_id)
+def _share_instance_update(
+    context, share_instance_id, values, with_share_data=False
+):
+    share_instance_ref = _share_instance_get(
+        context, share_instance_id,
+        with_share_data=with_share_data)
     share_instance_ref.update(values)
     share_instance_ref.save(session=context.session)
     return share_instance_ref
@@ -1955,19 +1959,14 @@ def update_share_instance_quota_usages(context, instance_id):
                                   deferred_delete=True)
 
 
-def _set_instances_share_data(context, instances):
-    if instances and not isinstance(instances, list):
-        instances = [instances]
+def _set_instances_share_data(instances):
+    instances = instances.options(
+        orm.joinedload(models.ShareInstance.share)).all()
+    instances = [s for s in instances if s.share]
+    for s in instances:
+        s.set_share_data(s.share)
 
-    instances_with_share_data = []
-    for instance in instances:
-        try:
-            parent_share = _share_get(context, instance['share_id'])
-        except exception.NotFound:
-            continue
-        instance.set_share_data(parent_share)
-        instances_with_share_data.append(instance)
-    return instances_with_share_data
+    return instances
 
 
 @require_admin_context
@@ -1985,11 +1984,12 @@ def share_instance_get_all_by_host(context, host, with_share_data=False,
     )
     if status is not None:
         instances = instances.filter(models.ShareInstance.status == status)
-    # Returns list of all instances that satisfy filters.
-    instances = instances.all()
 
     if with_share_data:
-        instances = _set_instances_share_data(context, instances)
+        instances = _set_instances_share_data(instances)
+    else:
+        # Returns list of all instances that satisfy filters.
+        instances = instances.all()
     return instances
 
 
@@ -2013,11 +2013,13 @@ def share_instance_get_all_by_share_server(context, share_server_id,
     result = (
         model_query(context, models.ShareInstance).filter(
             models.ShareInstance.share_server_id == share_server_id,
-        ).all()
+        )
     )
 
     if with_share_data:
-        result = _set_instances_share_data(context, result)
+        result = _set_instances_share_data(result)
+    else:
+        result = result.all()
 
     return result
 
@@ -2098,10 +2100,12 @@ def share_replicas_get_all(context, with_share_data=False,
     """Returns replica instances for all available replicated shares."""
     result = _share_replica_get_with_filters(
         context, with_share_server=with_share_server,
-    ).all()
+    )
 
     if with_share_data:
-        result = _set_instances_share_data(context, result)
+        result = _set_instances_share_data(result)
+    else:
+        result = result.all()
 
     return result
 
@@ -2115,10 +2119,12 @@ def share_replicas_get_all_by_share(context, share_id,
     result = _share_replica_get_with_filters(
         context, with_share_server=with_share_server,
         share_id=share_id,
-    ).all()
+    )
 
     if with_share_data:
-        result = _set_instances_share_data(context, result)
+        result = _set_instances_share_data(result)
+    else:
+        result = result.all()
 
     return result
 
@@ -2133,10 +2139,12 @@ def share_replicas_get_available_active_replica(context, share_id,
         context, with_share_server=with_share_server, share_id=share_id,
         replica_state=constants.REPLICA_STATE_ACTIVE,
         status=constants.STATUS_AVAILABLE,
-    ).first()
+    )
 
-    if result and with_share_data:
-        result = _set_instances_share_data(context, result)[0]
+    if result.first() and with_share_data:
+        result = _set_instances_share_data(result)[0]
+    else:
+        result = result.first()
 
     return result
 
@@ -2150,13 +2158,15 @@ def share_replica_get(context, replica_id, with_share_data=False,
         context,
         with_share_server=with_share_server,
         replica_id=replica_id,
-    ).first()
+    )
+
+    if result.first() and with_share_data:
+        result = _set_instances_share_data(result)[0]
+    else:
+        result = result.first()
 
     if result is None:
         raise exception.ShareReplicaNotFound(replica_id=replica_id)
-
-    if with_share_data:
-        result = _set_instances_share_data(context, result)[0]
 
     return result
 
@@ -2170,12 +2180,8 @@ def share_replica_update(context, share_replica_id, values,
     """Updates a share replica with specified values."""
     updated_share_replica = _share_instance_update(
         context, share_replica_id, values,
+        with_share_data=with_share_data
     )
-
-    if with_share_data:
-        updated_share_replica = _set_instances_share_data(
-            context, updated_share_replica,
-        )[0]
 
     return updated_share_replica
 

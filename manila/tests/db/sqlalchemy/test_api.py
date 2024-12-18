@@ -597,10 +597,8 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
     def test_share_instance_get_all_by_host_not_found_exception(self):
         db_utils.create_share()
-        self.mock_object(db_api, '_share_get', mock.Mock(
-                         side_effect=exception.NotFound))
         instances = db_api.share_instance_get_all_by_host(
-            self.ctxt, 'fake_host', True)
+            self.ctxt, 'not_found_host', True)
 
         self.assertEqual(0, len(instances))
 

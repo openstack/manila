@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Share instance/replica get with share data query is being optimized to
+    improve the performance. Please check `launchpad bug 2084783
+    <https://bugs.launchpad.net/manila/+bug/2084783>`_ for more details.
