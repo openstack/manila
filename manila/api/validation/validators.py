@@ -117,30 +117,6 @@ def _validate_string_length(
     )
 
 
-@jsonschema.FormatChecker.cls_checks('date-time')
-def _validate_datetime_format(instance: object) -> bool:
-    # format checks constrain to the relevant primitive type
-    # https://github.com/OAI/OpenAPI-Specification/issues/3148
-    if not isinstance(instance, str):
-        return True
-    try:
-        timeutils.parse_isotime(instance)
-    except ValueError:
-        return False
-    else:
-        return True
-
-
-@jsonschema.FormatChecker.cls_checks('uuid')
-def _validate_uuid_format(instance: object) -> bool:
-    # format checks constrain to the relevant primitive type
-    # https://github.com/OAI/OpenAPI-Specification/issues/3148
-    if not isinstance(instance, str):
-        return True
-
-    return uuidutils.is_uuid_like(instance)
-
-
 class FormatChecker(jsonschema.FormatChecker):
     """A FormatChecker can output the message from cause exception
 
@@ -176,6 +152,33 @@ class FormatChecker(jsonschema.FormatChecker):
             raise jsonschema_exc.FormatError(msg, cause=cause)
 
 
+_FORMAT_CHECKER = FormatChecker()
+
+
+@_FORMAT_CHECKER.checks('date-time')
+def _validate_datetime_format(instance: object) -> bool:
+    # format checks constrain to the relevant primitive type
+    # https://github.com/OAI/OpenAPI-Specification/issues/3148
+    if not isinstance(instance, str):
+        return True
+    try:
+        timeutils.parse_isotime(instance)
+    except ValueError:
+        return False
+    else:
+        return True
+
+
+@_FORMAT_CHECKER.checks('uuid')
+def _validate_uuid_format(instance: object) -> bool:
+    # format checks constrain to the relevant primitive type
+    # https://github.com/OAI/OpenAPI-Specification/issues/3148
+    if not isinstance(instance, str):
+        return True
+
+    return uuidutils.is_uuid_like(instance)
+
+
 class _SchemaValidator(object):
     """A validator class
 
@@ -205,8 +208,7 @@ class _SchemaValidator(object):
         validator_cls = jsonschema.validators.extend(
             self.validator_org, validators
         )
-        format_checker = FormatChecker()
-        self.validator = validator_cls(schema, format_checker=format_checker)
+        self.validator = validator_cls(schema, format_checker=_FORMAT_CHECKER)
 
     def validate(self, *args, **kwargs):
         try:
