@@ -26,22 +26,25 @@ support messages.
 
    .. code-block:: console
 
-      clouduser1@client:~$ manila type-list
-      +--------------------------------------+-------------+------------+------------+--------------------------------------+--------------------------------------------+-------------+
-      | ID                                   | Name        | visibility | is_default | required_extra_specs                 | optional_extra_specs                       | Description |
-      +--------------------------------------+-------------+------------+------------+--------------------------------------+--------------------------------------------+-------------+
-      | 1cf5d45a-61b3-44d1-8ec7-89a21f51a4d4 | dhss_false  | public     | YES        | driver_handles_share_servers : False | create_share_from_snapshot_support : True  | None        |
-      |                                      |             |            |            |                                      | mount_snapshot_support : False             |             |
-      |                                      |             |            |            |                                      | revert_to_snapshot_support : False         |             |
-      |                                      |             |            |            |                                      | snapshot_support : True                    |             |
-      | 277c1089-127f-426e-9b12-711845991ea1 | dhss_true   | public     | -          | driver_handles_share_servers : True  | create_share_from_snapshot_support : True  | None        |
-      |                                      |             |            |            |                                      | mount_snapshot_support : False             |             |
-      |                                      |             |            |            |                                      | revert_to_snapshot_support : False         |             |
-      |                                      |             |            |            |                                      | snapshot_support : True                    |             |
-      +--------------------------------------+-------------+------------+------------+--------------------------------------+--------------------------------------------+-------------+
+      clouduser1@client:~$ openstack share type list
+      +--------------------------------------+------------+------------+------------+--------------------------------------+-------------------------------------------+-------------+
+      | ID                                   | Name       | Visibility | Is Default | Required Extra Specs                 | Optional Extra Specs                      | Description |
+      +--------------------------------------+------------+------------+------------+--------------------------------------+-------------------------------------------+-------------+
+      | 61c7e7d2-ce74-4b50-9a3d-a89f7c51b9e9 | default    | public     | True       | driver_handles_share_servers : False | snapshot_support : True                   | None        |
+      |                                      |            |            |            |                                      | create_share_from_snapshot_support : True |             |
+      |                                      |            |            |            |                                      | revert_to_snapshot_support : True         |             |
+      |                                      |            |            |            |                                      | mount_snapshot_support : True             |             |
+      | 8867fc92-3193-4c6d-8248-a6ba10aa974b | dhss_false | public     | False      | driver_handles_share_servers : False | snapshot_support : True                   | None        |
+      |                                      |            |            |            |                                      | create_share_from_snapshot_support : True |             |
+      |                                      |            |            |            |                                      | revert_to_snapshot_support : True         |             |
+      |                                      |            |            |            |                                      | mount_snapshot_support : True             |             |
+      | 4d754228-5b5d-4632-8f96-0c27dcb7968f | dhss_true  | public     | False      | driver_handles_share_servers : True  | snapshot_support : True                   | None        |
+      |                                      |            |            |            |                                      | create_share_from_snapshot_support : True |             |
+      |                                      |            |            |            |                                      | revert_to_snapshot_support : True         |             |
+      |                                      |            |            |            |                                      | mount_snapshot_support : True             |             |
+      +--------------------------------------+------------+------------+------------+--------------------------------------+-------------------------------------------+-------------+
 
-
-   In this example, two share types are available.
+   In this example, three share types are available.
 
 
 #. To use a share type that specifies driver_handles_share_servers=True
@@ -54,8 +57,11 @@ support messages.
     +--------------------------------------+---------------------+--------------------------------------+---------------------+
     | ID                                   | Name                | Network                              | Subnet              |
     +--------------------------------------+---------------------+--------------------------------------+---------------------+
-    | 78c6ac57-bba7-4922-ab81-16cde31c2d06 | private-subnet      | 74d5cfb3-5dd0-43f7-b1b2-5b544cb16212 | 10.0.0.0/26         |
-    | a344682c-718d-4825-a87a-3622b4d3a771 | ipv6-private-subnet | 74d5cfb3-5dd0-43f7-b1b2-5b544cb16212 | fd36:18fc:a8e9::/64 |
+    | 01efb9d0-4c5f-424a-8402-b3bf19d0e4a2 | shared-subnet       | b8b3fedf-f788-4ba4-bf55-24521a20e671 | 192.168.233.0/24    |
+    | 54a3188e-8bf2-461a-8b70-0d63f05810a6 | private-subnet      | 0bea5e39-81ce-4d6f-845d-ce5e87dad7d3 | 10.0.0.0/26         |
+    | 6d1b41b2-8b39-482d-8e46-10bec65cdc99 | ipv6-public-subnet  | 9d25eb3b-d76c-4429-b788-a3dab0f2c24d | 2001:db8::/64       |
+    | 8805a23b-b35e-42fe-8502-4f4bc58d23f7 | public-subnet       | 9d25eb3b-d76c-4429-b788-a3dab0f2c24d | 172.24.4.0/24       |
+    | 9f8ae84a-5375-42f7-aa1b-eb3b697e8e3a | ipv6-private-subnet | 0bea5e39-81ce-4d6f-845d-ce5e87dad7d3 | fda4:5834:1c78::/64 |
     +--------------------------------------+---------------------+--------------------------------------+---------------------+
 
 
@@ -64,83 +70,110 @@ support messages.
 
    .. code-block:: console
 
-    clouduser1@client:~$ manila share-network-create --name mynet --neutron-net-id 74d5cfb3-5dd0-43f7-b1b2-5b544cb16212 --neutron-subnet-id 78c6ac57-bba7-4922-ab81-16cde31c2d06
-    +-------------------+--------------------------------------+
-    | Property          | Value                                |
-    +-------------------+--------------------------------------+
-    | network_type      | None                                 |
-    | name              | mynet                                |
-    | segmentation_id   | None                                 |
-    | created_at        | 2018-10-09T21:32:22.485399           |
-    | neutron_subnet_id | 78c6ac57-bba7-4922-ab81-16cde31c2d06 |
-    | updated_at        | None                                 |
-    | mtu               | None                                 |
-    | gateway           | None                                 |
-    | neutron_net_id    | 74d5cfb3-5dd0-43f7-b1b2-5b544cb16212 |
-    | ip_version        | None                                 |
-    | cidr              | None                                 |
-    | project_id        | cadd7139bc3148b8973df097c0911016     |
-    | id                | 0b0fc320-d4b5-44a1-a1ae-800c56de550c |
-    | description       | None                                 |
-    +-------------------+--------------------------------------+
+    clouduser1@client:~$ openstack share network create --name mynet \
+                        --neutron-net-id 0bea5e39-81ce-4d6f-845d-ce5e87dad7d3 \
+                        --neutron-subnet-id 54a3188e-8bf2-461a-8b70-0d63f05810a6
+    +-----------------------------------+----------------------------------------------------------+
+    | Field                             | Value                                                    |
+    +-----------------------------------+----------------------------------------------------------+
+    | created_at                        | 2025-04-16T18:39:17.582629                               |
+    | description                       | None                                                     |
+    | id                                | b6cc0aa0-c6bf-4c28-9566-a4bff93382d9                     |
+    | name                              | mynet                                                    |
+    | network_allocation_update_support | True                                                     |
+    | project_id                        | 138d700333eb46cfb36b5a9659704759                         |
+    | security_service_update_support   | True                                                     |
+    | share_network_subnets             |                                                          |
+    |                                   | id = 4114b63b-4932-4082-b5c9-e50dc839d3c9                |
+    |                                   | availability_zone = None                                 |
+    |                                   | created_at = 2025-04-16T18:39:17.607997                  |
+    |                                   | updated_at = None                                        |
+    |                                   | segmentation_id = None                                   |
+    |                                   | neutron_net_id = 0bea5e39-81ce-4d6f-845d-ce5e87dad7d3    |
+    |                                   | neutron_subnet_id = 54a3188e-8bf2-461a-8b70-0d63f05810a6 |
+    |                                   | ip_version = None                                        |
+    |                                   | cidr = None                                              |
+    |                                   | network_type = None                                      |
+    |                                   | mtu = None                                               |
+    |                                   | gateway = None                                           |
+    |                                   | metadata = {}                                            |
+    | status                            | active                                                   |
+    | updated_at                        | None                                                     |
+    +-----------------------------------+----------------------------------------------------------+
 
-    clouduser1@client:~$ manila share-network-list
+
+    clouduser1@client:~$  openstack share network list
     +--------------------------------------+-------+
-    | id                                   | name  |
+    | ID                                   | Name  |
     +--------------------------------------+-------+
-    | 6c7ef9ef-3591-48b6-b18a-71a03059edd5 | mynet |
+    | b6cc0aa0-c6bf-4c28-9566-a4bff93382d9 | mynet |
     +--------------------------------------+-------+
+
 
 
 #. Create the share:
 
    .. code-block:: console
 
-    clouduser1@client:~$ manila create nfs 1 --name software_share --share-network mynet --share-type dhss_true
-    +---------------------------------------+--------------------------------------+
-    | Property                              | Value                                |
-    +---------------------------------------+--------------------------------------+
-    | status                                | creating                             |
-    | share_type_name                       | dhss_true                            |
-    | description                           | None                                 |
-    | availability_zone                     | None                                 |
-    | share_network_id                      | 6c7ef9ef-3591-48b6-b18a-71a03059edd5 |
-    | share_server_id                       | None                                 |
-    | share_group_id                        | None                                 |
-    | host                                  |                                      |
-    | revert_to_snapshot_support            | False                                |
-    | access_rules_status                   | active                               |
-    | snapshot_id                           | None                                 |
-    | create_share_from_snapshot_support    | False                                |
-    | is_public                             | False                                |
-    | task_state                            | None                                 |
-    | snapshot_support                      | False                                |
-    | id                                    | 243f3a51-0624-4bdd-950e-7ed190b53b67 |
-    | size                                  | 1                                    |
-    | source_share_group_snapshot_member_id | None                                 |
-    | user_id                               | 61aef4895b0b41619e67ae83fba6defe     |
-    | name                                  | software_share                       |
-    | share_type                            | 277c1089-127f-426e-9b12-711845991ea1 |
-    | has_replicas                          | False                                |
-    | replication_type                      | None                                 |
-    | created_at                            | 2018-10-09T21:12:21.000000           |
-    | share_proto                           | NFS                                  |
-    | mount_snapshot_support                | False                                |
-    | project_id                            | cadd7139bc3148b8973df097c0911016     |
-    | metadata                              | {}                                   |
-    +---------------------------------------+--------------------------------------+
+    clouduser1@client:~$ openstack share create nfs 1 --name software_share \
+                         --share-network mynet --share-type dhss_true
+    +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+    | Field                                 | Value                                                                                                                |
+    +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+    | access_rules_status                   | active                                                                                                               |
+    | availability_zone                     | manila-zone-2                                                                                                        |
+    | create_share_from_snapshot_support    | True                                                                                                                 |
+    | created_at                            | 2025-04-22T16:00:19.973764                                                                                           |
+    | description                           | None                                                                                                                 |
+    | export_locations                      |                                                                                                                      |
+    |                                       | id = 208c9cb5-853d-41c2-82ae-42c10c11d226                                                                            |
+    |                                       | path = 10.0.0.10:/path/to/fake/share/share_18b84ece_fb8e_438c_b89b_bb2e7c69a5a0_013ca955_c1ca_4817_b053_d153e6bb5253 |
+    |                                       | preferred = True                                                                                                     |
+    |                                       | metadata = {}                                                                                                        |
+    |                                       | id = 5f2f0201-4d68-48c9-a650-be59692a495f                                                                            |
+    |                                       | path = 10.0.0.11:/path/to/fake/share/share_18b84ece_fb8e_438c_b89b_bb2e7c69a5a0_013ca955_c1ca_4817_b053_d153e6bb5253 |
+    |                                       | preferred = False                                                                                                    |
+    |                                       | metadata = {}                                                                                                        |
+    | has_replicas                          | False                                                                                                                |
+    | id                                    | 18b84ece-fb8e-438c-b89b-bb2e7c69a5a0                                                                                 |
+    | is_public                             | False                                                                                                                |
+    | is_soft_deleted                       | False                                                                                                                |
+    | mount_snapshot_support                | True                                                                                                                 |
+    | name                                  | software_share                                                                                                       |
+    | progress                              | 100%                                                                                                                 |
+    | project_id                            | 138d700333eb46cfb36b5a9659704759                                                                                     |
+    | properties                            |                                                                                                                      |
+    | replication_type                      | None                                                                                                                 |
+    | revert_to_snapshot_support            | True                                                                                                                 |
+    | scheduled_to_be_deleted_at            | None                                                                                                                 |
+    | share_group_id                        | None                                                                                                                 |
+    | share_network_id                      | b6cc0aa0-c6bf-4c28-9566-a4bff93382d9                                                                                 |
+    | share_proto                           | NFS                                                                                                                  |
+    | share_type                            | 4d754228-5b5d-4632-8f96-0c27dcb7968f                                                                                 |
+    | share_type_name                       | dhss_true                                                                                                            |
+    | size                                  | 1                                                                                                                    |
+    | snapshot_id                           | None                                                                                                                 |
+    | snapshot_support                      | True                                                                                                                 |
+    | source_backup_id                      | None                                                                                                                 |
+    | source_share_group_snapshot_member_id | None                                                                                                                 |
+    | status                                | available                                                                                                            |
+    | task_state                            | None                                                                                                                 |
+    | user_id                               | c01b2bd0b56949508d27aebdf04c6d69                                                                                     |
+    | volume_type                           | dhss_true                                                                                                            |
+    +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
 
 
 #. View the status of the share:
 
    .. code-block:: console
 
-      clouduser1@client:~$ manila list
-      +--------------------------------------+----------------+------+-------------+--------+-----------+-----------------+------+-------------------+
-      | ID                                   | Name           | Size | Share Proto | Status | Is Public | Share Type Name | Host | Availability Zone |
-      +--------------------------------------+----------------+------+-------------+--------+-----------+-----------------+------+-------------------+
-      | 243f3a51-0624-4bdd-950e-7ed190b53b67 | software_share | 1    | NFS         | error  | False     | dhss_true       |      | None              |
-      +--------------------------------------+----------------+------+-------------+--------+-----------+-----------------+------+-------------------+
+    clouduser1@client:~$ openstack share list
+    +--------------------------------------+------------------+------+-------------+--------+-----------+-----------------+------+-------------------+
+    | ID                                   | Name             | Size | Share Proto | Status | Is Public | Share Type Name | Host | Availability Zone |
+    +--------------------------------------+------------------+------+-------------+--------+-----------+-----------------+------+-------------------+
+    | 18b84ece-fb8e-438c-b89b-bb2e7c69a5a0 | software_share   |    1 | NFS         | error  | False     | dhss_true       |      | None              |
+    +--------------------------------------+------------------+------+-------------+--------+-----------+-----------------+------+-------------------+
+
 
    In this example, an error occurred during the share creation.
 
@@ -151,12 +184,16 @@ support messages.
 
    .. code-block:: console
 
-      clouduser1@client:~$ manila message-list
-      +--------------------------------------+---------------+--------------------------------------+-----------+----------------------------------------------------------------------------------------------------------+-----------+----------------------------+
-      | ID                                   | Resource Type | Resource ID                          | Action ID | User Message                                                                                             | Detail ID | Created At                 |
-      +--------------------------------------+---------------+--------------------------------------+-----------+----------------------------------------------------------------------------------------------------------+-----------+----------------------------+
-      | 7d411c3c-46d9-433f-9e21-c04ca30b209c | SHARE         | 243f3a51-0624-4bdd-950e-7ed190b53b67 | 001       | allocate host: No storage could be allocated for this share request, Capabilities filter didn't succeed. | 008       | 2018-10-09T21:12:21.000000 |
-      +--------------------------------------+---------------+--------------------------------------+-----------+----------------------------------------------------------------------------------------------------------+-----------+----------------------------+
+    clouduser1@client:~$ openstack share message list
+    +--------------------------------------+---------------+--------------------------------------+-----------+-----------------------------------------------------+-----------+----------------------------+
+    | ID                                   | Resource Type | Resource ID                          | Action ID | User Message                                        | Detail ID | Created At                 |
+    +--------------------------------------+---------------+--------------------------------------+-----------+-----------------------------------------------------+-----------+----------------------------+
+    | 8fe74a26-f57d-4961-8435-5ea8ccf05946 | SHARE         | 18b84ece-fb8e-438c-b89b-bb2e7c69a5a0 | 001       | allocate host: No storage could be allocated for    | 008       | 2025-04-22T20:16:50.207084 |
+    |                                      |               |                                      |           | this share request, Capabilities filter didn't      |           |                            |
+    |                                      |               |                                      |           | succeed.                                            |           |                            |
+    +--------------------------------------+---------------+--------------------------------------+-----------+-----------------------------------------------------+-----------+----------------------------+
+
+
 
    In User Message column, you can see that the Shared File System service
    failed to create the share because of a capabilities mismatch.
@@ -167,21 +204,22 @@ support messages.
 
    .. code-block:: console
 
-      clouduser1@client:~$ manila message-show 7d411c3c-46d9-433f-9e21-c04ca30b209c
-      +---------------+----------------------------------------------------------------------------------------------------------+
-      | Property      | Value                                                                                                    |
-      +---------------+----------------------------------------------------------------------------------------------------------+
-      | request_id    | req-0a875292-6c52-458b-87d4-1f945556feac                                                                 |
-      | detail_id     | 008                                                                                                      |
-      | expires_at    | 2018-11-08T21:12:21.000000                                                                               |
-      | resource_id   | 243f3a51-0624-4bdd-950e-7ed190b53b67                                                                     |
-      | user_message  | allocate host: No storage could be allocated for this share request, Capabilities filter didn't succeed. |
-      | created_at    | 2018-10-09T21:12:21.000000                                                                               |
-      | message_level | ERROR                                                                                                    |
-      | id            | 7d411c3c-46d9-433f-9e21-c04ca30b209c                                                                     |
-      | resource_type | SHARE                                                                                                    |
-      | action_id     | 001                                                                                                      |
-      +---------------+----------------------------------------------------------------------------------------------------------+
+    clouduser1@client:~$ openstack share message-show 8fe74a26-f57d-4961-8435-5ea8ccf05946
+    +---------------+----------------------------------------------------------------------------------------------------------+
+    | Field         | Value                                                                                                    |
+    +---------------+----------------------------------------------------------------------------------------------------------+
+    | id            | 8fe74a26-f57d-4961-8435-5ea8ccf05946                                                                     |
+    | resource_type | SHARE                                                                                                    |
+    | resource_id   | 18b84ece-fb8e-438c-b89b-bb2e7c69a5a0                                                                     |
+    | action_id     | 001                                                                                                      |
+    | user_message  | allocate host: No storage could be allocated for this share request, Capabilities filter didn't succeed. |
+    | message_level | ERROR                                                                                                    |
+    | detail_id     | 008                                                                                                      |
+    | created_at    | 2025-04-22T20:16:50.207084                                                                               |
+    | expires_at    | 2025-05-22T20:16:50.000000                                                                               |
+    | request_id    | req-1621b77d-0abb-4c90-9e61-8809214f58a6                                                                 |
+    +---------------+----------------------------------------------------------------------------------------------------------+
+
 
    As the cloud user, you know the related specs your share type has, so you can
    review the share types available. The difference between the two share types
@@ -189,56 +227,69 @@ support messages.
 
    .. code-block:: console
 
-    clouduser1@client:~$ manila type-list
-    +--------------------------------------+-------------+------------+------------+--------------------------------------+--------------------------------------------+-------------+
-    | ID                                   | Name        | visibility | is_default | required_extra_specs                 | optional_extra_specs                       | Description |
-    +--------------------------------------+-------------+------------+------------+--------------------------------------+--------------------------------------------+-------------+
-    | 1cf5d45a-61b3-44d1-8ec7-89a21f51a4d4 | dhss_false  | public     | YES        | driver_handles_share_servers : False | create_share_from_snapshot_support : True  | None        |
-    |                                      |             |            |            |                                      | mount_snapshot_support : False             |             |
-    |                                      |             |            |            |                                      | revert_to_snapshot_support : False         |             |
-    |                                      |             |            |            |                                      | snapshot_support : True                    |             |
-    | 277c1089-127f-426e-9b12-711845991ea1 | dhss_true   | public     | -          | driver_handles_share_servers : True  | create_share_from_snapshot_support : True  | None        |
-    |                                      |             |            |            |                                      | mount_snapshot_support : False             |             |
-    |                                      |             |            |            |                                      | revert_to_snapshot_support : False         |             |
-    |                                      |             |            |            |                                      | snapshot_support : True                    |             |
-    +--------------------------------------+-------------+------------+------------+--------------------------------------+--------------------------------------------+-------------+
+    clouduser1@client:~$ openstack share type list
+    +--------------------------------------+------------+------------+------------+--------------------------------------+-------------------------------------------+-------------+
+    | ID                                   | Name       | Visibility | Is Default | Required Extra Specs                 | Optional Extra Specs                      | Description |
+    +--------------------------------------+------------+------------+------------+--------------------------------------+-------------------------------------------+-------------+
+    | 61c7e7d2-ce74-4b50-9a3d-a89f7c51b9e9 | default    | public     | True       | driver_handles_share_servers : False | snapshot_support : True                   | None        |
+    |                                      |            |            |            |                                      | create_share_from_snapshot_support : True |             |
+    |                                      |            |            |            |                                      | revert_to_snapshot_support : True         |             |
+    |                                      |            |            |            |                                      | mount_snapshot_support : True             |             |
+    | 8867fc92-3193-4c6d-8248-a6ba10aa974b | dhss_false | public     | False      | driver_handles_share_servers : False | snapshot_support : True                   | None        |
+    |                                      |            |            |            |                                      | create_share_from_snapshot_support : True |             |
+    |                                      |            |            |            |                                      | revert_to_snapshot_support : True         |             |
+    |                                      |            |            |            |                                      | mount_snapshot_support : True             |             |
+    | 4d754228-5b5d-4632-8f96-0c27dcb7968f | dhss_true  | public     | False      | driver_handles_share_servers : True  | snapshot_support : True                   | None        |
+    |                                      |            |            |            |                                      | create_share_from_snapshot_support : True |             |
+    |                                      |            |            |            |                                      | revert_to_snapshot_support : True         |             |
+    |                                      |            |            |            |                                      | mount_snapshot_support : True             |             |
+    +--------------------------------------+------------+------------+------------+--------------------------------------+-------------------------------------------+-------------+
+
 
 
 #. Create a share with the other available share type:
 
    .. code-block:: console
 
-      clouduser1@client:~$ manila create nfs 1 --name software_share --share-network mynet --share-type dhss_false
-      +---------------------------------------+--------------------------------------+
-      | Property                              | Value                                |
-      +---------------------------------------+--------------------------------------+
-      | status                                | creating                             |
-      | share_type_name                       | dhss_false                           |
-      | description                           | None                                 |
-      | availability_zone                     | None                                 |
-      | share_network_id                      | 6c7ef9ef-3591-48b6-b18a-71a03059edd5 |
-      | share_group_id                        | None                                 |
-      | revert_to_snapshot_support            | False                                |
-      | access_rules_status                   | active                               |
-      | snapshot_id                           | None                                 |
-      | create_share_from_snapshot_support    | True                                 |
-      | is_public                             | False                                |
-      | task_state                            | None                                 |
-      | snapshot_support                      | True                                 |
-      | id                                    | 2d03d480-7cba-4122-ac9d-edc59c8df698 |
-      | size                                  | 1                                    |
-      | source_share_group_snapshot_member_id | None                                 |
-      | user_id                               | 5c7bdb6eb0504d54a619acf8375c08ce     |
-      | name                                  | software_share                       |
-      | share_type                            | 1cf5d45a-61b3-44d1-8ec7-89a21f51a4d4 |
-      | has_replicas                          | False                                |
-      | replication_type                      | None                                 |
-      | created_at                            | 2018-10-09T21:24:40.000000           |
-      | share_proto                           | NFS                                  |
-      | mount_snapshot_support                | False                                |
-      | project_id                            | cadd7139bc3148b8973df097c0911016     |
-      | metadata                              | {}                                   |
-      +---------------------------------------+--------------------------------------+
+    clouduser1@client:~$ openstack share create nfs 1 --name software_share \
+                        --share-network mynet --share-type dhss_false
+    +---------------------------------------+--------------------------------------+
+    | Field                                 | Value                                |
+    +---------------------------------------+--------------------------------------+
+    | access_rules_status                   | active                               |
+    | availability_zone                     | None                                 |
+    | create_share_from_snapshot_support    | True                                 |
+    | created_at                            | 2025-04-22T20:34:04.627679           |
+    | description                           | None                                 |
+    | has_replicas                          | False                                |
+    | id                                    | 010e4c5b-d40a-4691-a7cb-68c3b3950523 |
+    | is_public                             | False                                |
+    | is_soft_deleted                       | False                                |
+    | metadata                              | {}                                   |
+    | mount_snapshot_support                | True                                 |
+    | name                                  | software_share                       |
+    | progress                              | None                                 |
+    | project_id                            | 138d700333eb46cfb36b5a9659704759     |
+    | replication_type                      | None                                 |
+    | revert_to_snapshot_support            | True                                 |
+    | scheduled_to_be_deleted_at            | None                                 |
+    | share_group_id                        | None                                 |
+    | share_network_id                      | b6cc0aa0-c6bf-4c28-9566-a4bff93382d9 |
+    | share_proto                           | NFS                                  |
+    | share_type                            | 8867fc92-3193-4c6d-8248-a6ba10aa974b |
+    | share_type_name                       | dhss_false                           |
+    | size                                  | 1                                    |
+    | snapshot_id                           | None                                 |
+    | snapshot_support                      | True                                 |
+    | source_backup_id                      | None                                 |
+    | source_share_group_snapshot_member_id | None                                 |
+    | status                                | creating                             |
+    | task_state                            | None                                 |
+    | user_id                               | c01b2bd0b56949508d27aebdf04c6d69     |
+    | volume_type                           | dhss_false                           |
+    +---------------------------------------+--------------------------------------+
+
+
 
    In this example, the second share creation attempt fails.
 
@@ -247,21 +298,26 @@ support messages.
 
    .. code-block:: console
 
-      clouduser1@client:~$ manila list
-      +--------------------------------------+----------------+------+-------------+--------+-----------+-----------------+------+-------------------+
-      | ID                                   | Name           | Size | Share Proto | Status | Is Public | Share Type Name | Host | Availability Zone |
-      +--------------------------------------+----------------+------+-------------+--------+-----------+-----------------+------+-------------------+
-      | 2d03d480-7cba-4122-ac9d-edc59c8df698 | software_share | 1    | NFS         | error  | False     | dhss_false      |      | nova              |
-      | 243f3a51-0624-4bdd-950e-7ed190b53b67 | software_share | 1    | NFS         | error  | False     | dhss_true       |      | None              |
-      +--------------------------------------+----------------+------+-------------+--------+-----------+-----------------+------+-------------------+
+    clouduser1@client:~$ openstack share list
+    +--------------------------------------+------------------+------+-------------+--------+-----------+-----------------+------+-------------------+
+    | ID                                   | Name             | Size | Share Proto | Status | Is Public | Share Type Name | Host | Availability Zone |
+    +--------------------------------------+------------------+------+-------------+--------+-----------+-----------------+------+-------------------+
+    | 18b84ece-fb8e-438c-b89b-bb2e7c69a5a0 | software_share   |    1 | NFS         | error  | False     | dhss_true       |      | None              |
+    | 010e4c5b-d40a-4691-a7cb-68c3b3950523 | software_share   |    1 | NFS         | error  | False     | dhss_false      |      | manila-zone-1     |
+    +--------------------------------------+------------------+------+-------------+--------+-----------+-----------------+------+-------------------+
 
-      clouduser1@client:~$ manila message-list
-      +--------------------------------------+---------------+--------------------------------------+-----------+----------------------------------------------------------------------------------------------------------+-----------+----------------------------+
-      | ID                                   | Resource Type | Resource ID                          | Action ID | User Message                                                                                             | Detail ID | Created At                 |
-      +--------------------------------------+---------------+--------------------------------------+-----------+----------------------------------------------------------------------------------------------------------+-----------+----------------------------+
-      | ed7e02a2-0cdb-4ff9-b64f-e4d2ec1ef069 | SHARE         | 2d03d480-7cba-4122-ac9d-edc59c8df698 | 002       | create: Driver does not expect share-network to be provided with current configuration.                  | 003       | 2018-10-09T21:24:40.000000 |
-      | 7d411c3c-46d9-433f-9e21-c04ca30b209c | SHARE         | 243f3a51-0624-4bdd-950e-7ed190b53b67 | 001       | allocate host: No storage could be allocated for this share request, Capabilities filter didn't succeed. | 008       | 2018-10-09T21:12:21.000000 |
-      +--------------------------------------+---------------+--------------------------------------+-----------+----------------------------------------------------------------------------------------------------------+-----------+----------------------------+
+
+    clouduser1@client:~$ openstack share message list
+    +--------------------------------------+---------------+--------------------------------------+-----------+-----------------------------------------------------+-----------+----------------------------+
+    | ID                                   | Resource Type | Resource ID                          | Action ID | User Message                                        | Detail ID | Created At                 |
+    +--------------------------------------+---------------+--------------------------------------+-----------+-----------------------------------------------------+-----------+----------------------------+
+    | 50a401e8-c30a-4369-8a35-68a019d19c76 | SHARE         | 010e4c5b-d40a-4691-a7cb-68c3b3950523 | 002       | create: Driver does not expect share-network to be  | 003       | 2025-04-22T20:34:04.810870 |
+    |                                      |               |                                      |           | provided with current configuration.                |           |                            |
+    | 8fe74a26-f57d-4961-8435-5ea8ccf05946 | SHARE         | 18b84ece-fb8e-438c-b89b-bb2e7c69a5a0 | 001       | allocate host: No storage could be allocated for    | 008       | 2025-04-22T20:16:50.207084 |
+    |                                      |               |                                      |           | this share request, Capabilities filter didn't      |           |                            |
+    |                                      |               |                                      |           | succeed.                                            |           |                            |
+    +--------------------------------------+---------------+--------------------------------------+-----------+-----------------------------------------------------+-----------+----------------------------+
+
 
    You can see that the service does not expect a share network for
    the share type used.
@@ -274,70 +330,86 @@ support messages.
 
    .. code-block:: console
 
-      clouduser1@client:~$ manila create nfs 1 --name software_share --share-type dhss_false
-      +---------------------------------------+--------------------------------------+
-      | Property                              | Value                                |
-      +---------------------------------------+--------------------------------------+
-      | status                                | creating                             |
-      | share_type_name                       | dhss_false                           |
-      | description                           | None                                 |
-      | availability_zone                     | None                                 |
-      | share_network_id                      | None                                 |
-      | share_group_id                        | None                                 |
-      | revert_to_snapshot_support            | False                                |
-      | access_rules_status                   | active                               |
-      | snapshot_id                           | None                                 |
-      | create_share_from_snapshot_support    | True                                 |
-      | is_public                             | False                                |
-      | task_state                            | None                                 |
-      | snapshot_support                      | True                                 |
-      | id                                    | 4d3d7fcf-5fb7-4209-90eb-9e064659f46d |
-      | size                                  | 1                                    |
-      | source_share_group_snapshot_member_id | None                                 |
-      | user_id                               | 5c7bdb6eb0504d54a619acf8375c08ce     |
-      | name                                  | software_share                       |
-      | share_type                            | 1cf5d45a-61b3-44d1-8ec7-89a21f51a4d4 |
-      | has_replicas                          | False                                |
-      | replication_type                      | None                                 |
-      | created_at                            | 2018-10-09T21:25:40.000000           |
-      | share_proto                           | NFS                                  |
-      | mount_snapshot_support                | False                                |
-      | project_id                            | cadd7139bc3148b8973df097c0911016     |
-      | metadata                              | {}                                   |
-      +---------------------------------------+--------------------------------------+
+    clouduser1@client:~$ openstack share create nfs 1 --name software_share \
+                        --share-type dhss_false
+    +---------------------------------------+--------------------------------------+
+    | Field                                 | Value                                |
+    +---------------------------------------+--------------------------------------+
+    | access_rules_status                   | active                               |
+    | availability_zone                     | None                                 |
+    | create_share_from_snapshot_support    | True                                 |
+    | created_at                            | 2025-04-22T21:48:37.025207           |
+    | description                           | None                                 |
+    | has_replicas                          | False                                |
+    | id                                    | feec61e2-4166-4ca3-8d59-a8d13f78535e |
+    | is_public                             | False                                |
+    | is_soft_deleted                       | False                                |
+    | metadata                              | {}                                   |
+    | mount_snapshot_support                | True                                 |
+    | name                                  | software_share                       |
+    | progress                              | None                                 |
+    | project_id                            | 138d700333eb46cfb36b5a9659704759     |
+    | replication_type                      | None                                 |
+    | revert_to_snapshot_support            | True                                 |
+    | scheduled_to_be_deleted_at            | None                                 |
+    | share_group_id                        | None                                 |
+    | share_network_id                      | None                                 |
+    | share_proto                           | NFS                                  |
+    | share_type                            | 8867fc92-3193-4c6d-8248-a6ba10aa974b |
+    | share_type_name                       | dhss_false                           |
+    | size                                  | 1                                    |
+    | snapshot_id                           | None                                 |
+    | snapshot_support                      | True                                 |
+    | source_backup_id                      | None                                 |
+    | source_share_group_snapshot_member_id | None                                 |
+    | status                                | creating                             |
+    | task_state                            | None                                 |
+    | user_id                               | c01b2bd0b56949508d27aebdf04c6d69     |
+    | volume_type                           | dhss_false                           |
+    +---------------------------------------+--------------------------------------+
 
 
-#. To ensure that the share was created successfully, use the `manila list`
+
+#. To ensure that the share was created successfully, use the `share list`
    command:
 
    .. code-block:: console
 
-      clouduser1@client:~$ manila list
-      +--------------------------------------+----------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
-      | ID                                   | Name           | Size | Share Proto | Status    | Is Public | Share Type Name | Host | Availability Zone |
-      +--------------------------------------+----------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
-      | 4d3d7fcf-5fb7-4209-90eb-9e064659f46d | software_share | 1    | NFS         | available | False     | dhss_false      |      | nova              |
-      | 2d03d480-7cba-4122-ac9d-edc59c8df698 | software_share | 1    | NFS         | error     | False     | dhss_false      |      | nova              |
-      | 243f3a51-0624-4bdd-950e-7ed190b53b67 | software_share | 1    | NFS         | error     | False     | dhss_true       |      | None              |
-      +--------------------------------------+----------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
+    clouduser1@client:~$ openstack share list
+    +--------------------------------------+------------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
+    | ID                                   | Name             | Size | Share Proto | Status    | Is Public | Share Type Name | Host | Availability Zone |
+    +--------------------------------------+------------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
+    | 18b84ece-fb8e-438c-b89b-bb2e7c69a5a0 | software_share   |    1 | NFS         | error     | False     | dhss_true       |      | None              |
+    | feec61e2-4166-4ca3-8d59-a8d13f78535e | software_share   |    1 | NFS         | available | False     | dhss_false      |      | manila-zone-1     |
+    | 010e4c5b-d40a-4691-a7cb-68c3b3950523 | software_share   |    1 | NFS         | error     | False     | dhss_false      |      | manila-zone-1     |
+    +--------------------------------------+------------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
+
 
 #. Delete shares that failed to be created and corresponding support messages:
 
    .. code-block:: console
 
-      clouduser1@client:~$ manila delete 2d03d480-7cba-4122-ac9d-edc59c8df698 243f3a51-0624-4bdd-950e-7ed190b53b67
-      clouduser1@client:~$ manila message-list
-      +--------------------------------------+---------------+--------------------------------------+-----------+----------------------------------------------------------------------------------------------------------+-----------+----------------------------+
-      | ID                                   | Resource Type | Resource ID                          | Action ID | User Message                                                                                             | Detail ID | Created At                 |
-      +--------------------------------------+---------------+--------------------------------------+-----------+----------------------------------------------------------------------------------------------------------+-----------+----------------------------+
-      | ed7e02a2-0cdb-4ff9-b64f-e4d2ec1ef069 | SHARE         | 2d03d480-7cba-4122-ac9d-edc59c8df698 | 002       | create: Driver does not expect share-network to be provided with current configuration.                  | 003       | 2018-10-09T21:24:40.000000 |
-      | 7d411c3c-46d9-433f-9e21-c04ca30b209c | SHARE         | 243f3a51-0624-4bdd-950e-7ed190b53b67 | 001       | allocate host: No storage could be allocated for this share request, Capabilities filter didn't succeed. | 008       | 2018-10-09T21:12:21.000000 |
-      +--------------------------------------+---------------+--------------------------------------+-----------+----------------------------------------------------------------------------------------------------------+-----------+----------------------------+
+    clouduser1@client:~$ openstack share delete \
+                         18b84ece-fb8e-438c-b89b-bb2e7c69a5a0 \
+                         010e4c5b-d40a-4691-a7cb-68c3b3950523
+    clouduser1@client:~$ openstack share message list
+    +--------------------------------------+---------------+--------------------------------------+-----------+-----------------------------------------------------+-----------+----------------------------+
+    | ID                                   | Resource Type | Resource ID                          | Action ID | User Message                                        | Detail ID | Created At                 |
+    +--------------------------------------+---------------+--------------------------------------+-----------+-----------------------------------------------------+-----------+----------------------------+
+    | 50a401e8-c30a-4369-8a35-68a019d19c76 | SHARE         | 010e4c5b-d40a-4691-a7cb-68c3b3950523 | 002       | create: Driver does not expect share-network to be  | 003       | 2025-04-22T20:34:04.810870 |
+    |                                      |               |                                      |           | provided with current configuration.                |           |                            |
+    | 8fe74a26-f57d-4961-8435-5ea8ccf05946 | SHARE         | 18b84ece-fb8e-438c-b89b-bb2e7c69a5a0 | 001       | allocate host: No storage could be allocated for    | 008       | 2025-04-22T20:16:50.207084 |
+    |                                      |               |                                      |           | this share request, Capabilities filter didn't      |           |                            |
+    |                                      |               |                                      |           | succeed.                                            |           |                            |
+    +--------------------------------------+---------------+--------------------------------------+-----------+-----------------------------------------------------+-----------+----------------------------+
 
-      clouduser1@client:~$ manila message-delete ed7e02a2-0cdb-4ff9-b64f-e4d2ec1ef069 7d411c3c-46d9-433f-9e21-c04ca30b209c
 
-      clouduser1@client:~$ manila message-list
-      +----+---------------+-------------+-----------+--------------+-----------+------------+
-      | ID | Resource Type | Resource ID | Action ID | User Message | Detail ID | Created At |
-      +----+---------------+-------------+-----------+--------------+-----------+------------+
-      +----+---------------+-------------+-----------+--------------+-----------+------------+
+    clouduser1@client:~$ openstack share message delete \
+                         50a401e8-c30a-4369-8a35-68a019d19c76 \
+                         8fe74a26-f57d-4961-8435-5ea8ccf05946
+
+    clouduser1@client:~$ openstack share message list
+    +----+---------------+-------------+-----------+--------------+-----------+------------+
+    | ID | Resource Type | Resource ID | Action ID | User Message | Detail ID | Created At |
+    +----+---------------+-------------+-----------+--------------+-----------+------------+
+    +----+---------------+-------------+-----------+--------------+-----------+------------+
