@@ -419,6 +419,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_create_vserver_no_ipspace(self):
 
+        self.client.features.add_feature('DELETE_RETENTION_HOURS')
         self.mock_object(self.client, 'send_request')
         self.mock_object(self.client,
                          '_modify_security_cert',
@@ -434,7 +435,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
         vserver_modify_args = {
             'aggr-list': [{'aggr-name': aggr_name} for aggr_name
                           in fake.SHARE_AGGREGATE_NAMES],
-            'vserver-name': fake.VSERVER_NAME
+            'vserver-name': fake.VSERVER_NAME,
+            'volume-delete-retention-hours': 16,
         }
 
         self.client.create_vserver(fake.VSERVER_NAME,
@@ -442,7 +444,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                    fake.ROOT_VOLUME_NAME,
                                    fake.SHARE_AGGREGATE_NAMES,
                                    None,
-                                   fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
+                                   fake.SECURITY_CERT_LARGE_EXPIRE_DAYS,
+                                   16)
 
         self.client.send_request.assert_has_calls([
             mock.call('vserver-create', vserver_create_args),
@@ -453,6 +456,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_create_vserver_with_ipspace(self):
 
         self.client.features.add_feature('IPSPACES')
+        self.client.features.add_feature('DELETE_RETENTION_HOURS')
         self.mock_object(self.client, 'send_request')
         self.mock_object(self.client,
                          '_modify_security_cert',
@@ -469,6 +473,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         vserver_modify_args = {
             'aggr-list': [{'aggr-name': aggr_name} for aggr_name
                           in fake.SHARE_AGGREGATE_NAMES],
+            'volume-delete-retention-hours': 24,
             'vserver-name': fake.VSERVER_NAME
         }
 
@@ -477,7 +482,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                    fake.ROOT_VOLUME_NAME,
                                    fake.SHARE_AGGREGATE_NAMES,
                                    fake.IPSPACE_NAME,
-                                   fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
+                                   fake.SECURITY_CERT_LARGE_EXPIRE_DAYS,
+                                   24)
 
         self.client.send_request.assert_has_calls([
             mock.call('vserver-create', vserver_create_args),
@@ -539,6 +545,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_create_vserver_dp_destination(self):
 
         self.client.features.add_feature('IPSPACES')
+        self.client.features.add_feature('DELETE_RETENTION_HOURS')
         self.mock_object(self.client, 'send_request')
 
         vserver_create_args = {
@@ -549,13 +556,15 @@ class NetAppClientCmodeTestCase(test.TestCase):
         vserver_modify_args = {
             'aggr-list': [{'aggr-name': aggr_name} for aggr_name
                           in fake.SHARE_AGGREGATE_NAMES],
+            'volume-delete-retention-hours': 18,
             'vserver-name': fake.VSERVER_NAME
         }
 
         self.client.create_vserver_dp_destination(
             fake.VSERVER_NAME,
             fake.SHARE_AGGREGATE_NAMES,
-            fake.IPSPACE_NAME)
+            fake.IPSPACE_NAME,
+            18)
 
         self.client.send_request.assert_has_calls([
             mock.call('vserver-create', vserver_create_args),
@@ -570,7 +579,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.ROOT_VOLUME_NAME,
                           fake.SHARE_AGGREGATE_NAMES,
                           fake.IPSPACE_NAME,
-                          fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
+                          fake.SECURITY_CERT_LARGE_EXPIRE_DAYS,
+                          10)
 
     def test_get_vserver_root_volume_name(self):
 

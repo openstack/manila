@@ -4347,7 +4347,7 @@ class NetAppRestClient(object):
     @na_utils.trace
     def create_vserver(self, vserver_name, root_volume_aggregate_name,
                        root_volume_name, aggregate_names, ipspace_name,
-                       security_cert_expire_days):
+                       security_cert_expire_days, delete_retention_hours):
         """Creates new vserver and assigns aggregates."""
 
         # NOTE(nahimsouza): root_volume_aggregate_name and root_volume_name
@@ -4355,19 +4355,20 @@ class NetAppRestClient(object):
         # the vserver creation by REST API
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
-            name_server_switch=['files'])
+            delete_retention_hours, name_server_switch=['files'])
         self._modify_security_cert(vserver_name, security_cert_expire_days)
 
     @na_utils.trace
     def create_vserver_dp_destination(self, vserver_name, aggregate_names,
-                                      ipspace_name):
+                                      ipspace_name, delete_retention_hours):
         """Creates new 'dp_destination' vserver and assigns aggregates."""
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
-            subtype='dp_destination')
+            delete_retention_hours, subtype='dp_destination')
 
     @na_utils.trace
     def _create_vserver(self, vserver_name, aggregate_names, ipspace_name,
+                        delete_retention_hours,
                         name_server_switch=None, subtype=None):
         """Creates new vserver and assigns aggregates."""
         body = {
@@ -4386,6 +4387,9 @@ class NetAppRestClient(object):
         body['aggregates'] = []
         for aggr_name in aggregate_names:
             body['aggregates'].append({'name': aggr_name})
+
+        if delete_retention_hours != 0:
+            body['retention_period'] = delete_retention_hours
 
         self.send_request('/svm/svms', 'post', body=body)
 

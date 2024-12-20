@@ -5029,10 +5029,12 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client.create_vserver(fake.VSERVER_NAME, None, None,
                                    [fake.SHARE_AGGREGATE_NAME],
                                    fake.IPSPACE_NAME,
-                                   fake.SECURITY_CERT_DEFAULT_EXPIRE_DAYS)
+                                   fake.SECURITY_CERT_DEFAULT_EXPIRE_DAYS,
+                                   fake.DELETE_RETENTION_HOURS)
         mock.assert_called_once_with(fake.VSERVER_NAME,
                                      [fake.SHARE_AGGREGATE_NAME],
                                      fake.IPSPACE_NAME,
+                                     fake.DELETE_RETENTION_HOURS,
                                      name_server_switch=['files'])
         self.client._modify_security_cert.assert_called_once_with(
             fake.VSERVER_NAME,
@@ -5991,12 +5993,14 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'ipspace.name': fake.IPSPACE_NAME,
             'aggregates': [{
                 'name': fake.SHARE_AGGREGATE_NAME
-            }]
+            }],
+            'retention_period': fake.DELETE_RETENTION_HOURS,
         }
 
         self.client._create_vserver(fake.VSERVER_NAME,
                                     [fake.SHARE_AGGREGATE_NAME],
                                     fake.IPSPACE_NAME,
+                                    fake.DELETE_RETENTION_HOURS,
                                     fake.FAKE_SERVER_SWITCH_NAME,
                                     fake.FAKE_SUBTYPE)
 
@@ -6819,10 +6823,12 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         mock_vserver = self.mock_object(self.client, '_create_vserver')
         self.client.create_vserver_dp_destination(fake.VSERVER_NAME,
                                                   fake.FAKE_AGGR_LIST,
-                                                  fake.IPSPACE_NAME)
+                                                  fake.IPSPACE_NAME,
+                                                  fake.DELETE_RETENTION_HOURS)
         mock_vserver.assert_called_once_with(fake.VSERVER_NAME,
                                              fake.FAKE_AGGR_LIST,
                                              fake.IPSPACE_NAME,
+                                             fake.DELETE_RETENTION_HOURS,
                                              subtype='dp_destination')
 
     @ddt.data(':', '.')

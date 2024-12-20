@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    The NetApp ONTAP driver now supports user configurable volume delete
+    retention period (``netapp_volume_delete_retention_hours``). The max value
+    of config option ``unused_share_server_cleanup_interval`` is updated to
+    possible max value of retention period because if a share server gets
+    deleted, the volume recovery queue also gets purged.
+    For more details, please check
+    `Launchpad bug #2085112 <https://bugs.launchpad.net/manila/+bug/2085112>`_
