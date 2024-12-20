@@ -2356,6 +2356,12 @@ class API(base.Base):
         if show_deferred_deleted:
             filters['list_deferred_delete'] = True
 
+        list_all_projects = False
+        all_tenants = utils.is_all_tenants(search_opts)
+        if all_tenants:
+            list_all_projects = policy.check_policy(
+                context, 'share', 'list_all_projects', do_raise=False)
+
         # Get filtered list of shares
         if 'host' in filters:
             policy.check_policy(context, 'share', 'list_by_host')
@@ -2365,7 +2371,7 @@ class API(base.Base):
             result = get_methods['get_by_share_server'](
                 context, search_opts.pop('share_server_id'), filters=filters,
                 sort_key=sort_key, sort_dir=sort_dir)
-        elif context.is_admin and utils.is_all_tenants(search_opts):
+        elif list_all_projects:
             result = get_methods['get_all'](
                 context, filters=filters, sort_key=sort_key, sort_dir=sort_dir)
         else:
@@ -2420,7 +2426,12 @@ class API(base.Base):
         LOG.debug("Searching for snapshots by: %s", search_opts)
 
         # Read and remove key 'all_tenants' if was provided
-        all_tenants = search_opts.pop('all_tenants', None)
+        list_all_projects = False
+        all_tenants = utils.is_all_tenants(search_opts)
+        if all_tenants:
+            search_opts.pop('all_tenants', None)
+            list_all_projects = policy.check_policy(
+                context, 'share_snapshot', 'list_all_projects', do_raise=False)
 
         string_args = {'sort_key': sort_key, 'sort_dir': sort_dir}
         string_args.update(search_opts)
@@ -2448,7 +2459,7 @@ class API(base.Base):
                 self.db.share_snapshot_get_all_by_project_with_count
                 if show_count else self.db.share_snapshot_get_all_by_project)}
 
-        if context.is_admin and all_tenants:
+        if list_all_projects:
             result = get_methods['get_all'](
                 context, filters=search_opts, limit=limit, offset=offset,
                 sort_key=sort_key, sort_dir=sort_dir)

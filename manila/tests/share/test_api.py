@@ -264,6 +264,8 @@ class ShareAPITestCase(test.TestCase):
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=True)
         self.mock_object(db_api, 'share_get_all',
                          mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES))
+        self.mock_object(share_api.policy, 'check_policy',
+                         mock.Mock(return_value=True))
 
         shares = self.api.get_all(ctx, {'all_tenants': 1})
 
@@ -276,6 +278,8 @@ class ShareAPITestCase(test.TestCase):
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=True)
         self.mock_object(db_api, 'share_get_all',
                          mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES))
+        self.mock_object(share_api.policy, 'check_policy',
+                         mock.Mock(return_value=True))
 
         shares = self.api.get_all(ctx, {'all_tenants': ''})
 
@@ -348,6 +352,7 @@ class ShareAPITestCase(test.TestCase):
                 ctx, 'share',
                 'list_shares_in_deferred_deletion_states',
                 do_raise=False),
+            mock.call(ctx, 'share', 'list_all_projects', do_raise=False),
             mock.call(ctx, 'share', 'list_by_share_server_id')])
 
         db_api.share_get_all_by_share_server.assert_called_once_with(
@@ -3050,12 +3055,17 @@ class ShareAPITestCase(test.TestCase):
 
     @mock.patch.object(db_api, 'share_snapshot_get_all', mock.Mock())
     def test_get_all_snapshots_admin_all_tenants(self):
-        mock_policy = self.mock_object(share_api.policy, 'check_policy',
-                                       mock.Mock(return_value=False))
+        mock_policy = self.mock_object(
+            share_api.policy, 'check_policy',
+            mock.Mock(side_effect=[False, True, False]))
         self.api.get_all_snapshots(self.context,
                                    search_opts={'all_tenants': 1})
         mock_policy.assert_has_calls([
             mock.call(self.context, 'share_snapshot', 'get_all_snapshots'),
+            mock.call(
+                self.context, 'share_snapshot',
+                'list_all_projects',
+                do_raise=False),
             mock.call(
                 self.context, 'share_snapshot',
                 'list_snapshots_in_deferred_deletion_states',

@@ -227,6 +227,13 @@ deprecated_list_shares_in_deferred_deletion_states = policy.DeprecatedRule(
     deprecated_since='2024.1/Caracal'
 )
 
+deprecated_list_all_projects = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'list_all_projects',
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2025.1/Epoxy'
+)
+
 shares_policies = [
     policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'create',
@@ -681,6 +688,23 @@ shares_policies = [
             }
         ],
         deprecated_rule=deprecated_list_shares_in_deferred_deletion_states
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'list_all_projects',
+        check_str=base.ADMIN,
+        scope_types=['project'],
+        description="List share by all projects.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/shares?all_tenants=1',
+            },
+            {
+                'method': 'GET',
+                'path': '/shares/detail?all_tenants=1',
+            }
+        ],
+        deprecated_rule=deprecated_list_all_projects
     ),
 
 ]
