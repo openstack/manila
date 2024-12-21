@@ -9,11 +9,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: manila\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-10-01 16:49+0000\n"
+"POT-Creation-Date: 2024-12-20 20:37+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2024-10-01 01:06+0000\n"
+"PO-Revision-Date: 2024-12-17 09:55+0000\n"
 "Last-Translator: Andi Chandler <andi@gowling.com>\n"
 "Language-Team: English (United Kingdom)\n"
 "Language: en_GB\n"
@@ -173,6 +173,9 @@ msgstr "15.4.0"
 msgid "15.4.1"
 msgstr "15.4.1"
 
+msgid "15.4.1-4"
+msgstr "15.4.1-4"
+
 msgid "16.0.0"
 msgstr "16.0.0"
 
@@ -185,9 +188,6 @@ msgstr "16.2.0"
 msgid "16.2.1"
 msgstr "16.2.1"
 
-msgid "16.2.1-2"
-msgstr "16.2.1-2"
-
 msgid "17.0.0"
 msgstr "17.0.0"
 
@@ -197,20 +197,32 @@ msgstr "17.1.0"
 msgid "17.2.0"
 msgstr "17.2.0"
 
-msgid "17.2.0-13"
-msgstr "17.2.0-13"
+msgid "17.3.0"
+msgstr "17.3.0"
+
+msgid "17.3.1"
+msgstr "17.3.1"
 
 msgid "18.0.1"
 msgstr "18.0.1"
 
-msgid "18.1.0-16"
-msgstr "18.1.0-16"
+msgid "18.2.0"
+msgstr "18.2.0"
 
-msgid "19.0.0.0rc1"
-msgstr "19.0.0.0rc1"
+msgid "18.2.1"
+msgstr "18.2.1"
 
-msgid "19.0.0.0rc2"
-msgstr "19.0.0.0rc2"
+msgid "18.2.1-1"
+msgstr "18.2.1-1"
+
+msgid "19.0.0"
+msgstr "19.0.0"
+
+msgid "19.0.1"
+msgstr "19.0.1"
+
+msgid "19.0.1-2"
+msgstr "19.0.1-2"
 
 msgid "2.0.0"
 msgstr "2.0.0"
@@ -220,6 +232,9 @@ msgstr "2.0.0-44"
 
 msgid "2023.1 Series Release Notes"
 msgstr "2023.1 Series Release Notes"
+
+msgid "2023.1-eom"
+msgstr "2023.1-eom"
 
 msgid "2023.2 Series Release Notes"
 msgstr "2023.2 Series Release Notes"
@@ -556,6 +571,29 @@ msgstr ""
 "Ability to add minimum and maximum share size restrictions which can be set "
 "on a per share-type granularity. Added new extra specs 'provisioning:"
 "max_share_size' and 'provisioning:min_share_size'."
+
+msgid ""
+"Access rule type for shares served via nfs-ganesha is now validated, fixing "
+"`launchpad bug #1816420 <https://bugs.launchpad.net/manila/+bug/1811680>`_ "
+"where ``cephx`` access type was allowed though only ``ip`` access type is "
+"effective.  This fix also validates ``access_level`` to ensure that it is "
+"set to ``RW`` or ``RO``."
+msgstr ""
+"Access rule type for shares served via nfs-ganesha is now validated, fixing "
+"`launchpad bug #1816420 <https://bugs.launchpad.net/manila/+bug/1811680>`_ "
+"where ``cephx`` access type was allowed though only ``ip`` access type is "
+"effective.  This fix also validates ``access_level`` to ensure that it is "
+"set to ``RW`` or ``RO``."
+
+msgid ""
+"Access rules can be added regardless of the 'access_rules_status' of the "
+"share or any of its replicas."
+msgstr ""
+"Access rules can be added regardless of the 'access_rules_status' of the "
+"share or any of its replicas."
+
+msgid "Adapted policy.json file to correct snapshot policy values."
+msgstr "Adapted policy.json file to correct snapshot policy values."
 
 msgid "Current Series Release Notes"
 msgstr "Current Series Release Notes"
