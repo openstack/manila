@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Generic driver - volumes mounted to the service instance are now mounted
+    via its uuid (/dev/disk/by-uuid/...) instead of canonical paths (/dev/vdb)
+    to prevent messing up the shares after restarts.
