@@ -330,8 +330,8 @@ def is_valid_csv(extra_spec_value):
     return all([v.strip() for v in values])
 
 
-def is_valid_string(v):
-    return isinstance(v, str) and len(v) in range(1, 256)
+def is_valid_string(v, min_length=1, max_length=256):
+    return isinstance(v, str) and min_length <= len(v) and len(v) < max_length
 
 
 def sanitize_csv(csv_string):
@@ -365,7 +365,7 @@ def is_valid_optional_extra_spec(key, value):
     elif key == constants.ExtraSpecs.AVAILABILITY_ZONES:
         return is_valid_csv(value)
     elif key == constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX:
-        return is_valid_string(value)
+        return is_valid_string(value, min_length=0)
     elif key in [constants.ExtraSpecs.PROVISIONING_MAX_SHARE_SIZE,
                  constants.ExtraSpecs.PROVISIONING_MIN_SHARE_SIZE,
                  constants.ExtraSpecs.PROVISIONING_MAX_SHARE_EXTEND_SIZE]:
