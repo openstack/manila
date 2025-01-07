@@ -1,0 +1,11 @@
+---
+deprecations:
+  - |
+    The following options of the CephFS driver have been deprecated, because
+    these are used only by the deprecated NFSProtocolHelper.
+
+    - ``cephfs_ganesha_server_is_remote``
+    - ``cephfs_ganesha_server_username``
+    - ``cephfs_ganesha_path_to_private_key``
+    - ``cephfs_ganesha_server_password``
+
