@@ -75,7 +75,7 @@ Install the prerequisite packages.
 
 .. note::
 
-   If using RHEL and yum reports "No package python3-pip available" and "No
+   If using RHEL and dnf reports "No package python3-pip available" and "No
    package git-review available", use the EPEL software repository.
    Instructions can be found at `<http://fedoraproject.org/wiki/EPEL/FAQ#howtouse>`_.
 

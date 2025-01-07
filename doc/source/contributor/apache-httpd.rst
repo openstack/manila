@@ -52,11 +52,7 @@ match your system configuration (i.e. tweak the number of processes and threads)
 
 Install uwsgi.
 
-On RHEL/CentOS::
-
-    sudo yum install uwsgi-plugin-python3
-
-On Fedora::
+On RHEL/CentOS/Fedora::
 
     sudo dnf install uwsgi-plugin-python3
 

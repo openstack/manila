@@ -20,7 +20,7 @@ Install and configure components
 
    .. code-block:: console
 
-      # yum install openstack-manila-share python3-PyMySQL
+      # dnf install openstack-manila-share python3-PyMySQL
 
 #. Edit the ``/etc/manila/manila.conf`` file and complete the following
    actions:
@@ -61,7 +61,7 @@ Prerequisites
 
      .. code-block:: console
 
-        # yum install lvm2 nfs-utils nfs4-acl-tools portmap targetcli
+        # dnf install lvm2 nfs-utils nfs4-acl-tools portmap targetcli
 
    * Start the LVM metadata service and configure it to start when the
      system boots:
@@ -87,7 +87,7 @@ node.
 
   .. code-block:: console
 
-     # yum install openstack-neutron openstack-neutron-linuxbridge ebtables
+     # dnf install openstack-neutron openstack-neutron-linuxbridge ebtables
 
 .. include:: common/dhss-true-mode-configuration.rst
 
