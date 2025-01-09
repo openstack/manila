@@ -75,7 +75,7 @@ def _untranslate_server_summary_view(server):
     d = {}
     d['id'] = server.id
     d['status'] = server.status
-    d['flavor'] = server.flavor['id']
+    d['flavor'] = server.flavor.get('id') or server.flavor['original_name']
     d['name'] = server.name
     d['image'] = server.image['id']
     d['created'] = server.created
