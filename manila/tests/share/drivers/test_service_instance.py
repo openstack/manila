@@ -278,8 +278,11 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                 "service_instance_name_template") % fake_server_id, result)
 
     def test__check_server_availability_available_from_start(self):
-        fake_server = dict(id='fake_server', ip='127.0.0.1')
-        self.mock_object(service_instance.socket.socket, 'connect')
+        fake_server = dict(
+            id='fake_server', ip='127.0.0.1',
+            username="manila", password="manila"
+        )
+        self.mock_object(service_instance.ssh_utils.SSHPool, 'create')
         self.mock_object(service_instance.time, 'sleep')
         self.mock_object(service_instance.time, 'time',
                          mock.Mock(return_value=0))
@@ -287,21 +290,24 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         result = self._manager._check_server_availability(fake_server)
 
         self.assertTrue(result)
-        service_instance.socket.socket.connect.assert_called_once_with(
-            (fake_server['ip'], 22))
+        service_instance.ssh_utils.SSHPool.create.assert_called_once_with(
+            quiet=True)
         service_instance.time.time.assert_has_calls([
             mock.call(), mock.call()])
         service_instance.time.time.assert_has_calls([])
 
     @ddt.data(True, False)
     def test__check_server_availability_with_recall(self, is_ok):
-        fake_server = dict(id='fake_server', ip='fake_ip_address')
+        fake_server = dict(
+            id='fake_server', ip='127.0.0.1',
+            username="manila", password="manila"
+        )
 
         self.fake_time = 0
 
-        def fake_connect(addr):
+        def fake_create(quiet=False):
             if not (is_ok and self.fake_time > 1):
-                raise service_instance.socket.error
+                raise exception.SSHException
 
         def fake_time():
             return self.fake_time
@@ -311,8 +317,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
 
         self.mock_object(service_instance.time, 'sleep',
                          mock.Mock(side_effect=fake_sleep))
-        self.mock_object(service_instance.socket.socket, 'connect',
-                         mock.Mock(side_effect=fake_connect))
+        self.mock_object(service_instance.ssh_utils.SSHPool, 'create',
+                         mock.Mock(side_effect=fake_create))
         self.mock_object(service_instance.time, 'time',
                          mock.Mock(side_effect=fake_time))
         self._manager.max_time_to_build_instance = 6
@@ -323,9 +329,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self.assertTrue(result)
         else:
             self.assertFalse(result)
-        service_instance.socket.socket.connect.assert_has_calls([
-            mock.call((fake_server['ip'], 22)),
-            mock.call((fake_server['ip'], 22))])
+        service_instance.ssh_utils.SSHPool.create.assert_has_calls([
+            mock.call(quiet=True), mock.call(quiet=True)])
         service_instance.time.time.assert_has_calls([
             mock.call(), mock.call(), mock.call()])
         service_instance.time.time.assert_has_calls([mock.call()])

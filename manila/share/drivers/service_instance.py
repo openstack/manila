@@ -18,7 +18,6 @@
 
 import abc
 import os
-import socket
 import time
 
 import netaddr
@@ -36,6 +35,7 @@ from manila.i18n import _
 from manila import image
 from manila.network.linux import ip_lib
 from manila.network.neutron import api as neutron
+from manila import ssh_utils
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -663,27 +663,36 @@ class ServiceInstanceManager(object):
         """
         return {}
 
-    def _check_server_availability(self, instance_details):
+    def _check_server_availability(self, instance_details, interval=5):
         t = time.time()
+        ssh_pool = ssh_utils.SSHPool(instance_details['ip'],
+                                     22,
+                                     interval,
+                                     instance_details['username'],
+                                     instance_details.get('password'),
+                                     instance_details.get('pk_path'),
+                                     max_size=1)
         while time.time() - t < self.max_time_to_build_instance:
             LOG.debug('Checking server availability.')
-            if not self._test_server_connection(instance_details):
-                time.sleep(5)
+            if not self._test_server_connection(instance_details, ssh_pool):
+                time.sleep(interval)
             else:
                 return True
         return False
 
-    def _test_server_connection(self, server):
+    def _test_server_connection(self, server, ssh_pool):
+        conn = None
         try:
-            socket.socket().connect((server['ip'], 22))
-            LOG.debug('Server %s is available via SSH.',
-                      server['ip'])
+            conn = ssh_pool.create(quiet=True)
             return True
-        except socket.error as e:
+        except Exception as e:
             LOG.debug(e)
-            LOG.debug("Server %s is not available via SSH. Waiting...",
-                      server['ip'])
+            LOG.debug("Could not login to server %s over SSH. Waiting...",
+                      server["ip"])
             return False
+        finally:
+            if conn:
+                conn.close()
 
     def delete_service_instance(self, context, server_details):
         """Removes share infrastructure.
