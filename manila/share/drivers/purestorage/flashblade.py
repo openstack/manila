@@ -27,7 +27,6 @@ from manila import exception
 from manila.i18n import _
 from manila.share import driver
 
-HAS_PURITY_FB = True
 try:
     import purity_fb
 except ImportError:
