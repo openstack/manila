@@ -1,0 +1,17 @@
+---
+fixes:
+  - |
+    Fixed a scheduling issue that affected the CephFS Native and NFS drivers
+    when a Ceph storage back end was configured with multiple filesystems. The
+    share driver will now provide the necessary information so
+    Manila can evenly distribute the shares between the different configured
+    storage back ends. For more details, please refer to
+    `Launchpad bug #2049538 <https://bugs.launchpad.net/manila/+bug/2049538>`_.
+other:
+  - |
+    A new configuration option named
+    ``cephfs_cached_allocated_capacity_update_interval`` has been added to the
+    CephFS Native and NFS drivers, so that OpenStack Operators are able to
+    define the amount in seconds for the cached allocation capacity gigabytes
+    timeout to be renewed. The cache validity is measured by a stop watch
+    that is not thread-safe.
