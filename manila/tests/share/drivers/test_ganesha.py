@@ -271,7 +271,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
 
         self._helper.update_access(
             self._context, self.share, access_rules=[self.access],
-            add_rules=[self.access], delete_rules=[])
+            add_rules=[self.access], delete_rules=[], update_rules=[])
 
         self._helper._allow_access.assert_called_once_with(
             '/', self.share, self.access)
@@ -286,7 +286,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
 
         self._helper.update_access(
             self._context, self.share, access_rules=[],
-            add_rules=[], delete_rules=[self.access])
+            add_rules=[], delete_rules=[self.access], update_rules=[])
 
         self._helper._deny_access.assert_called_once_with(
             '/', self.share, self.access)
@@ -301,7 +301,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
 
         self._helper.update_access(
             self._context, self.share, access_rules=[self.access],
-            add_rules=[], delete_rules=[])
+            add_rules=[], delete_rules=[], update_rules=[])
 
         self._helper._allow_access.assert_called_once_with(
             '/', self.share, self.access)
@@ -316,7 +316,8 @@ class GaneshaNASHelperTestCase(test.TestCase):
 
         result = self._helper.update_access(self._context, self.share,
                                             access_rules=[bad_rule],
-                                            add_rules=[], delete_rules=[])
+                                            add_rules=[], delete_rules=[],
+                                            update_rules=[])
 
         self.assertEqual(expected, result)
 
@@ -326,7 +327,8 @@ class GaneshaNASHelperTestCase(test.TestCase):
 
         result = self._helper.update_access(self._context, self.share,
                                             access_rules=[bad_rule],
-                                            add_rules=[], delete_rules=[])
+                                            add_rules=[], delete_rules=[],
+                                            update_rules=[])
 
         self.assertEqual(expected, result)
 
@@ -484,7 +486,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
 
         self._helper.update_access(
             self._context, self.share, access_rules=[self.rule1],
-            add_rules=[], delete_rules=[])
+            add_rules=[], delete_rules=[], update_rules=[])
 
         mock_gh.check_export_exists.assert_called_once_with('fakename')
         mock_gh.get_export_id.assert_called_once_with()
@@ -521,7 +523,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
 
         self._helper.update_access(
             self._context, self.share, access_rules=[self.rule1, self.rule2],
-            add_rules=[self.rule2], delete_rules=[])
+            add_rules=[self.rule2], delete_rules=[], update_rules=[])
 
         mock_gh.check_export_exists.assert_called_once_with('fakename')
         mock_gh.update_export.assert_called_once_with('fakename',
@@ -542,7 +544,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
 
         self._helper.update_access(
             self._context, self.share, access_rules=[],
-            add_rules=[], delete_rules=[self.rule1])
+            add_rules=[], delete_rules=[self.rule1], update_rules=[])
 
         mock_gh.check_export_exists.assert_called_once_with('fakename')
         mock_gh.remove_export.assert_called_once_with('fakename')
@@ -560,7 +562,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
 
         self._helper.update_access(
             self._context, self.share, access_rules=[],
-            add_rules=[], delete_rules=[self.rule1])
+            add_rules=[], delete_rules=[self.rule1], update_rules=[])
 
         mock_gh.check_export_exists.assert_called_once_with('fakename')
         ganesha.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
@@ -578,7 +580,8 @@ class GaneshaNASHelper2TestCase(test.TestCase):
 
         result = self._helper.update_access(self._context, self.share,
                                             access_rules=[bad_rule],
-                                            add_rules=[], delete_rules=[])
+                                            add_rules=[], delete_rules=[],
+                                            update_rules=[])
 
         self.assertEqual(expected, result)
 
@@ -592,6 +595,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
 
         result = self._helper.update_access(self._context, self.share,
                                             access_rules=[bad_rule],
-                                            add_rules=[], delete_rules=[])
+                                            add_rules=[], delete_rules=[],
+                                            update_rules=[])
 
         self.assertEqual(expected, result)

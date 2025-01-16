@@ -54,7 +54,7 @@ class HuaweiBase(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def update_access(self, share, access_rules, add_rules,
-                      delete_rules, share_server):
+                      delete_rules, update_rules, share_server):
         """Update access rules list."""
 
     @abc.abstractmethod

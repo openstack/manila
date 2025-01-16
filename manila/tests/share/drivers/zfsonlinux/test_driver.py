@@ -1153,7 +1153,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         }
 
         result = self.driver.update_access(
-            'fake_context', share, [1], [2], [3])
+            'fake_context', share, [1], [2], [3], [])
 
         self.driver._get_dataset_name.assert_called_once_with(share)
         mock_shell_executor.assert_called_once_with(share['host'])

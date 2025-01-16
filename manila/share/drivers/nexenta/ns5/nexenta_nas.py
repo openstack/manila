@@ -392,20 +392,22 @@ class NexentaNasDriver(driver.ShareDriver):
         }]}
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Update access rules for given share.
 
         Using access_rules list for both adding and deleting rules.
         :param context: The `context.RequestContext` object for the request
         :param share: Share that will have its access rules updated.
         :param access_rules: All access rules for given share. This list
-        is enough to update the access rules for given share.
+               is enough to update the access rules for given share.
         :param add_rules: Empty List or List of access rules which should be
-        added. access_rules already contains these rules. Not used by this
-        driver.
+               added. access_rules already contains these rules. Not used by
+               this driver.
         :param delete_rules: Empty List or List of access rules which should be
-        removed. access_rules doesn't contain these rules. Not used by
-        this driver.
+               removed. access_rules doesn't contain these rules. Not used by
+               this driver.
+        :param update_rules: Empty List or List of access rules which should be
+               updated. access_rules already contains these rules.
         :param share_server: Data structure with share server information.
         Not used by this driver.
         """

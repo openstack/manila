@@ -222,7 +222,7 @@ class InStorageShareDriver(driver.ShareDriver):
         return self.assistant.get_export_locations(share_name, share_proto)
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Update the share instance's access rule."""
         share_name = self.generate_share_name(share)
         share_proto = share['share_proto']
@@ -608,7 +608,7 @@ class InStorageAssistant(object):
             return False
 
     def update_access(self, share_name, share_proto,
-                      access_rules, add_rules, delete_rules):
+                      access_rules, add_rules, delete_rules, update_rules):
         if share_proto == 'CIFS':
             if self.check_access_type('user', access_rules,
                                       add_rules, delete_rules):

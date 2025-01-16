@@ -183,7 +183,7 @@ class VASTShareDriver(driver.ShareDriver):
 
     def update_access(
         self, context, share, access_rules,
-        add_rules, delete_rules, share_server=None
+        add_rules, delete_rules, update_rules, share_server=None
     ):
         """Update access rules for share."""
         rule_state_map = {}

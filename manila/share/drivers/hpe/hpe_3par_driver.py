@@ -552,7 +552,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
         pass
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Update access to the share."""
         extra_specs = None
         if 'NFS' == share['share_proto']:  # Avoiding DB call otherwise

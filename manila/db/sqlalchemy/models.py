@@ -1608,7 +1608,9 @@ def get_aggregated_access_rules_state(instance_mappings):
         order = (constants.ACCESS_STATE_ERROR,
                  constants.ACCESS_STATE_DENYING,
                  constants.ACCESS_STATE_QUEUED_TO_DENY,
+                 constants.ACCESS_STATE_QUEUED_TO_UPDATE,
                  constants.ACCESS_STATE_QUEUED_TO_APPLY,
+                 constants.ACCESS_STATE_UPDATING,
                  constants.ACCESS_STATE_APPLYING,
                  constants.ACCESS_STATE_ACTIVE)
 

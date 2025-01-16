@@ -243,7 +243,8 @@ class InStorageShareDriverTestCase(test.TestCase):
             instorage.InStorageAssistant, 'update_access'
         )
 
-        self.driver.update_access(self._ctxt, self.share_instance, [], [], [])
+        self.driver.update_access(
+            self._ctxt, self.share_instance, [], [], [], [])
 
         mock_ua.assert_called_once_with(
             'fakeinstanceid', 'fake_proto', [], [], []
@@ -1513,6 +1514,7 @@ class InStorageAssistantTestCase(test.TestCase):
                 proto,
                 [],
                 [],
+                [],
                 []
             )
             cat_mock.assert_not_called()
@@ -1524,6 +1526,7 @@ class InStorageAssistantTestCase(test.TestCase):
                 proto,
                 [],
                 [],
+                [],
                 []
             )
             cat_mock.assert_called_once()
@@ -1531,6 +1534,7 @@ class InStorageAssistantTestCase(test.TestCase):
             self.assistant.update_access(
                 'fs01',
                 proto,
+                [],
                 [],
                 [],
                 []

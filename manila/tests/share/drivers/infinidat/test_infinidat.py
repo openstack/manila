@@ -724,7 +724,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
             {'access_level': constants.ACCESS_LEVEL_RO,
              'access_to': '5.6.7.8/28',
              'access_type': 'ip'}]
-        self.driver.update_access(None, test_share, access_rules, [], [])
+        self.driver.update_access(None, test_share, access_rules, [], [], [])
 
         permissions = self._mock_filesystem.get_exports()[0].get_permissions()
         # now we are supposed to have three permissions:
@@ -763,7 +763,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
              'access_type': 'ip'}]
         self.assertRaises(exception.ShareResourceNotFound,
                           self.driver.update_access, None, test_share,
-                          access_rules, [], [])
+                          access_rules, [], [], [])
 
     def test_update_access_api_fail(self):
         self._mock_filesystem.get_exports.side_effect = self._raise_infinisdk
@@ -779,7 +779,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
              'access_type': 'ip'}]
         self.assertRaises(exception.ShareBackendException,
                           self.driver.update_access, None, test_share,
-                          access_rules, [], [])
+                          access_rules, [], [], [])
 
     def test_update_access_fails_non_ip_access_type(self):
         access_rules = [
@@ -788,7 +788,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
              'access_type': 'user'}]
         self.assertRaises(exception.InvalidShareAccess,
                           self.driver.update_access, None, test_share,
-                          access_rules, [], [])
+                          access_rules, [], [], [])
 
     def test_update_access_fails_invalid_ip(self):
         access_rules = [
@@ -797,7 +797,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
              'access_type': 'ip'}]
         self.assertRaises(ValueError,
                           self.driver.update_access, None, test_share,
-                          access_rules, [], [])
+                          access_rules, [], [], [])
 
     def test_snapshot_update_access(self):
         access_rules = [

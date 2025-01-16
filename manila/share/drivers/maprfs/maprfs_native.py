@@ -283,7 +283,7 @@ class MapRFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.MapRFSException(msg=msg)
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Update access rules for given share."""
         for access in access_rules:
             if access['access_type'].lower() != 'user':

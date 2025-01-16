@@ -179,7 +179,7 @@ class WindowsSMBHelper(helpers.CIFSHelperBase):
                   'share_name': share_name})
 
     def update_access(self, server, share_name, access_rules, add_rules,
-                      delete_rules):
+                      delete_rules, update_rules):
         self.validate_access_rules(
             access_rules + add_rules,
             self._SUPPORTED_ACCESS_TYPES,

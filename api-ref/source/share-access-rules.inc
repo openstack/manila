@@ -131,3 +131,64 @@ Response example
 
 .. literalinclude:: samples/share-access-rules-list-response.json
    :language: javascript
+
+
+Update share access rule
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  PUT /v2/share-access-rules/{access_id}
+
+.. versionadded:: 2.88
+
+Update ``access_level`` of a specified access rule.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - access_id: access_id_path
+   - access_level: access_level
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-access-rules-update-request.json
+   :language: javascript
+
+Response parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - share_id: access_share_id
+   - created_at: created_at
+   - updated_at: updated_at
+   - access_type: access_type
+   - access_to: access_to
+   - access_key: access_key_share_access_rules
+   - state: state
+   - access_level: access_level
+   - id: access_rule_id
+   - metadata: access_metadata
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-access-rules-update-response.json
+   :language: javascript

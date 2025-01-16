@@ -800,7 +800,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         rados_command(self.rados_client, "fs subvolume rm", argdict)
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         sub_name = self._get_subvolume_name(share['id'])
         return self.protocol_helper.update_access(
             context, share, access_rules, add_rules, delete_rules,
@@ -1207,7 +1207,8 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
         rados_command(self.rados_client, "fs subvolume evict", argdict)
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None, sub_name=None):
+                      delete_rules, update_rules, share_server=None,
+                      sub_name=None):
         access_updates = {}
 
         argdict = {
@@ -1625,7 +1626,8 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
         rados_command(self.rados_client, "nfs export rm", argdict)
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None, sub_name=None):
+                      delete_rules, update_rules, share_server=None,
+                      sub_name=None):
         """Update access rules of share.
 
         Creates an export per share. Modifies access rules of shares by

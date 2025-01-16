@@ -280,7 +280,8 @@ class HitachiHNASTestCase(test.TestCase):
 
         self.mock_object(ssh.HNASSSHBackend, "update_nfs_access_rule",
                          mock.Mock())
-        self._driver.update_access('context', share_nfs, access_list, [], [])
+        self._driver.update_access('context', share_nfs, access_list,
+                                   [], [], [])
 
         ssh.HNASSSHBackend.update_nfs_access_rule.assert_called_once_with(
             access_list_updated, share_id=share_nfs['id'])
@@ -301,7 +302,7 @@ class HitachiHNASTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidShareAccess,
                           self._driver.update_access, 'context', share_nfs,
-                          access_list, [], [])
+                          access_list, [], [], [])
 
     def test_update_access_not_found_exception(self):
         access1 = {
@@ -321,7 +322,8 @@ class HitachiHNASTestCase(test.TestCase):
 
         self.assertRaises(exception.ShareResourceNotFound,
                           self._driver.update_access, 'context', share_nfs,
-                          access_list, add_rules=[], delete_rules=[])
+                          access_list, add_rules=[], delete_rules=[],
+                          update_rules=[])
 
     @ddt.data([access_cifs_rw, 'acr'], [access_cifs_ro, 'ar'])
     @ddt.unpack
@@ -331,7 +333,7 @@ class HitachiHNASTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, 'cifs_allow_access')
 
         self._driver.update_access('context', share_cifs, [],
-                                   access_list_allow, [])
+                                   access_list_allow, [], [])
 
         ssh.HNASSSHBackend.cifs_allow_access.assert_called_once_with(
             share_cifs['id'], 'fake_user', permission, is_snapshot=False)
@@ -349,7 +351,7 @@ class HitachiHNASTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidShareAccess,
                           self._driver.update_access, 'context', share_cifs,
-                          [], access_list_allow, [])
+                          [], access_list_allow, [], [])
 
     def test_deny_access_cifs(self):
         access_list_deny = [access_cifs_rw]
@@ -357,7 +359,7 @@ class HitachiHNASTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, 'cifs_deny_access')
 
         self._driver.update_access('context', share_cifs, [], [],
-                                   access_list_deny)
+                                   access_list_deny, [])
 
         ssh.HNASSSHBackend.cifs_deny_access.assert_called_once_with(
             share_cifs['id'], 'fake_user', is_snapshot=False)
@@ -376,14 +378,14 @@ class HitachiHNASTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, 'cifs_deny_access')
 
         self._driver.update_access('context', share_cifs, [], [],
-                                   access_list_deny)
+                                   access_list_deny, [])
         self.assertTrue(self.mock_log.warning.called)
 
     def test_update_access_invalid_share_protocol(self):
         self.mock_object(self._driver, '_ensure_share')
         ex = self.assertRaises(exception.ShareBackendException,
                                self._driver.update_access, 'context',
-                               invalid_share, [], [], [])
+                               invalid_share, [], [], [], [])
         self.assertEqual(invalid_protocol_msg, ex.msg)
 
     def test_update_access_cifs_recovery_mode(self):
@@ -395,7 +397,8 @@ class HitachiHNASTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, 'cifs_deny_access')
         self.mock_object(ssh.HNASSSHBackend, 'cifs_allow_access')
 
-        self._driver.update_access('context', share_cifs, access_list, [], [])
+        self._driver.update_access('context', share_cifs, access_list,
+                                   [], [], [])
 
         ssh.HNASSSHBackend.list_cifs_permissions.assert_called_once_with(
             share_cifs['id'])

@@ -384,7 +384,7 @@ class ZadaraVPSAShareDriver(driver.ShareDriver):
                                       vpsa_srv=vpsa_srv)
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         access_updates = {}
         if not (add_rules or delete_rules):
             # add_rules and delete_rules can be empty lists, in cases

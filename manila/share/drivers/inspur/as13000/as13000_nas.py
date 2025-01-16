@@ -472,7 +472,7 @@ class AS13000ShareDriver(driver.ShareDriver):
 
     @inspur_driver_debug_trace
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """update access of share"""
         pool, share_name, _, proto = self._get_share_instance_pnsp(share)
         share_path = self._generate_share_path(pool, share_name)

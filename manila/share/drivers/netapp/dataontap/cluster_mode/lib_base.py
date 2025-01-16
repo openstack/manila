@@ -2493,7 +2493,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Updates access rules for a share."""
 
         # NOTE(felipe_rodrigues): do not add export rules to a non-active

@@ -341,7 +341,7 @@ class TestNexentaNasDriver(test.TestCase):
         self.assertEqual(
             {'fake_id': {'state': 'active'}},
             self.drv.update_access(
-                self.ctx, SHARE, [access], None, None))
+                self.ctx, SHARE, [access], None, None, None))
         self.drv._update_nfs_access.assert_called_with(SHARE, ['1.1.1.1'], [])
 
     @mock.patch('%s._update_nfs_access' % DRV_PATH)
@@ -356,7 +356,7 @@ class TestNexentaNasDriver(test.TestCase):
         expected = {'fake_id': {'state': 'active'}}
         self.assertEqual(
             expected, self.drv.update_access(
-                self.ctx, SHARE, [access], None, None))
+                self.ctx, SHARE, [access], None, None, None))
         self.drv._update_nfs_access.assert_called_with(SHARE, [], ['1.1.1.1'])
 
     @ddt.data('rw', 'ro')
@@ -369,7 +369,7 @@ class TestNexentaNasDriver(test.TestCase):
         }
         expected = {'fake_id': {'state': 'error'}}
         self.assertEqual(expected, self.drv.update_access(
-            self.ctx, SHARE, [access], None, None))
+            self.ctx, SHARE, [access], None, None, None))
 
     @mock.patch('%s._get_capacity_info' % DRV_PATH)
     @mock.patch('manila.share.driver.ShareDriver._update_share_stats')

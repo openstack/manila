@@ -864,7 +864,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     @ensure_server
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         """Update access rules for given share.
 
         This driver has two different behaviors according to parameters:
@@ -885,12 +885,15 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                added. access_rules already contains these rules.
         :param delete_rules: Empty List or List of access rules which should be
                removed. access_rules doesn't contain these rules.
+        :param update_rules: Empty List or List of access rules which should be
+               updated. access_rules already contains these rules.
         :param share_server: None or Share server model
         """
         self._get_helper(share).update_access(share_server['backend_details'],
                                               share['name'], access_rules,
                                               add_rules=add_rules,
-                                              delete_rules=delete_rules)
+                                              delete_rules=delete_rules,
+                                              update_rules=update_rules)
 
     def _get_helper(self, share):
         helper = self._helpers.get(share['share_proto'])

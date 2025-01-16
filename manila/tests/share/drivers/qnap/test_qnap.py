@@ -854,7 +854,7 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
                        private_storage=mock_private_storage)
         self.driver.update_access(
             'context', self.share, 'access_rules',
-            None, None, share_server=None)
+            None, None, None, share_server=None)
 
         mock_api_executor.return_value.set_nfs_access.assert_called_once_with(
             'fakeVolName', 2, 'all')
@@ -878,9 +878,10 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
         delete_rules.append('access1')
         add_rules = []
         add_rules.append('access1')
+        update_rules = []
         self.driver.update_access(
             'context', self.share, None,
-            add_rules, delete_rules, share_server=None)
+            add_rules, delete_rules, update_rules, share_server=None)
 
         mock_deny_access.assert_called_once_with(
             'context', self.share, 'access1', None)
@@ -903,6 +904,7 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
             access_rules='access_rules',
             add_rules=None,
             delete_rules=None,
+            update_rules=None,
             share_server=None)
 
     @mock.patch.object(qnap.QnapShareDriver, '_get_location_path')

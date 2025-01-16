@@ -267,7 +267,7 @@ class ContainerShareDriverTestCase(test.TestCase):
 
         self._driver.update_access(self._context, self.share,
                                    [{'access_level': const.ACCESS_LEVEL_RW}],
-                                   [], [], {"id": "fake"})
+                                   [], [], [], {"id": "fake"})
 
         helper.update_access.assert_called_with('manila_fake', fake_share_name,
                                                 [{'access_level': 'rw'}],

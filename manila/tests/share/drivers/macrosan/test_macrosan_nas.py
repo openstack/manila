@@ -917,7 +917,7 @@ class MacrosanShareDriverTestCase(test.TestCase):
         self.mock_object(macrosan_helper.MacrosanHelper,
                          '_deny_access')
         self.driver.update_access(self._context, share,
-                                  None, add_rules, delete_rules)
+                                  None, add_rules, delete_rules, None)
 
     @ddt.data('nfs', 'cifs')
     def test_update_access_nfs(self, proto):
@@ -942,7 +942,7 @@ class MacrosanShareDriverTestCase(test.TestCase):
         self.mock_object(macrosan_helper.MacrosanHelper,
                          '_allow_access')
         self.driver.update_access(self._context, share,
-                                  access_rules, {}, {})
+                                  access_rules, {}, {}, {})
         mock_ca.assert_called_once_with(share, None)
 
     def test_update_access_fail(self):
@@ -959,7 +959,7 @@ class MacrosanShareDriverTestCase(test.TestCase):
                          mock.Mock(side_effect=exception.InvalidShareAccess(
                              reason='fake_exception')))
         result = self.driver.update_access(self._context, share,
-                                           access_rules, None, None)
+                                           access_rules, None, None, None)
         expect = {
             'fakeid': {
                 'state': 'error',
@@ -983,7 +983,7 @@ class MacrosanShareDriverTestCase(test.TestCase):
         self.mock_object(macrosan_helper.MacrosanHelper,
                          '_deny_access')
         result = self.driver.update_access(self._context, share,
-                                           None, add_rules, delete_rules)
+                                           None, add_rules, delete_rules, None)
         expect = {
             'fakeid': {
                 'state': 'error'

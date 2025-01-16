@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Since microversion 2.88, Manila will allow to update access_level of access
+    rule using `openstack share access update` API. Currently this is supported
+    only for NetApp ONTAP backend. For more details, please check
+    `Launchpad bug #2066871 <https://bugs.launchpad.net/manila/+bug/2066871>`_

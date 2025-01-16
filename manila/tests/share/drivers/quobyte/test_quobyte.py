@@ -564,7 +564,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
                                    self.share,
                                    access_rules=None,
                                    add_rules=[access_1],
-                                   delete_rules=[access_2, access_3])
+                                   delete_rules=[access_2, access_3],
+                                   update_rules=[])
 
         qb_allow_mock.assert_called_once_with(self._context,
                                               self.share, access_1)
@@ -575,7 +576,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
     @mock.patch.object(quobyte.LOG, "warning")
     def test_update_access_no_rules(self, qb_log_mock):
         self._driver.update_access(context=None, share=None, access_rules=[],
-                                   add_rules=[], delete_rules=[])
+                                   add_rules=[], delete_rules=[],
+                                   update_rules=[])
 
         qb_log_mock.assert_has_calls([mock.ANY])
 
@@ -600,7 +602,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
 
         self._driver.update_access(self._context, self.share,
                                    access_rules=add_access_rules, add_rules=[],
-                                   delete_rules=[])
+                                   delete_rules=[], update_rules=[])
 
         assert_calls = [mock.call(self._context, self.share, new_access_1),
                         mock.call(self._context, self.share, new_access_2)]
@@ -627,7 +629,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
 
         self._driver.update_access(self._context, self.share,
                                    access_rules=old_access_rules, add_rules=[],
-                                   delete_rules=[])
+                                   delete_rules=[], update_rules=[])
 
         qb_deny_mock.assert_called_once_with(self._context,
                                              self.share,
@@ -665,7 +667,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
 
         self._driver.update_access(self._context, self.share,
                                    new_access_rules, add_rules=[],
-                                   delete_rules=[])
+                                   delete_rules=[], update_rules=[])
 
         a_calls = [mock.call(self._context, self.share, new_access_1),
                    mock.call(self._context, self.share, new_access_2)]

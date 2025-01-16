@@ -543,7 +543,7 @@ class InfiniboxShareDriver(driver.ShareDriver):
         }
 
     def update_access(self, context, share, access_rules, add_rules,
-                      delete_rules, share_server=None):
+                      delete_rules, update_rules, share_server=None):
         # As the Infinibox API can bulk update export access rules, we will try
         # to use the access_rules list
         self._verify_share_protocol(share)

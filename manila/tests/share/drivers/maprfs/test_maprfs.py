@@ -299,7 +299,7 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
         self._driver._maprfs_util._execute = mock.Mock(return_value=('', 0))
 
         self._driver.update_access(self._context, self.share, [self.access],
-                                   [self.access], [])
+                                   [self.access], [], [])
 
         self._driver._maprfs_util._execute.assert_any_call(
             self.maprcli_bin, 'volume', 'modify', '-name', volume, '-readAce',
@@ -321,7 +321,7 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
         self._driver._maprfs_util._execute = mock.Mock(return_value=('', 0))
 
         self._driver.update_access(self._context, self.share, [self.access],
-                                   [self.access], [])
+                                   [self.access], [], [])
 
         self._driver._maprfs_util._execute.assert_any_call(
             self.maprcli_bin, 'volume', 'modify', '-name', volume, '-readAce',
@@ -342,7 +342,7 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
         self._driver._maprfs_util._execute = mock.Mock(return_value=('', 0))
 
         self._driver.update_access(self._context, self.share, [], [],
-                                   [self.access])
+                                   [self.access], [])
 
         self._driver._maprfs_util._execute.assert_any_call(
             self.maprcli_bin, 'volume', 'modify', '-name', volume, '-readAce',
@@ -364,7 +364,7 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
         self._driver._maprfs_util._execute = mock.Mock(return_value=('', 0))
 
         self._driver.update_access(self._context, self.share, [self.access],
-                                   [], [])
+                                   [], [], [])
 
         self._driver._maprfs_util._execute.assert_any_call(
             self.maprcli_bin, 'volume', 'modify', '-name', volume, '-readAce',
@@ -378,7 +378,7 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
         self._driver._maprfs_util._execute = mock.Mock(return_value=('', 0))
 
         self._driver.update_access(self._context, self.share, [self.access],
-                                   [], [])
+                                   [], [], [])
 
         self._driver._maprfs_util._execute.assert_not_called()
 
@@ -397,7 +397,7 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
 
         self.assertRaises(exception.MapRFSException,
                           self._driver.update_access, self._context,
-                          self.share, [self.access], [], [])
+                          self.share, [self.access], [], [], [])
 
     def test_update_access_invalid_access(self):
         access = fake_share.fake_access(access_type='ip', access_to='fake',
@@ -405,7 +405,7 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidShareAccess,
                           self._driver.update_access, self._context,
-                          self.share, [access], [], [])
+                          self.share, [access], [], [], [])
 
     def test_ensure_share(self):
         self._driver._maprfs_util.volume_exists = mock.Mock(
