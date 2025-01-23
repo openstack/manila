@@ -24,13 +24,12 @@ from manila import context
 from manila import exception
 from manila import test
 from manila.tests import utils as test_utils
-from manila.volume import cinder
 
 
 class Volume(object):
     def __init__(self, volume_id):
         self.id = volume_id
-        self.name = volume_id
+        self.volumeId = volume_id
 
 
 class Network(object):
@@ -272,13 +271,8 @@ class NovaApiTestCase(test.TestCase):
         self.mock_object(
             self.novaclient.volumes, 'get_server_volumes',
             mock.Mock(return_value=[Volume('id1'), Volume('id2')]))
-        self.cinderclient = self.novaclient
-        self.mock_object(cinder, 'cinderclient',
-                         mock.Mock(return_value=self.novaclient))
         result = self.api.instance_volumes_list(self.ctx, 'instance_id')
-        self.assertEqual(2, len(result))
-        self.assertEqual('id1', result[0].id)
-        self.assertEqual('id2', result[1].id)
+        self.assertEqual(['id1', 'id2'], result)
 
     def test_server_update(self):
         self.mock_object(self.novaclient.servers, 'update')

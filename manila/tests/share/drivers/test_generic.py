@@ -581,7 +581,7 @@ class GenericShareDriverTestCase(test.TestCase):
         fake_server = fake_compute.FakeServer()
         attached_volume = fake_volume.FakeVolume(status='in-use')
         self.mock_object(self._driver.compute_api, 'instance_volumes_list',
-                         mock.Mock(return_value=[attached_volume]))
+                         mock.Mock(return_value=[attached_volume.id]))
 
         result = self._driver._attach_volume(self._context, self.share,
                                              fake_server, attached_volume)
@@ -751,7 +751,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self.mock_object(self._driver, '_get_volume',
                          mock.Mock(return_value=attached_volume))
         self.mock_object(self._driver.compute_api, 'instance_volumes_list',
-                         mock.Mock(return_value=[attached_volume]))
+                         mock.Mock(return_value=[attached_volume.id]))
         self.mock_object(self._driver.compute_api, 'instance_volume_detach')
         self.mock_object(self._driver.volume_api, 'get',
                          mock.Mock(return_value=available_volume))
@@ -1514,10 +1514,8 @@ class GenericShareDriverTestCase(test.TestCase):
         self.mock_object(self._driver.volume_api, 'get',
                          mock.Mock(return_value=volume))
         self._driver.volume_api.update = mock.Mock()
-        fake_volume = mock.Mock()
-        fake_volume.id = 'fake'
         self.mock_object(self._driver.compute_api, 'instance_volumes_list',
-                         mock.Mock(return_value=[fake_volume]))
+                         mock.Mock(return_value=['fake']))
         self.mock_object(
             self._driver._helpers[share['share_proto']],
             'get_exports_for_share',
