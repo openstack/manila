@@ -1722,6 +1722,7 @@ class NetAppCmodeFileStorageLibrary(object):
             share, vserver, vserver_client=vserver_client)
 
         hide_snapdir = provisioning_options.pop('hide_snapdir')
+        mount_point_name = share.get('mount_point_name')
 
         # split in args takes precedence over split in provisioning_options
         if split is None:
@@ -1730,6 +1731,7 @@ class NetAppCmodeFileStorageLibrary(object):
         LOG.debug('Creating share from snapshot %s', snapshot['id'])
         vserver_client.create_volume_clone(
             share_name, parent_share_name, parent_snapshot_name,
+            mount_point_name=mount_point_name,
             **provisioning_options)
 
         if share['size'] > snapshot['size']:
