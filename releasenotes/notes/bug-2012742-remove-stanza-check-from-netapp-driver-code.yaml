@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Remove stanza check from netapp driver code to make the use of oslo-config
+    drivers possible. Stanzas are not always written in config files anymore.
+    For more details, please check
+    `Launchpad bug #2012742 <https://bugs.launchpad.net/manila/+bug/2012742>`_
