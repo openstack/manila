@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    When scheduler hint of share is deleted, the hint of shares mentioned as
+    hint in primary share are also updated to delete the UUID of primary share.
+    Manila is fixed to handle the scenario when secondary shares are already
+    gone. For more details, please refer to
+    `launchpad bug #2034925 <https://bugs.launchpad.net/manila/+bug/2034925>`_.
