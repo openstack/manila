@@ -2820,6 +2820,8 @@ class API(base.Base):
                 result = self.db.share_metadata_get_item(context, uuid, key)
             except exception.MetadataItemNotFound:
                 continue
+            except exception.NotFound:
+                continue
 
             new_val_uuids = [val_uuid for val_uuid
                              in result.get(key, "").split(",")
