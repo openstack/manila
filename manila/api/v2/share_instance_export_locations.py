@@ -16,6 +16,8 @@
 from webob import exc
 
 from manila.api.openstack import wsgi
+from manila.api.schemas import share_instance_export_locations as schema
+from manila.api import validation
 from manila.api.views import export_locations as export_locations_views
 from manila.db import api as db_api
 from manila import exception
@@ -45,6 +47,10 @@ class ShareInstanceExportLocationController(wsgi.Controller):
 
     @wsgi.Controller.api_version('2.9')
     @wsgi.Controller.authorize
+    @validation.response_body_schema(schema.index_response_body, '2.9', '2.13')
+    @validation.response_body_schema(
+        schema.index_response_body_v214, '2.14', '2.86')
+    @validation.response_body_schema(schema.index_response_body_v287, '2.87')
     def index(self, req, share_instance_id):
         """Return a list of export locations for the share instance."""
         context = req.environ['manila.context']
@@ -55,6 +61,10 @@ class ShareInstanceExportLocationController(wsgi.Controller):
 
     @wsgi.Controller.api_version('2.9')
     @wsgi.Controller.authorize
+    @validation.response_body_schema(schema.show_response_body, '2.9', '2.13')
+    @validation.response_body_schema(
+        schema.show_response_body_v214, '2.14', '2.86')
+    @validation.response_body_schema(schema.show_response_body_v287, '2.87')
     def show(self, req, share_instance_id, export_location_uuid):
         """Return data about the requested export location."""
         context = req.environ['manila.context']
