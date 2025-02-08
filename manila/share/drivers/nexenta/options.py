@@ -109,7 +109,7 @@ nexenta_dataset_opts = [
                help='Compression value for new ZFS folders.'),
     cfg.StrOpt('nexenta_dataset_dedupe',
                default='off',
-               choices=['on', 'off', 'sha256', 'verify', 'sha256, verify'],
+               choices=['on', 'off', 'sha256', 'verify'],
                help='Deduplication value for new ZFS folders. '
                     'Only used by NexentaStor4 driver.'),
     cfg.BoolOpt('nexenta_thin_provisioning',
