@@ -38,6 +38,10 @@ from manila import utils as manila_utils
 LOG = log.getLogger(__name__)
 DELETED_PREFIX = 'deleted_manila_'
 DEFAULT_IPSPACE = 'Default'
+IPSPACE_PREFIX = 'ipspace_'
+CLUSTER_IPSPACES = ('Cluster', DEFAULT_IPSPACE)
+DEFAULT_BROADCAST_DOMAIN = 'Default'
+BROADCAST_DOMAIN_PREFIX = 'domain_'
 DEFAULT_MAX_PAGE_LENGTH = 50
 CUTOVER_ACTION_MAP = {
     'defer': 'defer_on_failure',
@@ -902,6 +906,57 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(msg % msg_args)
 
     @na_utils.trace
+    def get_degraded_ports(self, broadcast_domains, ipspace):
+        """Get degraded ports for broadcast domains and an ipspace."""
+
+        valid_domains = self._get_valid_broadcast_domains(broadcast_domains)
+
+        api_args = {
+            'query': {
+                'net-port-info': {
+                    'broadcast-domain': '|'.join(valid_domains),
+                    'health-degraded-reasons': {
+                        'netport-degraded-reason': 'l2_reachability'
+                    },
+                    'health-status': 'degraded',
+                    'ipspace': ipspace,
+                    'port-type': 'vlan',
+                },
+            },
+            'desired-attributes': {
+                'net-port-info': {
+                    'port': None,
+                    'node': None,
+                },
+            },
+        }
+
+        result = self.send_iter_request('net-port-get-iter', api_args)
+        net_port_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        ports = []
+        for port_info in net_port_info_list.get_children():
+            # making it a net-qualified-port-name
+            # compatible with ports result from net-ipspaces-get-iter
+            ports.append(f"{port_info.get_child_content('node')}:"
+                         f"{port_info.get_child_content('port')}")
+
+        return ports
+
+    @na_utils.trace
+    def _get_valid_broadcast_domains(_self, broadcast_domains):
+        valid_domains = []
+        for broadcast_domain in broadcast_domains:
+            if (
+                broadcast_domain == 'OpenStack'
+                or broadcast_domain == DEFAULT_BROADCAST_DOMAIN
+                or broadcast_domain.startswith(BROADCAST_DOMAIN_PREFIX)
+            ):
+                valid_domains.append(broadcast_domain)
+        return valid_domains
+
+    @na_utils.trace
     def create_route(self, gateway, destination=None):
         if not gateway:
             return
@@ -948,7 +1003,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         # Derive the broadcast domain name from the IPspace name since they
         # need to be 1-1 and the default for both is the same name, 'Default'.
-        domain = re.sub(r'ipspace', 'domain', ipspace)
+        domain = re.sub(IPSPACE_PREFIX, BROADCAST_DOMAIN_PREFIX, ipspace)
 
         port_info = self._get_broadcast_domain_for_port(node, port)
 
@@ -1235,8 +1290,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return ipspace_name
 
     @na_utils.trace
-    def get_ipspaces(self, ipspace_name=None):
-        """Gets one or more IPSpaces."""
+    def get_ipspaces(self, ipspace_name=None, vserver_name=None):
+        """Gets one or more IPSpaces.
+
+        parameters ipspace_name and vserver_name are mutually exclusive
+        """
+        if ipspace_name and vserver_name:
+            msg = ('The parameters "ipspace_name" and "vserver_name" cannot '
+                   'both be used at the same time.')
+            raise exception.InvalidInput(reason=msg)
 
         if not self.features.IPSPACES:
             return []
@@ -1246,6 +1308,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             api_args['query'] = {
                 'net-ipspaces-info': {
                     'ipspace': ipspace_name,
+                }
+            }
+        elif vserver_name:
+            api_args['query'] = {
+                'net-ipspaces-info': {
+                    'vservers': {
+                        'vserver_name': vserver_name,
+                    }
                 }
             }
 
@@ -1318,12 +1388,43 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def delete_ipspace(self, ipspace_name):
-        """Deletes an IPspace."""
+        """Deletes an IPspace.
 
-        self._delete_broadcast_domains_for_ipspace(ipspace_name)
+                Returns:
+            True if ipspace was deleted,
+            False if validation or error prevented deletion
+        """
+        if not self.features.IPSPACES:
+            return False
+
+        if not ipspace_name:
+            return False
+
+        if (
+            ipspace_name in CLUSTER_IPSPACES
+            or self.ipspace_has_data_vservers(ipspace_name)
+        ):
+            LOG.debug('IPspace %(ipspace)s not deleted: still in use.',
+                      {'ipspace': ipspace_name})
+            return False
+
+        try:
+            self._delete_broadcast_domains_for_ipspace(ipspace_name)
+        except netapp_api.NaApiError as e:
+            msg = _('Broadcast Domains of IPspace %s not deleted. '
+                    'Reason: %s') % (ipspace_name, e)
+            LOG.warning(msg)
+            return False
 
         api_args = {'ipspace': ipspace_name}
-        self.send_request('net-ipspaces-destroy', api_args)
+        try:
+            self.send_request('net-ipspaces-destroy', api_args)
+        except netapp_api.NaApiError as e:
+            msg = _('IPspace %s not deleted. Reason: %s') % (ipspace_name, e)
+            LOG.warning(msg)
+            return False
+
+        return True
 
     @na_utils.trace
     def add_vserver_to_ipspace(self, ipspace_name, vserver_name):

@@ -35,6 +35,9 @@ from manila import utils
 LOG = log.getLogger(__name__)
 DELETED_PREFIX = 'deleted_manila_'
 DEFAULT_IPSPACE = 'Default'
+CLUSTER_IPSPACES = ('Cluster', DEFAULT_IPSPACE)
+DEFAULT_BROADCAST_DOMAIN = 'Default'
+BROADCAST_DOMAIN_PREFIX = 'domain_'
 DEFAULT_MAX_PAGE_LENGTH = 10000
 CIFS_USER_GROUP_TYPE = 'windows'
 SNAPSHOT_CLONE_OWNER = 'volume_clone'
@@ -5270,6 +5273,44 @@ class NetAppRestClient(object):
                 raise exception.NetAppException(msg % msg_args)
 
     @na_utils.trace
+    def get_degraded_ports(self, broadcast_domains, ipspace_name):
+        """Get degraded ports for broadcast domains and an ipspace."""
+
+        valid_domains = self._get_valid_broadcast_domains(broadcast_domains)
+
+        query = {
+            'broadcast_domain.name': '|'.join(valid_domains),
+            'broadcast_domain.ipspace.name': ipspace_name,
+            'state': 'degraded',
+            'type': 'vlan',
+            'fields': 'node.name,name'
+        }
+
+        result = self.send_request('/network/ethernet/ports', 'get',
+                                   query=query)
+
+        net_port_info_list = result.get('records', [])
+
+        ports = []
+        for port_info in net_port_info_list:
+            ports.append(f"{port_info['node']['name']}:"
+                         f"{port_info['name']}")
+
+        return ports
+
+    @na_utils.trace
+    def _get_valid_broadcast_domains(_self, broadcast_domains):
+        valid_domains = []
+        for broadcast_domain in broadcast_domains:
+            if (
+                broadcast_domain == 'OpenStack'
+                or broadcast_domain == DEFAULT_BROADCAST_DOMAIN
+                or broadcast_domain.startswith(BROADCAST_DOMAIN_PREFIX)
+            ):
+                valid_domains.append(broadcast_domain)
+        return valid_domains
+
+    @na_utils.trace
     def svm_migration_start(
             self, source_cluster_name, source_share_server_name,
             dest_aggregates, dest_ipspace=None, check_only=False):
@@ -5403,7 +5444,7 @@ class NetAppRestClient(object):
                           query=query)
 
     @na_utils.trace
-    def get_ipspaces(self, ipspace_name=None):
+    def get_ipspaces(self, ipspace_name=None, vserver_name=None):
         """Gets one or more IPSpaces."""
 
         query = {
@@ -5487,14 +5528,45 @@ class NetAppRestClient(object):
 
     @na_utils.trace
     def delete_ipspace(self, ipspace_name):
-        """Deletes an IPspace and its ports/domains."""
+        """Deletes an IPspace
 
-        self._delete_port_and_broadcast_domains_for_ipspace(ipspace_name)
+        Returns:
+            True if ipspace was deleted,
+            False if validation or error prevented deletion
+        """
+        if not self.features.IPSPACES:
+            return False
+
+        if not ipspace_name:
+            return False
+
+        if (
+            ipspace_name in CLUSTER_IPSPACES
+            or self.ipspace_has_data_vservers(ipspace_name)
+        ):
+            LOG.debug('IPspace %(ipspace)s not deleted: still in use.',
+                      {'ipspace': ipspace_name})
+            return False
+
+        try:
+            self._delete_port_and_broadcast_domains_for_ipspace(ipspace_name)
+        except netapp_api.NaApiError as e:
+            msg = _('Broadcast Domains of IPspace %s not deleted. '
+                    'Reason: %s') % (ipspace_name, e)
+            LOG.warning(msg)
+            return False
 
         query = {
             'name': ipspace_name
         }
-        self.send_request('/network/ipspaces', 'delete', query=query)
+        try:
+            self.send_request('/network/ipspaces', 'delete', query=query)
+        except netapp_api.NaApiError as e:
+            msg = _('IPspace %s not deleted. Reason: %s') % (ipspace_name, e)
+            LOG.warning(msg)
+            return False
+
+        return True
 
     @na_utils.trace
     def get_svm_volumes_total_size(self, svm_name):

@@ -5797,9 +5797,9 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         ipspace = copy.deepcopy(fake.IPSPACES[0])
         mock_del_brcst = self.mock_object(
             self.client, '_delete_port_and_broadcast_domains_for_ipspace')
-
-        mock_send_request = self.mock_object(
-            self.client, 'send_request')
+        self.mock_object(self.client, 'ipspace_has_data_vservers',
+                         mock.Mock(return_value=[]))
+        mock_send_request = self.mock_object(self.client, 'send_request')
 
         query = {'name': fake.IPSPACE_NAME}
 

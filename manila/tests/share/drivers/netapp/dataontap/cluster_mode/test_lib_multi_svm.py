@@ -1265,8 +1265,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_delete_vserver_no_ipspace(self, lock):
 
         self.mock_object(self.library._client,
-                         'get_vserver_ipspace',
-                         mock.Mock(return_value=None))
+                         'get_ipspaces',
+                         mock.Mock(return_value=[]))
         vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_api_client',
@@ -1274,38 +1274,37 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library._client,
                          'get_snapmirror_policies',
                          mock.Mock(return_value=[]))
-        mock_delete_vserver_vlans = self.mock_object(self.library,
-                                                     '_delete_vserver_vlans')
 
         net_interfaces = copy.deepcopy(c_fake.NETWORK_INTERFACES_MULTIPLE)
-        net_interfaces_with_vlans = [net_interfaces[0]]
 
         self.mock_object(vserver_client,
                          'get_network_interfaces',
                          mock.Mock(return_value=net_interfaces))
         security_services = fake.NETWORK_INFO['security_services']
         self.mock_object(self.library, '_delete_vserver_peers')
+        self.mock_object(self.library, '_delete_port_vlans')
 
         self.library._delete_vserver(fake.VSERVER1,
                                      security_services=security_services,
                                      needs_lock=lock)
 
-        self.library._client.get_vserver_ipspace.assert_called_once_with(
-            fake.VSERVER1)
+        self.library._client.get_ipspaces.assert_called_once_with(
+            vserver_name=fake.VSERVER1)
         self.library._delete_vserver_peers.assert_called_once_with(
             fake.VSERVER1)
         self.library._client.delete_vserver.assert_called_once_with(
             fake.VSERVER1, vserver_client, security_services=security_services)
-        self.assertFalse(self.library._client.delete_ipspace.called)
-        mock_delete_vserver_vlans.assert_called_once_with(
-            net_interfaces_with_vlans)
+        self.library._client.delete_ipspace.assert_not_called()
+        self.library._delete_port_vlans.assert_not_called()
+        self.library._client.delete_vlan.assert_not_called()
 
     @ddt.data(True, False)
     def test_delete_vserver_ipspace_has_data_vservers(self, lock):
 
+        self.library._client.features.IPSPACES = True
         self.mock_object(self.library._client,
-                         'get_vserver_ipspace',
-                         mock.Mock(return_value=fake.IPSPACE))
+                         'get_ipspaces',
+                         mock.Mock(return_value=c_fake.IPSPACES))
         vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_api_client',
@@ -1319,27 +1318,42 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_delete_vserver_peers')
         self.mock_object(
             vserver_client, 'get_network_interfaces',
-            mock.Mock(return_value=c_fake.NETWORK_INTERFACES_MULTIPLE))
+            mock.Mock(return_value=c_fake.NETWORK_INTERFACES))
+        self.mock_object(self.library._client,
+                         'delete_ipspace',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library._client,
+                         'get_degraded_ports',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.library, '_delete_port_vlans')
         security_services = fake.NETWORK_INFO['security_services']
 
         self.library._delete_vserver(fake.VSERVER1,
                                      security_services=security_services,
                                      needs_lock=lock)
 
-        self.library._client.get_vserver_ipspace.assert_called_once_with(
-            fake.VSERVER1)
+        self.library._client.get_ipspaces.assert_called_once_with(
+            vserver_name=fake.VSERVER1)
         self.library._client.delete_vserver.assert_called_once_with(
             fake.VSERVER1, vserver_client, security_services=security_services)
         self.library._delete_vserver_peers.assert_called_once_with(
             fake.VSERVER1)
-        self.assertFalse(self.library._client.delete_ipspace.called)
+        self.library._client.delete_ipspace.assert_called_once_with(
+            c_fake.IPSPACE_NAME
+        )
+        self.library._client.get_degraded_ports.assert_called_once_with(
+            [c_fake.BROADCAST_DOMAIN], c_fake.IPSPACE_NAME
+        )
+        # not NETWORK_QUALIFIED_PORTS2, which would be given by get_ipspaces()
+        self.library._delete_port_vlans.assert_called_once_with(
+            self.library._client, set(c_fake.NETWORK_QUALIFIED_PORTS))
 
     @ddt.data([], c_fake.NETWORK_INTERFACES)
     def test_delete_vserver_with_ipspace(self, interfaces):
 
         self.mock_object(self.library._client,
-                         'get_vserver_ipspace',
-                         mock.Mock(return_value=fake.IPSPACE))
+                         'get_ipspaces',
+                         mock.Mock(return_value=c_fake.IPSPACES))
         vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_api_client',
@@ -1347,8 +1361,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library._client,
                          'ipspace_has_data_vservers',
                          mock.Mock(return_value=False))
-        mock_delete_vserver_vlans = self.mock_object(self.library,
-                                                     '_delete_vserver_vlans')
         self.mock_object(self.library, '_delete_vserver_peers')
         self.mock_object(vserver_client,
                          'get_network_interfaces',
@@ -1366,13 +1378,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._delete_vserver_peers.assert_called_once_with(
             fake.VSERVER1
         )
-        self.library._client.get_vserver_ipspace.assert_called_once_with(
-            fake.VSERVER1)
+        self.library._client.get_ipspaces.assert_called_once_with(
+            vserver_name=fake.VSERVER1)
         self.library._client.delete_vserver.assert_called_once_with(
             fake.VSERVER1, vserver_client, security_services=security_services)
         self.library._client.delete_ipspace.assert_called_once_with(
-            fake.IPSPACE)
-        mock_delete_vserver_vlans.assert_called_once_with(interfaces)
+            c_fake.IPSPACE_NAME)
+        self.library._client.get_degraded_ports.assert_not_called()
+        self.library._client.delete_vlan.assert_called_once_with(
+            c_fake.NODE_NAME2, c_fake.PORT, c_fake.VLAN)
 
     def test__delete_vserver_peers(self):
 
@@ -1391,17 +1405,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.VSERVER_PEER[0]['peer-vserver']
         )
 
-    def test_delete_vserver_vlans(self):
+    def test_delete_port_vlans(self):
 
-        self.library._delete_vserver_vlans(c_fake.NETWORK_INTERFACES)
-        for interface in c_fake.NETWORK_INTERFACES:
-            home_port = interface['home-port']
-            port, vlan = home_port.split('-')
-            node = interface['home-node']
+        self.library._delete_port_vlans(self.library._client,
+                                        c_fake.NETWORK_QUALIFIED_PORTS)
+        for port_name in c_fake.NETWORK_QUALIFIED_PORTS:
+            node, port = port_name.split(':')
+            port, vlan = port.split('-')
             self.library._client.delete_vlan.assert_called_once_with(
                 node, port, vlan)
 
-    def test_delete_vserver_vlans_client_error(self):
+    def test_delete_port_vlans_client_error(self):
 
         mock_exception_log = self.mock_object(lib_multi_svm.LOG, 'exception')
         self.mock_object(
@@ -1409,11 +1423,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'delete_vlan',
             mock.Mock(side_effect=exception.NetAppException("fake error")))
 
-        self.library._delete_vserver_vlans(c_fake.NETWORK_INTERFACES)
-        for interface in c_fake.NETWORK_INTERFACES:
-            home_port = interface['home-port']
-            port, vlan = home_port.split('-')
-            node = interface['home-node']
+        self.library._delete_port_vlans(self.library._client,
+                                        c_fake.NETWORK_QUALIFIED_PORTS)
+        for port_name in c_fake.NETWORK_QUALIFIED_PORTS:
+            node, port = port_name.split(':')
+            port, vlan = port.split('-')
             self.library._client.delete_vlan.assert_called_once_with(
                 node, port, vlan)
             self.assertEqual(1, mock_exception_log.call_count)
@@ -2398,6 +2412,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=c_fake.FAKE_JOB_ID))
         self.mock_object(self.library, '_wait_for_operation_status',
                          mock.Mock(side_effect=expected_exception))
+        self.mock_object(self.mock_dest_client, 'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
 
         compatibility = self.library._check_compatibility_for_svm_migrate(
             fake.CLUSTER_NAME, fake.VSERVER1, self.fake_src_share_server,
@@ -2410,7 +2426,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._get_job_uuid.assert_called_once_with(
             c_fake.FAKE_MIGRATION_RESPONSE_WITH_JOB)
         self.library._client.list_cluster_nodes.assert_called_once()
-        self.library._get_node_data_port.assert_called_once_with(
+        self.library._get_node_data_port.assert_called_with(
             fake.CLUSTER_NODES[0])
         (self.library._client.get_ipspace_name_for_vlan_port
             .assert_called_once_with(
@@ -2444,6 +2460,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.mock_dest_client, 'svm_migration_start',
             mock.Mock(side_effect=exception.NetAppException()))
         self.mock_object(self.mock_dest_client, 'delete_ipspace')
+        self.mock_object(self.mock_dest_client, 'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
 
         self.assertRaises(
             exception.NetAppException,
@@ -2455,7 +2473,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.mock_dest_client)
 
         self.library._client.list_cluster_nodes.assert_called_once()
-        self.library._get_node_data_port.assert_called_once_with(
+        self.library._get_node_data_port.assert_called_with(
             fake.CLUSTER_NODES[0])
         (self.library._client.get_ipspace_name_for_vlan_port
             .assert_called_once_with(
@@ -3120,8 +3138,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock_complete_svm_migrate.assert_called_once_with(
                 migration_id, self.fake_dest_share_server)
             self.mock_dest_client.list_network_interfaces.assert_called_once()
-            data_motion.get_client_for_host.assert_called_once_with(
-                self.fake_dest_share_server['host'])
+            data_motion.get_client_for_host.assert_has_calls([
+                mock.call(self.fake_dest_share_server['host']),
+                mock.call(self.fake_src_share_server['host']),
+            ])
+
             self.mock_dest_client.delete_network_interface.assert_has_calls(
                 [mock.call(self.fake_src_vserver, interface_name)
                  for interface_name in current_interfaces])
@@ -3339,6 +3360,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.mock_dest_client, 'ipspace_has_data_vservers',
                          mock.Mock(return_value=False))
         self.mock_object(self.mock_dest_client, 'delete_ipspace')
+        self.mock_object(self.mock_dest_client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
+        self.mock_object(self.library,
+                         '_get_node_data_port',
+                         mock.Mock(return_value='fake_port'))
 
         self.library._migration_cancel_using_svm_migrate(
             migration_id, self.fake_dest_share_server)

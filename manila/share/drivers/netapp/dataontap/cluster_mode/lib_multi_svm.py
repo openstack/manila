@@ -46,7 +46,6 @@ LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
 SEGMENTED_NETWORK_TYPES = ('vlan',)
 DEFAULT_MTU = 1500
-CLUSTER_IPSPACES = ('Cluster', 'Default')
 SERVER_MIGRATE_SVM_DR = 'svm_dr'
 SERVER_MIGRATE_SVM_MIGRATE = 'svm_migrate'
 METADATA_VLAN = 'set_vlan'
@@ -327,7 +326,13 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         # earlier step to make sure all subnets have the same segmentation_id.
         vlan = network_info[0]['segmentation_id']
         ipspace_name = self._client.get_ipspace_name_for_vlan_port(
-            node_name, port, vlan) or self._create_ipspace(network_info[0])
+            node_name, port, vlan)
+
+        if (
+            ipspace_name is None
+            or ipspace_name in client_cmode.CLUSTER_IPSPACES
+        ):
+            ipspace_name = self._create_ipspace(network_info[0])
 
         aggregate_names = self._find_matching_aggregates()
         if is_dp_destination:
@@ -419,7 +424,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
     def _get_valid_ipspace_name(self, network_id):
         """Get IPspace name according to network id."""
-        return 'ipspace_' + network_id.replace('-', '_')
+        return client_cmode.IPSPACE_PREFIX + network_id.replace('-', '_')
 
     @na_utils.trace
     def _create_ipspace(self, network_info, client=None):
@@ -610,7 +615,12 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                         needs_lock=True):
         """Delete a Vserver plus IPspace and security services as needed."""
 
-        ipspace_name = self._client.get_vserver_ipspace(vserver)
+        ipspace_name = None
+
+        ipspaces = self._client.get_ipspaces(vserver_name=vserver)
+        if ipspaces:
+            ipspace = ipspaces[0]
+            ipspace_name = ipspace['ipspace']
 
         vserver_client = self._get_api_client(vserver=vserver)
         network_interfaces = vserver_client.get_network_interfaces()
@@ -649,17 +659,31 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             self._client.delete_vserver(vserver,
                                         vserver_client,
                                         security_services=security_services)
-            ipspace_deleted = False
-            if (ipspace_name and ipspace_name not in CLUSTER_IPSPACES
-                    and not self._client.ipspace_has_data_vservers(
-                        ipspace_name)):
-                self._client.delete_ipspace(ipspace_name)
-                ipspace_deleted = True
 
-            if not ipspace_name or ipspace_deleted:
-                # NOTE(dviroel): only delete vlans if they are not being used
-                # by any ipspaces and data vservers.
-                self._delete_vserver_vlans(interfaces_on_vlans)
+            if ipspace_name is None:
+                return
+
+            ipspace_deleted = self._client.delete_ipspace(ipspace_name)
+
+            ports = set()
+            if ipspace_deleted:
+                # we don't want to leave any ports behind, clean them all up
+                ports.update(ipspace['ports'])
+            # NOTE(dviroel): only delete vlans if they are not being used
+            # by any ipspaces and data vservers.
+            else:
+                broadcast_domains = ipspace['broadcast-domains']
+                # NOTE(carthaca): filter for degraded ports, those where
+                # reachability is down (e.g. because neutron port is gone)
+                ports.update(self._client.get_degraded_ports(broadcast_domains,
+                                                             ipspace_name))
+                # make sure to delete ports of the vserver we are currently
+                # deleting (may not be marked degraded, yet)
+                for interface in interfaces_on_vlans:
+                    port = f"{interface['home-node']}:{interface['home-port']}"
+                    ports.add(port)
+
+            self._delete_port_vlans(self._client, ports)
 
         @utils.synchronized('netapp-VLAN-%s' % vlan_id, external=True)
         def _delete_vserver_with_lock():
@@ -670,15 +694,16 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         else:
             return _delete_vserver_without_lock()
 
-    @na_utils.trace
-    def _delete_vserver_vlans(self, network_interfaces_on_vlans):
-        """Delete Vserver's VLAN configuration from ports"""
-        for interface in network_interfaces_on_vlans:
+    def _delete_port_vlans(_self, client, ports):
+        """Delete Port's VLAN configuration
+
+        must be called with a cluster client
+        """
+        for port_name in ports:
             try:
-                home_port = interface['home-port']
-                port, vlan = home_port.split('-')
-                node = interface['home-node']
-                self._client.delete_vlan(node, port, vlan)
+                node, port = port_name.split(':')
+                port, vlan = port.split('-')
+                client.delete_vlan(node, port, vlan)
             except exception.NetAppException:
                 LOG.exception("Deleting Vserver VLAN failed.")
 
@@ -1254,13 +1279,17 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             destination_ipspace, network_info)
 
         def _cleanup_ipspace(ipspace):
-            try:
-                dest_client.delete_ipspace(ipspace)
-            except Exception:
+            if not dest_client.delete_ipspace(ipspace):
                 LOG.info(
                     'Did not delete ipspace used to check the compatibility '
                     'for SVM Migrate. It is possible that it was reused and '
                     'there are other entities consuming it.')
+
+            if vlan:
+                port = None
+                for node in dest_client.list_cluster_nodes():
+                    port = port or self._get_node_data_port(node)
+                    dest_client.delete_vlan(node, port, vlan)
 
         # 1. Sends the request to the backend.
         try:
@@ -1851,6 +1880,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             source_share_server['host'], level='backend_name')
         src_vserver, src_client = self._get_vserver(
             share_server=source_share_server, backend_name=src_backend_name)
+        src_ipspace_name = src_client.get_vserver_ipspace(src_vserver)
         dest_backend_name = share_utils.extract_host(
             dest_share_server['host'], level='backend_name')
 
@@ -1894,6 +1924,29 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 for allocation in dest_share_server['network_allocations']:
                     ports[allocation['id']] = allocation['ip_address']
                 server_backend_details['ports'] = jsonutils.dumps(ports)
+
+            # Delete ipspace on source cluster when possible
+            src_cluster_client = data_motion.get_client_for_host(
+                source_share_server['host'])
+
+            def _delete_ipspace_and_vlan():
+                src_ipspace = src_cluster_client.get_ipspaces(
+                    src_ipspace_name)[0]
+                ports = src_ipspace['ports']
+                broadcast_domains = src_ipspace['broadcast-domains']
+                ipspace_deleted = src_cluster_client.delete_ipspace(
+                    src_ipspace_name)
+                if not ipspace_deleted:
+                    ports = src_cluster_client.get_degraded_ports(
+                        broadcast_domains, src_ipspace_name)
+                self._delete_port_vlans(src_cluster_client, ports)
+
+            try:
+                _delete_ipspace_and_vlan()
+            except Exception as e:
+                msg = _('Could not delete ipspace %s on SVM migration '
+                        'source. Reason: %s') % (src_ipspace_name, e)
+                LOG.warning(msg)
         else:
             self._share_server_migration_complete_svm_dr(
                 source_share_server, dest_share_server, src_vserver,
@@ -2050,11 +2103,18 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             msg = _("Failed to cancel the share server migration.")
             raise exception.NetAppException(message=msg)
 
-        # If there is need to, remove the ipspace.
-        if (dest_ipspace_name and dest_ipspace_name not in CLUSTER_IPSPACES
-                and not dest_client.ipspace_has_data_vservers(
-                    dest_ipspace_name)):
-            dest_client.delete_ipspace(dest_ipspace_name)
+        # TODO(chuan) Wait until the ipspace is not being used by vserver
+        # anymore, which is not deleted immediately after migration
+        # cancelled.
+        dest_client.delete_ipspace(dest_ipspace_name)
+        network_info = dest_share_server.get('network_allocations')
+        vlan = network_info[0]['segmentation_id'] if network_info else None
+        if vlan:
+            port = None
+            for node in dest_client.list_cluster_nodes():
+                port = port or self._get_node_data_port(node)
+                dest_client.delete_vlan(node, port, vlan)
+
         return
 
     @na_utils.trace

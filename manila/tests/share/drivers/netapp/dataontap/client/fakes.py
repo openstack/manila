@@ -46,7 +46,8 @@ VERSION = 'NetApp Release 8.2.1 Cluster-Mode: Fri Mar 21 14:25:07 PDT 2014'
 VERSION_NO_DARE = 'NetApp Release 9.1.0: Tue May 10 19:30:23 2016 <1no-DARE>'
 VERSION_TUPLE = (9, 1, 0)
 NODE_NAME = 'fake_node1'
-NODE_NAMES = ('fake_node1', 'fake_node2')
+NODE_NAME2 = 'fake_node2'
+NODE_NAMES = (NODE_NAME, NODE_NAME2)
 VSERVER_NAME = 'fake_vserver'
 VSERVER_NAME_2 = 'fake_vserver_2'
 VSERVER_PEER_NAME = 'fake_vserver_peer'
@@ -117,7 +118,7 @@ USER_NAME = 'fake_user'
 
 PORT = 'e0a'
 VLAN = '1001'
-VLAN_PORT = 'e0a-1001'
+VLAN_PORT = PORT + '-' + VLAN
 IP_ADDRESS = '10.10.10.10'
 NETMASK = '255.255.255.0'
 GATEWAY = '10.10.10.1'
@@ -125,8 +126,8 @@ SUBNET = '10.10.10.0/24'
 NET_ALLOCATION_ID = 'fake_allocation_id'
 LIF_NAME_TEMPLATE = 'os_%(net_allocation_id)s'
 LIF_NAME = LIF_NAME_TEMPLATE % {'net_allocation_id': NET_ALLOCATION_ID}
-IPSPACE_NAME = 'fake_ipspace'
-BROADCAST_DOMAIN = 'fake_domain'
+IPSPACE_NAME = 'ipspace_fake'
+BROADCAST_DOMAIN = 'domain_fake'
 MTU = 9000
 SM_SOURCE_VSERVER = 'fake_source_vserver'
 SM_SOURCE_VOLUME = 'fake_source_volume'
@@ -186,17 +187,22 @@ NETWORK_INTERFACES_MULTIPLE = [
         'vserver': VSERVER_NAME,
         'netmask': NETMASK,
         'role': 'data',
-        'home-node': NODE_NAME,
-        'home-port': PORT,
+        'home-node': NODE_NAME2,
+        'home-port': VLAN_PORT,
     }
 ]
+
+NETWORK_QUALIFIED_PORTS = [NODE_NAME + ':' + VLAN_PORT]
+NETWORK_QUALIFIED_PORTS2 = [NODE_NAME2 + ':' + VLAN_PORT]
+NETWORK_QUALIFIED_PORTS_ALL = (NETWORK_QUALIFIED_PORTS
+                               + NETWORK_QUALIFIED_PORTS2)
 
 IPSPACES = [{
     'uuid': 'fake_uuid',
     'ipspace': IPSPACE_NAME,
     'id': 'fake_id',
-    'broadcast-domains': ['OpenStack'],
-    'ports': [NODE_NAME + ':' + VLAN_PORT],
+    'broadcast-domains': [BROADCAST_DOMAIN],
+    'ports': NETWORK_QUALIFIED_PORTS2,
     'vservers': [
         IPSPACE_NAME,
         VSERVER_NAME,
@@ -874,7 +880,7 @@ NET_IPSPACES_GET_ITER_RESPONSE = etree.XML("""
     <attributes-list>
       <net-ipspaces-info>
         <broadcast-domains>
-          <broadcast-domain-name>OpenStack</broadcast-domain-name>
+          <broadcast-domain-name>%(domain)s</broadcast-domain-name>
         </broadcast-domains>
         <id>fake_id</id>
         <ipspace>%(ipspace)s</ipspace>
@@ -891,8 +897,9 @@ NET_IPSPACES_GET_ITER_RESPONSE = etree.XML("""
     <num-records>1</num-records>
   </results>
 """ % {
+    'domain': BROADCAST_DOMAIN,
     'ipspace': IPSPACE_NAME,
-    'node': NODE_NAME,
+    'node': NODE_NAME2,
     'port': VLAN_PORT,
     'vserver': VSERVER_NAME
 })
