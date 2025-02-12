@@ -212,6 +212,9 @@ class API(object):
     def delete_port(self, port_id):
         try:
             self.client.delete_port(port_id)
+        except neutron_client_exc.PortNotFoundClient:
+            LOG.warning('Neutron port not found: %s', port_id)
+            pass
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
