@@ -112,21 +112,36 @@ cephfs_opts = [
                ),
     cfg.BoolOpt('cephfs_ganesha_server_is_remote',
                 default=False,
-                help="Whether the NFS-Ganesha server is remote to the driver."
-                ),
+                help="Whether the NFS-Ganesha server is remote to the driver.",
+                deprecated_for_removal=True,
+                deprecated_since='2025.1',
+                deprecated_reason="This option is used by the deprecated "
+                                  "NFSProtocolHelper"),
     cfg.HostAddressOpt('cephfs_ganesha_server_ip',
                        help="The IP address of the NFS-Ganesha server."),
     cfg.StrOpt('cephfs_ganesha_server_username',
                default='root',
                help="The username to authenticate as in the remote "
-                    "NFS-Ganesha server host."),
+                    "NFS-Ganesha server host.",
+               deprecated_for_removal=True,
+               deprecated_since='2025.1',
+               deprecated_reason="This option is used by the deprecated "
+                                 "NFSProtocolHelper"),
     cfg.StrOpt('cephfs_ganesha_path_to_private_key',
-               help="The path of the driver host's private SSH key file."),
+               help="The path of the driver host's private SSH key file.",
+               deprecated_for_removal=True,
+               deprecated_since='2025.1',
+               deprecated_reason="This option is used by the deprecated "
+                                 "NFSProtocolHelper"),
     cfg.StrOpt('cephfs_ganesha_server_password',
                secret=True,
                help="The password to authenticate as the user in the remote "
                     "Ganesha server host. This is not required if "
-                    "'cephfs_ganesha_path_to_private_key' is configured."),
+                    "'cephfs_ganesha_path_to_private_key' is configured.",
+               deprecated_for_removal=True,
+               deprecated_since='2025.1',
+               deprecated_reason="This option is used by the deprecated "
+                                 "NFSProtocolHelper"),
     cfg.ListOpt('cephfs_ganesha_export_ips',
                 default=[],
                 help="List of IPs to export shares. If not supplied, "
