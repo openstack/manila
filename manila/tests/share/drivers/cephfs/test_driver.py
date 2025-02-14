@@ -623,14 +623,15 @@ class CephFSDriverTestCase(test.TestCase):
         }
         add_rules = access_rules = [alice, ]
         delete_rules = []
+        update_rules = []
 
         self._driver.update_access(
             self._context, self._share, access_rules, add_rules, delete_rules,
-            None)
+            update_rules, None)
 
         self._driver.protocol_helper.update_access.assert_called_once_with(
             self._context, self._share, access_rules, add_rules, delete_rules,
-            share_server=None, sub_name=self._share['id'])
+            update_rules, share_server=None, sub_name=self._share['id'])
 
     def test_ensure_shares(self):
         self._driver.protocol_helper.reapply_rules_while_ensuring_shares = True

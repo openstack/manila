@@ -819,7 +819,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         sub_name = self._get_subvolume_name(share['id'])
         return self.protocol_helper.update_access(
             context, share, access_rules, add_rules, delete_rules,
-            share_server=share_server, sub_name=sub_name)
+            update_rules, share_server=share_server, sub_name=sub_name)
 
     def get_backend_info(self, context):
         return self.protocol_helper.get_backend_info(context)
