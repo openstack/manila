@@ -6535,3 +6535,58 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             vs_aggr_attributes = attributes_list.get_child_by_name(
                 'show-aggregates') or netapp_api.NaElement('none')
             return vs_aggr_attributes.get_child_content('snaplock-type')
+
+    @na_utils.trace
+    def get_storage_failover_partner(self, node_name):
+        """Get the partner node of HA pair"""
+        api_args = {'node': node_name}
+        result = self.send_request('cf-get-partner', api_args)
+        partner_node = result.get_child_content("partner")
+        return partner_node
+
+    @na_utils.trace
+    def get_migratable_data_lif_for_node(self, node):
+        """Get available LIFs that can be migrated to another node."""
+        failover_policy = ['system-defined', 'sfo-partner-only']
+        protocols = ['nfs', 'cifs']
+        api_args = {
+            'query': {
+                'net-interface-info': {
+                    'failover-policy': '|'.join(failover_policy),
+                    'home-node': node,
+                    'data-protocols': {
+                        'data-protocol': '|'.join(protocols),
+                    }
+                }
+            }
+        }
+        result = self.send_iter_request('net-interface-get-iter', api_args)
+        lif_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        return [lif_info.get_child_content('interface-name') for lif_info
+                in lif_info_list.get_children()]
+
+    @na_utils.trace
+    def get_data_lif_details_for_nodes(self):
+        """Get the data LIF details for each node."""
+        api_args = {
+            'desired-attributes': {
+                'data-lif-capacity-details-info': {
+                    'limit-for-node': None,
+                    'count-for-node': None,
+                    'node': None
+                },
+            },
+        }
+        result = self.send_iter_request('data-lif-capacity-details', api_args)
+        data_lif_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        data_lif_info = []
+        for lif_info in data_lif_info_list.get_children():
+            lif_info_node = {
+                'limit-for-node': lif_info.get_child_content('limit-for-node'),
+                'count-for-node': lif_info.get_child_content('count-for-node'),
+                'node': lif_info.get_child_content('node'),
+            }
+            data_lif_info.append(lif_info_node)
+        return data_lif_info

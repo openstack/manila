@@ -3797,7 +3797,7 @@ GENERIC_NETWORK_INTERFACES_GET_REPONSE = {
                 },
                 "home_port": {
                     "name": PORT
-                }
+                },
             }
         }
     ],
@@ -4914,3 +4914,22 @@ FAKE_GET_VOLUME = {
         }
     ],
 }
+
+STORAGE_FAIL_OVER_PARTNER = etree.XML("""
+  <results status="passed">
+    <partner>fake_partner_node</partner>
+  </results>""")
+
+
+DATA_LIF_CAPACITY_DETAILS = etree.XML("""
+    <results status='passed'>
+        <attributes-list>
+            <data-lif-capacity-details-info>
+                <capacity-for-node>512</capacity-for-node>
+                <count-for-node>44</count-for-node>
+                <limit-for-node>512</limit-for-node>
+                <node>fake_node</node>
+            </data-lif-capacity-details-info>
+        </attributes-list>
+        <num-records>1</num-records>
+    </results>""")

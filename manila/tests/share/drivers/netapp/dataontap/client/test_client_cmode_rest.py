@@ -7234,3 +7234,49 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             fake.SHARE_AGGREGATE_NAMES
         )
         self.assertIs(False, result)
+
+    def test_get_storage_failover_partner(self):
+        self.mock_object(self.client,
+                         '_get_cluster_node_uuid',
+                         mock.Mock(return_value=fake.FAKE_UUID))
+        response = {'ha': {'partners': [{'name': 'partner_node'}]}}
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=response))
+        result = self.client.get_storage_failover_partner("fake_node")
+        self.assertEqual(result, "partner_node")
+
+    def test_get_migratable_data_lif_for_node(self):
+        api_response = fake.GENERIC_NETWORK_INTERFACES_GET_REPONSE
+        expected_result = [fake.LIF_NAME]
+
+        self.mock_object(self.client, '_has_records',
+                         mock.Mock(return_value=True))
+        self.mock_object(
+            self.client,
+            'send_request',
+            mock.Mock(side_effect=self._send_request_side_effect)
+        )
+        uuid = api_response['records'][0]['uuid']
+        result = self.client.get_migratable_data_lif_for_node("fake_node")
+        self.client.send_request.assert_any_call(
+            '/network/ip/interfaces', 'get',
+            query={
+                'services': 'data_nfs|data_cifs',
+                'location.home_node.name': 'fake_node',
+                'fields': 'name',
+            }
+        )
+        self.client.send_request.assert_any_call(
+            f'/network/ip/interfaces/{uuid}', 'get'
+        )
+        self.assertEqual(expected_result, result)
+
+    def _send_request_side_effect(self, endpoint, method, query=None):
+        if (endpoint == '/network/ip/interfaces' and method == 'get'
+                and query is not None):
+            return {"records": [{"uuid": "fake_uuid", "name": fake.LIF_NAME}]}
+        elif (endpoint.startswith('/network/ip/interfaces/')
+              and method == 'get'):
+            return {'location': {'failover': 'sfo_partners_only'}}
+        return {}
