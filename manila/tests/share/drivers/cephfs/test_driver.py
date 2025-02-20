@@ -1743,7 +1743,6 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
             "pseudo": "ganesha:/foo/bar",
             "squash": "none",
             "security_label": True,
-            "protocols": [4],
             "fsal": {
                 "name": "CEPH",
                 "fs_name": volname,
