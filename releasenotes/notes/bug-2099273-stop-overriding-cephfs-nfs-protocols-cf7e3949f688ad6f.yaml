@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Launchpad bug 2099273 <https://bugs.launchpad.net/manila/+bug/2099273>`
+    has been addressed by removing the NFS protocol override within the
+    request sent to the Ceph Manager API. This allows users to mount shares
+    exported by the Ceph NFS service with any NFS protocol version exposed by
+    that service.
