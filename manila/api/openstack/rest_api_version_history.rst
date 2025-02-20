@@ -467,3 +467,7 @@ user documentation.
 ----------------------------------
   Added Metadata API methods (GET, PUT, POST, DELETE)
   to Share Export Locations.
+
+2.88
+----
+  Allows updating the access rule's access type.
