@@ -1336,7 +1336,6 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
             "pseudo": self._get_export_pseudo_path(share),
             "squash": "none",
             "security_label": True,
-            "protocols": [4],
             "fsal": {
                 "name": "CEPH",
                 "fs_name": self.volname,
