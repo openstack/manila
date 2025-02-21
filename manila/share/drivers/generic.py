@@ -890,8 +890,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self._get_helper(share).update_access(share_server['backend_details'],
                                               share['name'], access_rules,
                                               add_rules=add_rules,
-                                              delete_rules=delete_rules,
-                                              update_rules=update_rules)
+                                              delete_rules=delete_rules)
 
     def _get_helper(self, share):
         helper = self._helpers.get(share['share_proto'])

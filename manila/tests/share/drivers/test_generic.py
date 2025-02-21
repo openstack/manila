@@ -1175,21 +1175,19 @@ class GenericShareDriverTestCase(test.TestCase):
                         get_fake_access_rule('2.2.2.2', access_level)]
         add_rules = [get_fake_access_rule('2.2.2.2', access_level), ]
         delete_rules = [get_fake_access_rule('3.3.3.3', access_level), ]
-        update_rules = []
 
         # run
         self._driver.update_access(self._context, self.share, access_rules,
                                    add_rules=add_rules,
                                    delete_rules=delete_rules,
-                                   update_rules=update_rules,
+                                   update_rules=None,
                                    share_server=self.server)
 
         # asserts
         (self._driver._helpers[self.share['share_proto']].
             update_access.assert_called_once_with(
                 self.server['backend_details'], self.share['name'],
-                access_rules, add_rules=add_rules, delete_rules=delete_rules,
-                update_rules=update_rules))
+                access_rules, add_rules=add_rules, delete_rules=delete_rules))
 
     @ddt.data(fake_share.fake_share(),
               fake_share.fake_share(share_proto='NFSBOGUS'),

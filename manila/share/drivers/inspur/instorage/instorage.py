@@ -608,7 +608,7 @@ class InStorageAssistant(object):
             return False
 
     def update_access(self, share_name, share_proto,
-                      access_rules, add_rules, delete_rules, update_rules):
+                      access_rules, add_rules, delete_rules):
         if share_proto == 'CIFS':
             if self.check_access_type('user', access_rules,
                                       add_rules, delete_rules):
