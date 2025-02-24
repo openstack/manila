@@ -99,7 +99,6 @@ zfsonlinux_opts = [
              "storage host. Not used for replication operations. Optional."),
     cfg.ListOpt(
         "zfs_share_helpers",
-        required=True,
         default=[
             "NFS=manila.share.drivers.zfsonlinux.utils.NFSviaZFSHelper",
         ],
@@ -109,12 +108,10 @@ zfsonlinux_opts = [
              "Required."),
     cfg.StrOpt(
         "zfs_replica_snapshot_prefix",
-        required=True,
         default="tmp_snapshot_for_replication_",
         help="Set snapshot prefix for usage in ZFS replication. Required."),
     cfg.StrOpt(
         "zfs_migration_snapshot_prefix",
-        required=True,
         default="tmp_snapshot_for_share_migration_",
         help="Set snapshot prefix for usage in ZFS migration. Required."),
 ]
