@@ -58,6 +58,7 @@
       - ^api-ref/.*$
       - ^doc/.*$
       - ^manila/tests/.*$
+      - ^\.pre-commit-config\.yaml$
       - ^releasenotes/.*$
       - ^setup.cfg$
       - ^tools/.*$
