@@ -174,6 +174,7 @@ _global_opt_lists = [
     manila.share.drivers.netapp.options.netapp_connection_opts,
     manila.share.drivers.netapp.options.netapp_transport_opts,
     manila.share.drivers.netapp.options.netapp_basicauth_opts,
+    manila.share.drivers.netapp.options.netapp_certificateauth_opts,
     manila.share.drivers.netapp.options.netapp_provisioning_opts,
     manila.share.drivers.netapp.options.netapp_data_motion_opts,
     manila.share.drivers.netapp.options.netapp_backup_opts,

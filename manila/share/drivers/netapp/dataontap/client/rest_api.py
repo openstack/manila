@@ -73,8 +73,12 @@ class RestNaServer(object):
 
     def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP,
                  ssl_cert_path=None, username=None, password=None, port=None,
-                 trace=False, api_trace_pattern=utils.API_TRACE_PATTERN):
+                 trace=False, api_trace_pattern=utils.API_TRACE_PATTERN,
+                 private_key_file=None, certificate_file=None,
+                 ca_certificate_file=None, certificate_host_validation=None):
         self._host = host
+        if private_key_file and certificate_file:
+            transport_type = RestNaServer.TRANSPORT_TYPE_HTTPS
         self.set_transport_type(transport_type)
         self.set_port(port=port)
         self._username = username
@@ -89,6 +93,11 @@ class RestNaServer(object):
             # Note(felipe_rodrigues): it will verify with the mozila CA roots,
             # given by certifi package.
             self._ssl_verify = True
+
+        self._private_key_file = private_key_file
+        self._certificate_file = certificate_file
+        self._ca_certificate_file = ca_certificate_file
+        self._certificate_host_validation = certificate_host_validation
 
         LOG.debug('Using REST with NetApp controller: %s', self._host)
 
@@ -207,8 +216,12 @@ class RestNaServer(object):
         adapter = HTTPAdapter(max_retries=max_retries)
         self._session.mount('%s://' % self._protocol, adapter)
 
-        self._session.auth = self._create_basic_auth_handler()
-        self._session.verify = self._ssl_verify
+        if self._private_key_file and self._certificate_file:
+            self._session.cert, self._session.verify = (
+                self._create_certificate_auth_handler())
+        else:
+            self._session.auth = self._create_basic_auth_handler()
+            self._session.verify = self._ssl_verify
         self._session.headers = headers
 
     def _build_headers(self, enable_tunneling):
@@ -226,6 +239,18 @@ class RestNaServer(object):
     def _create_basic_auth_handler(self):
         """Creates and returns a basic HTTP auth handler."""
         return auth.HTTPBasicAuth(self._username, self._password)
+
+    def _create_certificate_auth_handler(self):
+        """Creates and returns a certificate auth handler."""
+        self._session.verify = self._certificate_host_validation
+        if self._certificate_file and self._private_key_file:
+            self._session.cert = (self._certificate_file,
+                                  self._private_key_file)
+        # Assigning _session.verify to ca cert file to validate the certs
+        # when we have host validation set to true
+        if self._certificate_host_validation and self._ca_certificate_file:
+            self._session.verify = self._ca_certificate_file
+        return self._session.cert, self._session.verify
 
     def send_http_request(self, method, url, body, headers):
         """Invoke the API on the server."""

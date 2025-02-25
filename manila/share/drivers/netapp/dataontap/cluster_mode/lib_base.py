@@ -174,6 +174,8 @@ class NetAppCmodeFileStorageLibrary(object):
         self.configuration = kwargs['configuration']
         self.configuration.append_config_values(na_opts.netapp_connection_opts)
         self.configuration.append_config_values(na_opts.netapp_basicauth_opts)
+        self.configuration.append_config_values(
+            na_opts.netapp_certificateauth_opts)
         self.configuration.append_config_values(na_opts.netapp_transport_opts)
         self.configuration.append_config_values(na_opts.netapp_support_opts)
         self.configuration.append_config_values(na_opts.netapp_cluster_opts)
@@ -268,7 +270,12 @@ class NetAppCmodeFileStorageLibrary(object):
                 port=config.netapp_server_port,
                 vserver=vserver,
                 trace=na_utils.TRACE_API,
-                api_trace_pattern=na_utils.API_TRACE_PATTERN)
+                api_trace_pattern=na_utils.API_TRACE_PATTERN,
+                private_key_file=config.netapp_private_key_file,
+                certificate_file=config.netapp_certificate_file,
+                ca_certificate_file=config.netapp_ca_certificate_file,
+                certificate_host_validation=(
+                    config.netapp_certificate_host_validation))
         else:
             client = client_cmode_rest.NetAppRestClient(
                 transport_type=config.netapp_transport_type,
@@ -281,7 +288,12 @@ class NetAppCmodeFileStorageLibrary(object):
                 trace=na_utils.TRACE_API,
                 async_rest_timeout=(
                     config.netapp_rest_operation_timeout),
-                api_trace_pattern=na_utils.API_TRACE_PATTERN)
+                api_trace_pattern=na_utils.API_TRACE_PATTERN,
+                private_key_file=config.netapp_private_key_file,
+                certificate_file=config.netapp_certificate_file,
+                ca_certificate_file=config.netapp_ca_certificate_file,
+                certificate_host_validation=(
+                    config.netapp_certificate_host_validation))
         return client
 
     @na_utils.trace

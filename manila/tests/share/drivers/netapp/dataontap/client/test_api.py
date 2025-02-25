@@ -174,6 +174,78 @@ class NetAppApiElementTransTests(test.TestCase):
                           None,
                           'value')
 
+    def test__build_session_with_basic_auth(self):
+        """Tests whether build session works with """
+        """default(basic auth) parameters"""
+        napi = api.ZapiClient('localhost')
+        fake_session = mock.Mock()
+        mock_requests_session = self.mock_object(
+            requests, 'Session', mock.Mock(return_value=fake_session))
+        mock_auth = self.mock_object(napi, '_create_basic_auth_handler',
+                                     mock.Mock(return_value='fake_auth'))
+        napi._ssl_verify = 'fake_ssl'
+        fake_headers = {'Content-Type': 'text/xml'}
+        napi._build_session()
+
+        self.assertEqual(fake_session, napi._session)
+        self.assertEqual('fake_auth', napi._session.auth)
+        self.assertEqual('fake_ssl', napi._session.verify)
+        self.assertEqual(fake_headers,
+                         napi._session.headers)
+        mock_requests_session.assert_called_once_with()
+        mock_auth.assert_called_once_with()
+
+    def test__build_session_with_certificate_auth(self):
+        """Tests whether build session works with """
+        """valid certificate parameters"""
+        napi = api.ZapiClient('localhost')
+        napi._private_key_file = 'fake_key.pem'
+        napi._certificate_file = 'fake_cert.pem'
+        napi._certificate_host_validation = False
+        cert = napi._certificate_file, napi._private_key_file
+        fake_headers = {'Content-Type': 'text/xml'}
+        fake_session = mock.Mock()
+        napi._session = mock.Mock()
+        mock_requests_session = self.mock_object(
+            requests, 'Session', mock.Mock(return_value=fake_session))
+        res = napi._create_certificate_auth_handler()
+        napi._build_session()
+        self.assertEqual(fake_session, napi._session)
+        self.assertEqual(res,
+                         (cert, napi._certificate_host_validation))
+        self.assertEqual(fake_headers,
+                         napi._session.headers)
+        mock_requests_session.assert_called_once_with()
+
+    def test__create_certificate_auth_handler_default(self):
+        """Test whether create certificate auth handler """
+        """works with default params"""
+        napi = api.ZapiClient('localhost')
+        napi._private_key_file = 'fake_key.pem'
+        napi._certificate_file = 'fake_cert.pem'
+        napi._certificate_host_validation = False
+        cert = napi._certificate_file, napi._private_key_file
+        napi._session = mock.Mock()
+        if not napi._certificate_host_validation:
+            self.assertFalse(napi._certificate_host_validation)
+        res = napi._create_certificate_auth_handler()
+        self.assertEqual(res, (cert, napi._certificate_host_validation))
+
+    def test__create_certificate_auth_handler_with_host_validation(self):
+        """Test whether create certificate auth handler """
+        """works with host validation enabled"""
+        napi = api.ZapiClient('localhost')
+        napi._private_key_file = 'fake_key.pem'
+        napi._certificate_file = 'fake_cert.pem'
+        napi._ca_certificate_file = 'fake_ca_cert.crt'
+        napi._certificate_host_validation = True
+        cert = napi._certificate_file, napi._private_key_file
+        napi._session = mock.Mock()
+        if napi._certificate_host_validation:
+            self.assertTrue(napi._certificate_host_validation)
+        res = napi._create_certificate_auth_handler()
+        self.assertEqual(res, (cert, napi._ca_certificate_file))
+
 
 @ddt.ddt
 class NetAppApiServerZapiClientTests(test.TestCase):

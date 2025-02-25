@@ -67,6 +67,7 @@ def _get_config():
     config.append_config_values(na_opts.netapp_proxy_opts)
     config.append_config_values(na_opts.netapp_connection_opts)
     config.append_config_values(na_opts.netapp_basicauth_opts)
+    config.append_config_values(na_opts.netapp_certificateauth_opts)
     config.append_config_values(na_opts.netapp_provisioning_opts)
     config.append_config_values(na_opts.netapp_support_opts)
     config.append_config_values(na_opts.netapp_data_motion_opts)

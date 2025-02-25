@@ -129,6 +129,10 @@ CLIENT_KWARGS = {
     'transport_type': 'https',
     'ssl_cert_path': '/etc/ssl/certs/',
     'password': 'pass',
+    'private_key_file': 'fake_private_key.pem',
+    'certificate_file': 'fake_certificate.pem',
+    'ca_certificate_file': 'fake_ca_certificate.crt',
+    'certificate_host_validation': False,
     'port': '443',
     'api_trace_pattern': '(.*)',
 }
@@ -1959,6 +1963,11 @@ def get_config_cmode():
     config.netapp_transport_type = CLIENT_KWARGS['transport_type']
     config.netapp_ssl_cert_path = CLIENT_KWARGS['ssl_cert_path']
     config.netapp_server_port = CLIENT_KWARGS['port']
+    config.netapp_private_key_file = CLIENT_KWARGS['private_key_file']
+    config.netapp_certificate_file = CLIENT_KWARGS['certificate_file']
+    config.netapp_ca_certificate_file = CLIENT_KWARGS['ca_certificate_file']
+    config.netapp_certificate_host_validation = \
+        CLIENT_KWARGS['certificate_host_validation']
     config.netapp_volume_name_template = VOLUME_NAME_TEMPLATE
     config.netapp_aggregate_name_search_pattern = AGGREGATE_NAME_SEARCH_PATTERN
     config.netapp_vserver_name_template = VSERVER_NAME_TEMPLATE
