@@ -9123,22 +9123,35 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_update_share_from_metadata(self):
         metadata = {
             "snapshot_policy": "daily",
-            "showmount": "True",
         }
 
         share_instance = fake.SHARE_INSTANCE
         mock_update_volume_snapshot_policy = self.mock_object(
             self.library, 'update_volume_snapshot_policy')
-        mock_update_showmount = self.mock_object(
-            self.library, 'update_showmount')
 
         self.library.update_share_from_metadata(self.context, share_instance,
                                                 metadata)
 
         mock_update_volume_snapshot_policy.assert_called_once_with(
             share_instance, "daily", share_server=None)
+
+    def test_update_share_network_subnet_from_metadata(self):
+        metadata = {
+            "showmount": "true",
+        }
+
+        mock_update_showmount = self.mock_object(
+            self.library, 'update_showmount')
+
+        self.library.update_share_network_subnet_from_metadata(
+            self.context,
+            'fake_share_network',
+            'fake_share_network_subnet',
+            fake.SHARE_SERVER,
+            metadata)
+
         mock_update_showmount.assert_called_once_with(
-            share_instance, "True", share_server=None)
+            "true", share_server=fake.SHARE_SERVER)
 
     def test__get_aggregate_snaplock_type_cluster_scope(self):
         self.library._have_cluster_creds = True

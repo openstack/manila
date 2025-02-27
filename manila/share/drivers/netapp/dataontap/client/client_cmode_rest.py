@@ -4760,6 +4760,26 @@ class NetAppRestClient(object):
                           body=body)
 
     @na_utils.trace
+    def update_pnfs(self, pnfs):
+        """Update pNFS for vserver. """
+        # Get SVM UUID.
+        query = {
+            'name': self.vserver,
+            'fields': 'uuid'
+        }
+        res = self.send_request('/svm/svms', 'get', query=query)
+        if not res.get('records'):
+            msg = _('Vserver %s not found.') % self.vserver
+            raise exception.NetAppException(msg)
+        svm_id = res.get('records')[0]['uuid']
+
+        body = {
+            'protocol.v41_features.pnfs_enabled': pnfs,
+        }
+        self.send_request(f'/protocols/nfs/services/{svm_id}', 'patch',
+                          body=body)
+
+    @na_utils.trace
     def enable_nfs(self, versions, nfs_config=None):
         """Enables NFS on Vserver."""
         svm_id = self._get_unique_svm_by_name()

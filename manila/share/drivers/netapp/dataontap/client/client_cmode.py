@@ -1623,6 +1623,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('nfs-service-modify', nfs_service_modify_arg)
 
     @na_utils.trace
+    def update_pnfs(self, pnfs):
+        """Update pNFS for vserver. """
+        nfs_service_modify_arg = {
+            'is-nfsv41-pnfs-enabled': pnfs
+        }
+        self.send_request('nfs-service-modify', nfs_service_modify_arg)
+
+    @na_utils.trace
     def enable_nfs(self, versions, nfs_config=None):
         """Enables NFS on Vserver."""
         self.send_request('nfs-enable')

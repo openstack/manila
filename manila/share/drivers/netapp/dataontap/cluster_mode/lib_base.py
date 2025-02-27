@@ -5178,22 +5178,55 @@ class NetAppCmodeFileStorageLibrary(object):
                                                      snapshot_policy)
 
     @na_utils.trace
-    def update_showmount(self, share, showmount, share_server=None):
-        _, vserver_client = self._get_vserver(share_server=share_server)
+    def update_showmount(self, showmount, share_server=None):
+        showmount = showmount.lower()
+        if showmount not in ('true', 'false'):
+            err_msg = _("Invalid showmount value supplied: %s.") % showmount
+            raise exception.NetAppException(err_msg)
+
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
         vserver_client.update_showmount(showmount)
+
+    def update_pnfs(self, pnfs, share_server=None):
+        pnfs = pnfs.lower()
+        if pnfs not in ('true', 'false'):
+            err_msg = _("Invalid pnfs value supplied: %s.") % pnfs
+            raise exception.NetAppException(err_msg)
+
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        vserver_client.update_pnfs(pnfs)
 
     @na_utils.trace
     def update_share_from_metadata(self, context, share, metadata,
                                    share_server=None):
         metadata_update_func_map = {
             "snapshot_policy": "update_volume_snapshot_policy",
-            "showmount": "update_showmount",
         }
 
         for k, v in metadata.items():
-            update_func = getattr(self, metadata_update_func_map.get(k))
-            if update_func:
-                update_func(share, v, share_server=share_server)
+            metadata_update_method = (
+                getattr(self, metadata_update_func_map.get(k))
+                if k in metadata_update_func_map.keys() else None)
+
+            if metadata_update_method:
+                metadata_update_method(share, v, share_server=share_server)
+
+    def update_share_network_subnet_from_metadata(self, context,
+                                                  share_network,
+                                                  share_network_subnet,
+                                                  share_server, metadata):
+        metadata_update_func_map = {
+            "showmount": "update_showmount",
+            "pnfs": "update_pnfs",
+        }
+
+        for k, v in metadata.items():
+            metadata_update_method = (
+                getattr(self, metadata_update_func_map.get(k))
+                if k in metadata_update_func_map.keys() else None)
+
+            if metadata_update_method:
+                metadata_update_method(v, share_server=share_server)
 
     @na_utils.trace
     def _get_aggregate_snaplock_type(self, aggr_name):

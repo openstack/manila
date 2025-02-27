@@ -404,3 +404,11 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
                                    share_server=None):
         self.library.update_share_from_metadata(
             context, share, metadata, share_server=share_server)
+
+    def update_share_network_subnet_from_metadata(self, context,
+                                                  share_network,
+                                                  share_network_subnet,
+                                                  share_server, metadata):
+        self.library.update_share_network_subnet_from_metadata(
+            context, share_network, share_network_subnet,
+            share_server, metadata)

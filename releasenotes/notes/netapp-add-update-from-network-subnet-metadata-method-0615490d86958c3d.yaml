@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    The NetApp ONTAP driver is now able to update the `showmount` and
+    `pnfs` configurations in a pre-created share server. Please use the
+    share network subnet metadata set feature to update these values. The
+    valid values for those metadata keys are 'true/false'.
+    Also note, earlier support of updating `showmount` using share metadata
+    is removed since its supported now by share network subnet metadata.
