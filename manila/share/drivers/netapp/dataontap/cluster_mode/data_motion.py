@@ -63,6 +63,7 @@ def get_backend_configuration(backend_name):
     config.append_config_values(na_opts.netapp_cluster_opts)
     config.append_config_values(na_opts.netapp_connection_opts)
     config.append_config_values(na_opts.netapp_basicauth_opts)
+    config.append_config_values(na_opts.netapp_certificateauth_opts)
     config.append_config_values(na_opts.netapp_transport_opts)
     config.append_config_values(na_opts.netapp_support_opts)
     config.append_config_values(na_opts.netapp_provisioning_opts)
@@ -102,7 +103,12 @@ def get_client_for_backend(backend_name, vserver_name=None):
             hostname=config.netapp_server_hostname,
             port=config.netapp_server_port,
             vserver=vserver_name or config.netapp_vserver,
-            trace=na_utils.TRACE_API)
+            trace=na_utils.TRACE_API,
+            private_key_file=config.netapp_private_key_file,
+            certificate_file=config.netapp_certificate_file,
+            ca_certificate_file=config.netapp_ca_certificate_file,
+            certificate_host_validation=(
+                config.netapp_certificate_host_validation))
     else:
         client = client_cmode_rest.NetAppRestClient(
             transport_type=config.netapp_transport_type,
@@ -113,7 +119,12 @@ def get_client_for_backend(backend_name, vserver_name=None):
             port=config.netapp_server_port,
             vserver=vserver_name or config.netapp_vserver,
             async_rest_timeout=config.netapp_rest_operation_timeout,
-            trace=na_utils.TRACE_API)
+            trace=na_utils.TRACE_API,
+            private_key_file=config.netapp_private_key_file,
+            certificate_file=config.netapp_certificate_file,
+            ca_certificate_file=config.netapp_ca_certificate_file,
+            certificate_host_validation=(
+                config.netapp_certificate_host_validation))
 
     return client
 

@@ -63,7 +63,11 @@ class NetAppRestClient(object):
             password=kwargs['password'],
             trace=kwargs.get('trace', False),
             api_trace_pattern=kwargs.get('api_trace_pattern',
-                                         na_utils.API_TRACE_PATTERN))
+                                         na_utils.API_TRACE_PATTERN),
+            private_key_file=kwargs['private_key_file'],
+            certificate_file=kwargs['certificate_file'],
+            ca_certificate_file=kwargs['ca_certificate_file'],
+            certificate_host_validation=kwargs['certificate_host_validation'])
 
         self.async_rest_timeout = kwargs['async_rest_timeout']
 

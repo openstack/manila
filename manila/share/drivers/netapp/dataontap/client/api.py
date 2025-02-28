@@ -80,11 +80,17 @@ STYLE_CERTIFICATE = 'certificate_auth'
 class BaseClient(object):
     """Encapsulates server connection logic."""
 
-    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP, style=None,
-                 ssl_cert_path=None, username=None, password=None, port=None,
-                 trace=False, api_trace_pattern=None):
+    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP,
+                 style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None,
+                 username=None, password=None, port=None,
+                 trace=False, api_trace_pattern=None, private_key_file=None,
+                 certificate_file=None, ca_certificate_file=None,
+                 certificate_host_validation=False):
         super(BaseClient, self).__init__()
         self._host = host
+        if private_key_file and certificate_file:
+            transport_type = TRANSPORT_TYPE_HTTPS
+            style = STYLE_CERTIFICATE
         self.set_transport_type(transport_type)
         self.set_style(style)
         if port:
@@ -100,6 +106,10 @@ class BaseClient(object):
             # Note(felipe_rodrigues): it will verify with the mozila CA roots,
             # given by certifi package.
             self._ssl_verify = True
+        self._private_key_file = private_key_file
+        self._certificate_file = certificate_file
+        self._ca_certificate_file = ca_certificate_file
+        self._certificate_host_validation = certificate_host_validation
         LOG.debug('Using NetApp controller: %s', self._host)
 
     def get_style(self):
@@ -226,19 +236,18 @@ class BaseClient(object):
 
     def _build_session(self):
         """Builds a session in the client."""
-        if self._auth_style == STYLE_LOGIN_PASSWORD:
-            auth_handler = self._create_basic_auth_handler()
-        else:
-            auth_handler = self._create_certificate_auth_handler()
-
         self._session = requests.Session()
 
         max_retries = Retry(total=5, connect=5, read=2, backoff_factor=1)
         adapter = HTTPAdapter(max_retries=max_retries)
         self._session.mount('%s://' % self._protocol, adapter)
 
-        self._session.auth = auth_handler
-        self._session.verify = self._ssl_verify
+        if self._auth_style == STYLE_CERTIFICATE:
+            self._session.cert, self._session.verify = (
+                self._create_certificate_auth_handler())
+        else:
+            self._session.auth = self._create_basic_auth_handler()
+            self._session.verify = self._ssl_verify
         headers = self._build_headers()
 
         self._session.headers = headers
@@ -253,7 +262,15 @@ class BaseClient(object):
 
     def _create_certificate_auth_handler(self):
         """Creates and returns a certificate auth handler."""
-        raise NotImplementedError()
+        self._session.verify = self._certificate_host_validation
+        if self._certificate_file and self._private_key_file:
+            self._session.cert = (self._certificate_file,
+                                  self._private_key_file)
+        # Assigning _session.verify to ca cert file to validate the certs
+        # when we have host validation set to true
+        if self._certificate_host_validation and self._ca_certificate_file:
+            self._session.verify = self._ca_certificate_file
+        return self._session.cert, self._session.verify
 
     def __str__(self):
         """Gets a representation of the client."""
@@ -272,11 +289,18 @@ class ZapiClient(BaseClient):
                  transport_type=TRANSPORT_TYPE_HTTP,
                  style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None, username=None,
                  password=None, port=None, trace=False,
-                 api_trace_pattern=utils.API_TRACE_PATTERN):
+                 api_trace_pattern=utils.API_TRACE_PATTERN,
+                 private_key_file=None,
+                 certificate_file=None, ca_certificate_file=None,
+                 certificate_host_validation=None):
         super(ZapiClient, self).__init__(
             host, transport_type=transport_type, style=style,
             ssl_cert_path=ssl_cert_path, username=username, password=password,
-            port=port, trace=trace, api_trace_pattern=api_trace_pattern)
+            port=port, trace=trace, api_trace_pattern=api_trace_pattern,
+            private_key_file=private_key_file,
+            certificate_file=certificate_file,
+            ca_certificate_file=ca_certificate_file,
+            certificate_host_validation=certificate_host_validation)
         self.set_server_type(server_type)
         if port is None:
             # Not yet set in parent, use defaults
@@ -452,11 +476,17 @@ class RestClient(BaseClient):
     def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP,
                  style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None, username=None,
                  password=None, port=None, trace=False,
-                 api_trace_pattern=utils.API_TRACE_PATTERN):
+                 api_trace_pattern=utils.API_TRACE_PATTERN,
+                 private_key_file=None, certificate_file=None,
+                 ca_certificate_file=None, certificate_host_validation=False):
         super(RestClient, self).__init__(
             host, transport_type=transport_type, style=style,
             ssl_cert_path=ssl_cert_path, username=username, password=password,
-            port=port, trace=trace, api_trace_pattern=api_trace_pattern)
+            port=port, trace=trace, api_trace_pattern=api_trace_pattern,
+            private_key_file=private_key_file,
+            certificate_file=certificate_file,
+            ca_certificate_file=ca_certificate_file,
+            certificate_host_validation=certificate_host_validation)
         if port is None:
             # Not yet set in parent, use defaults
             self._set_port()
@@ -589,16 +619,25 @@ class NaServer(object):
     def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP,
                  style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None, username=None,
                  password=None, port=None, trace=False,
-                 api_trace_pattern=utils.API_TRACE_PATTERN):
+                 api_trace_pattern=utils.API_TRACE_PATTERN,
+                 private_key_file=None, certificate_file=None,
+                 ca_certificate_file=None, certificate_host_validation=False):
         self.zapi_client = ZapiClient(
             host, transport_type=transport_type, style=style,
             ssl_cert_path=ssl_cert_path, username=username, password=password,
-            port=port, trace=trace, api_trace_pattern=api_trace_pattern)
+            port=port, trace=trace, api_trace_pattern=api_trace_pattern,
+            private_key_file=private_key_file,
+            certificate_file=certificate_file,
+            ca_certificate_file=ca_certificate_file,
+            certificate_host_validation=certificate_host_validation)
         self.rest_client = RestClient(
             host, transport_type=transport_type, style=style,
             ssl_cert_path=ssl_cert_path, username=username, password=password,
-            port=port, trace=trace, api_trace_pattern=api_trace_pattern
-        )
+            port=port, trace=trace, api_trace_pattern=api_trace_pattern,
+            private_key_file=private_key_file,
+            certificate_file=certificate_file,
+            ca_certificate_file=ca_certificate_file,
+            certificate_host_validation=certificate_host_validation)
         self._host = host
 
         LOG.debug('Using NetApp controller: %s', self._host)

@@ -71,6 +71,60 @@ netapp_basicauth_opts = [
                      'specified in the netapp_login option.'),
                secret=True), ]
 
+netapp_certificateauth_opts = [
+    cfg.StrOpt('netapp_private_key_file',
+               help=('Example: private_key.key,'
+                     ' For self signed certificate: This file contains the'
+                     ' private key associated with the self-signed'
+                     ' certificate. It is a sensitive file that should be'
+                     ' kept secure and protected. The private key is used to'
+                     ' sign the certificate and establish the authenticity'
+                     ' and integrity of the certificate during the'
+                     ' authentication process. For ca verified certificate:'
+                     ' key associated with the certificate. It is generated'
+                     ' when creating the certificate signing request (CSR)'
+                     ' and should be kept secure and protected. The private'
+                     ' key is used to sign the CSR and later used to'
+                     ' establish secure connections and authenticate the'
+                     ' entity. Example: private_key.key, '
+                     ' please provide absolute path.'),
+               secret=True),
+    cfg.StrOpt('netapp_certificate_file',
+               help=('Example: certificate.pem or certificate.crt,'
+                     ' This file contains the self-signed digital certificate'
+                     ' itself. It includes information about the entity'
+                     ' identity, such as the common name (e.g., domain name),'
+                     ' organization details, validity period, and public key.'
+                     ' The certificate file is generated based on the private'
+                     ' key and is used by clients or systems to verify'
+                     ' the entity identity during the authentication process.'
+                     ' This file contains the digital certificate issued by'
+                     ' the trusted third-party certificate authority (CA).'
+                     ' It includes information about the entity identity,'
+                     ' public key, and the CA that issued the certificate.'
+                     ' The certificate file is used by clients or systems'
+                     ' to verify the authenticity and integrity of the '
+                     ' entity during the authentication process. '
+                     ' please provide absolute path.'),
+               secret=True),
+    cfg.StrOpt('netapp_ca_certificate_file',
+               help=('This is applicable only for ca verified certificate.'
+                     'Example: ca_certificate.crt, This file contains'
+                     ' the public key certificate of the trusted third-party'
+                     ' certificate authority (CA) that issued the'
+                     ' certificate. It is used by clients or systems to'
+                     ' validate the authenticity of the certificate'
+                     ' presented by the entity. The CA certificate file'
+                     ' is typically pre-configured in the trust store'
+                     ' of clients or systems to establish trust in'
+                     ' certificates issued by that CA.'
+                     ' please provide absolute path.'),
+               secret=True),
+    cfg.BoolOpt('netapp_certificate_host_validation',
+                default=False,
+                help=('By default certificate verification is disabled and '
+                      'to verify please assign True to this option')), ]
+
 netapp_provisioning_opts = [
     cfg.ListOpt('netapp_enabled_share_protocols',
                 default=['nfs3', 'nfs4.0'],
@@ -340,6 +394,7 @@ CONF.register_opts(netapp_proxy_opts)
 CONF.register_opts(netapp_connection_opts)
 CONF.register_opts(netapp_transport_opts)
 CONF.register_opts(netapp_basicauth_opts)
+CONF.register_opts(netapp_certificateauth_opts)
 CONF.register_opts(netapp_provisioning_opts)
 CONF.register_opts(netapp_support_opts)
 CONF.register_opts(netapp_data_motion_opts)
