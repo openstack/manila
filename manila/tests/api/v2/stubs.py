@@ -11,7 +11,6 @@
 #    under the License.
 
 import datetime
-import iso8601
 
 from manila.message import message_field
 from manila.message import message_levels
@@ -31,11 +30,11 @@ def stub_message(id, **kwargs):
         'resource_type': message_field.Resource.SHARE,
         'resource_id': FAKE_UUID,
         'updated_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
-                                        tzinfo=iso8601.UTC),
+                                        tzinfo=datetime.timezone.utc),
         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
-                                        tzinfo=iso8601.UTC),
+                                        tzinfo=datetime.timezone.utc),
         'expires_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
-                                        tzinfo=iso8601.UTC),
+                                        tzinfo=datetime.timezone.utc),
         'detail_id': message_field.Detail.NO_VALID_HOST[0],
     }
 
@@ -58,9 +57,9 @@ def stub_lock(id, **kwargs):
         'lock_context': 'user',
         'lock_reason': 'for the tests',
         'updated_at': datetime.datetime(2023, 8, 10, 20, 4, 39,
-                                        tzinfo=iso8601.UTC),
+                                        tzinfo=datetime.timezone.utc),
         'created_at': datetime.datetime(2023, 1, 10, 15, 3, 1,
-                                        tzinfo=iso8601.UTC),
+                                        tzinfo=datetime.timezone.utc),
     }
 
     lock.update(kwargs)

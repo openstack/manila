@@ -17,9 +17,9 @@
 from unittest import mock
 
 import ddt
-import iso8601
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+from oslo_utils import timeutils
 import webob
 
 from manila.api import extensions
@@ -62,7 +62,7 @@ class ExtensionControllerTest(ExtensionTestCase):
 
         # Ensure all the timestamps are valid according to iso8601
         for ext in data['extensions']:
-            iso8601.parse_date(ext['updated'])
+            timeutils.parse_isotime(ext['updated'])
 
         # Make sure that at least Fox in Sox is correct.
         (fox_ext, ) = [

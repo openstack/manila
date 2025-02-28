@@ -13,7 +13,6 @@
 from unittest import mock
 
 import datetime
-import iso8601
 from oslo_config import cfg
 import webob
 
@@ -188,8 +187,8 @@ class MessageApiTest(test.TestCase):
     def test_index_with_created_since_and_created_before(self):
         msg = stubs.stub_message(
             fakes.get_fake_uuid(),
-            created_at=datetime.datetime(1900, 2, 1, 1, 1, 1,
-                                         tzinfo=iso8601.UTC))
+            created_at=datetime.datetime(
+                1900, 2, 1, 1, 1, 1, tzinfo=datetime.timezone.utc))
         self.mock_object(message_api.API, 'get_all', mock.Mock(
                          return_value=[msg]))
         req = fakes.HTTPRequest.blank(
@@ -203,8 +202,9 @@ class MessageApiTest(test.TestCase):
 
         ex2 = self._expected_message_from_controller(
             msg['id'],
-            created_at=datetime.datetime(1900, 2, 1, 1, 1, 1,
-                                         tzinfo=iso8601.UTC))['message']
+            created_at=datetime.datetime(
+                1900, 2, 1, 1, 1, 1,
+                tzinfo=datetime.timezone.utc))['message']
         self.assertEqual([ex2], res_dict['messages'])
 
     def test_index_with_invalid_time_format(self):
