@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Dell PowerScale Driver `Bug #2100829
+    <https://bugs.launchpad.net/manila/+bug/2100829>`_:
+
+    * Fixed SSL verification error for `Delete NFS share`, `Delete CIFS Share`
+      and `Allow CIFS share access`.
+    * Fixed mounted NFS share is inaccessible.
+    * Fixed return type error for `Create Share from snapshot`.
+    * Fixed `Delete a share` did not remove the quota and the directory.
+    * Implemented session based PowerScale API auth and enabled CSRF token.
+    * Enabled configurable SSL cert verification.
