@@ -9658,3 +9658,60 @@ class NetAppClientCmodeTestCase(test.TestCase):
             fake.SHARE_AGGREGATE_NAMES
         )
         self.assertIs(False, result)
+
+    def test_get_storage_failover_partner(self):
+        api_response = netapp_api.NaElement(fake.STORAGE_FAIL_OVER_PARTNER)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_storage_failover_partner("fake_node")
+        self.assertEqual("fake_partner_node", result)
+
+    def test_get_migratable_data_lif_for_node(self):
+        api_response = netapp_api.NaElement(
+            fake.NET_INTERFACE_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+        failover_policy = ['system-defined', 'sfo-partner-only']
+        protocols = ['nfs', 'cifs']
+        api_args = {
+            'query': {
+                'net-interface-info': {
+                    'failover-policy': '|'.join(failover_policy),
+                    'home-node': "fake_node",
+                    'data-protocols': {
+                        'data-protocol': '|'.join(protocols),
+                    }
+                }
+            }
+        }
+        result = self.client.get_migratable_data_lif_for_node("fake_node")
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('net-interface-get-iter', api_args)])
+        self.assertEqual(list(fake.LIF_NAMES), result)
+
+    def test_get_data_lif_details_for_nodes(self):
+        api_response = netapp_api.NaElement(
+            fake.DATA_LIF_CAPACITY_DETAILS)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+        api_args = {
+            'desired-attributes': {
+                'data-lif-capacity-details-info': {
+                    'limit-for-node': None,
+                    'count-for-node': None,
+                    'node': None
+                },
+            },
+        }
+        expected_result = [{'limit-for-node': '512',
+                            'count-for-node': '44',
+                            'node': 'fake_node',
+                            }]
+        result = self.client.get_data_lif_details_for_nodes()
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('data-lif-capacity-details', api_args)])
+        self.assertEqual(expected_result, result)

@@ -225,6 +225,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             if self.is_nfs_config_supported:
                 server_details['nfs_config'] = jsonutils.dumps(nfs_config)
 
+            if self.configuration.netapp_restrict_lif_creation_per_ha_pair:
+                self._check_data_lif_count_limit_reached_for_ha_pair(
+                    self._client
+                )
             try:
                 self._create_vserver(vserver_name, network_info, metadata,
                                      nfs_config=nfs_config)
@@ -1225,6 +1229,12 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 source_share_server['share_network_subnets'][0].get(
                     'neutron_subnet_id')
         }
+
+        # Check the LIF creation on destination cluster when
+        # 'netapp_restrict_lif_creation_per_ha_pair' option is set
+        # to true.
+        if self.configuration.netapp_restrict_lif_creation_per_ha_pair:
+            self._check_data_lif_count_limit_reached_for_ha_pair(dest_client)
 
         # 2. Create new ipspace, port and broadcast domain.
         node_name = self._client.list_cluster_nodes()[0]
@@ -2429,3 +2439,40 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             with excutils.save_and_reraise_exception() as exc_context:
                 if 'has shares' in e.msg:
                     exc_context.reraise = False
+
+    def _check_data_lif_count_limit_reached_for_ha_pair(self, client):
+        ha_pair = {node: client.get_storage_failover_partner(node)
+                   for node in client.list_cluster_nodes()}
+        # TODO(agireesh): Get the data LIFs details for node using REST call
+        # The 'get_data_lif_details_for_nodes' method is missing for REST
+        # workflow because there is no REST available to retrieve the data
+        # LIF's capacity and details for the nodes. Filed the RFE on ONTAP
+        # to implement the corresponding REST, and once it is available, the
+        # REST workflow will be added as part of the fix (bug #2100673).
+        lif_info_for_node = client.get_data_lif_details_for_nodes()
+        lif_info_dict = {info['node']: info for info in lif_info_for_node}
+
+        for node, ha_partner in ha_pair.items():
+            if node in lif_info_dict:
+                data_lif_count = int(lif_info_dict[node].get(
+                    'count-for-node', 0)
+                )
+                lif_limit_for_node = int(lif_info_dict[node].get(
+                    'limit-for-node')
+                )
+                migratable_data_lifs = (
+                    client.get_migratable_data_lif_for_node(ha_partner)
+                )
+                expected_lif_count_after_failover = (
+                    data_lif_count + len(migratable_data_lifs)
+                )
+                if expected_lif_count_after_failover > lif_limit_for_node:
+                    msg_args = {
+                        'data_lif': expected_lif_count_after_failover,
+                        'lif_limit': lif_limit_for_node,
+                    }
+                    msg = _("If a partner node fails, the number of data LIFs"
+                            " {%(data_lif)s} will exceed the node's maximum "
+                            "data LIF limit {%(lif_limit)s}") % msg_args
+                    LOG.error(msg)
+                    raise exception.NetAppException(msg)
