@@ -66,7 +66,7 @@ class SSHPool(pools.Pool):
         self.path_to_private_key = privatekey
         super(SSHPool, self).__init__(*args, **kwargs)
 
-    def create(self):  # pylint: disable=method-hidden
+    def create(self, quiet=False):  # pylint: disable=method-hidden
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         look_for_keys = True
@@ -99,7 +99,10 @@ class SSHPool(pools.Pool):
         except Exception as e:
             msg = _("Check whether private key or password are correctly "
                     "set. Error connecting via ssh: %s") % e
-            LOG.error(msg)
+            if quiet:
+                LOG.debug(msg)
+            else:
+                LOG.error(msg)
             raise exception.SSHException(msg)
 
     def get(self):

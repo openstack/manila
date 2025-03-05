@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    The service instance module, used by some drivers supporting
+    `driver_handles_share_servers=True` mode, now checks for login
+    instead of polling the SSH port for connectivity. This is expected
+    to improve robustness of share creation operations that need a new
+    share server. See `bug 1748139
+    <https://launchpad.net/bugs/1748139>`_ for more details.
