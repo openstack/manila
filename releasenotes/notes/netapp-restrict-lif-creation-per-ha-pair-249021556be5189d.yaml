@@ -3,7 +3,7 @@ fixes:
   - |
     NetApp driver `bug #2100835
     <https://bugs.launchpad.net/manila/+bug/2100835>`_:
-    The NetApp driver now supports to prevent the creation of a share
+    The NetApp driver can now prevent the creation of a share
     server if the total number of data LIFs on one node of HA pair,
     including those that can be migrated in case of failure,exceeds the
     maximum number data LIFs supported by the node. This option guarantees
