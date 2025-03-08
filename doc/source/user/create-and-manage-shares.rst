@@ -694,22 +694,24 @@ Create snapshot
 
   .. code-block:: console
 
-     $ manila snapshot-create --name mysnapshot --description "My Manila snapshot" myshare
-     +-------------+--------------------------------------+
-     | Property    | Value                                |
-     +-------------+--------------------------------------+
-     | id          | 8a18aa77-7500-4e56-be8f-6081146f47f1 |
-     | share_id    | 83b0772b-00ad-4e45-8fad-106b9d4f1719 |
-     | share_size  | 1                                    |
-     | created_at  | 2020-08-07T05:30:26.649430           |
-     | status      | creating                             |
-     | name        | mysnapshot                           |
-     | description | My Manila snapshot                   |
-     | size        | 1                                    |
-     | share_proto | NFS                                  |
-     | user_id     | 2cebd96a794f431caa06ce5215e0da21     |
-     | project_id  | d9932a60d9ee4087b6cff9ce6e9b4e3b     |
-     +-------------+--------------------------------------+
+     $ openstack share snapshot create --name mysnap --description "My Manila snapshot" myshare
+    +-------------------+--------------------------------------+
+    | Field             | Value                                |
+    +-------------------+--------------------------------------+
+    | id                | 286edbe1-a69e-40e7-ad50-61287570df55 |
+    | share_id          | bf7ffbb7-73a5-44fe-a93e-73cbd5a9197d |
+    | share_size        | 1                                    |
+    | created_at        | 2025-03-08T00:06:32.123637           |
+    | status            | creating                             |
+    | name              | mysnap                               |
+    | description       | My Manila snapshot                   |
+    | size              | 1                                    |
+    | share_proto       | NFS                                  |
+    | provider_location | None                                 |
+    | user_id           | 64e1409650ee4e94a8e78df24da86091     |
+    | project_id        | dd43995fee324b24b79adab2542d74e9     |
+    | metadata          | {}                                   |
+    +-------------------+--------------------------------------+
 
 * List snapshots.
 
