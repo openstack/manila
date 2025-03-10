@@ -288,6 +288,35 @@ class NeutronApiTest(test.TestCase):
         self.neutron_api.client.delete_port.assert_called_once_with(port_id)
         self.assertTrue(clientv20.Client.called)
 
+    def test_delete_port_NeutronClientException(self):
+        # Set up test data
+        self.mock_object(
+            self.neutron_api.client, 'delete_port',
+            mock.Mock(side_effect=neutron_client_exc.NeutronClientException()))
+        port_id = 'test port id'
+
+        self.assertRaises(exception.NetworkException,
+                          self.neutron_api.delete_port,
+                          port_id)
+
+        # Verify results
+        self.neutron_api.client.delete_port.assert_called_once_with(port_id)
+        self.assertTrue(clientv20.Client.called)
+
+    def test_delete_port_PortNotFoundClient(self):
+        # Set up test data
+        self.mock_object(
+            self.neutron_api.client, 'delete_port',
+            mock.Mock(side_effect=neutron_client_exc.PortNotFoundClient()))
+        port_id = 'test port id'
+
+        # Execute method 'delete_port'
+        self.neutron_api.delete_port(port_id)
+
+        # Verify results
+        self.neutron_api.client.delete_port.assert_called_once_with(port_id)
+        self.assertTrue(clientv20.Client.called)
+
     def test_list_ports(self):
         # Set up test data
         search_opts = {'test_option': 'test_value'}

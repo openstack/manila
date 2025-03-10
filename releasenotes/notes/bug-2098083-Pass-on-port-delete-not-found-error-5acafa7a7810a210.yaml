@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Manila will no longer fail while attempting to delete a neutron port that
+    already has been deleted. Instead, a log warning will be created.
+    For more details, please check
+    `Launchpad bug #2098083 <https://bugs.launchpad.net/manila/+bug/2098083>`_
