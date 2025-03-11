@@ -73,8 +73,9 @@ netapp_basicauth_opts = [
 
 netapp_certificateauth_opts = [
     cfg.StrOpt('netapp_private_key_file',
-               help=('Example: /path/to/private_key.key,'
-                     ' For self signed certificate: This file contains the'
+               sample_default='/path/to/private_key.key,',
+               regex=r'^/.+',
+               help=('For self signed certificate: This file contains the'
                      ' private key associated with the self-signed'
                      ' certificate. It is a sensitive file that should be'
                      ' kept secure and protected. The private key is used to'
@@ -87,13 +88,11 @@ netapp_certificateauth_opts = [
                      ' request (CSR) and should be kept secure and protected.'
                      ' The private key is used to sign the CSR and later used'
                      ' to establish secure connections and authenticate the'
-                     ' entity.'
-                     ' Please provide absolute path.'),
-               secret=True),
+                     ' entity.')),
     cfg.StrOpt('netapp_certificate_file',
-               help=('Example: /path/to/certificate.pem or'
-                     ' /path/to/certificate.crt,'
-                     ' For self signed certificate: This file contains the'
+               sample_default='/path/to/certificate.pem',
+               regex=r'^/.+',
+               help=('For self signed certificate: This file contains the'
                      ' self-signed digital certificate itself. It includes'
                      ' information about the entity such as the common name'
                      ' (e.g., domain name), organization details, validity'
@@ -108,26 +107,22 @@ netapp_certificateauth_opts = [
                      ' issued the certificate. The certificate file is used'
                      ' by clients or systems to verify the authenticity and'
                      ' integrity of the entity during the authentication'
-                     ' process.'
-                     ' Please provide absolute path.'),
-               secret=True),
+                     ' process.')),
     cfg.StrOpt('netapp_ca_certificate_file',
+               sample_default='/path/to/ca_certificate.crt',
+               regex=r'^/.+',
                help=('This is applicable only for ca verified certificate.'
-                     'Example: /path/to/ca_certificate.crt, This file'
-                     ' contains the public key certificate of the trusted'
-                     ' third-party certificate authority (CA) that issued the'
-                     ' certificate. It is used by clients or systems to'
-                     ' validate the authenticity of the certificate'
+                     ' This file contains the public key certificate of'
+                     ' the trusted third-party certificate authority (CA) that'
+                     ' issued the certificate. It is used by clients or '
+                     ' systems to validate the authenticity of the certificate'
                      ' presented by the entity. The CA certificate file'
                      ' is typically pre-configured in the trust store'
                      ' of clients or systems to establish trust in'
-                     ' certificates issued by that CA.'
-                     ' Please provide absolute path.'),
-               secret=True),
+                     ' certificates issued by that CA.')),
     cfg.BoolOpt('netapp_certificate_host_validation',
                 default=False,
-                help=('By default certificate verification is disabled and '
-                      'to verify please assign True to this option')), ]
+                help=('Enable certificate verification')), ]
 
 netapp_provisioning_opts = [
     cfg.ListOpt('netapp_enabled_share_protocols',
