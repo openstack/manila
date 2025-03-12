@@ -339,6 +339,8 @@ class NFSHelper(NASHelperBase):
             items = line.split(' ')
             if local_path == items[0]:
                 entries.append(items[1])
+        #  exportfs may print"<world>" instead of "*" for host
+        entries = ["*" if item == "<world>" else item for item in entries]
         return entries
 
     def _sync_nfs_temp_and_perm_files(self, server):
