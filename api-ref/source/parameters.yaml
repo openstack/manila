@@ -3088,6 +3088,20 @@ service_enable_host_response:
   in: body
   required: true
   type: string
+service_ensure_shares_host_request:
+  description: |
+    The host name of the manila-share binary that you want to
+    start the ensure shares procedure in the ``host@backend`` format.
+  in: body
+  required: true
+  type: string
+service_ensuring_response:
+  description: |
+    Whether the service is currently running ensure shares or not.
+  in: body
+  required: true
+  type: string
+  min_version: 2.86
 service_host:
   description: |
     The manage-share service host in this format:
