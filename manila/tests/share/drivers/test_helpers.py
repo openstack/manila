@@ -256,11 +256,12 @@ class NFSHelperTestCase(test.TestCase):
     def test_get_host_list(self):
         fake_exportfs = ('/shares/share-1\n\t\t20.0.0.3\n'
                          '/shares/share-1\n\t\t20.0.0.6\n'
+                         '/shares/share-1\n\t\t<world>\n'
                          '/shares/share-2\n\t\t10.0.0.2\n'
                          '/shares/share-2\n\t\t10.0.0.5\n'
                          '/shares/share-3\n\t\t30.0.0.4\n'
                          '/shares/share-3\n\t\t30.0.0.7\n')
-        expected = ['20.0.0.3', '20.0.0.6']
+        expected = ['20.0.0.3', '20.0.0.6', '*']
         result = self._helper.get_host_list(fake_exportfs, '/shares/share-1')
         self.assertEqual(expected, result)
 
@@ -408,7 +409,7 @@ class NFSHelperTestCase(test.TestCase):
                            '"{}"'.format(':'.join(['1.1.1.16', local_path]))]),
                 mock.call(self.server,
                           ['sudo', 'exportfs', '-u',
-                           '"{}"'.format(':'.join(['<world>', local_path]))]),
+                           '"{}"'.format(':'.join(['*', local_path]))]),
             ])
 
         self._helper._sync_nfs_temp_and_perm_files.assert_called_once_with(

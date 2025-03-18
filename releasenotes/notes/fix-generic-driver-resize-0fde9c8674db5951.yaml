@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    For generic driver, when resize a share it may failed due to exportfs
+    can't recognize "<world>" as part of the share path. This issue has been
+    fixed by replacing "<world>" to "*".
