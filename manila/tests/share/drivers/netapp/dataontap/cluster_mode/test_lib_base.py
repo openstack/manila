@@ -2397,6 +2397,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_is_flexgroup_pool', mock.Mock(return_value=False))
         vserver_client = mock.Mock()
+        cluster_client = mock.Mock()
         vserver_client.get_network_interfaces.return_value = fake.LIFS
         fake_interface_addresses_with_metadata = copy.deepcopy(
             fake.INTERFACE_ADDRESSES_WITH_METADATA)
@@ -2408,11 +2409,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                              fake.SHARE_SERVER,
                                              fake.VSERVER1,
                                              vserver_client,
+                                             cluster_client=cluster_client,
                                              share_host=share_host)
 
         self.assertEqual(fake.NFS_EXPORTS, result)
         mock_get_export_addresses_with_metadata.assert_called_once_with(
-            fake.SHARE, fake.SHARE_SERVER, fake.LIFS, expected_host)
+            fake.SHARE, fake.SHARE_SERVER, fake.LIFS, expected_host,
+            cluster_client)
         protocol_helper.create_share.assert_called_once_with(
             fake.SHARE, fake.SHARE_NAME, clear_current_export_policy=True,
             ensure_share_already_exists=False, replica=False,
@@ -2455,9 +2458,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SHARE_SERVER)
         if is_flexgroup:
             mock_get_aggr_flexgroup.assert_called_once_with(fake.POOL_NAME)
-            mock_get_aggregate_node.assert_called_once_with(fake.AGGREGATE)
+            mock_get_aggregate_node.assert_called_once_with(
+                fake.AGGREGATE, None)
         else:
-            mock_get_aggregate_node.assert_called_once_with(fake.POOL_NAME)
+            mock_get_aggregate_node.assert_called_once_with(
+                fake.POOL_NAME, None)
 
     def test_get_export_addresses_with_metadata_node_unknown(self):
 
@@ -2478,7 +2483,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             value['preferred'] = False
 
         self.assertEqual(expected, result)
-        mock_get_aggregate_node.assert_called_once_with(fake.POOL_NAME)
+        mock_get_aggregate_node.assert_called_once_with(fake.POOL_NAME, None)
         mock_get_admin_addresses_for_share_server.assert_called_once_with(
             fake.SHARE_SERVER)
 
@@ -4693,6 +4698,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_backend_config = fake.get_config_cmode()
         self.mock_object(data_motion, 'get_backend_configuration',
                          mock.Mock(return_value=mock_backend_config))
+        self.mock_object(self.library, '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock_client))
         self.mock_object(self.client, 'cleanup_demoted_replica')
         self.mock_object(self.library,
                          '_is_readable_replica',
@@ -5258,6 +5265,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_backend_config.netapp_mount_replica_timeout = 30
         self.mock_object(data_motion, 'get_backend_configuration',
                          mock.Mock(return_value=mock_backend_config))
+        self.mock_object(self.library, '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock_client))
 
         replica = self.library._safe_change_replica_source(
             mock_dm_session, self.fake_replica, self.fake_replica_2,

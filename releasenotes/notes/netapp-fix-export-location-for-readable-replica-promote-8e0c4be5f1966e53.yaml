@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver now updates correct export location after promotion of
+    share replica of replication type readable. For more details, please check
+    `Launchpad bug #2104153 <https://bugs.launchpad.net/manila/+bug/2104153>`_
