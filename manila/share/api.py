@@ -4121,8 +4121,11 @@ class API(base.Base):
                     raise exception.BackupLimitExceeded(
                         allowed=quotas[over])
 
+        backup_options = backup.get('backup_options', None)
+        topic = CONF.share_topic
+
         # Validate right backup type is provided
-        backup_type = backup.get('backup_options') and backup.get(
+        backup_type = backup_options and backup.get(
             'backup_options').get(constants.BACKUP_TYPE)
         filters = {
             'status': constants.STATUS_AVAILABLE,
@@ -4148,6 +4151,25 @@ class API(base.Base):
 
         backup_ref = {}
         try:
+            # No backup options were provided, which means that it will use the
+            # generic backup approach.
+            if not backup_options:
+                topic = CONF.data_topic
+
+                backup_protocols = (
+                    CONF.data_manager_backup_supported_share_protocols)
+
+                if (share['share_proto'].upper()
+                        not in [proto.upper() for proto in backup_protocols]):
+                    error_msg = _(
+                        "Cannot backup share %(share)s. The generic approach "
+                        "for share backups only supports the following "
+                        "protocols: %(protos)s.") % {
+                        "share": share_id,
+                        "protos": backup_protocols
+                    }
+                    raise exception.InvalidShare(error_msg)
+
             backup_ref = self.db.share_backup_create(
                 context, share['id'],
                 {
@@ -4176,11 +4198,8 @@ class API(base.Base):
         backup_ref['backup_options'] = backup.get('backup_options', {})
         backup_values = {}
         if backup_ref['backup_options']:
-            topic = CONF.share_topic
             backup_ref['host'] = share_utils.extract_host(share['host'])
             backup_values.update({'host': backup_ref['host']})
-        else:
-            topic = CONF.data_topic
 
         backup_values.update({'topic': topic})
         self.db.share_backup_update(context, backup_ref['id'], backup_values)

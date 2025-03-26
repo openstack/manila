@@ -162,6 +162,12 @@ global_opts = [
                 default=constants.AdminOnlyMetadata.EXPORT_LOCATION_KEYS,
                 help='Metadata keys for export locations that should only be '
                      'manipulated by administrators.'),
+    cfg.ListOpt('data_manager_backup_supported_share_protocols',
+                default=['NFS'],
+                help="Specify list of protocols to be allowed for share "
+                     "backup creation when using either the data manager "
+                     "generic backup approach, or another backup driver that "
+                     "makes use of the data manager service."),
 ]
 
 CONF.register_opts(global_opts)
