@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Manila now correctly handles the 'server_migrating' status of share and
+    snapshot instances during share server migration especially during share
+    server belonging to non-active replica. For more details, please check
+    `Launchpad bug #2104357 <https://bugs.launchpad.net/manila/+bug/2104357>`_

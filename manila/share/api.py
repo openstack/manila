@@ -3283,14 +3283,15 @@ class API(base.Base):
             {'task_state': constants.TASK_STATE_MIGRATION_STARTING,
              'status': constants.STATUS_SERVER_MIGRATING})
 
-        share_snapshots = [
-            self.db.share_snapshot_get_all_for_share(context, share['id'])
-            for share in shares]
-        snapshot_instance_ids = []
-        for snapshot_list in share_snapshots:
-            for snapshot in snapshot_list:
-                snapshot_instance_ids.append(snapshot['instance']['id'])
-        share_instance_ids = [share['instance']['id'] for share in shares]
+        share_instances = self.db.share_instance_get_all_by_share_server(
+            context, share_server['id'])
+        share_instance_ids = [
+            share_instance['id'] for share_instance in share_instances]
+
+        snap_instances = self.db.share_snapshot_instance_get_all_with_filters(
+            context, {'share_instance_ids': share_instance_ids})
+        snapshot_instance_ids = [
+            snap_instance['id'] for snap_instance in snap_instances]
 
         # Updates all shares and snapshot instances
         self.db.share_and_snapshot_instances_status_update(
