@@ -30,3 +30,5 @@
      - (String) Username for VAST management API.
    * - ``vast_mgmt_password`` =
      - (String) Password for VAST management API.
+   * - ``vast_api_token`` =
+     - (String) API token for accessing VAST mgmt. If provided, it will be used instead of 'vast_mgmt_user' and 'vast_mgmt_password'.

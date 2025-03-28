@@ -32,20 +32,37 @@ LOG = logging.getLogger(__name__)
 
 class Session(requests.Session):
 
-    def __init__(self, host, username, password, ssl_verify, plugin_version):
+    def __init__(
+            self,
+            host,
+            username,
+            password,
+            api_token,
+            ssl_verify,
+            plugin_version,
+    ):
         super().__init__()
         self.base_url = f"https://{host.strip('/')}/api"
         self.ssl_verify = ssl_verify
         self.username = username
         self.password = password
+        self.token = api_token
         self.headers["Accept"] = "application/json"
         self.headers["Content-Type"] = "application/json"
         self.headers["User-Agent"] = (
             f"manila/v{plugin_version}"
             f" ({requests.utils.default_user_agent()})"
         )
-        # will be updated on first request
-        self.headers["authorization"] = "Bearer"
+        if self.token:
+            LOG.info("VMS session is using API token authentication.")
+            self.headers["authorization"] = f"Api-Token {self.token}"
+        else:
+            # Will be updated on the first request
+            LOG.info(
+                "VMS session is using username/password authentication"
+                " (Bearer token will be acquired)."
+            )
+            self.headers["authorization"] = "Bearer"
 
         if not ssl_verify:
             import urllib3
@@ -95,7 +112,8 @@ class Session(requests.Session):
         ret = super().request(
             verb, url, verify=self.ssl_verify, params=params, **kwargs
         )
-        if ret.status_code == 403 and "Token is invalid" in ret.text:
+        # No refresh for token based auth. Token should be long-lived.
+        if ret.status_code == 403 and not self.token:
             self.refresh_auth_token()
             raise exception.VastApiRetry(reason="Token is invalid or expired.")
 
@@ -307,11 +325,20 @@ class Folders(VastResource):
 
 class RestApi:
 
-    def __init__(self, host, username, password, ssl_verify, plugin_version):
+    def __init__(
+            self,
+            host,
+            username,
+            password,
+            api_token,
+            ssl_verify,
+            plugin_version,
+    ):
         self.session = Session(
             host=host,
             username=username,
             password=password,
+            api_token=api_token,
             ssl_verify=ssl_verify,
             plugin_version=plugin_version,
         )

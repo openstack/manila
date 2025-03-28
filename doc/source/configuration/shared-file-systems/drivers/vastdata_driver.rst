@@ -69,6 +69,7 @@ other parameters that are not specific to VAST Share Driver.
    vast_mgmt_port = {vms_port}
    vast_mgmt_user = {mgmt_user}
    vast_mgmt_password = {mgmt_password}
+   vast_api_token = {vast_api_token}
    vast_vippool_name = {vip_pool}
    vast_root_export = {root_export}
 
