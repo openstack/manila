@@ -724,6 +724,49 @@ Create snapshot
     | 7861eed0-8634-41e0-a57e-a1d87ad48a1b | mysnap |
     +--------------------------------------+--------+
 
+
+Mount a snapshot
+----------------
+
+* Allow access to the snapshot.
+
+  .. note::
+
+     To mount a snapshot, the share type of the parent share must contain the
+     capability extra-spec ``mount_snapshot_support=True``.
+
+  .. code-block:: console
+
+     $ openstack share snapshot access create mysnap ip 192.168.1.0/24
+    +-------------+--------------------------------------+
+    | Field       | Value                                |
+    +-------------+--------------------------------------+
+    | id          | 89e36a97-19d8-430c-b920-6d930ea27464 |
+    | access_type | ip                                   |
+    | access_to   | 192.168.1.0/24                       |
+    | state       | queued_to_apply                      |
+    +-------------+--------------------------------------+
+
+* List snapshot access.
+
+  .. code-block:: console
+
+     $ openstack share snapshot access list mysnap
+    +--------------------------------------+-------------+----------------+--------+
+    | ID                                   | Access Type | Access To      | State  |
+    +--------------------------------------+-------------+----------------+--------+
+    | 89e36a97-19d8-430c-b920-6d930ea27464 | ip          | 192.168.1.0/24 | active |
+    +--------------------------------------+-------------+----------------+--------+
+
+Then proceed to mounting the snapshot on the clients whose access was created.
+
+* Delete snapshot access rule.
+
+  .. code-block:: console
+
+     $ openstack share snapshot access delete mysnap 89e36a97-19d8-430c-b920-6d930ea27464
+
+
 Create share from snapshot
 --------------------------
 
