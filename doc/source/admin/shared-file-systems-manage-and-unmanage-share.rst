@@ -35,15 +35,15 @@ Unmanaging a share removes it from the management of the Shared File Systems
 service without deleting the share. It is a non-disruptive operation and
 existing clients are not disconnected, and the functionality is aimed at aiding
 infrastructure operations and maintenance workflows. To unmanage a share,
-run the :command:`manila unmanage <share>` command. Then try to print
+run the :command:`openstack share abandon` command. Then try to print
 the information about the share. The returned result should indicate that
 Shared File Systems service won't
 find the share:
 
 .. code-block:: console
 
-   $ manila unmanage share_for_docs
-   $ manila show share_for_docs
+   $ openstack share abandon share_for_docs
+   $ openstack share show share_for_docs
    ERROR: No share with a name or ID of 'share_for_docs' exists.
 
 .. _manage_share:
@@ -64,15 +64,21 @@ Manage a share
     share against ``per_share_gigabytes`` quota.
 
 To register the non-managed share in the File System service, run the
-:command:`manila manage` command:
+:command:`openstack share adopt` command:
 
 .. code-block:: console
 
-   manila manage [--name <name>] [--description <description>]
-                 [--share_type <share-type>]
-                 [--share-server-id <share_server_id>]
-                 [--driver_options [<key=value> [<key=value> ...]]]
-                 <service_host> <protocol> <export_path>
+   openstack share adopt [-h] [-f {json,shell,table,value,yaml}]
+                         [-c COLUMN] [--noindent] [--prefix PREFIX]
+                         [--max-width <integer>] [--fit-width]
+                         [--print-empty] [--name <name>]
+                         [--description <description>]
+                         [--share-type <share-type>]
+                         [--driver-options [<key=value> ...]]
+                         [--public]
+                         [--share-server-id <share-server-id>]
+                         [--wait]
+                         <service-host> <protocol> <export-path>
 
 The positional arguments are:
 
@@ -117,81 +123,124 @@ To manage share, run:
 
 .. code-block:: console
 
-   $ manila manage \
-       manila@paris#shares \
-       nfs \
-       1.0.0.4:/shares/manila_share_6d2142d8_2b9b_4405_867f_8a48094c893f \
-       --name share_for_docs \
-       --description "We manage share." \
-       --share_type for_managing
-   +-----------------------------+--------------------------------------+
-   | Property                    | Value                                |
-   +-----------------------------+--------------------------------------+
-   | status                      | manage_starting                      |
-   | share_type_name             | for_managing                         |
-   | description                 | We manage share.                     |
-   | availability_zone           | None                                 |
-   | share_network_id            | None                                 |
-   | share_server_id             | None                                 |
-   | share_group_id              | None                                 |
-   | host                        | manila@paris#shares                  |
-   | access_rules_status         | active                               |
-   | snapshot_id                 | None                                 |
-   | is_public                   | False                                |
-   | task_state                  | None                                 |
-   | snapshot_support            | True                                 |
-   | id                          | ddfb1240-ed5e-4071-a031-b842035a834a |
-   | size                        | None                                 |
-   | name                        | share_for_docs                       |
-   | share_type                  | 14ee8575-aac2-44af-8392-d9c9d344f392 |
-   | has_replicas                | False                                |
-   | replication_type            | None                                 |
-   | created_at                  | 2016-03-25T15:22:43.000000           |
-   | share_proto                 | NFS                                  |
-   | project_id                  | 907004508ef4447397ce6741a8f037c1     |
-   | metadata                    | {}                                   |
-   +-----------------------------+--------------------------------------+
+   $ openstack share adopt \
+    manila@saopaulo#shares \
+    nfs \
+    10.0.0.10:/shares/share_e113729a_8da4_45f3_bbbf_0014f_350380c_c4b06060_9c56_459e_9219_b86a0777054b \
+    --name share_for_docs \
+    --description "We manage share." \
+    --share-type default
+
+   +-------------------------------------+--------------------------------------+
+   | Field                               | Value                                |
+   +-------------------------------------+--------------------------------------+
+   | id                                  | 8b3aa39d-e07f-4255-82ac-f6f56565a725 |
+   | size                                | None                                 |
+   | availability_zone                   | None                                 |
+   | created_at                          | 2025-04-03T10:57:19.230793           |
+   | status                              | manage_starting                      |
+   | name                                | share_for_docs                       |
+   | description                         | We manage share.                     |
+   | project_id                          | c0bc204890ad428796f364b677a8516b     |
+   | snapshot_id                         | None                                 |
+   | share_network_id                    | None                                 |
+   | share_proto                         | NFS                                  |
+   | metadata                            | {}                                   |
+   | share_type                          | 807e5cd7-a0e7-4912-8f7d-352512ce51c3 |
+   | volume_type                         | default                              |
+   | is_public                           | False                                |
+   | snapshot_support                    | True                                 |
+   | task_state                          | None                                 |
+   | share_type_name                     | default                              |
+   | access_rules_status                 | active                               |
+   | replication_type                    | None                                 |
+   | has_replicas                        | False                                |
+   | user_id                             | c5d0c19aae6e4484a41e241f0d8b04fb     |
+   | create_share_from_snapshot_support  | True                                 |
+   | revert_to_snapshot_support          | True                                 |
+   | share_group_id                      | None                                 |
+   | source_share_group_snapshot_member_ | None                                 |
+   | id                                  |                                      |
+   | mount_snapshot_support              | True                                 |
+   | progress                            | None                                 |
+   | is_soft_deleted                     | False                                |
+   | scheduled_to_be_deleted_at          | None                                 |
+   | source_backup_id                    | None                                 |
+   | share_server_id                     | None                                 |
+   | host                                | manila@saopaulo#shares               |
+   +-------------------------------------+--------------------------------------+
 
 Check that the share is available:
 
 .. code-block:: console
 
-   $ manila show share_for_docs
-   +----------------------+--------------------------------------------------------------------------+
-   | Property             | Value                                                                    |
-   +----------------------+--------------------------------------------------------------------------+
-   | status               | available                                                                |
-   | share_type_name      | for_managing                                                             |
-   | description          | We manage share.                                                         |
-   | availability_zone    | None                                                                     |
-   | share_network_id     | None                                                                     |
-   | export_locations     |                                                                          |
-   |                      | path = 1.0.0.4:/shares/manila_share_6d2142d8_2b9b_4405_867f_8a48094c893f |
-   |                      | preferred = False                                                        |
-   |                      | is_admin_only = False                                                    |
-   |                      | id = d4d048bf-4159-4a94-8027-e567192b8d30                                |
-   |                      | share_instance_id = 4c8e3887-4f9a-4775-bab4-e5840a09c34e                 |
-   |                      | path = 2.0.0.3:/shares/manila_share_6d2142d8_2b9b_4405_867f_8a48094c893f |
-   |                      | preferred = False                                                        |
-   |                      | is_admin_only = True                                                     |
-   |                      | id = 1dd4f0a3-778d-486a-a851-b522f6e7cf5f                                |
-   |                      | share_instance_id = 4c8e3887-4f9a-4775-bab4-e5840a09c34e                 |
-   | share_server_id      | None                                                                     |
-   | share_group_id       | None                                                                     |
-   | host                 | manila@paris#shares                                                      |
-   | access_rules_status  | active                                                                   |
-   | snapshot_id          | None                                                                     |
-   | is_public            | False                                                                    |
-   | task_state           | None                                                                     |
-   | snapshot_support     | True                                                                     |
-   | id                   | ddfb1240-ed5e-4071-a031-b842035a834a                                     |
-   | size                 | 1                                                                        |
-   | name                 | share_for_docs                                                           |
-   | share_type           | 14ee8575-aac2-44af-8392-d9c9d344f392                                     |
-   | has_replicas         | False                                                                    |
-   | replication_type     | None                                                                     |
-   | created_at           | 2016-03-25T15:22:43.000000                                               |
-   | share_proto          | NFS                                                                      |
-   | project_id           | 907004508ef4447397ce6741a8f037c1                                         |
-   | metadata             | {}                                                                       |
-   +----------------------+--------------------------------------------------------------------------+
+   $ openstack share show share_for_docs
+   +-------------------------------------+--------------------------------------+
+   | Field                               | Value                                |
+   +-------------------------------------+--------------------------------------+
+   | id                                  | 8b3aa39d-e07f-4255-82ac-f6f56565a725 |
+   | size                                | 1                                    |
+   | availability_zone                   | manila-zone-1                        |
+   | created_at                          | 2025-04-03T10:57:19.230793           |
+   | status                              | available                            |
+   | name                                | share_for_docs                       |
+   | description                         | We manage share.                     |
+   | project_id                          | c0bc204890ad428796f364b677a8516b     |
+   | snapshot_id                         | None                                 |
+   | share_network_id                    | None                                 |
+   | share_proto                         | NFS                                  |
+   | share_type                          | 807e5cd7-a0e7-4912-8f7d-352512ce51c3 |
+   | volume_type                         | default                              |
+   | is_public                           | False                                |
+   | snapshot_support                    | True                                 |
+   | task_state                          | None                                 |
+   | share_type_name                     | default                              |
+   | access_rules_status                 | active                               |
+   | replication_type                    | None                                 |
+   | has_replicas                        | False                                |
+   | user_id                             | c5d0c19aae6e4484a41e241f0d8b04fb     |
+   | create_share_from_snapshot_support  | True                                 |
+   | revert_to_snapshot_support          | True                                 |
+   | share_group_id                      | None                                 |
+   | source_share_group_snapshot_member_ | None                                 |
+   | id                                  |                                      |
+   | mount_snapshot_support              | True                                 |
+   | progress                            | 100%                                 |
+   | is_soft_deleted                     | False                                |
+   | scheduled_to_be_deleted_at          | None                                 |
+   | source_backup_id                    | None                                 |
+   | share_server_id                     | None                                 |
+   | host                                | manila@saopaulo#shares               |
+   | export_locations                    |                                      |
+   |                                     | id =                                 |
+   |                                     | ba4ad0cd-6d25-422f-97f6-a1bc383ae49d |
+   |                                     | path = 11.0.0.11:/shares/share_e1137 |
+   |                                     | 29a_8da4_45f3_bbbf_0014f350380c_c4b0 |
+   |                                     | 6060_9c56_459e_9219_b86a0777054b     |
+   |                                     | preferred = False                    |
+   |                                     | metadata = {}                        |
+   |                                     | share_instance_id =                  |
+   |                                     | c4b06060-9c56-459e-9219-b86a0777054b |
+   |                                     | is_admin_only = True                 |
+   |                                     | id =                                 |
+   |                                     | c525a3aa-b52a-4565-acf3-aacaca1167ec |
+   |                                     | path = 10.0.0.10:/shares/share_e1137 |
+   |                                     | 29a_8da4_45f3_bbbf_0014f350380c_c4b0 |
+   |                                     | 6060_9c56_459e_9219_b86a0777054b     |
+   |                                     | preferred = True                     |
+   |                                     | metadata = {}                        |
+   |                                     | share_instance_id =                  |
+   |                                     | c4b06060-9c56-459e-9219-b86a0777054b |
+   |                                     | is_admin_only = False                |
+   |                                     | id =                                 |
+   |                                     | b5c26041-eba0-415d-8bda-f46ca67a55b9 |
+   |                                     | path = 10.0.0.20:/shares/share_e1137 |
+   |                                     | 29a_8da4_45f3_bbbf_0014f350380c_c4b0 |
+   |                                     | 6060_9c56_459e_9219_b86a0777054b     |
+   |                                     | preferred = False                    |
+   |                                     | metadata = {}                        |
+   |                                     | share_instance_id =                  |
+   |                                     | c4b06060-9c56-459e-9219-b86a0777054b |
+   |                                     | is_admin_only = False                |
+   | properties                          |                                      |
+   +-------------------------------------+--------------------------------------+
