@@ -10,15 +10,15 @@ General concepts
 To create a file share, and access it, the following general concepts
 are prerequisite knowledge:
 
-#. To create a share, use :command:`manila create` command and
+#. To create a share, use :command:`openstack share create` command and
    specify the required arguments: the size of the share and the shared file
    system protocol. ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, ``CephFS`` or
    ``MAPRFS`` share file system protocols are supported.
 
 #. You can also optionally specify the share network and the share type.
 
-#. After the share becomes available, use the :command:`manila show` command
-   to get the share export locations.
+#. After the share becomes available, use the :command:`openstack share show`
+   command to get the share export locations.
 
 #. After getting the share export locations, you can create an
    :ref:`access rule <access_to_share>` for the share, mount it and work with
@@ -86,7 +86,7 @@ Create a share in no share servers mode
 
 To create a file share in no share servers mode, you need to:
 
-#. To create a share, use :command:`manila create` command and
+#. To create a share, use :command:`openstack share create` command and
    specify the required arguments: the size of the share and the shared file
    system protocol. ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, ``CephFS`` or
    ``MAPRFS`` share file system protocols are supported.
@@ -98,7 +98,7 @@ To create a file share in no share servers mode, you need to:
    created. In this mode the Shared File Systems service expects that
    administrator has some bare metal storage with some net interface.
 
-#. The :command:`manila create` command creates a share. This command does the
+#. The :command:`openstack share create` command creates a share. This command does the
    following things:
 
    * The :ref:`manila-scheduler <shared_file_systems_scheduling>` service will
@@ -108,101 +108,167 @@ To create a file share in no share servers mode, you need to:
    * The share is created using the storage that is specified in the found
      back end.
 
-#. After the share becomes available, use the :command:`manila show` command
+#. After the share becomes available, use the :command:`openstack share show` command
    to get the share export locations.
 
 In the example to create a share, the created already share type named
-``my_type`` with ``driver_handles_share_servers = False`` extra specification
+``dhss_false`` with ``driver_handles_share_servers = False`` extra specification
 is used.
 
 Check share types that exist, run:
 
 .. code-block:: console
 
-   $ manila type-list
-   +------+---------+------------+------------+--------------------------------------+-------------------------+
-   | ID   | Name    | visibility | is_default | required_extra_specs                 | optional_extra_specs    |
-   +------+---------+------------+------------+--------------------------------------+-------------------------+
-   | %ID% | my_type | public     | -          | driver_handles_share_servers : False | snapshot_support : True |
-   +------+---------+------------+------------+--------------------------------------+-------------------------+
+   $ openstack share type list
+   +----------+----------+------------+------------+----------------------+----------------------+-------------+
+   | ID       | Name     | Visibility | Is Default | Required Extra Specs | Optional Extra Specs | Description |
+   +----------+----------+------------+------------+----------------------+----------------------+-------------+
+   | 807e5cd7 | default  | public     | True       | driver_handles_share | snapshot_support :   | None        |
+   | -a0e7-   |          |            |            | _servers : True      | True                 |             |
+   | 4912-    |          |            |            |                      | create_share_from_sn |             |
+   | 8f7d-    |          |            |            |                      | apshot_support :     |             |
+   | 352512ce |          |            |            |                      | True                 |             |
+   | 51c3     |          |            |            |                      | revert_to_snapshot_s |             |
+   |          |          |            |            |                      | upport : True        |             |
+   |          |          |            |            |                      | mount_snapshot_suppo |             |
+   |          |          |            |            |                      | rt : True            |             |
+   | d57dfcb5 | dhss_fal | public     | False      | driver_handles_share | snapshot_support :   | None        |
+   | -3026-   | se       |            |            | _servers : False     | True                 |             |
+   | 4018-    |          |            |            |                      | create_share_from_sn |             |
+   | be87-    |          |            |            |                      | apshot_support :     |             |
+   | 3d7ca511 |          |            |            |                      | True                 |             |
+   | 60cc     |          |            |            |                      | revert_to_snapshot_s |             |
+   |          |          |            |            |                      | upport : True        |             |
+   |          |          |            |            |                      | mount_snapshot_suppo |             |
+   |          |          |            |            |                      | rt : True            |             |
+   | a5e531e6 | dhss_tru | public     | False      | driver_handles_share | snapshot_support :   | None        |
+   | -8a89-   | e        |            |            | _servers : True      | True                 |             |
+   | 4333-    |          |            |            |                      | create_share_from_sn |             |
+   | 9920-    |          |            |            |                      | apshot_support :     |             |
+   | 59cd420d |          |            |            |                      | True                 |             |
+   | 4f79     |          |            |            |                      | revert_to_snapshot_s |             |
+   |          |          |            |            |                      | upport : True        |             |
+   |          |          |            |            |                      | mount_snapshot_suppo |             |
+   |          |          |            |            |                      | rt : True            |             |
+   +----------+----------+------------+------------+----------------------+----------------------+-------------+
 
-Create a private share with ``my_type`` share type, NFS shared file system
+Create a private share with ``dhss_false`` share type, NFS shared file system
 protocol, and size 1 GB:
 
 .. code-block:: console
 
-   $ manila create nfs 1 --name Share1 --description "My share" --share-type my_type
-   +-----------------------------+--------------------------------------+
-   | Property                    | Value                                |
-   +-----------------------------+--------------------------------------+
-   | status                      | creating                             |
-   | share_type_name             | my_type                              |
-   | description                 | My share                             |
-   | availability_zone           | None                                 |
-   | share_network_id            | None                                 |
-   | share_server_id             | None                                 |
-   | share_group_id              | None                                 |
-   | host                        |                                      |
-   | access_rules_status         | active                               |
-   | snapshot_id                 | None                                 |
-   | is_public                   | False                                |
-   | task_state                  | None                                 |
-   | snapshot_support            | True                                 |
-   | id                          | 10f5a2a1-36f5-45aa-a8e6-00e94e592e88 |
-   | size                        | 1                                    |
-   | name                        | Share1                               |
-   | share_type                  | 14ee8575-aac2-44af-8392-d9c9d344f392 |
-   | has_replicas                | False                                |
-   | replication_type            | None                                 |
-   | created_at                  | 2016-03-25T12:02:46.000000           |
-   | share_proto                 | NFS                                  |
-   | project_id                  | 907004508ef4447397ce6741a8f037c1     |
-   | metadata                    | {}                                   |
-   +-----------------------------+--------------------------------------+
+   $ openstack share create nfs 1 --name Share1 --description "My share" --share-type dhss_false
+   +---------------------------------------+--------------------------------------+
+   | Field                                 | Value                                |
+   +---------------------------------------+--------------------------------------+
+   | id                                    | c1de2cdc-2ccf-4e8d-afe9-b25c84bf3953 |
+   | size                                  | 1                                    |
+   | availability_zone                     | None                                 |
+   | created_at                            | 2025-04-05T22:05:29.343767           |
+   | status                                | creating                             |
+   | name                                  | Share1                               |
+   | description                           | My share                             |
+   | project_id                            | c0bc204890ad428796f364b677a8516b     |
+   | snapshot_id                           | None                                 |
+   | share_network_id                      | None                                 |
+   | share_proto                           | NFS                                  |
+   | metadata                              | {}                                   |
+   | share_type                            | d57dfcb5-3026-4018-be87-3d7ca51160cc |
+   | volume_type                           | dhss_false                           |
+   | is_public                             | False                                |
+   | snapshot_support                      | True                                 |
+   | task_state                            | None                                 |
+   | share_type_name                       | dhss_false                           |
+   | access_rules_status                   | active                               |
+   | replication_type                      | None                                 |
+   | has_replicas                          | False                                |
+   | user_id                               | c5d0c19aae6e4484a41e241f0d8b04fb     |
+   | create_share_from_snapshot_support    | True                                 |
+   | revert_to_snapshot_support            | True                                 |
+   | share_group_id                        | None                                 |
+   | source_share_group_snapshot_member_id | None                                 |
+   | mount_snapshot_support                | True                                 |
+   | progress                              | None                                 |
+   | is_soft_deleted                       | False                                |
+   | scheduled_to_be_deleted_at            | None                                 |
+   | source_backup_id                      | None                                 |
+   | share_server_id                       | None                                 |
+   | host                                  |                                      |
+   +---------------------------------------+--------------------------------------+
 
-New share ``Share2`` should have a status ``available``:
+New share ``Share1`` should have a status ``available``:
 
 .. code-block:: console
 
-   $ manila show Share2
-   +-----------------------------+----------------------------------------------------------+
-   | Property                    | Value                                                    |
-   +-----------------------------+----------------------------------------------------------+
-   | status                      | available                                                |
-   | share_type_name             | my_type                                                  |
-   | description                 | My share                                                 |
-   | availability_zone           | nova                                                     |
-   | share_network_id            | None                                                     |
-   | export_locations            |                                                          |
-   |                             | path = 10.0.0.4:/shares/manila_share_a5fb1ab7_...        |
-   |                             | preferred = False                                        |
-   |                             | is_admin_only = False                                    |
-   |                             | id = 9e078eee-bcad-40b8-b4fe-1c916cf98ed1                |
-   |                             | share_instance_id = a5fb1ab7-0bbd-465b-ac14-05706294b6e9 |
-   |                             | path = 172.18.198.52:/shares/manila_share_a5fb1ab7_...   |
-   |                             | preferred = False                                        |
-   |                             | is_admin_only = True                                     |
-   |                             | id = 44933f59-e0e3-4483-bb88-72ba7c486f41                |
-   |                             | share_instance_id = a5fb1ab7-0bbd-465b-ac14-05706294b6e9 |
-   | share_server_id             | None                                                     |
-   | share_group_id              | None                                                     |
-   | host                        | manila@paris#epsilon                                     |
-   | access_rules_status         | active                                                   |
-   | snapshot_id                 | None                                                     |
-   | is_public                   | False                                                    |
-   | task_state                  | None                                                     |
-   | snapshot_support            | True                                                     |
-   | id                          | 10f5a2a1-36f5-45aa-a8e6-00e94e592e88                     |
-   | size                        | 1                                                        |
-   | name                        | Share1                                                   |
-   | share_type                  | 14ee8575-aac2-44af-8392-d9c9d344f392                     |
-   | has_replicas                | False                                                    |
-   | replication_type            | None                                                     |
-   | created_at                  | 2016-03-25T12:02:46.000000                               |
-   | share_proto                 | NFS                                                      |
-   | project_id                  | 907004508ef4447397ce6741a8f037c1                         |
-   | metadata                    | {}                                                       |
-   +-----------------------------+----------------------------------------------------------+
+   $ openstack share show Share1
+   +---------------------------------------+------------------------------------------+
+   | Field                                 | Value                                    |
+   +---------------------------------------+------------------------------------------+
+   | id                                    | c1de2cdc-2ccf-4e8d-afe9-b25c84bf3953     |
+   | size                                  | 1                                        |
+   | availability_zone                     | manila-zone-1                            |
+   | created_at                            | 2025-04-05T22:05:29.343767               |
+   | status                                | available                                |
+   | name                                  | Share1                                   |
+   | description                           | My share                                 |
+   | project_id                            | c0bc204890ad428796f364b677a8516b         |
+   | snapshot_id                           | None                                     |
+   | share_network_id                      | None                                     |
+   | share_proto                           | NFS                                      |
+   | share_type                            | d57dfcb5-3026-4018-be87-3d7ca51160cc     |
+   | volume_type                           | dhss_false                               |
+   | is_public                             | False                                    |
+   | snapshot_support                      | True                                     |
+   | task_state                            | None                                     |
+   | share_type_name                       | dhss_false                               |
+   | access_rules_status                   | active                                   |
+   | replication_type                      | None                                     |
+   | has_replicas                          | False                                    |
+   | user_id                               | c5d0c19aae6e4484a41e241f0d8b04fb         |
+   | create_share_from_snapshot_support    | True                                     |
+   | revert_to_snapshot_support            | True                                     |
+   | share_group_id                        | None                                     |
+   | source_share_group_snapshot_member_id | None                                     |
+   | mount_snapshot_support                | True                                     |
+   | progress                              | 100%                                     |
+   | is_soft_deleted                       | False                                    |
+   | scheduled_to_be_deleted_at            | None                                     |
+   | source_backup_id                      | None                                     |
+   | share_server_id                       | None                                     |
+   | host                                  | manila@paris#shares                      |
+   | export_locations                      |                                          |
+   |                                       | id =                                     |
+   |                                       | 30d8ad5a-05b2-401a-9dbd-caf496f4ab12     |
+   |                                       | path = 11.0.0.11:/shares/share_c1de2     |
+   |                                       | cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2    |
+   |                                       | fc0_acbe_444c_888a_c52c05242dce          |
+   |                                       | preferred = False                        |
+   |                                       | metadata = {}                            |
+   |                                       | share_instance_id =                      |
+   |                                       | 86ef2fc0-acbe-444c-888a-c52c05242dce     |
+   |                                       | is_admin_only = True                     |
+   |                                       | id =                                     |
+   |                                       | acdd47f6-aef5-4d3b-86b2-db7d73d4bbfe     |
+   |                                       | path = 10.0.0.10:/shares/share_c1de2     |
+   |                                       | cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2    |
+   |                                       | fc0_acbe_444c_888a_c52c05242dce          |
+   |                                       | preferred = True                         |
+   |                                       | metadata = {}                            |
+   |                                       | share_instance_id =                      |
+   |                                       | 86ef2fc0-acbe-444c-888a-c52c05242dce     |
+   |                                       | is_admin_only = False                    |
+   |                                       | id =                                     |
+   |                                       | 224f223f-6dea-4e08-92c5-66de161cf43d     |
+   |                                       | path = 10.0.0.20:shares/share_c1de2      |
+   |                                       | cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2    |
+   |                                       | fc0_acbe_444c_888a_c52c05242dce          |
+   |                                       | preferred = False                        |
+   |                                       | metadata = {}                            |
+   |                                       | share_instance_id =                      |
+   |                                       | 86ef2fc0-acbe-444c-888a-c52c05242dce     |
+   |                                       | is_admin_only = False                    |
+   | properties                            |                                          |
+   +---------------------------------------+------------------------------------------+
 
 .. _create_share_in_share_server_mode:
 
@@ -211,7 +277,7 @@ Create a share in share servers mode
 
 To create a file share in share servers mode, you need to:
 
-#. To create a share, use :command:`manila create` command and
+#. To create a share, use :command:`openstack share create` command and
    specify the required arguments: the size of the share and the shared file
    system protocol. ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, ``CephFS`` or
    ``MAPRFS`` share file system protocols are supported.
@@ -222,7 +288,7 @@ To create a file share in share servers mode, you need to:
 #. You should specify the
    :ref:`share network <shared_file_systems_share_networks>`.
 
-#. The :command:`manila create` command creates a share. This command does the
+#. The :command:`openstack share create` command creates a share. This command does the
    following things:
 
    * The :ref:`manila-scheduler <shared_file_systems_scheduling>` service will
@@ -247,67 +313,65 @@ existing share network are used.
    create the default share type. To create a share network, use
    :ref:`shared_file_systems_share_networks`.
 
-Check share types that exist, run:
-
-.. code-block:: console
-
-   $ manila type-list
-   +------+---------+------------+------------+--------------------------------------+-------------------------+
-   | ID   | Name    | visibility | is_default | required_extra_specs                 | optional_extra_specs    |
-   +------+---------+------------+------------+--------------------------------------+-------------------------+
-   | %id% | default | public     | YES        | driver_handles_share_servers : True  | snapshot_support : True |
-   +------+---------+------------+------------+--------------------------------------+-------------------------+
-
 Check share networks that exist, run:
 
 .. code-block:: console
 
-   $ manila share-network-list
-   +--------------------------------------+--------------+
-   | id                                   | name         |
-   +--------------------------------------+--------------+
-   | c895fe26-92be-4152-9e6c-f2ad230efb13 | my_share_net |
-   +--------------------------------------+--------------+
+   $ openstack share network list
+   +--------------------------------------+-------+
+   | ID                                   | Name  |
+   +--------------------------------------+-------+
+   | 1e0b9a80-2bce-4244-9da4-f8589c6bd56b | mynet |
+   +--------------------------------------+-------+
 
 Create a public share with ``my_share_net`` network, ``default``
 share type, NFS shared file system protocol, and size 1 GB:
 
 .. code-block:: console
 
-   $ manila create nfs 1 \
+   $ openstack share create nfs 1 \
        --name "Share2" \
        --description "My second share" \
        --share-type default \
-       --share-network my_share_net \
+       --share-network my_net \
        --metadata aim=testing \
        --public
-   +-----------------------------+--------------------------------------+
-   | Property                    | Value                                |
-   +-----------------------------+--------------------------------------+
-   | status                      | creating                             |
-   | share_type_name             | default                              |
-   | description                 | My second share                      |
-   | availability_zone           | None                                 |
-   | share_network_id            | c895fe26-92be-4152-9e6c-f2ad230efb13 |
-   | share_server_id             | None                                 |
-   | share_group_id              | None                                 |
-   | host                        |                                      |
-   | access_rules_status         | active                               |
-   | snapshot_id                 | None                                 |
-   | is_public                   | True                                 |
-   | task_state                  | None                                 |
-   | snapshot_support            | True                                 |
-   | id                          | 195e3ba2-9342-446a-bc93-a584551de0ac |
-   | size                        | 1                                    |
-   | name                        | Share2                               |
-   | share_type                  | bf6ada49-990a-47c3-88bc-c0cb31d5c9bf |
-   | has_replicas                | False                                |
-   | replication_type            | None                                 |
-   | created_at                  | 2016-03-25T12:13:40.000000           |
-   | share_proto                 | NFS                                  |
-   | project_id                  | 907004508ef4447397ce6741a8f037c1     |
-   | metadata                    | {u'aim': u'testing'}                 |
-   +-----------------------------+--------------------------------------+
+   +---------------------------------------+--------------------------------------+
+   | Property                              | Value                                |
+   +---------------------------------------+--------------------------------------+
+   | id                                    | a37c3d1d-023f-4fcf-b640-3dbbb3e89193 |
+   | size                                  | 1                                    |
+   | availability_zone                     | None                                 |
+   | created_at                            | 2025-04-05T22:25:51.609837           |
+   | status                                | creating                             |
+   | name                                  | Share2                               |
+   | description                           | My second share                      |
+   | project_id                            | c0bc204890ad428796f364b677a8516b     |
+   | snapshot_id                           | None                                 |
+   | share_network_id                      | 1e0b9a80-2bce-4244-9da4-f8589c6bd56b |
+   | share_proto                           | NFS                                  |
+   | metadata                              | {'aim': 'testing'}                   |
+   | share_type                            | 807e5cd7-a0e7-4912-8f7d-352512ce51c3 |
+   | is_public                             | True                                 |
+   | snapshot_support                      | True                                 |
+   | task_state                            | None                                 |
+   | share_type_name                       | default                              |
+   | access_rules_status                   | active                               |
+   | replication_type                      | None                                 |
+   | has_replicas                          | False                                |
+   | user_id                               | c5d0c19aae6e4484a41e241f0d8b04fb     |
+   | create_share_from_snapshot_support    | True                                 |
+   | revert_to_snapshot_support            | True                                 |
+   | share_group_id                        | None                                 |
+   | source_share_group_snapshot_member_id | None                                 |
+   | mount_snapshot_support                | True                                 |
+   | progress                              | None                                 |
+   | is_soft_deleted                       | False                                |
+   | scheduled_to_be_deleted_at            | None                                 |
+   | source_backup_id                      | None                                 |
+   | share_server_id                       | None                                 |
+   | host                                  |                                      |
+   +---------------------------------------+--------------------------------------+
 
 The share also can be created from a share snapshot. For details, see
 :ref:`shared_file_systems_snapshots`.
@@ -316,58 +380,87 @@ See the share in a share list:
 
 .. code-block:: console
 
-   $ manila list
-   +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+----------------------+-------------------+
-   | ID                                   | Name    | Size | Share Proto | Status    | Is Public | Share Type Name | Host                 | Availability Zone |
-   +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+----------------------+-------------------+
-   | 10f5a2a1-36f5-45aa-a8e6-00e94e592e88 | Share1  | 1    | NFS         | available | False     | my_type         | manila@paris#epsilon | nova              |
-   | 195e3ba2-9342-446a-bc93-a584551de0ac | Share2  | 1    | NFS         | available | True      | default         | manila@london#LONDON | nova              |
-   +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+----------------------+-------------------+
+   $ openstack share list
+   +--------------------------------------+----------------+------+-------------+--------------+-----------+-----------------+----------------------+-------------------+
+   | ID                                   | Name           | Size | Share Proto | Status       | Is Public | Share Type Name | Host                 | Availability Zone |
+   +--------------------------------------+----------------+------+-------------+--------------+-----------+-----------------+----------------------+-------------------+
+   | a37c3d1d-023f-4fcf-b640-3dbbb3e89193 | Share2         | 1    | NFS         | available    | True      | default         | manila@lima#shares   | manila-zone-1     |
+   | c1de2cdc-2ccf-4e8d-afe9-b25c84bf3953 | Share1         | 1    | NFS         | available    | False     | dhss_false      | manila@paris#shares  | manila-zone-1     |
+   +--------------------------------------+----------------+------+-------------+--------------+-----------+-----------------+----------------------+-------------------+
 
 Check the share status and see the share export locations. After ``creating``
 status share should have status ``available``:
 
 .. code-block:: console
 
-   $ manila show Share2
-   +----------------------+----------------------------------------------------------------------+
-   | Property             | Value                                                                |
-   +----------------------+----------------------------------------------------------------------+
-   | status               | available                                                            |
-   | share_type_name      | default                                                              |
-   | description          | My second share                                                      |
-   | availability_zone    | nova                                                                 |
-   | share_network_id     | c895fe26-92be-4152-9e6c-f2ad230efb13                                 |
-   | export_locations     |                                                                      |
-   |                      | path = 10.254.0.3:/shares/share-fe874928-39a2-441b-8d24-29e6f0fde965 |
-   |                      | preferred = False                                                    |
-   |                      | is_admin_only = False                                                |
-   |                      | id = de6d4012-6158-46f0-8b28-4167baca51a7                            |
-   |                      | share_instance_id = fe874928-39a2-441b-8d24-29e6f0fde965             |
-   |                      | path = 10.0.0.3:/shares/share-fe874928-39a2-441b-8d24-29e6f0fde965   |
-   |                      | preferred = False                                                    |
-   |                      | is_admin_only = True                                                 |
-   |                      | id = 602d0f5c-921b-4e45-bfdb-5eec8a89165a                            |
-   |                      | share_instance_id = fe874928-39a2-441b-8d24-29e6f0fde965             |
-   | share_server_id      | 2e9d2d02-883f-47b5-bb98-e053b8d1e683                                 |
-   | share_group_id       | None                                                                     |
-   | host                 | manila@london#LONDON                                                 |
-   | access_rules_status  | active                                                               |
-   | snapshot_id          | None                                                                 |
-   | is_public            | True                                                                 |
-   | task_state           | None                                                                 |
-   | snapshot_support     | True                                                                 |
-   | id                   | 195e3ba2-9342-446a-bc93-a584551de0ac                                 |
-   | size                 | 1                                                                    |
-   | name                 | Share2                                                               |
-   | share_type           | bf6ada49-990a-47c3-88bc-c0cb31d5c9bf                                 |
-   | has_replicas         | False                                                                |
-   | replication_type     | None                                                                 |
-   | created_at           | 2016-03-25T12:13:40.000000                                           |
-   | share_proto          | NFS                                                                  |
-   | project_id           | 907004508ef4447397ce6741a8f037c1                                     |
-   | metadata             | {u'aim': u'testing'}                                                 |
-   +----------------------+----------------------------------------------------------------------+
+   $ openstack share show Share2
+   +---------------------------------------+------------------------------------------+
+   | Field                                 | Value                                    |
+   +---------------------------------------+------------------------------------------+
+   | id                                    | a37c3d1d-023f-4fcf-b640-3dbbb3e89193     |
+   | size                                  | 1                                        |
+   | availability_zone                     | manila-zone-1                            |
+   | created_at                            | 2025-04-05T22:25:51.609837               |
+   | status                                | available                                |
+   | name                                  | Share2                                   |
+   | description                           | My second share                          |
+   | project_id                            | c0bc204890ad428796f364b677a8516b         |
+   | snapshot_id                           | None                                     |
+   | share_network_id                      | 1e0b9a80-2bce-4244-9da4-f8589c6bd56b     |
+   | share_proto                           | NFS                                      |
+   | share_type                            | 807e5cd7-a0e7-4912-8f7d-352512ce51c3     |
+   | volume_type                           | default                                  |
+   | is_public                             | True                                     |
+   | snapshot_support                      | True                                     |
+   | task_state                            | None                                     |
+   | share_type_name                       | default                                  |
+   | access_rules_status                   | active                                   |
+   | replication_type                      | None                                     |
+   | has_replicas                          | False                                    |
+   | user_id                               | c5d0c19aae6e4484a41e241f0d8b04fb         |
+   | create_share_from_snapshot_support    | True                                     |
+   | revert_to_snapshot_support            | True                                     |
+   | share_group_id                        | None                                     |
+   | source_share_group_snapshot_member_id | None                                     |
+   | mount_snapshot_support                | True                                     |
+   | progress                              | None                                     |
+   | is_soft_deleted                       | False                                    |
+   | scheduled_to_be_deleted_at            | None                                     |
+   | source_backup_id                      | None                                     |
+   | share_server_id                       | None                                     |
+   | host                                  | manila@lima#shares                       |
+   | export_locations                      |                                          |
+   |                                       | id =                                     |
+   |                                       | aeac5f3e-60e3-461c-8ca8-6696e0f59f39     |
+   |                                       | path = 12.0.0.12:/shares/share_cdc_2c    |
+   |                                       | cf_4e8d_afe9_b25c84bf3953_86ef2          |
+   |                                       | 789-f1f5-4171-9e43-3afabddf8b5f          |
+   |                                       | preferred = False                        |
+   |                                       | metadata = {}                            |
+   |                                       | share_instance_id =                      |
+   |                                       | 86ef2fc0-acbe-444c-888a-c52c05242dce     |
+   |                                       | is_admin_only = True                     |
+   |                                       | id =                                     |
+   |                                       | 965aa536-9ba4-4f8b-9ddd-a6a916968597     |
+   |                                       | path = 10.0.0.10:/shares/share_cdc_2c    |
+   |                                       | cf_4e8d_afe9_b25c84bf3953_86ef2          |
+   |                                       | 789-f1f5-4171-9e43-3afabddf8b5f          |
+   |                                       | preferred = True                         |
+   |                                       | metadata = {}                            |
+   |                                       | share_instance_id =                      |
+   |                                       | 86ef2fc0-acbe-444c-888a-c52c05242dce     |
+   |                                       | is_admin_only = False                    |
+   |                                       | id =                                     |
+   |                                       | 224f223f-6dea-4e08-92c5-66de161cf43d     |
+   |                                       | path = 10.0.0.20:/shares/share_cdc_2c    |
+   |                                       | cf_4e8d_afe9_b25c84bf3953_86ef2          |
+   |                                       | 789-f1f5-4171-9e43-3afabddf8b5f          |
+   |                                       | preferred = False                        |
+   |                                       | metadata = {}                            |
+   |                                       | share_instance_id =                      |
+   |                                       | 86ef2fc0-acbe-444c-888a-c52c05242dce     |
+   | properties                            | aim='testing'                            |
+   +---------------------------------------+------------------------------------------+
 
 ``is_public`` defines the level of visibility for the share: whether other
 projects can or cannot see the share. By default, the share is private.
@@ -380,47 +473,47 @@ the share if you need:
 
 .. code-block:: console
 
-   $ manila update Share2 --description "My second share. Updated" --is-public False
+   $ openstack share set Share2 --description "My second share. Updated" --public False
 
-   $ manila show Share2
-   +----------------------+----------------------------------------------------------------------+
-   | Property             | Value                                                                |
-   +----------------------+----------------------------------------------------------------------+
-   | status               | available                                                            |
-   | share_type_name      | default                                                              |
-   | description          | My second share. Updated                                             |
-   | availability_zone    | nova                                                                 |
-   | share_network_id     | c895fe26-92be-4152-9e6c-f2ad230efb13                                 |
-   | export_locations     |                                                                      |
-   |                      | path = 10.254.0.3:/shares/share-fe874928-39a2-441b-8d24-29e6f0fde965 |
-   |                      | preferred = False                                                    |
-   |                      | is_admin_only = False                                                |
-   |                      | id = de6d4012-6158-46f0-8b28-4167baca51a7                            |
-   |                      | share_instance_id = fe874928-39a2-441b-8d24-29e6f0fde965             |
-   |                      | path = 10.0.0.3:/shares/share-fe874928-39a2-441b-8d24-29e6f0fde965   |
-   |                      | preferred = False                                                    |
-   |                      | is_admin_only = True                                                 |
-   |                      | id = 602d0f5c-921b-4e45-bfdb-5eec8a89165a                            |
-   |                      | share_instance_id = fe874928-39a2-441b-8d24-29e6f0fde965             |
-   | share_server_id      | 2e9d2d02-883f-47b5-bb98-e053b8d1e683                                 |
-   | share_group_id       | None                                                                     |
-   | host                 | manila@london#LONDON                                                 |
-   | access_rules_status  | active                                                               |
-   | snapshot_id          | None                                                                 |
-   | is_public            | False                                                                |
-   | task_state           | None                                                                 |
-   | snapshot_support     | True                                                                 |
-   | id                   | 195e3ba2-9342-446a-bc93-a584551de0ac                                 |
-   | size                 | 1                                                                    |
-   | name                 | Share2                                                               |
-   | share_type           | bf6ada49-990a-47c3-88bc-c0cb31d5c9bf                                 |
-   | has_replicas         | False                                                                |
-   | replication_type     | None                                                                 |
-   | created_at           | 2016-03-25T12:13:40.000000                                           |
-   | share_proto          | NFS                                                                  |
-   | project_id           | 907004508ef4447397ce6741a8f037c1                                     |
-   | metadata             | {u'aim': u'testing'}                                                 |
-   +----------------------+----------------------------------------------------------------------+
+   $ openstack share show Share2
+   +---------------------------------------+--------------------------------------+
+   | Field                                 | Value                                |
+   +---------------------------------------+--------------------------------------+
+   | id                                    | a37c3d1d-023f-4fcf-b640-3dbbb3e89193 |
+   | size                                  | 1                                    |
+   | availability_zone                     | manila-zone-1                        |
+   | created_at                            | 2025-04-05T22:25:51.609837           |
+   | status                                | available                            |
+   | name                                  | Share2                               |
+   | description                           | My second share. Updated             |
+   | project_id                            | c0bc204890ad428796f364b677a8516b     |
+   | snapshot_id                           | None                                 |
+   | share_network_id                      | 1e0b9a80-2bce-4244-9da4-f8589c6bd56b |
+   | share_proto                           | NFS                                  |
+   | share_type                            | 807e5cd7-a0e7-4912-8f7d-352512ce51c3 |
+   | volume_type                           | default                              |
+   | is_public                             | False                                |
+   | snapshot_support                      | True                                 |
+   | task_state                            | None                                 |
+   | share_type_name                       | default                              |
+   | access_rules_status                   | active                               |
+   | replication_type                      | None                                 |
+   | has_replicas                          | False                                |
+   | user_id                               | c5d0c19aae6e4484a41e241f0d8b04fb     |
+   | create_share_from_snapshot_support    | True                                 |
+   | revert_to_snapshot_support            | True                                 |
+   | share_group_id                        | None                                 |
+   | source_share_group_snapshot_member_id | None                                 |
+   | mount_snapshot_support                | True                                 |
+   | progress                              | None                                 |
+   | is_soft_deleted                       | False                                |
+   | scheduled_to_be_deleted_at            | None                                 |
+   | source_backup_id                      | None                                 |
+   | share_server_id                       | None                                 |
+   | host                                  | manila@lima#shares                   |
+   | export_locations                      |                                      |
+   | properties                            | aim='testing'                        |
+   +---------------------------------------+--------------------------------------+
 
 A share can have one of these status values:
 
@@ -472,34 +565,33 @@ If you want to set the metadata key-value pairs on the share, run:
 
 .. code-block:: console
 
-   $ manila metadata Share2 set project=my_abc deadline=01/20/16
+   $  openstack share set Share2 --property project=my_abc
 
 Get all metadata key-value pairs of the share:
 
 .. code-block:: console
 
-   $ manila metadata-show Share2
-   +----------+----------+
-   | Property | Value    |
-   +----------+----------+
-   | aim      | testing  |
-   | project  | my_abc   |
-   | deadline | 01/20/16 |
-   +----------+----------+
+   $ openstack share show -c properties Share2
+   +------------+------------------------------------------------------+
+   | Field      | Value                                                |
+   +------------+------------------------------------------------------+
+   | properties | aim='testing', deadline='01/20/16', project='my_abc' |
+   +------------+------------------------------------------------------+
 
 You can update the metadata:
 
 .. code-block:: console
 
-   $ manila metadata-update-all Share2 deadline=01/30/16
-   +----------+----------+
-   | Property | Value    |
-   +----------+----------+
-   | deadline | 01/30/16 |
-   +----------+----------+
+   $ openstack share set Share2 --proper deadline='01/30/16'
+   $ openstack share show -c properties Share2
+   +------------+------------------------------------------------------+
+   | Field      | Value                                                |
+   +------------+------------------------------------------------------+
+   | properties | aim='testing', deadline='01/30/16', project='my_abc' |
+   +------------+------------------------------------------------------+
 
 You also can unset the metadata using
-**manila metadata <share_name> unset <metadata_key(s)>**.
+**openstack share unset <share_name> --property <key_to_unset>**.
 
 .. note::
   In case you want to prevent certain metadata key-values to be manipulated by
@@ -517,54 +609,54 @@ Reset share state
 
 As administrator, you can reset the state of a share.
 
-Use **manila reset-state [--state <state>] <share>** command to reset share
+Use **openstack share set <share> --status** command to reset share
 state, where ``state`` indicates which state to assign the share. Options
 include ``available``, ``error``, ``creating``, ``deleting``,
 ``error_deleting`` states.
 
 .. code-block:: console
 
-   $ manila reset-state Share2 --state deleting
+   $ openstack share set Share2 --status deleting
 
-   $ manila show Share2
-   +----------------------+----------------------------------------------------------------------+
-   | Property             | Value                                                                |
-   +----------------------+----------------------------------------------------------------------+
-   | status               | deleting                                                             |
-   | share_type_name      | default                                                              |
-   | description          | My second share. Updated                                             |
-   | availability_zone    | nova                                                                 |
-   | share_network_id     | c895fe26-92be-4152-9e6c-f2ad230efb13                                 |
-   | export_locations     |                                                                      |
-   |                      | path = 10.254.0.3:/shares/share-fe874928-39a2-441b-8d24-29e6f0fde965 |
-   |                      | preferred = False                                                    |
-   |                      | is_admin_only = False                                                |
-   |                      | id = de6d4012-6158-46f0-8b28-4167baca51a7                            |
-   |                      | share_instance_id = fe874928-39a2-441b-8d24-29e6f0fde965             |
-   |                      | path = 10.0.0.3:/shares/share-fe874928-39a2-441b-8d24-29e6f0fde965   |
-   |                      | preferred = False                                                    |
-   |                      | is_admin_only = True                                                 |
-   |                      | id = 602d0f5c-921b-4e45-bfdb-5eec8a89165a                            |
-   |                      | share_instance_id = fe874928-39a2-441b-8d24-29e6f0fde965             |
-   | share_server_id      | 2e9d2d02-883f-47b5-bb98-e053b8d1e683                                 |
-   | share_group_id       | None                                                                     |
-   | host                 | manila@london#LONDON                                                 |
-   | access_rules_status  | active                                                               |
-   | snapshot_id          | None                                                                 |
-   | is_public            | False                                                                |
-   | task_state           | None                                                                 |
-   | snapshot_support     | True                                                                 |
-   | id                   | 195e3ba2-9342-446a-bc93-a584551de0ac                                 |
-   | size                 | 1                                                                    |
-   | name                 | Share2                                                               |
-   | share_type           | bf6ada49-990a-47c3-88bc-c0cb31d5c9bf                                 |
-   | has_replicas         | False                                                                |
-   | replication_type     | None                                                                 |
-   | created_at           | 2016-03-25T12:13:40.000000                                           |
-   | share_proto          | NFS                                                                  |
-   | project_id           | 907004508ef4447397ce6741a8f037c1                                     |
-   | metadata             | {u'deadline': u'01/30/16'}                                           |
-   +----------------------+----------------------------------------------------------------------+
+   $ openstack share show Share2
+   +---------------------------------------+--------------------------------------+
+   | Field                                 | Value                                |
+   +---------------------------------------+--------------------------------------+
+   | id                                    | a37c3d1d-023f-4fcf-b640-3dbbb3e89193 |
+   | size                                  | 1                                    |
+   | availability_zone                     | manila-zone-1                        |
+   | created_at                            | 2025-04-05T22:25:51.609837           |
+   | status                                | deleting                             |
+   | name                                  | Share2                               |
+   | description                           | My second share. Updated             |
+   | project_id                            | c0bc204890ad428796f364b677a8516b     |
+   | snapshot_id                           | None                                 |
+   | share_network_id                      | 1e0b9a80-2bce-4244-9da4-f8589c6bd56b |
+   | share_proto                           | NFS                                  |
+   | share_type                            | 807e5cd7-a0e7-4912-8f7d-352512ce51c3 |
+   | volume_type                           | default                              |
+   | is_public                             | False                                |
+   | snapshot_support                      | True                                 |
+   | task_state                            | None                                 |
+   | share_type_name                       | default                              |
+   | access_rules_status                   | active                               |
+   | replication_type                      | None                                 |
+   | has_replicas                          | False                                |
+   | user_id                               | c5d0c19aae6e4484a41e241f0d8b04fb     |
+   | create_share_from_snapshot_support    | True                                 |
+   | revert_to_snapshot_support            | True                                 |
+   | share_group_id                        | None                                 |
+   | source_share_group_snapshot_member_id | None                                 |
+   | mount_snapshot_support                | True                                 |
+   | progress                              | None                                 |
+   | is_soft_deleted                       | False                                |
+   | scheduled_to_be_deleted_at            | None                                 |
+   | source_backup_id                      | None                                 |
+   | share_server_id                       | None                                 |
+   | host                                  | manila@lima#shares                   |
+   | export_locations                      |                                      |
+   | properties                            | deadline='01/30/16'                  |
+   +---------------------------------------+--------------------------------------+
 
 Delete and force-delete share
 -----------------------------
@@ -581,54 +673,32 @@ to grant permissions for this action to other roles.
    The configuration file ``policy.yaml`` may be used from different places.
    The path ``/etc/manila/policy.yaml`` is one of expected paths by default.
 
-Use **manila delete <share_name_or_ID>** command to delete a specified share:
+Use **openstack share delete <share_name_or_ID>** command to delete a specified share:
 
 .. code-block:: console
 
-   $ manila delete %share_name_or_id%
+   $ openstack share delete %share_name_or_id%
 
 .. code-block:: console
 
-   $ manila delete %share_name_or_id% --consistency-group %consistency-group-id%
-
-
-If you try to delete the share in one of the transitional
-state using soft-deletion you'll get an error:
+   $ openstack share delete %share_name_or_id% --share-group %share-group-id%
 
 .. code-block:: console
 
-   $ manila delete Share2
-   Delete for share 195e3ba2-9342-446a-bc93-a584551de0ac failed: Invalid share: Share status must be one of ('available', 'error', 'inactive'). (HTTP 403) (Request-ID: req-9a77b9a0-17d2-4d97-8a7a-b7e23c27f1fe)
-   ERROR: Unable to delete any of the specified shares.
-
-A share cannot be deleted in a transitional status, that it why an error from
-``python-manilaclient`` appeared.
+   $ openstack share delete Share2
 
 Print the list of all shares for all projects:
 
 .. code-block:: console
 
-   $ manila list --all-tenants
-   +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+----------------------+-------------------+
-   | ID                                   | Name    | Size | Share Proto | Status    | Is Public | Share Type Name | Host                 | Availability Zone |
-   +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+----------------------+-------------------+
-   | 10f5a2a1-36f5-45aa-a8e6-00e94e592e88 | Share1  | 1    | NFS         | available | False     | my_type         | manila@paris#epsilon | nova              |
-   | 195e3ba2-9342-446a-bc93-a584551de0ac | Share2  | 1    | NFS         | available | False     | default         | manila@london#LONDON | nova              |
-   +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+----------------------+-------------------+
+   $ openstack share delete --force Share2
 
-Force-delete Share2 and check that it is absent in the list of shares,
-run:
-
-.. code-block:: console
-
-   $ manila force-delete Share2
-
-   $ manila list
-   +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+----------------------+-------------------+
-   | ID                                   | Name    | Size | Share Proto | Status    | Is Public | Share Type Name | Host                 | Availability Zone |
-   +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+----------------------+-------------------+
-   | 10f5a2a1-36f5-45aa-a8e6-00e94e592e88 | Share1  | 1    | NFS         | available | False     | my_type         | manila@paris#epsilon | nova              |
-   +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+----------------------+-------------------+
+   $ openstack share list --all
+   +--------------------------------------+----------------+------+-------------+--------------+-----------+-----------------+------------------------+-------------------+
+   | ID                                   | Name           | Size | Share Proto | Status       | Is Public | Share Type Name | Host                   | Availability Zone |
+   +--------------------------------------+----------------+------+-------------+--------------+-----------+-----------------+------------------------+-------------------+
+   | c1de2cdc-2ccf-4e8d-afe9-b25c84bf3953 | Share1         | 1    | NFS         | available    | False     | default         | manila@paris#shares    | manila-zone-1     |
+   +--------------------------------------+----------------+------+-------------+--------------+-----------+-----------------+------------------------+-------------------+
 
 .. _access_to_share:
 
@@ -665,82 +735,44 @@ You must also specify one of these supported authentication methods:
   contain periods.
 
 Try to mount NFS share with export path
-``10.0.0.4:/shares/manila_share_a5fb1ab7_0bbd_465b_ac14_05706294b6e9`` on the
+``10.0.0.10:/shares/share_cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2789-f1f5-4171-9e43-3afabddf8b5f`` on the
 node with IP address ``10.0.0.13``:
 
 .. code-block:: console
 
-   $ sudo mount -v -t nfs 10.0.0.4:/shares/manila_share_a5fb1ab7_0bbd_465b_ac14_05706294b6e9 /mnt/
+   $ sudo mount -v -t nfs 10.0.0.10:/shares/share_cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2789-f1f5-4171-9e43-3afabddf8b5f /mnt/
    mount.nfs: timeout set for Tue Oct  6 10:37:23 2015
-   mount.nfs: trying text-based options 'vers=4,addr=10.0.0.4,clientaddr=10.0.0.13'
+   mount.nfs: trying text-based options 'vers=4,addr=10.0.0.10,clientaddr=10.0.0.13'
    mount.nfs: mount(2): Permission denied
-   mount.nfs: access denied by server while mounting 10.0.0.4:/shares/manila_share_a5fb1ab7_0bbd_465b_ac14_05706294b6e9
+   mount.nfs: access denied by server while mounting 10.0.0.10:/shares/share_cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2789-f1f5-4171-9e43-3afabddf8b5f
 
 An error message "Permission denied" appeared, so you are not allowed to mount
 a share without an access rule. Allow access to the share with ``ip`` access
-type and ``10.0.0.13`` IP address:
+type and ``10.0.2.13`` IP address:
 
 .. code-block:: console
 
-   $ manila access-allow Share1 ip 10.0.0.13 --access-level rw
+   $ openstack share access create Share1 ip 10.0.2.13 --access-level rw
    +--------------+--------------------------------------+
-   | Property     | Value                                |
+   | Field        | Value                                |
    +--------------+--------------------------------------+
-   | share_id     | 10f5a2a1-36f5-45aa-a8e6-00e94e592e88 |
-   | access_type  | ip                                   |
-   | access_to    | 10.0.0.13                            |
+   | id           | 56d344c5-95cb-477b-bf33-39f6e9b43edf |
+   | share_id     | c1de2cdc-2ccf-4e8d-afe9-b25c84bf3953 |
    | access_level | rw                                   |
-   | state        | new                                  |
-   | id           | de715226-da00-4cfc-b1ab-c11f3393745e |
+   | access_to    | 10.0.2.13                            |
+   | access_type  | ip                                   |
+   | state        | queued_to_apply                      |
+   | access_key   | None                                 |
+   | created_at   | 2025-04-05T23:44:31.165395           |
+   | updated_at   | None                                 |
+   | properties   |                                      |
    +--------------+--------------------------------------+
 
 Try to mount a share again. This time it is mounted successfully:
 
 .. code-block:: console
 
-   $ sudo mount -v -t nfs 10.0.0.4:/shares/manila_share_a5fb1ab7_0bbd_465b_ac14_05706294b6e9 /mnt/
-
-Since it is allowed node on 10.0.0.13 read and write access, try to create
-a file on a mounted share:
-
-.. code-block:: console
-
-   $ cd /mnt
-   $ ls
-   lost+found
-   $ touch my_file.txt
-
-Connect via SSH to the ``10.0.0.4`` node and check new file `my_file.txt`
-in the ``/shares/manila_share_a5fb1ab7_0bbd_465b_ac14_05706294b6e9`` directory:
-
-.. code-block:: console
-
-   $ ssh 10.0.0.4
-   $ cd /shares
-   $ ls
-   manila_share_a5fb1ab7_0bbd_465b_ac14_05706294b6e9
-   $ cd manila_share_a5fb1ab7_0bbd_465b_ac14_05706294b6e9
-   $ ls
-   lost+found  my_file.txt
-
-You have successfully created a file from instance that was given access by
-its IP address.
-
-Allow access to the share with ``user`` access type:
-
-.. code-block:: console
-
-   $ manila access-allow Share1 user demo --access-level rw
-   +--------------+--------------------------------------+
-   | Property     | Value                                |
-   +--------------+--------------------------------------+
-   | share_id     | 10f5a2a1-36f5-45aa-a8e6-00e94e592e88 |
-   | access_type  | user                                 |
-   | access_to    | demo                                 |
-   | access_level | rw                                   |
-   | state        | new                                  |
-   | id           | 4f391c6b-fb4f-47f5-8b4b-88c5ec9d568a |
-   +--------------+--------------------------------------+
+   $ sudo mount -v -t nfs 10.0.0.10:/shares/share_cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2789-f1f5-4171-9e43-3afabddf8b5f /mnt/
 
 .. note::
 
@@ -769,27 +801,19 @@ you list permissions for a share:
 
 .. code-block:: console
 
-   $ manila access-list Share1
-   +--------------------------------------+-------------+------------+--------------+--------+
-   | id                                   | access type | access to  | access level | state  |
-   +--------------------------------------+-------------+------------+--------------+--------+
-   | 4f391c6b-fb4f-47f5-8b4b-88c5ec9d568a | user        | demo       | rw           | error  |
-   | de715226-da00-4cfc-b1ab-c11f3393745e | ip          | 10.0.0.13  | rw           | active |
-   +--------------------------------------+-------------+------------+--------------+--------+
+   $ openstack share access list Share1
+   +--------------------------------------+-------------+-----------+--------------+--------+------------+----------------------------+-------------------------+
+   | ID                                   | Access Type | Access To | Access Level | State  | Access Key | Created At                 | Updated At              |
+   +--------------------------------------+-------------+-----------+--------------+--------+------------+----------------------------+-------------------------+
+   | 56d344c5-95cb-477b-bf33-39f6e9b43edf | ip          | 10.0.0.13 | rw           | active | None       | 2025-04-05T23:44:31.165395 | 2025-04-05T23:45:50.780 |
+   +--------------------------------------+-------------+-----------+--------------+--------+------------+----------------------------+-------------------------+
 
 Deny access to the share and check that deleted access rule is absent in the
 access rule list:
 
 .. code-block:: console
 
-   $ manila access-deny Share1 de715226-da00-4cfc-b1ab-c11f3393745e
-
-   $ manila access-list Share1
-   +--------------------------------------+-------------+-----------+--------------+-------+
-   | id                                   | access type | access to | access level | state |
-   +--------------------------------------+-------------+-----------+--------------+-------+
-   | 4f391c6b-fb4f-47f5-8b4b-88c5ec9d568a | user        | demo      | rw           | error |
-   +--------------------------------------+-------------+-----------+--------------+-------+
+   $ openstack share access delete Share1 56d344c5-95cb-477b-bf33-39f6e9b43edf
 
 .. note::
 
