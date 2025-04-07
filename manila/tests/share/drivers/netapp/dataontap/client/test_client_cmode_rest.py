@@ -935,6 +935,23 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.assertEqual(result, expected)
 
+    def test_get_volume_snapshot_attributes(self):
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        return_value = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=return_value))
+
+        expected = {
+            'snapdir-access-enabled': 'false',
+            'snapshot-policy': 'daily',
+        }
+
+        result = self.client.get_volume_snapshot_attributes(fake.SHARE_NAME)
+        self.assertEqual(result, expected)
+
     def test_get_volume(self):
         return_value = fake.GENERIC_EXPORT_POLICY_RESPONSE_AND_VOLUMES
 

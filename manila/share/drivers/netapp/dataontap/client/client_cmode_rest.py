@@ -862,6 +862,25 @@ class NetAppRestClient(object):
         return result['records'][0]['nas']['path']
 
     @na_utils.trace
+    def get_volume_snapshot_attributes(self, volume_name):
+        """Returns snapshot attributes"""
+        volume = self._get_volume_by_args(vol_name=volume_name)
+        vol_uuid = volume['uuid']
+        query = {
+            'fields': 'snapshot_directory_access_enabled,snapshot_policy.name'
+        }
+
+        result = self.send_request(
+            f'/storage/volumes/{vol_uuid}', 'get', query=query)
+
+        snap_attributes = {}
+        snap_attributes['snapshot-policy'] = result.get(
+            'snapshot_policy', '').get('name')
+        snap_attributes['snapdir-access-enabled'] = result.get(
+            'snapshot_directory_access_enabled', 'false')
+        return snap_attributes
+
+    @na_utils.trace
     def get_volume(self, volume_name):
         """Returns the volume with the specified name, if present."""
         query = {
