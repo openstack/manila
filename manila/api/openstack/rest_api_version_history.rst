@@ -473,7 +473,7 @@ user documentation.
   Allows updating the access rule's access type.
 
 
-2.89
-----
+2.89 (Maximum in 2025.1/Epoxy)
+------------------------------
   Added support for passing share network subnet metadata updates to share
   backend driver.
