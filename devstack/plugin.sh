@@ -52,6 +52,19 @@ function _clean_zfsonlinux_data {
     done
 }
 
+function _clean_ip_tables {
+    for ipcmd in iptables ip6tables; do
+        # cleanup rules in the "manila-storage" chain
+        sudo $ipcmd -S -v | sed "s/-c [0-9]* [0-9]* //g" | \
+            grep "manila-storage" | grep "\-A" | sed "s/-A/-D/g" | \
+                awk -v ipcmd="$ipcmd" '{print "sudo " ipcmd,$0}' | bash
+        # cleanup the "manila-storage" chain
+        sudo $ipcmd -S -v | sed "s/-c [0-9]* [0-9]* //g" | \
+            grep "manila-storage" | grep "\-N" |  sed "s/-N/-X/g" | \
+                awk -v ipcmd="$ipcmd" '{print "sudo " ipcmd,$0}' | bash
+    done
+}
+
 # cleanup_manila - Remove residual data files, anything left over from previous
 # runs that a clean run would need to clean up
 function cleanup_manila {
@@ -59,6 +72,7 @@ function cleanup_manila {
     _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
     _clean_manila_lvm_backing_file $SHARE_GROUP
     _clean_zfsonlinux_data
+    _clean_ip_tables
 
     if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
         remove_uwsgi_config "$MANILA_UWSGI_CONF" "$MANILA_WSGI"
