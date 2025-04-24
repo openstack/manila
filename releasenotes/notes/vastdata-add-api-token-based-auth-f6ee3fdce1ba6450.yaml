@@ -1,0 +1,6 @@
+---
+features:
+    - Added support for authentication using an API token in the VAST Manila driver.
+      Introduced the `vast_api_token` configuration option, allowing users to
+      authenticate with a pre-generated API token instead of using `vast_mgmt_user`
+      and `vast_mgmt_password`.

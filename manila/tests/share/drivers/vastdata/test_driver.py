@@ -94,7 +94,7 @@ class VASTShareDriverTestCase(unittest.TestCase):
         self.assertFalse(session.ssl_verify)
         self.assertEqual(session.base_url, "https://test:443/api")
 
-    @ddt.data("vast_mgmt_user", "vast_vippool_name")
+    @ddt.data("vast_mgmt_user", "vast_vippool_name", "vast_mgmt_host")
     def test_do_setup_missing_required_fields(self, missing_field):
         self.fake_conf.set_default(missing_field, None)
         _driver = driver.VASTShareDriver(
@@ -102,6 +102,16 @@ class VASTShareDriverTestCase(unittest.TestCase):
         )
         with self.assertRaises(exception.VastDriverException):
             _driver.do_setup(self._context)
+
+    def test_do_setup_with_api_token(self):
+        self.fake_conf.set_default("vast_mgmt_user", None)
+        self.fake_conf.set_default("vast_mgmt_password", None)
+        self.fake_conf.set_default("vast_api_token", "test_token")
+        _driver = driver.VASTShareDriver(
+            execute=mock.MagicMock(), configuration=self.fake_conf
+        )
+        _driver.do_setup(self._context)
+        self.assertEqual(_driver.rest.session.token, "test_token")
 
     @mock.patch(
         "manila.share.drivers.vastdata.rest.Session.get",

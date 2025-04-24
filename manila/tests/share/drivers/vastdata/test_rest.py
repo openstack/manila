@@ -101,8 +101,12 @@ class TestSession(unittest.TestCase):
 
     def setUp(self):
         self.session = vast_rest.Session(
-            "host", "username",
-            "password", False, "1.0"
+            "host",
+            "username",
+            "password",
+            "",
+            False,
+            "1.0",
         )
 
     @mock.patch("requests.Session.request")
@@ -274,6 +278,7 @@ class ViewTest(unittest.TestCase):
                 "host",
                 "username",
                 "password",
+                "",
                 True,
                 "1.0"
             )
@@ -324,6 +329,7 @@ class TestCapacityMetrics(unittest.TestCase):
             "host",
             "username",
             "password",
+            "",
             True,
             "1.0"
         )
@@ -344,7 +350,12 @@ class TestFolders(unittest.TestCase):
     )
     def setUp(self):
         self.rest_api = vast_rest.RestApi(
-            "host", "username", "password", True, "1.0"
+            "host",
+            "username",
+            "password",
+            "",
+            True,
+            "1.0",
         )
 
     @ddt.data(
@@ -446,6 +457,7 @@ class VipPoolTest(unittest.TestCase):
             "host",
             "username",
             "password",
+            "",
             True,
             "1.0"
         )
@@ -506,7 +518,12 @@ class TestRestApi(unittest.TestCase):
             mock.MagicMock(sys_version="1.0")
         ]
         rest_api = vast_rest.RestApi(
-            "host", "username", "password", True, "1.0"
+            "host",
+            "username",
+            "password",
+            "",
+            True,
+            "1.0",
         )
         version = rest_api.get_sw_version()
         self.assertEqual(version, "1.0")
