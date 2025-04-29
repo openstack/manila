@@ -311,7 +311,7 @@ function configure_manila {
     set_backend_availability_zones $MANILA_ENABLED_BACKENDS
 
     if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
-        write_uwsgi_config "$MANILA_UWSGI_CONF" "$MANILA_WSGI" "/share"
+        write_uwsgi_config "$MANILA_UWSGI_CONF" "$MANILA_WSGI" "/share" "" "manila-api"
     fi
 
     if [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then

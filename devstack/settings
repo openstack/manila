@@ -106,7 +106,7 @@ MANILA_USE_MOD_WSGI=${MANILA_USE_MOD_WSGI:-False}
 # 'governance' project. See:
 # https://governance.openstack.org/tc/goals/pike/deploy-api-in-wsgi.html#completion-criteria
 MANILA_USE_UWSGI=${MANILA_USE_UWSGI:-True}
-MANILA_WSGI=$MANILA_BIN_DIR/manila-wsgi
+MANILA_WSGI=manila.wsgi.api:application
 MANILA_UWSGI_CONF=$MANILA_CONF_DIR/manila-uwsgi.ini
 
 if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
