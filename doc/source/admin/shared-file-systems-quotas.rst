@@ -16,30 +16,37 @@ not set up limits explicitly, the service does not impose any rate limits
 but it enforces default resource limits (also referred to as ``default
 quotas``).
 
-Users can query their absolute limits using the :command:`manila
-absolute-limits` command.
+Users can query their absolute limits using the :command:`openstack share limits show --absolute` command.
 
 .. code-block:: console
 
-   $ manila absolute-limits
-   +----------------------------+-------+
-   | Name                       | Value |
-   +----------------------------+-------+
-   | maxTotalShareGigabytes     | 1000  |
-   | maxTotalShareNetworks      | 10    |
-   | maxTotalShareSnapshots     | 50    |
-   | maxTotalShares             | 50    |
-   | maxTotalSnapshotGigabytes  | 1000  |
-   | maxTotalShareReplicas      | 100   |
-   | maxTotalReplicaGigabytes   | 1000  |
-   | totalShareGigabytesUsed    | 1     |
-   | totalShareNetworksUsed     | 2     |
-   | totalShareSnapshotsUsed    | 1     |
-   | totalSharesUsed            | 1     |
-   | totalSnapshotGigabytesUsed | 1     |
-   | totalShareReplicasUsed     | 1     |
-   | totalReplicaGigabytesUsed  | 1     |
-   +----------------------------+-------+
+   $ openstack share limits show --absolute
+   +------------------------------+-------+
+   | Name                         | Value |
+   +------------------------------+-------+
+   | maxTotalShares               |    50 |
+   | maxTotalShareSnapshots       |    50 |
+   | maxTotalShareGigabytes       |  1000 |
+   | maxTotalSnapshotGigabytes    |  1000 |
+   | maxTotalShareNetworks        |    10 |
+   | maxTotalShareGroups          |    50 |
+   | maxTotalShareGroupSnapshots  |    50 |
+   | maxTotalShareReplicas        |   100 |
+   | maxTotalReplicaGigabytes     |  1000 |
+   | maxTotalShareBackups         |    10 |
+   | maxTotalBackupGigabytes      |  1000 |
+   | totalSharesUsed              |     2 |
+   | totalShareSnapshotsUsed      |     0 |
+   | totalShareGigabytesUsed      |     2 |
+   | totalSnapshotGigabytesUsed   |     0 |
+   | totalShareNetworksUsed       |     0 |
+   | totalShareGroupsUsed         |     0 |
+   | totalShareGroupSnapshotsUsed |     0 |
+   | totalShareReplicasUsed       |     0 |
+   | totalReplicaGigabytesUsed    |     0 |
+   | totalShareBackupsUsed        |     0 |
+   | totalBackupGigabytesUsed     |     0 |
+   +------------------------------+-------+
 
 API Rate Limits
 ~~~~~~~~~~~~~~~
@@ -90,14 +97,14 @@ To see the rate limits, run:
 
 .. code-block:: console
 
-   $ manila rate-limits
-   +--------+------------+-------+--------+--------+----------------------+
-   | Verb   | URI        | Value | Remain | Unit   | Next_Available       |
-   +--------+------------+-------+--------+--------+----------------------+
-   | DELETE | "*"        | 120   | 120    | MINUTE | 2015-10-20T15:17:20Z |
-   | POST   | "*/shares" | 120   | 120    | MINUTE | 2015-10-20T15:17:20Z |
-   | PUT    | "*/shares" | 120   | 120    | MINUTE | 2015-10-20T15:17:20Z |
-   +--------+------------+-------+--------+--------+----------------------+
+   $ openstack share limits show --rate
+   +--------+----------+------------+-------+-----------+--------+----------------------+
+   | Verb   | Regex    | URI        | Value | Remaining | Unit   | Next Available       |
+   +--------+----------+------------+-------+-----------+--------+----------------------+
+   | POST   | ^/shares | "*/shares" |   120 |       120 | MINUTE | 2025-02-25T02:15:39Z |
+   | PUT    | .*       | "*/shares" |   120 |       120 | MINUTE | 2025-02-25T02:15:39Z |
+   | DELETE | .*       | "*"        |   120 |       120 | MINUTE | 2025-02-25T02:15:39Z |
+   +--------+----------+------------+-------+-----------+--------+----------------------+
 
 Default Resource Quotas
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -113,37 +120,34 @@ set on capacity with ``gigabytes`` (total size of shares allowed),
 
 If these resource quotas are not set by an administrator, default quotas
 that are hardcoded in the service will apply. To view these
-default quotas, the administrator can use the :command:`manila
-quota-defaults` command:
+default quotas, the administrator can use the :command:`openstack share quota show –class default` command:
 
 .. code-block:: console
 
-   $ manila quota-defaults
-   +-----------------------+------------------------------------+
-   | Property              | Value                              |
-   +-----------------------+------------------------------------+
-   | id                    | 1cc2154937bd40f4815d5f168d372263   |
-   | gigabytes             | 1000                               |
-   | per_share_gigabytes   | -1                                 |
-   | snapshot_gigabytes    | 1000                               |
-   | snapshots             | 50                                 |
-   | shares                | 50                                 |
-   | share_networks        | 10                                 |
-   | share_groups          | 50                                 |
-   | share_group_snapshots | 50                                 |
-   | share_replicas        | 100                                |
-   | replica_gigabytes     | 1000                               |
-   +-----------------------+------------------------------------+
+   $ openstack share quota show %project_id% --defaults
+   +-----------------------+----------------------------------+
+   | Field                 | Value                            |
+   +-----------------------+----------------------------------+
+   | backup_gigabytes      | 1000                             |
+   | backups               | 10                               |
+   | gigabytes             | 1000                             |
+   | id                    | a0ce678da60e4ca18010016d44ee6e83 |
+   | per_share_gigabytes   | -1                               |
+   | replica_gigabytes     | 1000                             |
+   | share_group_snapshots | 50                               |
+   | share_groups          | 50                               |
+   | share_networks        | 10                               |
+   | share_replicas        | 100                              |
+   | shares                | 50                               |
+   | snapshot_gigabytes    | 1000                             |
+   | snapshots             | 50                               |
+   +-----------------------+----------------------------------+
 
-Administrators can modify default quotas with the :command:`manila
-quota-class-update` command:
+Administrators can modify default quotas with the :command:`openstack share quota set --class default` command:
 
 .. code-block:: console
 
-    manila quota-class-update default \
-        --shares 30                   \
-        --snapshots 50                \
-        --share-groups 15
+    openstack share quota set --class default --shares 30 --snapshots 50 --share-groups 15
 
 
 Alternatively, you can also specify these defaults via the ``manila.conf``.
@@ -171,7 +175,7 @@ The administrator can customize quotas for a specific project, or for a
 specific user within a project context, or for a share type used by users of
 a project.
 
-To list the quotas for a project or user, use the :command:`manila quota-show`
+To list the quotas for a project or user, use the :command:`openstack share quota show`
 command. If you specify the optional ``--user`` parameter, you get the
 quotas for this user in the specified project. If you omit this parameter,
 you get the quotas for the specified project. If there are no overrides, the
@@ -187,28 +191,30 @@ quotas shown will match the defaults.
 
 .. code-block:: console
 
-   $ manila quota-show --tenant %project_id% --user %user_id%
-   +-----------------------+-----------------------------------+
-   | Property              | Value                             |
-   +-----------------------+-----------------------------------+
-   | id                    | d99c76b43b1743fd822d26ccc915989c  |
-   | gigabytes             | 1000                              |
-   | per_share_gigabytes   | -1                                |
-   | snapshot_gigabytes    | 1000                              |
-   | snapshots             | 50                                |
-   | shares                | 50                                |
-   | share_networks        | 10                                |
-   | share_groups          | 50                                |
-   | share_group_snapshots | 50                                |
-   | share_replicas        | 100                               |
-   | replica_gigabytes     | 1000                              |
-   +-----------------------+-----------------------------------+
+   $ openstack share quota show %project_id% --user %user_id%
+   +-----------------------+----------------------------------+
+   | Field                 | Value                            |
+   +-----------------------+----------------------------------+
+   | backup_gigabytes      | 1000                             |
+   | backups               | 10                               |
+   | gigabytes             | 1000                             |
+   | id                    | a0ce678da60e4ca18010016d44ee6e83 |
+   | per_share_gigabytes   | -1                               |
+   | replica_gigabytes     | 1000                             |
+   | share_group_snapshots | 50                               |
+   | share_groups          | 50                               |
+   | share_networks        | 10                               |
+   | share_replicas        | 100                              |
+   | shares                | 50                               |
+   | snapshot_gigabytes    | 1000                             |
+   | snapshots             | 50                               |
+   +-----------------------+----------------------------------+
 
-These quotas can be updated with the :command:`manila quota-update` command.
+These quotas can be updated with the :command:`openstack share quota set` command.
 
 .. code-block:: console
 
-   $ manila quota-update %project_id% --user %user_id% --shares 49 --snapshots 49
+   $ openstack share quota set %project_id% --user %user_id% --shares 49 --snapshots 49
 
 The service will prevent the quota being set lower than the current
 consumption. However, a quota update can still be made if necessary with
@@ -216,7 +222,7 @@ the``force`` key.
 
 .. code-block:: console
 
-   $ manila quota-update %project_id% --shares 51 --snapshots 51 --force
+   $ openstack share quota set %project_id% --shares 51 --snapshots 51 --force
 
 The administrator can also update the quotas for a specific share type. Share
 Type quotas cannot be set for individual users within a project. They can only
@@ -224,14 +230,14 @@ be applied across all users of a particular project.
 
 .. code-block:: console
 
-   $ manila quota-update %project_id% --share-type %share_type_id%
+   $ openstack share quota set %project_id% --share-type %share_type_id%
 
 To revert quotas to default for a project or for a user, simply delete
 the quota that has been set:
 
 .. code-block:: console
 
-   $ manila quota-delete --tenant %project_id% --user-id %user_id%
+   $ openstack share quota delete %project_id% --user %user_id%
 
 Share type quotas can be reverted in the same way. Except, Share Type quotas
 can not be set for individual users within a project, so they cannot be
@@ -239,4 +245,4 @@ unset either.
 
 .. code-block:: console
 
-   $ manila quota-delete --tenant %project_id% --share-type %share_type_id%
+   $ openstack share quota delete %project_id% --share-type %share_type_id%
