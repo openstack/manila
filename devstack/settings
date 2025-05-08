@@ -97,17 +97,9 @@ MANILA_SERVICE_SECGROUP="manila-service"
 # migrations again.
 MANILA_USE_DOWNGRADE_MIGRATIONS=${MANILA_USE_DOWNGRADE_MIGRATIONS:-"False"}
 
-# Toggle for deploying manila-api service with uWSGI
-# Set it as True, because starting with Pike it is requirement from
-# 'governance' project. See:
-# https://governance.openstack.org/tc/goals/pike/deploy-api-in-wsgi.html#completion-criteria
-MANILA_USE_UWSGI=${MANILA_USE_UWSGI:-True}
 MANILA_WSGI=manila.wsgi.api:application
 MANILA_UWSGI_CONF=$MANILA_CONF_DIR/manila-uwsgi.ini
-
-if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
-    MANILA_ENDPOINT_BASE=$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST/share
-fi
+MANILA_ENDPOINT_BASE=$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST/share
 
 # Common info for Generic driver(s)
 SHARE_DRIVER=${SHARE_DRIVER:-manila.share.drivers.generic.GenericShareDriver}
