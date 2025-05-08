@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    The WSGI script ``manila-wsgi`` has been removed. Deployment tooling
+    should instead reference the Python module path for the wsgi module in
+    Manila, ``manila.wsgi.api:application`` if their chosen WSGI server
+    supports this (gunicorn, uWSGI, etc.) or implement a ``.wsgi`` script
+    themselves if not (mod_wsgi).
