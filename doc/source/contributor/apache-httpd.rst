@@ -28,10 +28,6 @@ On RHEL/CentOS/Fedora it is::
 
     /etc/httpd/conf.d/uwsgi-manila.conf
 
-On SLES/OpenSUSE it is::
-
-    /etc/apache2/vhosts.d/uwsgi-manila.conf
-
 On Debian/Ubuntu it is::
 
     /etc/apache2/sites-available/uwsgi-manila.conf
@@ -56,10 +52,6 @@ On RHEL/CentOS/Fedora::
 
     sudo dnf install uwsgi-plugin-python3
 
-On SLES/OpenSUSE::
-
-    sudo zypper install uwsgi-python3
-
 On Ubuntu/Debian::
 
     sudo apt-get install uwsgi-plugin-python3
@@ -82,10 +74,6 @@ appropiate location for your apache server.
 On RHEL/CentOS/Fedora it is::
 
     /etc/httpd/conf.d/mod_wsgi-manila.conf
-
-On SLES/OpenSUSE it is::
-
-    /etc/apache2/vhosts.d/mod_wsgi-manila.conf
 
 On Debian/Ubuntu it is::
 
