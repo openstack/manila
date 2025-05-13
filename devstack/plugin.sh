@@ -74,9 +74,7 @@ function cleanup_manila {
     _clean_zfsonlinux_data
     _clean_ip_tables
 
-    if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
-        remove_uwsgi_config "$MANILA_UWSGI_CONF" "$MANILA_WSGI"
-    fi
+    remove_uwsgi_config "$MANILA_UWSGI_CONF" "$MANILA_WSGI"
 }
 
 # configure_backends - Configures backends enabled by MANILA_ENABLED_BACKENDS
@@ -308,9 +306,7 @@ function configure_manila {
     set_config_opts DEFAULT
     set_backend_availability_zones $MANILA_ENABLED_BACKENDS
 
-    if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
-        write_uwsgi_config "$MANILA_UWSGI_CONF" "$MANILA_WSGI" "/share" "" "manila-api"
-    fi
+    write_uwsgi_config "$MANILA_UWSGI_CONF" "$MANILA_WSGI" "/share" "" "manila-api"
 
     if [[ "$MANILA_ENFORCE_SCOPE" == True ]] ; then
         iniset $MANILA_CONF oslo_policy enforce_scope true
@@ -816,43 +812,21 @@ function configure_samba {
 
 # start_manila_api - starts manila API services and checks its availability
 function start_manila_api {
-
-    # NOTE(vkmc) If both options are set to true we are using uwsgi
-    # as the preferred way to deploy manila. See
-    # https://governance.openstack.org/tc/goals/pike/deploy-api-in-wsgi.html#uwsgi-vs-mod-wsgi
-    # for more details
-    if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
-        echo "Deploying with UWSGI"
-        run_process m-api "$(which uwsgi) --ini $MANILA_UWSGI_CONF --procname-prefix manila-api"
-    else
-        echo "Deploying with built-in server"
-        run_process m-api "$MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
-    fi
+    echo "Deploying with UWSGI"
+    run_process m-api "$(which uwsgi) --ini $MANILA_UWSGI_CONF --procname-prefix manila-api"
 
     echo "Waiting for Manila API to start..."
-    # This is a health check against the manila-api service we just started.
-    # We use the port ($REAL_MANILA_SERVICE_PORT) here because we want to hit
-    # the bare service endpoint, even if the tls tunnel should be enabled.
-    # We're making sure that the internal port is checked using unencryted
-    # traffic at this point.
 
-    local MANILA_HEALTH_CHECK_URL=$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$REAL_MANILA_SERVICE_PORT
-
-    if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
-        MANILA_HEALTH_CHECK_URL=$MANILA_ENDPOINT_BASE
-    fi
-
-    if ! wait_for_service $SERVICE_TIMEOUT $MANILA_HEALTH_CHECK_URL; then
+    if ! wait_for_service $SERVICE_TIMEOUT $MANILA_ENDPOINT_BASE; then
         die $LINENO "Manila API did not start"
     fi
 
     # Start proxies if enabled
     #
-    # If tls-proxy is enabled and MANILA_USE_UWSGI is set to True, a generic
-    # http-services-tls-proxy will be set up to handle tls-termination to
-    # manila as well as all the other https services, we don't need to
-    # create our own.
-    if [ $(trueorfalse False MANILA_USE_UWSGI) == False ] && is_service_enabled tls-proxy; then
+    # If tls-proxy is enabled, a generic http-services-tls-proxy will be set up
+    # to handle tls-termination to manila as well as all the other https
+    # services, we don't need to create our own.
+    if is_service_enabled tls-proxy; then
         start_tls_proxy manila '*' $MANILA_SERVICE_PORT $MANILA_SERVICE_HOST $MANILA_SERVICE_PORT_INT
     fi
 }
