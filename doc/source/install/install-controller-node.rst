@@ -16,7 +16,6 @@ Note that installation and configuration vary by distribution.
 .. toctree::
    :maxdepth: 1
 
-   install-controller-obs.rst
    install-controller-rdo.rst
    install-controller-ubuntu.rst
    install-controller-debian.rst

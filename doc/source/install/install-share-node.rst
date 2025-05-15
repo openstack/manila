@@ -21,7 +21,6 @@ Note that installation and configuration vary by distribution.
 .. toctree::
    :maxdepth: 1
 
-   install-share-obs.rst
    install-share-rdo.rst
    install-share-ubuntu.rst
    install-share-debian.rst

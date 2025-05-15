@@ -280,8 +280,8 @@ Restart all Shared File Systems services (manila-share, manila-scheduler and
 manila-api) and neutron services (neutron-\*). This step is specific to your
 environment. If you are running in devstack for example, you have to log into
 screen (``screen -r``), stop the process (``Ctrl^C``) and run it again. If you
-are running it in a distro like RHEL or SUSE, a service command (for example
-*service manila-api restart*) is used to restart the service.
+are running it in a distro like RHEL, a systemd command (for example
+*systemctl restart manila-api*) is used to restart the service.
 
 Step 5 - Configure OpenStack Networks
 *************************************

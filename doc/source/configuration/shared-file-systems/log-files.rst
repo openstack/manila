@@ -10,8 +10,7 @@ runs.
    :header-rows: 1
 
    * - Log file
-     - Service/interface (for CentOS, Fedora, openSUSE, Red Hat Enterprise
-       Linux, and SUSE Linux Enterprise)
+     - Service/interface (for CentOS, Fedora and Red Hat Enterprise Linux)
      - Service/interface (for Ubuntu and Debian)
    * - ``api.log``
      - ``openstack-manila-api``
