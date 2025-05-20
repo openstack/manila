@@ -713,7 +713,7 @@ class NetAppRestClient(object):
 
     @na_utils.trace
     def qos_policy_group_create(self, qos_policy_group_name, vserver,
-                                max_throughput=None):
+                                max_throughput=None, min_throughput=None):
         """Creates a QoS policy group."""
 
         body = {
@@ -730,6 +730,17 @@ class NetAppRestClient(object):
                 value = value.replace('b/s', '')
                 value = int(value)
                 body['fixed.max_throughput_mbps'] = math.ceil(value /
+                                                              units.Mi)
+        if min_throughput:
+            value = min_throughput.lower()
+            if 'iops' in min_throughput:
+                value = value.replace('iops', '')
+                value = int(value)
+                body['fixed.min_throughput_iops'] = value
+            else:
+                value = value.replace('b/s', '')
+                value = int(value)
+                body['fixed.min_throughput_mbps'] = math.ceil(value /
                                                               units.Mi)
         return self.send_request('/storage/qos/policies', 'post',
                                  body=body)
@@ -1791,7 +1802,8 @@ class NetAppRestClient(object):
         query = {
             'name': qos_policy_group_name,
             'fields': 'name,object_count,fixed.max_throughput_iops,'
-                      'fixed.max_throughput_mbps,svm.name',
+                      'fixed.max_throughput_mbps,svm.name,'
+                      'fixed.min_throughput_iops,fixed.min_throughput_mbps',
         }
         try:
             res = self.send_request('/storage/qos/policies', 'get',
@@ -1816,17 +1828,29 @@ class NetAppRestClient(object):
             'num-workloads': int(qos_policy_group_info.get('object_count')),
         }
 
-        iops = qos_policy_group_info.get('fixed', {}).get(
+        max_iops = qos_policy_group_info.get('fixed', {}).get(
             'max_throughput_iops')
-        mbps = qos_policy_group_info.get('fixed', {}).get(
+        max_mbps = qos_policy_group_info.get('fixed', {}).get(
             'max_throughput_mbps')
 
-        if iops:
-            policy_info['max-throughput'] = f'{iops}iops'
-        elif mbps:
-            policy_info['max-throughput'] = f'{mbps * 1024 * 1024}b/s'
+        if max_iops:
+            policy_info['max-throughput'] = f'{max_iops}iops'
+        elif max_mbps:
+            policy_info['max-throughput'] = f'{max_mbps * 1024 * 1024}b/s'
         else:
             policy_info['max-throughput'] = None
+
+        min_iops = qos_policy_group_info.get('fixed', {}).get(
+            'min_throughput_iops')
+        min_mbps = qos_policy_group_info.get('fixed', {}).get(
+            'min_throughput_mbps')
+
+        if min_iops:
+            policy_info['min-throughput'] = f'{min_iops}iops'
+        elif min_mbps:
+            policy_info['min-throughput'] = f'{min_mbps * 1024 * 1024}b/s'
+        else:
+            policy_info['min-throughput'] = None
 
         return policy_info
 

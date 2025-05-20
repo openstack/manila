@@ -5687,6 +5687,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     'policy-group': None,
                     'vserver': None,
                     'max-throughput': None,
+                    'min-throughput': None,
                     'num-workloads': None
                 },
             },
@@ -5720,6 +5721,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'vserver': qos_policy_group_info.get_child_content('vserver'),
             'max-throughput': qos_policy_group_info.get_child_content(
                 'max-throughput'),
+            'min-throughput': qos_policy_group_info.get_child_content(
+                'min-throughput'),
             'num-workloads': int(qos_policy_group_info.get_child_content(
                 'num-workloads')),
         }
@@ -5727,7 +5730,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def qos_policy_group_create(self, qos_policy_group_name, vserver,
-                                max_throughput=None):
+                                max_throughput=None, min_throughput=None):
         """Creates a QoS policy group."""
         api_args = {
             'policy-group': qos_policy_group_name,
@@ -5735,15 +5738,21 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         }
         if max_throughput:
             api_args['max-throughput'] = max_throughput
+        if min_throughput:
+            api_args['min-throughput'] = min_throughput
         return self.send_request('qos-policy-group-create', api_args, False)
 
     @na_utils.trace
-    def qos_policy_group_modify(self, qos_policy_group_name, max_throughput):
+    def qos_policy_group_modify(self, qos_policy_group_name, max_throughput,
+                                min_throughput):
         """Modifies a QoS policy group."""
         api_args = {
             'policy-group': qos_policy_group_name,
-            'max-throughput': max_throughput,
         }
+        if max_throughput:
+            api_args['max-throughput'] = max_throughput
+        if min_throughput:
+            api_args['min-throughput'] = min_throughput
         return self.send_request('qos-policy-group-modify', api_args, False)
 
     @na_utils.trace

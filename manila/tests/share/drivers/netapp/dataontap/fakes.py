@@ -100,7 +100,8 @@ SERVER_HOST = '%(host)s@%(backend)s' % {
     'host': HOST_NAME, 'backend': BACKEND_NAME}
 SERVER_HOST_2 = '%(host)s@%(backend)s' % {
     'host': HOST_NAME, 'backend': BACKEND_NAME_2}
-QOS_EXTRA_SPEC = 'netapp:maxiops'
+QOS_MAX_EXTRA_SPEC = 'netapp:maxiops'
+QOS_MIN_EXTRA_SPEC = 'netapp:miniops'
 QOS_SIZE_DEPENDENT_EXTRA_SPEC = 'netapp:maxbpspergib'
 QOS_NORMALIZED_SPEC = 'maxiops'
 QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
@@ -250,6 +251,7 @@ QOS_POLICY_GROUP = {
     'policy-group': QOS_POLICY_GROUP_NAME,
     'vserver': VSERVER1,
     'max-throughput': '3000iops',
+    'min-throughput': '20iops',
     'num-workloads': 1,
 }
 
@@ -364,7 +366,8 @@ SHARE_GROUP_REF = {
 EXTRA_SPEC_WITH_QOS = copy.deepcopy(EXTRA_SPEC)
 EXTRA_SPEC_WITH_QOS.update({
     'qos': True,
-    QOS_EXTRA_SPEC: '3000',
+    QOS_MAX_EXTRA_SPEC: '3000',
+    QOS_MIN_EXTRA_SPEC: '20',
 })
 
 EXTRA_SPEC_WITH_FPOLICY = copy.deepcopy(EXTRA_SPEC)

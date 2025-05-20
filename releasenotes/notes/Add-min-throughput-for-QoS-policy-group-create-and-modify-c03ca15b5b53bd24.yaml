@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    NetApp ONTAP driver is updated to consider min-throughput while creating
+    and modifying QoS policy. This parameter is considered only when admin has
+    configured it via share-type extra-specs. The extra-specs should have only
+    any single key from the list of ['netapp:miniops', 'netapp:miniopspergib',
+    'netapp:minbps', 'netapp:minbpspergib']. For more details, please check
+    `launchpad bug #2111273 <https://bugs.launchpad.net/manila/+bug/2111273>`_.

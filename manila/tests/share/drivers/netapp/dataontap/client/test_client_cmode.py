@@ -7996,6 +7996,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     'policy-group': None,
                     'vserver': None,
                     'max-throughput': None,
+                    'min-throughput': None,
                     'num-workloads': None
                 },
             },
@@ -8023,6 +8024,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     'policy-group': None,
                     'vserver': None,
                     'max-throughput': None,
+                    'min-throughput': None,
                     'num-workloads': None
                 },
             },
@@ -8031,14 +8033,21 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'qos-policy-group-get-iter', qos_policy_group_get_iter_args, False)
         self.assertDictEqual(fake.QOS_POLICY_GROUP, qos_info)
 
-    @ddt.data(None, fake.QOS_MAX_THROUGHPUT)
-    def test_qos_policy_group_create(self, max_throughput):
+    @ddt.data(
+        {'max_throughput': None, 'min_throughput': None},
+        {'max_throughput': fake.QOS_MAX_THROUGHPUT, 'min_throughput': None},
+        {'max_throughput': None, 'min_throughput': fake.QOS_MIN_THROUGHPUT},
+        {'max_throughput': fake.QOS_MAX_THROUGHPUT,
+         'min_throughput': fake.QOS_MIN_THROUGHPUT})
+    @ddt.unpack
+    def test_qos_policy_group_create(self, max_throughput, min_throughput):
         self.mock_object(self.client, 'send_request',
                          mock.Mock(return_value=fake.PASSED_RESPONSE))
 
         self.client.qos_policy_group_create(
             fake.QOS_POLICY_GROUP_NAME, fake.VSERVER_NAME,
-            max_throughput=max_throughput)
+            max_throughput=max_throughput,
+            min_throughput=min_throughput)
 
         qos_policy_group_create_args = {
             'policy-group': fake.QOS_POLICY_GROUP_NAME,
@@ -8047,6 +8056,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
         if max_throughput:
             qos_policy_group_create_args.update(
                 {'max-throughput': max_throughput})
+        if min_throughput:
+            qos_policy_group_create_args.update(
+                {'min-throughput': min_throughput})
 
         self.client.send_request.assert_called_once_with(
             'qos-policy-group-create', qos_policy_group_create_args, False)
@@ -8056,11 +8068,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          mock.Mock(return_value=fake.PASSED_RESPONSE))
 
         self.client.qos_policy_group_modify(fake.QOS_POLICY_GROUP_NAME,
-                                            '3000iops')
+                                            '3000iops', '20iops')
 
         qos_policy_group_modify_args = {
             'policy-group': fake.QOS_POLICY_GROUP_NAME,
             'max-throughput': '3000iops',
+            'min-throughput': '20iops',
         }
 
         self.client.send_request.assert_called_once_with(

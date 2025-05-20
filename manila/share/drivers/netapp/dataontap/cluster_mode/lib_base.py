@@ -138,11 +138,18 @@ class NetAppCmodeFileStorageLibrary(object):
         'compression': 'netapp:compression',
     }
 
-    QOS_SPECS = {
+    MAX_QOS_SPECS = {
         'netapp:maxiops': 'maxiops',
         'netapp:maxiopspergib': 'maxiopspergib',
         'netapp:maxbps': 'maxbps',
         'netapp:maxbpspergib': 'maxbpspergib',
+    }
+
+    MIN_QOS_SPECS = {
+        'netapp:miniops': 'miniops',
+        'netapp:miniopspergib': 'miniopspergib',
+        'netapp:minbps': 'minbps',
+        'netapp:minbpspergib': 'minbpspergib',
     }
 
     HIDE_SNAPDIR_CFG_MAP = {
@@ -151,7 +158,9 @@ class NetAppCmodeFileStorageLibrary(object):
         'default': None,
     }
 
-    SIZE_DEPENDENT_QOS_SPECS = {'maxiopspergib', 'maxbpspergib'}
+    SIZE_DEPENDENT_QOS_SPECS = {
+        'maxiopspergib', 'maxbpspergib', 'miniopspergib', 'minbpspergib'
+    }
 
     # Maps the NFS config used by share-servers
     NFS_CONFIG_EXTRA_SPECS_MAP = {
@@ -1602,25 +1611,41 @@ class NetAppCmodeFileStorageLibrary(object):
         if not extra_specs.get('qos'):
             return {}
 
-        normalized_qos_specs = {
-            self.QOS_SPECS[key.lower()]: value
+        normalized_max_qos_specs = {
+            self.MAX_QOS_SPECS[key.lower()]: value
             for key, value in extra_specs.items()
-            if self.QOS_SPECS.get(key.lower())
+            if self.MAX_QOS_SPECS.get(key.lower())
         }
-        if not normalized_qos_specs:
+
+        normalized_min_qos_specs = {
+            self.MIN_QOS_SPECS[key.lower()]: value
+            for key, value in extra_specs.items()
+            if self.MIN_QOS_SPECS.get(key.lower())
+        }
+
+        if not (normalized_max_qos_specs or normalized_min_qos_specs):
             msg = _("The extra-spec 'qos' is set to True, but no netapp "
                     "supported qos-specs have been specified in the share "
                     "type. Cannot provision a QoS policy. Specify any of the "
-                    "following extra-specs and try again: %s")
-            raise exception.NetAppException(msg % list(self.QOS_SPECS))
+                    "following max-throughput extra-specs and/or any of the "
+                    "following min-throughput extra-specs and try again: %s")
+            specs = self.MAX_QOS_SPECS.copy()
+            specs.update(self.MIN_QOS_SPECS)
+            raise exception.NetAppException(msg % list(specs))
 
         # TODO(gouthamr): Modify check when throughput floors are allowed
-        if len(normalized_qos_specs) > 1:
-            msg = _('Only one NetApp QoS spec can be set at a time. '
-                    'Specified QoS limits: %s')
-            raise exception.NetAppException(msg % normalized_qos_specs)
+        if len(normalized_max_qos_specs) > 1:
+            msg = _('Only one NetApp max-throughput QoS spec can be set at a '
+                    'time. Specified QoS limits: %s')
+            raise exception.NetAppException(msg % normalized_max_qos_specs)
 
-        return normalized_qos_specs
+        if len(normalized_min_qos_specs) > 1:
+            msg = _('Only one NetApp min-throughput QoS spec can be set at a '
+                    'time. Specified QoS limits: %s')
+            raise exception.NetAppException(msg % normalized_min_qos_specs)
+
+        normalized_max_qos_specs.update(normalized_min_qos_specs)
+        return normalized_max_qos_specs
 
     def _get_max_throughput(self, share_size, qos_specs):
         # QoS limits are exclusive of one another.
@@ -1635,15 +1660,30 @@ class NetAppCmodeFileStorageLibrary(object):
             return '%sB/s' % str(
                 int(qos_specs['maxbpspergib']) * int(share_size))
 
+    def _get_min_throughput(self, share_size, qos_specs):
+        # QoS limits are exclusive of one another.
+        if 'miniops' in qos_specs:
+            return '%siops' % qos_specs['miniops']
+        elif 'miniopspergib' in qos_specs:
+            return '%siops' % str(
+                int(qos_specs['miniopspergib']) * int(share_size))
+        elif 'minbps' in qos_specs:
+            return '%sB/s' % qos_specs['minbps']
+        elif 'minbpspergib' in qos_specs:
+            return '%sB/s' % str(
+                int(qos_specs['minbpspergib']) * int(share_size))
+
     @na_utils.trace
     def _create_qos_policy_group(self, share, vserver, qos_specs,
                                  vserver_client=None):
         max_throughput = self._get_max_throughput(share['size'], qos_specs)
+        min_throughput = self._get_min_throughput(share['size'], qos_specs)
         qos_policy_group_name = self._get_backend_qos_policy_group_name(
             share['id'])
         client = vserver_client or self._client
         client.qos_policy_group_create(qos_policy_group_name, vserver,
-                                       max_throughput=max_throughput)
+                                       max_throughput=max_throughput,
+                                       min_throughput=min_throughput)
         return qos_policy_group_name
 
     @na_utils.trace
@@ -2557,8 +2597,10 @@ class NetAppCmodeFileStorageLibrary(object):
             if size_dependent_specs:
                 max_throughput = self._get_max_throughput(
                     new_size, size_dependent_specs)
+                min_throughput = self._get_min_throughput(
+                    new_size, size_dependent_specs)
                 self._client.qos_policy_group_modify(
-                    qos_policy_on_share, max_throughput)
+                    qos_policy_on_share, max_throughput, min_throughput)
 
     @na_utils.trace
     def extend_share(self, share, new_size, share_server=None):
@@ -3295,8 +3337,11 @@ class NetAppCmodeFileStorageLibrary(object):
                 else:
                     max_throughput = self._get_max_throughput(
                         new_active_replica['size'], qos_specs)
+                    min_throughput = self._get_min_throughput(
+                        new_active_replica['size'], qos_specs)
                     self._client.qos_policy_group_modify(
-                        new_active_replica_qos_policy, max_throughput)
+                        new_active_replica_qos_policy, max_throughput,
+                        min_throughput)
                 vserver_client.set_qos_policy_group_for_volume(
                     volume_name_on_backend, new_active_replica_qos_policy)
 
@@ -4157,11 +4202,15 @@ class NetAppCmodeFileStorageLibrary(object):
 
                 max_throughput = self._get_max_throughput(
                     backend_volume_size, qos_specs)
+                min_throughput = self._get_min_throughput(
+                    backend_volume_size, qos_specs)
                 if (existing_qos_policy_group['max-throughput']
-                        != max_throughput):
+                        != max_throughput or
+                    existing_qos_policy_group['min-throughput']
+                        != min_throughput):
                     self._client.qos_policy_group_modify(
                         backend_volume['qos-policy-group-name'],
-                        max_throughput)
+                        max_throughput, min_throughput)
                 self._client.qos_policy_group_rename(
                     backend_volume['qos-policy-group-name'],
                     qos_policy_group_name)

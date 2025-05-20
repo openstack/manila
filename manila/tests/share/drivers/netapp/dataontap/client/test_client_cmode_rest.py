@@ -773,8 +773,15 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         result = self.client.get_vserver_aggregate_capacities([])
         self.assertEqual({}, result)
 
-    @ddt.data(None, fake.QOS_MAX_THROUGHPUT, fake.QOS_MAX_THROUGHPUT_IOPS)
-    def test_qos_policy_group_create(self, max_throughput):
+    @ddt.data((None, None),
+              (fake.QOS_MAX_THROUGHPUT, None),
+              (fake.QOS_MAX_THROUGHPUT_IOPS, None),
+              (None, None),
+              (None, fake.QOS_MIN_THROUGHPUT),
+              (None, fake.QOS_MIN_THROUGHPUT_IOPS),
+              (fake.QOS_MAX_THROUGHPUT_IOPS, fake.QOS_MIN_THROUGHPUT_IOPS))
+    @ddt.unpack
+    def test_qos_policy_group_create(self, max_throughput, min_throughput):
         return_value = fake.GENERIC_JOB_POST_RESPONSE
         body = {
             'name': fake.QOS_POLICY_GROUP_NAME,
@@ -788,16 +795,20 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                 qos = math.ceil(fake.QOS_MAX_THROUGHPUT_NO_UNIT / units.Mi)
                 body['fixed.max_throughput_mbps'] = qos
 
+        if min_throughput:
+            if 'iops' in min_throughput:
+                qos = fake.QOS_MIN_THROUGHPUT_IOPS_NO_UNIT
+                body['fixed.min_throughput_iops'] = qos
+            else:
+                qos = math.ceil(fake.QOS_MIN_THROUGHPUT_NO_UNIT / units.Mi)
+                body['fixed.min_throughput_mbps'] = qos
+
         self.mock_object(self.client, 'send_request',
                          mock.Mock(return_value=return_value))
 
-        if max_throughput:
-            result = self.client.qos_policy_group_create(
-                fake.QOS_POLICY_GROUP_NAME, fake.VSERVER_NAME,
-                max_throughput)
-        else:
-            result = self.client.qos_policy_group_create(
-                fake.QOS_POLICY_GROUP_NAME, fake.VSERVER_NAME)
+        result = self.client.qos_policy_group_create(
+            fake.QOS_POLICY_GROUP_NAME, fake.VSERVER_NAME,
+            max_throughput, min_throughput)
 
         self.client.send_request.assert_called_once_with(
             '/storage/qos/policies', 'post', body=body)
@@ -1692,18 +1703,22 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         qos_policy = qos_policy_group.get('records')[0]
         max_throughput = qos_policy.get('fixed',
                                         {}).get('max_throughput_iops')
+        min_throughput = qos_policy.get('fixed',
+                                        {}).get('min_throughput_iops')
 
         expected = {
             'policy-group': qos_policy.get('name'),
             'vserver': qos_policy.get('svm', {}).get('name'),
             'max-throughput': max_throughput if max_throughput else None,
+            'min-throughput': min_throughput if min_throughput else None,
             'num-workloads': int(qos_policy.get('object_count')),
         }
 
         query = {
             'name': qos_policy_group_name,
             'fields': 'name,object_count,fixed.max_throughput_iops,' +
-                      'fixed.max_throughput_mbps,svm.name'
+                      'fixed.max_throughput_mbps,svm.name,' +
+                      'fixed.min_throughput_iops,fixed.min_throughput_mbps'
         }
 
         mock_sr = self.mock_object(self.client, 'send_request',
