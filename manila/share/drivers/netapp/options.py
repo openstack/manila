@@ -268,7 +268,11 @@ netapp_provisioning_opts = [
                      ' that can be migrated in case of failure, exceeds the '
                      'maximum data LIFs supported by the node. This option '
                      'guarantees that, in the event of a node failure, the'
-                     ' partner node will be able to takeover all data LIFs.')
+                     ' partner node will be able to takeover all data LIFs.'),
+    cfg.BoolOpt('netapp_cifs_aes_encryption',
+                default=False,
+                help='This option enable/disable AES encryption for the share'
+                     ' server based on the parameter value (True/False).'),
 ]
 
 netapp_cluster_opts = [

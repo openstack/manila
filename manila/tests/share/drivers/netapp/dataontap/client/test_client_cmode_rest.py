@@ -4062,17 +4062,21 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.mock_object(self.client, 'configure_dns')
         self.mock_object(self.client, 'set_preferred_dc')
+        self.mock_object(self.client, 'configure_cifs_aes_encryption')
         self.mock_object(self.client, '_get_cifs_server_name',
                          mock.Mock(return_value='FAKE-VSE-SERVER'))
         self.mock_object(self.client, 'send_request')
 
         self.client.configure_active_directory(fake_security,
-                                               fake.VSERVER_NAME)
+                                               fake.VSERVER_NAME,
+                                               False)
 
         self.client.configure_dns.assert_called_once_with(
             fake_security, vserver_name=fake.VSERVER_NAME)
         self.client.set_preferred_dc.assert_called_once_with(
             fake_security, fake.VSERVER_NAME)
+        self.client.configure_cifs_aes_encryption.assert_called_once_with(
+            fake.VSERVER_NAME, False)
         self.client._get_cifs_server_name.assert_called_once_with(
             fake.VSERVER_NAME)
 
@@ -4278,7 +4282,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         ss_copy = copy.deepcopy(security_service)
         self.client.setup_security_services([ss_copy], self.client,
-                                            'fake_vservername')
+                                            'fake_vservername', False)
         uuid = fake_response.get('records')[0].get('uuid')
         body = {
             'nsswitch.namemap': ['ldap', 'files'],
@@ -4446,6 +4450,38 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.assertRaises(netapp_api.api.NaApiError,
                           self.client.remove_preferred_dcs,
                           fake_ss, fake.FAKE_UUID)
+
+    def test_configure_cifs_aes_encryption_enable(self):
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value=fake.FAKE_UUID))
+
+        self.client.configure_cifs_aes_encryption(fake.VSERVER_NAME, True)
+        self.client._get_unique_svm_by_name.assert_called_once_with(
+            fake.VSERVER_NAME)
+
+        body = {
+            'security.advertised_kdc_encryptions': ['aes-128', 'aes-256'],
+        }
+        self.client.send_request.assert_called_once_with(
+            f'/protocols/cifs/services/{fake.FAKE_UUID}',
+            'patch', body=body)
+
+    def test_configure_cifs_aes_encryption_disable(self):
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value=fake.FAKE_UUID))
+
+        self.client.configure_cifs_aes_encryption(fake.VSERVER_NAME, False)
+        self.client._get_unique_svm_by_name.assert_called_once_with(
+            fake.VSERVER_NAME)
+
+        body = {
+            'security.advertised_kdc_encryptions': ['des', 'rc4'],
+        }
+        self.client.send_request.assert_called_once_with(
+            f'/protocols/cifs/services/{fake.FAKE_UUID}',
+            'patch', body=body)
 
     def test_set_preferred_dc(self):
         fake_ss = copy.deepcopy(fake.LDAP_AD_SECURITY_SERVICE_WITH_SERVER)
@@ -6506,6 +6542,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
     def test_configure_active_directory_error(self):
         self.mock_object(self.client, 'configure_dns')
+        self.mock_object(self.client, 'configure_cifs_aes_encryption')
         self.mock_object(self.client, 'set_preferred_dc')
         self.mock_object(self.client, '_get_cifs_server_name')
         self.mock_object(self.client, 'send_request',
@@ -6513,7 +6550,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.assertRaises(exception.NetAppException,
                           self.client.configure_active_directory,
                           fake.LDAP_AD_SECURITY_SERVICE,
-                          fake.VSERVER_NAME)
+                          fake.VSERVER_NAME,
+                          False)
 
     def test__get_unique_svm_by_name_error(self):
         response = fake.NO_RECORDS_RESPONSE_REST
@@ -7017,6 +7055,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.mock_object(self.client, 'configure_dns')
         self.mock_object(self.client, 'set_preferred_dc')
+        self.mock_object(self.client, 'configure_cifs_aes_encryption')
         self.mock_object(self.client, '_get_cifs_server_name')
         self.mock_object(self.client, 'send_request',
                          self._mock_api_error(code=netapp_api.api.EAPIERROR,
@@ -7024,7 +7063,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.assertRaises(exception.SecurityServiceFailedAuth,
                           self.client.configure_active_directory,
                           fake_security,
-                          fake.VSERVER_NAME)
+                          fake.VSERVER_NAME,
+                          False)
 
     @ddt.data(fake.CIFS_SECURITY_SERVICE, fake.CIFS_SECURITY_SERVICE_3)
     def test_configure_active_directory_user_privilege_error(self,
@@ -7034,6 +7074,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.mock_object(self.client, 'configure_dns')
         self.mock_object(self.client, 'set_preferred_dc')
+        self.mock_object(self.client, 'configure_cifs_aes_encryption')
         self.mock_object(self.client, '_get_cifs_server_name')
         self.mock_object(self.client, 'send_request',
                          self._mock_api_error(code=netapp_api.api.EAPIERROR,
@@ -7041,7 +7082,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.assertRaises(exception.SecurityServiceFailedAuth,
                           self.client.configure_active_directory,
                           fake_security,
-                          fake.VSERVER_NAME)
+                          fake.VSERVER_NAME,
+                          False)
 
     def test_snapmirror_restore_vol(self):
         uuid = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST["uuid"]

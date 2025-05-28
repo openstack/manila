@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    The aes-encryption fixes KRB5KDC_ERR_ETYPE_NOSUPP error observed during
+    CIFS share create on NetApp ONTAP storage. Admin needs to set
+    'netapp_cifs_aes_encryption' config option to 'True' in order to enable
+    it. For more details, please check
+    `Launchpad bug #2111813 <https://bugs.launchpad.net/manila/+bug/2111813>`_
