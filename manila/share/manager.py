@@ -2787,8 +2787,10 @@ class ShareManager(manager.SchedulerDependentManager):
     @utils.require_driver_initialized
     def periodic_share_replica_update(self, context):
         LOG.debug("Updating status of share replica instances.")
+        # we will need: id, host, replica_state, share_id
         replicas = self.db.share_replicas_get_all(context,
-                                                  with_share_data=True)
+                                                  with_share_data=False,
+                                                  with_share_server=False)
 
         # Filter only non-active replicas belonging to this backend
         def qualified_replica(r):
@@ -2799,24 +2801,24 @@ class ShareManager(manager.SchedulerDependentManager):
         replicas = list(filter(lambda x: qualified_replica(x), replicas))
         for replica in replicas:
             self._share_replica_update(
-                context, replica, share_id=replica['share_id'])
+                context, replica['id'], share_id=replica['share_id'])
 
     @add_hooks
     @utils.require_driver_initialized
     def update_share_replica(self, context, share_replica_id, share_id=None):
         """Initiated by the force_update API."""
-        share_replica = self.db.share_replica_get(
-            context, share_replica_id, with_share_data=True,
-            with_share_server=True)
-        self._share_replica_update(context, share_replica, share_id=share_id)
+        self._share_replica_update(
+            context, share_replica_id, share_id=share_id)
 
     @locked_share_replica_operation
-    def _share_replica_update(self, context, share_replica, share_id=None):
-        # Re-grab the replica:
+    def _share_replica_update(self, context, share_replica_id, share_id=None):
+        # share_id is used by the locked_share_replica_operation decorator
+        # Grab the replica:
         try:
+            # _get_share_instance_dict will fetch share server
             share_replica = self.db.share_replica_get(
-                context, share_replica['id'], with_share_data=True,
-                with_share_server=True)
+                context, share_replica_id, with_share_data=True,
+                with_share_server=False)
         except exception.ShareReplicaNotFound:
             # Replica may have been deleted, nothing to do here
             return
@@ -2837,10 +2839,11 @@ class ShareManager(manager.SchedulerDependentManager):
         LOG.debug("Updating status of share share_replica %s: ",
                   share_replica['id'])
 
+        # _get_share_instance_dict will fetch share server
         replica_list = (
             self.db.share_replicas_get_all_by_share(
                 context, share_replica['share_id'],
-                with_share_data=True, with_share_server=True)
+                with_share_data=True, with_share_server=False)
         )
 
         _active_replica = next((x for x in replica_list
@@ -2862,7 +2865,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         # Get snapshots for the share.
         share_snapshots = self.db.share_snapshot_get_all_for_share(
-            context, share_id)
+            context, share_replica['share_id'])
 
         # Get the required data for snapshots that have 'aggregate_status'
         # set to 'available'.
@@ -4315,8 +4318,10 @@ class ShareManager(manager.SchedulerDependentManager):
         LOG.debug("Updating status of share replica snapshots.")
         transitional_statuses = (constants.STATUS_CREATING,
                                  constants.STATUS_DELETING)
+        # we will need: id, host, replica_state
         replicas = self.db.share_replicas_get_all(context,
-                                                  with_share_data=True)
+                                                  with_share_data=False,
+                                                  with_share_server=False)
 
         def qualified_replica(r):
             # Filter non-active replicas belonging to this backend
@@ -4335,6 +4340,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 'share_instance_ids': replica['id'],
                 'statuses': transitional_statuses,
             }
+            # we will need: id, snapshot_id, share_instance_id and
+            # share['share_id']
             replica_snapshots = (
                 self.db.share_snapshot_instance_get_all_with_filters(
                     context, filters, with_share_data=True)
@@ -4345,7 +4352,8 @@ class ShareManager(manager.SchedulerDependentManager):
             replica_snapshots = (
                 self.db.share_snapshot_instance_get_all_with_filters(
                     context,
-                    {'snapshot_ids': replica_snapshot['snapshot_id']})
+                    {'snapshot_ids': replica_snapshot['snapshot_id']},
+                    with_share_data=False)
             )
             share_id = replica_snapshot['share']['share_id']
             self._update_replica_snapshot(
@@ -4355,11 +4363,13 @@ class ShareManager(manager.SchedulerDependentManager):
     @locked_share_replica_operation
     def _update_replica_snapshot(self, context, replica_snapshot,
                                  replica_snapshots=None, share_id=None):
-        # Re-grab the replica:
+        # share_id is used by the locked_share_replica_operation decorator
+        # Re-grab the replica, now with share data:
         try:
+            # _get_share_instance_dict will fetch share server
             share_replica = self.db.share_replica_get(
                 context, replica_snapshot['share_instance_id'],
-                with_share_data=True, with_share_server=True)
+                with_share_data=True, with_share_server=False)
             replica_snapshot = self.db.share_snapshot_instance_get(
                 context, replica_snapshot['id'], with_share_data=True)
         except exception.NotFound:
@@ -4382,10 +4392,11 @@ class ShareManager(manager.SchedulerDependentManager):
                   "on replica: %(replica)s", msg_payload)
 
         # Grab all the replica and snapshot information.
+        # _get_share_instance_dict will fetch share server
         replica_list = (
             self.db.share_replicas_get_all_by_share(
                 context, share_replica['share_id'],
-                with_share_data=True, with_share_server=True)
+                with_share_data=True, with_share_server=False)
         )
 
         replica_list = [self._get_share_instance_dict(context, r)
