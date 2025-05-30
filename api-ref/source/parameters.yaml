@@ -1760,7 +1760,7 @@ lock_deletion:
 lock_visibility:
   description: |
     Whether the resource should have its sensitive fields restricted or not.
-    When enabled, other users will see the "access_to" and "access_secret"
+    When enabled, other users will see the "access_to" and "access_key"
     fields set to ******
   in: body
   required: false
