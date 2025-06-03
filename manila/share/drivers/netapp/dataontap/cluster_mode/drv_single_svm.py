@@ -315,7 +315,8 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
 
     def choose_share_server_compatible_with_share(self, context, share_servers,
                                                   share, snapshot=None,
-                                                  share_group=None):
+                                                  share_group=None,
+                                                  encryption_key_ref=None):
         raise NotImplementedError
 
     def choose_share_server_compatible_with_share_group(

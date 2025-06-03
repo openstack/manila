@@ -6015,6 +6015,70 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             mock.call(f'/svm/svms/{fake.FAKE_UUID}', 'patch', body=body_patch)
         ])
 
+    def test_create_barbican_kms_config_for_specified_vserver(self):
+        mock_sr = self.mock_object(self.client, 'send_request')
+        body = {
+            'svm.name': fake.VSERVER_NAME,
+            'configuration.name': fake.FAKE_CONFIG_NAME,
+            'key_id': fake.FAKE_KEY_ID,
+            'keystone_url': fake.FAKE_KEYSTONE_URL,
+            'application_cred_id': fake.FAKE_APPLICATION_CRED_ID,
+            'application_cred_secret': fake.FAKE_APPLICATION_CRED_SECRET,
+        }
+
+        self.client.create_barbican_kms_config_for_specified_vserver(
+            fake.VSERVER_NAME,
+            fake.FAKE_CONFIG_NAME,
+            fake.FAKE_KEY_ID,
+            fake.FAKE_KEYSTONE_URL,
+            fake.FAKE_APPLICATION_CRED_ID,
+            fake.FAKE_APPLICATION_CRED_SECRET)
+
+        mock_sr.assert_called_once_with('/security/barbican-kms', 'post',
+                                        body=body)
+
+    def test_get_key_store_config_uuid(self):
+        fake_query = {
+            'configuration.name': fake.FAKE_CONFIG_NAME
+        }
+
+        self.mock_object(
+            self.client, 'send_request', mock.Mock(
+                return_value=fake.KEYSTORE_SIMPLE_RESPONSE_REST))
+
+        actual_result = self.client.get_key_store_config_uuid(
+            fake.FAKE_CONFIG_NAME)
+
+        self.client.send_request.assert_called_once_with(
+            '/security/key-stores', 'get', query=fake_query)
+
+        expected_result = (
+            fake.KEYSTORE_SIMPLE_RESPONSE_REST[
+                'records'][0]['configuration']['uuid'])
+        self.assertEqual(expected_result, actual_result)
+
+    def test_get_key_store_config_uuid_no_response(self):
+
+        self.mock_object(
+            self.client, 'send_request', mock.Mock(
+                return_value={}))
+
+        actual_result = self.client.get_key_store_config_uuid(
+            fake.FAKE_CONFIG_NAME)
+
+        self.assertIsNone(actual_result)
+
+    def test_enable_key_store_config(self):
+        config_uuid = fake.FAKE_CONFIG_UUID
+        mock_sr = self.mock_object(self.client, 'send_request')
+        self.client.enable_key_store_config(config_uuid)
+        body = {
+            'enabled': True,
+        }
+
+        mock_sr.assert_called_once_with(
+            f'/security/key-stores/{config_uuid}', 'patch', body=body)
+
     @ddt.data((f'/name-services/dns/{fake.FAKE_UUID}', 'patch',
                ['fake_domain'], ['fake_ip']),
               (f'/name-services/dns/{fake.FAKE_UUID}', 'delete', [], []),

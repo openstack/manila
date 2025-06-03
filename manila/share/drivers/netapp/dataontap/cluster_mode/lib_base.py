@@ -548,6 +548,11 @@ class NetAppCmodeFileStorageLibrary(object):
         else:
             qos_support = False
 
+        # Share-server/share encryption support with NetApp will only be
+        # possible with DHSS=True
+        encryption_support = None if self.configuration.safe_get(
+            'netapp_vserver') else ['share_server']
+
         netapp_flexvol_encryption = self._cluster_info.get(
             'nve_support', False)
         reserved_percentage = self.configuration.reserved_share_percentage
@@ -586,6 +591,7 @@ class NetAppCmodeFileStorageLibrary(object):
             'share_server_multiple_subnet_support': True,
             'mount_point_name_support': True,
             'share_replicas_migration_support': True,
+            'encryption_support': encryption_support,
         }
 
         # Add storage service catalog data.
@@ -1170,10 +1176,17 @@ class NetAppCmodeFileStorageLibrary(object):
         hide_snapdir = provisioning_options.pop('hide_snapdir')
         mount_point_name = share.get('mount_point_name')
 
-        LOG.debug('Creating share %(share)s on pool %(pool)s with '
-                  'provisioning options %(options)s',
-                  {'share': share_name, 'pool': pool_name,
-                   'options': provisioning_options})
+        if share.get('encryption_key_ref'):
+            provisioning_options['encrypt'] = True
+            LOG.debug('Creating an encrypted share %(share)s on pool %(pool)s '
+                      'with provisioning options %(options)s',
+                      {'share': share_name, 'pool': pool_name,
+                       'options': provisioning_options})
+        else:
+            LOG.debug('Creating share %(share)s on pool %(pool)s with '
+                      'provisioning options %(options)s',
+                      {'share': share_name, 'pool': pool_name,
+                       'options': provisioning_options})
 
         if self._is_flexgroup_pool(pool_name):
             aggr_list = self._get_flexgroup_aggregate_list(pool_name)

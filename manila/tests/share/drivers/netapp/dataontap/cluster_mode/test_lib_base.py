@@ -1508,12 +1508,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.mock_pvt_storage_delete.assert_called_once_with(fake.SHARE_ID)
 
-    @ddt.data({'hide_snapdir': False, 'create_fpolicy': True, 'is_fg': True},
-              {'hide_snapdir': True, 'create_fpolicy': False, 'is_fg': True},
-              {'hide_snapdir': False, 'create_fpolicy': True, 'is_fg': False},
-              {'hide_snapdir': True, 'create_fpolicy': False, 'is_fg': False})
+    @ddt.data({'hide_snapdir': False, 'create_fpolicy': True, 'is_fg': True,
+               'with_encryption': True},
+              {'hide_snapdir': True, 'create_fpolicy': False, 'is_fg': True,
+               'with_encryption': False},
+              {'hide_snapdir': False, 'create_fpolicy': True, 'is_fg': False,
+               'with_encryption': True},
+              {'hide_snapdir': True, 'create_fpolicy': False, 'is_fg': False,
+               'with_encryption': False})
     @ddt.unpack
-    def test_allocate_container(self, hide_snapdir, create_fpolicy, is_fg):
+    def test_allocate_container(self, hide_snapdir, create_fpolicy, is_fg,
+                                with_encryption):
 
         provisioning_options = copy.deepcopy(
             fake.PROVISIONING_OPTIONS_WITH_FPOLICY)
@@ -1537,13 +1542,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=[fake.AGGREGATE]))
         vserver_client = mock.Mock()
 
-        self.library._allocate_container(fake.SHARE_INSTANCE,
+        fake_share = (
+            fake.SHARE_INSTANCE_WITH_ENCRYPTION
+            if with_encryption else fake.SHARE_INSTANCE)
+
+        self.library._allocate_container(fake_share,
                                          fake.VSERVER1,
                                          vserver_client,
                                          create_fpolicy=create_fpolicy)
 
         mock_get_provisioning_opts.assert_called_once_with(
-            fake.SHARE_INSTANCE, fake.VSERVER1, vserver_client=vserver_client,
+            fake_share, fake.VSERVER1, vserver_client=vserver_client,
             set_qos=True)
 
         if is_fg:
@@ -1567,7 +1576,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         if create_fpolicy:
             mock_create_fpolicy.assert_called_once_with(
-                fake.SHARE_INSTANCE, fake.VSERVER1, vserver_client,
+                fake_share, fake.VSERVER1, vserver_client,
                 **provisioning_options)
         else:
             mock_create_fpolicy.assert_not_called()

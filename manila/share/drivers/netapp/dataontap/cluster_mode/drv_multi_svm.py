@@ -46,6 +46,9 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
         # share servers.
         self.network_allocation_update_support = True
         self.share_replicas_migration_support = True
+        # NetApp driver supports share server encryption and enables encryption
+        # on the created share.
+        self.encryption_support = ["share_server"]
 
     def do_setup(self, context):
         self.library.do_setup(context)
@@ -332,10 +335,12 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
 
     def choose_share_server_compatible_with_share(self, context, share_servers,
                                                   share, snapshot=None,
-                                                  share_group=None):
+                                                  share_group=None,
+                                                  encryption_key_ref=None):
         return self.library.choose_share_server_compatible_with_share(
             context, share_servers, share, snapshot=snapshot,
-            share_group=share_group)
+            share_group=share_group,
+            encryption_key_ref=encryption_key_ref)
 
     def choose_share_server_compatible_with_share_group(
             self, context, share_servers, share_group_ref,

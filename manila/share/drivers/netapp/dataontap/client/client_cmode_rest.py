@@ -4409,6 +4409,55 @@ class NetAppRestClient(object):
                             '%(server)s.', {'server': vserver_name})
 
     @na_utils.trace
+    def create_barbican_kms_config_for_specified_vserver(self, vserver_name,
+                                                         config_name, key_id,
+                                                         keystone_url,
+                                                         app_cred_id,
+                                                         app_cred_secret):
+        """Creates a Barbican KMS configuration for the specified vserver."""
+
+        body = {
+            'svm.name': vserver_name,
+            'configuration.name': config_name,
+            'key_id': key_id,
+            'keystone_url': keystone_url,
+            'application_cred_id': app_cred_id,
+            'application_cred_secret': app_cred_secret,
+        }
+
+        self.send_request('/security/barbican-kms', 'post', body=body)
+
+    @na_utils.trace
+    def get_key_store_config_uuid(self, config_name):
+        """Retrieves keystore configuration uuid for the specified config name.
+
+        """
+
+        query = {
+            'configuration.name': config_name
+        }
+
+        response = self.send_request('/security/key-stores',
+                                     'get', query=query)
+
+        if not response.get('records'):
+            return None
+
+        return response.get('records')[0]['configuration']['uuid']
+
+    @na_utils.trace
+    def enable_key_store_config(self, config_uuid):
+        """Enables a keystore configuration"""
+
+        body = {
+            "enabled": True
+        }
+
+        # Update key-store
+        self.send_request(f'/security/key-stores/{config_uuid}', 'patch',
+                          body=body)
+
+    @na_utils.trace
     def _modify_security_cert(self, vserver_name, security_cert_expire_days):
         """Create new security certificate with given expire days."""
 

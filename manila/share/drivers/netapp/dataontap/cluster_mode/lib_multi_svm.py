@@ -26,6 +26,7 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
 from oslo_utils import units
+from oslo_utils import uuidutils
 
 from manila.common import constants
 from manila import exception
@@ -236,8 +237,11 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 e.detail_data = {'server_details': server_details}
                 raise
 
-            return server_details
+            if metadata.get('encryption_key_ref'):
+                self._create_barbican_kms_config_for_specified_vserver(
+                    vserver_name, metadata)
 
+            return server_details
         return setup_server_with_lock()
 
     @na_utils.trace
@@ -370,6 +374,45 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     self._delete_vserver(vserver_name,
                                          security_services=security_services,
                                          needs_lock=False)
+
+    @na_utils.trace
+    def _create_barbican_kms_config_for_specified_vserver(self, vserver_name,
+                                                          metadata):
+        """Creates a Barbican KMS configuration for the specified vserver."""
+
+        key_href = metadata.get('encryption_key_ref')
+        config_name = "barbican_config_" + uuidutils.generate_uuid()
+        keystone_auth_url = metadata.get('keystone_url')
+        keystone_auth_token_path = self.configuration.safe_get(
+            'netapp_identity_auth_token_path')
+        keystone_url = keystone_auth_url + keystone_auth_token_path
+        app_cred_id = metadata.get('application_credential_id')
+        app_cred_secret = metadata.get('application_credential_secret')
+        backend_name = share_utils.extract_host(metadata.get('request_host'),
+                                                level='backend_name')
+        try:
+            rest_client = data_motion.get_client_for_backend(
+                backend_name, vserver_name=None, force_rest_client=True)
+        except exception.NetAppException:
+            LOG.error("Failed to get REST client for backend %s. "
+                      "Please ensure that REST is enabled in the cluster.",
+                      backend_name)
+            raise
+
+        LOG.debug('Creating a Barbican KMS configuration for the vserver '
+                  '%(vserver)s', {'vserver': vserver_name})
+        rest_client.create_barbican_kms_config_for_specified_vserver(
+            vserver_name, config_name,
+            key_href, keystone_url,
+            app_cred_id, app_cred_secret)
+
+        LOG.debug('Getting the key store configuration uuid for the config '
+                  '%(config)s', {'config': config_name})
+        config_uuid = rest_client.get_key_store_config_uuid(config_name)
+
+        LOG.debug('Enabling the key store configuration the config %(config)s',
+                  {'config': config_name})
+        rest_client.enable_key_store_config(config_uuid)
 
     def _setup_network_for_vserver(self, vserver_name, vserver_client,
                                    network_info, ipspace_name,
@@ -915,16 +958,17 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
     def choose_share_server_compatible_with_share(self, context, share_servers,
                                                   share, snapshot=None,
-                                                  share_group=None):
+                                                  share_group=None,
+                                                  encryption_key_ref=None):
         """Method that allows driver to choose share server for provided share.
 
         If compatible share-server is not found, method should return None.
-
         :param context: Current context
         :param share_servers: list with share-server models
         :param share:  share model
         :param snapshot: snapshot model
         :param share_group: ShareGroup model with shares
+        :param encryption_key_ref: Encryption key reference
         :returns: share-server or None
         """
         if not share_servers:
@@ -933,10 +977,12 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         nfs_config = None
         extra_specs = share_types.get_extra_specs_from_share(share)
+
         if self.is_nfs_config_supported:
             nfs_config = self._get_nfs_config_provisioning_options(extra_specs)
 
         provisioning_options = self._get_provisioning_options(extra_specs)
+
         # Get FPolicy extra specs to avoid incompatible share servers
         fpolicy_ext_to_include = provisioning_options.get(
             'fpolicy_extensions_to_include')
@@ -952,7 +998,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     share_group=share_group,
                     fpolicy_ext_include=fpolicy_ext_to_include,
                     fpolicy_ext_exclude=fpolicy_ext_to_exclude,
-                    fpolicy_file_operations=fpolicy_file_operations):
+                    fpolicy_file_operations=fpolicy_file_operations,
+                    encryption_key_ref=encryption_key_ref):
                 return share_server
 
         #  There is no compatible share server to be reused
@@ -962,8 +1009,20 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     def _check_reuse_share_server(self, share_server, nfs_config, share=None,
                                   share_group=None, fpolicy_ext_include=None,
                                   fpolicy_ext_exclude=None,
-                                  fpolicy_file_operations=None):
+                                  fpolicy_file_operations=None,
+                                  encryption_key_ref=None):
         """Check whether the share_server can be reused or not."""
+
+        LOG.debug('Checking if the encryption key ref passed is already '
+                  'configured for the existing share_servers')
+        if (encryption_key_ref and encryption_key_ref !=
+           share_server['encryption_key_ref']):
+            msg = _('The available share server %(server_id)s is already'
+                    'configured with a different encryption-key-ref',
+                    {'server_id': share_server['id']})
+            LOG.warning(msg)
+            return False
+
         if (share_group and share_group.get('share_server_id') !=
                 share_server['id']):
             return False

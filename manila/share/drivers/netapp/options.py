@@ -154,6 +154,9 @@ netapp_provisioning_opts = [
     cfg.StrOpt('netapp_lif_name_template',
                default='os_%(net_allocation_id)s',
                help='Logical interface (LIF) name template'),
+    cfg.StrOpt('netapp_identity_auth_token_path',
+               default='',
+               help='Path to interact with auth tokens'),
     cfg.StrOpt('netapp_aggregate_name_search_pattern',
                default='(.*)',
                help='Pattern for searching available aggregates '

@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    The NetApp driver now supports configuring barbican keystore with the
+    share server whenever an encryption-key-ref is passed in share create
+    command and it enables encryption on the created share. The feature
+    at this level offers only encrypted share creation and deletion.
+    Note: Controlling encryption keys with NetApp will only be possible
+    with DHSS=True.
