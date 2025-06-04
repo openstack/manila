@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed an issue while creating shares due to an undesired retention period
+    parameter in NetApp ONTAP driver. Fixed this by moving retention_period
+    in PATCH instead of POST api request. For more details, please check
+    `Launchpad bug #2111918 <https://bugs.launchpad.net/manila/+bug/2111918>`_

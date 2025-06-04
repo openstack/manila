@@ -5986,7 +5986,9 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
     def test__create_vserver(self):
         mock_sr = self.mock_object(self.client, 'send_request')
-        body = {
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value=fake.FAKE_UUID))
+        body_post = {
             'name': fake.VSERVER_NAME,
             'nsswitch.namemap': fake.FAKE_SERVER_SWITCH_NAME,
             'subtype': fake.FAKE_SUBTYPE,
@@ -5994,6 +5996,9 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'aggregates': [{
                 'name': fake.SHARE_AGGREGATE_NAME
             }],
+        }
+
+        body_patch = {
             'retention_period': fake.DELETE_RETENTION_HOURS,
         }
 
@@ -6004,7 +6009,10 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                     fake.FAKE_SERVER_SWITCH_NAME,
                                     fake.FAKE_SUBTYPE)
 
-        mock_sr.assert_called_once_with('/svm/svms', 'post', body=body)
+        mock_sr.assert_has_calls([
+            mock.call('/svm/svms', 'post', body=body_post),
+            mock.call(f'/svm/svms/{fake.FAKE_UUID}', 'patch', body=body_patch)
+        ])
 
     @ddt.data((f'/name-services/dns/{fake.FAKE_UUID}', 'patch',
                ['fake_domain'], ['fake_ip']),
