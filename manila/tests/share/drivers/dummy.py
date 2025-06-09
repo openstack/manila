@@ -40,6 +40,7 @@ from oslo_utils import timeutils
 from manila.common import constants
 from manila import exception
 from manila.i18n import _
+from manila.keymgr import barbican as barbican_api
 from manila.share import configuration
 from manila.share import driver
 from manila.share.manager import share_manager_opts  # noqa
@@ -150,6 +151,7 @@ class DummyDriver(driver.ShareDriver):
         self.security_service_update_support = True
         self.network_allocation_update_support = True
         self.share_replicas_migration_support = True
+        self.encryption_support = ['share_server']
 
     def _verify_configuration(self):
         allowed_driver_methods = [m for m in dir(self) if m[0] != '_']
@@ -251,11 +253,18 @@ class DummyDriver(driver.ShareDriver):
 
         return export_locations
 
-    def _create_share(self, share, share_server=None):
+    def _create_share(self, context, share, share_server=None):
         share_proto = share["share_proto"]
         if share_proto not in ("NFS", "CIFS"):
             msg = _("Unsupported share protocol provided - %s.") % share_proto
             raise exception.InvalidShareAccess(reason=msg)
+
+        encryption_key_ref = share.get('encryption_key_ref')
+        if encryption_key_ref and context:
+            encryption_key_href = barbican_api.get_secret_href(
+                context, encryption_key_ref)
+            LOG.debug("Generated encryption_key_href %s for share create "
+                      "request.", encryption_key_href)
 
         share_name = self._get_share_name(share)
         mountpoint = "/path/to/fake/share/%s" % share_name
@@ -271,13 +280,14 @@ class DummyDriver(driver.ShareDriver):
     @slow_me_down
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""
-        return self._create_share(share, share_server=share_server)
+        return self._create_share(context, share, share_server=share_server)
 
     @slow_me_down
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None, parent_share=None):
         """Is called to create share from snapshot."""
-        export_locations = self._create_share(share, share_server=share_server)
+        export_locations = self._create_share(
+            context, share, share_server=share_server)
         return {
             'export_locations': export_locations,
             'status': constants.STATUS_AVAILABLE
@@ -361,7 +371,10 @@ class DummyDriver(driver.ShareDriver):
         old_export = self.private_storage.get(
             old_share_id, key='export_location')
         if old_export.split(":/")[-1] == new_export.split(":/")[-1]:
-            result = {"size": 1, "export_locations": self._create_share(share)}
+            result = {
+                "size": 1,
+                "export_locations": self._create_share(None, share)
+            }
             self.private_storage.delete(old_share_id)
             return result
         else:

@@ -25,7 +25,8 @@ class ViewBuilder(common.ViewBuilder):
         "add_share_network_subnet_id_field",
         "add_task_state_and_source_server_fields",
         "add_sec_service_update_fields",
-        "add_share_network_subnet_ids_and_network_allocation_update_support"
+        "add_share_network_subnet_ids_and_network_allocation_update_support",
+        "add_encryption_key_ref_field",
     ]
 
     def build_share_server(self, request, share_server):
@@ -100,3 +101,9 @@ class ViewBuilder(common.ViewBuilder):
             share_server['share_network_subnet_ids'])
         share_server_dict['network_allocation_update_support'] = (
             share_server['network_allocation_update_support'])
+
+    @common.ViewBuilder.versioned_method("2.90")
+    def add_encryption_key_ref_field(
+            self, context, share_server_dict, share_server):
+        share_server_dict['encryption_key_ref'] = share_server[
+            'encryption_key_ref']

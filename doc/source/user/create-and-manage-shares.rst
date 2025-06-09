@@ -63,6 +63,10 @@ important terms:
 +------------------------------------+-------------------------+---------------------------------------------------------+
 | mount_point_name_support           | true or false           | share can or cannot have customized export location     |
 +------------------------------------+-------------------------+---------------------------------------------------------+
+| encryption_support                 | share                   | share is encrypted with share encryption key            |
+|                                    +-------------------------+---------------------------------------------------------+
+|                                    | share_server            | share is encrypted with share server encryption key     |
++------------------------------------+-------------------------+---------------------------------------------------------+
 | provisioning:mount_point_prefix    | string                  | prefix used for custom export location                  |
 +------------------------------------+-------------------------+---------------------------------------------------------+
 
@@ -503,6 +507,58 @@ Create a share
     | share_network_id                      | 19d78275-55cb-4684-81f2-ec9c07701563                                    |
     | share_proto                           | NFS                                                                     |
     +---------------------------------------+-------------------------------------------------------------------------+
+
+
+* Create a share using encryption key reference.
+
+  User can create share using their own encryption key. The key must be stored
+  in key-manager (Openstack Barbican) service. First create share type and
+  specify extra-spec ``encryption_support``. It can have value ``share`` or
+  ``share_server`` based on support by backend storage driver. Then use
+  `--encryption-key-ref` option in share create command. Users can use
+  encryption key reference or UUID of key reference here.
+
+  .. code-block:: console
+
+     $ openstack share create NFS 1 \
+         --name myshare3 \
+         --description "My Manila share - Encrypted" \
+         --share-network mysharenetwork \
+         --share-type encrypted_share_type \
+         --encryption-key-ref 86babe9b-7277-4c3a-a081-6eb3eac9231d
+
+     +---------------------------------------+-----------------------------------------------------------------------+
+     | Property                              | Value                                                                 |
+     +---------------------------------------+-----------------------------------------------------------------------+
+     | id                                    | 40de4f4c-4588-4d9c-844b-f74d8951053a                                  |
+     | size                                  | 1                                                                     |
+     | availability_zone                     | None                                                                  |
+     | created_at                            | 2020-08-07T05:24:14.000000                                            |
+     | status                                | creating                                                              |
+     | name                                  | myshare3                                                              |
+     | description                           | My Manila share - Encrypted                                           |
+     | project_id                            | d9932a60d9ee4087b6cff9ce6e9b4e3b                                      |
+     | snapshot_id                           | None                                                                  |
+     | share_network_id                      | c4bfdd5e-7502-4a65-8876-0ce8b9914a64                                  |
+     | share_proto                           | NFS                                                                   |
+     | metadata                              | {}                                                                    |
+     | share_type                            | af7b64ec-cdb3-4a5f-93c9-51672d72e172                                  |
+     | is_public                             | False                                                                 |
+     | snapshot_support                      | True                                                                  |
+     | task_state                            | None                                                                  |
+     | share_type_name                       | encrypted_share_type                                                  |
+     | access_rules_status                   | active                                                                |
+     | replication_type                      | None                                                                  |
+     | has_replicas                          | False                                                                 |
+     | user_id                               | 2cebd96a794f431caa06ce5215e0da21                                      |
+     | create_share_from_snapshot_support    | True                                                                  |
+     | revert_to_snapshot_support            | True                                                                  |
+     | share_group_id                        | None                                                                  |
+     | encryption_key_ref                    | 86babe9b-7277-4c3a-a081-6eb3eac9231d                                  |
+     | source_share_group_snapshot_member_id | None                                                                  |
+     | mount_snapshot_support                | True                                                                  |
+     | progress                              | None                                                                  |
+     +---------------------------------------+-----------------------------------------------------------------------+
 
 
 Grant and revoke share access

@@ -45,7 +45,8 @@ fake_share_server_list = {
             'source_share_server_id': None,
             'identifier': 'fake_id',
             'security_service_update_support': False,
-            'network_allocation_update_support': False
+            'network_allocation_update_support': False,
+            'encryption_key_ref': None
         },
         {
             'status': constants.STATUS_ERROR,
@@ -61,7 +62,8 @@ fake_share_server_list = {
             'source_share_server_id': None,
             'identifier': 'fake_id_2',
             'security_service_update_support': False,
-            'network_allocation_update_support': False
+            'network_allocation_update_support': False,
+            'encryption_key_ref': None
 
         },
     ]
@@ -102,7 +104,8 @@ fake_share_server_get_result = {
         'source_share_server_id': None,
         'identifier': 'fake_id',
         'security_service_update_support': False,
-        'network_allocation_update_support': False
+        'network_allocation_update_support': False,
+        'encryption_key_ref': None
     }
 }
 
@@ -145,6 +148,7 @@ class FakeShareServer(object):
         self.network_allocation_update_support = kwargs.get(
             'network_allocation_update_support', False)
         self.share_network_id = kwargs.get('share_network_id', 'fake_sn_id')
+        self.encryption_key_ref = kwargs.get('encryption_key_ref', None)
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -358,6 +362,7 @@ class ShareServerAPITest(test.TestCase):
         self.assertEqual(0, len(result['share_servers']))
 
     @ddt.data({'version': '2.70', 'share_network_name': ''},
+              {'version': '2.90', 'share_network_name': 'fake_sn_name'},
               {'version': '2.70', 'share_network_name': 'fake_sn_name'},
               {'version': '2.68', 'share_network_name': 'fake_sn_name'})
     @ddt.unpack
@@ -383,6 +388,9 @@ class ShareServerAPITest(test.TestCase):
             share_server['share_network_name'] = share_network['name']
         else:
             share_server['share_network_name'] = share_network['id']
+
+        if version < '2.90':
+            share_server.pop('encryption_key_ref')
 
         self.mock_object(db_api, 'share_network_get', mock.Mock(
             return_value=share_network))

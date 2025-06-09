@@ -477,3 +477,8 @@ user documentation.
 ------------------------------
   Added support for passing share network subnet metadata updates to share
   backend driver.
+
+
+2.90
+----
+  Added ``encryption_key_ref`` option to share create API.

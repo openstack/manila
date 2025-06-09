@@ -26,6 +26,7 @@ import hashlib
 import json
 from operator import xor
 
+from keystoneauth1 import loading as ks_loading
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
@@ -40,6 +41,7 @@ from manila import coordination
 from manila.data import rpcapi as data_rpcapi
 from manila import exception
 from manila.i18n import _
+from manila.keymgr import barbican as barbican_api
 from manila import manager
 from manila.message import api as message_api
 from manila.message import message_field
@@ -167,10 +169,21 @@ share_manager_opts = [
                     'snapshots in backend driver.'),
 ]
 
+
+ks_opts = [
+    cfg.StrOpt('auth_url',
+               help='Keystone authentication URL.'),
+]
+
 CONF = cfg.CONF
 CONF.register_opts(share_manager_opts)
 CONF.import_opt('periodic_hooks_interval', 'manila.share.hook')
 CONF.import_opt('periodic_interval', 'manila.service')
+
+KEYSTONE_AUTHTOKEN_GROUP = 'keystone_authtoken'
+CONF.register_opts(ks_opts, KEYSTONE_AUTHTOKEN_GROUP)
+ks_loading.register_auth_conf_options(CONF, KEYSTONE_AUTHTOKEN_GROUP)
+keystone_url = getattr(CONF.keystone_authtoken, 'auth_url')
 
 # Drivers that need to change module paths or class names can add their
 # old/new path here to maintain backward compatibility.
@@ -785,6 +798,8 @@ class ShareManager(manager.SchedulerDependentManager):
                         context, available_share_servers,
                         share_instance=share_instance))
 
+            encryption_key_ref = share_instance.get('encryption_key_ref')
+
             compatible_share_server = None
             if available_share_servers:
                 try:
@@ -792,7 +807,8 @@ class ShareManager(manager.SchedulerDependentManager):
                         self.driver.choose_share_server_compatible_with_share(
                             context, available_share_servers, share_instance,
                             snapshot=snapshot.instance if snapshot else None,
-                            share_group=share_group
+                            share_group=share_group,
+                            encryption_key_ref=encryption_key_ref,
                         )
                     )
                 except Exception as e:
@@ -800,7 +816,38 @@ class ShareManager(manager.SchedulerDependentManager):
                         error("Cannot choose compatible share server: %s",
                               e)
 
+            share_server_should_be_encrypted = (
+                (encryption_key_ref and self.driver.encryption_support) and
+                ("share_server" in self.driver.encryption_support))
+
+            app_cred = None
             if not compatible_share_server:
+                if share_server_should_be_encrypted:
+                    # Create secret_ref ACL for Barbican User
+                    try:
+                        barbican_api.create_secret_access(context,
+                                                          encryption_key_ref)
+                        LOG.debug('Created Barbican ACL for encryption key '
+                                  'reference %s.', encryption_key_ref)
+                    except Exception as e:
+                        self._delete_encryption_keys_quota(context)
+                        with excutils.save_and_reraise_exception():
+                            error("Cannot create ACL for Barbican user %s", e)
+
+                    # Create application credentials for barbican user
+                    try:
+                        app_cred = (
+                            barbican_api.create_application_credentials(
+                                context, encryption_key_ref).to_dict())
+                        LOG.debug("Created app cred id %s", app_cred['id'])
+                    except Exception as e:
+                        self._delete_encryption_keys_quota(context)
+                        barbican_api.delete_secret_access(context,
+                                                          encryption_key_ref)
+                        with excutils.save_and_reraise_exception():
+                            error("Cannot create application credential: "
+                                  "%s", e)
+
                 compatible_share_server = self.db.share_server_create(
                     context,
                     {
@@ -813,8 +860,25 @@ class ShareManager(manager.SchedulerDependentManager):
                             self.driver.network_allocation_update_support),
                         'share_replicas_migration_support': (
                             self.driver.share_replicas_migration_support),
+                        'encryption_key_ref': (
+                            encryption_key_ref if
+                            share_server_should_be_encrypted else None),
+                        'application_credential_id': (
+                            app_cred['id'] if app_cred else None),
                     }
                 )
+            else:
+                if share_server_should_be_encrypted:
+                    # Get application credentials for barbican user
+                    try:
+                        app_cred = barbican_api.get_application_credentials(
+                            context,
+                            compatible_share_server.get(
+                                'application_credential_id')).to_dict()
+                        LOG.debug('Got app cred id %s', app_cred['id'])
+                    except Exception as e:
+                        with excutils.save_and_reraise_exception():
+                            error("Cannot get application credential: %s", e)
 
             msg = ("Using share_server %(share_server)s for share instance"
                    " %(share_instance_id)s")
@@ -829,9 +893,15 @@ class ShareManager(manager.SchedulerDependentManager):
                 {'share_server_id': compatible_share_server['id']},
                 with_share_data=True
             )
+
             if create_on_backend:
                 metadata = self._build_server_metadata(
-                    share_instance['host'], share_instance['share_type_id'])
+                    context,
+                    share_instance['host'],
+                    share_instance['share_type_id'],
+                    app_cred=app_cred,
+                    encryption_key_ref=encryption_key_ref
+                )
                 compatible_share_server = (
                     self._create_share_server_in_backend(
                         context, compatible_share_server, metadata))
@@ -840,11 +910,29 @@ class ShareManager(manager.SchedulerDependentManager):
 
         return _wrapped_provide_share_server_for_share()
 
-    def _build_server_metadata(self, host, share_type_id):
-        return {
+    def _build_server_metadata(self, context, host, share_type_id,
+                               app_cred=None,
+                               encryption_key_ref=None):
+
+        encryption_key_href = None
+        if encryption_key_ref:
+            encryption_key_href = barbican_api.get_secret_href(
+                context, encryption_key_ref)
+            LOG.debug("Generated encryption_key_href %s for backend share "
+                      "server.", encryption_key_href)
+
+        metadata = {
             'request_host': host,
             'share_type_id': share_type_id,
+            'encryption_key_ref': encryption_key_href,
+            'keystone_url': keystone_url,
         }
+        if app_cred:
+            metadata.update({
+                'application_credential_id': app_cred.get('id'),
+                'application_credential_secret': encryption_key_ref,
+            })
+        return metadata
 
     def _provide_share_server_for_migration(self, context,
                                             source_share_server,
@@ -963,7 +1051,7 @@ class ShareManager(manager.SchedulerDependentManager):
         share_server = self.db.share_server_get(context, share_server_id)
         share = self.db.share_instance_get(
             context, share_instance_id, with_share_data=True)
-        metadata = self._build_server_metadata(share['host'],
+        metadata = self._build_server_metadata(context, share['host'],
                                                share['share_type_id'])
 
         self._create_share_server_in_backend(context, share_server, metadata)
@@ -1113,6 +1201,7 @@ class ShareManager(manager.SchedulerDependentManager):
             if compatible_share_server['status'] == constants.STATUS_CREATING:
                 # Create share server on backend with data from db.
                 metadata = self._build_server_metadata(
+                    context,
                     share_group_ref['host'],
                     share_group_ref['share_types'][0]['share_type_id'])
                 compatible_share_server = self._setup_server(
@@ -4708,7 +4797,7 @@ class ShareManager(manager.SchedulerDependentManager):
             # has been changed.
             server_id = share_server['id']
             try:
-                self.db.share_server_get(
+                server = self.db.share_server_get(
                     context, server_id)
             except exception.ShareServerNotFound:
                 raise
@@ -4740,6 +4829,21 @@ class ShareManager(manager.SchedulerDependentManager):
                                                share_net,
                                                share_net_subnet)
 
+                application_credential_id = server.get(
+                    'application_credential_id')
+                if application_credential_id:
+                    # Delete application credentials for barbican user
+                    try:
+                        barbican_api.delete_application_credentials(
+                            context, application_credential_id)
+                    except Exception:
+                        LOG.warning('Application credentials not found '
+                                    'during deletion of share server.')
+
+                    encryption_key_ref = server.get('encryption_key_ref')
+                    barbican_api.delete_secret_access(context,
+                                                      encryption_key_ref)
+
                 LOG.debug("Deleting share server '%s'", server_id)
                 security_services = []
                 for ss_name in constants.SECURITY_SERVICES_ALLOWED_TYPES:
@@ -4758,12 +4862,31 @@ class ShareManager(manager.SchedulerDependentManager):
                     self.db.share_server_update(
                         context, server_id, {'status': constants.STATUS_ERROR})
             else:
+                encryption_key_ref = server.get('encryption_key_ref')
+                if encryption_key_ref:
+                    self._delete_encryption_keys_quota(context)
                 self.db.share_server_delete(context, share_server['id'])
 
         _wrapped_delete_share_server()
         LOG.info(
             "Share server '%s' has been deleted successfully.",
             share_server['id'])
+
+    def _delete_encryption_keys_quota(self, context):
+        reservations = None
+        try:
+            reservations = QUOTAS.reserve(
+                context, project_id=context.project_id,
+                encryption_keys=-1,
+            )
+        except Exception:
+            LOG.exception("Failed to update encryption_keys quota "
+                          "usages while deleting share server.")
+
+        if reservations:
+            QUOTAS.commit(
+                context, reservations, project_id=context.project_id,
+            )
 
     @add_hooks
     @utils.require_driver_initialized

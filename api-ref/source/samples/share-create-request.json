@@ -16,6 +16,7 @@
         "scheduler_hints": {
             "same_host": "d9c66489-cf02-4156-b0f2-527f3211b243,4ffee55f-ba98-42d2-a8ce-e7cecb169182",
             "different_host": "903685eb-f242-4105-903d-4bef2db94be4"
-        }
+        },
+        "encryption_key_ref": "86babe9b-7277-4c3a-a081-6eb3eac9231d"
     }
 }

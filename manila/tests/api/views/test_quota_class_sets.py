@@ -37,6 +37,7 @@ class ViewBuilderTestCase(test.TestCase):
         ("fake_quota_class", "2.53"), (None, "2.53"),
         ("fake_quota_class", "2.62"), (None, "2.62"),
         ("fake_quota_class", "2.80"), (None, "2.80"),
+        ("fake_quota_class", "2.90"), (None, "2.90"),
     )
     @ddt.unpack
     def test_detail_list_with_share_type(self, quota_class, microversion):
@@ -92,6 +93,13 @@ class ViewBuilderTestCase(test.TestCase):
                 "backup_gigabytes"] = fake_backup_gigabytes_value
             quota_class_set['backups'] = fake_share_backups_value
             quota_class_set['backup_gigabytes'] = fake_backup_gigabytes_value
+
+        if req.api_version_request >= api_version.APIVersionRequest("2.90"):
+            fake_encryption_keys = 10
+            expected[self.builder._collection_name][
+                "encryption_keys"] = fake_encryption_keys
+            quota_class_set['encryption_keys'] = (
+                fake_encryption_keys)
 
         result = self.builder.detail_list(
             req, quota_class_set, quota_class=quota_class)

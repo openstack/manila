@@ -71,6 +71,7 @@ def generate_stats(host_state, properties):
             host_state.mount_point_name_support),
         'share_replicas_migration_support': (
             host_state.share_replicas_migration_support),
+        'encryption_support': host_state.encryption_support,
     }
 
     host_caps = host_state.capabilities

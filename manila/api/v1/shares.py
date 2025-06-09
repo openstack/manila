@@ -257,7 +257,7 @@ class ShareMixin(object):
     def _create(self, req, body,
                 check_create_share_from_snapshot_support=False,
                 check_availability_zones_extra_spec=False,
-                scheduler_hints=None):
+                scheduler_hints=None, encryption_key_ref=None):
         """Creates a new share."""
         context = req.environ['manila.context']
 
@@ -413,11 +413,16 @@ class ShareMixin(object):
         # Only use in create share feature. Create share from snapshot
         # and create share with share group features not
         # need this check.
+        if share_type and share_type.get('extra_specs'):
+            dhss = (strutils.bool_from_string(
+                share_type.get('extra_specs').get(
+                    'driver_handles_share_servers')))
+        else:
+            dhss = False
+
         if (not share_network_id and not snapshot
                 and not share_group_id
-                and share_type and share_type.get('extra_specs')
-                and (strutils.bool_from_string(share_type.get('extra_specs').
-                     get('driver_handles_share_servers')))):
+                and dhss):
             msg = _('Share network must be set when the '
                     'driver_handles_share_servers is true.')
             raise exc.HTTPBadRequest(explanation=msg)
@@ -440,12 +445,27 @@ class ShareMixin(object):
                 payload = {'type': type_chosen, 'az': availability_zone}
                 raise exc.HTTPBadRequest(explanation=msg % payload)
 
+        if share_type and encryption_key_ref:
+            type_enc = share_type.get(
+                'extra_specs', {}).get('encryption_support')
+            if type_enc not in constants.SUPPORTED_ENCRYPTION_TYPES:
+                msg = _("Share type %(type)s extra-specs 'encryption_support' "
+                        "is missing valid value e.g. share, share_server.")
+                payload = {'type': share_type}
+                raise exc.HTTPBadRequest(explanation=msg % payload)
+            if not dhss:
+                msg = _("Share type %(type)s must set dhss=True for share "
+                        "encryption.")
+                payload = {'type': share_type}
+                raise exc.HTTPBadRequest(explanation=msg % payload)
+
         if share_type:
             kwargs['share_type'] = share_type
         if share_network_id:
             kwargs['share_network_id'] = share_network_id
 
         kwargs['scheduler_hints'] = scheduler_hints
+        kwargs['encryption_key_ref'] = encryption_key_ref
 
         if req.api_version_request >= api_version.APIVersionRequest("2.84"):
             kwargs['mount_point_name'] = share.pop('mount_point_name', None)

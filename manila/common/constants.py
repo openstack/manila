@@ -156,6 +156,8 @@ INVALID_SHARE_INSTANCE_STATUSES_FOR_ACCESS_RULE_UPDATES = (
     TRANSITIONAL_STATUSES
 )
 
+SUPPORTED_ENCRYPTION_TYPES = ['share', 'share_server']
+
 SUPPORTED_SHARE_PROTOCOLS = (
     'NFS', 'CIFS', 'GLUSTERFS', 'HDFS', 'CEPHFS', 'MAPRFS')
 
@@ -313,6 +315,7 @@ class ExtraSpecs(object):
     MOUNT_SNAPSHOT_SUPPORT = "mount_snapshot_support"
     MOUNT_POINT_NAME_SUPPORT = "mount_point_name_support"
     AVAILABILITY_ZONES = "availability_zones"
+    ENCRYPTION_SUPPORT = "encryption_support"
     PROVISIONING_MAX_SHARE_SIZE = "provisioning:max_share_size"
     PROVISIONING_MIN_SHARE_SIZE = "provisioning:min_share_size"
     PROVISIONING_MAX_SHARE_EXTEND_SIZE = "provisioning:max_share_extend_size"
@@ -331,6 +334,7 @@ class ExtraSpecs(object):
         MOUNT_SNAPSHOT_SUPPORT,
         MOUNT_POINT_NAME_SUPPORT,
         AVAILABILITY_ZONES,
+        ENCRYPTION_SUPPORT,
         PROVISIONING_MAX_SHARE_SIZE,
         PROVISIONING_MIN_SHARE_SIZE,
         PROVISIONING_MAX_SHARE_EXTEND_SIZE,
@@ -361,6 +365,8 @@ class ExtraSpecs(object):
     }
 
     REPLICATION_TYPES = ('writable', 'readable', 'dr')
+
+    ENCRYPTION_TYPES = ('share', 'share_server')
 
 
 class AdminOnlyMetadata(object):

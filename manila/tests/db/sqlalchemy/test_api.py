@@ -4048,6 +4048,13 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         for ss in share_servers:
             self.assertEqual(constants.STATUS_NETWORK_CHANGE, ss['status'])
 
+    def test_encryption_keys_get_count(self):
+        servers = [db_utils.create_share_server(
+                   encryption_key_ref=uuidutils.generate_uuid())
+                   for __ in range(1, 4)]
+        count = db_api.encryption_keys_get_count(context.get_admin_context())
+        self.assertEqual(count, len(servers))
+
 
 class ServiceDatabaseAPITestCase(test.TestCase):
 

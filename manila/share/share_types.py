@@ -366,6 +366,8 @@ def is_valid_optional_extra_spec(key, value):
         return is_valid_csv(value)
     elif key == constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX:
         return is_valid_string(value, min_length=0)
+    elif key == constants.ExtraSpecs.ENCRYPTION_SUPPORT:
+        return value in constants.ExtraSpecs.ENCRYPTION_TYPES
     elif key in [constants.ExtraSpecs.PROVISIONING_MAX_SHARE_SIZE,
                  constants.ExtraSpecs.PROVISIONING_MIN_SHARE_SIZE,
                  constants.ExtraSpecs.PROVISIONING_MAX_SHARE_EXTEND_SIZE]:

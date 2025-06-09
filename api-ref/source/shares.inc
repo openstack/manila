@@ -144,6 +144,7 @@ Request
    - offset: offset
    - sort_key: sort_key
    - sort_dir: sort_dir
+   - encryption_key_ref: encryption_key_ref_query
 
 Response parameters
 -------------------
@@ -214,6 +215,7 @@ Request
    - offset: offset
    - sort_key: sort_key
    - sort_dir: sort_dir
+   - encryption_key_ref: encryption_key_ref_query
 
 Response parameters
 -------------------
@@ -257,6 +259,7 @@ Response parameters
    - export_locations: export_locations
    - is_soft_deleted: is_soft_deleted_response
    - scheduled_to_be_deleted_at: scheduled_to_be_deleted_at_response
+   - encryption_key_ref: encryption_key_ref_response
 
 
 Response example
@@ -337,6 +340,7 @@ Response parameters
    - export_locations: export_locations
    - is_soft_deleted: is_soft_deleted_response
    - scheduled_to_be_deleted_at: scheduled_to_be_deleted_at_response
+   - encryption_key_ref: encryption_key_ref_response
 
 Response example
 ----------------
@@ -405,6 +409,7 @@ Response parameters
    - access_rules_status: access_rules_status
    - share_type_id: share_type_id
    - id: id_13
+   - encryption_key_ref: encryption_key_ref_response
 
 Response example
 ----------------
@@ -455,6 +460,7 @@ Request
    - share_network_id: share_network_id_request
    - availability_zone: availability_zone_request
    - scheduler_hints: scheduler_hints
+   - encryption_key_ref: encryption_key_ref_request
 
 Request example
 ---------------
@@ -503,6 +509,7 @@ Response parameters
    - export_locations: export_locations
    - is_soft_deleted: is_soft_deleted_response
    - scheduled_to_be_deleted_at: scheduled_to_be_deleted_at_response
+   - encryption_key_ref: encryption_key_ref_response
 
 Response example
 ----------------
@@ -610,6 +617,7 @@ Response parameters
    - export_locations: export_locations
    - is_soft_deleted: is_soft_deleted_response
    - scheduled_to_be_deleted_at: scheduled_to_be_deleted_at_response
+   - encryption_key_ref: encryption_key_ref_response
 
 Response example
 ----------------
@@ -710,6 +718,7 @@ Response parameters
    - export_locations: export_locations
    - is_soft_deleted: is_soft_deleted_response
    - scheduled_to_be_deleted_at: scheduled_to_be_deleted_at_response
+   - encryption_key_ref: encryption_key_ref_response
 
 Response example
 ----------------

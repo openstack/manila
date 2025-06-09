@@ -151,6 +151,7 @@ class ShareAPITest(test.TestCase):
             '2.31': {'share_group_id': None,
                      'source_share_group_snapshot_member_id': None},
             '2.32': {'mount_snapshot_support': False},
+            '2.90': {'encryption_key_ref': None},
         }
 
         # Apply all the share transformations
@@ -606,7 +607,8 @@ class ShareAPITest(test.TestCase):
             metadata=None,
             snapshot_id=None,
             availability_zone=az_name,
-            scheduler_hints=None)
+            scheduler_hints=None,
+            encryption_key_ref=None)
 
     def test_share_create_with_sg_and_different_availability_zone(self):
         sg_id = 'fake_sg_id'
@@ -662,6 +664,71 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(0, share_api.API.create.call_count)
         db.share_group_get.assert_called_once_with(
             req.environ['manila.context'], sg_id)
+
+    @ddt.data({'encryption_support': True, 'dhss': True},
+              {'encryption_support': True, 'dhss': False},
+              {'encryption_support': False, 'dhss': True},
+              {'encryption_support': False, 'dhss': False})
+    @ddt.unpack
+    def test_share_create_with_encryption(self, encryption_support, dhss):
+        share = {
+            "id": "1",
+            "size": 100,
+            "display_name": "Share Test Name",
+            "display_description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "share_network_id": "fakenetid"
+        }
+
+        fake_network = {'id': 'fakenetid'}
+        create_mock = mock.Mock(
+            return_value=stubs.stub_share(
+                '1',
+                size=100,
+                display_name=share['display_name'],
+                display_description=share['display_description'],
+                share_proto=share['share_proto'].upper(),
+                share_network_id=share['share_network_id'],
+                instance={
+                    'encryption_key_ref': 'fake_key_uuid',
+                })
+        )
+        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'get_share_network', mock.Mock(
+            return_value=fake_network))
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
+
+        stype = copy.deepcopy(self.vt)
+        if dhss:
+            stype['extra_specs']['driver_handles_share_servers'] = 'true'
+        else:
+            stype['extra_specs']['driver_handles_share_servers'] = 'false'
+        if encryption_support:
+            stype['extra_specs']['encryption_support'] = 'share'
+        else:
+            stype['extra_specs']['encryption_support'] = 'fake'
+
+        self.mock_object(share_types, 'get_share_type_by_name', mock.Mock(
+            return_value=stype))
+
+        share['encryption_key_ref'] = 'fake_key_uuid'
+
+        request_args = copy.deepcopy(share)
+        request_args['share_type'] = 'fake_volume_type_name'
+
+        body = {"share": request_args}
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version='2.90')
+        if dhss and encryption_support:
+            result = self.controller.create(req, body)
+            expected = self._get_expected_share_detailed_response(
+                share, version='2.90')
+            self.assertEqual(
+                expected['share']['encryption_key_ref'],
+                result['share']['encryption_key_ref'])
+        else:
+            self.assertRaises(webob.exc.HTTPBadRequest,
+                              self.controller.create, req, body)
 
     def test_share_create_with_valid_default_share_type(self):
         self.mock_object(share_types, 'get_share_type_by_name',

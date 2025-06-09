@@ -452,6 +452,7 @@ class ACCESSShareDriverTestCase(test.TestCase):
             'share_server_multiple_subnet_support': False,
             'network_allocation_update_support': False,
             'share_replicas_migration_support': False,
+            'encryption_support': None,
         }
 
         self.assertEqual(data, self._driver._stats)

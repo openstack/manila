@@ -412,12 +412,17 @@ class ShareTypesTestCase(test.TestCase):
         list(itertools.product(
              (constants.ExtraSpecs.REPLICATION_TYPE_SPEC,),
              constants.ExtraSpecs.REPLICATION_TYPES)) +
+        list(itertools.product(
+             (constants.ExtraSpecs.ENCRYPTION_SUPPORT,),
+             constants.ExtraSpecs.ENCRYPTION_TYPES)) +
         [(constants.ExtraSpecs.AVAILABILITY_ZONES, 'zone a, zoneb$c'),
          (constants.ExtraSpecs.AVAILABILITY_ZONES, '    zonea,    zoneb'),
          (constants.ExtraSpecs.AVAILABILITY_ZONES, 'zone1')] +
         [(constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX, 'gold'),
          (constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX, 'silver'),
-         (constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX, 'bronze')]
+         (constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX, 'bronze')] +
+        [(constants.ExtraSpecs.ENCRYPTION_SUPPORT, 'share'),
+         (constants.ExtraSpecs.ENCRYPTION_SUPPORT, 'share_server')]
     ))
     @ddt.unpack
     def test_is_valid_optional_extra_spec_valid(self, key, value):

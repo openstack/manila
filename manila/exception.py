@@ -500,6 +500,11 @@ class ShareReplicaSizeExceedsAvailableQuota(QuotaError):
         "gigabytes quota.")
 
 
+class EncryptionKeysLimitExceeded(QuotaError):
+    message = _(
+        "Maximum number of allowed encryption keys is exceeded.")
+
+
 class GlusterfsException(ManilaException):
     message = _("Unknown Gluster exception.")
 
@@ -781,6 +786,15 @@ class ShareTypeCreateFailed(ManilaException):
 
 class ShareTypeUpdateFailed(ManilaException):
     message = _("Cannot update share_type %(id)s.")
+
+
+class ManilaBarbicanACLError(ManilaException):
+    message = _("Failed while communicating to Barbican. "
+                "Please check the provided credentials .")
+
+
+class ManilaBarbicanAppCredsError(ManilaException):
+    message = _("Error occured while dealing with barbican for App Creds.")
 
 
 class ShareGroupTypeCreateFailed(ManilaException):

@@ -1,0 +1,18 @@
+---
+features:
+  - |
+    Starting with microversion 2.90, Manila allows end users to provide
+    barbican secret_ref as encryption key reference in share create API. This
+    will be used as either share encryption key reference or share server
+    encryption key reference, based on backend driver support for share
+    encryption.
+issues:
+  - |
+    When using share types with ``encryption_support=share_server``, share
+    servers created cannot currently be unmanaged from Manila. This limitation
+    will be addressed in a future release.
+
+    Additionally, care must be taken when managing existing shares with
+    ``driver_handles_share_servers=True`` (DHSS=True). You must use a share type
+    that supports encryption if the share must be encrypted or if its existing
+    encryption status needs to be retained.

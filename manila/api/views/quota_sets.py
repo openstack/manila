@@ -24,6 +24,7 @@ class ViewBuilder(common.ViewBuilder):
         "add_share_replica_quotas",
         "add_per_share_gigabytes_quotas",
         "add_share_backup_quotas",
+        "add_encryption_keys_quotas",
     ]
 
     def detail_list(self, request, quota_set, project_id=None,
@@ -70,3 +71,7 @@ class ViewBuilder(common.ViewBuilder):
     def add_share_backup_quotas(self, context, view, quota_set):
         view['backups'] = quota_set.get('backups')
         view['backup_gigabytes'] = quota_set.get('backup_gigabytes')
+
+    @common.ViewBuilder.versioned_method("2.90")
+    def add_encryption_keys_quotas(self, context, view, quota_set):
+        view['encryption_keys'] = quota_set.get('encryption_keys')

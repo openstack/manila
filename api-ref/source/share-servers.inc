@@ -135,6 +135,7 @@ Response parameters
   - is_auto_deletable: share_server_show_is_auto_deletable
   - share_network_subnet_id: share_network_subnet_id_share_server_body
   - security_service_update_support: security_service_update_support
+  - encryption_key_ref: encryption_key_ref_response
 
 Response example
 ----------------
@@ -281,6 +282,7 @@ Response parameters
     - identifier: identifier
     - share_network_subnet_id: share_network_subnet_id_manage_server_body
     - security_service_update_support: security_service_update_support
+    - encryption_key_ref: encryption_key_ref_response
 
 
 Response examples

@@ -1158,7 +1158,10 @@ class ShareServerControllerTest(test.TestCase):
         else:
             body = {}
 
-        server_get = mock.Mock()
+        server = db_utils.create_share_server(
+            id='fake_server_id', status=constants.STATUS_ACTIVE)
+
+        server_get = mock.Mock(return_value=server)
         network_get = mock.Mock()
         if raise_server_get_exception:
             server_get = mock.Mock(

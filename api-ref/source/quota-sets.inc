@@ -24,6 +24,7 @@ Provides quotas management support.
     - ``per_share_gigabytes`` (since API version 2.62)
     - ``backups`` (since API version 2.80)
     - ``backup_gigabytes`` (since API version 2.80)
+    - ``encryption_keys`` (since API version 2.90)
 
     In order to manipulate share type quotas, the requests will be similar
     to the examples below, except that the ``user_id={user_id}`` must be
@@ -40,6 +41,8 @@ Provides quotas management support.
 
     Share backups and backup gigabytes were added to quota management
     APIs in API version 2.80.
+
+    Encryption keys was added to quota management APIs in API version 2.90.
 
 
 Show default quota set
@@ -90,6 +93,7 @@ Response parameters
    - per_share_gigabytes: quota_per_share_gigabytes
    - backups: quota_backups
    - backup_gigabytes: quota_backup_gigabytes
+   - encryption_keys: quota_encryption_keys
 
 Response example
 ----------------
@@ -151,6 +155,7 @@ Response parameters
    - per_share_gigabytes: quota_per_share_gigabytes
    - backups: quota_backups
    - backup_gigabytes: quota_backup_gigabytes
+   - encryption_keys: quota_encryption_keys
 
 Response example
 ----------------
@@ -214,6 +219,7 @@ Response parameters
    - per_share_gigabytes: quota_per_share_gigabytes_detail
    - backups: quota_backups_detail
    - backup_gigabytes: quota_backup_gigabytes_detail
+   - encryption_keys: quota_encryption_keys_detail
 
 Response example
 ----------------
@@ -269,6 +275,7 @@ Request
    - per_share_gigabytes: quota_per_share_gigabytes_request
    - backups: quota_backups_request
    - backup_gigabytes: quota_backup_gigabytes_request
+   - encryption_keys: quota_encryption_keys_request
 
 Request example
 ---------------
@@ -295,6 +302,7 @@ Response parameters
    - per_share_gigabytes: quota_per_share_gigabytes
    - backups: quota_backups
    - backup_gigabytes: quota_backup_gigabytes
+   - encryption_keys: quota_encryption_keys
 
 Response example
 ----------------

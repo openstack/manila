@@ -39,6 +39,7 @@ class ViewBuilder(common.ViewBuilder):
         "translate_creating_from_snapshot_status",
         "add_share_recycle_bin_field",
         "add_source_backup_id_field",
+        "add_encryption_key_ref_field",
     ]
 
     def summary_list(self, request, shares, count=None):
@@ -210,3 +211,8 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("2.80")
     def add_source_backup_id_field(self, context, share_dict, share):
         share_dict['source_backup_id'] = share.get('source_backup_id')
+
+    @common.ViewBuilder.versioned_method("2.90")
+    def add_encryption_key_ref_field(self, context, share_dict, share):
+        share_dict['encryption_key_ref'] = share.get('instance', {}).get(
+            'encryption_key_ref')

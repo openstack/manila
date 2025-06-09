@@ -12,6 +12,7 @@ Quota classes can be shown and updated for a project.
     version 2.62.
     Share backups and backup gigabytes were added to quota management
     APIs in API version 2.80.
+    Encryption keys was added to quota management APIs in API version 2.90.
 
 
 Show quota classes for a project
@@ -62,6 +63,7 @@ Response Parameters
    - per_share_gigabytes: perShareGigabytes
    - backups: maxTotalShareBackups
    - backup_gigabytes: maxTotalBackupGigabytes
+   - encryption_keys: maxTotalEncryptionKeys
 
 Response Example
 ----------------
@@ -108,6 +110,7 @@ Request
    - per-share-gigabytes: perShareGigabytesOptional
    - backups: maxTotalShareBackupsOptional
    - backup-gigabytes: maxTotalBackupGigabytesOptional
+   - encryption_keys: maxTotalEncryptionKeysOptional
 
 Request Example
 ---------------
@@ -134,6 +137,7 @@ Response Parameters
    - per_share_gigabytes: perShareGigabytes
    - backups: maxTotalShareBackups
    - backup_gigabytes: maxTotalBackupGigabytes
+   - encryption_keys: maxTotalEncryptionKeys
 
 Response Example
 ----------------

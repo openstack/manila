@@ -33,6 +33,7 @@ from manila.data import rpcapi as data_rpc
 from manila import db
 from manila.db.sqlalchemy import models
 from manila import exception
+from manila.keymgr import barbican as barbican_api
 from manila.message import message_field
 from manila import quota
 from manila.share import api
@@ -3296,7 +3297,80 @@ class ShareManagerTestCase(test.TestCase):
         )
         driver_method_mock.assert_called_once_with(
             self.context, [fake_share_server], share.instance,
-            snapshot=None, share_group=None)
+            snapshot=None, share_group=None, encryption_key_ref=None)
+
+    @ddt.data(True, False)
+    def test_provide_share_server_encryption_key_ref(self, acl_error):
+        fake_share_network = db_utils.create_share_network(id='fake_sn_id')
+        fake_share_net_subnets = [db_utils.create_share_network_subnet(
+            id='fake_sns_id', share_network_id=fake_share_network['id']
+        )]
+
+        fake_share_server = db_utils.create_share_server(
+            id='fake',
+            encryption_key_ref='fake_ref'
+        )
+        share = db_utils.create_share(encryption_key_ref='fake_ref')
+
+        self.share_manager.driver.encryption_support = 'share_server'
+
+        db_method_mock = self.mock_object(
+            db, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=fake_share_net_subnets))
+        self.mock_object(
+            db, 'share_server_get_all_by_host_and_share_subnet_valid',
+            mock.Mock(return_value=[fake_share_server]))
+        self.mock_object(
+            self.share_manager, '_check_share_server_backend_limits',
+            mock.Mock(return_value=[fake_share_server]))
+        self.mock_object(
+            self.share_manager.driver,
+            "choose_share_server_compatible_with_share",
+            mock.Mock(return_value=None)
+        )
+        mock_server_create = self.mock_object(
+            db, 'share_server_create',
+            mock.Mock(return_value=fake_share_server))
+        fake_exception = exception.ManilaBarbicanACLError()
+        self.mock_object(
+            barbican_api, 'create_secret_access',
+            mock.Mock(side_effect=fake_exception) if acl_error else
+            mock.Mock())
+
+        mock_obj = mock.Mock()
+        mock_obj.to_dict.return_value = {
+            'id': 'fake_application_credential_id'
+        }
+        mock_create_app_cred = self.mock_object(
+            barbican_api, 'create_application_credentials',
+            mock.Mock(return_value=mock_obj))
+        mock_get_secret_ref = self.mock_object(
+            barbican_api, 'get_secret_href',
+            mock.Mock(return_value='fake_secret_href'))
+
+        if acl_error:
+            self.assertRaises(
+                exception.ManilaBarbicanACLError,
+                self.share_manager._provide_share_server_for_share,
+                self.context, fake_share_network['id'], share.instance)
+        else:
+            self.share_manager._provide_share_server_for_share(
+                self.context, fake_share_network['id'], share.instance)
+            mock_server_create.assert_called()
+            mock_create_app_cred.assert_called()
+            mock_get_secret_ref.assert_called()
+
+        db_method_mock.assert_called_once_with(
+            self.context, fake_share_network['id'],
+            availability_zone_id=share.instance.get('availability_zone_id')
+        )
+        driver_mock = self.share_manager.driver
+        driver_method_mock = (
+            driver_mock.choose_share_server_compatible_with_share
+        )
+        driver_method_mock.assert_called_once_with(
+            self.context, [fake_share_server], share.instance,
+            snapshot=None, share_group=None, encryption_key_ref='fake_ref')
 
     def test_provide_share_server_for_share_invalid_arguments(self):
         self.assertRaises(ValueError,
@@ -9086,10 +9160,11 @@ class ShareManagerTestCase(test.TestCase):
 
     def test__build_server_metadata(self):
         share = {'host': 'host', 'share_type_id': 'id'}
-        expected_metadata = {'request_host': 'host', 'share_type_id': 'id'}
+        expected_metadata = {'request_host': 'host', 'share_type_id': 'id',
+                             'encryption_key_ref': None, 'keystone_url': None}
 
         metadata = self.share_manager._build_server_metadata(
-            share['host'], share['share_type_id'])
+            self.context, share['host'], share['share_type_id'])
 
         self.assertDictEqual(expected_metadata, metadata)
 

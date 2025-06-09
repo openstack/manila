@@ -383,6 +383,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'share_server_multiple_subnet_support': False,
             'network_allocation_update_support': False,
             'share_replicas_migration_support': False,
+            'encryption_support': None,
         }
         if replication_domain:
             expected['replication_type'] = 'readable'

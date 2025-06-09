@@ -114,6 +114,11 @@ class ShareServerController(share_servers.ShareServerController,
                     "subnets.")
             raise exc.HTTPBadRequest(explanation=msg)
 
+        if share_server.get('encryption_key_ref'):
+            msg = _("Cannot unmanage the share server containing encryption "
+                    "key reference")
+            raise exc.HTTPBadRequest(explanation=msg)
+
         share_network_id = share_server['share_network_id']
         share_network = db_api.share_network_get(context, share_network_id)
         common.check_share_network_is_active(share_network)
@@ -242,6 +247,11 @@ class ShareServerController(share_servers.ShareServerController,
         if not params:
             raise exc.HTTPBadRequest(explanation=_("Request is missing body."))
 
+        if share_server['encryption_key_ref']:
+            msg = _("Cannot migrate the share server containing encryption "
+                    "key reference")
+            raise exc.HTTPBadRequest(explanation=msg)
+
         bool_params = ['writable', 'nondisruptive', 'preserve_snapshots']
         mandatory_params = bool_params + ['host']
 
@@ -369,6 +379,11 @@ class ShareServerController(share_servers.ShareServerController,
 
         if not params:
             raise exc.HTTPBadRequest(explanation=_("Request is missing body."))
+
+        if share_server.get('encryption_key_ref'):
+            msg = _("Cannot migrate the share server containing encryption "
+                    "key reference")
+            raise exc.HTTPBadRequest(explanation=msg)
 
         bool_params = ['writable', 'nondisruptive', 'preserve_snapshots']
         mandatory_params = bool_params + ['host']

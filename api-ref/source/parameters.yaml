@@ -344,6 +344,14 @@ detail_id:
   type: string
   description: >
     The ID of the message detail.
+encryption_key_ref_query:
+  description: |
+    The encryption key ref that can be used to filter shares or
+    share instances.
+  in: query
+  required: false
+  type: string
+  min_version: 2.90
 export_location_id_query:
   description: |
     The export location UUID that can be used to filter shares or
@@ -1369,6 +1377,21 @@ driver_options:
   in: body
   required: false
   type: object
+encryption_key_ref_request:
+  description: |
+    The encryption key ref is valid barbican secret UUID that will be used to
+    get encryption key by the storage drivers.
+  in: body
+  required: false
+  type: object
+  min_version: 2.90
+encryption_key_ref_response:
+  description: |
+    The encryption key ref is valid barbican secret UUID that will be used to
+    get encryption key by the storage drivers.
+  in: body
+  required: true
+  type: object
 export_location:
   description: |
     The export location.  For newer API versions it is available in
@@ -1805,6 +1828,20 @@ maxTotalBackupGigabytesOptional:
   required: false
   type: integer
   min_version: 2.80
+maxTotalEncryptionKeys:
+  description: |
+    The number of encryption keys allowed in a project.
+  in: body
+  required: true
+  type: integer
+  min_version: 2.90
+maxTotalEncryptionKeysOptional:
+  description: |
+    The number of encryption keys allowed in a project.
+  in: body
+  required: false
+  type: integer
+  min_version: 2.90
 maxTotalReplicaGigabytes:
     description: |
       The maximum number of replica gigabytes that are allowed in a project.
@@ -2384,6 +2421,28 @@ quota_class_set:
   in: body
   required: true
   type: object
+quota_encryption_keys:
+  description: |
+    The number of encryption keys allowed for each project.
+  in: body
+  required: true
+  min_version: 2.90
+  type: integer
+quota_encryption_keys_detail:
+  description: |
+    The limit, in_use, reserved number of encryption keys
+    for each project.
+  in: body
+  min_version: 2.90
+  required: true
+  type: object
+quota_encryption_keys_request:
+  description: |
+    The number of encryption keys allowed for each project.
+  in: body
+  min_version: 2.90
+  required: false
+  type: integer
 quota_gigabytes:
   description: |
     The number of gigabytes allowed for each project.

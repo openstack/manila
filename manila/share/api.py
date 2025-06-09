@@ -207,6 +207,24 @@ class API(base.Base):
         return compatible_azs_name, compatible_azs_multiple
 
     @staticmethod
+    def check_if_encryption_keys_quotas_exceeded(context, quota_exception):
+        overs = quota_exception.kwargs['overs']
+        usages = quota_exception.kwargs['usages']
+        quotas = quota_exception.kwargs['quotas']
+
+        def _consumed(name):
+            return (usages[name]['reserved'] + usages[name]['in_use'])
+
+        if 'encryption_keys' in overs:
+            LOG.warning("Encryption keys quota exceeded for %(s_pid)s "
+                        "(%(d_consumed)d of %(d_quota)d keys already "
+                        "consumed).", {
+                            's_pid': context.project_id,
+                            'd_consumed': _consumed('encryption_keys'),
+                            'd_quota': quotas['encryption_keys']})
+            raise exception.EncryptionKeysLimitExceeded()
+
+    @staticmethod
     def check_if_share_quotas_exceeded(context, quota_exception,
                                        share_size, operation='create'):
         overs = quota_exception.kwargs['overs']
@@ -286,7 +304,7 @@ class API(base.Base):
                share_group_id=None, share_group_snapshot_member=None,
                availability_zones=None, scheduler_hints=None,
                az_request_multiple_subnet_support_map=None,
-               mount_point_name=None):
+               mount_point_name=None, encryption_key_ref=None):
         """Create new share."""
 
         api_common.check_metadata_properties(metadata)
@@ -382,11 +400,28 @@ class API(base.Base):
             deltas.update(
                 {'share_replicas': 1, 'replica_gigabytes': size})
 
+        if encryption_key_ref:
+            # Make sure encryption_key_ref is valid UUID
+            if not uuidutils.is_uuid_like(encryption_key_ref):
+                msg = _('Encryption key ref is not valid UUID')
+                raise exception.InvalidInput(reason=msg)
+
+            # Check if its new encryption_key_ref
+            filters = {
+                'encryption_key_ref': encryption_key_ref,
+                'project_id': context.project_id,
+            }
+            is_existing_key = self.db.encryption_keys_get_all(
+                context, filters=filters)
+            if not is_existing_key:
+                deltas.update({'encryption_keys': 1})
+
         try:
             reservations = QUOTAS.reserve(
                 context, share_type_id=share_type_id, **deltas)
         except exception.OverQuota as e:
             self.check_if_share_quotas_exceeded(context, e, size)
+            self.check_if_encryption_keys_quotas_exceeded(context, e)
             if share_type_supports_replication:
                 self.check_if_replica_quotas_exceeded(context, e, size,
                                                       resource_type='share')
@@ -517,7 +552,9 @@ class API(base.Base):
             snapshot_host=snapshot_host, scheduler_hints=scheduler_hints,
             az_request_multiple_subnet_support_map=(
                 az_request_multiple_subnet_support_map),
-            mount_point_name=mount_point_name)
+            mount_point_name=mount_point_name,
+            encryption_key_ref=encryption_key_ref,
+            )
 
         # Retrieve the share with instance details
         share = self.db.share_get(context, share['id'])
@@ -677,7 +714,7 @@ class API(base.Base):
                         share_type_id=None, availability_zones=None,
                         snapshot_host=None, scheduler_hints=None,
                         az_request_multiple_subnet_support_map=None,
-                        mount_point_name=None):
+                        mount_point_name=None, encryption_key_ref=None):
         request_spec, share_instance = (
             self.create_share_instance_and_get_request_spec(
                 context, share, availability_zone=availability_zone,
@@ -688,7 +725,8 @@ class API(base.Base):
                 snapshot_host=snapshot_host,
                 az_request_multiple_subnet_support_map=(
                     az_request_multiple_subnet_support_map),
-                mount_point_name=mount_point_name))
+                mount_point_name=mount_point_name,
+                encryption_key_ref=encryption_key_ref))
 
         if share_group_snapshot_member:
             # Inherit properties from the share_group_snapshot_member
@@ -732,7 +770,7 @@ class API(base.Base):
             share_type_id=None, cast_rules_to_readonly=False,
             availability_zones=None, snapshot_host=None,
             az_request_multiple_subnet_support_map=None,
-            mount_point_name=None):
+            mount_point_name=None, encryption_key_ref=None):
 
         availability_zone_id = None
         if availability_zone:
@@ -753,6 +791,7 @@ class API(base.Base):
                 'share_type_id': share_type_id,
                 'cast_rules_to_readonly': cast_rules_to_readonly,
                 'mount_point_name': mount_point_name,
+                'encryption_key_ref': encryption_key_ref,
             }
         )
 
@@ -786,7 +825,8 @@ class API(base.Base):
             'host': share_instance['host'],
             'status': share_instance['status'],
             'replica_state': share_instance['replica_state'],
-            'share_type_id': share_instance['share_type_id']
+            'share_type_id': share_instance['share_type_id'],
+            'encryption_key_ref': share_instance['encryption_key_ref'],
         }
 
         share_type = None
@@ -2339,7 +2379,8 @@ class API(base.Base):
             'display_description', 'display_description~', 'snapshot_id',
             'status', 'share_type_id', 'project_id', 'export_location_id',
             'export_location_path', 'limit', 'offset', 'host',
-            'share_network_id', 'is_soft_deleted', 'mount_point_name']
+            'share_network_id', 'is_soft_deleted', 'mount_point_name',
+            'encryption_key_ref']
 
         for key in filter_keys:
             if key in search_opts:

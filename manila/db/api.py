@@ -1892,3 +1892,15 @@ def resource_lock_get(context, lock_id):
 def resource_lock_get_all(context, **kwargs):
     """Retrieve all resource locks."""
     return IMPL.resource_lock_get_all(context, **kwargs)
+
+##################
+
+
+def encryption_keys_get_count(context, filters=None):
+    """Get count of encryption keys."""
+    return IMPL.encryption_keys_get_count(context, filters=filters)
+
+
+def encryption_keys_get_all(context, filters=None):
+    """Get all encryption keys."""
+    return IMPL.encryption_keys_get_all(context, filters=filters)

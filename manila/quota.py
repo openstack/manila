@@ -108,7 +108,10 @@ quota_opts = [
                help='Total amount of storage, in gigabytes, allowed '
                'for backups per project.',
                deprecated_group='DEFAULT',
-               deprecated_name='quota_backup_gigabytes'), ]
+               deprecated_name='quota_backup_gigabytes'),
+    cfg.IntOpt('encryption_keys',
+               default=100,
+               help='Number of encryption keys allowed per project.'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(quota_opts, QUOTA_GROUP)
@@ -1186,7 +1189,10 @@ resources = [
                        'replica_gigabytes'),
     ReservableResource('backups', '_sync_backups', 'backups'),
     ReservableResource('backup_gigabytes', '_sync_backup_gigabytes',
-                       'backup_gigabytes')
+                       'backup_gigabytes'),
+    ReservableResource('encryption_keys',
+                       '_sync_encryption_keys',
+                       'encryption_keys'),
 ]
 
 
