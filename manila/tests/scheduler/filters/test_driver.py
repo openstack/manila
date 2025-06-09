@@ -168,3 +168,79 @@ class HostFiltersTestCase(test.TestCase):
         filter_properties = {}
 
         self.assertFalse(self.filter.host_passes(host1, filter_properties))
+
+    def test_filter_function_present_in_capabilities(self):
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'capabilities': {
+                    'filter_function': 'share.size >= 3',
+                },
+            })
+
+        filter_properties = {
+            'request_spec': {
+                'share_id': 123
+            }
+        }
+        stats = self.filter._generate_stats(host1, filter_properties)
+        self.assertEqual(stats['filter_function'], 'share.size >= 3')
+
+    def test_filter_function_not_present_in_capabilities(self):
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'capabilities': {},
+            })
+
+        filter_properties = {
+            'request_spec': {
+                'share_id': 123
+            }
+        }
+        stats = self.filter._generate_stats(host1, filter_properties)
+        self.assertIsNone(stats['filter_function'])
+
+    def test_filter_function_none_in_capabilities(self):
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'capabilities': {
+                    'filter_function': None,
+                },
+            })
+
+        filter_properties = {
+            'request_spec': {
+                'share_id': 123
+            }
+        }
+        stats = self.filter._generate_stats(host1, filter_properties)
+        self.assertIsNone(stats['filter_function'])
+
+    def test_share_id_not_present_in_request_spec(self):
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'capabilities': {
+                    'filter_function': 'share.size >= 3',
+                },
+            })
+
+        filter_properties = {
+            'request_spec': {}
+        }
+        stats = self.filter._generate_stats(host1, filter_properties)
+        self.assertIsNone(stats['filter_function'])
+
+    def test_filter_function_not_equal_to_share_size(self):
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'capabilities': {
+                    'filter_function': 'other_filter',
+                },
+            })
+
+        filter_properties = {
+            'request_spec': {
+                'share_id': '123'
+            }
+        }
+        stats = self.filter._generate_stats(host1, filter_properties)
+        self.assertEqual(stats['filter_function'], 'other_filter')

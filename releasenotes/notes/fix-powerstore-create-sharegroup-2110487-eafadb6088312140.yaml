@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Dell PowerStore `Bug #2110487
+    <https://bugs.launchpad.net/manila/+bug/2110487>`_: Fixed
+    creating share group when filter function share.size is provided.
