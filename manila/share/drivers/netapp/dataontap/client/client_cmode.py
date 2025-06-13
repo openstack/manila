@@ -187,7 +187,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def create_vserver(self, vserver_name, root_volume_aggregate_name,
                        root_volume_name, aggregate_names, ipspace_name,
-                       security_cert_expire_days, delete_retention_hours):
+                       security_cert_expire_days, delete_retention_hours,
+                       logical_space_reporting):
         """Creates new vserver and assigns aggregates."""
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
@@ -195,23 +196,27 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             root_volume_name=root_volume_name,
             root_volume_aggregate_name=root_volume_aggregate_name,
             root_volume_security_style='unix',
-            name_server_switch='file')
+            name_server_switch='file',
+            logical_space_reporting=logical_space_reporting)
         self._modify_security_cert(vserver_name, security_cert_expire_days)
 
     @na_utils.trace
     def create_vserver_dp_destination(self, vserver_name, aggregate_names,
-                                      ipspace_name, delete_retention_hours):
+                                      ipspace_name, delete_retention_hours,
+                                      logical_space_reporting):
         """Creates new 'dp_destination' vserver and assigns aggregates."""
         self._create_vserver(
             vserver_name, aggregate_names, ipspace_name,
-            delete_retention_hours, subtype='dp_destination')
+            delete_retention_hours, subtype='dp_destination',
+            logical_space_reporting=logical_space_reporting)
 
     @na_utils.trace
     def _create_vserver(self, vserver_name, aggregate_names, ipspace_name,
                         delete_retention_hours,
                         root_volume_name=None, root_volume_aggregate_name=None,
                         root_volume_security_style=None,
-                        name_server_switch=None, subtype=None):
+                        name_server_switch=None, subtype=None,
+                        logical_space_reporting=False):
         """Creates new vserver and assigns aggregates."""
         create_args = {
             'vserver-name': vserver_name,
@@ -235,6 +240,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(msg)
             else:
                 create_args['ipspace'] = ipspace_name
+
+        create_args['is-space-reporting-logical'] = (
+            'true' if logical_space_reporting else 'false')
+        create_args['is-space-enforcement-logical'] = (
+            'true' if logical_space_reporting else 'false')
+
+        LOG.debug('Creating Vserver %(vserver)s with create args '
+                  '%(args)s', {'vserver': vserver_name, 'args': create_args})
 
         self.send_request('vserver-create', create_args)
 

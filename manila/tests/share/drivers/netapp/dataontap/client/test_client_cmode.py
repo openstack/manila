@@ -430,7 +430,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'root-volume-security-style': 'unix',
             'root-volume-aggregate': fake.ROOT_VOLUME_AGGREGATE_NAME,
             'root-volume': fake.ROOT_VOLUME_NAME,
-            'name-server-switch': {'nsswitch': 'file'}
+            'name-server-switch': {'nsswitch': 'file'},
+            'is-space-reporting-logical': 'false',
+            'is-space-enforcement-logical': 'false'
         }
         vserver_modify_args = {
             'aggr-list': [{'aggr-name': aggr_name} for aggr_name
@@ -445,7 +447,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                    fake.SHARE_AGGREGATE_NAMES,
                                    None,
                                    fake.SECURITY_CERT_LARGE_EXPIRE_DAYS,
-                                   16)
+                                   16,
+                                   False)
 
         self.client.send_request.assert_has_calls([
             mock.call('vserver-create', vserver_create_args),
@@ -469,6 +472,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'root-volume': fake.ROOT_VOLUME_NAME,
             'name-server-switch': {'nsswitch': 'file'},
             'ipspace': fake.IPSPACE_NAME,
+            'is-space-reporting-logical': 'false',
+            'is-space-enforcement-logical': 'false'
         }
         vserver_modify_args = {
             'aggr-list': [{'aggr-name': aggr_name} for aggr_name
@@ -483,7 +488,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                    fake.SHARE_AGGREGATE_NAMES,
                                    fake.IPSPACE_NAME,
                                    fake.SECURITY_CERT_LARGE_EXPIRE_DAYS,
-                                   24)
+                                   24,
+                                   False)
 
         self.client.send_request.assert_has_calls([
             mock.call('vserver-create', vserver_create_args),
@@ -552,6 +558,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'vserver-name': fake.VSERVER_NAME,
             'ipspace': fake.IPSPACE_NAME,
             'vserver-subtype': fake.VSERVER_TYPE_DP_DEST,
+            'is-space-reporting-logical': 'false',
+            'is-space-enforcement-logical': 'false'
         }
         vserver_modify_args = {
             'aggr-list': [{'aggr-name': aggr_name} for aggr_name
@@ -564,7 +572,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             fake.VSERVER_NAME,
             fake.SHARE_AGGREGATE_NAMES,
             fake.IPSPACE_NAME,
-            18)
+            18,
+            False)
 
         self.client.send_request.assert_has_calls([
             mock.call('vserver-create', vserver_create_args),
@@ -580,7 +589,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.SHARE_AGGREGATE_NAMES,
                           fake.IPSPACE_NAME,
                           fake.SECURITY_CERT_LARGE_EXPIRE_DAYS,
-                          10)
+                          10,
+                          False)
 
     def test_get_vserver_root_volume_name(self):
 

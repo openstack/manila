@@ -273,6 +273,11 @@ netapp_provisioning_opts = [
                 default=False,
                 help='This option enable/disable AES encryption for the share'
                      ' server based on the parameter value (True/False).'),
+    cfg.BoolOpt('netapp_enable_logical_space_reporting',
+                default=False,
+                help='This option enables the logical space reporting on a '
+                     'newly created vserver and logical space accounting '
+                     'on newly created volumes on this vserver. ')
 ]
 
 netapp_cluster_opts = [
