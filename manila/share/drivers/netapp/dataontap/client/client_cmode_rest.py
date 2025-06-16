@@ -1252,17 +1252,60 @@ class NetAppRestClient(object):
             self.send_request(f'/storage/volumes/{uuid}', 'patch', body=body)
 
     @na_utils.trace
-    def set_volume_max_files(self, volume_name, max_files):
+    def set_volume_max_files(self, volume_name, max_files,
+                             retry_allocated=False):
         """Set share file limit."""
 
-        volume = self._get_volume_by_args(vol_name=volume_name)
-        uuid = volume['uuid']
+        try:
+            volume = self._get_volume_by_args(vol_name=volume_name)
+            uuid = volume['uuid']
 
-        body = {
-            'files.maximum': int(max_files)
-        }
+            body = {
+                'files.maximum': int(max_files)
+            }
 
-        self.send_request(f'/storage/volumes/{uuid}', 'patch', body=body)
+            self.send_request(f'/storage/volumes/{uuid}', 'patch', body=body)
+        except netapp_api.api.NaApiError as e:
+            if e.code != netapp_api.EREST_CANNOT_MODITY_SPECIFIED_FIELD:
+                return
+            if retry_allocated:
+                alloc_files = self.get_volume_allocated_files(volume_name)
+                new_max_files = alloc_files['used']
+                # no need to act if current max files are set to
+                # allocated files
+                if new_max_files == alloc_files['maximum']:
+                    return
+                msg = _('Set higher max files %(new_max_files)s '
+                        'on %(vol)s. The current allocated inodes '
+                        'are larger than requested %(max_files)s.')
+                msg_args = {'vol': volume_name,
+                            'max_files': max_files,
+                            'new_max_files': new_max_files}
+                LOG.info(msg, msg_args)
+                self.set_volume_max_files(volume_name, new_max_files,
+                                          retry_allocated=False)
+            else:
+                raise exception.NetAppException(message=e.message)
+
+    @na_utils.trace
+    def get_volume_allocated_files(self, volume_name):
+        """Get share allocated files."""
+
+        try:
+            volume = self._get_volume_by_args(vol_name=volume_name)
+            uuid = volume['uuid']
+
+            query = {
+                'fields': 'files.maximum,files.used'
+            }
+            response = self.send_request(f'/storage/volumes/{uuid}', 'get',
+                                         query=query)
+            if self._has_records(response):
+                return response['records'][0]['files']
+        except netapp_api.api.NaApiError:
+            msg = _('Failed to get volume allocated files for %s.')
+            LOG.error(msg, volume_name)
+            return {'maximum': 0, 'used': 0}
 
     @na_utils.trace
     def set_volume_snapdir_access(self, volume_name, hide_snapdir):

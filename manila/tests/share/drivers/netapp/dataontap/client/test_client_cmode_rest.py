@@ -1277,6 +1277,39 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client._get_volume_by_args.assert_called_once_with(
             vol_name=fake.VOLUME_NAMES[0])
 
+    def test_set_volume_max_files_retry_allocated(self):
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        uuid = volume["uuid"]
+        fake_max_files = '40000'
+        fake_used_files = '30000'
+        alloc_files = {'maximum': fake_max_files, 'used': fake_used_files}
+        side_effect = [
+            netapp_api.api.NaApiError(
+                code=netapp_api.EREST_CANNOT_MODITY_SPECIFIED_FIELD), None]
+
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+        mock_sr = self.mock_object(self.client, 'send_request',
+                                   mock.Mock(side_effect=side_effect))
+        self.mock_object(self.client, 'get_volume_allocated_files',
+                         mock.Mock(return_value=alloc_files))
+
+        body_before = {
+            'files.maximum': int(fake_max_files)
+        }
+        body_retry = {
+            'files.maximum': int(fake_used_files)
+        }
+
+        self.client.set_volume_max_files(
+            fake.VOLUME_NAMES[0], fake_max_files, retry_allocated=True)
+
+        mock_sr.assert_has_calls([
+            mock.call(f'/storage/volumes/{uuid}', 'patch', body=body_before),
+            mock.call(f'/storage/volumes/{uuid}', 'patch', body=body_retry),
+        ])
+        self.client._get_volume_by_args.assert_called()
+
     def test_set_volume_snapdir_access(self):
         volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
         uuid = volume["uuid"]
