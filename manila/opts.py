@@ -45,7 +45,6 @@ import manila.scheduler.drivers.simple
 import manila.scheduler.host_manager
 import manila.scheduler.manager
 import manila.scheduler.scheduler_options
-import manila.scheduler.weighers
 import manila.scheduler.weighers.capacity
 import manila.scheduler.weighers.pool
 import manila.service
@@ -55,7 +54,6 @@ import manila.share.drivers.cephfs.driver
 import manila.share.drivers.container.driver
 import manila.share.drivers.container.storage_helper
 import manila.share.drivers.dell_emc.driver
-import manila.share.drivers.dell_emc.plugins.isilon.isilon
 import manila.share.drivers.dell_emc.plugins.powermax.connection
 import manila.share.drivers.generic
 import manila.share.drivers.glusterfs
