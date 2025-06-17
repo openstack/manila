@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Rebrand from Isilon to PowerScale includes changing of tag names, directory
+    structure, file names and documentation.
+upgrade:
+  - |
+    Dell PowerScale Driver was previously the EMC Isilon Driver. If the
+    extra-spec``share_backend_name`` was set to ``isilon`` in share types
+    in the past, this needs to be changed to ``powerscale``.
+    ``emc_share_backend`` configuration option must be switched from
+    ``isilon`` to ``powerscale`` in manila.conf when you add the storage
+    backend.

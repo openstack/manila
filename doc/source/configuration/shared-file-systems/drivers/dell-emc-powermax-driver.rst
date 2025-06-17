@@ -276,7 +276,7 @@ The following parameters need to be configured in the
 
 - `emc_share_backend`
     The plug-in name. Set it to ``powermax`` for the PowerMax driver.
-    Other values are ``isilon``, ``vnx`` and ``unity``.
+    Other values are ``powerscale``, ``vnx`` and ``unity``.
 
 - `emc_nas_server`
     The control station IP address of the PowerMax system to be managed.

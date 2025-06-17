@@ -55,8 +55,8 @@ import manila.share.drivers.cephfs.driver
 import manila.share.drivers.container.driver
 import manila.share.drivers.container.storage_helper
 import manila.share.drivers.dell_emc.driver
-import manila.share.drivers.dell_emc.plugins.isilon.isilon
 import manila.share.drivers.dell_emc.plugins.powermax.connection
+import manila.share.drivers.dell_emc.plugins.powerscale.powerscale
 import manila.share.drivers.generic
 import manila.share.drivers.glusterfs
 import manila.share.drivers.glusterfs.common
@@ -94,7 +94,6 @@ import manila.share.manager
 import manila.volume
 import manila.volume.cinder
 import manila.wsgi.eventlet_server
-
 
 # List of *all* options in [DEFAULT] namespace of manila.
 # Any new option list or option needs to be registered here.
