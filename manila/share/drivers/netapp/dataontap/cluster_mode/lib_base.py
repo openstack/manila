@@ -4862,16 +4862,98 @@ class NetAppCmodeFileStorageLibrary(object):
         }
 
     def ensure_shares(self, context, shares):
+        updates = {}
+
+        for share in shares:
+            share_server = share.get('share_server')
+            try:
+                updates[share['id']] = {
+                    'export_locations': self.update_share(
+                        share,
+                        share_server=share_server
+                    ),
+                    'status': constants.STATUS_AVAILABLE
+                }
+            except (exception.NetAppException,
+                    netapp_api.NaApiError,
+                    exception.StorageResourceNotFound) as e:
+                err_msg = e.message
+                msg_args = {
+                    'share': share['id'],
+                    'exception': err_msg,
+                }
+                msg = _('Failed to ensure share %(share)s: '
+                        '%(exception)s. ') % msg_args
+
+                if (err_msg.lower().startswith('could not find') or
+                        err_msg.lower().endswith('not found.')):
+                    LOG.debug(msg)
+                else:
+                    LOG.warning(msg)
+
+        return updates
+
+    @na_utils.trace
+    def update_share(self, share, share_server=None):
+        """Update a share: qos settings, dedup and compression.
+
+        Returns updated export locations info.
+        """
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        share_name = self._get_backend_share_name(share['id'])
+        aggregate_name = share_utils.extract_host(share['host'], level='pool')
+
+        extra_specs = share_types.get_extra_specs_from_share(share)
+        provisioning_options = self._get_provisioning_options_for_share(
+            share, vserver, vserver_client=vserver_client, set_qos=False)
+
+        qos_policy_group_name = self._modify_or_create_qos_for_existing_share(
+            share, extra_specs, vserver, vserver_client)
+        if qos_policy_group_name:
+            provisioning_options['qos_policy_group'] = qos_policy_group_name
+
+        modify_args = {
+            'share': share_name,
+            'aggr': aggregate_name,
+            'options': provisioning_options
+        }
+
+        try:
+            vserver_client.modify_volume(aggregate_name, share_name,
+                                         **provisioning_options)
+        except netapp_api.NaApiError:
+            LOG.warning('update share %(share)s on aggregate %(aggr)s with '
+                        'provisioning options %(options)s failed', modify_args)
+
         cfg_snapdir = self.configuration.netapp_reset_snapdir_visibility
         hide_snapdir = self.HIDE_SNAPDIR_CFG_MAP[cfg_snapdir.lower()]
         if hide_snapdir is not None:
-            for share in shares:
-                share_server = share.get('share_server')
-                vserver, vserver_client = self._get_vserver(
-                    share_server=share_server)
-                share_name = self._get_backend_share_name(share['id'])
-                self._apply_snapdir_visibility(
-                    hide_snapdir, share_name, vserver_client)
+            self._apply_snapdir_visibility(
+                hide_snapdir, share_name, vserver_client)
+
+        is_readable_replica = self._is_readable_replica(share)
+        replica_state = share.get('replica_state')
+        if (replica_state is not None and
+                replica_state != constants.REPLICA_STATE_ACTIVE and
+                not is_readable_replica):
+            return []
+
+        if is_readable_replica:
+            # we do not build a different vserver client for the
+            # readable replicas (here and for _create_export() below),
+            # because we trust that we only operate on share instances local
+            # to the current host
+            existing_mount = vserver_client.get_volume_junction_path(
+                share_name, raise_on_not_found=False)
+
+            if not existing_mount:
+                vserver_client.mount_volume(share_name)
+
+        return self._create_export(share, share_server, vserver,
+                                   vserver_client,
+                                   clear_current_export_policy=False,
+                                   ensure_share_already_exists=True,
+                                   replica=is_readable_replica)
 
     def get_share_status(self, share, share_server=None):
         if share['status'] == constants.STATUS_CREATING_FROM_SNAPSHOT:

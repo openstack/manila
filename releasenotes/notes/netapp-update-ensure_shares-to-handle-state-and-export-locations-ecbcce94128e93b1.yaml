@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    NetApp Driver bug #2114885
+    <https://bugs.launchpad.net/manila/+bug/2114885>`: The NetApp ONTAP driver
+    restart and ensure operation was updated to handle more real-world
+    scenarios like fixing share export location in case create share failed to
+    update it in Manila. The ensure operation also perform other actions like
+    apply efficiency setting, qos and handles mounting of readable replicas.
+    Those actions are meant to apply config changes to existing volumes when
+    share-type extra-specs gets modified.
