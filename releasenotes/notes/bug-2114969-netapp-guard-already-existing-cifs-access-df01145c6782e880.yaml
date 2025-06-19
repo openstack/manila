@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver CIFS access control creation fixed for duplicate entry
+    exception which means access already exist. For more details, please check
+    `Launchpad bug #2114969 <https://bugs.launchpad.net/manila/+bug/2114969>`_
