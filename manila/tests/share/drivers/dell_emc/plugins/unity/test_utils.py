@@ -54,6 +54,24 @@ SPA_LA1 = MockPort(SPA, 'spa_la_1', 1500)
 SPB_LA1 = MockPort(SPB, 'spb_la_1', 1500)
 
 
+class MockPortV5(object):
+    def __init__(self, sp, port_id, mtu):
+        self._sp = sp
+        self.port_id = port_id
+        self.mtu = mtu
+
+    def get_id(self):
+        return self.port_id
+
+    @property
+    def storage_processor(self):
+        return self._sp
+
+
+SPA_LA2 = MockPort(SPA, 'spa_la_2', 1500)
+SPB_LA2 = MockPort(SPB, 'spb_la_2', 1500)
+
+
 @ddt.ddt
 class TestUtils(test.TestCase):
     @ddt.data({'matcher': None,
@@ -96,6 +114,10 @@ class TestUtils(test.TestCase):
                'ids_conf': ['spa*'],
                'port_map': {'spa': {'spa_eth0', 'spa_eth1'}},
                'unmanaged': {'spb_eth0'}},
+              {'ports': [SPA_LA2, SPB_LA2],
+               'ids_conf': None,
+               'port_map': {'spa': {'spa_la_2'}, 'spb': {'spb_la_2'}},
+               'unmanaged': set()},
               )
     @ddt.unpack
     def test_match_ports(self, ports, ids_conf, port_map, unmanaged):
