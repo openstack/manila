@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Dell Unity Driver `Bug #2020745
+    <https://bugs.launchpad.net/manila/+bug/2020745>`_:
+    Fixed driver startup issue with link aggregation configured.
