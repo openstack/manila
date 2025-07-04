@@ -61,7 +61,12 @@ def match_ports(ports_list, port_ids_conf):
         port_id = port.get_id()
         for pattern in patterns:
             if fnmatch.fnmatchcase(port_id, pattern):
-                sp_id = port.parent_storage_processor.get_id()
+                # parentStorageProcessor property is deprecated in Unity 5.x
+                if port.parent_storage_processor:
+                    sp = port.parent_storage_processor
+                else:
+                    sp = port.storage_processor
+                sp_id = sp.get_id()
                 ports_set = sp_ports_map.setdefault(sp_id, set())
                 ports_set.add(port_id)
                 break
