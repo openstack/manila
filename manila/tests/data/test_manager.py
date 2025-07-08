@@ -44,15 +44,15 @@ class DataManagerTestCase(test.TestCase):
 
     def setUp(self):
         super(DataManagerTestCase, self).setUp()
-        self.manager = manager.DataManager()
-        self.context = context.get_admin_context()
-        self.topic = 'fake_topic'
-        self.share = db_utils.create_share()
         manager.CONF.set_default('mount_tmp_location', '/tmp/')
         manager.CONF.set_default('backup_mount_tmp_location', '/tmp/')
         manager.CONF.set_default(
             'backup_driver',
             'manila.tests.fake_backup_driver.FakeBackupDriver')
+        self.manager = manager.DataManager()
+        self.context = context.get_admin_context()
+        self.topic = 'fake_topic'
+        self.share = db_utils.create_share()
 
     def test_init(self):
         manager = self.manager
@@ -698,6 +698,30 @@ class DataManagerTestCase(test.TestCase):
             self.context, backup_info['id'],
             {'status': constants.STATUS_AVAILABLE, 'restore_progress': '100'})
 
+    def test_restore_share_backup_respects_restore_to_target(self):
+        target_share_info = db_utils.create_share(
+            status=constants.STATUS_AVAILABLE)
+        share_info = db_utils.create_share(status=constants.STATUS_AVAILABLE)
+        backup_info = db_utils.create_backup(
+            share_info['id'], status=constants.STATUS_AVAILABLE, size=2)
+        target_share_id = target_share_info['id']
+
+        # mocks
+        with mock.patch.object(self.manager.backup_driver,
+                               'restore_to_target_support', False):
+            self.mock_object(self.manager, '_run_restore')
+            self.mock_object(self.manager.backup_driver, 'restore')
+            self.mock_object(db, 'share_get',
+                             mock.Mock(return_value=target_share_info))
+            self.mock_object(db, 'share_backup_get',
+                             mock.Mock(return_value=backup_info))
+
+            self.assertRaises(exception.BackupException,
+                              self.manager.restore_backup, self.context,
+                              backup_info, target_share_id)
+            self.manager._run_restore.assert_not_called()
+            self.manager.backup_driver.restore.assert_not_called()
+
     def test_restore_share_backup_exception(self):
         share_info = db_utils.create_share(status=constants.STATUS_AVAILABLE)
         backup_info = db_utils.create_backup(
@@ -811,3 +835,105 @@ class DataManagerTestCase(test.TestCase):
                               backup_info, share_info)
         else:
             self.manager._run_restore(self.context, backup_info, share_info)
+
+    def test_create_backup_respects_use_data_manager(self):
+        share_info = db_utils.create_share(status=constants.STATUS_AVAILABLE)
+        backup_info = db_utils.create_backup(
+            share_info['id'], status=constants.STATUS_AVAILABLE, size=2)
+        # mocks
+        self.mock_object(self.manager, '_run_backup')
+        self.mock_object(self.manager.backup_driver, 'backup')
+        self.mock_object(self.manager.db, 'share_get',
+                         mock.Mock(return_value=share_info))
+        self.mock_object(self.manager.db, 'share_backup_get',
+                         mock.Mock(return_value=backup_info))
+        # tests
+        with mock.patch.object(
+                self.manager.backup_driver, 'use_data_manager', False):
+            self.manager.create_backup(self.context, backup_info)
+            self.assertFalse(self.manager.backup_driver.use_data_manager)
+            self.manager._run_backup.assert_not_called()
+            self.manager.backup_driver.backup.assert_called_with(
+                self.context, backup_info, share_info)
+
+    def test_restore_backup_respects_use_data_manager(self):
+        share_info = db_utils.create_share(status=constants.STATUS_AVAILABLE)
+        share_id = share_info['id']
+        backup_info = db_utils.create_backup(
+            share_info['id'], status=constants.STATUS_AVAILABLE, size=2)
+        # mocks
+        self.mock_object(self.manager, '_run_restore')
+        self.mock_object(self.manager.backup_driver, 'restore')
+        self.mock_object(self.manager.db, 'share_get',
+                         mock.Mock(return_value=share_info))
+        self.mock_object(self.manager.db, 'share_backup_get',
+                         mock.Mock(return_value=backup_info))
+        # tests
+        with mock.patch.object(
+                self.manager.backup_driver, 'use_data_manager', False):
+            self.manager.restore_backup(self.context, backup_info, share_id)
+            self.assertFalse(self.manager.backup_driver.use_data_manager)
+            self.manager._run_restore.assert_not_called()
+            self.manager.backup_driver.restore.assert_called_with(
+                self.context, backup_info, share_info)
+
+    def test_delete_backup_respects_use_data_manager(self):
+        share_info = db_utils.create_share(status=constants.STATUS_AVAILABLE)
+        backup_info = db_utils.create_backup(
+            share_info['id'], status=constants.STATUS_AVAILABLE, size=2)
+        # mocks
+        self.mock_object(self.manager.backup_driver, 'delete')
+        self.mock_object(self.manager.db, 'share_backup_get',
+                         mock.Mock(return_value=backup_info))
+        # tests
+        with mock.patch.object(
+                self.manager.backup_driver, 'use_data_manager', False):
+            self.manager.delete_backup(self.context, backup_info)
+            self.assertFalse(self.manager.backup_driver.use_data_manager)
+            self.manager.backup_driver.delete.assert_called_with(
+                self.context, backup_info)
+
+    def test_create_backup_continue_respects_use_data_manager(self):
+        share_info = db_utils.create_share(
+            status=constants.STATUS_BACKUP_RESTORING)
+        backup_info = db_utils.create_backup(
+            share_info['id'], status=constants.STATUS_CREATING, size=2)
+        # mocks
+        self.mock_object(self.manager, 'data_copy_get_progress')
+        self.mock_object(self.manager.backup_driver, 'get_backup_progress')
+        self.mock_object(self.manager.db, 'share_backups_get_all',
+                         mock.Mock(return_value=[backup_info]))
+        self.mock_object(self.manager.db, 'share_backup_update')
+        self.mock_object(self.manager.db, 'share_get',
+                         mock.Mock(return_value=share_info))
+
+        # tests
+        with mock.patch.object(
+                self.manager.backup_driver, 'use_data_manager', False):
+            self.manager.create_backup_continue(self.context)
+            self.assertFalse(self.manager.backup_driver.use_data_manager)
+            self.manager.data_copy_get_progress.assert_not_called()
+            self.manager.backup_driver.get_backup_progress.assert_called_with(
+                self.context, backup_info, share_info)
+
+    def test_restore_backup_continue_respects_use_data_manager(self):
+        share_info = db_utils.create_share(
+            status=constants.STATUS_BACKUP_RESTORING)
+        backup_info = db_utils.create_backup(
+            share_info['id'], status=constants.STATUS_BACKUP_RESTORING, size=2)
+        # mocks
+        self.mock_object(self.manager, 'data_copy_get_progress')
+        self.mock_object(self.manager.backup_driver, 'get_restore_progress')
+        self.mock_object(self.manager.db, 'share_get_all',
+                         mock.Mock(return_value=[share_info]))
+        self.mock_object(self.manager.db, 'share_backups_get_all',
+                         mock.Mock(return_value=[backup_info]))
+        self.mock_object(self.manager.db, 'share_backup_update')
+        # tests
+        with mock.patch.object(
+                self.manager.backup_driver, 'use_data_manager', False):
+            self.manager.restore_backup_continue(self.context)
+            self.assertFalse(self.manager.backup_driver.use_data_manager)
+            self.manager.data_copy_get_progress.assert_not_called()
+            self.manager.backup_driver.get_restore_progress.assert_called_with(
+                self.context, backup_info, share_info)

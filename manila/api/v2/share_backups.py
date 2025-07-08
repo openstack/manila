@@ -196,28 +196,44 @@ class ShareBackupController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         return webob.Response(status_int=202)
 
-    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
-    @wsgi.action('restore')
-    @wsgi.Controller.authorize
-    @wsgi.response(202)
-    def restore(self, req, id, body):
-        """Restore an existing backup to a share."""
+    def _restore(self, req, id, body):
+        """common logic for share backup restore microversion methods"""
         context = req.environ['manila.context']
-
         try:
             backup = db.share_backup_get(context, id)
         except exception.ShareBackupNotFound:
             msg = _("No backup exists with ID %s.")
             raise exc.HTTPNotFound(explanation=msg % id)
 
+        target_share_id = None
+        if body and 'restore' in body:
+            target_share_id = body.get('restore')
+
         try:
-            restored = self.share_api.restore_share_backup(context, backup)
-        except (exception.InvalidShare,
-                exception.InvalidBackup) as e:
+            restored = self.share_api.restore_share_backup(
+                context, backup, target_share_id)
+        except (exception.InvalidShare, exception.InvalidBackup) as e:
             raise exc.HTTPBadRequest(explanation=e.msg)
 
         retval = self._view_builder.restore_summary(req, restored)
         return retval
+
+    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, '2.89',
+                                 experimental=True)
+    @wsgi.action('restore')
+    @wsgi.Controller.authorize
+    @wsgi.response(202)
+    def restore(self, req, id, body):
+        """Restore an existing backup to a source share."""
+        return self._restore(req, id, None)
+
+    @wsgi.Controller.api_version('2.91', experimental=True)
+    @wsgi.action('restore')
+    @wsgi.Controller.authorize
+    @wsgi.response(202)
+    def restore(self, req, id, body): # noqa F811
+        """Restore an existing backup to a source or target share."""
+        return self._restore(req, id, body)
 
     @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
     @wsgi.Controller.authorize

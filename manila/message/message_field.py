@@ -39,6 +39,7 @@ class Action(object):
     ADD_UPDATE_SECURITY_SERVICE = ('011', _('add or update security service'))
     TRANSFER_ACCEPT = ('026', _('transfer accept'))
     UPDATE_METADATA = ('027', _('update_metadata'))
+    RESTORE_BACKUP = ('028', _('restore share backup'))
     ALL = (
         ALLOCATE_HOST,
         CREATE,
@@ -53,6 +54,7 @@ class Action(object):
         ADD_UPDATE_SECURITY_SERVICE,
         TRANSFER_ACCEPT,
         UPDATE_METADATA,
+        RESTORE_BACKUP
     )
 
 
@@ -170,6 +172,11 @@ class Detail(object):
         _("Metadata delete operation includes driver updatable metadata, and "
           "it is not passed to share driver to perform required operation."))
 
+    TARGETED_RESTORE_UNSUPPORTED = (
+        '032',
+        _("Cannot restore a given backup to a target share, not supported by "
+          "share driver."))
+
     ALL = (
         UNKNOWN_ERROR,
         NO_VALID_HOST,
@@ -201,7 +208,8 @@ class Detail(object):
         SHARE_BACKEND_NOT_READY_YET,
         UPDATE_METADATA_SUCCESS,
         UPDATE_METADATA_FAILURE,
-        UPDATE_METADATA_NOT_DELETED
+        UPDATE_METADATA_NOT_DELETED,
+        TARGETED_RESTORE_UNSUPPORTED
     )
 
     # Exception and detail mappings

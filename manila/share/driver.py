@@ -290,6 +290,9 @@ class ShareDriver(object):
         # Indicates whether a driver supports adding subnet with its
         # allocations to an in-use share network availability zone. This
         # property will be saved in every new share server.
+        self.restore_to_target_support = False
+        # Indicates whether a driver supports out of place restores
+        # to a share other then the source of a given backup.
         self.network_allocation_update_support = False
         self.dhss_mandatory_security_service_association = {}
         self.share_replicas_migration_support = False

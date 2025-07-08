@@ -25,18 +25,26 @@ class BackupDriver(object):
         # delete operation by its own or uses data manager.
         self.use_data_manager = True
 
-    def backup(self, backup, share):
+        # This flag indicates if the backup driver supports out of place
+        # restores to a share other then the source of a given backup.
+        self.restore_to_target_support = False
+
+    def backup(self, context, backup, share):
         """Start a backup of a specified share."""
         return
 
-    def restore(self, backup, share):
+    def restore(self, context, backup, share):
         """Restore a saved backup."""
         return
 
-    def delete(self, backup):
+    def delete(self, context, backup):
         """Delete a saved backup."""
         return
 
-    def get_backup_info(self, backup):
-        """Get backup capabilities information of driver."""
+    def get_backup_progress(self, context, backup, share):
+        """Fetch the progress of a in progress backup"""
+        return
+
+    def get_restore_progress(self, context, backup, share):
+        """Fetch the progress of a in progress restore"""
         return

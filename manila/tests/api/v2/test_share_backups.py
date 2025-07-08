@@ -434,23 +434,70 @@ class ShareBackupsApiTest(test.TestCase):
                           'FAKE_BACKUP_ID', body)
 
     def test_restore(self):
-        body = {'restore': {'share_id': 'fake_id'}}
+        body = {'restore': None}
+        fake_share_obj = fake_share.fake_share(
+            id='FAKE_SHARE_ID',
+            status=constants.STATUS_AVAILABLE,
+            size=1
+        )
         fake_backup = self._get_fake_backup(
-            share_id='FAKE_SHARE_ID',
+            share_id=fake_share_obj['id'],
             status=constants.STATUS_AVAILABLE)[0]
-        self.mock_object(share_backups.db, 'share_backup_get',
-                         mock.Mock(return_value=fake_backup))
 
         fake_backup_restore = {
-            'share_id': 'FAKE_SHARE_ID',
+            'share_id': fake_share_obj['id'],
             'backup_id': fake_backup['id'],
         }
         mock_api_restore_backup_call = self.mock_object(
             share.API, 'restore_share_backup',
             mock.Mock(return_value=fake_backup_restore))
-        self.mock_object(share.API, 'get',
-                         mock.Mock(return_value={'id': 'FAKE_SHAREID'}))
 
+        self.mock_object(share_backups.db, 'share_get',
+                         mock.Mock(return_value=fake_share_obj))
+        self.mock_object(share_backups.db, 'share_backup_get',
+                         mock.Mock(return_value=fake_backup))
+        self.mock_object(share.API, 'get',
+                         mock.Mock(return_value={'id': 'FAKE_SHARE_ID'}))
+        resp = self.controller.restore(self.backups_req,
+                                       fake_backup['id'], body)
+
+        self.assertEqual(fake_backup_restore, resp['restore'])
+        self.assertTrue(mock_api_restore_backup_call.called)
+
+    def test_restore_to_target_share(self):
+        body = {'restore': 'FAKE_TRGT_SHARE_ID'}
+        # overide req version to microversion with targeted restore.
+        self.backups_req = fakes.HTTPRequest.blank(
+            '/share-backups', version='2.91', experimental=True)
+
+        fake_target_share_obj = fake_share.fake_share(
+            id='FAKE_TRGT_SHARE_ID',
+            status=constants.STATUS_AVAILABLE,
+            size=1
+        )
+        fake_share_obj = fake_share.fake_share(
+            id='FAKE_SHARE_ID',
+            status=constants.STATUS_AVAILABLE,
+            size=1
+        )
+        fake_backup = self._get_fake_backup(
+            share_id=fake_share_obj['id'],
+            status=constants.STATUS_AVAILABLE)[0]
+
+        fake_backup_restore = {
+            'share_id': fake_target_share_obj['id'],
+            'backup_id': fake_backup['id'],
+        }
+        mock_api_restore_backup_call = self.mock_object(
+            share.API, 'restore_share_backup',
+            mock.Mock(return_value=fake_backup_restore))
+
+        self.mock_object(share_backups.db, 'share_get',
+                         mock.Mock(return_value=fake_target_share_obj))
+        self.mock_object(share_backups.db, 'share_backup_get',
+                         mock.Mock(return_value=fake_backup))
+        self.mock_object(share.API, 'get',
+                         mock.Mock(return_value={'id': 'FAKE_TRGT_SHARE_ID'}))
         resp = self.controller.restore(self.backups_req,
                                        fake_backup['id'], body)
 

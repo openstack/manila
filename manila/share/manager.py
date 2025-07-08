@@ -5625,10 +5625,30 @@ class ShareManager(manager.SchedulerDependentManager):
                  {'backup_id': backup['id'], 'share_id': share_id})
 
         backup_id = backup['id']
+        backup_share_id = backup['share_id']
         share = self.db.share_get(context, share_id)
         share_instance = self._get_share_instance(context, share)
 
         try:
+            if (self.driver.restore_to_target_support is False and
+                    share_id != backup_share_id):
+
+                self.message_api.create(
+                    context,
+                    message_field.Action.RESTORE_BACKUP,
+                    share['project_id'],
+                    resource_type=message_field.Resource.SHARE,
+                    resource_id=share['id'],
+                    detail=message_field.Detail.TARGETED_RESTORE_UNSUPPORTED
+                )
+
+                msg = _("Cannot restore backup %(backup)s to target share "
+                        "%(share)s as share driver does not provide support "
+                        " for targeted restores") % (
+                            {'backup': backup_id, 'share': share_id})
+                LOG.exception(msg)
+                raise exception.BackupException(reason=msg)
+
             share_server = self._get_share_server(context, share_instance)
             self.driver.restore_backup(context, backup, share_instance,
                                        share_server=share_server)

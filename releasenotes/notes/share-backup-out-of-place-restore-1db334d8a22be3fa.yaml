@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added support for targeted share backup restores in the share backup API to
+    allow the restore a share backup from one source share to another target
+    share, given the backup or share driver provides support for the operation.
+    Available from microversion 2.90. and supported by the default NFS driver.

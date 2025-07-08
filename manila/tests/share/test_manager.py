@@ -11256,6 +11256,27 @@ class ShareManagerTestCase(test.TestCase):
             resource_id=share_net_subnet['id'],
             detail=message_field.Detail.UPDATE_METADATA_SUCCESS)
 
+    def test_restore_backup_respects_restore_to_target(self):
+        target_share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
+        share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
+        backup = db_utils.create_backup(
+            share['id'], status=constants.STATUS_AVAILABLE, size=2)
+        target_share_id = target_share['id']
+
+        self.mock_object(self.share_manager.driver, 'restore_backup')
+        self.mock_object(self.share_manager.db, 'share_get',
+                         mock.Mock(return_value=target_share))
+        self.mock_object(self.share_manager, '_get_share_instance',
+                         mock.Mock(return_value=target_share['instance']))
+
+        with mock.patch.object(self.share_manager.driver,
+                               'restore_to_target_support', False):
+            self.assertRaises(
+                exception.BackupException,
+                self.share_manager.restore_backup,
+                self.context, backup, target_share_id)
+            self.share_manager.driver.restore_backup.assert_not_called()
+
 
 @ddt.ddt
 class HookWrapperTestCase(test.TestCase):

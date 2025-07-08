@@ -403,7 +403,10 @@ class DataManager(manager.Manager):
                  {'backup_id': backup_id, 'share_id': share_id})
 
         try:
-            self._run_backup(context, backup, share)
+            if self.backup_driver.use_data_manager is False:
+                self.backup_driver.backup(context, backup, share)
+            else:
+                self._run_backup(context, backup, share)
         except Exception as err:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed to create share backup %s by data driver.",
@@ -434,20 +437,26 @@ class DataManager(manager.Manager):
         for backup in backups:
             backup_id = backup['id']
             share_id = backup['share_id']
+            share = self.db.share_get(context, share_id)
             result = {}
             try:
-                result = self.data_copy_get_progress(context, share_id)
-                progress = result.get('total_progress', '0')
-                backup_values = {'progress': progress}
-                if progress == '100':
-                    self.db.share_update(
-                        context, share_id,
-                        {'status': constants.STATUS_AVAILABLE})
-                    backup_values.update(
-                        {'status': constants.STATUS_AVAILABLE})
-                    LOG.info("Created share backup %s successfully.",
-                             backup_id)
-                self.db.share_backup_update(context, backup_id, backup_values)
+                if self.backup_driver.use_data_manager is False:
+                    progress = self.backup_driver.get_backup_progress(
+                        context, backup, share)
+                else:
+                    result = self.data_copy_get_progress(context, share_id)
+                    progress = result.get('total_progress', '0')
+                    backup_values = {'progress': progress}
+                    if progress == '100':
+                        self.db.share_update(
+                            context, share_id,
+                            {'status': constants.STATUS_AVAILABLE})
+                        backup_values.update(
+                            {'status': constants.STATUS_AVAILABLE})
+                        LOG.info("Created share backup %s successfully.",
+                                 backup_id)
+                    self.db.share_backup_update(
+                        context, backup_id, backup_values)
             except Exception:
                 LOG.warning("Failed to get progress of share %(share)s "
                             "backing up in share_backup %(backup).",
@@ -552,41 +561,44 @@ class DataManager(manager.Manager):
 
         backup = self.db.share_backup_get(context, backup_id)
         try:
-            dest_backup_info = self.backup_driver.get_backup_info(backup)
-            backup_mount_path = CONF.backup_mount_tmp_location
-            mount_point = os.path.join(backup_mount_path, backup['id'])
-            backup_folder = os.path.join(mount_point, backup['id'])
-            if not os.path.exists(backup_folder):
-                os.makedirs(backup_folder)
-            if not os.path.exists(backup_folder):
-                raise exception.NotFound("Path %s could not be "
-                                         "found." % backup_folder)
+            if self.backup_driver.use_data_manager is False:
+                self.backup_driver.delete(context, backup)
+            else:
+                dest_backup_info = self.backup_driver.get_backup_info(backup)
+                backup_mount_path = CONF.backup_mount_tmp_location
+                mount_point = os.path.join(backup_mount_path, backup['id'])
+                backup_folder = os.path.join(mount_point, backup['id'])
+                if not os.path.exists(backup_folder):
+                    os.makedirs(backup_folder)
+                if not os.path.exists(backup_folder):
+                    raise exception.NotFound("Path %s could not be "
+                                             "found." % backup_folder)
 
-            mount_template = dest_backup_info['mount']
-            unmount_template = dest_backup_info['unmount']
-            mount_command = mount_template % {'path': mount_point}
-            unmount_command = unmount_template % {'path': mount_point}
-            utils.execute(*(mount_command.split()), run_as_root=True)
+                mount_template = dest_backup_info['mount']
+                unmount_template = dest_backup_info['unmount']
+                mount_command = mount_template % {'path': mount_point}
+                unmount_command = unmount_template % {'path': mount_point}
+                utils.execute(*(mount_command.split()), run_as_root=True)
 
-            # backup_folder should exist after mount, else backup is
-            # already deleted
-            if os.path.exists(backup_folder):
-                for filename in os.listdir(backup_folder):
-                    if filename in CONF.backup_ignore_files:
-                        continue
-                    file_path = os.path.join(backup_folder, filename)
-                    try:
-                        if (os.path.isfile(file_path) or
-                                os.path.islink(file_path)):
-                            os.unlink(file_path)
-                        elif os.path.isdir(file_path):
-                            shutil.rmtree(file_path)
-                    except Exception as e:
-                        LOG.debug("Failed to delete %(file_path)s. Reason: "
-                                  "%(err)s", {'file_path': file_path,
-                                              'err': e})
-                shutil.rmtree(backup_folder)
-            utils.execute(*(unmount_command.split()), run_as_root=True)
+                # backup_folder should exist after mount, else backup is
+                # already deleted
+                if os.path.exists(backup_folder):
+                    for filename in os.listdir(backup_folder):
+                        if filename in CONF.backup_ignore_files:
+                            continue
+                        file_path = os.path.join(backup_folder, filename)
+                        try:
+                            if (os.path.isfile(file_path) or
+                                    os.path.islink(file_path)):
+                                os.unlink(file_path)
+                            elif os.path.isdir(file_path):
+                                shutil.rmtree(file_path)
+                        except Exception as e:
+                            LOG.debug("Failed to delete %(file_path)s. Reason:"
+                                      " %(err)s", {'file_path': file_path,
+                                                   'err': e})
+                    shutil.rmtree(backup_folder)
+                utils.execute(*(unmount_command.split()), run_as_root=True)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed to delete share backup %s.", backup['id'])
@@ -624,7 +636,20 @@ class DataManager(manager.Manager):
         backup = self.db.share_backup_get(context, backup_id)
 
         try:
-            self._run_restore(context, backup, share)
+            if (self.backup_driver.restore_to_target_support is False and
+                    share['id'] != backup['share_id']):
+                msg = _("Cannot restore backup %(backup)s to target share "
+                        "%(share)s as backup driver does not provide support "
+                        " for targeted restores") % (
+                            {'backup': backup['id'], 'share': share['id']}
+                    )
+                LOG.exception(msg)
+                raise exception.BackupException(reason=msg)
+
+            if self.backup_driver.use_data_manager is False:
+                self.backup_driver.restore(context, backup, share)
+            else:
+                self._run_restore(context, backup, share)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed to restore backup %(backup)s to share "
@@ -670,19 +695,23 @@ class DataManager(manager.Manager):
                 share_id = share['id']
                 result = {}
                 try:
-                    result = self.data_copy_get_progress(context, share_id)
-                    progress = result.get('total_progress', '0')
-                    backup_values = {'restore_progress': progress}
-                    if progress == '100':
-                        self.db.share_update(
-                            context, share_id,
-                            {'status': constants.STATUS_AVAILABLE})
-                        backup_values.update(
-                            {'status': constants.STATUS_AVAILABLE})
-                        LOG.info("Share backup %s restored successfully.",
-                                 backup_id)
-                    self.db.share_backup_update(context, backup_id,
-                                                backup_values)
+                    if self.backup_driver.use_data_manager is False:
+                        progress = self.backup_driver.get_restore_progress(
+                            context, backup, share)
+                    else:
+                        result = self.data_copy_get_progress(context, share_id)
+                        progress = result.get('total_progress', '0')
+                        backup_values = {'restore_progress': progress}
+                        if progress == '100':
+                            self.db.share_update(
+                                context, share_id,
+                                {'status': constants.STATUS_AVAILABLE})
+                            backup_values.update(
+                                {'status': constants.STATUS_AVAILABLE})
+                            LOG.info("Share backup %s restored successfully.",
+                                     backup_id)
+                        self.db.share_backup_update(context, backup_id,
+                                                    backup_values)
                 except Exception:
                     LOG.exception("Failed to get progress of share_backup "
                                   "%(backup)s restoring in share %(share).",
