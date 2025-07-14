@@ -122,7 +122,7 @@ class ShareGroupTypesTestCase(test.TestCase):
         search_filter = {'group_specs': {'gold': 'True'}}
         returned_type = share_group_types.get_all(
             self.context, search_opts=search_filter)
-        self.assertItemsEqual(share_group_type, returned_type)
+        self.assertCountEqual(share_group_type, returned_type)
 
     def test_add_access(self):
         project_id = '456'
