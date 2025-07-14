@@ -81,6 +81,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontap_9_10 = self.get_system_version()['version-tuple'] >= (9, 10, 0)
         ontap_9_10_1 = self.get_system_version()['version-tuple'] >= (9, 10, 1)
         ontap_9_11_1 = self.get_system_version()['version-tuple'] >= (9, 11, 1)
+        ontap_9_12_1 = self.get_system_version()['version-tuple'] >= (9, 12, 1)
 
         self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
         self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
@@ -109,6 +110,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.features.add_feature('UNIFIED_AGGR', supported=ontap_9_10_1)
         self.features.add_feature('DELETE_RETENTION_HOURS',
                                   supported=ontap_9_11_1)
+        self.features.add_feature('AES_ENCRYPTION_TYPES',
+                                  supported=ontap_9_12_1)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -1582,7 +1585,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def setup_security_services(self, security_services, vserver_client,
-                                vserver_name, timeout=30):
+                                vserver_name, aes_encryption, timeout=30):
         api_args = {
             'name-mapping-switch': [
                 {'nmswitch': 'ldap'},
@@ -1603,7 +1606,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
             elif security_service['type'].lower() == 'active_directory':
                 vserver_client.configure_active_directory(security_service,
-                                                          vserver_name)
+                                                          vserver_name,
+                                                          aes_encryption)
                 vserver_client.configure_cifs_options(security_service)
 
             elif security_service['type'].lower() == 'kerberos':
@@ -1853,9 +1857,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return cifs_server
 
     @na_utils.trace
-    def configure_active_directory(self, security_service, vserver_name):
+    def configure_active_directory(self, security_service,
+                                   vserver_name, aes_encryption):
         """Configures AD on Vserver."""
         self.configure_dns(security_service)
+        self.configure_cifs_aes_encryption(aes_encryption)
         self.set_preferred_dc(security_service)
 
         cifs_server = self._get_cifs_server_name(vserver_name)
@@ -2216,6 +2222,25 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                    '%(mode)s. Exception: %(exception)s')
             msg_args = {'mode': api_args['mode'], 'exception': e.message}
             LOG.warning(msg, msg_args)
+
+    @na_utils.trace
+    def configure_cifs_aes_encryption(self, aes_encryption):
+        if self.features.AES_ENCRYPTION_TYPES:
+            api_args = {
+                'advertised-enc-types': (
+                    'aes-128,aes-256' if aes_encryption else 'des,rc4'),
+            }
+        else:
+            api_args = {
+                'is-aes-encryption-enabled': (
+                    'true' if aes_encryption else 'false'),
+            }
+
+        try:
+            self.send_request('cifs-security-modify', api_args)
+        except netapp_api.NaApiError as e:
+            msg = _("Failed to set aes encryption. %s")
+            raise exception.NetAppException(msg % e.message)
 
     @na_utils.trace
     def set_preferred_dc(self, security_service):

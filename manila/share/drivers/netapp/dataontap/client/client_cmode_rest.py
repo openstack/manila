@@ -3886,9 +3886,11 @@ class NetAppRestClient(object):
         self._create_ldap_client(security_service, vserver_name=vserver_name)
 
     @na_utils.trace
-    def configure_active_directory(self, security_service, vserver_name):
+    def configure_active_directory(self, security_service,
+                                   vserver_name, aes_encryption):
         """Configures AD on Vserver."""
         self.configure_dns(security_service, vserver_name=vserver_name)
+        self.configure_cifs_aes_encryption(vserver_name, aes_encryption)
         self.set_preferred_dc(security_service, vserver_name)
 
         cifs_server = self._get_cifs_server_name(vserver_name)
@@ -3993,7 +3995,7 @@ class NetAppRestClient(object):
 
     @na_utils.trace
     def setup_security_services(self, security_services, vserver_client,
-                                vserver_name, timeout=30):
+                                vserver_name, aes_encryption, timeout=30):
         """Setup SVM security services."""
         body = {
             'nsswitch.namemap': ['ldap', 'files'],
@@ -4014,7 +4016,8 @@ class NetAppRestClient(object):
 
             elif security_service['type'].lower() == 'active_directory':
                 vserver_client.configure_active_directory(security_service,
-                                                          vserver_name)
+                                                          vserver_name,
+                                                          aes_encryption)
                 vserver_client.configure_cifs_options(security_service)
 
             elif security_service['type'].lower() == 'kerberos':
@@ -4245,6 +4248,22 @@ class NetAppRestClient(object):
 
             if new_security_service['server'] is not None:
                 self.set_preferred_dc(new_security_service, svm_uuid)
+
+    @na_utils.trace
+    def configure_cifs_aes_encryption(self, vserver_name, aes_encryption):
+        try:
+            svm_uuid = self._get_unique_svm_by_name(vserver_name)
+            body = {
+                'security.advertised_kdc_encryptions': (
+                    ['aes-128', 'aes-256'] if aes_encryption else
+                    ['des', 'rc4']),
+            }
+
+            self.send_request(
+                f'/protocols/cifs/services/{svm_uuid}', 'patch', body=body)
+        except netapp_api.api.NaApiError as e:
+            msg = _("Failed to set aes encryption. %s")
+            raise exception.NetAppException(msg % e.message)
 
     @na_utils.trace
     def set_preferred_dc(self, security_service, vserver_name):
