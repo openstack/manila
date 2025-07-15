@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ShareSnapshot model properties fixed to handle race condition where share
+    instance is deleted mean-time. For more details, please check
+    `Launchpad bug #2114260 <https://bugs.launchpad.net/manila/+bug/2114260>`_
