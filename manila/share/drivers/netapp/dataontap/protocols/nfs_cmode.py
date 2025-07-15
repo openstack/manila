@@ -113,11 +113,21 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
         # Get authentication methods, based on Vserver configuration
         auth_methods = self._get_auth_methods()
 
+        metadata = share.get('metadata', None)
+        all_squash = (
+            (metadata.get('all_squash', 'false').lower() == 'true') if
+            metadata else False)
+
         # Add new rules to new policy
         for address in addresses:
-            self._client.add_nfs_export_rule(
-                temp_new_export_policy_name, address,
-                self._is_readonly(new_rules[address]), auth_methods)
+            readonly = self._is_readonly(new_rules[address])
+            if all_squash and not readonly:
+                self._client.add_nfs_export_rule(
+                    temp_new_export_policy_name, address, False, ['none'])
+            else:
+                self._client.add_nfs_export_rule(
+                    temp_new_export_policy_name, address,
+                    self._is_readonly(new_rules[address]), auth_methods)
 
         # Rename policy currently in force
         LOG.info('Renaming NFS export policy for share %(share)s to '

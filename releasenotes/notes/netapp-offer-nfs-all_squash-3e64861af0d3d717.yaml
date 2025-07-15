@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver is enhanced to offer NFS all_squash access to clients.
+    To enable all_squash access, Admin must set share metadata having key as
+    'all_squash' to value 'true'. For more details, please check
+    `Launchpad bug #2116920 <https://bugs.launchpad.net/manila/+bug/2116920>`_

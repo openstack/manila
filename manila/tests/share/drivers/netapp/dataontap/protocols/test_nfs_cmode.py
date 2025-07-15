@@ -82,7 +82,8 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         self.mock_client.soft_delete_nfs_export_policy.assert_called_once_with(
             fake.EXPORT_POLICY_NAME)
 
-    def test_update_access(self):
+    @ddt.data(True, False)
+    def test_update_access(self, all_squash_metadata):
 
         self.mock_object(self.helper, '_ensure_export_policy')
         self.mock_object(self.helper,
@@ -97,15 +98,27 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
                          '_get_auth_methods',
                          mock.Mock(return_value=fake_auth_method))
 
-        self.helper.update_access(fake.CIFS_SHARE,
+        share = fake.NFS_SHARE.copy()
+        if all_squash_metadata:
+            share.update({'metadata': {'all_squash': 'true'}})
+        else:
+            share.update({'metadata': None})
+
+        self.helper.update_access(share,
                                   fake.SHARE_NAME,
                                   [fake.IP_ACCESS])
 
         self.mock_client.create_nfs_export_policy.assert_called_once_with(
             'fake_new_export_policy')
-        self.mock_client.add_nfs_export_rule.assert_called_once_with(
-            'fake_new_export_policy', fake.CLIENT_ADDRESS_1, False,
-            fake_auth_method)
+        if all_squash_metadata:
+            self.mock_client.add_nfs_export_rule.assert_called_once_with(
+                'fake_new_export_policy', fake.CLIENT_ADDRESS_1, False,
+                ['none'])
+        else:
+            self.mock_client.add_nfs_export_rule.assert_called_once_with(
+                'fake_new_export_policy', fake.CLIENT_ADDRESS_1, False,
+                fake_auth_method)
+
         (self.mock_client.set_nfs_export_policy_for_volume.
             assert_called_once_with(fake.SHARE_NAME, 'fake_new_export_policy'))
         (self.mock_client.soft_delete_nfs_export_policy.
