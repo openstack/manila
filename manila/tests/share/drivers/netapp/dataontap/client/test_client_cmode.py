@@ -5641,10 +5641,19 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertEqual({}, result)
 
-    @ddt.data(True, False)
-    def test_add_cifs_share_access(self, readonly):
+    @ddt.data({'readonly': False, 'exception': True},
+              {'readonly': True, 'exception': False},
+              {'readonly': False, 'exception': False},
+              {'readonly': True, 'exception': True})
+    @ddt.unpack
+    def test_add_cifs_share_access(self, readonly, exception):
 
-        self.mock_object(self.client, 'send_request')
+        mock_exception = mock.Mock(side_effect=netapp_api.NaApiError(
+            code=netapp_api.EDUPLICATEENTRY))
+
+        self.mock_object(
+            self.client, 'send_request',
+            mock_exception if exception else mock.Mock(return_value=None))
 
         self.client.add_cifs_share_access(fake.SHARE_NAME,
                                           fake.USER_NAME,
