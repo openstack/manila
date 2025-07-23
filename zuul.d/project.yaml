@@ -20,7 +20,7 @@
         - manila-tempest-plugin-dummy-dhss
         - manila-tempest-plugin-container:
             voting: false
-        - manila-tempest-plugin-lvm-fips:
+        - manila-tempest-plugin-lvm-fips-py311:
             voting: false
         - manila-grenade
         - manila-grenade-skip-level-always:
