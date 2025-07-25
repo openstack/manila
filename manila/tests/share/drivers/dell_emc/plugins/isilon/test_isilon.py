@@ -511,11 +511,32 @@ class IsilonTest(test.TestCase):
                           )
 
     def test_update_share_stats(self):
-        stats_dict = {}
+        self._mock_isilon_api.get_space_stats.return_value = {
+            'total': 1000 * units.Gi,
+            'free': 100 * units.Gi,
+            'used': 1 * units.Gi,
+        }
+        stats_dict = {'share_backend_name': 'PowerScale_backend'}
         self.storage_connection.update_share_stats(stats_dict)
 
-        expected_version = isilon.VERSION
-        self.assertEqual({'driver_version': expected_version}, stats_dict)
+        expected_pool_stats = {
+            'pool_name': 'PowerScale_backend',
+            'reserved_percentage': 0,
+            'reserved_snapshot_percentage': 0,
+            'reserved_share_extend_percentage': 0,
+            'max_over_subscription_ratio': None,
+            'total_capacity_gb': 1000,
+            'free_capacity_gb': 100,
+            'allocated_capacity_gb': 1,
+            'qos': False
+        }
+        expected_stats = {
+            'share_backend_name': 'PowerScale_backend',
+            'driver_version': isilon.VERSION,
+            'storage_protocol': 'NFS_CIFS',
+            'pools': [expected_pool_stats]
+        }
+        self.assertEqual(expected_stats, stats_dict)
 
     def test_get_network_allocations_number(self):
         # call method under test

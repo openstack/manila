@@ -374,6 +374,25 @@ class IsilonApi(object):
             return r.json()
         LOG.error(f'Failed to lookup user {user_string}.')
 
+    def get_space_stats(self):
+        url = '{0}/platform/1/statistics/current'.format(self.host_url)
+        params = {'keys': 'ifs.bytes.free,ifs.bytes.total,ifs.bytes.used'}
+        r = self.send_get_request(url, params=params)
+        if r.status_code != 200:
+            raise exception.ShareBackendException(
+                msg=_('Failed to get statistics from PowerScale.')
+            )
+        stats = r.json()['stats']
+        spaces = {}
+        for stat in stats:
+            if stat['key'] == 'ifs.bytes.total':
+                spaces['total'] = stat['value']
+            elif stat['key'] == 'ifs.bytes.free':
+                spaces['free'] = stat['value']
+            elif stat['key'] == 'ifs.bytes.used':
+                spaces['used'] = stat['value']
+        return spaces
+
     def request(self, method, url, headers=None, data=None, params=None):
         if data is not None:
             data = jsonutils.dumps(data)

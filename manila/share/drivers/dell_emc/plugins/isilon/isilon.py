@@ -31,8 +31,9 @@ from manila.share.drivers.dell_emc.plugins.isilon import isilon_api
 """Version history:
     0.1.0 - Initial version
     1.0.0 - Fix Http auth issue, SSL verification error and etc
+    1.0.1 - Add support for update share stats
 """
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 CONF = cfg.CONF
 
@@ -338,10 +339,31 @@ class IsilonStorageConnection(base.StorageConnection):
             'max_over_subscription_ratio')
 
     def update_share_stats(self, stats_dict):
-        """TODO."""
-        # TODO(Shaun Edwards): query capacity, set storage_protocol,
-        # QoS support?
+        """Retrieve stats info from share."""
         stats_dict['driver_version'] = VERSION
+        stats_dict['storage_protocol'] = 'NFS_CIFS'
+
+        # PowerScale does not support pools.
+        # To align with manila scheduler 'pool-aware' strategic,
+        # report with one pool structure.
+        pool_stat = {
+            'pool_name': stats_dict['share_backend_name'],
+            'qos': False,
+            'reserved_percentage': self.reserved_percentage,
+            'reserved_snapshot_percentage':
+                self.reserved_snapshot_percentage,
+            'reserved_share_extend_percentage':
+                self.reserved_share_extend_percentage,
+            'max_over_subscription_ratio':
+                self.max_over_subscription_ratio
+        }
+        spaces = self._isilon_api.get_space_stats()
+        if spaces:
+            pool_stat['total_capacity_gb'] = spaces['total'] // units.Gi
+            pool_stat['free_capacity_gb'] = spaces['free'] // units.Gi
+            pool_stat['allocated_capacity_gb'] = spaces['used'] // units.Gi
+
+        stats_dict['pools'] = [pool_stat]
 
     def get_network_allocations_number(self):
         """Returns number of network allocations for creating VIFs."""
