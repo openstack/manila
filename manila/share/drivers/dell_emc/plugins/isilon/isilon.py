@@ -32,8 +32,9 @@ from manila.share.drivers.dell_emc.plugins.isilon import isilon_api
     0.1.0 - Initial version
     1.0.0 - Fix Http auth issue, SSL verification error and etc
     1.0.1 - Add support for update share stats
+    1.0.2 - Add support for ensure shares
 """
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 CONF = cfg.CONF
 
@@ -265,6 +266,7 @@ class IsilonStorageConnection(base.StorageConnection):
 
     def ensure_share(self, context, share, share_server):
         """Invoked to ensure that share is exported."""
+        raise NotImplementedError()
 
     def extend_share(self, share, new_size, share_server=None):
         """Extends a share."""
@@ -503,6 +505,59 @@ class IsilonStorageConnection(base.StorageConnection):
                 LOG.error(message)
                 rule_state_map.update({rule['access_id']: {'state': 'error'}})
         return cifs_user_permissions
+
+    def get_backend_info(self, context):
+        """Get driver and array configuration parameters.
+
+        :returns: A dictionary containing driver-specific info.
+        """
+        LOG.debug("Retrieving PowerScale backend info.")
+        cluster_version = self._isilon_api.get_cluster_version()
+        return {'driver_version': VERSION,
+                'cluster_version': cluster_version,
+                'rest_server': self._server,
+                'rest_port': self._port}
+
+    def ensure_shares(self, context, shares):
+        """Invoked to ensure that shares are exported.
+
+        :shares: A list of all shares for updates.
+        :returns: None or a dictionary of updates in the format.
+        """
+        LOG.debug("Ensuring PowerScale shares.")
+        updates = {}
+        for share in shares:
+            if share['share_proto'] == 'NFS':
+                container_path = self._get_container_path(share)
+                share_id = self._isilon_api.lookup_nfs_export(container_path)
+                if share_id:
+                    location = self._format_nfs_path(container_path)
+                    updates[share['id']] = {
+                        'export_locations': [location],
+                        'status': 'available',
+                        'reapply_access_rules': True,
+                    }
+                else:
+                    LOG.warning(f'NFS Share {share["name"]} is not found.')
+            elif share['share_proto'] == 'CIFS':
+                smb_share = self._isilon_api.lookup_smb_share(share['name'])
+                if smb_share:
+                    location = self._format_smb_path(share['name'])
+                    updates[share['id']] = {
+                        'export_locations': [location],
+                        'status': 'available',
+                        'reapply_access_rules': True,
+                    }
+                else:
+                    LOG.warning(f'CIFS Share {share["name"]} is not found.')
+
+            if share['id'] not in updates:
+                updates[share['id']] = {
+                    'export_locations': [],
+                    'status': 'error',
+                    'reapply_access_rules': False,
+                }
+        return updates
 
     def _format_smb_path(self, share_name):
         return '\\\\{0}\\{1}'.format(self._server, share_name)

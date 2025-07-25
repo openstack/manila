@@ -393,6 +393,15 @@ class IsilonApi(object):
                 spaces['used'] = stat['value']
         return spaces
 
+    def get_cluster_version(self):
+        url = '{0}/platform/12/cluster/version'.format(self.host_url)
+        r = self.send_get_request(url)
+        if r.status_code != 200:
+            raise exception.ShareBackendException(
+                msg=_('Failed to get cluster version from PowerScale.')
+            )
+        return r.json()['nodes'][0]['release']
+
     def request(self, method, url, headers=None, data=None, params=None):
         if data is not None:
             data = jsonutils.dumps(data)

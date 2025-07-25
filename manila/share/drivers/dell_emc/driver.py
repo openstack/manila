@@ -293,3 +293,15 @@ class EMCShareDriver(driver.ShareDriver):
         if hasattr(self.plugin, 'get_default_filter_function'):
             return self.plugin.get_default_filter_function()
         return None
+
+    def get_backend_info(self, context):
+        """Get driver and array configuration parameters."""
+        if hasattr(self.plugin, 'get_backend_info'):
+            return self.plugin.get_backend_info(context)
+        raise NotImplementedError()
+
+    def ensure_shares(self, context, shares):
+        """Invoked to ensure that shares are exported."""
+        if hasattr(self.plugin, 'ensure_shares'):
+            return self.plugin.ensure_shares(context, shares)
+        raise NotImplementedError()
