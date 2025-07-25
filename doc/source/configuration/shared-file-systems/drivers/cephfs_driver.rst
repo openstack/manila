@@ -92,9 +92,9 @@ however, their state is presented here for ease of access.
 +-----------------------+---------+----------------------+
 | 2024.2 ("Dalmatian")  | Reef    | Reef                 |
 +-----------------------+---------+----------------------+
-| 2025.1 ("Epoxy")      | Squid    | Squid               |
+| 2025.1 ("Epoxy")      | Squid   | Squid                |
 +-----------------------+---------+----------------------+
-| 2025.2 ("Flamingo")   | Squid    | Squid               |
+| 2025.2 ("Flamingo")   | Squid   | Squid                |
 +-----------------------+---------+----------------------+
 
 Additionally, it is expected that the version of the Ceph client
