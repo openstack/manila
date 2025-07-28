@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix subnet cleanup for server instances without routers.
+    Previously, when tearing down a server instance that had no router
+    specified in its details, the associated subnet was not cleaned up because
+    the subnet cleanup code was never executed.

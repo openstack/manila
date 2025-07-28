@@ -856,7 +856,7 @@ class NeutronNetworkHelper(BaseNetworkhelper):
                     LOG.debug("Failed to delete port %(port_id)s with error: "
                               "\n %(exc)s", {"port_id": port_id, "exc": e})
 
-        if router_id and subnet_id:
+        if subnet_id:
             ports = self.neutron_api.list_ports(
                 fields=['device_id', 'device_owner'],
                 fixed_ips=['subnet_id=%s' % subnet_id])
@@ -873,17 +873,18 @@ class NeutronNetworkHelper(BaseNetworkhelper):
                     # exist that use this subnet. So, do not remove it
                     # from router.
                     return
-            try:
-                # NOTE(vponomaryov): there is no other share servers or
-                # some VMs that use this subnet. So, remove it from router.
-                self.neutron_api.router_remove_interface(
-                    router_id, subnet_id)
-            except exception.NetworkException as e:
-                if e.kwargs['code'] != 404:
-                    raise
-                LOG.debug('Subnet %(subnet_id)s is not attached to the '
-                          'router %(router_id)s.',
-                          {'subnet_id': subnet_id, 'router_id': router_id})
+            if router_id:
+                try:
+                    # NOTE(vponomaryov): there is no other share servers or
+                    # some VMs that use this subnet. So, remove it from router.
+                    self.neutron_api.router_remove_interface(
+                        router_id, subnet_id)
+                except exception.NetworkException as e:
+                    if e.kwargs['code'] != 404:
+                        raise
+                    LOG.debug('Subnet %(subnet_id)s is not attached to the '
+                              'router %(router_id)s.',
+                              {'subnet_id': subnet_id, 'router_id': router_id})
             self.neutron_api.update_subnet(subnet_id, '')
 
     @utils.synchronized(
