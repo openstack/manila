@@ -516,8 +516,8 @@ class IsilonTest(test.TestCase):
         self._mock_isilon_api.get_space_stats.return_value = {
             'total': 1000 * units.Gi,
             'free': 100 * units.Gi,
-            'used': 1 * units.Gi,
         }
+        self._mock_isilon_api.get_allocated_space.return_value = 2110.0
         stats_dict = {'share_backend_name': 'PowerScale_backend'}
         self.storage_connection.update_share_stats(stats_dict)
 
@@ -527,10 +527,11 @@ class IsilonTest(test.TestCase):
             'reserved_snapshot_percentage': 0,
             'reserved_share_extend_percentage': 0,
             'max_over_subscription_ratio': None,
+            'thin_provisioning': True,
             'total_capacity_gb': 1000,
             'free_capacity_gb': 100,
-            'allocated_capacity_gb': 1,
-            'qos': False
+            'allocated_capacity_gb': 2110.0,
+            'qos': False,
         }
         expected_stats = {
             'share_backend_name': 'PowerScale_backend',

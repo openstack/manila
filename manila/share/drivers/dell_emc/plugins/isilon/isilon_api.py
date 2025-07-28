@@ -32,7 +32,8 @@ class IsilonApi(object):
     def __init__(self, api_url, username, password,
                  verify_ssl_cert=False,
                  ssl_cert_path=None,
-                 dir_permission=None):
+                 dir_permission=None,
+                 threshold_limit=0):
         self.host_url = api_url
         self.session = requests.session()
         self.username = username
@@ -40,6 +41,7 @@ class IsilonApi(object):
         self.verify_ssl_cert = verify_ssl_cert
         self.certificate_path = ssl_cert_path
         self.dir_permission = dir_permission
+        self.threshold_limit = threshold_limit
 
         # Create session
         self.session_token = None
@@ -279,6 +281,9 @@ class IsilonApi(object):
 
     def quota_create(self, path, quota_type, size):
         thresholds = {'hard': size}
+        if self.threshold_limit > 0:
+            advisory_size = round((size * self.threshold_limit) / 100)
+            thresholds['advisory'] = int(advisory_size)
         data = {
             'path': path,
             'type': quota_type,
@@ -315,6 +320,9 @@ class IsilonApi(object):
 
     def quota_modify_size(self, quota_id, new_size):
         data = {'thresholds': {'hard': new_size}}
+        if self.threshold_limit > 0:
+            advisory_size = round((new_size * self.threshold_limit) / 100)
+            data.get('thresholds')['advisory'] = int(advisory_size)
         response = self.send_put_request(
             '{0}/platform/1/quota/quotas/{1}'.format(self.host_url, quota_id),
             data=data
@@ -392,6 +400,22 @@ class IsilonApi(object):
             elif stat['key'] == 'ifs.bytes.used':
                 spaces['used'] = stat['value']
         return spaces
+
+    def get_allocated_space(self):
+        url = '{0}/platform/1/quota/quotas'.format(self.host_url)
+        r = self.send_get_request(url)
+        allocated_capacity = 0
+        if r.status_code != 200:
+            raise exception.ShareBackendException(
+                msg=_('Failed to get share quotas from PowerScale.')
+            )
+        quotas = r.json()['quotas']
+        for quota in quotas:
+            if quota['thresholds']['hard'] is not None:
+                allocated_capacity += quota['thresholds']['hard']
+        if allocated_capacity > 0:
+            return round(allocated_capacity / (1024 ** 3), 2)
+        return allocated_capacity
 
     def get_cluster_version(self):
         url = '{0}/platform/12/cluster/version'.format(self.host_url)

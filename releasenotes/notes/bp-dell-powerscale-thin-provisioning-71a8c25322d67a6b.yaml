@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added support for thin provisioning on Dell PowerScale.
