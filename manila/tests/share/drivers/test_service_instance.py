@@ -1622,6 +1622,15 @@ class NeutronNetworkHelperTestCase(test.TestCase):
 
     @ddt.data(dict(), dict(subnet_id='foo'), dict(router_id='bar'))
     def test_teardown_network_no_service_data(self, server_details):
+        fake_ports = [
+            {'device_id': 'fake_device_id',
+             'device_owner': 'compute:foo'},
+        ]
+        self.mock_object(
+            service_instance.neutron.API, 'update_subnet')
+        self.mock_object(
+            service_instance.neutron.API, 'list_ports',
+            mock.Mock(return_value=fake_ports))
         instance = self._init_neutron_network_plugin()
         self.mock_object(
             service_instance.neutron.API, 'router_remove_interface')
@@ -1757,6 +1766,31 @@ class NeutronNetworkHelperTestCase(test.TestCase):
 
         (service_instance.neutron.API.router_remove_interface.
             assert_called_once_with('bar', 'foo'))
+        (service_instance.neutron.API.update_subnet.
+            assert_called_once_with('foo', ''))
+        service_instance.neutron.API.list_ports.assert_called_once_with(
+            fields=['device_id', 'device_owner'], fixed_ips=['subnet_id=foo'])
+
+    def test_teardown_network_subnet_not_used_with_no_router_id(self):
+        server_details = dict(subnet_id='foo')
+        fake_ports = [
+            {'device_id': 'fake_device_id',
+             'device_owner': 'compute'},
+            {'device_id': '',
+             'device_owner': 'compute'},
+        ]
+        instance = self._init_neutron_network_plugin()
+        self.mock_object(
+            service_instance.neutron.API, 'router_remove_interface')
+        self.mock_object(
+            service_instance.neutron.API, 'update_subnet')
+        self.mock_object(
+            service_instance.neutron.API, 'list_ports',
+            mock.Mock(return_value=fake_ports))
+
+        instance.teardown_network(server_details)
+        self.assertFalse(
+            service_instance.neutron.API.router_remove_interface.called)
         (service_instance.neutron.API.update_subnet.
             assert_called_once_with('foo', ''))
         service_instance.neutron.API.list_ports.assert_called_once_with(
