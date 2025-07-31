@@ -22,7 +22,6 @@ SQLAlchemy models for Manila data.
 from oslo_config import cfg
 from oslo_db.sqlalchemy import models
 from sqlalchemy import Column, Integer, String, schema
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import orm
 from sqlalchemy import ForeignKey, DateTime, Boolean, Enum
 from sqlalchemy_utils import generic_repr
@@ -30,7 +29,7 @@ from sqlalchemy_utils import generic_repr
 from manila.common import constants
 
 CONF = cfg.CONF
-BASE = declarative_base()
+BASE = orm.declarative_base()
 
 
 @generic_repr
