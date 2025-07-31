@@ -352,12 +352,13 @@ function create_service_share_servers {
                 local vm_exists=$( openstack --os-cloud devstack-admin server list --all-projects | grep " $vm_name " )
                 if [[ -z $vm_exists ]]; then
                     private_net_id=$(openstack --os-cloud devstack-admin network show $PRIVATE_NETWORK_NAME -f value -c id)
-                    vm_id=$(openstack --os-cloud devstack-admin server create $vm_name \
+                    vm_id=$(timeout 120 openstack --os-cloud devstack-admin server create $vm_name \
                         --flavor $MANILA_SERVICE_VM_FLAVOR_NAME \
                         --image $MANILA_SERVICE_IMAGE_NAME \
                         --nic net-id=$private_net_id \
                         --security-group $MANILA_SERVICE_SECGROUP \
                         --key-name $MANILA_SERVICE_KEYPAIR_NAME \
+                        --wait \
                         | grep ' id ' | get_field 2)
                 else
                     vm_id=$(openstack --os-cloud devstack-admin server show $vm_name -f value -c id)
