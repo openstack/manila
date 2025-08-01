@@ -22,7 +22,6 @@ from urllib import parse
 from operator import xor
 from oslo_config import cfg
 from oslo_log import log
-from oslo_utils import encodeutils
 from oslo_utils import strutils
 import webob
 from webob import exc
@@ -510,9 +509,8 @@ def validate_ip(access_to, enable_ipv6):
         else:
             validator = ipaddress.IPv4Network
         validator(str(access_to))
-    except ValueError as error:
-        err_msg = encodeutils.exception_to_unicode(error)
-        raise webob.exc.HTTPBadRequest(explanation=err_msg)
+    except ValueError as e:
+        raise webob.exc.HTTPBadRequest(explanation=str(e))
 
 
 def validate_access(*args, **kwargs):
