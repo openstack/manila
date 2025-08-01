@@ -2171,14 +2171,6 @@ class NetAppCmodeFileStorageLibrary(object):
 
         share_name = self._get_backend_share_name(share['id'])
         mount_point_name = share.get('mount_point_name')
-        debug_args = {
-            'share': share_name,
-            'aggr': (",".join(aggregate_name) if flexgroup_vol
-                     else aggregate_name),
-            'options': provisioning_options
-        }
-        LOG.debug('Managing share %(share)s on aggregate(s) %(aggr)s with '
-                  'provisioning options %(options)s', debug_args)
 
         # Rename & remount volume on new path.
         vserver_client.unmount_volume(volume_name)
@@ -2189,6 +2181,19 @@ class NetAppCmodeFileStorageLibrary(object):
             share, extra_specs, vserver, vserver_client)
         if qos_policy_group_name:
             provisioning_options['qos_policy_group'] = qos_policy_group_name
+
+        snap_attributes = self._get_provisioning_options_for_snap_attributes(
+            vserver_client, share_name)
+        provisioning_options.update(snap_attributes)
+
+        debug_args = {
+            'share': share_name,
+            'aggr': (",".join(aggregate_name) if flexgroup_vol
+                     else aggregate_name),
+            'options': provisioning_options
+        }
+        LOG.debug('Managing share %(share)s on aggregate(s) %(aggr)s with '
+                  'provisioning options %(options)s', debug_args)
 
         # Modify volume to match extra specs.
         vserver_client.modify_volume(aggregate_name, share_name,
@@ -2213,6 +2218,23 @@ class NetAppCmodeFileStorageLibrary(object):
         self.private_storage.update(share['id'], original_data)
 
         return volume_size
+
+    @na_utils.trace
+    def _get_provisioning_options_for_snap_attributes(self, vserver_client,
+                                                      volume_name):
+        provisioning_options = {}
+        snapshot_attributes = vserver_client.get_volume_snapshot_attributes(
+            volume_name)
+        if (
+            snapshot_attributes['snapshot-policy'].lower()
+            in self.configuration.netapp_volume_snapshot_policy_exceptions
+        ):
+            provisioning_options['snapshot_policy'] = (
+                snapshot_attributes['snapshot-policy'])
+            provisioning_options['hide_snapdir'] = (
+                snapshot_attributes['snapdir-access-enabled'].lower() != 'true'
+            )
+        return provisioning_options
 
     @na_utils.trace
     def _validate_volume_for_manage(self, volume, vserver_client):
@@ -3910,6 +3932,10 @@ class NetAppCmodeFileStorageLibrary(object):
                 source_share['id'])
             self._client.mark_qos_policy_group_for_deletion(
                 qos_policy_of_src_share)
+
+        snap_attributes = self._get_provisioning_options_for_snap_attributes(
+            vserver_client, new_share_volume_name)
+        provisioning_options.update(snap_attributes)
 
         destination_aggregate = share_utils.extract_host(
             destination_share['host'], level='pool')

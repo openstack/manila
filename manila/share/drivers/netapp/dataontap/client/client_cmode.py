@@ -3039,6 +3039,48 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         }
 
     @na_utils.trace
+    def get_volume_snapshot_attributes(self, volume_name):
+        """Returns snapshot attributes"""
+
+        desired_snapshot_attributes = {
+            'snapshot-policy': None,
+            'snapdir-access-enabled': None,
+        }
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-snapshot-attributes': desired_snapshot_attributes,
+                },
+            },
+        }
+
+        result = self.send_request('volume-get-iter', api_args)
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        volume_attributes_list = attributes_list.get_children()
+
+        if not self._has_records(result):
+            raise exception.StorageResourceNotFound(name=volume_name)
+        elif len(volume_attributes_list) > 1:
+            msg = _('Could not find unique volume %(vol)s.')
+            msg_args = {'vol': volume_name}
+            raise exception.NetAppException(msg % msg_args)
+
+        vol_attr = volume_attributes_list[0]
+        vol_snapshot_attr = vol_attr.get_child_by_name(
+            "volume-snapshot-attributes") or netapp_api.NaElement('none')
+
+        return {key: vol_snapshot_attr.get_child_content(key)
+                for key in desired_snapshot_attributes.keys()}
+
+    @na_utils.trace
     def get_volume(self, volume_name):
         """Returns the volume with the specified name, if present."""
 

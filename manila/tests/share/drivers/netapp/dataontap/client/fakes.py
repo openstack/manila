@@ -2367,6 +2367,24 @@ VOLUME_GET_ITER_NOT_UNIQUE_RESPONSE = etree.XML("""
     'volume2': SHARE_NAME_2,
 })
 
+VOLUME_GET_ITER_SNAPSHOT_ATTRIBUTES_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-snapshot-attributes>
+          <snapshot-policy>%(snapshot_policy)s</snapshot-policy>
+          <snapdir-access-enabled>%(snapdir_access_enabled)s</snapdir-access-enabled>
+        </volume-snapshot-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'snapshot_policy': 'daily',
+    'snapdir_access_enabled': 'false',
+})
+
+
 VOLUME_GET_ITER_JUNCTIONED_VOLUMES_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
@@ -3636,6 +3654,10 @@ VOLUME_ITEM_SIMPLE_RESPONSE_REST = {
     "efficiency": {
         "state": "enabled",
         "compression": "true"
+    },
+    "snapshot_directory_access_enabled": "false",
+    "snapshot_policy": {
+        "name": "daily",
     },
     "state": "online",
 }

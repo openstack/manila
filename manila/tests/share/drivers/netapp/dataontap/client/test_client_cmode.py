@@ -4632,6 +4632,42 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertFalse(result)
 
+    def test_get_volume_snapshot_attributes(self):
+
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_GET_ITER_SNAPSHOT_ATTRIBUTES_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_volume_snapshot_attributes(fake.SHARE_NAME)
+
+        desired_snapshot_attributes = {
+            'snapshot-policy': None,
+            'snapdir-access-enabled': None,
+        }
+        snap_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-snapshot-attributes': desired_snapshot_attributes,
+                },
+            },
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-get-iter', snap_get_iter_args)])
+
+        expected = {
+            'snapshot-policy': 'daily', 'snapdir-access-enabled': 'false'}
+        self.assertDictEqual(expected, result)
+
     @ddt.data(True, False)
     def test_get_volume(self, is_flexgroup):
 

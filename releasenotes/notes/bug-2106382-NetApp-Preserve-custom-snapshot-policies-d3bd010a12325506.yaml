@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Netapp ONTAP driver allows to set snapshot policy names that will be kept
+    during operations like migration_complete and manage_container, instead of
+    overwriting by snapshot policy that is set via share type extra specs.
+    Config option 'netapp_volume_snapshot_policy_exceptions' will be used to
+    configure exception snapshot policies. For more details, please check
+    `Launchpad bug #2106382 <https://bugs.launchpad.net/manila/+bug/2106382>`_

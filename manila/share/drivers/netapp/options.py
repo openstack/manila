@@ -186,6 +186,10 @@ netapp_provisioning_opts = [
                     "affect new shares, which will have their snapshot "
                     "directory always visible, unless toggled by the share "
                     "type extra spec 'netapp:hide_snapdir'."),
+    cfg.ListOpt('netapp_volume_snapshot_policy_exceptions',
+                help='NetApp volume Snapshot policy names which will not '
+                     'be overriden by extra-specs.',
+                default=['ec2_backups']),
     cfg.StrOpt('netapp_snapmirror_policy_name_svm_template',
                help='NetApp SnapMirror policy name template for Storage '
                     'Virtual Machines (Vservers).',

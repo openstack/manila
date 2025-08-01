@@ -2904,6 +2904,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_modify_or_create_qos_policy = self.mock_object(
             self.library, '_modify_or_create_qos_for_existing_share',
             mock.Mock(return_value=qos_policy_group_name))
+        mock_get_volume_snapshot_attributes = self.mock_object(
+            vserver_client, 'get_volume_snapshot_attributes',
+            mock.Mock(return_value={'snapshot-policy': 'fake_policy'}))
         fake_fpolicy_scope = {
             'policy-name': fake.FPOLICY_POLICY_NAME,
             'shares-to-include': [fake.FLEXVOL_NAME]
@@ -2942,6 +2945,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake_aggr, fake.SHARE_NAME, **provisioning_opts)
         mock_modify_or_create_qos_policy.assert_called_once_with(
             share_to_manage, extra_specs, fake.VSERVER1, vserver_client)
+        mock_get_volume_snapshot_attributes.assert_called_once_with(
+            fake.SHARE_NAME)
         mock_validate_volume_for_manage.assert_called()
         if fpolicy:
             mock_find_scope.assert_called_once_with(
@@ -7014,6 +7019,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(
             self.library, '_modify_or_create_qos_for_existing_share',
             mock.Mock(return_value=policy_group_name))
+        mock_get_volume_snapshot_attributes = self.mock_object(
+            vserver_client, 'get_volume_snapshot_attributes',
+            mock.Mock(return_value={'snapshot-policy': 'fake_policy'}))
         self.mock_object(vserver_client, 'modify_volume')
         mock_create_new_fpolicy = self.mock_object(
             self.library, '_create_fpolicy_for_share')
@@ -7042,6 +7050,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._create_export.assert_called_once_with(
             dest_share, fake.SHARE_SERVER, fake.VSERVER1, vserver_client,
             clear_current_export_policy=False)
+        mock_get_volume_snapshot_attributes.assert_called_once_with(
+            'new_share_name')
         vserver_client.modify_volume.assert_called_once_with(
             dest_aggr, 'new_share_name', **provisioning_options)
         mock_info_log.assert_called_once()
