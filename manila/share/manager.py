@@ -462,7 +462,10 @@ class ShareManager(manager.SchedulerDependentManager):
                 )
                 continue
 
-            if share_instance['status'] != constants.STATUS_AVAILABLE:
+            # If the share's status is 'ensuring', we must allow re-doing the
+            # ensuring operation otherwise it will be stuck
+            if (share_instance['status'] not in
+                    [constants.STATUS_AVAILABLE, constants.STATUS_ENSURING]):
                 LOG.info(
                     "Share instance %(id)s: skipping export, "
                     "because it has '%(status)s' status.",
