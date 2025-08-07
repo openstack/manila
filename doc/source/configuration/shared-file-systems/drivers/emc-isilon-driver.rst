@@ -18,7 +18,7 @@ Platform API (PAPI) and the RESTful Access to Namespace API (RAN).
 Requirements
 ~~~~~~~~~~~~
 
-- Isilon cluster running OneFS 7.2 or higher
+- PowerScale cluster running OneFS 9.10 or higher
 
 Supported shared filesystems and operations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

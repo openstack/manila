@@ -18,13 +18,11 @@ from unittest import mock
 import ddt
 from oslo_log import log
 from oslo_utils import units
-from requests.exceptions import HTTPError
 
 from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
 from manila.share.drivers.dell_emc.plugins.isilon import isilon
-from manila.share.drivers.dell_emc.plugins.isilon import isilon_api
 from manila import test
 
 LOG = log.getLogger(__name__)
@@ -57,6 +55,22 @@ class IsilonTest(test.TestCase):
                 return 'a'
             elif value == 'emc_nas_root_dir':
                 return '/ifs/manila-test'
+            elif value == 'powerscale_dir_permission':
+                return '0777'
+            else:
+                return None
+
+    class MockInvalidConfig(object):
+
+        def safe_get(self, value):
+            if value == 'emc_nas_server':
+                return '10.0.0.1'
+            elif value == 'emc_nas_server_port':
+                return '8080'
+            elif value == 'emc_nas_login':
+                return 'admin'
+            elif value == 'emc_nas_root_dir':
+                return '/ifs/manila-test'
             else:
                 return None
 
@@ -77,410 +91,25 @@ class IsilonTest(test.TestCase):
         self.storage_connection.connect(
             self.mock_emc_driver, self.mock_context)
 
-    def test_allow_access_single_ip_nfs(self):
-        # setup
-        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': '10.1.1.10',
-                  'access_level': const.ACCESS_LEVEL_RW}
-        share_server = None
-        fake_export_id = 1
-        self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
-        self._mock_isilon_api.get_nfs_export.return_value = {
-            'clients': []}
-        self.assertFalse(self._mock_isilon_api.request.called)
-
-        # call method under test
-        self.storage_connection.allow_access(self.mock_context, share, access,
-                                             share_server)
-
-        # verify expected REST API call is executed
-        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        str(fake_export_id))
-        expected_data = {'clients': ['10.1.1.10']}
-        self._mock_isilon_api.request.assert_called_once_with(
-            'PUT', expected_url, data=expected_data)
-
-    def test_allow_access_with_nfs_readonly(self):
-        # setup
-        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': '10.1.1.10',
-                  'access_level': const.ACCESS_LEVEL_RO}
-        fake_export_id = 70
-        self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
-        self._mock_isilon_api.get_nfs_export.return_value = {
-            'read_only_clients': []}
-        self.assertFalse(self._mock_isilon_api.request.called)
-
-        self.storage_connection.allow_access(
-            self.mock_context, share, access, None)
-
-        # verify expected REST API call is executed
-        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        str(fake_export_id))
-        expected_data = {'read_only_clients': ['10.1.1.10']}
-        self._mock_isilon_api.request.assert_called_once_with(
-            'PUT', expected_url, data=expected_data)
-
-    def test_allow_access_with_nfs_readwrite(self):
-        # setup
-        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': '10.1.1.10',
-                  'access_level': const.ACCESS_LEVEL_RW}
-        fake_export_id = 70
-        self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
-        self._mock_isilon_api.get_nfs_export.return_value = {
-            'clients': []}
-        self.assertFalse(self._mock_isilon_api.request.called)
-
-        self.storage_connection.allow_access(
-            self.mock_context, share, access, None)
-
-        # verify expected REST API call is executed
-        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        str(fake_export_id))
-        expected_data = {'clients': ['10.1.1.10']}
-        self._mock_isilon_api.request.assert_called_once_with(
-            'PUT', expected_url, data=expected_data)
-
-    def test_allow_access_with_cifs_ip_readonly(self):
-        # Note: Driver does not currently support readonly access for "ip" type
-        share = {'name': self.SHARE_NAME, 'share_proto': 'CIFS'}
-        access = {'access_type': 'ip', 'access_to': '10.1.1.10',
-                  'access_level': const.ACCESS_LEVEL_RO}
-
+    def test_allow_access(self):
         self.assertRaises(
-            exception.InvalidShareAccess, self.storage_connection.allow_access,
-            self.mock_context, share, access, None)
-
-    def test_deny_access__ip_nfs_readwrite(self):
-        """Verifies that an IP will be remove from a whitelist."""
-        fake_export_id = 1
-        self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
-        # simulate an IP added to the whitelist
-        ip_addr = '10.0.0.4'
-        self._mock_isilon_api.get_nfs_export.return_value = {
-            'clients': [ip_addr]}
-
-        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': ip_addr,
-                  'access_level': const.ACCESS_LEVEL_RW}
-        share_server = None
-
-        # call method under test
-        self.assertFalse(self._mock_isilon_api.request.called)
-        self.storage_connection.deny_access(self.mock_context, share, access,
-                                            share_server)
-
-        # verify that a call is made to remove an existing IP from the list
-        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        str(fake_export_id))
-        expected_data = {'clients': []}
-        self._mock_isilon_api.request.assert_called_once_with(
-            'PUT', expected_url, data=expected_data
-        )
-
-    def test_deny_access__nfs_ip_readonly(self):
-        fake_export_id = 1
-        self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
-        # simulate an IP added to the whitelist
-        ip_addr = '10.0.0.4'
-        self._mock_isilon_api.get_nfs_export.return_value = {
-            'read_only_clients': [ip_addr]}
-
-        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': ip_addr,
-                  'access_level': const.ACCESS_LEVEL_RO}
-        share_server = None
-
-        # call method under test
-        self.assertFalse(self._mock_isilon_api.request.called)
-        self.storage_connection.deny_access(self.mock_context, share, access,
-                                            share_server)
-
-        # verify that a call is made to remove an existing IP from the list
-        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        str(fake_export_id))
-        expected_data = {'read_only_clients': []}
-        self._mock_isilon_api.request.assert_called_once_with(
-            'PUT', expected_url, data=expected_data
-        )
-
-    def test_deny_access_ip_cifs(self):
-        """Verifies that an IP will be remove from a whitelist.
-
-        Precondition: the IP to be removed exists in the whitelist. Otherwise,
-        do nothing.
-        """
-
-        # setup
-        ip_addr = '10.1.1.10'
-        share = {'name': self.SHARE_NAME, 'share_proto': 'CIFS'}
-        self._mock_isilon_api.lookup_smb_share.return_value = {
-            'host_acl': ['allow:' + ip_addr]}
-        self.assertFalse(self._mock_isilon_api.request.called)
-
-        # call method under test
-        access = {'access_type': 'ip', 'access_to': ip_addr,
-                  'access_level': const.ACCESS_LEVEL_RW}
-        share_server = None
-        self.storage_connection.deny_access(self.mock_context, share, access,
-                                            share_server)
-
-        # verify API call is made to remove IP is removed from whitelist
-        expected_url = (self.API_URL + '/platform/1/protocols/smb/shares/' +
-                        self.SHARE_NAME)
-        expected_data = {'host_acl': []}
-        self._mock_isilon_api.request.assert_called_once_with(
-            'PUT', expected_url, data=expected_data)
-
-    def test_deny_access_nfs_invalid_access_type(self):
-        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'foo_access_type', 'access_to': '10.0.0.1'}
-
-        # This operation should return silently
-        self.storage_connection.deny_access(
-            self.mock_context, share, access, None)
-
-    def test_deny_access_cifs_invalid_access_type(self):
-        share = {'name': self.SHARE_NAME, 'share_proto': 'CIFS'}
-        access = {'access_type': 'foo_access_type', 'access_to': '10.0.0.1'}
-
-        # This operation should return silently
-        self.storage_connection.deny_access(self.mock_context, share, access,
-                                            None)
-
-    def test_deny_access_invalid_share_protocol(self):
-        share = {'name': self.SHARE_NAME, 'share_proto': 'FOO'}
-        access = {'access_type': 'ip', 'access_to': '10.0.0.1',
-                  'access_level': const.ACCESS_LEVEL_RW}
-
-        # This operation should return silently
-        self.storage_connection.deny_access(
-            self.mock_context, share, access, None)
-
-    def test_deny_access_nfs_export_does_not_exist(self):
-        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': '10.0.0.1',
-                  'access_level': const.ACCESS_LEVEL_RW}
-        self._mock_isilon_api.lookup_nfs_export.return_value = 1
-        self._mock_isilon_api.get_nfs_export.return_value = None
-
-        self.assertRaises(
-            exception.ShareBackendException,
-            self.storage_connection.deny_access,
-            self.mock_context, share, access, None
-        )
-
-    def test_deny_access_nfs_share_does_not_exist(self):
-        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': '10.0.0.1',
-                  'access_level': const.ACCESS_LEVEL_RW}
-        self._mock_isilon_api.lookup_nfs_export.return_value = None
-
-        self.assertRaises(
-            exception.ShareBackendException,
-            self.storage_connection.deny_access,
-            self.mock_context, share, access, None)
-
-    def test_deny_access_nfs_share_does_not_contain_required_key(self):
-        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {
-            'access_type': 'ip',
-            'access_to': '10.0.0.1',
-            'access_level': const.ACCESS_LEVEL_RW,
-        }
-        self._mock_isilon_api.get_nfs_export.return_value = {}
-        self.assertRaises(exception.ShareBackendException,
-                          self.storage_connection.deny_access,
-                          self.mock_context, share, access, None)
-
-    def test_allow_access_multiple_ip_nfs(self):
-        """Verifies adding an IP to a whitelist with pre-existing ips.
-
-        Verifies that when adding an additional IP to a whitelist which already
-        contains IPs, the Isilon driver successfully appends the IP to the
-        whitelist.
-        """
-
-        # setup
-        fake_export_id = 42
-        new_allowed_ip = '10.7.7.8'
-        self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
-        existing_ips = ['10.0.0.1', '10.1.1.1', '10.0.0.2']
-        export_json = {
-            'clients': existing_ips,
-            'access_level': const.ACCESS_LEVEL_RW,
-        }
-        self._mock_isilon_api.get_nfs_export.return_value = export_json
-        self.assertFalse(self._mock_isilon_api.request.called)
-
-        # call method under test
-        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': new_allowed_ip,
-                  'access_level': const.ACCESS_LEVEL_RW}
-        share_server = None
-        self.storage_connection.allow_access(
-            self.mock_context, share, access, share_server)
-
-        # verify access rule is applied
-        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        str(fake_export_id))
-        self.assertTrue(self._mock_isilon_api.request.called)
-        args, kwargs = self._mock_isilon_api.request.call_args
-        action, url = args
-        self.assertEqual('PUT', action)
-        self.assertEqual(expected_url, url)
-        self.assertEqual(1, len(kwargs))
-        self.assertIn('data', kwargs)
-        actual_clients = set(kwargs['data']['clients'])
-        expected_clients = set(existing_ips)
-        expected_clients.add(new_allowed_ip)
-        self.assertEqual(expected_clients, actual_clients)
-
-    def test_allow_access_multiple_ip_cifs(self):
-        """Verifies adding an IP to a whitelist with pre-existing ips.
-
-        Verifies that when adding an additional IP to a whitelist which already
-        contains IPs, the Isilon driver successfully appends the IP to the
-        whitelist.
-        """
-
-        # setup
-        share_name = self.SHARE_NAME
-        new_allowed_ip = '10.101.1.1'
-        existing_ips = ['allow:10.0.0.1', 'allow:10.1.1.1', 'allow:10.0.0.2']
-        share_json = {'name': share_name, 'host_acl': existing_ips}
-        self._mock_isilon_api.lookup_smb_share.return_value = share_json
-        self.assertFalse(self._mock_isilon_api.request.called)
-
-        # call method under test
-        share = {'name': share_name, 'share_proto': 'CIFS'}
-        access = {'access_type': 'ip', 'access_to': new_allowed_ip,
-                  'access_level': const.ACCESS_LEVEL_RW}
-        share_server = None
-        self.storage_connection.allow_access(self.mock_context, share,
-                                             access,
-                                             share_server)
-
-        # verify access rule is applied
-        expected_url = (self.API_URL + '/platform/1/protocols/smb/shares/' +
-                        share_name)
-        self.assertTrue(self._mock_isilon_api.request.called)
-        args, kwargs = self._mock_isilon_api.request.call_args
-        action, url = args
-        self.assertEqual('PUT', action)
-        self.assertEqual(expected_url, url)
-        self.assertEqual(1, len(kwargs))
-        self.assertIn('data', kwargs)
-        actual_clients = set(kwargs['data']['host_acl'])
-        expected_clients = set(existing_ips)
-        expected_clients.add('allow:' + new_allowed_ip)
-        self.assertEqual(expected_clients, actual_clients)
-
-    def test_allow_access_single_ip_cifs(self):
-        # setup
-        share_name = self.SHARE_NAME
-        share = {'name': share_name, 'share_proto': 'CIFS'}
-        allow_ip = '10.1.1.10'
-        access = {'access_type': 'ip', 'access_to': allow_ip,
-                  'access_level': const.ACCESS_LEVEL_RW}
-        share_server = None
-        self._mock_isilon_api.lookup_smb_share.return_value = {
-            'name': share_name, 'host_acl': []}
-        self.assertFalse(self._mock_isilon_api.request.called)
-
-        # call method under test
-        self.storage_connection.allow_access(self.mock_context, share, access,
-                                             share_server)
-
-        # verify access rule is applied
-        expected_url = (self.API_URL + '/platform/1/protocols/smb/shares/' +
-                        self.SHARE_NAME)
-        expected_data = {'host_acl': ['allow:' + allow_ip]}
-        self._mock_isilon_api.request.assert_called_once_with(
-            'PUT', expected_url, data=expected_data)
-
-    @ddt.data(
-        ('foo', const.ACCESS_LEVEL_RW, isilon_api.SmbPermission.rw),
-        ('testuser', const.ACCESS_LEVEL_RO, isilon_api.SmbPermission.ro),
-    )
-    def test_allow_access_with_cifs_user(self, data):
-        # setup
-        share_name = self.SHARE_NAME
-        user, access_level, expected_smb_perm = data
-        share = {'name': share_name, 'share_proto': 'CIFS'}
-        access = {'access_type': 'user',
-                  'access_to': user,
-                  'access_level': access_level}
-
-        self.storage_connection.allow_access(self.mock_context, share,
-                                             access, None)
-
-        self._mock_isilon_api.smb_permissions_add.assert_called_once_with(
-            share_name, user, expected_smb_perm)
-
-    def test_allow_access_with_cifs_user_invalid_access_level(self):
-        share = {'name': self.SHARE_NAME, 'share_proto': 'CIFS'}
-        access = {
-            'access_type': 'user',
-            'access_to': 'foo',
-            'access_level': 'everything',
-        }
-
-        self.assertRaises(exception.InvalidShareAccess,
-                          self.storage_connection.allow_access,
-                          self.mock_context, share, access, None)
-
-    def test_allow_access_with_cifs_invalid_access_type(self):
-        share_name = self.SHARE_NAME
-        share = {'name': share_name, 'share_proto': 'CIFS'}
-        access = {'access_type': 'fooaccesstype',
-                  'access_to': 'testuser',
-                  'access_level': const.ACCESS_LEVEL_RW}
-
-        self.assertRaises(exception.InvalidShareAccess,
-                          self.storage_connection.allow_access,
-                          self.mock_context, share, access, None)
-
-    def test_deny_access_with_cifs_user(self):
-        share_name = self.SHARE_NAME
-        user_to_remove = 'testuser'
-        share = {'name': share_name, 'share_proto': 'CIFS'}
-        access = {'access_type': 'user',
-                  'access_to': user_to_remove,
-                  'access_level': const.ACCESS_LEVEL_RW}
-        self.assertFalse(self._mock_isilon_api.smb_permissions_remove.called)
-
-        self.storage_connection.deny_access(self.mock_context, share, access,
-                                            None)
-
-        self._mock_isilon_api.smb_permissions_remove.assert_called_with(
-            share_name, user_to_remove)
-
-    def test_allow_access_invalid_access_type(self):
-        # setup
-        share_name = self.SHARE_NAME
-        share = {'name': share_name, 'share_proto': 'NFS'}
-        allow_ip = '10.1.1.10'
-        access = {'access_type': 'foo_access_type', 'access_to': allow_ip}
-
-        # verify method under test throws the expected exception
-        self.assertRaises(
-            exception.InvalidShareAccess,
+            NotImplementedError,
             self.storage_connection.allow_access,
-            self.mock_context, share, access, None)
+            self.mock_context,
+            share=None,
+            access=None,
+            share_server=None,
+        )
 
-    def test_allow_access_invalid_share_protocol(self):
-        # setup
-        share_name = self.SHARE_NAME
-        share = {'name': share_name, 'share_proto': 'FOO_PROTOCOL'}
-        allow_ip = '10.1.1.10'
-        access = {'access_type': 'ip', 'access_to': allow_ip}
-
-        # verify method under test throws the expected exception
+    def test_deny_access(self):
         self.assertRaises(
-            exception.InvalidShare, self.storage_connection.allow_access,
-            self.mock_context, share, access, None)
+            NotImplementedError,
+            self.storage_connection.deny_access,
+            self.mock_context,
+            share=None,
+            access=None,
+            share_server=None,
+        )
 
     def test_create_share_nfs(self):
         share_path = self.SHARE_DIR
@@ -493,9 +122,14 @@ class IsilonTest(test.TestCase):
                                                         share, None)
 
         # verify location and API call made
-        expected_location = '%s:%s' % (self.ISILON_ADDR, self.SHARE_DIR)
+        path = '%s:%s' % (self.ISILON_ADDR, self.SHARE_DIR)
+        expected_location = [{'is_admin_only': False,
+                              'metadata': {"preferred": True},
+                              'path': path}]
+
         self.assertEqual(expected_location, location)
-        self._mock_isilon_api.create_directory.assert_called_with(share_path)
+        self._mock_isilon_api.create_directory.assert_called_with(
+            share_path, False)
         self._mock_isilon_api.create_nfs_export.assert_called_with(share_path)
 
         # verify directory quota call made
@@ -511,11 +145,14 @@ class IsilonTest(test.TestCase):
         location = self.storage_connection.create_share(self.mock_context,
                                                         share, None)
 
-        expected_location = '\\\\{0}\\{1}'.format(
-            self.ISILON_ADDR, self.SHARE_NAME)
+        path = '\\\\{0}\\{1}'.format(self.ISILON_ADDR, self.SHARE_NAME)
+        expected_location = [{'is_admin_only': False,
+                              'metadata': {"preferred": True},
+                              'path': path}]
+
         self.assertEqual(expected_location, location)
         self._mock_isilon_api.create_directory.assert_called_once_with(
-            self.SHARE_DIR)
+            self.SHARE_DIR, False)
         self._mock_isilon_api.create_smb_share.assert_called_once_with(
             self.SHARE_NAME, self.SHARE_DIR)
 
@@ -539,6 +176,24 @@ class IsilonTest(test.TestCase):
             self.storage_connection.create_share,
             self.mock_context, share, share_server=None)
 
+    def test_create_share_cifs_backend_failure(self):
+        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS'}
+        self._mock_isilon_api.create_smb_share.return_value = False
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.create_share,
+            self.mock_context, share, share_server=None)
+
+    def test_create_directory_backend_failure(self):
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS'}
+        self._mock_isilon_api.create_directory.return_value = False
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.create_share,
+            self.mock_context, share, share_server=None)
+
     def test_create_snapshot(self):
 
         # create snapshot
@@ -551,6 +206,17 @@ class IsilonTest(test.TestCase):
         # verify the create snapshot API call is executed
         self._mock_isilon_api.create_snapshot.assert_called_with(snapshot_name,
                                                                  snapshot_path)
+
+    def test_create_snapshot_backend_failure(self):
+        snapshot_name = "snapshot01"
+        snapshot_path = '/ifs/home/admin'
+        snapshot = {'name': snapshot_name, 'share_name': snapshot_path}
+        self._mock_isilon_api.create_snapshot.return_value = False
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.create_snapshot,
+            self.mock_context, snapshot, None)
 
     def test_create_share_from_snapshot_nfs(self):
         # assertions
@@ -573,9 +239,13 @@ class IsilonTest(test.TestCase):
         # verify clone_directory(container_path) method called
         self._mock_isilon_api.clone_snapshot.assert_called_once_with(
             snapshot_name, self.SHARE_DIR)
-        expected_location = '{0}:{1}'.format(
+        path = '{0}:{1}'.format(
             self.ISILON_ADDR, self.SHARE_DIR)
-        self.assertEqual(expected_location, location)
+        expected_location = {'is_admin_only': False,
+                             'metadata': {"preferred": True},
+                             'path': path}
+
+        self.assertEqual(expected_location, location[0])
 
         # verify directory quota call made
         self._mock_isilon_api.quota_create.assert_called_with(
@@ -601,9 +271,11 @@ class IsilonTest(test.TestCase):
             new_share_name, self.CLONE_DIR)
         self._mock_isilon_api.clone_snapshot.assert_called_once_with(
             snapshot_name, self.CLONE_DIR)
-        expected_location = '\\\\{0}\\{1}'.format(self.ISILON_ADDR,
-                                                  new_share_name)
-        self.assertEqual(expected_location, location)
+        path = '\\\\{0}\\{1}'.format(self.ISILON_ADDR, new_share_name)
+        expected_location = {'is_admin_only': False,
+                             'metadata': {"preferred": True},
+                             'path': path}
+        self.assertEqual(expected_location, location[0])
 
         # verify directory quota call made
         expected_share_path = '{0}/{1}'.format(self.ROOT_DIR, new_share_name)
@@ -634,12 +306,13 @@ class IsilonTest(test.TestCase):
         self._mock_isilon_api.delete_smb_share.assert_called_with(
             self.SHARE_NAME)
 
-    def test_delete_share_invalid_share_proto(self):
+    @mock.patch('manila.share.drivers.dell_emc.plugins.isilon.isilon.LOG')
+    def test_delete_share_invalid_share_proto(self, mock_log):
         share = {"name": self.SHARE_NAME, "share_proto": 'FOO_PROTOCOL'}
-        self.assertRaises(
-            exception.InvalidShare, self.storage_connection.delete_share,
-            self.mock_context, share, None
-        )
+
+        self.storage_connection.delete_share(self.mock_context, share, None)
+        mock_log.warning.assert_called_once_with(
+            'Unsupported share type: FOO_PROTOCOL.')
 
     def test_delete_nfs_share_backend_failure(self):
         share = {"name": self.SHARE_NAME, "share_proto": 'NFS'}
@@ -677,6 +350,83 @@ class IsilonTest(test.TestCase):
         # not throw exception
         self.storage_connection.delete_share(self.mock_context, share, None)
 
+    @mock.patch('manila.share.drivers.dell_emc.plugins.isilon.isilon.LOG')
+    def test_delete_quota_success(self, mock_log):
+        path = '/path/to/quota'
+        quota_id = '123'
+        quota_data = {'id': quota_id}
+        self._mock_isilon_api.quota_get.return_value = quota_data
+        self._mock_isilon_api.delete_quota.return_value = True
+        self.storage_connection._delete_quota(path)
+        self._mock_isilon_api.quota_get.assert_called_once_with(
+            path, 'directory')
+        self._mock_isilon_api.delete_quota.assert_called_once_with(quota_id)
+        mock_log.debug.assert_called_once_with(f'Removing quota {quota_id}')
+        mock_log.warning.assert_not_called()
+
+    @mock.patch('manila.share.drivers.dell_emc.plugins.isilon.isilon.LOG')
+    def test_delete_quota_failure(self, mock_log):
+        path = '/path/to/quota'
+        quota_id = '123'
+        quota_data = {'id': quota_id}
+        self._mock_isilon_api.quota_get.return_value = quota_data
+        self._mock_isilon_api.delete_quota.return_value = False
+        self.storage_connection._delete_quota(path)
+        self._mock_isilon_api.quota_get.assert_called_once_with(
+            path, 'directory')
+        self._mock_isilon_api.delete_quota.assert_called_once_with(quota_id)
+        mock_log.debug.assert_called_once_with(f'Removing quota {quota_id}')
+        mock_log.error.assert_called_once_with(
+            _('Failed to delete quota "%(quota_id)s" for '
+              'directory "%(dir)s".') %
+            {'quota_id': quota_id, 'dir': path})
+        mock_log.warning.assert_not_called()
+
+    @mock.patch('manila.share.drivers.dell_emc.plugins.isilon.isilon.LOG')
+    def test_delete_quota_not_found(self, mock_log):
+        path = '/path/to/quota'
+        self._mock_isilon_api.quota_get.return_value = None
+        self.storage_connection._delete_quota(path)
+        self._mock_isilon_api.quota_get.assert_called_once_with(
+            path, 'directory')
+        self._mock_isilon_api.delete_quota.assert_not_called()
+        mock_log.debug.assert_not_called()
+        mock_log.warning.assert_called_once_with(f'Quota not found for {path}')
+
+    @mock.patch('manila.share.drivers.dell_emc.plugins.isilon.isilon.LOG')
+    def test_delete_directory_success(self, mock_log):
+        path = '/path/to/directory'
+        self._mock_isilon_api.is_path_existent.return_value = True
+        self._mock_isilon_api.delete_path.return_value = True
+        self.storage_connection._delete_directory(path)
+        self._mock_isilon_api.delete_path.assert_called_once_with(
+            path, recursive=True)
+        mock_log.debug.assert_called_once_with(f'Removing directory {path}')
+        mock_log.warning.assert_not_called()
+
+    @mock.patch('manila.share.drivers.dell_emc.plugins.isilon.isilon.LOG')
+    def test_delete_directory_failure(self, mock_log):
+        path = '/path/to/directory'
+        self._mock_isilon_api.is_path_existent.return_value = True
+        self._mock_isilon_api.delete_path.return_value = False
+        self.storage_connection._delete_directory(path)
+        self._mock_isilon_api.delete_path.assert_called_once_with(
+            path, recursive=True)
+        mock_log.debug.assert_called_once_with(f'Removing directory {path}')
+        mock_log.error.assert_called_once_with(
+            _('Failed to delete directory "%(dir)s".') %
+            {'dir': path})
+        mock_log.warning.assert_not_called()
+
+    @mock.patch('manila.share.drivers.dell_emc.plugins.isilon.isilon.LOG')
+    def test_delete_directory_not_found(self, mock_log):
+        path = '/path/to/directory'
+        self._mock_isilon_api.is_path_existent.return_value = False
+        self.storage_connection._delete_directory(path)
+        self._mock_isilon_api.delete_path.assert_not_called()
+        mock_log.warning.assert_called_once_with(
+            _('Directory not found for %s') % path)
+
     def test_delete_snapshot(self):
         # create a snapshot
         snapshot_name = "snapshot01"
@@ -691,6 +441,16 @@ class IsilonTest(test.TestCase):
         # verify the API call was made to delete the snapshot
         self._mock_isilon_api.delete_snapshot.assert_called_once_with(
             snapshot_name)
+
+    def test_delete_snapshot_failure(self):
+        snapshot = {'name': 'test_snapshot'}
+        self._mock_isilon_api.delete_snapshot.return_value = False
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.delete_snapshot,
+            self.mock_context, snapshot, None)
+        self._mock_isilon_api.delete_snapshot.assert_called_once_with(
+            snapshot['name'])
 
     def test_ensure_share(self):
         share = {"name": self.SHARE_NAME, "share_proto": 'CIFS'}
@@ -711,7 +471,7 @@ class IsilonTest(test.TestCase):
         mock_config = self.MockConfig()
         server_addr = mock_config.safe_get('emc_nas_server')
         self.assertEqual(server_addr, storage_connection._server)
-        expected_port = int(mock_config.safe_get('emc_nas_server_port'))
+        expected_port = mock_config.safe_get('emc_nas_server_port')
         self.assertEqual(expected_port, storage_connection._port)
         self.assertEqual('https://{0}:{1}'.format(server_addr, expected_port),
                          storage_connection._server_url)
@@ -720,6 +480,10 @@ class IsilonTest(test.TestCase):
         expected_password = mock_config.safe_get('emc_nas_password')
         self.assertEqual(expected_password, storage_connection._password)
         self.assertFalse(storage_connection._verify_ssl_cert)
+        expected_dir_permission = mock_config.safe_get(
+            'powerscale_dir_permission')
+        self.assertEqual(expected_dir_permission,
+                         storage_connection._dir_permission)
 
     @mock.patch(
         'manila.share.drivers.dell_emc.plugins.isilon.isilon.isilon_api.'
@@ -735,6 +499,16 @@ class IsilonTest(test.TestCase):
 
         mock_isilon_api.create_directory.assert_called_once_with(
             self.ROOT_DIR, recursive=True)
+
+    def test_connect_invalid_config(self):
+        mock_emc_driver = mock.Mock('EmcDriver')
+        mock_emc_driver.attach_mock(self.MockInvalidConfig(), 'configuration')
+
+        self.assertRaises(exception.BadConfigurationException,
+                          self.storage_connection.connect,
+                          mock_emc_driver,
+                          self.mock_context
+                          )
 
     def test_update_share_stats(self):
         stats_dict = {}
@@ -785,23 +559,17 @@ class IsilonTest(test.TestCase):
             'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
         }
         access_rules = [nfs_access]
-        add_rules = [nfs_access]
-        delete_rules = []
-
+        self._mock_isilon_api.modify_nfs_export_access.return_value = True
         rule_map = self.storage_connection.update_access(
-            self.mock_context, share, access_rules, add_rules,
-            delete_rules, share_server=None)
-
-        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        str(fake_export_id))
-        expected_data = {'clients': ['10.1.1.10'], 'read_only_clients': []}
+            self.mock_context, share, access_rules, [],
+            [], share_server=None)
         expected_rule_map = {
             '09960614-8574-4e03-89cf-7cf267b0bd08': {
                 'state': 'active'
             }
         }
-        self._mock_isilon_api.request.assert_called_once_with(
-            'PUT', expected_url, data=expected_data)
+        self._mock_isilon_api.modify_nfs_export_access.assert_called_once_with(
+            fake_export_id, [], ['10.1.1.10'])
         self.assertEqual(expected_rule_map, rule_map)
 
     def test_update_access_add_cifs(self):
@@ -815,14 +583,29 @@ class IsilonTest(test.TestCase):
             'access_level': const.ACCESS_LEVEL_RW,
             'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
         }
-        add_rules = [access]
         access_rules = [access]
 
+        self._mock_isilon_api.get_user_sid.return_value = {
+            'id': 'SID:S-1-5-22',
+            'name': 'foo',
+            'type': 'user',
+        }
         rule_map = self.storage_connection.update_access(
-            self.mock_context, share, access_rules, add_rules, [])
+            self.mock_context, share, access_rules, [], [])
 
-        self._mock_isilon_api.smb_permissions_add.assert_called_once_with(
-            self.SHARE_NAME, 'foo', isilon_api.SmbPermission.rw)
+        expected_permissions = [
+            {
+                "permission": "change",
+                "permission_type": "allow",
+                "trustee": {
+                    "id": "SID:S-1-5-22",
+                    "name": "foo",
+                    "type": "user"
+                }
+            }
+        ]
+        self._mock_isilon_api.modify_smb_share_access.assert_called_once_with(
+            self.SHARE_NAME, host_acl=[], permissions=expected_permissions)
         expected_rule_map = {
             '09960614-8574-4e03-89cf-7cf267b0bd08': {
                 'state': 'active'
@@ -842,27 +625,14 @@ class IsilonTest(test.TestCase):
         ip_addr_ro = '10.0.0.50'
         self._mock_isilon_api.get_nfs_export.return_value = {
             'clients': [ip_addr], 'read_only_clients': [ip_addr_ro]}
-        nfs_access_del_1 = {
-            'access_type': 'ip',
-            'access_to': ip_addr,
-            'access_level': const.ACCESS_LEVEL_RW
-        }
-        nfs_access_del_2 = {
-            'access_type': 'ip',
-            'access_to': ip_addr,
-            'access_level': const.ACCESS_LEVEL_RW
-        }
         access_rules = []
-        delete_rules = [nfs_access_del_1, nfs_access_del_2]
+        self._mock_isilon_api.modify_nfs_export_access.return_value = True
 
         rule_map = self.storage_connection.update_access(
-            self.mock_context, share, access_rules, [], delete_rules)
+            self.mock_context, share, access_rules, [], [])
 
-        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        str(fake_export_id))
-        expected_data = {'clients': [], 'read_only_clients': []}
-        self._mock_isilon_api.request.assert_called_once_with(
-            'PUT', expected_url, data=expected_data)
+        self._mock_isilon_api.modify_nfs_export_access.assert_called_once_with(
+            fake_export_id, [], [])
         self.assertEqual({}, rule_map)
 
     def test_update_access_delete_cifs(self):
@@ -870,14 +640,7 @@ class IsilonTest(test.TestCase):
             "name": self.SHARE_NAME,
             "share_proto": 'CIFS',
         }
-        delete_rule = {
-            'access_type': 'user',
-            'access_to': 'newuser',
-            'access_level': const.ACCESS_LEVEL_RW,
-            'access_id': '29960614-8574-4e03-89cf-7cf267b0bd08'
-        }
         access_rules = []
-        delete_rules = [delete_rule]
         self._mock_isilon_api.lookup_smb_share.return_value = {
             'permissions': [
                 {
@@ -893,13 +656,12 @@ class IsilonTest(test.TestCase):
             ]
         }
 
+        self._mock_isilon_api.modify_smb_share_access.return_value = None
         rule_map = self.storage_connection.update_access(
-            self.mock_context, share, access_rules, [], delete_rules)
+            self.mock_context, share, access_rules, [], [])
 
-        expected_url = (self.API_URL + '/platform/1/protocols/smb/shares/' +
-                        self.SHARE_NAME)
-        self._mock_isilon_api.request.assert_called_once_with(
-            'PUT', expected_url, data={'permissions': [], 'host_acl': []})
+        self._mock_isilon_api.modify_smb_share_access.assert_called_once_with(
+            self.SHARE_NAME, host_acl=[], permissions=[])
         self.assertEqual({}, rule_map)
 
     def test_update_access_nfs_share_not_found(self):
@@ -914,11 +676,10 @@ class IsilonTest(test.TestCase):
             'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
         }
         access_rules = [access]
-        add_rules = [access]
         self._mock_isilon_api.lookup_nfs_export.return_value = None
 
         rule_map = self.storage_connection.update_access(
-            self.mock_context, share, access_rules, add_rules, [])
+            self.mock_context, share, access_rules, [], [])
 
         expected_rule_map = {
             '09960614-8574-4e03-89cf-7cf267b0bd08': {
@@ -939,12 +700,10 @@ class IsilonTest(test.TestCase):
             'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
         }
         access_rules = [access]
-        add_rules = [access]
-        (self._mock_isilon_api.request.return_value.raise_for_status.
-            side_effect) = HTTPError
+        self._mock_isilon_api.modify_nfs_export_access.return_value = False
 
         rule_map = self.storage_connection.update_access(
-            self.mock_context, share, access_rules, add_rules, [])
+            self.mock_context, share, access_rules, [], [])
 
         expected_rule_map = {
             '09960614-8574-4e03-89cf-7cf267b0bd08': {
@@ -964,13 +723,11 @@ class IsilonTest(test.TestCase):
             'access_level': const.ACCESS_LEVEL_RW,
             'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
         }
-        add_rules = [access]
         access_rules = [access]
-        (self._mock_isilon_api.request.return_value.raise_for_status.
-            side_effect) = HTTPError
+        self._mock_isilon_api.modify_smb_share_access.return_value = False
 
         rule_map = self.storage_connection.update_access(
-            self.mock_context, share, access_rules, add_rules, [])
+            self.mock_context, share, access_rules, None, None)
 
         expected_rule_map = {
             '09960614-8574-4e03-89cf-7cf267b0bd08': {
@@ -979,7 +736,31 @@ class IsilonTest(test.TestCase):
         }
         self.assertEqual(expected_rule_map, rule_map)
 
-    def test_update_access_cifs_share_backend_error(self):
+    def test_update_access_cifs_invalid_user_access_level(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'CIFS',
+        }
+        access = {
+            'access_type': 'user',
+            'access_to': 'foo',
+            'access_level': 'fake',
+            'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        access_rules = [access]
+        self._mock_isilon_api.modify_smb_share_access.return_value = True
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, access_rules, [], [])
+
+        expected_rule_map = {
+            '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'error'
+            }
+        }
+        self.assertEqual(expected_rule_map, rule_map)
+
+    def test_update_access_cifs_user_not_found(self):
         share = {
             "name": self.SHARE_NAME,
             "share_proto": 'CIFS',
@@ -990,14 +771,12 @@ class IsilonTest(test.TestCase):
             'access_level': const.ACCESS_LEVEL_RW,
             'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
         }
-        add_rules = [access]
         access_rules = [access]
-        message = _('Only "RW" and "RO" access levels are supported.')
-        self._mock_isilon_api.smb_permissions_add.side_effect = (
-            exception.ShareBackendException(message=message))
+        self._mock_isilon_api.get_user_sid.return_value = None
+        self._mock_isilon_api.modify_smb_share_access.return_value = True
 
         rule_map = self.storage_connection.update_access(
-            self.mock_context, share, access_rules, add_rules, [])
+            self.mock_context, share, access_rules, [], [])
 
         expected_rule_map = {
             '09960614-8574-4e03-89cf-7cf267b0bd08': {
@@ -1017,11 +796,10 @@ class IsilonTest(test.TestCase):
             'access_level': const.ACCESS_LEVEL_RW,
             'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
         }
-        add_rules = [access]
         access_rules = [access]
 
         rule_map = self.storage_connection.update_access(
-            self.mock_context, share, access_rules, add_rules, [])
+            self.mock_context, share, access_rules, [], [])
 
         expected_rule_map = {
             '09960614-8574-4e03-89cf-7cf267b0bd08': {
@@ -1056,15 +834,11 @@ class IsilonTest(test.TestCase):
         }
         access_rules = [nfs_access_1, nfs_access_2]
 
+        self._mock_isilon_api.modify_nfs_export_access.return_value = True
+
         rule_map = self.storage_connection.update_access(
             self.mock_context, share, access_rules, [], [])
 
-        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
-                        str(fake_export_id))
-        expected_data = {
-            'clients': ['10.1.1.10'],
-            'read_only_clients': ['10.1.1.2']
-        }
         expected_rule_map = {
             '09960614-8574-4e03-89cf-7cf267b0bd08': {
                 'state': 'active'
@@ -1073,8 +847,8 @@ class IsilonTest(test.TestCase):
                 'state': 'active'
             }
         }
-        self._mock_isilon_api.request.assert_called_once_with(
-            'PUT', expected_url, data=expected_data)
+        self._mock_isilon_api.modify_nfs_export_access.assert_called_once_with(
+            fake_export_id, ['10.1.1.2'], ['10.1.1.10'])
         self.assertEqual(expected_rule_map, rule_map)
 
     def test_update_access_recover_cifs(self):
@@ -1082,56 +856,12 @@ class IsilonTest(test.TestCase):
             "name": self.SHARE_NAME,
             "share_proto": 'CIFS',
         }
-        mock_smb_share_1 = {
-            'host_acl': ['allow:10.1.2.3', 'allow:10.1.1.12'],
-            'permissions': [
-                {
-                    'permission': 'change',
-                    'permission_type': 'allow',
-                    'trustee': {
-                        'id': 'SID:S-1-5-21',
-                        'name': 'foouser',
-                        'type': 'user',
-                    }
-                },
-                {
-                    'permission': 'ro',
-                    'permission_type': 'allow',
-                    'trustee': {
-                        'id': 'SID:S-1-5-22',
-                        'name': 'testuser',
-                        'type': 'user',
-                    }
-                }
-            ]
+        self._mock_isilon_api.get_user_sid.return_value = {
+            'id': 'SID:S-1-5-22',
+            'name': 'testuser',
+            'type': 'user',
         }
-        mock_smb_share_2 = {
-            'host_acl': ['allow:10.1.2.3', 'allow:10.1.1.12',
-                         'allow:10.1.1.10'],
-            'permissions': [
-                {
-                    'permission': 'change',
-                    'permission_type': 'allow',
-                    'trustee': {
-                        'id': 'SID:S-1-5-21',
-                        'name': 'foouser',
-                        'type': 'user',
-                    }
-                },
-                {
-                    'permission': 'ro',
-                    'permission_type': 'allow',
-                    'trustee': {
-                        'id': 'SID:S-1-5-22',
-                        'name': 'testuser',
-                        'type': 'user',
-                    }
-                }
-            ]
-        }
-        self._mock_isilon_api.lookup_smb_share.side_effect = [
-            mock_smb_share_1, mock_smb_share_2]
-
+        self._mock_isilon_api.modify_smb_share_access.return_value = True
         access_1 = {
             'access_type': 'ip',
             'access_to': '10.1.1.10',
@@ -1149,13 +879,11 @@ class IsilonTest(test.TestCase):
         rule_map = self.storage_connection.update_access(
             self.mock_context, share, access_rules, [], [])
 
-        expected_url = (self.API_URL + '/platform/1/protocols/smb/shares/' +
-                        self.SHARE_NAME)
         expected_data = {
             'host_acl': ['allow:10.1.1.10'],
             'permissions': [
                 {
-                    'permission': 'ro',
+                    'permission': 'read',
                     'permission_type': 'allow',
                     'trustee': {
                         'id': 'SID:S-1-5-22',
@@ -1173,13 +901,61 @@ class IsilonTest(test.TestCase):
                 'state': 'active'
             }
         }
-        self.assertEqual(2, self._mock_isilon_api.lookup_smb_share.call_count)
-        http_method, url = self._mock_isilon_api.request.call_args[0]
-        data = self._mock_isilon_api.request.call_args[1]['data']
-        self.assertEqual('PUT', http_method)
-        self.assertEqual(expected_url, url)
-        self.assertEqual(expected_data['host_acl'], data['host_acl'])
-        self.assertEqual(1, len(data['permissions']))
-        self.assertEqual(expected_data['permissions'][0],
-                         data['permissions'][0])
+        self._mock_isilon_api.lookup_smb_share.assert_not_called()
+        self._mock_isilon_api.get_user_sid.assert_called_once_with('testuser')
+        self._mock_isilon_api.modify_smb_share_access.assert_called_once_with(
+            self.SHARE_NAME,
+            host_acl=expected_data['host_acl'],
+            permissions=expected_data['permissions']
+        )
         self.assertEqual(expected_rule_map, rule_map)
+
+    def test_update_access_with_cifs_ip_readonly(self):
+        # Note: Driver does not currently support readonly access for "ip" type
+        share = {'name': self.SHARE_NAME, 'share_proto': 'CIFS'}
+        access = {'access_type': 'ip', 'access_to': '10.1.1.10',
+                  'access_level': const.ACCESS_LEVEL_RO,
+                  'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'}
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, [access], None, None)
+        expected_rule_map = {
+            '09960614-8574-4e03-89cf-7cf267b0bd08': {'state': 'error'}}
+        self.assertEqual(expected_rule_map, rule_map)
+
+    def test_delete_quota_when_quota_exists(self):
+        path = '/path/to/quota'
+        quota_id = '123'
+        quota_data = {'id': quota_id}
+        self._mock_isilon_api.quota_get.return_value = quota_data
+        self._mock_isilon_api.delete_quota.return_value = True
+
+        self.storage_connection._delete_quota(path)
+
+        self._mock_isilon_api.quota_get.assert_called_once_with(
+            path, 'directory')
+        self._mock_isilon_api.delete_quota.assert_called_once_with(quota_id)
+
+    def test_delete_quota_when_quota_does_not_exist(self):
+        path = '/path/to/quota'
+        self._mock_isilon_api.quota_get.return_value = None
+
+        self.storage_connection._delete_quota(path)
+
+        self._mock_isilon_api.quota_get.assert_called_once_with(
+            path, 'directory')
+        self._mock_isilon_api.delete_quota.assert_not_called()
+
+    def test_delete_directory_when_path_exists(self):
+        path = '/path/to/directory'
+        self.storage_connection._delete_directory(path)
+        self._mock_isilon_api.is_path_existent.assert_called_with(path)
+        self._mock_isilon_api.delete_path.assert_called_with(
+            path, recursive=True)
+
+    def test_delete_directory_when_path_does_not_exist(self):
+        path = '/path/to/directory'
+        self._mock_isilon_api.is_path_existent.return_value = False
+        self.storage_connection._delete_directory(path)
+        self._mock_isilon_api.is_path_existent.assert_called_with(path)
+        self._mock_isilon_api.delete_path.assert_not_called()
