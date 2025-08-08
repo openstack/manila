@@ -1171,6 +1171,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         interfaces = []
         for lif_info in lif_info_list.get_children():
             lif = {
+                'administrative-status': lif_info.get_child_content(
+                    'administrative-status'),
                 'address': lif_info.get_child_content('address'),
                 'home-node': lif_info.get_child_content('home-node'),
                 'home-port': lif_info.get_child_content('home-port'),

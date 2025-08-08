@@ -158,7 +158,8 @@ CDOT_CLONE_CHILDREN = [
 ]
 
 NETWORK_INTERFACES = [{
-    'interface_name': 'fake_interface',
+    'interface-name': 'fake_interface',
+    'administrative-status': 'up',
     'address': IP_ADDRESS,
     'vserver': VSERVER_NAME,
     'netmask': NETMASK,
@@ -169,7 +170,8 @@ NETWORK_INTERFACES = [{
 
 NETWORK_INTERFACES_MULTIPLE = [
     {
-        'interface_name': 'fake_interface',
+        'interface-name': 'fake_interface',
+        'administrative-status': 'up',
         'address': IP_ADDRESS,
         'vserver': VSERVER_NAME,
         'netmask': NETMASK,
@@ -178,7 +180,8 @@ NETWORK_INTERFACES_MULTIPLE = [
         'home-port': VLAN_PORT,
     },
     {
-        'interface_name': 'fake_interface_2',
+        'interface-name': 'fake_interface_2',
+        'administrative-status': 'up',
         'address': '10.10.12.10',
         'vserver': VSERVER_NAME,
         'netmask': NETMASK,
@@ -1039,6 +1042,7 @@ NET_INTERFACE_GET_ITER_RESPONSE_NFS = etree.XML("""
 
 LIFS = (
     {'address': '192.168.228.42',
+     'administrative-status': 'up',
      'home-node': NODE_NAME,
      'home-port': 'e0c',
      'interface-name': 'cluster_mgmt',
@@ -1047,6 +1051,7 @@ LIFS = (
      'vserver': 'cluster3'
      },
     {'address': '192.168.228.43',
+     'administrative-status': 'up',
      'home-node': NODE_NAME,
      'home-port': 'e0d',
      'interface-name': 'mgmt1',
@@ -1055,6 +1060,7 @@ LIFS = (
      'vserver': 'cluster3-01'
      },
     {'address': IP_ADDRESS,
+     'administrative-status': 'up',
      'home-node': NODE_NAME,
      'home-port': VLAN_PORT,
      'interface-name': LIF_NAME,
@@ -1066,6 +1072,7 @@ LIFS = (
 
 NFS_LIFS = [
     {'address': IP_ADDRESS,
+     'administrative-status': 'up',
      'home-node': NODE_NAME,
      'home-port': VLAN_PORT,
      'interface-name': LIF_NAME,
@@ -1078,6 +1085,7 @@ NFS_LIFS = [
 NFS_LIFS_REST = [
     {
         'uuid': 'fake_uuid_1',
+        'enabled': 'true',
         'address': IP_ADDRESS,
         'home-node': NODE_NAME,
         'home-port': VLAN_PORT,
@@ -1088,6 +1096,7 @@ NFS_LIFS_REST = [
     },
     {
         'uuid': 'fake_uuid_2',
+        'enabled': 'true',
         'address': IP_ADDRESS,
         'home-node': NODE_NAME,
         'home-port': VLAN_PORT,
@@ -1098,6 +1107,7 @@ NFS_LIFS_REST = [
     },
     {
         'uuid': 'fake_uuid_3',
+        'enabled': 'true',
         'address': IP_ADDRESS,
         'home-node': NODE_NAME,
         'home-port': VLAN_PORT,
@@ -3784,6 +3794,7 @@ GENERIC_NETWORK_INTERFACES_GET_REPONSE = {
         {
             "uuid": "fake_uuid",
             "name": LIF_NAME,
+            "enabled": "true",
             "ip": {
                 "address": IP_ADDRESS,
                 "netmask": NETMASK

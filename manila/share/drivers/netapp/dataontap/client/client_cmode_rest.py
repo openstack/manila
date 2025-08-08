@@ -772,6 +772,8 @@ class NetAppRestClient(object):
         interfaces = []
         for lif_info in result.get('records', []):
             lif = {
+                'administrative-status': (
+                    'up' if lif_info['enabled'] else 'down'),
                 'uuid': lif_info['uuid'],
                 'address': lif_info['ip']['address'],
                 'home-node': lif_info['location']['home_node']['name'],
