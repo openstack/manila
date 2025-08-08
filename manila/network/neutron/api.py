@@ -197,6 +197,9 @@ class API(object):
                 raise exception.PortLimitExceeded()
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
+        except neutron_client_exc.IpAddressGenerationFailureClient:
+            LOG.warning('No free IP addresses in neutron subnet %s', subnet_id)
+            raise exception.IpAddressGenerationFailureClient()
         except ks_exec.ConnectFailure:
             LOG.warning('Create Port: Neutron connection failure')
             # check if port is created in neutron else re-raise connectFailure

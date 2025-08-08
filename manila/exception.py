@@ -538,6 +538,10 @@ class PortLimitExceeded(QuotaError):
     message = _("Maximum number of ports exceeded.")
 
 
+class IpAddressGenerationFailureClient(ManilaException):
+    message = _("No free IP addresses available in neutron subnet.")
+
+
 class ShareAccessExists(ManilaException):
     message = _("Share access %(access_type)s:%(access)s exists.")
 
