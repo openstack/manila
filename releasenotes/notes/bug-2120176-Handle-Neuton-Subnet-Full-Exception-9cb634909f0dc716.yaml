@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Manila will report IpAddressGenerationFailureClient exception if neutron
+    subnet is full i.e. no more ports can be created on neutron subnet. For
+    more details, please refer to
+    `launchpad bug #2120176 <https://bugs.launchpad.net/manila/+bug/2120176>`_

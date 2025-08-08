@@ -2672,6 +2672,71 @@ class ShareManagerTestCase(test.TestCase):
             detail=(
                 message_field.Detail.SHARE_NETWORK_PORT_QUOTA_LIMIT_EXCEEDED))
 
+    def test_create_share_instance_with_ip_address_generation_failure(self):
+        share_network = db_utils.create_share_network(id='fake_sn_id')
+        share_net_subnet = db_utils.create_share_network_subnet(
+            id='fake_sns_id', share_network_id=share_network['id']
+        )
+        share_type = db_utils.create_share_type()
+        fake_share = db_utils.create_share(
+            share_network_id=share_network['id'], size=1,
+            share_type_id=share_type['id'])
+        fake_metadata = {
+            'request_host': 'fake_host',
+            'share_type_id': 'fake_share_type_id',
+        }
+        fake_server = db_utils.create_share_server(
+            id='fake_srv_id', status=constants.STATUS_CREATING,
+            share_network_subnets=[share_net_subnet])
+
+        self.mock_object(self.share_manager, '_build_server_metadata',
+                         mock.Mock(return_value=fake_metadata))
+        self.mock_object(db, 'share_server_create',
+                         mock.Mock(return_value=fake_server))
+        self.mock_object(db, 'share_instance_update',
+                         mock.Mock(return_value=fake_share.instance))
+        self.mock_object(db, 'share_instance_get',
+                         mock.Mock(return_value=fake_share.instance))
+        self.mock_object(
+            db, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=[share_net_subnet]))
+        self.mock_object(manager.LOG, 'error')
+
+        def raise_manila_exception(*args, **kwargs):
+            raise exception.IpAddressGenerationFailureClient()
+
+        self.mock_object(self.share_manager, '_setup_server',
+                         mock.Mock(side_effect=raise_manila_exception))
+
+        self.assertRaises(
+            exception.IpAddressGenerationFailureClient,
+            self.share_manager.create_share_instance,
+            self.context,
+            fake_share.instance['id'],
+        )
+        db.share_server_create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), mock.ANY)
+        db.share_instance_update.assert_has_calls([
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                fake_share.instance['id'],
+                {'status': constants.STATUS_ERROR},
+            )
+        ])
+        self.share_manager._setup_server.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_server,
+            fake_metadata)
+        manager.LOG.error.assert_called_with(mock.ANY,
+                                             fake_share.instance['id'])
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.CREATE,
+            str(fake_share.project_id),
+            resource_type=message_field.Resource.SHARE,
+            resource_id=fake_share['id'],
+            detail=(
+                message_field.Detail.NEUTRON_SUBNET_FULL))
+
     def test_create_share_instance_with_share_network_server_fail(self):
         share_network = db_utils.create_share_network(id='fake_sn_id')
         share_net_subnet = db_utils.create_share_network_subnet(

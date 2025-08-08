@@ -144,6 +144,11 @@ class ManilaExceptionTestCase(test.TestCase):
         self.assertEqual(500, e.code)
         self.assertIn(reason, e.msg)
 
+    def test_ip_address_generation_failure(self):
+        # verify response code for exception.IpAddressGenerationFailureClient
+        e = exception.IpAddressGenerationFailureClient()
+        self.assertEqual(500, e.code)
+
 
 class ManilaExceptionResponseCode400(test.TestCase):
 
