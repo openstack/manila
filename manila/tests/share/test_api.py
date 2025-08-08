@@ -6118,13 +6118,16 @@ class ShareAPITestCase(test.TestCase):
         share_type = db_api.share_type_get(self.context, share_type['id'])
         fake_shares = [db_utils.create_share(
             host='fake@backend#pool', status=constants.STATUS_AVAILABLE,
-            share_type_id=share_type['id']) for x in range(4)]
+            share_type_id=share_type['id'],
+            share_server_id=fake_share_server['id']) for x in range(4)]
         fake_snapshots = [
             db_utils.create_snapshot(share_id=fake_shares[0]['id'])]
         instance_ids = [share['instance']['id'] for share in fake_shares]
+        snap_instances = []
         snap_instance_ids = []
         for fake_share in fake_shares:
             for snapshot in fake_snapshots:
+                snap_instances.append({'id': snapshot['instance']['id']})
                 snap_instance_ids.append(snapshot['instance']['id'])
         fake_types = [share_type]
         fake_share_network = db_utils.create_share_network()
@@ -6143,9 +6146,6 @@ class ShareAPITestCase(test.TestCase):
         share_expected_update = {
             'status': constants.STATUS_SERVER_MIGRATING
         }
-        snapshot_get_calls = [
-            mock.call(self.context, share['id']) for share in fake_shares]
-
         mock_initial_checks = self.mock_object(
             self.api, '_migration_initial_checks',
             mock.Mock(return_value=[fake_shares, fake_types, service,
@@ -6154,8 +6154,8 @@ class ShareAPITestCase(test.TestCase):
             self.share_rpcapi, 'share_server_migration_start')
         mock_server_update = self.mock_object(db_api, 'share_server_update')
         mock_snapshots_get = self.mock_object(
-            db_api, 'share_snapshot_get_all_for_share',
-            mock.Mock(return_value=fake_snapshots))
+            db_api, 'share_snapshot_instance_get_all_with_filters',
+            mock.Mock(return_value=snap_instances))
         mock_update_instances = self.mock_object(
             db_api, 'share_and_snapshot_instances_status_update')
 
@@ -6172,8 +6172,7 @@ class ShareAPITestCase(test.TestCase):
         )
         mock_server_update.assert_called_once_with(
             self.context, fake_share_server['id'], server_expected_update)
-        mock_snapshots_get.assert_has_calls(
-            snapshot_get_calls)
+        mock_snapshots_get.assert_called()
         mock_update_instances.assert_called_once_with(
             self.context, share_expected_update,
             current_expected_status=constants.STATUS_AVAILABLE,
