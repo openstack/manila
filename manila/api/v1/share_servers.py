@@ -48,7 +48,20 @@ class ShareServerController(wsgi.Controller):
 
         search_opts = {}
         search_opts.update(req.GET)
-        share_servers = db_api.share_server_get_all(context)
+
+        ss_filters = {}
+        if 'host' in search_opts:
+            ss_filters['host'] = search_opts.pop('host')
+        if 'status' in search_opts:
+            ss_filters['status'] = search_opts.pop('status')
+        if 'source_share_server_id' in search_opts:
+            ss_filters['source_share_server_id'] = search_opts.pop(
+                'source_share_server_id')
+        if 'identifier' in search_opts:
+            ss_filters['identifier'] = search_opts.pop('identifier')
+        share_servers = db_api.share_server_get_all_with_filters(
+            context, ss_filters)
+
         for s in share_servers:
             try:
                 share_network = db_api.share_network_get(
