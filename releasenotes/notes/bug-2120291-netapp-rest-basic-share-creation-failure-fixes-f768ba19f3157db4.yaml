@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    The NetApp ONTAP driver failed while checking for WORM shares compliance
+    and data ports for LIF creaton during the shares creation. The issue is
+    now fixed, and share creation works fine with both rest and netapp legacy
+    client.
+    For more details, please refer to
+    `Launchpad bug #2120291 <https://bugs.launchpad.net/manila/+bug/2120291>`_.

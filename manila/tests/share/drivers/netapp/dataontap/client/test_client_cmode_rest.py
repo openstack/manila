@@ -822,13 +822,13 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                 'services': 'data_cifs,data_nfs',
                 'fields': 'ip.address,location.home_node.name,'
                           'location.home_port.name,ip.netmask,'
-                          'services,svm.name'
+                          'services,svm.name,enabled'
             }
         else:
             query = {
                 'fields': 'ip.address,location.home_node.name,'
                           'location.home_port.name,ip.netmask,'
-                          'services,svm.name'
+                          'services,svm.name,enabled'
             }
 
         self.mock_object(self.client, 'send_request',
@@ -4735,7 +4735,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.mock_object(
             self.client, 'send_request', mock.Mock(
                 side_effect=[fake.REST_ETHERNET_PORTS,
-                             fake.REST_MGMT_INTERFACES]))
+                             fake.REST_DATA_INTERFACES]))
         self.mock_object(
             self.client, '_sort_data_ports_by_speed', mock.Mock(
                 return_value=fake.REST_SPEED_SORTED_PORTS))
@@ -4746,11 +4746,13 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'node.name': fake.NODE_NAME,
             'state': 'up',
             'type': 'physical',
+            'broadcast_domain.name': 'Default',
             'fields': 'node.name,speed,name'
         }
 
         query_interfaces = {
-            'service_policy.name': 'default-management',
+            'service_policy.name': '!default-management',
+            'services': 'data_*',
             'fields': 'location.port.name'
         }
 
@@ -7136,7 +7138,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.mock_object(self.client,
                          '_get_cluster_node_uuid',
                          mock.Mock(return_value="uuid"))
-        api_response = {'time': "not configured"}
+        api_response = {'time': None}
         self.mock_object(self.client,
                          'send_request',
                          mock.Mock(return_value=api_response))

@@ -4450,9 +4450,9 @@ FAKE_PEER_GET_RESPONSE = {
 }
 
 REST_SPEED_SORTED_PORTS = [
-    {'node': NODE_NAME, 'port': 'e0d', 'speed': '10000'},
-    {'node': NODE_NAME, 'port': 'e0c', 'speed': '1000'},
-    {'node': NODE_NAME, 'port': 'e0b', 'speed': '100'},
+    {'node': NODE_NAME, 'port': 'e0d', 'speed': 10000},
+    {'node': NODE_NAME, 'port': 'e0c', 'speed': 1000},
+    {'node': NODE_NAME, 'port': 'e0b', 'speed': 100},
 ]
 
 REST_SPEED_NOT_SORTED_PORTS = [
@@ -4824,14 +4824,14 @@ FAKE_AGGR_LIST = {
     ]
 }
 
-REST_MGMT_INTERFACES = {
+REST_DATA_INTERFACES = {
     "records": [
         {
             "uuid": "fake-uuid-1",
-            "name": "node_mgmt1",
+            "name": "data-1",
             "location": {
                 "port": {
-                    "name": "e0a"
+                    "name": "e0b"
                 }
             },
             "service_policy": {
@@ -4840,10 +4840,22 @@ REST_MGMT_INTERFACES = {
         },
         {
             "uuid": "fake-uuid-2",
-            "name": "cluster_mgmt",
+            "name": "data-2",
             "location": {
                 "port": {
-                    "name": "e0a"
+                    "name": "e0c"
+                }
+            },
+            "service_policy": {
+                "name": "default-management"
+            },
+        },
+        {
+            "uuid": "fake-uuid-3",
+            "name": "data-3",
+            "location": {
+                "port": {
+                    "name": "e0d"
                 }
             },
             "service_policy": {
@@ -4851,7 +4863,7 @@ REST_MGMT_INTERFACES = {
             },
         }
     ],
-    "num_records": 2,
+    "num_records": 3,
 }
 
 FAKE_CIFS_LOCAL_USER = {
