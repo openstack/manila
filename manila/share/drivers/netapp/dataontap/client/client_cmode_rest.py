@@ -757,13 +757,13 @@ class NetAppRestClient(object):
                 'services': ','.join(protocols),
                 'fields': 'ip.address,location.home_node.name,'
                           'location.home_port.name,ip.netmask,'
-                          'services,svm.name'
+                          'services,svm.name,enabled'
             }
         else:
             query = {
                 'fields': 'ip.address,location.home_node.name,'
                           'location.home_port.name,ip.netmask,'
-                          'services,svm.name'
+                          'services,svm.name,enabled'
             }
 
         result = self.send_request('/network/ip/interfaces', 'get',
@@ -4549,6 +4549,7 @@ class NetAppRestClient(object):
             'node.name': node,
             'state': 'up',
             'type': 'physical',
+            'broadcast_domain.name': 'Default',
             'fields': 'node.name,speed,name'
         }
 
@@ -4560,23 +4561,24 @@ class NetAppRestClient(object):
         ports = []
         if net_port_info_list:
 
-            # NOTE(nahimsouza): This query selects the ports that are
-            # being used for node management
+            # NOTE(pulluri): This query selects the ports that are
+            # being exclusively used for data management
             query_interfaces = {
-                'service_policy.name': 'default-management',
+                'service_policy.name': '!default-management',
+                'services': 'data_*',
                 'fields': 'location.port.name'
             }
             response = self.send_request('/network/ip/interfaces', 'get',
                                          query=query_interfaces,
                                          enable_tunneling=False)
 
-            mgmt_ports = set(
+            data_ports = set(
                 [record['location']['port']['name']
                     for record in response.get('records', [])]
             )
 
             for port_info in net_port_info_list:
-                if port_info['name'] not in mgmt_ports:
+                if port_info['name'] in data_ports:
                     port = {
                         'node': port_info['node']['name'],
                         'port': port_info['name'],
@@ -5626,7 +5628,9 @@ class NetAppRestClient(object):
             'get'
         )
         clock_fmt_value = response.get('time')
-        return 'not configured' not in clock_fmt_value.lower()
+        if clock_fmt_value is None:
+            return False
+        return True
 
     @na_utils.trace
     def set_snaplock_attributes(self, volume_name, **options):
