@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Share server list API request is speed up by performing search options in db
+    query instead of filtering them in memory. For more details, please check
+    `Launchpad bug #1964089 <https://bugs.launchpad.net/manila/+bug/1964089>`_

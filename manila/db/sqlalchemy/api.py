@@ -5682,6 +5682,8 @@ def _share_server_get_all_with_filters(context, filters):
     if filters.get('encryption_key_ref'):
         query = query.filter_by(
             encryption_key_ref=filters.get('encryption_key_ref'))
+    if filters.get('identifier'):
+        query = query.filter_by(identifier=filters.get('identifier'))
     if filters.get('share_network_id'):
         query = query.join(
             models.ShareServerShareNetworkSubnetMapping,
