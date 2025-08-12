@@ -33,8 +33,9 @@ from manila.share.drivers.dell_emc.plugins.isilon import isilon_api
     1.0.0 - Fix Http auth issue, SSL verification error and etc
     1.0.1 - Add support for update share stats
     1.0.2 - Add support for ensure shares
+    1.0.3 - Add support for thin provisioning
 """
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 
 CONF = cfg.CONF
 
@@ -44,7 +45,11 @@ POWERSCALE_OPTS = [
     cfg.StrOpt('powerscale_dir_permission',
                default='0777',
                help='Predefined ACL value or POSIX mode '
-                    'for PowerScale directories.')
+                    'for PowerScale directories.'),
+    cfg.IntOpt('powerscale_threshold_limit',
+               default=0,
+               help='Specifies the threshold limit (in percentage) '
+                    'for triggering SmartQuotas alerts in PowerScale')
 ]
 
 
@@ -78,6 +83,7 @@ class IsilonStorageConnection(base.StorageConnection):
         self.reserved_snapshot_percentage = None
         self.reserved_share_extend_percentage = None
         self.max_over_subscription_ratio = None
+        self._threshold_limit = 0
 
     def _get_container_path(self, share):
         """Return path to a container."""
@@ -298,6 +304,7 @@ class IsilonStorageConnection(base.StorageConnection):
         self._username = config.safe_get("emc_nas_login")
         self._password = config.safe_get("emc_nas_password")
         self._root_dir = config.safe_get("emc_nas_root_dir")
+        self._threshold_limit = config.safe_get("powerscale_threshold_limit")
 
         # validate IP, username and password
         if not all([self._server,
@@ -316,7 +323,8 @@ class IsilonStorageConnection(base.StorageConnection):
         self._isilon_api = isilon_api.IsilonApi(
             self._server_url, self._username, self._password,
             self._verify_ssl_cert, self._ssl_cert_path,
-            self._dir_permission)
+            self._dir_permission,
+            self._threshold_limit)
 
         if not self._isilon_api.is_path_existent(self._root_dir):
             self._create_directory(self._root_dir, recursive=True)
@@ -344,7 +352,6 @@ class IsilonStorageConnection(base.StorageConnection):
         """Retrieve stats info from share."""
         stats_dict['driver_version'] = VERSION
         stats_dict['storage_protocol'] = 'NFS_CIFS'
-
         # PowerScale does not support pools.
         # To align with manila scheduler 'pool-aware' strategic,
         # report with one pool structure.
@@ -357,13 +364,15 @@ class IsilonStorageConnection(base.StorageConnection):
             'reserved_share_extend_percentage':
                 self.reserved_share_extend_percentage,
             'max_over_subscription_ratio':
-                self.max_over_subscription_ratio
+                self.max_over_subscription_ratio,
+            'thin_provisioning': True,
         }
         spaces = self._isilon_api.get_space_stats()
         if spaces:
             pool_stat['total_capacity_gb'] = spaces['total'] // units.Gi
             pool_stat['free_capacity_gb'] = spaces['free'] // units.Gi
-            pool_stat['allocated_capacity_gb'] = spaces['used'] // units.Gi
+        allocated_space = self._isilon_api.get_allocated_space()
+        pool_stat['allocated_capacity_gb'] = allocated_space
 
         stats_dict['pools'] = [pool_stat]
 

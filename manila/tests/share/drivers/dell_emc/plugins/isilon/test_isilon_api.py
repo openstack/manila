@@ -42,6 +42,11 @@ class IsilonApiTest(test.TestCase):
             self._mock_url, self.username, self.password,
             dir_permission=self.dir_permission
         )
+        self.isilon_api_threshold = isilon_api.IsilonApi(
+            self._mock_url, self.username, self.password,
+            dir_permission=self.dir_permission,
+            threshold_limit=80
+        )
 
     @mock.patch('manila.share.drivers.dell_emc.plugins.isilon.'
                 'isilon_api.IsilonApi.create_session')
@@ -576,6 +581,30 @@ class IsilonApiTest(test.TestCase):
         self.assertEqual(expected_request_json, json.loads(call_body))
 
     @requests_mock.mock()
+    def test_quota_create_with_threshold(self, m):
+        quota_path = '/ifs/manila/test'
+        quota_size = 100
+        self.assertEqual(0, len(m.request_history))
+        m.post(self._mock_url + '/platform/1/quota/quotas', status_code=201)
+        self.isilon_api_threshold.quota_create(quota_path,
+                                               'directory',
+                                               quota_size)
+        advisory_size = round(
+            (quota_size * self.isilon_api_threshold.threshold_limit) / 100)
+        self.assertEqual(1, len(m.request_history))
+        expected_request_json = {
+            'path': quota_path,
+            'type': 'directory',
+            'include_snapshots': False,
+            'thresholds_include_overhead': False,
+            'enforced': True,
+            'thresholds': {'hard': quota_size,
+                           'advisory': advisory_size},
+        }
+        call_body = m.request_history[0].body
+        self.assertEqual(expected_request_json, json.loads(call_body))
+
+    @requests_mock.mock()
     def test_quota_create__path_does_not_exist(self, m):
         quota_path = '/ifs/test2'
         self.assertEqual(0, len(m.request_history))
@@ -625,6 +654,22 @@ class IsilonApiTest(test.TestCase):
 
         self.assertEqual(1, len(m.request_history))
         expected_request_body = {'thresholds': {'hard': new_size}}
+        request_body = m.request_history[0].body
+        self.assertEqual(expected_request_body, json.loads(request_body))
+
+    @requests_mock.mock()
+    def test_quota_modify_with_threshold(self, m):
+        self.assertEqual(0, len(m.request_history))
+        quota_id = "ADEF1G"
+        new_size = 1024
+        advisory_size = round(
+            (new_size * self.isilon_api_threshold.threshold_limit) / 100)
+        m.put('{0}/platform/1/quota/quotas/{1}'.format(
+            self._mock_url, quota_id), status_code=204)
+        self.isilon_api_threshold.quota_modify_size(quota_id, new_size)
+        self.assertEqual(1, len(m.request_history))
+        expected_request_body = {'thresholds': {'hard': new_size,
+                                                'advisory': advisory_size}}
         request_body = m.request_history[0].body
         self.assertEqual(expected_request_body, json.loads(request_body))
 
@@ -885,6 +930,46 @@ class IsilonApiTest(test.TestCase):
         self.isilon_api.send_get_request.return_value.status_code = 400
         self.assertRaises(exception.ShareBackendException,
                           self.isilon_api.get_space_stats)
+
+    def test_get_allocated_space_success(self):
+        self.isilon_api.send_get_request = mock.MagicMock()
+        self.isilon_api.send_get_request.return_value.status_code = 200
+        self.isilon_api.send_get_request.return_value.json.return_value = {
+            'quotas': [
+                {
+                    'path': '/ifs/home',
+                    'thresholds': {
+                        'hard': None
+                    }
+                },
+                {
+                    'path': '/ifs/manila/CI-1d52ed66-a1ee-4b19-8f56-3706b',
+                    'thresholds': {
+                        'hard': 2147483648000
+                    }
+                },
+                {
+                    'path': '/ifs/manila/CI-0b622133-8b58-4a9f-ad1a-b8247',
+                    'thresholds': {
+                        'hard': 107374182400
+                    }
+                },
+                {
+                    'path': '/ifs/nilesh',
+                    'thresholds': {
+                        'hard': 10737418240
+                    }
+                }
+            ]
+        }
+        result = self.isilon_api.get_allocated_space()
+        self.assertEqual(result, 2110.0)
+
+    def test_get_allocated_space_failure(self):
+        self.isilon_api.send_get_request = mock.MagicMock()
+        self.isilon_api.send_get_request.return_value.status_code = 400
+        self.assertRaises(exception.ShareBackendException,
+                          self.isilon_api.get_allocated_space)
 
     def test_get_cluster_version_success(self):
         self.isilon_api.send_get_request = mock.MagicMock()

@@ -62,6 +62,16 @@ Systems service configuration file for the Isilon driver:
    emc_nas_login = <username>
    emc_nas_password = <password>
 
+Thin Provisioning
+~~~~~~~~~~~~~~~~~
+
+PowerScale systems have thin provisioning enabled by default.
+Add the parameter below to set an advisory limit.
+
+.. code-block:: ini
+
+    powerscale_threshold_limit = <threshold percentage value>
+
 Restrictions
 ~~~~~~~~~~~~
 
