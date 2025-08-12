@@ -14,7 +14,7 @@
 # under the License.
 
 """
-Isilon specific NAS backend plugin.
+PowerScale specific NAS backend plugin.
 """
 import os
 
@@ -26,7 +26,7 @@ from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
 from manila.share.drivers.dell_emc.plugins import base
-from manila.share.drivers.dell_emc.plugins.isilon import isilon_api
+from manila.share.drivers.dell_emc.plugins.powerscale import powerscale_api
 
 """Version history:
     0.1.0 - Initial version
@@ -34,8 +34,9 @@ from manila.share.drivers.dell_emc.plugins.isilon import isilon_api
     1.0.1 - Add support for update share stats
     1.0.2 - Add support for ensure shares
     1.0.3 - Add support for thin provisioning
+    1.0.4 - Rename isilon to powerscale
 """
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 CONF = cfg.CONF
 
@@ -53,11 +54,11 @@ POWERSCALE_OPTS = [
 ]
 
 
-class IsilonStorageConnection(base.StorageConnection):
-    """Implements Isilon specific functionality for EMC Manila driver."""
+class PowerScaleStorageConnection(base.StorageConnection):
+    """Implements PowerScale specific functionality for EMC Manila driver."""
 
     def __init__(self, *args, **kwargs):
-        super(IsilonStorageConnection, self).__init__(*args, **kwargs)
+        super(PowerScaleStorageConnection, self).__init__(*args, **kwargs)
         LOG.debug('Setting up attributes for Manila '
                   'Dell PowerScale Driver.')
         if 'configuration' in kwargs:
@@ -75,7 +76,7 @@ class IsilonStorageConnection(base.StorageConnection):
         self._shares = {}
         self._snapshots = {}
 
-        self._isilon_api = None
+        self._powerscale_api = None
         self.driver_handles_share_servers = False
         self.ipv6_implemented = True
         # props for share status update
@@ -104,7 +105,7 @@ class IsilonStorageConnection(base.StorageConnection):
 
         # apply directory quota based on share size
         max_share_size = share['size'] * units.Gi
-        self._isilon_api.quota_create(
+        self._powerscale_api.quota_create(
             self._get_container_path(share), 'directory', max_share_size)
 
         return location
@@ -118,7 +119,7 @@ class IsilonStorageConnection(base.StorageConnection):
 
         # Clone snapshot to new location
         fq_target_dir = self._get_container_path(share)
-        self._isilon_api.clone_snapshot(snapshot['name'], fq_target_dir)
+        self._powerscale_api.clone_snapshot(snapshot['name'], fq_target_dir)
 
         return location
 
@@ -129,7 +130,7 @@ class IsilonStorageConnection(base.StorageConnection):
         container_path = self._get_container_path(share)
         self._create_directory(container_path)
         # Create nfs share
-        share_created = self._isilon_api.create_nfs_export(container_path)
+        share_created = self._powerscale_api.create_nfs_export(container_path)
         if not share_created:
             message = (
                 _('The requested NFS share "%(share)s" was not created.') %
@@ -146,7 +147,7 @@ class IsilonStorageConnection(base.StorageConnection):
         container_path = self._get_container_path(share)
         self._create_directory(container_path)
         # Create smb share
-        share_created = self._isilon_api.create_smb_share(
+        share_created = self._powerscale_api.create_smb_share(
             share['name'], container_path)
         if not share_created:
             message = (
@@ -159,7 +160,7 @@ class IsilonStorageConnection(base.StorageConnection):
 
     def _create_directory(self, path, recursive=False):
         """Is called to create a directory."""
-        dir_created = self._isilon_api.create_directory(path, recursive)
+        dir_created = self._powerscale_api.create_directory(path, recursive)
         if not dir_created:
             message = (
                 _('Failed to create directory "%(dir)s".') %
@@ -171,7 +172,7 @@ class IsilonStorageConnection(base.StorageConnection):
         """Is called to create snapshot."""
         LOG.debug(f'Creating snapshot {snapshot["name"]}.')
         snapshot_path = os.path.join(self._root_dir, snapshot['share_name'])
-        snap_created = self._isilon_api.create_snapshot(
+        snap_created = self._powerscale_api.create_snapshot(
             snapshot['name'], snapshot_path)
         if not snap_created:
             message = (
@@ -201,10 +202,10 @@ class IsilonStorageConnection(base.StorageConnection):
 
     def _delete_quota(self, path):
         """Is called to remove quota."""
-        quota = self._isilon_api.quota_get(path, 'directory')
+        quota = self._powerscale_api.quota_get(path, 'directory')
         if quota:
             LOG.debug(f'Removing quota {quota["id"]}')
-            deleted = self._isilon_api.delete_quota(quota['id'])
+            deleted = self._powerscale_api.delete_quota(quota['id'])
             if not deleted:
                 message = (
                     _('Failed to delete quota "%(quota_id)s" for '
@@ -216,10 +217,10 @@ class IsilonStorageConnection(base.StorageConnection):
 
     def _delete_directory(self, path):
         """Is called to remove directory."""
-        path_exist = self._isilon_api.is_path_existent(path)
+        path_exist = self._powerscale_api.is_path_existent(path)
         if path_exist:
             LOG.debug(f'Removing directory {path}')
-            deleted = self._isilon_api.delete_path(path, recursive=True)
+            deleted = self._powerscale_api.delete_path(path, recursive=True)
             if not deleted:
                 message = (
                     _('Failed to delete directory "%(dir)s".') %
@@ -230,7 +231,7 @@ class IsilonStorageConnection(base.StorageConnection):
 
     def _delete_nfs_share(self, share):
         """Is called to remove nfs share."""
-        share_id = self._isilon_api.lookup_nfs_export(
+        share_id = self._powerscale_api.lookup_nfs_export(
             self._get_container_path(share))
 
         if share_id is None:
@@ -239,7 +240,7 @@ class IsilonStorageConnection(base.StorageConnection):
             LOG.warning(lw, share['name'])
         else:
             # attempt to delete the share
-            export_deleted = self._isilon_api.delete_nfs_share(share_id)
+            export_deleted = self._powerscale_api.delete_nfs_share(share_id)
             if not export_deleted:
                 message = _('Error deleting NFS share: %s') % share['name']
                 LOG.error(message)
@@ -247,13 +248,14 @@ class IsilonStorageConnection(base.StorageConnection):
 
     def _delete_cifs_share(self, share):
         """Is called to remove CIFS share."""
-        smb_share = self._isilon_api.lookup_smb_share(share['name'])
+        smb_share = self._powerscale_api.lookup_smb_share(share['name'])
         if smb_share is None:
             lw = ('Attempted to delete CIFS Share "%s", but the share does '
                   'not appear to exist.')
             LOG.warning(lw, share['name'])
         else:
-            share_deleted = self._isilon_api.delete_smb_share(share['name'])
+            share_deleted = self._powerscale_api.delete_smb_share(
+                share['name'])
             if not share_deleted:
                 message = _('Error deleting CIFS share: %s') % share['name']
                 LOG.error(message)
@@ -262,7 +264,7 @@ class IsilonStorageConnection(base.StorageConnection):
     def delete_snapshot(self, context, snapshot, share_server):
         """Is called to remove snapshot."""
         LOG.debug(f'Deleting snapshot {snapshot["name"]}')
-        deleted = self._isilon_api.delete_snapshot(snapshot['name'])
+        deleted = self._powerscale_api.delete_snapshot(snapshot['name'])
         if not deleted:
             message = (
                 _('Failed to delete snapshot "%(snap)s".') %
@@ -280,7 +282,7 @@ class IsilonStorageConnection(base.StorageConnection):
             'name': share['name'], 'size': new_size
         })
         new_quota_size = new_size * units.Gi
-        self._isilon_api.quota_set(
+        self._powerscale_api.quota_set(
             self._get_container_path(share), 'directory', new_quota_size)
 
     def allow_access(self, context, share, access, share_server):
@@ -295,7 +297,7 @@ class IsilonStorageConnection(base.StorageConnection):
         """Check for setup error."""
 
     def connect(self, emc_share_driver, context):
-        """Connect to an Isilon cluster."""
+        """Connect to an PowerScale cluster."""
         LOG.debug('Reading configuration parameters for Manila'
                   ' Dell PowerScale Driver.')
         config = emc_share_driver.configuration
@@ -320,13 +322,13 @@ class IsilonStorageConnection(base.StorageConnection):
         if self._verify_ssl_cert:
             self._ssl_cert_path = config.safe_get("emc_ssl_cert_path")
         self._dir_permission = config.safe_get("powerscale_dir_permission")
-        self._isilon_api = isilon_api.IsilonApi(
+        self._powerscale_api = powerscale_api.PowerScaleApi(
             self._server_url, self._username, self._password,
             self._verify_ssl_cert, self._ssl_cert_path,
             self._dir_permission,
             self._threshold_limit)
 
-        if not self._isilon_api.is_path_existent(self._root_dir):
+        if not self._powerscale_api.is_path_existent(self._root_dir):
             self._create_directory(self._root_dir, recursive=True)
 
         # configuration for share status update
@@ -367,11 +369,11 @@ class IsilonStorageConnection(base.StorageConnection):
                 self.max_over_subscription_ratio,
             'thin_provisioning': True,
         }
-        spaces = self._isilon_api.get_space_stats()
+        spaces = self._powerscale_api.get_space_stats()
         if spaces:
             pool_stat['total_capacity_gb'] = spaces['total'] // units.Gi
             pool_stat['free_capacity_gb'] = spaces['free'] // units.Gi
-        allocated_space = self._isilon_api.get_allocated_space()
+        allocated_space = self._powerscale_api.get_allocated_space()
         pool_stat['allocated_capacity_gb'] = allocated_space
 
         stats_dict['pools'] = [pool_stat]
@@ -415,7 +417,7 @@ class IsilonStorageConnection(base.StorageConnection):
             elif rule['access_level'] == const.ACCESS_LEVEL_RO:
                 nfs_ro_ips.add(rule['access_to'])
 
-        export_id = self._isilon_api.lookup_nfs_export(
+        export_id = self._powerscale_api.lookup_nfs_export(
             self._get_container_path(share))
         if export_id is None:
             # share does not exist on backend (set all rules to error state)
@@ -424,7 +426,7 @@ class IsilonStorageConnection(base.StorageConnection):
             LOG.error(message)
             return rule_state_map
 
-        r = self._isilon_api.modify_nfs_export_access(
+        r = self._powerscale_api.modify_nfs_export_access(
             export_id, ro_ips=list(nfs_ro_ips), rw_ips=list(nfs_rw_ips))
         if not r:
             return rule_state_map
@@ -449,20 +451,22 @@ class IsilonStorageConnection(base.StorageConnection):
                              ) % {'type': rule['access_type']})
                 LOG.error(message)
                 rule_state_map.update({rule['access_id']: {'state': 'error'}})
-
         ips = self._get_cifs_ip_list(ip_access_rules, rule_state_map)
         user_permissions = self._get_cifs_user_permissions(
             user_access_rules, rule_state_map)
 
-        share_updated = self._isilon_api.modify_smb_share_access(
+        share_updated = self._powerscale_api.modify_smb_share_access(
             share['name'],
             host_acl=ips,
             permissions=user_permissions)
 
         if not share_updated:
             message = (
-                _('Failed to update access rules for CIFS share "%(share)s".'
-                  ) % {'share': share['name']})
+                _(
+                    'Failed to update access rules for CIFS share '
+                    '"%(share)s".'
+                ) % {'share': share['name']}
+            )
             LOG.error(message)
             for rule in access_rules:
                 rule_state_map[rule['access_id']] = {
@@ -490,9 +494,9 @@ class IsilonStorageConnection(base.StorageConnection):
         cifs_user_permissions = []
         for rule in access_rules:
             if rule['access_level'] == const.ACCESS_LEVEL_RW:
-                smb_permission = isilon_api.SmbPermission.rw
+                smb_permission = powerscale_api.SmbPermission.rw
             elif rule['access_level'] == const.ACCESS_LEVEL_RO:
-                smb_permission = isilon_api.SmbPermission.ro
+                smb_permission = powerscale_api.SmbPermission.ro
             else:
                 message = ('Only RW and RO access levels are supported '
                            'for CIFS user access.')
@@ -500,7 +504,7 @@ class IsilonStorageConnection(base.StorageConnection):
                 rule_state_map.update({rule['access_id']: {'state': 'error'}})
                 continue
 
-            user_sid = self._isilon_api.get_user_sid(rule['access_to'])
+            user_sid = self._powerscale_api.get_user_sid(rule['access_to'])
             if user_sid:
                 cifs_user_permissions.append({
                     'permission': smb_permission.value,
@@ -521,7 +525,7 @@ class IsilonStorageConnection(base.StorageConnection):
         :returns: A dictionary containing driver-specific info.
         """
         LOG.debug("Retrieving PowerScale backend info.")
-        cluster_version = self._isilon_api.get_cluster_version()
+        cluster_version = self._powerscale_api.get_cluster_version()
         return {'driver_version': VERSION,
                 'cluster_version': cluster_version,
                 'rest_server': self._server,
@@ -538,7 +542,8 @@ class IsilonStorageConnection(base.StorageConnection):
         for share in shares:
             if share['share_proto'] == 'NFS':
                 container_path = self._get_container_path(share)
-                share_id = self._isilon_api.lookup_nfs_export(container_path)
+                share_id = self._powerscale_api.lookup_nfs_export(
+                    container_path)
                 if share_id:
                     location = self._format_nfs_path(container_path)
                     updates[share['id']] = {
@@ -549,7 +554,8 @@ class IsilonStorageConnection(base.StorageConnection):
                 else:
                     LOG.warning(f'NFS Share {share["name"]} is not found.')
             elif share['share_proto'] == 'CIFS':
-                smb_share = self._isilon_api.lookup_smb_share(share['name'])
+                smb_share = self._powerscale_api.lookup_smb_share(
+                    share['name'])
                 if smb_share:
                     location = self._format_smb_path(share['name'])
                     updates[share['id']] = {

@@ -42,7 +42,7 @@ EMC_NAS_OPTS = [
                 help='Use secure connection to server.'),
     cfg.StrOpt('emc_share_backend',
                ignore_case=True,
-               choices=['isilon', 'vnx', 'unity', 'powermax',
+               choices=['powerscale', 'isilon', 'vnx', 'unity', 'powermax',
                         'powerstore', 'powerflex'],
                help='Share backend.'),
     cfg.StrOpt('emc_nas_root_dir',
@@ -81,6 +81,11 @@ class EMCShareDriver(driver.ShareDriver):
         if self.backend_name == 'vnx':
             LOG.warning('Dell EMC VNX share driver has been deprecated and is '
                         'expected to be removed in a future release.')
+        if self.backend_name == 'isilon':
+            self.backend_name = 'powerscale'
+            LOG.warning('Dell EMC isilon share driver has been deprecated and '
+                        'is renamed to powerscale.It is expected'
+                        'to be removed in a future release.')
         self.plugin = self.plugin_manager.load_plugin(
             self.backend_name,
             configuration=self.configuration)

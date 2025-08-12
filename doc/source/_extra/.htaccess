@@ -1,0 +1,1 @@
+RedirectMatch 301 ^/drivers/emc-isilon-driver.html$ /drivers/dell-emc-powerscale-driver.html

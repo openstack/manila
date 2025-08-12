@@ -27,7 +27,7 @@ from manila.i18n import _
 LOG = log.getLogger(__name__)
 
 
-class IsilonApi(object):
+class PowerScaleApi(object):
 
     def __init__(self, api_url, username, password,
                  verify_ssl_cert=False,

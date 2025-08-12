@@ -86,8 +86,8 @@ each back end.
    container_driver
    zfs_on_linux_driver
    netapp_cluster_mode_driver
-   emc_isilon_driver
    emc_vnx_driver
+   dell_emc_powerscale_driver
    ../configuration/shared-file-systems/drivers/dell-emc-unity-driver
    ../configuration/shared-file-systems/drivers/dell-emc-powerstore-driver
    ../configuration/shared-file-systems/drivers/dell-emc-powerflex-driver

@@ -23,7 +23,7 @@ Share drivers
    drivers/lvm-driver.rst
    drivers/zfs-on-linux-driver.rst
    drivers/zfssa-manila-driver.rst
-   drivers/emc-isilon-driver.rst
+   drivers/dell-emc-powerscale-driver.rst
    drivers/hitachi-hnas-driver.rst
    drivers/hitachi-hsp-driver.rst
    drivers/hpe-3par-share-driver.rst

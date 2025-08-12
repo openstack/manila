@@ -14,31 +14,31 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-Isilon Driver
-=============
+PowerScale Driver
+=================
 
-The EMC manila driver framework (EMCShareDriver) utilizes EMC storage products
+The EMC manila driver framework (EMCShareDriver) utilizes Dell storage products
 to provide shared filesystems to OpenStack. The EMC manila driver is a plugin
-based driver which is designed to use different plugins to manage different EMC
-storage products.
+based driver which is designed to use different plugins to manage different
+Dell storage products.
 
-The Isilon manila driver is a plugin for the EMC manila driver framework which
-allows manila to interface with an Isilon backend to provide a shared
-filesystem. The EMC driver framework with the Isilon plugin is referred to as
-the "Isilon Driver" in this document.
+The PowerScale manila driver is a plugin for the EMC manila driver framework
+which allows manila to interface with an PowerScale backend to provide a shared
+filesystem. The EMC driver framework with the PowerScale plugin is referred to
+as the "PowerScale Driver" in this document.
 
-This Isilon Driver interfaces with an Isilon cluster via the REST Isilon
-Platform API (PAPI) and the RESTful Access to Namespace API (RAN).
+This PowerScale Driver interfaces with an PowerScale cluster via the REST
+PowerScale Platform API (PAPI) and the RESTful Access to Namespace API (RAN).
 
 Requirements
 ------------
 
-- Isilon cluster running OneFS 7.2 or higher
+- PowerScale cluster running OneFS 9.10 or higher
 
 Supported Operations
 --------------------
 
-The following operations are supported on an Isilon cluster:
+The following operations are supported on an PowerScale cluster:
 
 * Create CIFS/NFS Share
 * Delete CIFS/NFS Share
@@ -55,24 +55,24 @@ Backend Configuration
 ---------------------
 
 The following parameters need to be configured in the manila configuration file
-for the Isilon driver:
+for the PowerScale driver:
 
 * share_driver = manila.share.drivers.dell_emc.driver.EMCShareDriver
 * driver_handles_share_servers = False
-* emc_share_backend = isilon
-* emc_nas_server = <IP address of Isilon cluster>
-* emc_nas_server_port = <port to use for Isilon cluster (optional)>
+* emc_share_backend = powerscale
+* emc_nas_server = <IP address of PowerScale cluster>
+* emc_nas_server_port = <port to use for PowerScale cluster (optional)>
 * emc_nas_login = <username>
 * emc_nas_password = <password>
 * emc_nas_root_dir = <root directory path to create shares (e.g./ifs/manila)>
 
-Restart of :term:`manila-share` service is needed for the configuration changes to take
-effect.
+Restart of :term:`manila-share` service is needed for the configuration changes
+to take effect.
 
 Restrictions
 ------------
 
-The Isilon driver has the following restrictions:
+The PowerScale driver has the following restrictions:
 
 - Only IP access type is supported for NFS and CIFS.
 
@@ -87,10 +87,10 @@ The :mod:`manila.share.drivers.dell_emc.driver` Module
     :undoc-members:
     :show-inheritance:
 
-The :mod:`manila.share.drivers.dell_emc.plugins.isilon.isilon` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`manila.share.drivers.dell_emc.plugins.powerscale.powerscale` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.share.drivers.dell_emc.plugins.isilon.isilon
+.. automodule:: manila.share.drivers.dell_emc.plugins.powerscale.powerscale
     :noindex:
     :members:
     :undoc-members:
