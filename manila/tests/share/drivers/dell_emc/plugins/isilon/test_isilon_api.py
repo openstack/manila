@@ -867,6 +867,25 @@ class IsilonApiTest(test.TestCase):
                           self.isilon_api.delete_quota,
                           quota_id)
 
+    def test_get_space_stats_success(self):
+        self.isilon_api.send_get_request = mock.MagicMock()
+        self.isilon_api.send_get_request.return_value.status_code = 200
+        self.isilon_api.send_get_request.return_value.json.return_value = {
+            'stats': [
+                {'key': 'ifs.bytes.free', 'value': 1000},
+                {'key': 'ifs.bytes.total', 'value': 2000},
+                {'key': 'ifs.bytes.used', 'value': 500}
+            ]
+        }
+        result = self.isilon_api.get_space_stats()
+        self.assertEqual(result, {'total': 2000, 'free': 1000, 'used': 500})
+
+    def test_get_space_stats_failure(self):
+        self.isilon_api.send_get_request = mock.MagicMock()
+        self.isilon_api.send_get_request.return_value.status_code = 400
+        self.assertRaises(exception.ShareBackendException,
+                          self.isilon_api.get_space_stats)
+
     def test_modify_smb_share_access_with_host_acl_and_smb_permission(self):
         self.isilon_api.send_put_request = mock.MagicMock()
         share_name = 'my_share'
