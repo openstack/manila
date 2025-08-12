@@ -886,6 +886,29 @@ class IsilonApiTest(test.TestCase):
         self.assertRaises(exception.ShareBackendException,
                           self.isilon_api.get_space_stats)
 
+    def test_get_cluster_version_success(self):
+        self.isilon_api.send_get_request = mock.MagicMock()
+        self.isilon_api.send_get_request.return_value.status_code = 200
+        self.isilon_api.send_get_request.return_value.json.return_value = {
+            'nodes': [{'release': '1.0'}]}
+
+        version = self.isilon_api.get_cluster_version()
+        self.assertEqual(version, '1.0')
+        self.isilon_api.send_get_request.assert_called_once_with(
+            '{0}/platform/12/cluster/version'.format(self.isilon_api.host_url)
+        )
+
+    def test_get_cluster_version_failure(self):
+        self.isilon_api.send_get_request = mock.MagicMock()
+        self.isilon_api.send_get_request.return_value.status_code = 404
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.isilon_api.get_cluster_version)
+
+        self.isilon_api.send_get_request.assert_called_once_with(
+            '{0}/platform/12/cluster/version'.format(self.isilon_api.host_url)
+        )
+
     def test_modify_smb_share_access_with_host_acl_and_smb_permission(self):
         self.isilon_api.send_put_request = mock.MagicMock()
         share_name = 'my_share'

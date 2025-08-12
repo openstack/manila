@@ -46,6 +46,8 @@ The following operations are supported:
 
 - Create a share from a snapshot.
 
+- Ensure shares.
+
 Back end configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 

@@ -454,7 +454,9 @@ class IsilonTest(test.TestCase):
 
     def test_ensure_share(self):
         share = {"name": self.SHARE_NAME, "share_proto": 'CIFS'}
-        self.storage_connection.ensure_share(self.mock_context, share, None)
+        self.assertRaises(NotImplementedError,
+                          self.storage_connection.ensure_share,
+                          self.mock_context, share, None)
 
     @mock.patch(
         'manila.share.drivers.dell_emc.plugins.isilon.isilon.isilon_api.'
@@ -980,3 +982,89 @@ class IsilonTest(test.TestCase):
         self.storage_connection._delete_directory(path)
         self._mock_isilon_api.is_path_existent.assert_called_with(path)
         self._mock_isilon_api.delete_path.assert_not_called()
+
+    def test_get_backend_info(self):
+        self._mock_isilon_api.get_cluster_version.return_value = '1.0'
+        result = self.storage_connection.get_backend_info(None)
+        expected_info = {
+            'driver_version': isilon.VERSION,
+            'cluster_version': '1.0',
+            'rest_server': self.ISILON_ADDR,
+            'rest_port': '8080',
+        }
+        self.assertEqual(expected_info, result)
+
+    def test_ensure_shares_nfs_share_exists(self):
+        share = {
+            'id': '123',
+            'share_proto': 'NFS',
+            'name': 'my_share',
+        }
+        container_path = '/ifs/my_share'
+        location = '10.0.0.1:/ifs/my_share'
+        self.storage_connection._get_container_path = mock.MagicMock(
+            return_value=container_path)
+        self._mock_isilon_api.lookup_nfs_export.return_value = '123'
+
+        result = self.storage_connection.ensure_shares(None, [share])
+        expected_result = {
+            '123': {
+                'export_locations': [location],
+                'status': 'available',
+                'reapply_access_rules': True,
+            }
+        }
+        self.assertEqual(result, expected_result)
+
+    def test_ensure_shares_cifs_share_exists(self):
+        share = {
+            'id': '123',
+            'share_proto': 'CIFS',
+            'name': 'my_share',
+        }
+        location = '\\\\10.0.0.1\\my_share'
+        self._mock_isilon_api.lookup_smb_share.return_value = share
+
+        result = self.storage_connection.ensure_shares(None, [share])
+        expected_result = {
+            '123': {
+                'export_locations': [location],
+                'status': 'available',
+                'reapply_access_rules': True,
+            }
+        }
+        self.assertEqual(result, expected_result)
+
+    def test_ensure_shares_nfs_share_does_not_exist(self):
+        share = {
+            'id': '123',
+            'share_proto': 'NFS',
+            'name': 'my_share',
+        }
+        self._mock_isilon_api.lookup_nfs_export.return_value = None
+        result = self.storage_connection.ensure_shares(None, [share])
+        expected_result = {
+            '123': {
+                'export_locations': [],
+                'status': 'error',
+                'reapply_access_rules': False,
+            }
+        }
+        self.assertEqual(result, expected_result)
+
+    def test_ensure_shares_cifs_share_does_not_exist(self):
+        share = {
+            'id': '123',
+            'share_proto': 'CIFS',
+            'name': 'my_share',
+        }
+        self._mock_isilon_api.lookup_smb_share.return_value = None
+        result = self.storage_connection.ensure_shares(None, [share])
+        expected_result = {
+            '123': {
+                'export_locations': [],
+                'status': 'error',
+                'reapply_access_rules': False,
+            }
+        }
+        self.assertEqual(result, expected_result)
