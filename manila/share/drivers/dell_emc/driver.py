@@ -84,7 +84,7 @@ class EMCShareDriver(driver.ShareDriver):
         if self.backend_name == 'isilon':
             self.backend_name = 'powerscale'
             LOG.warning('Dell EMC isilon share driver has been deprecated and '
-                        'is renamed to powerscale.It is expected'
+                        'is renamed to powerscale. It is expected '
                         'to be removed in a future release.')
         self.plugin = self.plugin_manager.load_plugin(
             self.backend_name,
