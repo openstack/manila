@@ -2339,7 +2339,7 @@ class API(base.Base):
             'display_description', 'display_description~', 'snapshot_id',
             'status', 'share_type_id', 'project_id', 'export_location_id',
             'export_location_path', 'limit', 'offset', 'host',
-            'share_network_id', 'is_soft_deleted']
+            'share_network_id', 'is_soft_deleted', 'mount_point_name']
 
         for key in filter_keys:
             if key in search_opts:

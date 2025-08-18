@@ -2209,7 +2209,7 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
     share_filter_keys = ['share_group_id', 'snapshot_id',
                          'is_soft_deleted', 'source_backup_id']
     instance_filter_keys = ['share_server_id', 'status', 'share_type_id',
-                            'host', 'share_network_id']
+                            'host', 'share_network_id', 'mount_point_name']
     share_filters = {}
     instance_filters = {}
 

@@ -203,7 +203,8 @@ class ShareMixin(object):
             'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
             'share_group_id', 'share_group_snapshot_id', 'export_location_id',
             'export_location_path', 'display_name~', 'display_description~',
-            'display_description', 'limit', 'offset', 'is_soft_deleted')
+            'display_description', 'limit', 'offset', 'is_soft_deleted',
+            'mount_point_name')
 
     @wsgi.Controller.authorize
     def update(self, req, id, body):
