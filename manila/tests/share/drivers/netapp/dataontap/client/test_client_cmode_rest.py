@@ -3319,10 +3319,12 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
               {'qos_policy_group_name': None,
                'adaptive_qos_policy_group_name':
                    fake.ADAPTIVE_QOS_POLICY_GROUP_NAME},
+              {'mount_point_name': None},
               )
     @ddt.unpack
-    def test_create_volume_clone(self, qos_policy_group_name,
-                                 adaptive_qos_policy_group_name):
+    def test_create_volume_clone(self, qos_policy_group_name=None,
+                                 adaptive_qos_policy_group_name=None,
+                                 mount_point_name=None):
         self.mock_object(self.client, 'send_request')
 
         if qos_policy_group_name:
@@ -3343,6 +3345,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             fake.SHARE_NAME,
             fake.PARENT_SHARE_NAME,
             fake.PARENT_SNAPSHOT_NAME,
+            mount_point_name=mount_point_name,
             qos_policy_group=qos_policy_group_name,
             adaptive_qos_policy_group=adaptive_qos_policy_group_name)
 
@@ -3350,7 +3353,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'name': fake.SHARE_NAME,
             'clone.parent_volume.name': fake.PARENT_SHARE_NAME,
             'clone.parent_snapshot.name': fake.PARENT_SNAPSHOT_NAME,
-            'nas.path': '/%s' % fake.SHARE_NAME,
+            'nas.path': '/%s' % (mount_point_name or fake.SHARE_NAME),
             'clone.is_flexclone': 'true',
             'svm.name': 'fake_svm',
         }

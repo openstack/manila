@@ -1,0 +1,4 @@
+---
+fixes:
+  - The NetApp cDOT driver now allows setting share
+    mount_point_name when creating share from a snapshot.

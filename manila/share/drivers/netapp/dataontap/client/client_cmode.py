@@ -3311,13 +3311,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def create_volume_clone(self, volume_name, parent_volume_name,
                             parent_snapshot_name=None,
                             qos_policy_group=None,
-                            adaptive_qos_policy_group=None, **options):
+                            adaptive_qos_policy_group=None,
+                            mount_point_name=None, **options):
         """Clones a volume."""
         api_args = {
             'volume': volume_name,
             'parent-volume': parent_volume_name,
             'parent-snapshot': parent_snapshot_name,
-            'junction-path': '/%s' % volume_name,
+            'junction-path': '/%s' % (mount_point_name or volume_name),
         }
 
         if qos_policy_group is not None:
