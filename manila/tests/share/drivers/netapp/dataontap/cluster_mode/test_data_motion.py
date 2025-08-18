@@ -130,9 +130,12 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
 
     def test_get_config_for_backend(self):
         self.mock_object(data_motion, "CONF")
+
         CONF.set_override("netapp_vserver", 'fake_vserver',
                           group=self.backend)
-        data_motion.CONF.list_all_sections.return_value = [self.backend]
+
+        CONF.set_override("driver_handles_share_servers", False,
+                          group=self.backend)
 
         config = data_motion.get_backend_configuration(self.backend)
 
@@ -144,7 +147,9 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                           group=self.backend)
         CONF.set_override("share_backend_name", "fake_backend_name",
                           group=self.backend)
-        data_motion.CONF.list_all_sections.return_value = [self.backend]
+
+        CONF.set_override("driver_handles_share_servers", False,
+                          group=self.backend)
 
         config = data_motion.get_backend_configuration(self.backend)
 
@@ -154,7 +159,6 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
     @ddt.data([], ['fake_backend1', 'fake_backend2'])
     def test_get_config_for_backend_not_configured(self, conf_sections):
         self.mock_object(data_motion, "CONF")
-        data_motion.CONF.list_all_sections.return_value = conf_sections
 
         self.assertRaises(exception.BadConfigurationException,
                           data_motion.get_backend_configuration,
