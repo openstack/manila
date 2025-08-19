@@ -74,7 +74,8 @@ class ShareExportLocationController(wsgi.Controller,
         try:
             export_location = db_api.export_location_get_by_uuid(
                 context, export_location_uuid,
-                ignore_secondary_replicas=ignore_secondary_replicas)
+                ignore_secondary_replicas=ignore_secondary_replicas,
+                share_id=share_id)
         except exception.ExportLocationNotFound:
             msg = _("Export location '%s' not found.") % export_location_uuid
             raise exc.HTTPNotFound(explanation=msg)
