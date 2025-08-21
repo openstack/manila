@@ -3239,7 +3239,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         if specify_types:
             configure_cifs_aes_encryption_args = {
-                'advertised-enc-types': 'aes-128,aes-256',
+                'advertised-enc-types': [{'cifskrbenctypes': 'aes_128'},
+                                         {'cifskrbenctypes': 'aes_256'}]
             }
         else:
             configure_cifs_aes_encryption_args = {
@@ -3258,7 +3259,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         if specify_types:
             configure_cifs_aes_encryption_args = {
-                'advertised-enc-types': 'des,rc4',
+                'advertised-enc-types': [{'cifskrbenctypes': 'des'},
+                                         {'cifskrbenctypes': 'rc4'}]
             }
         else:
             configure_cifs_aes_encryption_args = {

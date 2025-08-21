@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    The NetApp ONTAP driver failed while creating a CIFS share through netapp
+    legacy client with aes encryption error. The issue is now fixed, and share
+    creation works as expected with netapp legacy client.
+    For more details, please refer to
+    `Launchpad bug #2121141 <https://bugs.launchpad.net/manila/+bug/2121141>`_.

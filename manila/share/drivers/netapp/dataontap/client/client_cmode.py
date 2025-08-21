@@ -2226,10 +2226,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def configure_cifs_aes_encryption(self, aes_encryption):
         if self.features.AES_ENCRYPTION_TYPES:
-            api_args = {
-                'advertised-enc-types': (
-                    'aes-128,aes-256' if aes_encryption else 'des,rc4'),
-            }
+            if aes_encryption:
+                api_args = {
+                    'advertised-enc-types': [{'cifskrbenctypes': 'aes_128'},
+                                             {'cifskrbenctypes': 'aes_256'}]
+                }
+            else:
+                api_args = {
+                    'advertised-enc-types': [{'cifskrbenctypes': 'des'},
+                                             {'cifskrbenctypes': 'rc4'}]
+                }
         else:
             api_args = {
                 'is-aes-encryption-enabled': (
