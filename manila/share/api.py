@@ -2426,8 +2426,12 @@ class API(base.Base):
         return result
 
     def get_snapshot(self, context, snapshot_id):
-        policy.check_policy(context, 'share_snapshot', 'get_snapshot')
         snapshot = self.db.share_snapshot_get(context, snapshot_id)
+        authorized = policy.check_policy(context, 'share_snapshot',
+                                         'get_snapshot', snapshot,
+                                         do_raise=False)
+        if not authorized:
+            raise exception.NotFound()
         if snapshot.get('status') in (
             constants.STATUS_DEFERRED_DELETING,
                 constants.STATUS_ERROR_DEFERRED_DELETING):
