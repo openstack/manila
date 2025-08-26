@@ -19,7 +19,7 @@
         - manila-tox-py311-with-sqlalchemy-20:
             voting: false
         - manila-tempest-plugin-dummy-no-dhss
-        - manila-tempest-plugin-dummy-dhss
+        - manila-tempest-plugin-dummy-dhss-legacy
         - manila-tempest-plugin-container:
             voting: false
         - manila-tempest-plugin-lvm-fips:
@@ -33,7 +33,7 @@
     gate:
       jobs:
         - manila-tempest-plugin-dummy-no-dhss
-        - manila-tempest-plugin-dummy-dhss
+        - manila-tempest-plugin-dummy-dhss-legacy
 
 # Non-voting job while SQLAlchemy 2.0 is still blocked by upper-constraints
 - job:
@@ -96,3 +96,14 @@
         GLOBAL_VENV: false
     required-projects:
       - openstack/rally-openstack
+
+- job:
+    name: manila-tempest-plugin-dummy-dhss-legacy
+    parent: manila-tempest-plugin-dummy-dhss
+    vars:
+      devstack_local_conf:
+        test-config:
+          "$TEMPEST_CONFIG":
+            share:
+              run_negative_migration_replica_tests: true
+              run_positive_migration_replica_tests: false
