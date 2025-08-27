@@ -1,18 +1,13 @@
-========================
-Team and repository tags
-========================
+======
+Manila
+======
 
 .. image:: https://governance.openstack.org/tc/badges/manila.svg
-    :target: https://governance.openstack.org/tc/reference/tags/index.html
 
 .. Change things from this point on
 
-======
-MANILA
-======
-
 You have come across an OpenStack shared file system service.  It has
-identified itself as "Manila."  It was abstracted from the Cinder
+identified itself as "Manila".  It was abstracted from the Cinder
 project.
 
 * Wiki: https://wiki.openstack.org/wiki/Manila
