@@ -45,7 +45,6 @@ import manila.scheduler.drivers.simple
 import manila.scheduler.host_manager
 import manila.scheduler.manager
 import manila.scheduler.scheduler_options
-import manila.scheduler.weighers
 import manila.scheduler.weighers.capacity
 import manila.scheduler.weighers.pool
 import manila.service
