@@ -1886,6 +1886,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'adaptive_qos_policy_group': None,
             'language': None,
             'max_files': None,
+            'max_files_multiplier': None,
             'snapshot_policy': None,
             'thin_provisioned': False,
             'compression_enabled': False,
@@ -3608,6 +3609,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
+        self.mock_object(
+            share_types, 'get_extra_specs_from_share',
+            mock.Mock(return_value=fake.EXTRA_SPEC))
         mock_adjust_qos_policy = self.mock_object(
             self.library, '_adjust_qos_policy_with_volume_resize')
 
@@ -3628,6 +3632,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
         mock_adjust_qos_policy = self.mock_object(
             self.library, '_adjust_qos_policy_with_volume_resize')
         mock_set_volume_size = self.mock_object(vserver_client,
@@ -3653,6 +3660,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_set_volume_size = self.mock_object(
             vserver_client, 'set_volume_size', naapi_error)
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
 
         new_size = fake.SHARE['size'] - 1
 
@@ -4688,6 +4698,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_is_flexgroup_pool',
                          mock.Mock(return_value=False))
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
 
         mock_dm_session = mock.Mock()
         self.mock_object(data_motion, "DataMotionSession",
@@ -4776,6 +4789,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(side_effect=exception.StorageCommunicationException))
         self.mock_object(self.library,
                          '_update_autosize_attributes_after_promote_replica')
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
         mock_log = self.mock_object(lib_base.LOG, 'exception')
 
         self.library.promote_replica(
@@ -4808,6 +4824,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(side_effect=exception.StorageCommunicationException))
         self.mock_object(self.library,
                          '_update_autosize_attributes_after_promote_replica')
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
 
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2],
@@ -4853,6 +4872,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=False))
         self.mock_object(self.library,
                          '_update_autosize_attributes_after_promote_replica')
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
 
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2, fake_replica_3],
@@ -4911,6 +4933,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=False))
         self.mock_object(self.library,
                          '_update_autosize_attributes_after_promote_replica')
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
 
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2],
@@ -5142,6 +5167,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=False))
         self.mock_object(self.library,
                          '_update_autosize_attributes_after_promote_replica')
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2],
             self.fake_replica_2, fake_access_rules, share_server=None)
@@ -6986,6 +7014,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             id='src-snapshot', provider_location='test-src-provider-location')
         dest_snap = fake_share.fake_snapshot_instance(id='dest-snapshot',
                                                       as_primitive=True)
+        extra_specs = copy.deepcopy(fake.EXTRA_SPEC)
         source_snapshots = [snap]
         snapshot_mappings = {snap['id']: dest_snap}
         self.library.configuration.netapp_volume_move_cutover_timeout = 15
@@ -7012,7 +7041,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library, '_get_volume_move_status',
             mock.Mock(side_effect=vol_move_side_effects))
         self.mock_object(share_types, 'get_extra_specs_from_share',
-                         mock.Mock(return_value=fake.EXTRA_SPEC))
+                         mock.Mock(return_value=extra_specs))
         self.mock_object(self.library, '_check_fpolicy_file_operations')
         self.mock_object(
             self.library, '_get_provisioning_options',

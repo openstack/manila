@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Netapp ONTAP driver introduced new extra-spec 'max_files_multiplier'. This
+    will specify how much inodes (files) should be possible at maximum
+    depending on volume (share) size. Max value is 8.

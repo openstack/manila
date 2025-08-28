@@ -2316,8 +2316,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             volume_name, dedup_enabled, compression_enabled,
             efficiency_policy=efficiency_policy
         )
-        if max_files is not None:
-            self.set_volume_max_files(volume_name, max_files)
+
+        if volume_type != 'dp':
+            if options.get('max_files_multiplier') is not None:
+                max_files_multiplier = options.pop('max_files_multiplier')
+                max_files = na_utils.calculate_max_files(size_gb,
+                                                         max_files_multiplier,
+                                                         max_files)
+
+            if max_files is not None:
+                self.set_volume_max_files(volume_name, max_files)
 
         if snaplock_type is not None:
             self.set_snaplock_attributes(volume_name, **options)
@@ -2570,7 +2578,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         }
 
     @na_utils.trace
-    def set_volume_max_files(self, volume_name, max_files):
+    def set_volume_max_files(self, volume_name, max_files,
+                             retry_allocated=False):
         """Set flexvol file limit."""
         api_args = {
             'query': {
@@ -2588,7 +2597,38 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        self.send_request('volume-modify-iter', api_args)
+        result = self.send_request('volume-modify-iter', api_args)
+        failures = result.get_child_content('num-failed')
+        if failures and int(failures) > 0:
+            failure_list = result.get_child_by_name(
+                'failure-list') or netapp_api.NaElement('none')
+            errors = failure_list.get_children()
+            if not errors:
+                return
+            error_code = errors[0].get_child_content('error-code')
+            if retry_allocated:
+                if error_code == netapp_api.EVOLOPNOTSUPP:
+                    alloc_files = self.get_volume_allocated_files(
+                        volume_name)
+                    new_max_files = alloc_files['used']
+                    # no need to act if current max files are set to
+                    # allocated files
+                    if new_max_files == alloc_files['max']:
+                        return
+
+                    msg = _('Set higher max files %(new_max_files)s '
+                            'on %(vol)s. The current allocated inodes '
+                            'are larger than requested %(max_files)s.')
+                    msg_args = {'vol': volume_name,
+                                'max_files': max_files,
+                                'new_max_files': new_max_files}
+                    LOG.info(msg, msg_args)
+                    self.set_volume_max_files(volume_name, new_max_files,
+                                              retry_allocated=False)
+            else:
+                raise netapp_api.NaApiError(
+                    error_code,
+                    errors[0].get_child_content('error-message'))
 
     @na_utils.trace
     def set_volume_size(self, volume_name, size_gb):
@@ -3085,6 +3125,44 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         return {key: vol_snapshot_attr.get_child_content(key)
                 for key in desired_snapshot_attributes.keys()}
+
+    def get_volume_allocated_files(self, volume_name):
+        """Get flexvol allocated files"""
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-inode-attributes': {
+                        'inodefile-public-capacity': None,
+                        'files-total': None,
+                    },
+                },
+            },
+        }
+        result = self.send_iter_request('volume-get-iter', api_args)
+        if not self._has_records(result):
+            return None
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        volume_attributes = attributes_list.get_child_by_name(
+            'volume-attributes') or netapp_api.NaElement('none')
+        volume_inode_attributes = volume_attributes.get_child_by_name(
+            'volume-inode-attributes') or netapp_api.NaElement('none')
+
+        return {
+            'used': volume_inode_attributes.get_child_content(
+                'inodefile-public-capacity'),
+            'max': volume_inode_attributes.get_child_content(
+                'files-total'),
+        }
 
     @na_utils.trace
     def get_volume(self, volume_name):
