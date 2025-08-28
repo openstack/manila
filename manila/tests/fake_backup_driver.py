@@ -22,17 +22,25 @@ class FakeBackupDriver(backup_driver.BackupDriver):
         super(FakeBackupDriver, self).__init__(*args, **kwargs)
         pass
 
-    def backup(self, backup, share):
+    def backup(self, context, backup, share):
         """Start a backup of a specified share."""
         pass
 
-    def restore(self, backup, share):
+    def restore(self, context, backup, share):
         """Restore a saved backup."""
         pass
 
-    def delete(self, backup):
+    def delete(self, context, backup):
         """Delete a saved backup."""
         pass
+
+    def get_backup_progress(self, context, backup, share):
+        """Fetch the progress of a in progress backup"""
+        return
+
+    def get_restore_progress(self, context, backup, share):
+        """Fetch the progress of a in progress restore"""
+        return
 
     def get_backup_info(self, backup):
         """Get backup capabilities information of driver."""

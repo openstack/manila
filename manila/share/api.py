@@ -4262,14 +4262,18 @@ class API(base.Base):
             data_rpc = data_rpcapi.DataAPI()
             data_rpc.delete_backup(context, backup)
 
-    def restore_share_backup(self, context, backup):
+    def restore_share_backup(self, context, backup, target_share_id=None):
         """Make the RPC call to restore a backup."""
         backup_id = backup['id']
         if backup['status'] != constants.STATUS_AVAILABLE:
             msg = (_('Backup %s status must be available.') % backup['id'])
             raise exception.InvalidBackup(reason=msg)
 
-        share = self.get(context, backup['share_id'])
+        if target_share_id:
+            share = self.get(context, target_share_id)
+        else:
+            share = self.get(context, backup['share_id'])
+
         share_id = share['id']
         if share['status'] != constants.STATUS_AVAILABLE:
             msg = _('Share to be restored to must be available.')
