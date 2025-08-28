@@ -218,7 +218,7 @@ class ShareBackupController(wsgi.Controller, wsgi.AdminActionsMixin):
         retval = self._view_builder.restore_summary(req, restored)
         return retval
 
-    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, '2.89',
+    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, '2.90',
                                  experimental=True)
     @wsgi.action('restore')
     @wsgi.Controller.authorize
