@@ -60,11 +60,17 @@ Shared File Systems service:
    each share driver to support at least one network segmentation type.
 
    a) ``manila.network.neutron.neutron_network_plugin.NeutronNetworkPlugin``.
-      This is a default network plug-in. It requires the ``neutron_net_id`` and
-      the ``neutron_subnet_id`` to be provided when defining the share network
-      that will be used for the creation of share servers. The user may define
-      any number of share networks corresponding to the various physical
-      network segments in a project environment.
+      This is a default network plug-in. It requires the ``neutron_net_id``
+      property and the ``neutron_subnet_id`` property to be provided when
+      creating the share network that will be used for the creation of share
+      servers. The user may define any number of share networks corresponding
+      to the various physical network segments in a project environment.
+
+      .. note::
+
+         When a share network contains a router provider network with multiple
+         segments, the ``neutron_physical_net_name`` option should be
+         additionally configured in ``manila.conf``.
 
    b) ``manila.network.neutron.neutron_network_plugin.NeutronSingleNetworkPlugin``.
       This is a simplification of the previous case. It accepts values for
