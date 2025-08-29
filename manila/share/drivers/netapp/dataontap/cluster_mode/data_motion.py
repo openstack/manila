@@ -90,9 +90,10 @@ def get_backup_configuration(backup_type):
     return config
 
 
-def get_client_for_backend(backend_name, vserver_name=None):
+def get_client_for_backend(backend_name, vserver_name=None,
+                           force_rest_client=False):
     config = get_backend_configuration(backend_name)
-    if config.netapp_use_legacy_client:
+    if config.netapp_use_legacy_client and not force_rest_client:
         client = client_cmode.NetAppCmodeClient(
             transport_type=config.netapp_transport_type,
             ssl_cert_path=config.netapp_ssl_cert_path,

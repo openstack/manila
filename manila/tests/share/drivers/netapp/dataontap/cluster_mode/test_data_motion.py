@@ -42,6 +42,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
     def setUp(self):
         super(NetAppCDOTDataMotionTestCase, self).setUp()
         self.backend = 'backend1'
+        self.force_rest_client = False
         self.mock_cmode_client = self.mock_object(client_cmode,
                                                   "NetAppCmodeClient",
                                                   mock.Mock())
@@ -82,7 +83,8 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         self.mock_object(data_motion, "get_backend_configuration",
                          mock.Mock(return_value=self.config))
 
-        data_motion.get_client_for_backend(self.backend)
+        data_motion.get_client_for_backend(self.backend,
+                                           self.force_rest_client)
 
         self.mock_cmode_client.assert_called_once_with(
             hostname='fake.hostname', password='fake_password',

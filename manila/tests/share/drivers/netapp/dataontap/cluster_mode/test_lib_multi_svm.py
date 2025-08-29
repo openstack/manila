@@ -81,8 +81,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_ss = copy.deepcopy(fake.SHARE_SERVER)
         self.fake_vserver = 'fake_vserver'
         fake_ss['backend_details']['vserver_name'] = (
-            self.fake_vserver
-        )
+            self.fake_vserver)
         self.fake_replica['share_server'] = fake_ss
         self.fake_replica_host = 'fake_host'
 
@@ -486,13 +485,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library._set_network_with_metadata,
             [net_info])
 
-    @ddt.data({'nfs_config_support': False},
+    @ddt.data({'nfs_config_support': False, 'with_encryption': True},
               {'nfs_config_support': True,
-               'nfs_config': fake.NFS_CONFIG_UDP_MAX},
+               'nfs_config': fake.NFS_CONFIG_UDP_MAX,
+               'with_encryption': False},
               {'nfs_config_support': True,
-               'nfs_config': fake.NFS_CONFIG_DEFAULT})
+               'nfs_config': fake.NFS_CONFIG_DEFAULT, 'with_encryption': True})
     @ddt.unpack
-    def test_setup_server(self, nfs_config_support, nfs_config=None):
+    def test_setup_server(self, nfs_config_support, nfs_config=None,
+                          with_encryption=False):
         mock_get_vserver_name = self.mock_object(
             self.library,
             '_get_vserver_name',
@@ -526,9 +527,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=nfs_config))
         mock_set_with_meta = self.mock_object(
             self.library, '_set_network_with_metadata')
+        mock_barbican_kms_config = self.mock_object(
+            self.library, '_create_barbican_kms_config_for_specified_vserver')
 
+        fake_server_metadata = (
+            fake.SERVER_METADATA_WITH_ENCRYPTION
+            if with_encryption else fake.SERVER_METADATA)
         result = self.library.setup_server(fake.NETWORK_INFO_LIST,
-                                           fake.SERVER_METADATA)
+                                           fake_server_metadata)
 
         ports = {}
         for network_allocation in fake.NETWORK_INFO['network_allocations']:
@@ -542,7 +548,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertTrue(check_lif_limit.called)
         if nfs_config_support:
             mock_get_extra_spec.assert_called_once_with(
-                fake.SERVER_METADATA['share_type_id'])
+                fake_server_metadata['share_type_id'])
             mock_check_extra_spec.assert_called_once_with(
                 fake.EXTRA_SPEC)
             mock_get_nfs_config.assert_called_once_with(
@@ -559,6 +565,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         if nfs_config_support:
             expected.update({'nfs_config': jsonutils.dumps(nfs_config)})
         self.assertDictEqual(expected, result)
+        if with_encryption:
+            mock_barbican_kms_config.assert_called_once_with(
+                fake.VSERVER1, fake_server_metadata)
+        else:
+            mock_barbican_kms_config.assert_not_called()
 
     def test_setup_server_with_error(self):
         self.library.is_nfs_config_supported = False
@@ -905,6 +916,48 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             security_services=security_service)
         self.assertFalse(vserver_client.enable_nfs.called)
         self.assertEqual(1, lib_multi_svm.LOG.error.call_count)
+
+    def test__create_barbican_kms_config_for_specified_vserver(self):
+
+        vserver_id = fake.NETWORK_INFO['server_id']
+        vserver_name = fake.VSERVER_NAME_TEMPLATE % vserver_id
+        fake_config_uuid = "fake_uuid"
+
+        self.mock_object(
+            share_utils, 'extract_host',
+            mock.Mock(
+                return_value=fake.SERVER_METADATA_WITH_ENCRYPTION[
+                    'request_host']))
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=self.fake_client))
+        self.mock_object(self.fake_client,
+                         'create_barbican_kms_config_for_specified_vserver')
+        self.mock_object(self.fake_client,
+                         'get_key_store_config_uuid',
+                         mock.Mock(return_value=fake_config_uuid))
+        self.mock_object(self.fake_client,
+                         'enable_key_store_config')
+
+        self.library._create_barbican_kms_config_for_specified_vserver(
+            vserver_name, fake.SERVER_METADATA_WITH_ENCRYPTION)
+
+        share_utils.extract_host.assert_called_once_with(
+            fake.SERVER_METADATA_WITH_ENCRYPTION['request_host'],
+            level='backend_name')
+        data_motion.get_client_for_backend.assert_called_once_with(
+            fake.SERVER_METADATA_WITH_ENCRYPTION['request_host'],
+            vserver_name=None,
+            force_rest_client=True)
+        self.fake_client.create_barbican_kms_config_for_specified_vserver.\
+            assert_called_once_with(
+                vserver_name, mock.ANY,
+                fake.SERVER_METADATA_WITH_ENCRYPTION['encryption_key_ref'],
+                fake.SERVER_METADATA_WITH_ENCRYPTION['keystone_url'],
+                fake.SERVER_METADATA_WITH_ENCRYPTION
+                ['application_credential_id'],
+                fake.SERVER_METADATA_WITH_ENCRYPTION
+                ['application_credential_secret'])
+        self.fake_client.enable_key_store_config(fake_config_uuid)
 
     def test_get_valid_ipspace_name(self):
 

@@ -51,6 +51,12 @@ VSERVER_NAME = 'fake_vserver'
 VSERVER_NAME_2 = 'fake_vserver_2'
 VSERVER_PEER_NAME = 'fake_vserver_peer'
 VSERVER_PEER_STATE = 'peered'
+FAKE_CONFIG_NAME = "fake_config_name"
+FAKE_CONFIG_UUID = "fake_config_uuid"
+FAKE_KEY_ID = "fake_key_id"
+FAKE_KEYSTONE_URL = "fake_keystone_url"
+FAKE_APPLICATION_CRED_ID = "fake_application_cred_id"
+FAKE_APPLICATION_CRED_SECRET = "fake_application_cred_secret"
 ADMIN_VSERVER_NAME = 'fake_admin_vserver'
 NODE_VSERVER_NAME = 'fake_node_vserver'
 NFS_VERSIONS = ['nfs3', 'nfs4.0']
@@ -3685,6 +3691,21 @@ SVMS_LIST_SIMPLE_RESPONSE_REST = {
         },
     ],
     "num_records": 2,
+}
+
+KEYSTORE_SIMPLE_RESPONSE_REST = {
+    "records": [
+        {
+            "type": "fake_type_barbican",
+            "configuration":
+                {
+                    "name": FAKE_CONFIG_NAME,
+                    "uuid": FAKE_CONFIG_UUID
+                },
+            "uuid": FAKE_CONFIG_UUID
+        }
+    ],
+    "num_records": 1
 }
 
 AGGR_GET_ITER_RESPONSE_REST = {
