@@ -51,7 +51,7 @@ class RequestContext(context.RequestContext):
         kwargs.setdefault('user_id', user_id)
         kwargs.setdefault('project_id', project_id)
 
-        super(RequestContext, self).__init__(is_admin=is_admin, **kwargs)
+        super().__init__(is_admin=is_admin, **kwargs)
 
         self.project_name = project_name
         if self.is_admin is None:
@@ -90,7 +90,7 @@ class RequestContext(context.RequestContext):
                             _del_read_deleted)
 
     def to_dict(self):
-        values = super(RequestContext, self).to_dict()
+        values = super().to_dict()
         values['user_id'] = self.user_id
         values['project_id'] = self.project_id
         values['project_name'] = self.project_name
@@ -105,7 +105,8 @@ class RequestContext(context.RequestContext):
 
     @classmethod
     def from_dict(cls, values):
-        return cls(
+        return super().from_dict(
+            values,
             user_id=values.get('user_id'),
             project_id=values.get('project_id'),
             project_name=values.get('project_name'),
