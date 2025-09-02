@@ -13,7 +13,39 @@
 import copy
 
 from manila.api.validation import parameter_types
+from manila.common import constants
 
+
+_status = {
+    'type': 'string',
+    'enum': list(constants.SHARE_STATUSES),
+}
+
+reset_status_request_body = {
+    'type': 'object',
+    'properties': {
+        'os-reset_status': {
+            'type': 'object',
+            'properties': {
+                # TODO(stephenfin): Remove the os-status in a future
+                # microversion and make 'status' required
+                'os-status': _status,
+                'status': _status,
+            },
+            'required': [],
+            # TODO(stephenfin): Set to False in a future microversion
+            'additionalProperties': True,
+        },
+    },
+    'required': ['os-reset_status'],
+    'additionalProperties': False,
+}
+
+reset_status_request_body_v27 = copy.deepcopy(reset_status_request_body)
+reset_status_request_body_v27['properties']['reset_status'] = (
+    reset_status_request_body_v27['properties'].pop('os-reset_status')
+)
+reset_status_request_body_v27['required'] = ['reset_status']
 
 soft_delete_request_body = {
     'type': 'object',
@@ -34,6 +66,31 @@ restore_request_body = {
         'restore': {},
     },
     'required': ['restore'],
+    'additionalProperties': False,
+}
+
+_task_state = {
+    'type': ['string', 'null'],
+    'enum': constants.TASK_STATE_STATUSES,
+}
+
+reset_task_state_request_body = {
+    'type': 'object',
+    'properties': {
+        'reset_task_state': {
+            'type': 'object',
+            'properties': {
+                # TODO(stephenfin): Remove os-task_state field in a future
+                # microversion and make task_state required
+                'os-task_state': _task_state,
+                'task_state': _task_state,
+            },
+            'required': [],
+            # TODO(stephenfin): Set to False in a future microversion
+            'additionalProperties': True,
+        },
+    },
+    'required': ['reset_task_state'],
     'additionalProperties': False,
 }
 
@@ -99,9 +156,13 @@ unmanage_request_body = {
     'additionalProperties': False,
 }
 
+reset_status_response_body = {'type': 'null'}
+
 soft_delete_response_body = {'type': 'null'}
 
 restore_response_body = {'type': 'null'}
+
+reset_task_state_response_body = {'type': 'null'}
 
 extend_response_body = {'type': 'null'}
 

@@ -253,6 +253,8 @@ class ShareController(wsgi.Controller,
 
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-reset_status')
+    @validation.request_body_schema(schema.reset_status_request_body, '2.0', '2.6')  # noqa: E501
+    @validation.response_body_schema(schema.reset_status_response_body)
     def share_reset_status_legacy(self, req, id, body):
         context = req.environ['manila.context']
         try:
@@ -268,6 +270,8 @@ class ShareController(wsgi.Controller,
     @wsgi.Controller.api_version('2.7')
     @wsgi.action('reset_status')
     @wsgi.Controller.authorize('reset_status')
+    @validation.request_body_schema(schema.reset_status_request_body_v27, '2.7')  # noqa: E501
+    @validation.response_body_schema(schema.reset_status_response_body)
     def share_reset_status(self, req, id, body):
         context = req.environ['manila.context']
         try:
@@ -474,6 +478,8 @@ class ShareController(wsgi.Controller,
     @wsgi.Controller.api_version('2.22', experimental=True)
     @wsgi.action("reset_task_state")
     @wsgi.Controller.authorize
+    @validation.request_body_schema(schema.reset_task_state_request_body)
+    @validation.response_body_schema(schema.reset_task_state_response_body)
     def reset_task_state(self, req, id, body):
         context = req.environ['manila.context']
         try:
