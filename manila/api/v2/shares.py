@@ -361,6 +361,8 @@ class ShareController(wsgi.Controller,
     @wsgi.Controller.api_version('2.29', experimental=True)
     @wsgi.action("migration_start")
     @wsgi.Controller.authorize
+    @validation.request_body_schema(schema.migration_start_request_body)
+    @validation.response_body_schema(schema.migration_start_response_body)
     def migration_start(self, req, id, body):
         """Migrate a share to the specified host."""
         context = req.environ['manila.context']
@@ -375,18 +377,10 @@ class ShareController(wsgi.Controller,
                     "since it has been soft deleted.") % id
             raise exception.InvalidShare(reason=msg)
 
-        params = body.get('migration_start')
+        params = body['migration_start']
 
-        if not params:
-            raise exc.HTTPBadRequest(explanation=_("Request is missing body."))
-
-        driver_assisted_params = ['preserve_metadata', 'writable',
-                                  'nondisruptive', 'preserve_snapshots']
-        bool_params = (driver_assisted_params +
-                       ['force_host_assisted_migration'])
-        mandatory_params = driver_assisted_params + ['host']
-
-        utils.check_params_exist(mandatory_params, params)
+        bool_params = ['preserve_metadata', 'writable', 'nondisruptive',
+                       'preserve_snapshots', 'force_host_assisted_migration']
         bool_param_values = utils.check_params_are_boolean(bool_params, params)
 
         new_share_network = None
@@ -468,6 +462,9 @@ class ShareController(wsgi.Controller,
     @wsgi.Controller.api_version('2.22', experimental=True)
     @wsgi.action("migration_get_progress")
     @wsgi.Controller.authorize
+    @validation.request_body_schema(schema.migration_get_progress_request_body)
+    @validation.response_body_schema(schema.migration_get_progress_response_body, '2.22', '2.58')  # noqa: E501
+    @validation.response_body_schema(schema.migration_get_progress_response_body_v259, '2.59')  # noqa: E501
     def migration_get_progress(self, req, id, body):
         """Retrieve share migration progress for a given share."""
         context = req.environ['manila.context']

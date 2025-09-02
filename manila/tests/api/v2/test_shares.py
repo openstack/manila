@@ -912,13 +912,12 @@ class ShareAPITest(test.TestCase):
                 'new_share_type_id': 'fake_type_id',
             }
         }
-        method = 'migration_start'
 
         self.mock_object(share_api.API, 'migration_start',
                          mock.Mock(return_value=202))
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
 
-        response = getattr(self.controller, method)(req, share['id'], body)
+        response = self.controller.migration_start(req, share['id'], body=body)
 
         self.assertEqual(202, response.status_int)
 
@@ -955,7 +954,7 @@ class ShareAPITest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPConflict,
                           self.controller.migration_start,
-                          req, share['id'], body)
+                          req, share['id'], body=body)
 
     @ddt.data('nondisruptive', 'writable', 'preserve_metadata',
               'preserve_snapshots', 'host', 'body')
@@ -984,15 +983,13 @@ class ShareAPITest(test.TestCase):
         else:
             body['migration_start'].pop(param)
 
-        method = 'migration_start'
-
         self.mock_object(share_api.API, 'migration_start')
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=share))
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          getattr(self.controller, method),
-                          req, 'fake_id', body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.migration_start,
+                          req, 'fake_id', body=body)
 
     @ddt.data('nondisruptive', 'writable', 'preserve_metadata',
               'preserve_snapshots', 'force_host_assisted_migration')
@@ -1018,15 +1015,13 @@ class ShareAPITest(test.TestCase):
 
         body['migration_start'][param] = None
 
-        method = 'migration_start'
-
         self.mock_object(share_api.API, 'migration_start')
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=share))
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          getattr(self.controller, method),
-                          req, 'fake_id', body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.migration_start,
+                          req, 'fake_id', body=body)
 
     def test_migration_start_no_share_id(self):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/%s/action' % 'fake_id',
@@ -1035,14 +1030,21 @@ class ShareAPITest(test.TestCase):
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
 
-        body = {'migration_start': {'host': 'fake_host'}}
-        method = 'migration_start'
+        body = {
+            'migration_start': {
+                'host': 'fake_host',
+                'preserve_metadata': True,
+                'preserve_snapshots': True,
+                'writable': True,
+                'nondisruptive': True,
+            }
+        }
 
         self.mock_object(share_api.API, 'get',
                          mock.Mock(side_effect=[exception.NotFound]))
         self.assertRaises(webob.exc.HTTPNotFound,
-                          getattr(self.controller, method),
-                          req, 'fake_id', body)
+                          self.controller.migration_start,
+                          req, 'fake_id', body=body)
 
     def test_migration_start_new_share_network_not_found(self):
         share = db_utils.create_share()
@@ -1068,7 +1070,7 @@ class ShareAPITest(test.TestCase):
                          mock.Mock(side_effect=exception.NotFound()))
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.migration_start,
-                          req, share['id'], body)
+                          req, share['id'], body=body)
         db.share_network_get.assert_called_once_with(context, 'nonexistent')
 
     def test_migration_start_new_share_type_not_found(self):
@@ -1095,7 +1097,7 @@ class ShareAPITest(test.TestCase):
                          mock.Mock(side_effect=exception.NotFound()))
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.migration_start,
-                          req, share['id'], body)
+                          req, share['id'], body=body)
         db.share_type_get.assert_called_once_with(context, 'nonexistent')
 
     def test_migration_start_invalid_force_host_assisted_migration(self):
@@ -1110,11 +1112,10 @@ class ShareAPITest(test.TestCase):
 
         body = {'migration_start': {'host': 'fake_host',
                                     'force_host_assisted_migration': 'fake'}}
-        method = 'migration_start'
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          getattr(self.controller, method),
-                          req, share['id'], body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.migration_start,
+                          req, share['id'], body=body)
 
     @ddt.data('writable', 'preserve_metadata')
     def test_migration_start_invalid_writable_preserve_metadata(
@@ -1131,9 +1132,9 @@ class ShareAPITest(test.TestCase):
         body = {'migration_start': {'host': 'fake_host',
                                     parameter: 'invalid'}}
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.migration_start, req, share['id'],
-                          body)
+                          body=body)
 
     @ddt.data(constants.TASK_STATE_MIGRATION_ERROR, None)
     def test_reset_task_state(self, task_state):
@@ -1364,7 +1365,7 @@ class ShareAPITest(test.TestCase):
 
         body = {'migration_get_progress': None}
         expected = {
-            'total_progress': 'fake',
+            'total_progress': 50,
             'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
         }
 
@@ -1375,7 +1376,7 @@ class ShareAPITest(test.TestCase):
                          mock.Mock(return_value=copy.deepcopy(expected)))
 
         response = self.controller.migration_get_progress(req, share['id'],
-                                                          body)
+                                                          body=body)
 
         self.assertEqual(expected, response)
 
@@ -1400,7 +1401,7 @@ class ShareAPITest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.migration_get_progress, req,
-                          share['id'], body)
+                          share['id'], body=body)
 
     def test_share_create_from_snapshot_without_share_net_no_parent(self):
         shr = {
