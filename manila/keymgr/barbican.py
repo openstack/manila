@@ -34,6 +34,23 @@ BARBICAN_GROUP = 'barbican'
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
+castellan_options.set_defaults(CONF)
+ks_loading.register_auth_conf_options(CONF, BARBICAN_GROUP)
+
+
+def _require_barbican_key_manager_backend(conf):
+    backend = conf.key_manager.backend
+    if backend is None:
+        LOG.warning("The BarbicanKeyManager backend should be explicitly "
+                    "used for share encryption.")
+        raise exception.ManilaBarbicanACLError()
+
+    backend = backend.split('.')[-1]
+    if backend not in ('barbican', 'BarbicanKeyManager'):
+        LOG.warning("The '%s' key_manager backend is not supported. Please"
+                    " use barbican as key_manager.", backend)
+        raise exception.ManilaBarbicanACLError()
+
 
 class BarbicanSecretACL(object):
     def __init__(self, conf):
@@ -41,15 +58,7 @@ class BarbicanSecretACL(object):
 
     def get_client_and_href(self, context, secret_ref):
         """Get user barbican client and a secret href"""
-
-        castellan_options.set_defaults(self.conf)
-        backend = self.conf.key_manager.backend or ''
-
-        backend = backend.split('.')[-1]
-        if backend not in ('barbican', 'BarbicanKeyManager'):
-            LOG.warning("The '%s' key_manager backend is not supported. Please"
-                        " use barbican as key_manager.", backend)
-            raise exception.ManilaBarbicanACLError()
+        _require_barbican_key_manager_backend(self.conf)
 
         if not getattr(self.conf, 'barbican', None) or \
            not getattr(self.conf.barbican, 'auth_endpoint', None):
@@ -86,7 +95,6 @@ class BarbicanSecretACL(object):
         try:
             user_barbican_client, secret_href = self.get_client_and_href(
                 context, secret_ref)
-            ks_loading.register_auth_conf_options(self.conf, BARBICAN_GROUP)
             barbican_auth = ks_loading.load_auth_from_conf_options(
                 self.conf, BARBICAN_GROUP)
             barbican_sess = ks_session.Session(auth=barbican_auth)
@@ -106,7 +114,6 @@ class BarbicanSecretACL(object):
         try:
             user_barbican_client, secret_href = self.get_client_and_href(
                 context, secret_ref)
-            ks_loading.register_auth_conf_options(self.conf, BARBICAN_GROUP)
             barbican_auth = ks_loading.load_auth_from_conf_options(
                 self.conf, BARBICAN_GROUP)
             barbican_sess = ks_session.Session(auth=barbican_auth)
@@ -194,20 +201,7 @@ class BarbicanUserAppCreds(object):
         return self.get_client()
 
     def get_client(self):
-        castellan_options.set_defaults(self.conf)
-        backend = self.conf.key_manager.backend or ''
-
-        backend = backend.split('.')[-1]
-        if backend not in ('barbican', 'BarbicanKeyManager'):
-            LOG.warning("The '%s' key_manager backend is not supported. Please"
-                        " use barbican key_manager backend.", backend)
-
-        if not getattr(self.conf, 'barbican', None) or \
-           not getattr(self.conf.barbican, 'auth_endpoint', None):
-            LOG.error("Missing auth_endpoint for barbican connection")
-            raise exception.ManilaBarbicanACLError()
-
-        ks_loading.register_auth_conf_options(self.conf, BARBICAN_GROUP)
+        _require_barbican_key_manager_backend(self.conf)
         auth = ks_loading.load_auth_from_conf_options(self.conf,
                                                       BARBICAN_GROUP)
         sess = ks_session.Session(auth=auth)
