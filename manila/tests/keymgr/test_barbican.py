@@ -33,23 +33,18 @@ class BarbicanSecretACLTestCase(test.TestCase):
         self.secret_ref = 'mock-secret-id'
         self.barbican_acl = barbican_module.BarbicanSecretACL(CONF)
 
-    @mock.patch('barbicanclient.client.Client')
-    @mock.patch('keystoneauth1.session.Session')
-    @mock.patch('keystoneauth1.identity.v3.Token')
-    def test_get_client_and_href_with_valid_secret(self, mock_token,
-                                                   mock_session, mock_client):
+    def test_get_client_and_href_with_valid_secret(self):
         mock_href = uuidutils.generate_uuid()
-        mock_instance = mock.Mock()
-        mock_client.return_value = mock_instance
-        self.mock_object(self.barbican_acl, '_get_barbican_endpoint')
-        self.mock_object(self.barbican_acl, '_create_base_url')
+        mock_client = mock.Mock()
+        self.mock_object(self.barbican_acl, '_get_barbican_client',
+                         mock.Mock(return_value=(mock_client, mock.Mock())))
         self.mock_object(self.barbican_acl, '_create_secret_ref',
                          mock.Mock(return_value=mock_href))
 
         result_client, result_href = self.barbican_acl.get_client_and_href(
             self.context, mock_href)
-        self.assertEqual(mock_instance, result_client)
-        self.assertIn(mock_href, result_href)
+        self.assertEqual(mock_client, result_client)
+        self.assertEqual(mock_href, result_href)
 
     def test_get_client_and_href_missing_backend(self):
         CONF.set_default('backend', 'wrong.backend', group='key_manager')
