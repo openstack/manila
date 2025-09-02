@@ -47,6 +47,23 @@ reset_status_request_body_v27['properties']['reset_status'] = (
 )
 reset_status_request_body_v27['required'] = ['reset_status']
 
+force_delete_request_body = {
+    'type': 'object',
+    'properties': {
+        # TODO(stephenfin): We should restrict this to 'null' in a future
+        # microversion
+        'os-force_delete': {},
+    },
+    'required': ['os-force_delete'],
+    'additionalProperties': False,
+}
+
+force_delete_request_body_v27 = copy.deepcopy(force_delete_request_body)
+force_delete_request_body_v27['properties']['force_delete'] = (
+    force_delete_request_body_v27['properties'].pop('os-force_delete')
+)
+force_delete_request_body_v27['required'] = ['force_delete']
+
 soft_delete_request_body = {
     'type': 'object',
     'properties': {
@@ -157,6 +174,8 @@ unmanage_request_body = {
 }
 
 reset_status_response_body = {'type': 'null'}
+
+force_delete_response_body = {'type': 'null'}
 
 soft_delete_response_body = {'type': 'null'}
 
