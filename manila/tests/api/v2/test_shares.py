@@ -236,9 +236,6 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       use_admin_context=False,
                                       version='2.27')
-        mock_validate_revert_parameters = self.mock_object(
-            self.controller, '_validate_revert_parameters',
-            mock.Mock(return_value=body['revert']))
         mock_get = self.mock_object(
             share_api.API, 'get', mock.Mock(return_value=share))
         mock_get_snapshot = self.mock_object(
@@ -252,8 +249,6 @@ class ShareAPITest(test.TestCase):
         response = self.controller._revert(req, '1', body=body)
 
         self.assertEqual(202, response.status_int)
-        mock_validate_revert_parameters.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), body)
         mock_get.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), '1')
         mock_get_snapshot.assert_called_once_with(
@@ -269,9 +264,6 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       use_admin_context=False,
                                       version='2.27')
-        self.mock_object(
-            self.controller, '_validate_revert_parameters',
-            mock.Mock(return_value=body['revert']))
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=self.share_in_recycle_bin))
         self.mock_object(
@@ -292,9 +284,6 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       use_admin_context=False,
                                       version='2.27')
-        self.mock_object(
-            self.controller, '_validate_revert_parameters',
-            mock.Mock(return_value=body['revert']))
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(
             share_api.API, 'get_snapshot', mock.Mock(return_value=snapshot))
@@ -318,9 +307,6 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       use_admin_context=False,
                                       version='2.27')
-        self.mock_object(
-            self.controller, '_validate_revert_parameters',
-            mock.Mock(return_value=body['revert']))
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(
             share_api.API, 'get_snapshot', mock.Mock(return_value=snapshot))
@@ -360,9 +346,6 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       use_admin_context=False,
                                       version='2.27')
-        self.mock_object(
-            self.controller, '_validate_revert_parameters',
-            mock.Mock(return_value=body['revert']))
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(
             share_api.API, 'get_snapshot', mock.Mock(return_value=snapshot))
@@ -385,9 +368,6 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       use_admin_context=False,
                                       version='2.27')
-        self.mock_object(
-            self.controller, '_validate_revert_parameters',
-            mock.Mock(return_value=body['revert']))
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(
             share_api.API, 'get_snapshot', mock.Mock(return_value=snapshot))
@@ -419,9 +399,6 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       use_admin_context=False,
                                       version='2.27')
-        self.mock_object(
-            self.controller, '_validate_revert_parameters',
-            mock.Mock(return_value=body['revert']))
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(share_api.API, 'get_snapshot',
                          mock.Mock(return_value=snapshot))
@@ -450,9 +427,6 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       use_admin_context=False,
                                       version='2.27')
-        self.mock_object(
-            self.controller, '_validate_revert_parameters',
-            mock.Mock(return_value=body['revert']))
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(
             share_api.API, 'get_snapshot', mock.Mock(return_value=snapshot))
@@ -498,9 +472,6 @@ class ShareAPITest(test.TestCase):
                                       use_admin_context=False,
                                       version='2.27')
         self.mock_object(
-            self.controller, '_validate_revert_parameters',
-            mock.Mock(return_value=body['revert']))
-        self.mock_object(
             share_api.API, 'get', mock.Mock(side_effect=caught(**exc_args)))
 
         self.assertRaises(thrown,
@@ -508,29 +479,6 @@ class ShareAPITest(test.TestCase):
                           req,
                           '1',
                           body=body)
-
-    def test_validate_revert_parameters(self):
-
-        body = {'revert': {'snapshot_id': 'fake_snapshot_id'}}
-
-        result = self.controller._validate_revert_parameters(
-            'fake_context', body)
-
-        self.assertEqual(body['revert'], result)
-
-    @ddt.data(
-        None,
-        {},
-        {'manage': {'snapshot_id': 'fake_snapshot_id'}},
-        {'revert': {'share_id': 'fake_snapshot_id'}},
-        {'revert': {'snapshot_id': ''}},
-    )
-    def test_validate_revert_parameters_invalid(self, body):
-
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller._validate_revert_parameters,
-                          'fake_context',
-                          body)
 
     @ddt.data("2.0", "2.1")
     def test_share_create_original(self, microversion):
@@ -3391,22 +3339,21 @@ class ShareManageTest(test.TestCase):
                           share_id)
 
     def test_revert(self):
-
         mock_revert = self.mock_object(
             self.controller, '_revert',
-            mock.Mock(return_value='fake_response'))
+            mock.Mock(return_value=None))
         req = fakes.HTTPRequest.blank('/v2/fake/shares/fake_id/action',
                                       use_admin_context=False,
                                       version='2.27')
 
-        result = self.controller.revert(req, 'fake_id', 'fake_body')
+        body = {'revert': {'snapshot_id': uuidutils.generate_uuid()}}
+        result = self.controller.revert(req, 'fake_id', body=body)
 
-        self.assertEqual('fake_response', result)
-        mock_revert.assert_called_once_with(
-            req, 'fake_id', 'fake_body')
+        self.assertIsNone(result)
+        mock_revert.assert_called_once_with(req, 'fake_id', body)
 
     def test_revert_unsupported(self):
-
+        body = {'revert': {'snapshot_id': uuidutils.generate_uuid()}}
         req = fakes.HTTPRequest.blank('/v2/shares/fake_id/action',
                                       use_admin_context=False,
                                       version='2.24')
@@ -3415,4 +3362,4 @@ class ShareManageTest(test.TestCase):
                           self.controller.revert,
                           req,
                           'fake_id',
-                          'fake_body')
+                          body=body)
