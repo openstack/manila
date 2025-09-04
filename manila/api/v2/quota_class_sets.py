@@ -71,8 +71,8 @@ class QuotaClassSetsMixin(object):
 class QuotaClassSetsControllerLegacy(QuotaClassSetsMixin, wsgi.Controller):
     """Deprecated Quota Class Sets API controller.
 
-    Used by legacy API v1 and v2 microversions from 2.0 to 2.6.
-    Registered under deprecated API URL 'os-quota-class-sets'.
+    Use microversions 2.0 to 2.6. Registered under deprecated API URL
+    'os-quota-class-sets'.
     """
 
     @wsgi.Controller.api_version('1.0', '2.6')
@@ -92,8 +92,7 @@ class QuotaClassSetsControllerLegacy(QuotaClassSetsMixin, wsgi.Controller):
 class QuotaClassSetsController(QuotaClassSetsMixin, wsgi.Controller):
     """Quota Class Sets API controller.
 
-    Used only by API v2 starting from microversion 2.7.
-    Registered under API URL 'quota-class-sets'.
+    Used from microversion 2.7. Registered under API URL 'quota-class-sets'.
     """
 
     @wsgi.Controller.api_version('2.7')
