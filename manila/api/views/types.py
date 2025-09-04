@@ -66,7 +66,7 @@ class ViewBuilder(common.ViewBuilder):
         share_type_dict['share_type_access:is_public'] = share_type.get(
             'is_public', True)
 
-    @common.ViewBuilder.versioned_method("1.0", "2.6")
+    @common.ViewBuilder.versioned_method("2.0", "2.6")
     def add_is_public_attr_extension_like(self, context, share_type_dict,
                                           share_type):
         share_type_dict['os-share-type-access:is_public'] = share_type.get(

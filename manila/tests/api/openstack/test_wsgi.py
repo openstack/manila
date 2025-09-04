@@ -176,11 +176,8 @@ class RequestTest(test.TestCase):
 
         self.assertIsNone(request.set_api_version_request())
 
-        if not resource or not ('/v1' in resource or '/v2' in resource):
+        if not resource or '/v2' not in resource:
             self.assertEqual(api_version.APIVersionRequest(),
-                             request.api_version_request)
-        elif 'v1' in resource:
-            self.assertEqual(api_version.APIVersionRequest('1.0'),
                              request.api_version_request)
         else:
             self.assertEqual(api_version.APIVersionRequest('2.117'),

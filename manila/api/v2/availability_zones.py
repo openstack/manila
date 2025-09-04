@@ -45,7 +45,7 @@ class AvailabilityZoneControllerLegacy(AvailabilityZoneMixin, wsgi.Controller):
     'os-availability-zone'.
     """
 
-    @wsgi.Controller.api_version('1.0', '2.6')
+    @wsgi.Controller.api_version('2.0', '2.6')
     @validation.request_query_schema(schema.index_request_query)
     @validation.response_body_schema(schema.index_response_body)
     def index(self, req):

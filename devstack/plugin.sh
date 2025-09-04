@@ -496,10 +496,6 @@ function create_manila_accounts {
 
     create_service_user "manila"
 
-    get_or_create_service "manila" "share" "Manila Shared Filesystem Service"
-    get_or_create_endpoint "share" "$REGION_NAME" \
-        "$MANILA_ENDPOINT_BASE/v1/\$(project_id)s"
-
     # Set up Manila v2 service and endpoint - as of microversion 2.60,
     # project_id is no longer necessary in the v2 endpoint
     get_or_create_service "manilav2" "sharev2" "Manila Shared Filesystem Service V2"

@@ -217,15 +217,12 @@ class Request(webob.Request):
     def set_api_version_request(self):
         """Set API version request based on the request header information.
 
-        Microversions starts with /v2, so if a client sends a /v1 URL, then
-        ignore the headers and request 1.0 APIs.
+        Microversions starts with /v2, so if a client sends a different URL
+        then ignore the headers and request unversioned APIs.
         """
-        if not self.script_name or not (V1_SCRIPT_NAME in self.script_name or
-                                        V2_SCRIPT_NAME in self.script_name):
+        if not self.script_name or V2_SCRIPT_NAME not in self.script_name:
             # The request is on the base URL without a major version specified
             self.api_version_request = api_version.APIVersionRequest()
-        elif V1_SCRIPT_NAME in self.script_name:
-            self.api_version_request = api_version.APIVersionRequest('1.0')
         else:
             if API_VERSION_REQUEST_HEADER in self.headers:
                 hdr_string = self.headers[API_VERSION_REQUEST_HEADER]

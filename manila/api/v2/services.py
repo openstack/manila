@@ -130,11 +130,11 @@ class ServiceControllerLegacy(ServiceMixin, wsgi.Controller):
     'os-services'.
     """
 
-    @wsgi.Controller.api_version('1.0', '2.6')
+    @wsgi.Controller.api_version('2.0', '2.6')
     def index(self, req):
         return self._index(req)
 
-    @wsgi.Controller.api_version('1.0', '2.6')
+    @wsgi.Controller.api_version('2.0', '2.6')
     def update(self, req, id, body):
         return self._update(req, id, body, support_disabled_reason=False)
 

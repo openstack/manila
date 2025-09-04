@@ -31,7 +31,7 @@ class SchedulerStatsController(wsgi.Controller):
         self._view_builder_class = scheduler_stats_views.ViewBuilder
         super(SchedulerStatsController, self).__init__()
 
-    @wsgi.Controller.api_version('1.0', '2.22')
+    @wsgi.Controller.api_version('2.0', '2.22')
     @wsgi.Controller.authorize('index')
     def pools_index(self, req):
         """Returns a list of storage pools known to the scheduler."""
@@ -42,7 +42,7 @@ class SchedulerStatsController(wsgi.Controller):
     def pools_index(self, req):  # pylint: disable=function-redefined  # noqa F811
         return self._pools(req, action='index', enable_share_type=True)
 
-    @wsgi.Controller.api_version('1.0', '2.22')
+    @wsgi.Controller.api_version('2.0', '2.22')
     @wsgi.Controller.authorize('detail')
     def pools_detail(self, req):
         """Returns a detailed list of storage pools known to the scheduler."""

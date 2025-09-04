@@ -289,16 +289,16 @@ class QuotaSetsControllerLegacy(QuotaSetsMixin, wsgi.Controller):
     'os-quota-sets'.
     """
 
-    @wsgi.Controller.api_version('1.0', '2.6')
+    @wsgi.Controller.api_version('2.0', '2.6')
     def show(self, req, id):
         self._ensure_share_type_arg_is_absent(req)
         return self._show(req, id)
 
-    @wsgi.Controller.api_version('1.0', '2.6')
+    @wsgi.Controller.api_version('2.0', '2.6')
     def defaults(self, req, id):
         return self._defaults(req, id)
 
-    @wsgi.Controller.api_version('1.0', '2.6')
+    @wsgi.Controller.api_version('2.0', '2.6')
     def update(self, req, id, body):
         self._ensure_share_type_arg_is_absent(req)
         self._ensure_specific_microversion_args_are_absent(
@@ -307,7 +307,7 @@ class QuotaSetsControllerLegacy(QuotaSetsMixin, wsgi.Controller):
             body, ['share_replicas', 'replica_gigabytes'], "2.53")
         return self._update(req, id, body)
 
-    @wsgi.Controller.api_version('1.0', '2.6')
+    @wsgi.Controller.api_version('2.0', '2.6')
     def delete(self, req, id):
         self._ensure_share_type_arg_is_absent(req)
         return self._delete(req, id)

@@ -44,8 +44,8 @@ REST_API_VERSION_HISTORY = """
 
     REST API Version History:
 
-    * 1.0  - Initial version. Includes all V1 APIs and extensions in Kilo.
-    * 2.0  - Versions API updated to reflect beginning of microversions epoch.
+    * 2.0  - Initial version. Includes all V1 APIs and extensions in Kilo and
+             the addition of microversions.
     * 2.1  - Share create() doesn't ignore availability_zone field of share.
     * 2.2  - Snapshots become optional feature.
     * 2.3  - Share instances admin API

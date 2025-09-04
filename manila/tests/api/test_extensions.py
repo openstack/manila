@@ -23,7 +23,7 @@ from oslo_utils import timeutils
 import webob
 
 from manila.api import extensions
-from manila.api.v1 import router
+from manila.api.v2 import router
 from manila import policy
 from manila import test
 

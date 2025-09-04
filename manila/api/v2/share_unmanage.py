@@ -89,7 +89,7 @@ class ShareUnmanageController(ShareUnmanageMixin, wsgi.Controller):
         super(ShareUnmanageController, self).__init__(*args, **kwargs)
         self.share_api = share.API()
 
-    @wsgi.Controller.api_version('1.0', '2.6')
+    @wsgi.Controller.api_version('2.0', '2.6')
     def unmanage(self, req, id):
         return self._unmanage(req, id)
 

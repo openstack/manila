@@ -75,13 +75,13 @@ class QuotaClassSetsControllerLegacy(QuotaClassSetsMixin, wsgi.Controller):
     'os-quota-class-sets'.
     """
 
-    @wsgi.Controller.api_version('1.0', '2.6')
+    @wsgi.Controller.api_version('2.0', '2.6')
     @validation.request_query_schema(schema.show_request_query)
     @validation.response_body_schema(schema.show_response_body)
     def show(self, req, id):
         return self._show(req, id)
 
-    @wsgi.Controller.api_version('1.0', '2.6')
+    @wsgi.Controller.api_version('2.0', '2.6')
     @validation.request_body_schema(schema.update_request_body)
     @validation.response_body_schema(schema.update_response_body)
     def update(self, req, id, body):

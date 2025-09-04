@@ -192,7 +192,7 @@ class ViewBuilder(common.ViewBuilder):
 
         return shares_dict
 
-    @common.ViewBuilder.versioned_method("1.0", "2.53")
+    @common.ViewBuilder.versioned_method("2.0", "2.53")
     def translate_creating_from_snapshot_status(self, context, share_dict,
                                                 share):
         if share.get('status') == constants.STATUS_CREATING_FROM_SNAPSHOT:

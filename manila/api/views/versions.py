@@ -23,9 +23,6 @@ def get_view_builder(req):
     return ViewBuilder(req.application_url)
 
 
-_URL_SUFFIX = {'v1.0': 'v1', 'v2.0': 'v2'}
-
-
 class ViewBuilder(object):
     def __init__(self, base_url):
         """Initialize ViewBuilder.
@@ -47,9 +44,8 @@ class ViewBuilder(object):
     def _build_links(self, version_data):
         """Generate a container of links that refer to the provided version."""
         links = copy.deepcopy(version_data.get('links', {}))
-        version = _URL_SUFFIX.get(version_data['id'])
         links.append({'rel': 'self',
-                      'href': self._generate_href(version=version)})
+                      'href': self._generate_href(version='v2')})
         return links
 
     def _generate_href(self, version='v1', path=None):

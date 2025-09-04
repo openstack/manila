@@ -138,7 +138,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
         else:
             raise webob.exc.HTTPNotFound()
 
-    @wsgi.Controller.api_version('1.0', '2.23')
+    @wsgi.Controller.api_version('2.0', '2.23')
     @wsgi.Controller.authorize
     def delete(self, req, type_id, id):
         """Deletes an existing extra spec."""

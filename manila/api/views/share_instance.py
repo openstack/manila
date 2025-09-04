@@ -97,7 +97,7 @@ class ViewBuilder(common.ViewBuilder):
         instance_dict['cast_rules_to_readonly'] = share_instance.get(
             'cast_rules_to_readonly', False)
 
-    @common.ViewBuilder.versioned_method("1.0", "2.53")
+    @common.ViewBuilder.versioned_method("2.0", "2.53")
     def translate_creating_from_snapshot_status(self, context, instance_dict,
                                                 share_instance):
         if (share_instance.get('status') ==

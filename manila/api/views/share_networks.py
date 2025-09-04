@@ -137,7 +137,7 @@ class ViewBuilder(common.ViewBuilder):
     def add_mtu(self, context, network_dict, network):
         network_dict['mtu'] = network.get('mtu')
 
-    @common.ViewBuilder.versioned_method("1.0", "2.25")
+    @common.ViewBuilder.versioned_method("2.0", "2.25")
     def add_nova_net_id(self, context, network_dict, network):
         network_dict['nova_net_id'] = None
 

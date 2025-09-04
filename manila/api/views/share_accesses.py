@@ -89,7 +89,7 @@ class ViewBuilder(common.ViewBuilder):
         metadata = {item['key']: item['value'] for item in metadata}
         access_dict['metadata'] = metadata
 
-    @common.ViewBuilder.versioned_method("1.0", "2.27")
+    @common.ViewBuilder.versioned_method("2.0", "2.27")
     def translate_transitional_statuses(self, context, access_dict, access):
         """In 2.28, the per access rule status was (re)introduced."""
         api = share_api.API()

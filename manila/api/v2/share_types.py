@@ -146,7 +146,7 @@ class ShareTypesController(wsgi.Controller):
             context, search_opts=filters).values()
         return list(limited_types)
 
-    @wsgi.Controller.api_version("1.0", "2.23")
+    @wsgi.Controller.api_version("2.0", "2.23")
     @wsgi.action("create")
     def create(self, req, body):
         return self._create(req, body, set_defaults=True)

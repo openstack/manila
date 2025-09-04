@@ -136,7 +136,7 @@ class ShareManageController(ShareManageMixin, wsgi.Controller):
         super(ShareManageController, self).__init__(*args, **kwargs)
         self.share_api = share.API()
 
-    @wsgi.Controller.api_version('1.0', '2.6')
+    @wsgi.Controller.api_version('2.0', '2.6')
     def create(self, req, body):
         """Legacy method for 'manage share' operation.
 

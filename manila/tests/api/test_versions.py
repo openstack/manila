@@ -21,7 +21,7 @@ from oslo_utils import encodeutils
 
 from manila.api.openstack import api_version_request
 from manila.api.openstack import wsgi
-from manila.api.v1 import router
+from manila.api.v2 import router
 from manila.api import versions
 from manila import test
 from manila.tests.api import fakes
@@ -51,14 +51,9 @@ class VersionsControllerTestCase(test.TestCase):
         version_list = body['versions']
 
         ids = [v['id'] for v in version_list]
-        self.assertEqual({'v1.0', 'v2.0'}, set(ids))
+        self.assertEqual({'v2.0'}, set(ids))
         self.assertNotIn(version_header_name, response.headers)
         self.assertNotIn('Vary', response.headers)
-
-        v1 = [v for v in version_list if v['id'] == 'v1.0'][0]
-        self.assertEqual('', v1.get('min_version'))
-        self.assertEqual('', v1.get('version'))
-        self.assertEqual('DEPRECATED', v1.get('status'))
 
         v2 = [v for v in version_list if v['id'] == 'v2.0'][0]
         self.assertEqual(api_version_request._MIN_API_VERSION,
@@ -66,29 +61,6 @@ class VersionsControllerTestCase(test.TestCase):
         self.assertEqual(api_version_request._MAX_API_VERSION,
                          v2.get('version'))
         self.assertEqual('CURRENT', v2.get('status'))
-
-    @ddt.data('1.0',
-              '1.1',
-              api_version_request._MIN_API_VERSION,
-              api_version_request._MAX_API_VERSION)
-    def test_versions_v1(self, version):
-        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v1')
-        req.method = 'GET'
-        req.content_type = 'application/json'
-        req.headers = {version_header_name: version}
-
-        response = req.get_response(router.APIRouter())
-        self.assertEqual(200, response.status_int)
-        body = jsonutils.loads(response.body)
-        version_list = body['versions']
-
-        ids = [v['id'] for v in version_list]
-        self.assertEqual({'v1.0'}, set(ids))
-        self.assertEqual('1.0', response.headers[version_header_name])
-        self.assertEqual(version_header_name, response.headers['Vary'])
-        self.assertEqual('', version_list[0].get('min_version'))
-        self.assertEqual('', version_list[0].get('version'))
-        self.assertEqual('DEPRECATED', version_list[0].get('status'))
 
     @ddt.data(api_version_request._MIN_API_VERSION,
               api_version_request._MAX_API_VERSION)

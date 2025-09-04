@@ -25,8 +25,7 @@ from manila.api import common as api_common
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi as os_wsgi
 from manila.api import urlmap
-from manila.api.v1 import router as router_v1
-from manila.api.v2 import router as router_v2
+from manila.api.v2 import router as router
 from manila.common import constants
 from manila import context
 from manila import exception
@@ -155,8 +154,7 @@ def app():
     No auth, just let environ['manila.context'] pass through.
     """
     mapper = urlmap.URLMap()
-    mapper['/v1'] = router_v1.APIRouter()
-    mapper['/v2'] = router_v2.APIRouter()
+    mapper['/v2'] = router.APIRouter()
     return mapper
 
 

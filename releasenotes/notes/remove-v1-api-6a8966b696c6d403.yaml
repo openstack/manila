@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The Manila v1 API, first deprecated in the Mitaka (v2.0.0) release, has now
+    been removed. The v2 API with the ``2.0`` microversion is a drop-in
+    replacement.
