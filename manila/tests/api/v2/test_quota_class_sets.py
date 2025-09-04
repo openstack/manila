@@ -58,7 +58,6 @@ class QuotaSetsControllerTest(test.TestCase):
             policy, 'check_policy', mock.Mock(return_value=True))
 
     @ddt.data(
-        ('os-', '1.0', quota_class_sets.QuotaClassSetsControllerLegacy),
         ('os-', '2.6', quota_class_sets.QuotaClassSetsControllerLegacy),
         ('', '2.7', quota_class_sets.QuotaClassSetsController),
         ('', '2.53', quota_class_sets.QuotaClassSetsController),
@@ -130,7 +129,6 @@ class QuotaSetsControllerTest(test.TestCase):
             req.environ['manila.context'], self.resource_name, 'show')
 
     @ddt.data(
-        ('os-', '1.0', quota_class_sets.QuotaClassSetsControllerLegacy),
         ('os-', '2.6', quota_class_sets.QuotaClassSetsControllerLegacy),
         ('', '2.7', quota_class_sets.QuotaClassSetsController),
         ('', '2.53', quota_class_sets.QuotaClassSetsController),

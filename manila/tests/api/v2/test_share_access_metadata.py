@@ -117,7 +117,7 @@ class ShareAccessesMetadataAPITest(test.TestCase):
             self.controller.delete,
             self._get_request(), self.access['id'], 'key1')
 
-    @ddt.data('1.0', '2.0', '2.8', '2.44')
+    @ddt.data('2.0', '2.8', '2.44')
     def test_update_metadata_unsupported_version(self, version):
         self.assertRaises(
             exception.VersionNotFoundForAPIMethod,
@@ -125,7 +125,7 @@ class ShareAccessesMetadataAPITest(test.TestCase):
             self._get_request(version=version), self.access['id'],
             {'metadata': {'key1': 'v1'}})
 
-    @ddt.data('1.0', '2.0', '2.43')
+    @ddt.data('2.0', '2.43')
     def test_delete_metadata_with_unsupported_version(self, version):
         self.assertRaises(
             exception.VersionNotFoundForAPIMethod,

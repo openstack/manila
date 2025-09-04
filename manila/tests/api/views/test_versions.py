@@ -31,12 +31,12 @@ URL_BASE = 'http://localhost/'
 FAKE_HREF = URL_BASE + 'v1/'
 
 FAKE_VERSIONS = {
-    "v1.0": {
-        "id": "v1.0",
+    "v2.0": {
+        "id": "v2.0",
         "status": "CURRENT",
-        "version": "1.1",
-        "min_version": "1.0",
-        "updated": "2015-07-30T11:33:21Z",
+        "version": "2.1",
+        "min_version": "2.0",
+        "updated": "2015-08-27T11:33:21Z",
         "links": [
             {
                 "rel": "describedby",
@@ -92,9 +92,9 @@ class ViewBuilderTestCase(test.TestCase):
                          '_build_links',
                          mock.Mock(return_value=FAKE_LINKS))
 
-        result = self._get_builder()._build_version(FAKE_VERSIONS['v1.0'])
+        result = self._get_builder()._build_version(FAKE_VERSIONS['v2.0'])
 
-        expected = copy.deepcopy(FAKE_VERSIONS['v1.0'])
+        expected = copy.deepcopy(FAKE_VERSIONS['v2.0'])
         expected['links'] = FAKE_LINKS
 
         self.assertEqual(expected, result)
@@ -105,7 +105,7 @@ class ViewBuilderTestCase(test.TestCase):
                          '_generate_href',
                          mock.Mock(return_value=FAKE_HREF))
 
-        result = self._get_builder()._build_links(FAKE_VERSIONS['v1.0'])
+        result = self._get_builder()._build_links(FAKE_VERSIONS['v2.0'])
 
         self.assertEqual(FAKE_LINKS, result)
 

@@ -33,6 +33,7 @@ from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
+from manila.lock import api as resource_locks
 from manila import policy
 from manila.share import api as share_api
 from manila.share import share_types
@@ -133,7 +134,8 @@ class ShareAPITest(test.TestCase):
         }
 
         CONF.set_default("default_share_type", None)
-        self.mock_object(policy, 'check_policy')
+        self.resource_name = self.controller.resource_name
+        self.mock_policy_check = self.mock_object(policy, 'check_policy')
 
     def _process_expected_share_detailed_response(self, shr_dict, req_version):
         """Sets version based parameters on share dictionary."""
@@ -706,6 +708,34 @@ class ShareAPITest(test.TestCase):
                           self.controller.create, req, {'share': self.share})
         share_types.get_default_share_type.assert_called_once_with()
 
+    def test_share_create_with_dhss_true_and_network_notexist(self):
+        fake_share_type = {
+            'id': 'fake_volume_type_id',
+            'name': 'fake_volume_type_name',
+            'extra_specs': {
+                'driver_handles_share_servers': True,
+            }
+        }
+        self.mock_object(
+            share_types, 'get_default_share_type',
+            mock.Mock(return_value=fake_share_type),
+        )
+        CONF.set_default("default_share_type", fake_share_type['name'])
+        req = fakes.HTTPRequest.blank('/v2/fake/shares')
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create, req, {'share': self.share})
+        self.mock_policy_check.assert_has_calls([
+            mock.call(
+                req.environ['manila.context'], self.resource_name, 'create',
+            ),
+            mock.call(
+                req.environ['manila.context'], self.resource_name,
+                'create_public_share', do_raise=False
+            ),
+        ])
+        share_types.get_default_share_type.assert_called_once_with()
+
     def test_share_create_with_replication(self):
         self.mock_object(share_api.API, 'create', self.create_mock)
 
@@ -761,6 +791,74 @@ class ShareAPITest(test.TestCase):
                          create_mock.call_args[1]['share_network_id'])
         common.check_share_network_is_active.assert_called_once_with(
             fake_network)
+
+    def test_share_create_with_share_net_not_active(self):
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "share_network_id": "fakenetid"
+        }
+        share_network = db_utils.create_share_network(
+            status=constants.STATUS_NETWORK_CHANGE)
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=shr['size'],
+                                share_proto=shr['share_proto'].upper(),
+                                availability_zone=shr['availability_zone'],
+                                share_network_id=shr['share_network_id']))
+        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'get_share_network', mock.Mock(
+            return_value=share_network))
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(side_effect=webob.exc.HTTPBadRequest()))
+
+        body = {"share": copy.deepcopy(shr)}
+        req = fakes.HTTPRequest.blank('/shares')
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.create,
+            req,
+            body)
+
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
+        common.check_share_network_is_active.assert_called_once_with(
+            share_network)
+
+    def test_share_create_mount_point_name(self):
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "mount_point_name": "fake_mp"
+        }
+        fake_network = {'id': 'fakenetid'}
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=shr['size'],
+                                share_proto=shr['share_proto'].upper(),
+                                mount_point_name=shr['mount_point_name']))
+        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'get_share_network', mock.Mock(
+            return_value=fake_network))
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
+        self.mock_object(
+            db, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value={'id': 'fakesubnetid'}))
+
+        body = {"share": copy.deepcopy(shr)}
+        req = fakes.HTTPRequest.blank('/v2/shares')
+        self.controller.create(req, body)
+
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
 
     @ddt.data("2.15", "2.16")
     def test_share_create_original_with_user_id(self, microversion):
@@ -1497,7 +1595,108 @@ class ShareAPITest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, body)
 
+    def test_share_create_from_mount_point_name(self):
+        parent_share_net = 444
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "snapshot_id": 333,
+            "share_network_id": parent_share_net,
+            "mount_point_name": "fake_mp"
+        }
+        fake_share_net = {'id': parent_share_net}
+        share_net_subnets = [db_utils.create_share_network_subnet(
+            id='fake_subnet_id', share_network_id=fake_share_net['id'])]
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=shr['size'],
+                                share_proto=shr['share_proto'].upper(),
+                                snapshot_id=shr['snapshot_id'],
+                                mount_point_name=shr['mount_point_name'],
+                                instance=dict(
+                                    availability_zone=shr['availability_zone'],
+                                    share_network_id=shr['share_network_id'],
+                                )))
+        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'get_snapshot',
+                         stubs.stub_snapshot_get)
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
+        parent_share = stubs.stub_share(
+            '1', instance={'share_network_id': parent_share_net},
+            create_share_from_snapshot_support=True)
+        self.mock_object(share_api.API, 'get', mock.Mock(
+            return_value=parent_share))
+        self.mock_object(share_api.API, 'get_share_network', mock.Mock(
+            return_value=fake_share_net))
+        self.mock_object(
+            db, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=share_net_subnets))
+
+        body = {"share": copy.deepcopy(shr)}
+        req = fakes.HTTPRequest.blank('/v2/shares', version='2.84')
+        res_dict = self.controller.create(req, body)
+        self.assertEqual(res_dict['share']['project_id'], 'fakeproject')
+
     def test_share_create_from_snapshot_not_supported(self):
+        parent_share_net = 444
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "snapshot_id": 333,
+            "share_network_id": parent_share_net
+        }
+        fake_share_net = {'id': parent_share_net}
+        share_net_subnets = [db_utils.create_share_network_subnet(
+            id='fake_subnet_id', share_network_id=fake_share_net['id'])]
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=shr['size'],
+                                share_proto=shr['share_proto'].upper(),
+                                snapshot_id=shr['snapshot_id'],
+                                instance=dict(
+                                    availability_zone=shr['availability_zone'],
+                                    share_network_id=shr['share_network_id'])))
+        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'get_snapshot',
+                         stubs.stub_snapshot_get)
+        self.mock_object(common, 'check_share_network_is_active',
+                         mock.Mock(return_value=True))
+        parent_share = stubs.stub_share(
+            '1', instance={'share_network_id': parent_share_net},
+            create_share_from_snapshot_support=False)
+        self.mock_object(share_api.API, 'get', mock.Mock(
+            return_value=parent_share))
+        self.mock_object(share_api.API, 'get_share_network', mock.Mock(
+            return_value=fake_share_net))
+        self.mock_object(
+            db, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=share_net_subnets))
+
+        body = {"share": copy.deepcopy(shr)}
+        req = fakes.HTTPRequest.blank('/v2/fake/shares', version='2.0')
+
+        res_dict = self.controller.create(req, body)
+
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
+        expected = self._get_expected_share_detailed_response(shr)
+        common.check_share_network_is_active.assert_called_once_with(
+            fake_share_net)
+        self.assertDictEqual(expected, res_dict)
+        # pylint: disable=unsubscriptable-object
+        self.assertEqual(parent_share_net,
+                         create_mock.call_args[1]['share_network_id'])
+
+    def test_share_create_from_snapshot_not_supported_v224(self):
         parent_share_net = 444
         self.mock_object(share_api.API, 'create')
         shr = {
@@ -1522,7 +1721,7 @@ class ShareAPITest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, body)
 
-    def test_share_creation_fails_with_bad_size(self):
+    def test_share_create_invalid_size(self):
         shr = {"size": '',
                "name": "Share Test Name",
                "description": "Share Test Desc",
@@ -1537,6 +1736,28 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/shares', version='2.7')
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
                           self.controller.create, req, {})
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
+
+    def test_share_creation_fails_with_invalid_share_type(self):
+        shr = {
+            "size": 1,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "share_type": "Invalid share type"
+        }
+        body = {"share": shr}
+        req = fakes.HTTPRequest.blank('/fake/shares')
+        with mock.patch('manila.share.share_types.get_share_type_by_name',
+                        side_effect=exception.InvalidShareType(reason='')):
+            self.assertRaises(webob.exc.HTTPBadRequest,
+                              self.controller.create,
+                              req,
+                              body)
+            self.mock_policy_check.assert_called_once_with(
+                req.environ['manila.context'], self.resource_name, 'create')
 
     def test_share_create_invalid_availability_zone(self):
         self.mock_object(
@@ -1548,6 +1769,53 @@ class ShareAPITest(test.TestCase):
 
         req = fakes.HTTPRequest.blank('/v2/shares', version='2.7')
         self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.create,
+                          req,
+                          body)
+
+    @ddt.data(
+        {'name': 'name1', 'description': 'x' * 256},
+        {'name': 'x' * 256, 'description': 'description1'},
+    )
+    @ddt.unpack
+    def test_share_create_invalid_input(self, name, description):
+        self.mock_object(share_api.API, 'create')
+        shr = {
+            "size": 100,
+            "name": name,
+            "description": description,
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+        }
+        body = {"share": shr}
+        req = fakes.HTTPRequest.blank('/v2/shares')
+
+        self.assertRaises(exception.InvalidInput,
+                          self.controller.create,
+                          req,
+                          body)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
+
+    @ddt.data((exception.ShareNetworkNotFound(share_network_id='fake'),
+               webob.exc.HTTPNotFound),
+              (mock.Mock(), webob.exc.HTTPBadRequest))
+    @ddt.unpack
+    def test_share_create_invalid_subnet(self, share_network_side_effect,
+                                         exception_to_raise):
+        fake_share_with_sn = copy.deepcopy(self.share)
+        fake_share_with_sn['share_network_id'] = 'fakenetid'
+        self.mock_object(db, 'share_network_get',
+                         mock.Mock(side_effect=share_network_side_effect))
+        self.mock_object(
+            db, 'share_network_subnets_get_all_by_availability_zone_id',
+            mock.Mock(return_value=None))
+        self.mock_object(common, 'check_share_network_is_active')
+
+        body = {"share": fake_share_with_sn}
+
+        req = fakes.HTTPRequest.blank('/fake/shares')
+        self.assertRaises(exception_to_raise,
                           self.controller.create,
                           req,
                           body)
@@ -1740,6 +2008,15 @@ class ShareAPITest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.delete, req, 1)
 
+    def test_share_delete_no_share(self):
+        self.mock_object(share_api.API, 'get',
+                         stubs.stub_share_get_notfound)
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1')
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.delete,
+                          req,
+                          1)
+
     def test_share_update(self):
         shr = self.share
         body = {"share": shr}
@@ -1769,15 +2046,6 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/share/1')
         res_dict = self.controller.update(req, 1, {"share": self.share})
         self.assertNotEqual(res_dict['share']["size"], self.share["size"])
-
-    def test_share_delete_no_share(self):
-        self.mock_object(share_api.API, 'get',
-                         stubs.stub_share_get_notfound)
-        req = fakes.HTTPRequest.blank('/v2/fake/shares/1')
-        self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.delete,
-                          req,
-                          1)
 
     @ddt.data({'use_admin_context': False, 'version': '2.4'},
               {'use_admin_context': True, 'version': '2.4'},
@@ -2344,7 +2612,7 @@ class ShareActionsTest(test.TestCase):
         super(ShareActionsTest, self).setUp()
         self.controller = shares.ShareController()
         self.mock_object(share_api.API, 'get', stubs.stub_share_get)
-        self.mock_object(policy, 'check_policy')
+        self.mock_policy_check = self.mock_object(policy, 'check_policy')
 
     @ddt.unpack
     @ddt.data(
@@ -2404,6 +2672,222 @@ class ShareActionsTest(test.TestCase):
         res = self.controller.allow_access(req, id, body)
 
         self.assertEqual(expected, res)
+
+    @ddt.data(
+        {'lock_visibility': True, 'lock_deletion': True,
+         'lock_reason': 'test lock reason'},
+        {'lock_visibility': True, 'lock_deletion': False, 'lock_reason': None},
+        {'lock_visibility': False, 'lock_deletion': True, 'lock_reason': None},
+    )
+    @ddt.unpack
+    def test__create_access_locks(self, lock_visibility, lock_deletion,
+                                  lock_reason):
+        access = {
+            'id': 'fake',
+            'access_type': 'ip',
+            'access_to': '127.0.0.1',
+            'share_id': 'fake_share_id'
+        }
+        mock_deletion_lock_create = mock.Mock()
+        lock_id = 'fake_lock_id'
+        if lock_deletion:
+            mock_deletion_lock_create = mock.Mock(
+                side_effect=[
+                    {'id': lock_id},
+                    {'id': f'{lock_id}2'},
+                    {'id': f'{lock_id}3'}
+                ]
+            )
+        self.mock_object(
+            resource_locks.API, 'create', mock_deletion_lock_create
+        )
+
+        id = 'fake_share_id'
+        req = fakes.HTTPRequest.blank(
+            '/tenant1/shares/%s/action' % id, version='2.82')
+        context = req.environ['manila.context']
+        access['project_id'] = context.project_id
+        access['user_id'] = context.user_id
+
+        self.controller._create_access_locks(
+            req.environ['manila.context'],
+            access,
+            lock_deletion=lock_deletion,
+            lock_visibility=lock_visibility,
+            lock_reason=lock_reason
+        )
+
+        restrict_calls = []
+        if lock_deletion:
+            share_lock_reason = (
+                constants.SHARE_LOCKED_BY_ACCESS_LOCK_REASON %
+                {'lock_id': lock_id}
+            )
+            restrict_calls.append(
+                mock.call(
+                    context, resource_id=access['id'],
+                    resource_type='access_rule',
+                    resource_action=constants.RESOURCE_ACTION_DELETE,
+                    resource=access,
+                    lock_reason=lock_reason
+                )
+            )
+            restrict_calls.append(
+                mock.call(
+                    context, resource_id=access['share_id'],
+                    resource_type='share',
+                    resource_action=constants.RESOURCE_ACTION_DELETE,
+                    lock_reason=share_lock_reason
+                )
+            )
+        if lock_visibility:
+            restrict_calls.append(
+                mock.call(
+                    context, resource_id=access['id'],
+                    resource_type='access_rule',
+                    resource_action=constants.RESOURCE_ACTION_SHOW,
+                    resource=access,
+                    lock_reason=lock_reason
+                )
+            )
+        resource_locks.API.create.assert_has_calls(restrict_calls)
+
+    def test__create_access_visibility_locks_creation_failed(self):
+        access = {
+            'id': 'fake',
+            'access_type': 'ip',
+            'access_to': '127.0.0.1',
+        }
+        lock_reason = 'locked for testing'
+        self.mock_object(
+            resource_locks.API, 'create',
+            mock.Mock(side_effect=exception.NotAuthorized)
+        )
+
+        id = 'fake_share_id'
+        req = fakes.HTTPRequest.blank(
+            '/tenant1/shares/%s/action' % id, version='2.82')
+        context = req.environ['manila.context']
+        access['project_id'] = context.project_id
+        access['user_id'] = context.user_id
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller._create_access_locks,
+            req.environ['manila.context'],
+            access,
+            lock_deletion=False,
+            lock_visibility=True,
+            lock_reason=lock_reason
+        )
+
+        resource_locks.API.create.assert_called_once_with(
+            context, resource_id=access['id'], resource_type='access_rule',
+            resource_action=constants.RESOURCE_ACTION_SHOW, resource=access,
+            lock_reason=lock_reason)
+
+    def test__create_access_deletion_locks_creation_failed(self):
+        access = {
+            'id': 'fake',
+            'access_type': 'ip',
+            'access_to': '127.0.0.1',
+        }
+        lock_reason = 'locked for testing'
+        self.mock_object(
+            resource_locks.API, 'create',
+            mock.Mock(side_effect=exception.NotAuthorized)
+        )
+
+        id = 'fake_share_id'
+        req = fakes.HTTPRequest.blank(
+            '/tenant1/shares/%s/action' % id, version='2.82')
+        context = req.environ['manila.context']
+        access['project_id'] = context.project_id
+        access['user_id'] = context.user_id
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller._create_access_locks,
+            req.environ['manila.context'],
+            access,
+            lock_deletion=True,
+            lock_visibility=False,
+            lock_reason=lock_reason
+        )
+
+        resource_locks.API.create.assert_called_once_with(
+            context, resource_id=access['id'], resource_type='access_rule',
+            resource_action=constants.RESOURCE_ACTION_DELETE, resource=access,
+            lock_reason=lock_reason)
+
+    @ddt.data(
+        {'lock_visibility': True, 'lock_deletion': True,
+         'lock_reason': 'test lock reason'},
+        {'lock_visibility': True, 'lock_deletion': False, 'lock_reason': None},
+        {'lock_visibility': False, 'lock_deletion': True, 'lock_reason': None},
+    )
+    @ddt.unpack
+    def test_allow_access_visibility_restrictions(self, lock_visibility,
+                                                  lock_deletion, lock_reason):
+        access = {'id': 'fake', 'share_id': 'fake_share_id'}
+        expected_access = {'access': {'fake_key': 'fake_value'}}
+        self.mock_object(share_api.API,
+                         'allow_access',
+                         mock.Mock(return_value=access))
+        self.mock_object(self.controller._access_view_builder, 'view',
+                         mock.Mock(return_value=expected_access))
+        self.mock_object(self.controller, '_create_access_locks')
+
+        id = 'fake_share_id'
+        body = {
+            'allow_access': {
+                'access_type': 'ip',
+                'access_to': '127.0.0.1',
+                'lock_visibility': lock_visibility,
+                'lock_deletion': lock_deletion,
+                'lock_reason': lock_reason
+            }
+        }
+        req = fakes.HTTPRequest.blank(
+            '/tenant1/shares/%s/action' % id, version='2.82')
+        context = req.environ['manila.context']
+        access['project_id'] = context.project_id
+        access['user_id'] = context.user_id
+
+        res = self.controller._allow_access(
+            req, id, body, lock_visibility=lock_visibility,
+            lock_deletion=lock_deletion, lock_reason=lock_reason)
+
+        self.assertEqual(expected_access, res)
+        self.mock_policy_check.assert_called_once_with(
+            context, 'share', 'allow_access')
+        self.controller._create_access_locks.assert_called_once_with(
+            context, access, lock_deletion=lock_deletion,
+            lock_visibility=lock_visibility, lock_reason=lock_reason
+        )
+
+    def test_allow_access_with_network_id(self):
+        share_network = db_utils.create_share_network()
+        share = db_utils.create_share(share_network_id=share_network['id'])
+        access = {'access_type': 'user', 'access_to': '1' * 4}
+
+        self.mock_object(share_api.API,
+                         'allow_access',
+                         mock.Mock(return_value={'fake': 'fake'}))
+        self.mock_object(self.controller._access_view_builder, 'view',
+                         mock.Mock(return_value={'access': {'fake': 'fake'}}))
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+
+        id = 'fake_share_id'
+        body = {'os-allow_access': access}
+        expected = {'access': {'fake': 'fake'}}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+
+        res = self.controller._allow_access(req, id, body)
+
+        self.assertEqual(expected, res)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], 'share', 'allow_access')
 
     @ddt.unpack
     @ddt.data(
@@ -2633,6 +3117,21 @@ class ShareActionsTest(test.TestCase):
             req.environ['manila.context'], share, 'user',
             'clemsontigers', 'rw', None, allow_on_error_state)
 
+    @ddt.data('_allow_access', '_deny_access')
+    def test_allow_access_deny_access_policy_not_authorized(self, method):
+        req = fakes.HTTPRequest.blank('/tenant1/shares/someuuid/action')
+        action = method[1:]
+        body = {action: None}
+        noauthexc = exception.PolicyNotAuthorized(action=action)
+        with mock.patch.object(
+                policy, 'check_policy', mock.Mock(side_effect=noauthexc)):
+            method = getattr(self.controller, method)
+
+            self.assertRaises(
+                webob.exc.HTTPForbidden, method, req, body, 'someuuid')
+            policy.check_policy.assert_called_once_with(
+                req.environ['manila.context'], 'share', action)
+
     def test_deny_access(self):
         def _stub_deny_access(*args, **kwargs):
             pass
@@ -2645,6 +3144,29 @@ class ShareActionsTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/tenant1/shares/%s/action' % id)
         res = self.controller._deny_access(req, id, body)
         self.assertEqual(202, res.status_int)
+
+    def test_deny_access_with_share_network_id(self):
+        self.mock_object(share_api.API, "deny_access", mock.Mock())
+        self.mock_object(share_api.API, "access_get", _fake_access_get)
+        share_network = db_utils.create_share_network()
+        share = db_utils.create_share(share_network_id=share_network['id'])
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(self.controller, '_check_for_access_rule_locks')
+
+        id = 'fake_share_id'
+        access_data = {"access_id": 'fake_acces_id'}
+        body = {"os-deny_access": access_data}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+
+        res = self.controller._deny_access(req, id, body)
+
+        self.assertEqual(202, res.status_int)
+        self.controller._check_for_access_rule_locks.assert_called_once_with(
+            req.environ['manila.context'], access_data,
+            access_data['access_id'], id
+        )
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], 'share', 'deny_access')
 
     def test_deny_access_not_found(self):
         def _stub_deny_access(*args, **kwargs):
@@ -2661,6 +3183,193 @@ class ShareActionsTest(test.TestCase):
                           req,
                           id,
                           body)
+
+    def test_deny_access_delete_locks(self):
+        def _stub_deny_access(*args, **kwargs):
+            pass
+
+        self.mock_object(share_api.API, "deny_access", _stub_deny_access)
+        self.mock_object(share_api.API, "access_get", _fake_access_get)
+        self.mock_object(self.controller, '_check_for_access_rule_locks')
+
+        id = 'fake_share_id'
+        body_data = {"access_id": 'fake_acces_id'}
+        body = {"deny_access": body_data}
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id,
+                                      version='2.82')
+        context = req.environ['manila.context']
+
+        res = self.controller._deny_access(req, id, body)
+
+        self.assertEqual(202, res.status_int)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], 'share', 'deny_access')
+        self.controller._check_for_access_rule_locks.assert_called_once_with(
+            context, body['deny_access'], body_data['access_id'], id
+        )
+
+    def test__check_for_access_rule_locks_no_locks(self):
+        self.mock_object(
+            resource_locks.API, "get_all", mock.Mock(return_value=([], 0)))
+
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id,
+                                      version='2.82')
+        context = req.environ['manila.context']
+        access_id = 'fake_access_id'
+        share_id = 'fake_share_id'
+
+        self.mock_object(context, 'elevated', mock.Mock(return_value=context))
+        self.controller._check_for_access_rule_locks(
+            context, {}, access_id, share_id)
+
+        delete_search_opts = {
+            'resource_id': access_id,
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'all_projects': True,
+        }
+
+        resource_locks.API.get_all.assert_called_once_with(
+            context, search_opts=delete_search_opts, show_count=True
+        )
+
+    def test__check_for_access_rules_locks_too_many_locks(self):
+        locks = [{'id': f'lock_id_{i}'} for i in range(4)]
+        self.mock_object(
+            resource_locks.API, "get_all",
+            mock.Mock(return_value=(locks, len(locks))))
+
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id,
+                                      version='2.82')
+        context = req.environ['manila.context']
+        access_id = 'fake_access_id'
+        share_id = 'fake_share_id'
+
+        self.mock_object(context, 'elevated', mock.Mock(return_value=context))
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller._check_for_access_rule_locks,
+            context, {}, access_id, share_id)
+
+        delete_search_opts = {
+            'resource_id': access_id,
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'all_projects': True,
+        }
+
+        resource_locks.API.get_all.assert_called_once_with(
+            context, search_opts=delete_search_opts, show_count=True
+        )
+
+    def test__check_for_access_rules_cant_manipulate_lock(self):
+        locks = [{
+            'id': 'fake_lock_id',
+            'resource_action': constants.RESOURCE_ACTION_DELETE
+        }]
+        self.mock_object(
+            resource_locks.API, "get_all",
+            mock.Mock(return_value=(locks, len(locks))))
+        self.mock_object(
+            resource_locks.API, "ensure_context_can_delete_lock",
+            mock.Mock(side_effect=exception.NotAuthorized))
+
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id,
+                                      version='2.82')
+        context = req.environ['manila.context']
+        access_id = 'fake_access_id'
+        share_id = 'fake_share_id'
+
+        self.mock_object(context, 'elevated', mock.Mock(return_value=context))
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller._check_for_access_rule_locks,
+            context, {'unrestrict': True}, access_id, share_id)
+
+        delete_search_opts = {
+            'resource_id': access_id,
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'all_projects': True,
+        }
+
+        resource_locks.API.get_all.assert_called_once_with(
+            context, search_opts=delete_search_opts, show_count=True
+        )
+        (resource_locks.API.ensure_context_can_delete_lock
+            .assert_called_once_with(
+                context, locks[0]['id']))
+
+    def test__check_for_access_rules_locks_unauthorized(self):
+        locks = [{
+            'id': 'fake_lock_id',
+            'resource_action': constants.RESOURCE_ACTION_DELETE
+        }]
+        self.mock_object(
+            resource_locks.API, "get_all",
+            mock.Mock(return_value=(locks, len(locks))))
+        self.mock_object(
+            resource_locks.API, "ensure_context_can_delete_lock",
+            mock.Mock(side_effect=exception.NotAuthorized))
+        self.mock_object(
+            resource_locks.API, "delete",
+            mock.Mock(side_effect=exception.NotAuthorized))
+
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id,
+                                      version='2.82')
+        context = req.environ['manila.context']
+        access_id = 'fake_access_id'
+        share_id = 'fake_share_id'
+
+        self.mock_object(context, 'elevated', mock.Mock(return_value=context))
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller._check_for_access_rule_locks,
+            context, {'unrestrict': True}, access_id, share_id
+        )
+        delete_search_opts = {
+            'resource_id': access_id,
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'all_projects': True,
+        }
+        resource_locks.API.get_all.assert_called_once_with(
+            context, search_opts=delete_search_opts, show_count=True
+        )
+        (resource_locks.API.ensure_context_can_delete_lock
+            .assert_called_once_with(
+                context, locks[0]['id']))
+
+    def test__check_for_access_rules_locks(self):
+        locks = [{
+            'id': 'fake_lock_id',
+            'resource_action': constants.RESOURCE_ACTION_DELETE
+        }]
+        self.mock_object(
+            resource_locks.API, "get_all",
+            mock.Mock(return_value=(locks, len(locks))))
+        self.mock_object(
+            resource_locks.API, "ensure_context_can_delete_lock")
+        self.mock_object(resource_locks.API, "delete")
+
+        req = fakes.HTTPRequest.blank('/tenant1/shares/%s/action' % id,
+                                      version='2.82')
+        context = req.environ['manila.context']
+        access_id = 'fake_access_id'
+        share_id = 'fake_share_id'
+
+        self.mock_object(context, 'elevated', mock.Mock(return_value=context))
+        self.controller._check_for_access_rule_locks(
+            context, {'unrestrict': True}, access_id, share_id)
+
+        delete_search_opts = {
+            'resource_id': access_id,
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'all_projects': True,
+        }
+        resource_locks.API.get_all.assert_called_once_with(
+            context.elevated(), search_opts=delete_search_opts,
+            show_count=True
+        )
+        resource_locks.API.ensure_context_can_delete_lock.assert_called_once_with(  # noqa: E501
+            context, locks[0]['id']
+        )
 
     def test_access_list(self):
         fake_access_list = [

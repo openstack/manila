@@ -94,7 +94,7 @@ class ShareSnapshotInstanceExportLocationsAPITest(test.TestCase):
         self.assertSubDictMatch(
             {'share_snapshot_export_location': self.values}, out)
 
-    @ddt.data('1.0', '2.0', '2.5', '2.8', '2.31')
+    @ddt.data('2.0', '2.5', '2.8', '2.31')
     def test_list_with_unsupported_version(self, version):
         self.assertRaises(
             exception.VersionNotFoundForAPIMethod,
@@ -103,7 +103,7 @@ class ShareSnapshotInstanceExportLocationsAPITest(test.TestCase):
             self.snapshot_instance['id'],
         )
 
-    @ddt.data('1.0', '2.0', '2.5', '2.8', '2.31')
+    @ddt.data('2.0', '2.5', '2.8', '2.31')
     def test_show_with_unsupported_version(self, version):
         self.assertRaises(
             exception.VersionNotFoundForAPIMethod,

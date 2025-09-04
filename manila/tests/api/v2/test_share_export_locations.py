@@ -229,7 +229,7 @@ class ShareExportLocationsAPITest(test.TestCase):
             self.assertIn(
                 'myshare.mydomain/outofsync-replica-exp', actual_paths)
 
-    @ddt.data('1.0', '2.0', '2.8')
+    @ddt.data('2.0', '2.8')
     def test_list_with_unsupported_version(self, version):
         self.assertRaises(
             exception.VersionNotFoundForAPIMethod,
@@ -238,7 +238,7 @@ class ShareExportLocationsAPITest(test.TestCase):
             self.share_instance_id,
         )
 
-    @ddt.data('1.0', '2.0', '2.8')
+    @ddt.data('2.0', '2.8')
     def test_show_with_unsupported_version(self, version):
         index_result = self.controller.index(self.req, self.share['id'])
 

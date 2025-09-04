@@ -187,7 +187,7 @@ class ShareReplicaExportLocationsAPITest(test.TestCase):
             self.req, self.active_replica_id,
             'non-existent-export-location-id')
 
-    @ddt.data('1.0', '2.0', '2.46')
+    @ddt.data('2.0', '2.46')
     def test_list_with_unsupported_version(self, version):
         self.assertRaises(
             exception.VersionNotFoundForAPIMethod,
@@ -195,7 +195,7 @@ class ShareReplicaExportLocationsAPITest(test.TestCase):
             self._get_request(version),
             self.active_replica_id)
 
-    @ddt.data('1.0', '2.0', '2.46')
+    @ddt.data('2.0', '2.46')
     def test_show_with_unsupported_version(self, version):
         index_result = self.controller.index(self.req, self.active_replica_id)
 

@@ -309,8 +309,6 @@ class ShareTypesAPITest(test.TestCase):
             req.environ['manila.context'], self.resource_name, 'default')
 
     @ddt.data(
-        ('1.0', 'os-share-type-access', True),
-        ('1.0', 'os-share-type-access', False),
         ('2.0', 'os-share-type-access', True),
         ('2.0', 'os-share-type-access', False),
         ('2.6', 'os-share-type-access', True),
@@ -367,8 +365,6 @@ class ShareTypesAPITest(test.TestCase):
         self.assertDictEqual(expected_share_type, output['share_type'])
 
     @ddt.data(
-        ('1.0', 'os-share-type-access', True),
-        ('1.0', 'os-share-type-access', False),
         ('2.0', 'os-share-type-access', True),
         ('2.0', 'os-share-type-access', False),
         ('2.6', 'os-share-type-access', True),
@@ -587,17 +583,18 @@ class ShareTypesAPITest(test.TestCase):
             expected_extra_specs, True,
             description=body['share_type'].get('description'))
 
-    @ddt.data(None,
-              make_create_body(""),
-              make_create_body("n" * 256),
-              {'foo': {'a': 'b'}},
-              {'share_type': 'string'},
-              make_create_body(spec_driver_handles_share_servers=None),
-              make_create_body(spec_driver_handles_share_servers=""),
-              make_create_body(spec_driver_handles_share_servers=[]),
-              )
-    def test_create_invalid_request_1_0(self, body):
-        req = fakes.HTTPRequest.blank('/v2/fake/types', version="1.0")
+    @ddt.data(
+        None,
+        make_create_body(""),
+        make_create_body("n" * 256),
+        {'foo': {'a': 'b'}},
+        {'share_type': 'string'},
+        make_create_body(spec_driver_handles_share_servers=None),
+        make_create_body(spec_driver_handles_share_servers=""),
+        make_create_body(spec_driver_handles_share_servers=[]),
+    )
+    def test_create_invalid_request_2_0(self, body):
+        req = fakes.HTTPRequest.blank('/v2/fake/types', version="2.0")
         self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, body)
@@ -616,7 +613,6 @@ class ShareTypesAPITest(test.TestCase):
         self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
 
     def test_create_already_exists(self):
-
         side_effect = exception.ShareTypeExists(id='fake_id')
         self.mock_object(share_types, 'create',
                          mock.Mock(side_effect=side_effect))
@@ -630,7 +626,6 @@ class ShareTypesAPITest(test.TestCase):
         self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
 
     def test_create_not_found(self):
-
         self.mock_object(share_types, 'create',
                          mock.Mock(side_effect=exception.NotFound))
 

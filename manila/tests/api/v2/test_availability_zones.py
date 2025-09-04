@@ -41,7 +41,6 @@ class AvailabilityZonesAPITest(test.TestCase):
         self.assertTrue(hasattr(az_controller._view_builder, "detail_list"))
 
     @ddt.data(
-        ('1.0', availability_zones.AvailabilityZoneControllerLegacy),
         ('2.0', availability_zones.AvailabilityZoneControllerLegacy),
         ('2.6', availability_zones.AvailabilityZoneControllerLegacy),
         ('2.7', availability_zones.AvailabilityZoneController),
@@ -88,7 +87,6 @@ class AvailabilityZonesAPITest(test.TestCase):
         self.assertIn(azs[1], result["availability_zones"])
 
     @ddt.data(
-        ('1.0', availability_zones.AvailabilityZoneController),
         ('2.0', availability_zones.AvailabilityZoneController),
         ('2.6', availability_zones.AvailabilityZoneController),
         ('2.7', availability_zones.AvailabilityZoneControllerLegacy),

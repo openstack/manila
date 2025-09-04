@@ -212,7 +212,6 @@ class ServicesTest(test.TestCase):
             policy, 'check_policy', mock.Mock(return_value=True))
 
     @ddt.data(
-        ('os-services', '1.0', services.ServiceControllerLegacy),
         ('os-services', '2.6', services.ServiceControllerLegacy),
         ('services', '2.7', services.ServiceController),
         ('services', '2.83', services.ServiceController),
@@ -318,7 +317,6 @@ class ServicesTest(test.TestCase):
             req.environ['manila.context'], self.resource_name, 'index')
 
     @ddt.data(
-        ('os-services', '1.0', services.ServiceControllerLegacy),
         ('os-services', '2.6', services.ServiceControllerLegacy),
         ('services', '2.7', services.ServiceController),
     )
@@ -334,7 +332,6 @@ class ServicesTest(test.TestCase):
             req.environ['manila.context'], self.resource_name, 'update')
 
     @ddt.data(
-        ('os-services', '1.0', services.ServiceControllerLegacy),
         ('os-services', '2.6', services.ServiceControllerLegacy),
         ('services', '2.7', services.ServiceController),
         ('services', '2.83', services.ServiceController),
@@ -361,7 +358,6 @@ class ServicesTest(test.TestCase):
     @ddt.data(
         ('os-services', '2.7', services.ServiceControllerLegacy),
         ('services', '2.6', services.ServiceController),
-        ('services', '1.0', services.ServiceController),
     )
     @ddt.unpack
     def test_services_update_legacy_url_2_dot_7_api_not_found(self, url,
@@ -380,7 +376,6 @@ class ServicesTest(test.TestCase):
     @ddt.data(
         ('os-services', '2.7', services.ServiceControllerLegacy),
         ('services', '2.6', services.ServiceController),
-        ('services', '1.0', services.ServiceController),
     )
     @ddt.unpack
     def test_services_list_api_not_found(self, url, version, controller):

@@ -763,7 +763,7 @@ class ShareReplicasApiTest(test.TestCase):
               'reset_replica_state', 'reset_status', 'resync')
     def test_upsupported_microversion(self, method_name):
 
-        unsupported_microversions = ('1.0', '2.2', '2.10')
+        unsupported_microversions = ('2.2', '2.10')
         method = getattr(self.controller, method_name)
         arguments = {
             'id': 'FAKE_REPLICA_ID',

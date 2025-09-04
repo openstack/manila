@@ -228,7 +228,7 @@ class SchedulerStatsControllerTestCase(test.TestCase):
                           self.controller._pools,
                           req, action, True)
 
-    @ddt.data("1.0", "2.22", "2.23")
+    @ddt.data("2.22", "2.23")
     def test_pools_index_with_filters(self, microversion):
         mock_get_pools = self.mock_object(rpcapi.SchedulerAPI,
                                           'get_pools',

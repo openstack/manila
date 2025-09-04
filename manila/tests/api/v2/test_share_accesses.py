@@ -224,14 +224,14 @@ class ShareAccessesAPITest(test.TestCase):
             self.controller.show,
             req, 'inexistent_id')
 
-    @ddt.data('1.0', '2.0', '2.8', '2.44')
+    @ddt.data('2.0', '2.8', '2.44')
     def test_list_with_unsupported_version(self, version):
         self.assertRaises(
             exception.VersionNotFoundForAPIMethod,
             self.controller.index,
             self._get_index_request(version=version))
 
-    @ddt.data('1.0', '2.0', '2.44')
+    @ddt.data('2.0', '2.44')
     def test_show_with_unsupported_version(self, version):
         self.assertRaises(
             exception.VersionNotFoundForAPIMethod,

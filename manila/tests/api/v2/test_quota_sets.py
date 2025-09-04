@@ -102,10 +102,8 @@ class QuotaSetsControllerTest(test.TestCase):
             req.environ['manila.context'], self.resource_name, 'show')
 
     @ddt.data(
-        ('os-', '1.0', quota_sets.QuotaSetsControllerLegacy, 'defaults'),
         ('os-', '2.6', quota_sets.QuotaSetsControllerLegacy, 'defaults'),
         ('', '2.7', quota_sets.QuotaSetsController, 'defaults'),
-        ('os-', '1.0', quota_sets.QuotaSetsControllerLegacy, 'show'),
         ('os-', '2.6', quota_sets.QuotaSetsControllerLegacy, 'show'),
         ('', '2.7', quota_sets.QuotaSetsController, 'show'),
     )
@@ -602,7 +600,6 @@ class QuotaSetsControllerTest(test.TestCase):
             req.environ['manila.context'], self.resource_name, 'update')
 
     @ddt.data(
-        ('os-quota-sets', '1.0', quota_sets.QuotaSetsControllerLegacy),
         ('os-quota-sets', '2.6', quota_sets.QuotaSetsControllerLegacy),
         ('quota-sets', '2.7', quota_sets.QuotaSetsController),
     )
@@ -649,7 +646,6 @@ class QuotaSetsControllerTest(test.TestCase):
         ])
 
     @ddt.data(
-        ('os-quota-sets', '1.0', quota_sets.QuotaSetsControllerLegacy),
         ('os-quota-sets', '2.6', quota_sets.QuotaSetsControllerLegacy),
         ('quota-sets', '2.7', quota_sets.QuotaSetsController),
     )

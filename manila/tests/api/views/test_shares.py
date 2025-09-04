@@ -98,7 +98,7 @@ class ViewBuilderTestCase(test.TestCase):
 
         self.assertSubDictMatch(expected, result['share'])
 
-    @ddt.data('1.0', '2.51', '2.54')
+    @ddt.data('2.51', '2.54')
     def test_detail_translate_creating_from_snapshot_status(self,
                                                             microversion):
         req = fakes.HTTPRequest.blank('/shares', version=microversion)

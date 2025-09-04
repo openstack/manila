@@ -76,8 +76,9 @@ class ShareSnapshotAPITest(test.TestCase):
             'display_name': 'updated_snapshot_name',
             'display_description': 'updated_snapshot_description',
         }
+        self.maxDiff = None
 
-    @ddt.data('1.0', '2.16', '2.17')
+    @ddt.data('2.16', '2.17')
     def test_snapshot_create(self, version):
         self.mock_object(share_api.API, 'create_snapshot',
                          stubs.stub_snapshot_create)
@@ -90,16 +91,62 @@ class ShareSnapshotAPITest(test.TestCase):
                 'description': 'displaysnapdesc',
             }
         }
-        url = ('/v2/fake/snapshots'
-               if version.startswith('2.')
-               else '/v1/fake/snapshots')
-        req = fakes.HTTPRequest.blank(url, version=version)
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots', version=version)
 
         res_dict = self.controller.create(req, body)
 
         expected = fake_share.expected_snapshot(version=version, id=200)
 
         self.assertEqual(expected, res_dict)
+
+    @ddt.data(
+        {'name': 'name1', 'description': 'x' * 256},
+        {'name': 'x' * 256, 'description': 'description1'},
+    )
+    @ddt.unpack
+    def test_snapshot_create_invalid_input(self, name, description):
+        self.mock_object(share_api.API, 'create_snapshot')
+        self.mock_object(
+            share_api.API,
+            'get',
+            mock.Mock(return_value={'snapshot_support': True,
+                                    'is_soft_deleted': False}))
+        body = {
+            'snapshot': {
+                'share_id': 200,
+                'force': False,
+                'name': name,
+                'description': description,
+            }
+        }
+        req = fakes.HTTPRequest.blank('/fake/snapshots')
+
+        self.assertRaises(
+            exception.InvalidInput,
+            self.controller.create, req, body)
+
+    def test_snapshot_create_in_recycle_bin(self):
+        self.mock_object(share_api.API, 'create_snapshot')
+        self.mock_object(
+            share_api.API,
+            'get',
+            mock.Mock(return_value={'snapshot_support': True,
+                                    'is_soft_deleted': True}))
+        body = {
+            'snapshot': {
+                'share_id': 200,
+                'force': False,
+                'name': 'fake_share_name',
+                'description': 'fake_share_description',
+            }
+        }
+        req = fakes.HTTPRequest.blank('/fake/snapshots')
+
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller.create, req, body)
+
+        self.assertFalse(share_api.API.create_snapshot.called)
 
     @ddt.data(0, False)
     def test_snapshot_create_no_support(self, snapshot_support):
@@ -157,6 +204,20 @@ class ShareSnapshotAPITest(test.TestCase):
         res_dict = self.controller.show(req, 200)
 
         self.assertEqual(expected, res_dict)
+
+    def test_snapshot_show_status_none(self):
+        return_snapshot = {
+            'share_id': 100,
+            'name': 'fake_share_name',
+            'description': 'fake_share_description',
+            'status': None,
+        }
+        self.mock_object(share_api.API, 'get_snapshot',
+                         mock.Mock(return_value=return_snapshot))
+        req = fakes.HTTPRequest.blank('/fake/snapshots/200')
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.show,
+                          req, '200')
 
     def test_snapshot_show_nofound(self):
         self.mock_object(share_api.API, 'get_snapshot',
@@ -405,8 +466,26 @@ class ShareSnapshotAPITest(test.TestCase):
 
         self.assertEqual(expected, res_dict)
 
+    def test_snapshot_list_status_none(self):
+        snapshots = [
+            {
+                'id': 3,
+                'share_id': 'fakeshareid',
+                'size': 1,
+                'status': None,
+                'name': 'displaysnapname',
+                'description': 'displaysnapdesc',
+            }
+        ]
+        self.mock_object(share_api.API, 'get_all_snapshots',
+                         mock.Mock(return_value=snapshots))
+        req = fakes.HTTPRequest.blank('/fake/snapshots')
+        result = self.controller.index(req)
+        self.assertEqual(1, len(result['snapshots']))
+        self.assertEqual(snapshots[0]['id'], result['snapshots'][0]['id'])
+
     @ddt.data('2.0', '2.16', '2.17')
-    def test_snapshot_updates_display_name_and_description(self, version):
+    def test_snapshot_update_display_name_and_description(self, version):
         snp = self.snp_example
         body = {"snapshot": snp}
         req = fakes.HTTPRequest.blank('/v2/fake/snapshot/1', version=version)
@@ -423,7 +502,17 @@ class ShareSnapshotAPITest(test.TestCase):
             self.assertIn('user_id', res_dict['snapshot'])
             self.assertIn('project_id', res_dict['snapshot'])
 
-    def test_share_update_invalid_key(self):
+    def test_snapshot_update_display_description(self):
+        snp = self.snp_example
+        body = {"snapshot": snp}
+
+        req = fakes.HTTPRequest.blank('/fake/snapshot/1')
+        res_dict = self.controller.update(req, 1, body)
+
+        self.assertEqual(snp["display_description"],
+                         res_dict['snapshot']["description"])
+
+    def test_snapshot_update_invalid_key(self):
         snp = self.snp_example
         body = {"snapshot": snp}
 
@@ -908,7 +997,7 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
             self.manage_request.environ['manila.context'],
             self.resource_name, 'manage_snapshot')
 
-    @ddt.data('1.0', '2.6', '2.11')
+    @ddt.data('2.6', '2.11')
     def test_manage_version_not_found(self, version):
         body = get_fake_manage_body(
             share_id='fake', provider_location='fake_volume_snapshot_id',
@@ -1064,7 +1153,7 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
             self.unmanage_request.environ['manila.context'],
             self.resource_name, 'unmanage_snapshot')
 
-    @ddt.data('1.0', '2.6', '2.11')
+    @ddt.data('2.6', '2.11')
     def test_unmanage_version_not_found(self, version):
         snapshot_id = 'fake'
         fake_req = fakes.HTTPRequest.blank(

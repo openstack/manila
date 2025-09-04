@@ -48,7 +48,7 @@ class ViewBuilderTestCase(test.TestCase):
                   }],
              'fake_extra_key': 'foo'},
         ],
-        ["1.0", "2.0", "2.18", "2.20", "2.25", "2.26",
+        ["2.0", "2.18", "2.20", "2.25", "2.26",
          "2.49", api_version._MAX_API_VERSION])
     )
     @ddt.unpack
@@ -124,7 +124,7 @@ class ViewBuilderTestCase(test.TestCase):
              {'id': 'fake_id2',
               'name': 'fake_name2'}],
         ],
-        set(["1.0", "2.0", "2.18", "2.20", "2.25", "2.26", "2.49",
+        set(["2.0", "2.18", "2.20", "2.25", "2.26", "2.49",
              api_version._MAX_API_VERSION]))
     )
     @ddt.unpack
@@ -239,7 +239,7 @@ class ViewBuilderTestCase(test.TestCase):
              {'id': 'id2', 'name': 'name2',
               'fake': 'I should not be returned'}]
         ],
-        set(["1.0", "2.0", "2.18", "2.20", "2.25", "2.26", "2.49",
+        set(["2.0", "2.18", "2.20", "2.25", "2.26", "2.49",
              api_version._MAX_API_VERSION]))
     )
     @ddt.unpack

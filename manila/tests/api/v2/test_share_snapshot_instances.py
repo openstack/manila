@@ -203,7 +203,7 @@ class ShareSnapshotInstancesApiTest(test.TestCase):
 
     @ddt.data('index', 'show', 'detail', 'reset_status')
     def test_upsupported_microversion(self, method_name):
-        unsupported_microversions = ('1.0', '2.18')
+        unsupported_microversions = ('2.18',)
         method = getattr(self.controller, method_name)
         arguments = {
             'id': 'FAKE_SNAPSHOT_ID',

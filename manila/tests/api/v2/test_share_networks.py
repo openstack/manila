@@ -920,7 +920,7 @@ class ShareNetworkAPITest(test.TestCase):
         (db_api.share_network_subnet_get_default_subnets.
          assert_called_once_with(self.context, share_nw))
 
-    @ddt.data(*set(("1.0", "2.25", "2.26", api_version._MAX_API_VERSION)))
+    @ddt.data(*set(("2.25", "2.26", api_version._MAX_API_VERSION)))
     def test_add_security_service(self, microversion):
         share_network_id = 'fake network id'
         security_service_id = 'fake ss id'
@@ -1198,7 +1198,7 @@ class ShareNetworkAPITest(test.TestCase):
             context, share_network['id'], security_services[0]['id'],
             security_services[1]['id'])
 
-    @ddt.data(*set(("1.0", "2.25", "2.26", api_version._MAX_API_VERSION)))
+    @ddt.data(*set(("2.25", "2.26", api_version._MAX_API_VERSION)))
     def test_action_remove_security_service(self, microversion):
         share_network_id = 'fake network id'
         security_service_id = 'fake ss id'

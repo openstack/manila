@@ -152,7 +152,6 @@ class ShareTypesExtraSpecsTest(test.TestCase):
             req_context, self.resource_name, 'show')
 
     @ddt.data(
-        ('1.0', 'key5'),
         ('2.23', 'key5'),
         ('2.24', 'key5'),
         ('2.24', SNAPSHOT_SUPPORT),
@@ -185,8 +184,6 @@ class ShareTypesExtraSpecsTest(test.TestCase):
             req_context, self.resource_name, 'delete')
 
     @ddt.data(
-        ('1.0', DRIVER_HANDLES_SHARE_SERVERS),
-        ('1.0', SNAPSHOT_SUPPORT),
         ('2.23', DRIVER_HANDLES_SHARE_SERVERS),
         ('2.23', SNAPSHOT_SUPPORT),
         ('2.24', DRIVER_HANDLES_SHARE_SERVERS),
