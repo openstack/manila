@@ -64,7 +64,7 @@ file.
 .. code-block:: ini
 
    [filter:ratelimit]
-   paste.filter_factory = manila.api.v1.limits:RateLimitingMiddleware.factory
+   paste.filter_factory = manila.api.v2.limits:RateLimitingMiddleware.factory
    limits = (POST, "*/shares", ^/shares, 120, MINUTE);(PUT, "*/shares", .*, 120, MINUTE);(DELETE, "*", .*, 120, MINUTE)
 
 Also, add the ``ratelimit`` to ``noauth`` and ``keystone`` parameters in

@@ -62,33 +62,6 @@ To provide access to new share, you need to create
 appropriate access rule with the right value.
 The value must defines access.
 
-Service becomes unavailable after upgrade
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Problem
--------
-
-After upgrading the Shared File Systems service from version v1 to version
-v2.x, you must update the service endpoint in the OpenStack Identity service.
-Otherwise, the service may become unavailable.
-
-Solution
---------
-
-#. To get the service type related to the Shared File Systems service, run:
-
-   .. code-block:: console
-
-     # openstack endpoint list
-
-     # openstack endpoint show <share-service-type>
-
-   You will get the endpoints expected from running the Shared File Systems
-   service.
-
-#. Make sure that these endpoints are updated. Otherwise, delete the outdated
-   endpoints and create new ones.
-
 Failures during management of internal resources
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

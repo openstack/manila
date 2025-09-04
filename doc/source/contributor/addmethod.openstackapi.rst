@@ -46,9 +46,8 @@ mapping and the routing:
 Controllers and actions
 -----------------------
 
-Controllers live in ``manila/api/v1`` and ``manila/api/v2``.
-
-See ``manila/api/v1/shares.py`` for an example.
+Controllers live in ``manila/api/v2``. See ``manila/api/v2/shares.py`` for an
+example.
 
 Action methods take parameters that are sucked out of the URL by
 mapper.connect() or .resource().  The first two parameters are self and the
@@ -66,10 +65,10 @@ If you need to return a non-200, you should return faults.Fault(webob.exc
 Evolving the API
 ----------------
 
-The ``v1`` version of the manila API has been deprecated. The ``v2`` version
-of the API supports micro versions. So all changes to the v2 API strive to
-maintain stability at any given API micro version, so consumers can safely
-rely on a specific micro version of the API never to change the request and
+The ``v1`` version of the manila API has been removed. The ``v2`` version
+of the API supports microversions. So all changes to the v2 API strive to
+maintain stability at any given API microversion, so consumers can safely
+rely on a specific microversion of the API never to change the request and
 response semantics. Read more about :doc:`API Microversions
 <api_microversion_dev>` to understand how stability and backwards
 compatibility are maintained.

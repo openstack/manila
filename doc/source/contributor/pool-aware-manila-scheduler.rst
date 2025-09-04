@@ -118,9 +118,9 @@ end users.
 This extension provides two level of pool information: names only or detailed
 information:
 
-Pool name only: GET http://MANILA_API_ENDPOINT/v1/TENANT_ID/scheduler-stats/pools
+Pool name only: GET http://MANILA_API_ENDPOINT/v2/scheduler-stats/pools
 
-Detailed Pool info: GET http://MANILA_API_ENDPOINT/v1/TENANT_ID/scheduler-stats/pools/detail
+Detailed Pool info: GET http://MANILA_API_ENDPOINT/v2/scheduler-stats/pools/detail
 
 
 Security impact
