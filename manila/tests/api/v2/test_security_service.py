@@ -19,7 +19,7 @@ from urllib import parse
 import ddt
 import webob
 
-from manila.api.v1 import security_service
+from manila.api.v2 import security_service
 from manila.common import constants
 from manila import db
 from manila import exception
@@ -73,7 +73,7 @@ class ShareApiTest(test.TestCase):
             'type': constants.SECURITY_SERVICES_ALLOWED_TYPES[0],
         }
         self.check_policy_patcher = mock.patch(
-            'manila.api.v1.security_service.policy.check_policy')
+            'manila.api.v2.security_service.policy.check_policy')
         self.check_policy_patcher.start()
         self.addCleanup(self._stop_started_patcher, self.check_policy_patcher)
         self.security_service_list_expected_resp = {

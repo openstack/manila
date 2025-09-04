@@ -19,7 +19,7 @@ from oslo_utils import uuidutils
 from webob import exc
 
 from manila.api.openstack import api_version_request as api_version
-from manila.api.v1 import scheduler_stats
+from manila.api.v2 import scheduler_stats
 from manila import context
 from manila import exception
 from manila import policy
@@ -80,7 +80,7 @@ class SchedulerStatsControllerTestCase(test.TestCase):
         mock_get_pools = self.mock_object(rpcapi.SchedulerAPI,
                                           'get_pools',
                                           mock.Mock(return_value=FAKE_POOLS))
-        req = fakes.HTTPRequest.blank('/v1/fake_project/scheduler_stats/pools')
+        req = fakes.HTTPRequest.blank('/v2/scheduler_stats/pools')
         req.environ['manila.context'] = self.ctxt
 
         result = self.controller.pools_index(req)
@@ -115,10 +115,10 @@ class SchedulerStatsControllerTestCase(test.TestCase):
                                           'get_pools',
                                           mock.Mock(return_value=FAKE_POOLS))
 
-        url = '/v1/fake_project/scheduler-stats/pools/%s' % action
-        url += '?backend=back1&host=host1&pool=pool1'
-
-        req = fakes.HTTPRequest.blank(url)
+        req = fakes.HTTPRequest.blank(
+            f'/v2/scheduler-stats/pools/{action}'
+            f'?backend=back1&host=host1&pool=pool1'
+        )
         req.environ['manila.context'] = self.ctxt
 
         expected_filters = {
@@ -174,11 +174,10 @@ class SchedulerStatsControllerTestCase(test.TestCase):
             mock.Mock(return_value={'extra_specs':
                                     {'snapshot_support': True}}))
 
-        url = '/v1/fake_project/scheduler-stats/pools/%s' % action
-        url += ('?backend=back1&host=host1&pool=pool1&share_type=%s'
-                % share_type)
-
-        req = fakes.HTTPRequest.blank(url)
+        req = fakes.HTTPRequest.blank(
+            f'/v2/scheduler-stats/pools/{action}'
+            f'?backend=back1&host=host1&pool=pool1&share_type={share_type}'
+        )
         req.environ['manila.context'] = self.ctxt
 
         expected_filters = {
@@ -219,10 +218,11 @@ class SchedulerStatsControllerTestCase(test.TestCase):
 
     @ddt.data('index', 'detail')
     def test_pools_with_share_type_not_found(self, action):
-        url = '/v1/fake_project/scheduler-stats/pools/%s' % action
-        url += '?backend=.%2A&host=host1&pool=pool%2A&share_type=fake_name_1'
 
-        req = fakes.HTTPRequest.blank(url)
+        req = fakes.HTTPRequest.blank(
+            f'/v2/scheduler-stats/pools/{action}'
+            f'?backend=.%2A&host=host1&pool=pool%2A&share_type=fake_name_1'
+        )
 
         self.assertRaises(exc.HTTPBadRequest,
                           self.controller._pools,
@@ -238,10 +238,11 @@ class SchedulerStatsControllerTestCase(test.TestCase):
             mock.Mock(return_value={'extra_specs':
                                     {'snapshot_support': True}}))
 
-        url = '/v1/fake_project/scheduler-stats/pools/detail'
-        url += '?backend=.%2A&host=host1&pool=pool%2A&share_type=test_type'
-
-        req = fakes.HTTPRequest.blank(url, version=microversion)
+        req = fakes.HTTPRequest.blank(
+            '/v2/scheduler-stats/pools/detail'
+            '?backend=.%2A&host=host1&pool=pool%2A&share_type=test_type',
+            version=microversion
+        )
         req.environ['manila.context'] = self.ctxt
 
         result = self.controller.pools_index(req)
@@ -285,8 +286,7 @@ class SchedulerStatsControllerTestCase(test.TestCase):
         mock_get_pools = self.mock_object(rpcapi.SchedulerAPI,
                                           'get_pools',
                                           mock.Mock(return_value=FAKE_POOLS))
-        req = fakes.HTTPRequest.blank(
-            '/v1/fake_project/scheduler_stats/pools/detail')
+        req = fakes.HTTPRequest.blank('/v2/scheduler_stats/pools/detail')
         req.environ['manila.context'] = self.ctxt
 
         result = self.controller.pools_detail(req)
@@ -340,7 +340,7 @@ class SchedulerStatsControllerTestCase(test.TestCase):
             rpcapi.SchedulerAPI, 'get_pools',
             mock.Mock(side_effect=exception.AdminRequired(
                 "some traceback here")))
-        path = '/v1/fake_project/scheduler_stats/pools'
+        path = '/v2/scheduler_stats/pools'
         path = path + ('/%s' % subresource if subresource == 'detail' else '')
         req = fakes.HTTPRequest.blank(path)
         req.environ['manila.context'] = self.ctxt

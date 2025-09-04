@@ -24,7 +24,7 @@ from oslo_serialization import jsonutils
 import webob
 
 from manila.api.openstack import api_version_request as api_version
-from manila.api.v1 import limits
+from manila.api.v2 import limits
 from manila.api import views
 import manila.context
 from manila import test

@@ -21,7 +21,7 @@ import ddt
 from oslo_utils import strutils
 import webob
 
-from manila.api.v1 import share_types_extra_specs
+from manila.api.v2 import share_types_extra_specs
 from manila.common import constants
 from manila import exception
 from manila import policy

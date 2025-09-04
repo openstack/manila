@@ -801,7 +801,7 @@ class ShareTypeAccessTest(test.TestCase):
 
     def test_list_type_access_public(self):
         """Querying os-share-type-access on public type should return 404."""
-        req = fakes.HTTPRequest.blank('/v1/fake/types/os-share-type-access',
+        req = fakes.HTTPRequest.blank('/v2/fake/types/os-share-type-access',
                                       use_admin_context=True)
 
         self.assertRaises(webob.exc.HTTPNotFound,
@@ -820,7 +820,7 @@ class ShareTypeAccessTest(test.TestCase):
 
     def test_list_with_no_context(self):
 
-        req = fakes.HTTPRequest.blank('/v1/types/fake/types')
+        req = fakes.HTTPRequest.blank('/v2/types/fake/types')
 
         self.assertRaises(webob.exc.HTTPForbidden,
                           self.controller.share_type_access,
@@ -838,7 +838,7 @@ class ShareTypeAccessTest(test.TestCase):
 
     def test_list_type_with_admin_default_proj1(self):
         expected = {'share_types': [{'id': '0'}, {'id': '1'}]}
-        req = fakes.HTTPRequest.blank('/v1/fake/types', use_admin_context=True)
+        req = fakes.HTTPRequest.blank('/v2/fake/types', use_admin_context=True)
         req.environ['manila.context'].project_id = PROJ1_UUID
 
         result = self.controller.index(req)

@@ -17,7 +17,7 @@ from unittest import mock
 import datetime
 import ddt
 
-from manila.api.v1 import security_service
+from manila.api.v2 import security_service
 from manila.common import constants
 from manila import context
 from manila import test

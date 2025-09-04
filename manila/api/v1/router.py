@@ -21,22 +21,22 @@ WSGI middleware for OpenStack Share API v1.
 
 from manila.api import extensions
 import manila.api.openstack
-from manila.api.v1 import limits
-from manila.api.v1 import scheduler_stats
-from manila.api.v1 import security_service
-from manila.api.v1 import share_manage
 from manila.api.v1 import share_metadata
 from manila.api.v1 import share_servers
 from manila.api.v1 import share_snapshots
-from manila.api.v1 import share_types_extra_specs
-from manila.api.v1 import share_unmanage
 from manila.api.v1 import shares
 from manila.api.v2 import availability_zones
+from manila.api.v2 import limits
 from manila.api.v2 import quota_class_sets
 from manila.api.v2 import quota_sets
+from manila.api.v2 import scheduler_stats
+from manila.api.v2 import security_service
 from manila.api.v2 import services
+from manila.api.v2 import share_manage
 from manila.api.v2 import share_networks
 from manila.api.v2 import share_types
+from manila.api.v2 import share_types_extra_specs
+from manila.api.v2 import share_unmanage
 from manila.api import versions
 
 
