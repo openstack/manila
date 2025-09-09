@@ -44,6 +44,11 @@ MANILA_CONF_DIR=${MANILA_CONF_DIR:-/etc/manila}
 MANILA_CONF=$MANILA_CONF_DIR/manila.conf
 MANILA_API_PASTE_INI=$MANILA_CONF_DIR/api-paste.ini
 
+# barbican defaults
+BARBICAN_ENDPOINT_TYPE=${BARBICAN_ENDPOINT_TYPE:-internal}
+KEY_MANAGER_BACKEND=${KEY_MANAGER_BACKEND:-barbican}
+BARBICAN_KEYSTONE_ENDPOINT=${BARBICAN_KEYSTONE_ENDPOINT:-$KEYSTONE_SERVICE_URI}
+
 # Set this to False to leave "default_share_type" and
 # "default_share_group_type" configuration options empty.
 MANILA_CONFIGURE_DEFAULT_TYPES=${MANILA_CONFIGURE_DEFAULT_TYPES:-True}

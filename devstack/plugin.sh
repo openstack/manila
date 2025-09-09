@@ -276,6 +276,12 @@ function configure_manila {
         echo -"No configured backends, please set a value to MANILA_ENABLED_BACKENDS"
         exit 1
     fi
+    if is_service_enabled barbican; then
+        configure_keystone_authtoken_middleware $MANILA_CONF barbican barbican
+        iniset $MANILA_CONF barbican barbican_endpoint_type $BARBICAN_ENDPOINT_TYPE
+        iniset $MANILA_CONF barbican auth_endpoint $BARBICAN_KEYSTONE_ENDPOINT
+        iniset $MANILA_CONF key_manager backend $KEY_MANAGER_BACKEND
+    fi
 
     configure_backends
     iniset $MANILA_CONF DEFAULT enabled_share_backends $MANILA_ENABLED_BACKENDS
