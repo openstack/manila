@@ -33,6 +33,7 @@ import manila.db.base
 import manila.exception
 import manila.image
 import manila.image.glance
+import manila.keymgr.barbican
 import manila.message.api
 import manila.network
 import manila.network.linux.interface
@@ -216,6 +217,7 @@ _opts = [
 _opts.extend(manila.network.neutron.api.list_opts())
 _opts.extend(manila.compute.nova.list_opts())
 _opts.extend(manila.image.glance.list_opts())
+_opts.extend(manila.keymgr.barbican.list_opts())
 _opts.extend(manila.volume.cinder.list_opts())
 
 

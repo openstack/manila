@@ -22,6 +22,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import uuidutils
 
+from manila.common import client_auth
 from manila import exception
 
 
@@ -32,6 +33,12 @@ LOG = logging.getLogger(__name__)
 
 castellan_options.set_defaults(CONF)
 ks_loading.register_auth_conf_options(CONF, BARBICAN_GROUP)
+
+
+def list_opts():
+    # NOTE(tkajinam): This likely breaks when castellan fixes missing auth
+    # plugin options
+    return client_auth.AuthClientLoader.list_opts(BARBICAN_GROUP)
 
 
 def _require_barbican_key_manager_backend(conf):
