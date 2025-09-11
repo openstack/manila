@@ -43,7 +43,6 @@ SQLAlchemy>=1.4.0 # MIT
 SQLAlchemy-Utils>=0.38.3 # BSD License
 stevedore>=3.2.2 # Apache-2.0
 tooz>=2.7.1 # Apache-2.0
-python-barbicanclient>=5.0.1 # Apache-2.0
 python-cinderclient>=4.0.1 # Apache-2.0
 python-novaclient>=17.2.1 # Apache-2.0
 python-glanceclient>=3.2.2 # Apache-2.0

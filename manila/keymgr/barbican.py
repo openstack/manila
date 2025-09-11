@@ -13,11 +13,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import urllib
-
-from barbicanclient import client as barbican_client
+from castellan.key_manager import barbican_key_manager
 from castellan import options as castellan_options
-from keystoneauth1 import identity as ks_identity
 from keystoneauth1 import loading as ks_loading
 from keystoneauth1 import session as ks_session
 from keystoneclient.v3 import client as ks_client
@@ -26,7 +23,6 @@ from oslo_log import log as logging
 from oslo_utils import uuidutils
 
 from manila import exception
-from manila.i18n import _
 
 
 BARBICAN_GROUP = 'barbican'
@@ -52,18 +48,11 @@ def _require_barbican_key_manager_backend(conf):
         raise exception.ManilaBarbicanACLError()
 
 
-class BarbicanSecretACL(object):
-    def __init__(self, conf):
-        self.conf = conf
+class BarbicanSecretACL(barbican_key_manager.BarbicanKeyManager):
 
     def get_client_and_href(self, context, secret_ref):
         """Get user barbican client and a secret href"""
         _require_barbican_key_manager_backend(self.conf)
-
-        if not getattr(self.conf, 'barbican', None) or \
-           not getattr(self.conf.barbican, 'auth_endpoint', None):
-            LOG.error("Missing auth_endpoint for barbican connection")
-            raise exception.ManilaBarbicanACLError()
 
         if not secret_ref:
             LOG.error("Missing secret_ref provided in current user context.")
@@ -73,17 +62,7 @@ class BarbicanSecretACL(object):
         # session of barbican user to get its user_id. Grant ACL to barbican
         # user that it will be used for the key_ref handover process.
         try:
-            user_auth = ks_identity.V3Token(
-                auth_url=self.conf.barbican.auth_endpoint,
-                token=context.auth_token,
-                project_id=context.project_id)
-            user_sess = ks_session.Session(auth=user_auth)
-            user_barbican_client = barbican_client.Client(session=user_sess)
-
-            barbican_endpoint = self._get_barbican_endpoint(user_auth,
-                                                            user_sess)
-            base_url = self._create_base_url(user_auth, user_sess,
-                                             barbican_endpoint)
+            user_barbican_client, base_url = self._get_barbican_client(context)
             secret_ref = self._create_secret_ref(base_url, secret_ref)
         except Exception as e:
             LOG.error("Failed to create barbican client. Error: %s", e)
@@ -91,16 +70,18 @@ class BarbicanSecretACL(object):
 
         return user_barbican_client, secret_ref
 
+    def _get_barbican_user_id(self):
+        barbican_auth = ks_loading.load_auth_from_conf_options(
+            self.conf, BARBICAN_GROUP)
+        barbican_sess = ks_session.Session(auth=barbican_auth)
+        barbican_ks_client = ks_client.Client(session=barbican_sess)
+        return barbican_ks_client.session.get_user_id()
+
     def create_secret_access(self, context, secret_ref):
         try:
             user_barbican_client, secret_href = self.get_client_and_href(
                 context, secret_ref)
-            barbican_auth = ks_loading.load_auth_from_conf_options(
-                self.conf, BARBICAN_GROUP)
-            barbican_sess = ks_session.Session(auth=barbican_auth)
-            barbican_ks_client = ks_client.Client(session=barbican_sess)
-            barbican_user_id = barbican_ks_client.session.get_user_id()
-
+            barbican_user_id = self._get_barbican_user_id()
             # Create a Barbican ACL so the barbican user can access it.
             acl = user_barbican_client.acls.create(entity_ref=secret_href,
                                                    users=[barbican_user_id],
@@ -114,11 +95,7 @@ class BarbicanSecretACL(object):
         try:
             user_barbican_client, secret_href = self.get_client_and_href(
                 context, secret_ref)
-            barbican_auth = ks_loading.load_auth_from_conf_options(
-                self.conf, BARBICAN_GROUP)
-            barbican_sess = ks_session.Session(auth=barbican_auth)
-            barbican_ks_client = ks_client.Client(session=barbican_sess)
-            barbican_user_id = barbican_ks_client.session.get_user_id()
+            barbican_user_id = self._get_barbican_user_id()
 
             # Remove a Barbican ACL for the barbican user.
             acl_entity = user_barbican_client.acls.get(entity_ref=secret_href)
@@ -139,57 +116,6 @@ class BarbicanSecretACL(object):
         except Exception as e:
             LOG.error("Failed to get barbican secret href. Error: %s", e)
             raise exception.ManilaBarbicanACLError()
-
-    def _get_barbican_endpoint(self, auth, sess):
-        if self.conf.barbican.barbican_endpoint:
-            return self.conf.barbican.barbican_endpoint
-        elif getattr(auth, 'service_catalog', None):
-            endpoint_data = auth.service_catalog.endpoint_data_for(
-                service_type='key-manager',
-                interface=self.conf.barbican.barbican_endpoint_type,
-                region_name=self.conf.barbican.barbican_region_name)
-            return endpoint_data.url
-        else:
-            return auth.get_endpoint(
-                sess,
-                service_type='key-manager',
-                interface=self.conf.barbican.barbican_endpoint_type,
-                region_name=self.conf.barbican.barbican_region_name)
-
-    def _create_base_url(self, auth, sess, endpoint):
-        api_version = None
-        if self.conf.barbican.barbican_api_version:
-            api_version = self.conf.barbican.barbican_api_version
-        elif getattr(auth, 'service_catalog', None):
-            endpoint_data = auth.service_catalog.endpoint_data_for(
-                service_type='key-manager',
-                interface=self.conf.barbican.barbican_endpoint_type,
-                region_name=self.conf.barbican.barbican_region_name)
-            api_version = endpoint_data.api_version
-        elif getattr(auth, 'get_discovery', None):
-            discovery = auth.get_discovery(sess, url=endpoint)
-            raw_data = discovery.raw_version_data()
-            if len(raw_data) == 0:
-                msg = _(
-                    "Could not find discovery information for %s") % endpoint
-                LOG.error(msg)
-                raise exception.KeyManagerError(reason=msg)
-            latest_version = raw_data[-1]
-            api_version = latest_version.get('id')
-
-        if not endpoint.endswith('/'):
-            endpoint += '/'
-
-        base_url = urllib.parse.urljoin(endpoint, api_version)
-        return base_url
-
-    def _create_secret_ref(self, base_url, object_id):
-        if not object_id:
-            msg = _("Key ID is None")
-            raise exception.KeyManagerError(reason=msg)
-        if not base_url.endswith('/'):
-            base_url += '/'
-        return urllib.parse.urljoin(base_url, "secrets/" + object_id)
 
 
 class BarbicanUserAppCreds(object):
