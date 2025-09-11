@@ -30,9 +30,9 @@ CONNECTION_INFO = {
     'api_trace_pattern': '(.*)',
     'client_api': 'rest',
     'async_rest_timeout': 60,
-    'private_key_file': 'fake_private_key.pem',
-    'certificate_file': 'fake_cert.pem',
-    'ca_certificate_file': 'fake_ca_cert.crt',
+    'private_key_file': '/fake_private_key.pem',
+    'certificate_file': '/fake_cert.pem',
+    'ca_certificate_file': '/fake_ca_cert.crt',
     'certificate_host_validation': False
 }
 

@@ -70,11 +70,11 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                           group=self.backend)
         CONF.set_override("netapp_ssl_cert_path", "/etc/ssl/certs",
                           group=self.backend)
-        CONF.set_override("netapp_private_key_file", "fake_private_key.pem",
+        CONF.set_override("netapp_private_key_file", "/fake_private_key.pem",
                           group=self.backend)
-        CONF.set_override("netapp_certificate_file", "fake_cert.pem",
+        CONF.set_override("netapp_certificate_file", "/fake_cert.pem",
                           group=self.backend)
-        CONF.set_override("netapp_ca_certificate_file", "fake_ca_cert.crt",
+        CONF.set_override("netapp_ca_certificate_file", "/fake_ca_cert.crt",
                           group=self.backend)
         CONF.set_override("netapp_certificate_host_validation", False,
                           group=self.backend)
@@ -90,9 +90,9 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
             hostname='fake.hostname', password='fake_password',
             username='fake_user', transport_type='https', port=8866,
             ssl_cert_path='/etc/ssl/certs', trace=mock.ANY, vserver=None,
-            private_key_file='fake_private_key.pem',
-            certificate_file='fake_cert.pem',
-            ca_certificate_file='fake_ca_cert.crt',
+            private_key_file='/fake_private_key.pem',
+            certificate_file='/fake_cert.pem',
+            ca_certificate_file='/fake_ca_cert.crt',
             certificate_host_validation=False)
 
     def test_get_client_for_backend_with_vserver(self):
@@ -109,9 +109,9 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
             username='fake_user', transport_type='https', port=8866,
             ssl_cert_path='/etc/ssl/certs', trace=mock.ANY,
             vserver='fake_vserver',
-            private_key_file='fake_private_key.pem',
-            certificate_file='fake_cert.pem',
-            ca_certificate_file='fake_ca_cert.crt',
+            private_key_file='/fake_private_key.pem',
+            certificate_file='/fake_cert.pem',
+            ca_certificate_file='/fake_ca_cert.crt',
             certificate_host_validation=False)
 
     def test_get_client_for_host(self):
