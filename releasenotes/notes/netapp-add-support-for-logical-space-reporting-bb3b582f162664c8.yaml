@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    NetApp ONTAP driver now allow to create share server with logical space
+    reporting. New config option "netapp_enable_logical_space_reporting" is
+    added and its value must be set to 'True' to enable this feature.

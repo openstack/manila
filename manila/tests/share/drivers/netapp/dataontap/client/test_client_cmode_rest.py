@@ -5122,12 +5122,14 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                    [fake.SHARE_AGGREGATE_NAME],
                                    fake.IPSPACE_NAME,
                                    fake.SECURITY_CERT_DEFAULT_EXPIRE_DAYS,
-                                   fake.DELETE_RETENTION_HOURS)
+                                   fake.DELETE_RETENTION_HOURS,
+                                   False)
         mock.assert_called_once_with(fake.VSERVER_NAME,
                                      [fake.SHARE_AGGREGATE_NAME],
                                      fake.IPSPACE_NAME,
                                      fake.DELETE_RETENTION_HOURS,
-                                     name_server_switch=['files'])
+                                     name_server_switch=['files'],
+                                     logical_space_reporting=False)
         self.client._modify_security_cert.assert_called_once_with(
             fake.VSERVER_NAME,
             fake.SECURITY_CERT_DEFAULT_EXPIRE_DAYS)
@@ -6076,7 +6078,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                       query={'name': new_security_service['user']})
         ])
 
-    def test__create_vserver(self):
+    @ddt.data(True, False)
+    def test__create_vserver(self, logical_space_reporting):
         mock_sr = self.mock_object(self.client, 'send_request')
         self.mock_object(self.client, '_get_unique_svm_by_name',
                          mock.Mock(return_value=fake.FAKE_UUID))
@@ -6090,16 +6093,29 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             }],
         }
 
+        if logical_space_reporting:
+            body_post.update({
+                'is_space_reporting_logical': 'true',
+                'is_space_enforcement_logical': 'true',
+                })
+        else:
+            body_post.update({
+                'is_space_reporting_logical': 'false',
+                'is_space_enforcement_logical': 'false',
+                })
+
         body_patch = {
             'retention_period': fake.DELETE_RETENTION_HOURS,
         }
 
-        self.client._create_vserver(fake.VSERVER_NAME,
-                                    [fake.SHARE_AGGREGATE_NAME],
-                                    fake.IPSPACE_NAME,
-                                    fake.DELETE_RETENTION_HOURS,
-                                    fake.FAKE_SERVER_SWITCH_NAME,
-                                    fake.FAKE_SUBTYPE)
+        self.client._create_vserver(
+            fake.VSERVER_NAME,
+            [fake.SHARE_AGGREGATE_NAME],
+            fake.IPSPACE_NAME,
+            fake.DELETE_RETENTION_HOURS,
+            fake.FAKE_SERVER_SWITCH_NAME,
+            fake.FAKE_SUBTYPE,
+            logical_space_reporting=logical_space_reporting)
 
         mock_sr.assert_has_calls([
             mock.call('/svm/svms', 'post', body=body_post),
