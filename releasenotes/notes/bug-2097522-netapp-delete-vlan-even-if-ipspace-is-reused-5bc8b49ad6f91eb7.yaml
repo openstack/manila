@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The NetApp ONTAP driver now cleans VLAN and IPSpace correctly
+    thereby making sure to delete VLAN even if IPspace is reused.
+    For more details, please check
+    `Launchpad bug #2097522 <https://bugs.launchpad.net/manila/+bug/2097522>`_
