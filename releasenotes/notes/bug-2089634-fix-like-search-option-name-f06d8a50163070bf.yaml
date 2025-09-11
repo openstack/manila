@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed an issue where using `%` in `name~` filter would match all records
+    instead of those literally containing `%` in their name.
+    The filter now properly escapes special characters used in SQL LIKE
+    queries.
