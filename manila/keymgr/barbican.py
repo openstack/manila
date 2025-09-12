@@ -13,6 +13,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import itertools
+
 from castellan.key_manager import barbican_key_manager
 from castellan import options as castellan_options
 from keystoneauth1 import loading as ks_loading
@@ -35,10 +37,22 @@ castellan_options.set_defaults(CONF)
 ks_loading.register_auth_conf_options(CONF, BARBICAN_GROUP)
 
 
+BARBICAN_OPTS = [
+    cfg.StrOpt('region_name',
+               help='Region name for connecting to keystone for '
+                    'application credential management.'),
+]
+
+CONF.register_opts(BARBICAN_OPTS, BARBICAN_GROUP)
+
+
 def list_opts():
     # NOTE(tkajinam): This likely breaks when castellan fixes missing auth
     # plugin options
-    return client_auth.AuthClientLoader.list_opts(BARBICAN_GROUP)
+    return itertools.chain(
+        [(BARBICAN_GROUP, BARBICAN_OPTS)],
+        client_auth.AuthClientLoader.list_opts(BARBICAN_GROUP)
+    )
 
 
 def _require_barbican_key_manager_backend(conf):
@@ -81,7 +95,9 @@ class BarbicanSecretACL(barbican_key_manager.BarbicanKeyManager):
         barbican_auth = ks_loading.load_auth_from_conf_options(
             self.conf, BARBICAN_GROUP)
         barbican_sess = ks_session.Session(auth=barbican_auth)
-        barbican_ks_client = ks_client.Client(session=barbican_sess)
+        barbican_ks_client = ks_client.Client(
+            session=barbican_sess,
+            region_name=self.conf.barbican.region_name)
         return barbican_ks_client.session.get_user_id()
 
     def create_secret_access(self, context, secret_ref):
@@ -138,7 +154,8 @@ class BarbicanUserAppCreds(object):
         auth = ks_loading.load_auth_from_conf_options(self.conf,
                                                       BARBICAN_GROUP)
         sess = ks_session.Session(auth=auth)
-        return ks_client.Client(session=sess)
+        return ks_client.Client(
+            session=sess, region_name=self.conf.barbican.region_name)
 
     def get_application_credentials(self, context, application_credential_id):
         if not application_credential_id:
