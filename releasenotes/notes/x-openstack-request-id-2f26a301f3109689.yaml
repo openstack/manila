@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    The `request_id` pipeline filter has been added to the `api_paste.ini`
+    file. This change ensures that the unique API request ID is returned
+    in API response headers through the `x-openstack-request-id` header in
+    addition to the `x-openstack-compute-request-id` header. This change
+    ensures consistency with other OpenStack API services. Operators should
+    **update their `api_paste.ini` configuration** to include
+    the `request_id` filter in pipelines to take advantage of this
+    new behavior.
