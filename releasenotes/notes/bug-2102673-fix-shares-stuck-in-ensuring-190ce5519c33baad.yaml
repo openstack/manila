@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    An issue that caused the shares to be stuck in the 'ensuring' status
+    when the driver was restarted in the middle of the ensure operation has
+    been fixed. For more details, please refer to
+    `Launchpad bug #2102673 <https://bugs.launchpad.net/manila/+bug/2102673>`_
