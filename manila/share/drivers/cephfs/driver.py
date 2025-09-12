@@ -1604,27 +1604,39 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
         """Returns an error if prerequisites aren't met."""
         return
 
+    def _get_export_config(self, share, access, sub_name=None):
+        """Returns export configuration in JSON-encoded bytes."""
+        pseudo_path = self._get_export_pseudo_path(share, sub_name=sub_name)
+        argdict = {
+            "cluster_id": self.nfs_clusterid,
+            "pseudo_path": pseudo_path
+        }
+        export = rados_command(
+            self.rados_client, "nfs export info", argdict, json_obj=True)
+        if export:
+            export["clients"] = access
+        else:
+            export = {
+                "path": self._get_export_path(share, sub_name=sub_name),
+                "cluster_id": self.nfs_clusterid,
+                "pseudo": pseudo_path,
+                "squash": "none",
+                "security_label": True,
+                "fsal": {
+                    "name": "CEPH",
+                    "fs_name": self.volname,
+
+                },
+                "clients": access
+            }
+        return json.dumps(export).encode('utf-8')
+
     def _allow_access(self, share, access, sub_name=None):
         """Allow access to the share."""
-        export = {
-            "path": self._get_export_path(share, sub_name=sub_name),
-            "cluster_id": self.nfs_clusterid,
-            "pseudo": self._get_export_pseudo_path(share, sub_name=sub_name),
-            "squash": "none",
-            "security_label": True,
-            "fsal": {
-                "name": "CEPH",
-                "fs_name": self.volname,
-
-            },
-            "clients": access
-        }
-
         argdict = {
             "cluster_id": self.nfs_clusterid,
         }
-
-        inbuf = json.dumps(export).encode('utf-8')
+        inbuf = self._get_export_config(share, access, sub_name)
         rados_command(self.rados_client,
                       "nfs export apply", argdict, inbuf=inbuf)
 

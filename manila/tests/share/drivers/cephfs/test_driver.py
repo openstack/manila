@@ -1864,15 +1864,23 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
                           helper._get_export_ips)
 
     @ddt.data(constants.ACCESS_LEVEL_RW, constants.ACCESS_LEVEL_RO)
-    def test_allow_access_rw_ro(self, mode):
+    def test_allow_access_rw_ro_when_export_does_not_exist(self, mode):
+        export_info_prefix = "nfs export info"
         access_allow_prefix = "nfs export apply"
         nfs_clusterid = self._nfscluster_protocol_helper.nfs_clusterid
         volname = self._nfscluster_protocol_helper.volname
+
+        driver.rados_command.return_value = {}
 
         clients = {
             'access_type': mode,
             'addresses': ['10.0.0.1'],
             'squash': 'none'
+        }
+
+        export_info_dict = {
+            "cluster_id": nfs_clusterid,
+            "pseudo_path": "ganesha:/foo/bar",
         }
 
         access_allow_dict = {
@@ -1899,9 +1907,74 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
             self._share, clients, sub_name=self._share['id']
         )
 
-        driver.rados_command.assert_called_once_with(
-            self._rados_client,
-            access_allow_prefix, access_allow_dict, inbuf=inbuf)
+        driver.rados_command.assert_has_calls([
+            mock.call(self._rados_client,
+                      export_info_prefix,
+                      export_info_dict, json_obj=True),
+            mock.call(self._rados_client,
+                      access_allow_prefix,
+                      access_allow_dict, inbuf=inbuf)])
+
+        self.assertEqual(2, driver.rados_command.call_count)
+
+    @ddt.data(constants.ACCESS_LEVEL_RW, constants.ACCESS_LEVEL_RO)
+    def test_allow_access_rw_ro_when_export_exist(self, mode):
+        export_info_prefix = "nfs export info"
+        access_allow_prefix = "nfs export apply"
+        nfs_clusterid = self._nfscluster_protocol_helper.nfs_clusterid
+        volname = self._nfscluster_protocol_helper.volname
+
+        new_clients = {
+            'access_type': mode,
+            'addresses': ['10.0.0.2'],
+            'squash': 'none'
+        }
+
+        export_info_dict = {
+            "cluster_id": nfs_clusterid,
+            "pseudo_path": "ganesha:/foo/bar",
+        }
+
+        access_allow_dict = {
+            "cluster_id": nfs_clusterid,
+        }
+
+        export = {
+            "path": "ganesha:/foo/bar",
+            "cluster_id": nfs_clusterid,
+            "pseudo": "ganesha:/foo/bar",
+            "squash": "none",
+            "security_label": True,
+            "fsal": {
+                "name": "CEPH",
+                "User_Id": "nfs.user",
+                "fs_name": volname
+
+            },
+            "clients": {
+                'access_type': "ro",
+                'addresses': ['10.0.0.1'],
+                'squash': 'none'
+            }
+        }
+
+        driver.rados_command.return_value = export
+        export['clients'] = new_clients
+        inbuf = json.dumps(export).encode('utf-8')
+
+        self._nfscluster_protocol_helper._allow_access(
+            self._share, new_clients, sub_name=self._share['id']
+        )
+
+        driver.rados_command.assert_has_calls([
+            mock.call(self._rados_client,
+                      export_info_prefix,
+                      export_info_dict, json_obj=True),
+            mock.call(self._rados_client,
+                      access_allow_prefix,
+                      access_allow_dict, inbuf=inbuf)])
+
+        self.assertEqual(2, driver.rados_command.call_count)
 
     def test_deny_access(self):
         access_deny_prefix = "nfs export rm"
