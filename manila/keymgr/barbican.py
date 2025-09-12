@@ -38,6 +38,11 @@ ks_loading.register_auth_conf_options(CONF, BARBICAN_GROUP)
 
 
 BARBICAN_OPTS = [
+    cfg.StrOpt('endpoint_type',
+               default='publicURL',
+               choices=['publicURL', 'internalURL', 'adminURL',
+                        'public', 'internal', 'admin'],
+               help='Endpoint type to be used with keystone client calls.'),
     cfg.StrOpt('region_name',
                help='Region name for connecting to keystone for '
                     'application credential management.'),
@@ -97,6 +102,7 @@ class BarbicanSecretACL(barbican_key_manager.BarbicanKeyManager):
         barbican_sess = ks_session.Session(auth=barbican_auth)
         barbican_ks_client = ks_client.Client(
             session=barbican_sess,
+            interface=self.conf.barbican.endpoint_type,
             region_name=self.conf.barbican.region_name)
         return barbican_ks_client.session.get_user_id()
 
@@ -155,7 +161,9 @@ class BarbicanUserAppCreds(object):
                                                       BARBICAN_GROUP)
         sess = ks_session.Session(auth=auth)
         return ks_client.Client(
-            session=sess, region_name=self.conf.barbican.region_name)
+            session=sess,
+            interface=self.conf.barbican.endpoint_type,
+            region_name=self.conf.barbican.region_name)
 
     def get_application_credentials(self, context, application_credential_id):
         if not application_credential_id:
