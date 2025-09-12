@@ -461,6 +461,7 @@ class PoolState(HostState):
             provisioned_capacity += instance['size'] or 0
         return provisioned_capacity
 
+    @utils.synchronized("update_from_share_capability")
     def update_from_share_capability(
             self, capability, service=None, context=None):
         """Update information about a pool from its share_node info."""

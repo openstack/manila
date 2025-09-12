@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Added synchronized lock to fix issue where provisioned_capacity_gb value
+    was initialized to None immediately on another thread while checking
+    capacity filter, causing shared creation to fail due to conflicting
+    provisioned_capacity_gb updates.
+    please refer to `launchpad bug #1871768 <https://bugs.launchpad.net/manila/+bug/1871768>`_.
