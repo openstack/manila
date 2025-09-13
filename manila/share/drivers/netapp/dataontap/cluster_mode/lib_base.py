@@ -1864,6 +1864,11 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # split at the end: not be blocked by a busy volume
         if split:
+            # can only delete the additional snap in child, if we plan to split
+            vserver_client.rename_snapshot_and_split_clones(
+                share_name,
+                parent_snapshot_name
+            )
             vserver_client.volume_clone_split_start(share_name)
 
     @na_utils.trace
