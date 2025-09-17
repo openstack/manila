@@ -39,6 +39,7 @@
         },
         "id": "011d21e2-fbc3-4e4a-9993-9ea223f73264",
         "size": 1,
-        "description": "My custom share London"
+        "description": "My custom share London",
+        "encryption_key_ref": "86babe9b-7277-4c3a-a081-6eb3eac9231d"
     }
 }
