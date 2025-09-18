@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Ceph no longer supports creating snapshots of groups of ceph sub volumes.
+    The driver raised a "NotImplementedError" to reject requests to create
+    new snapshots. This has now been fixed to attempt a generic group snapshot
+    in the share manager service similar to other back ends which fallback due
+    to this missing functionality in the storage technologies. See `launchpad
+    bug 2019156 <https://launchpad.net/bugs/2019156>`_ for more details.
