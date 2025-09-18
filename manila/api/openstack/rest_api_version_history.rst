@@ -482,6 +482,6 @@ user documentation.
 ----
   Added ``encryption_key_ref`` option to share create API.
 
-2.91
-----
+2.91 (Maximum in 2025.2/Flamingo)
+---------------------------------
   Added targeted restores to the share backup API
