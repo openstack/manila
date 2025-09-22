@@ -1997,13 +1997,26 @@ def share_instance_get_all_by_host(context, host, with_share_data=False,
     )
     if status is not None:
         instances = instances.filter(models.ShareInstance.status == status)
-
     if with_share_data:
         instances = _set_instances_share_data(instances)
     else:
         # Returns list of all instances that satisfy filters.
         instances = instances.all()
     return instances
+
+
+@require_context
+@context_manager.reader
+def share_instance_sizes_sum_by_host(context, host):
+    result = model_query(
+        context, models.Share, func.sum(models.Share.size),
+    ).join(
+        models.ShareInstance.share,
+    ).filter(or_(
+        models.ShareInstance.host == host,
+        models.ShareInstance.host.like("{0}#%".format(host)),
+    )).first()
+    return int(result[0] or 0)
 
 
 @require_context

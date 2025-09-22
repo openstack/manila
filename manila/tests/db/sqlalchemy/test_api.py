@@ -602,6 +602,18 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual(0, len(instances))
 
+    @ddt.data(
+        {'status': constants.STATUS_AVAILABLE},
+        {'status': None})
+    @ddt.unpack
+    def test_share_instance_get_all_by_host_no_instance(self, status):
+        db_utils.create_share_without_instance()
+        instances = db_api.share_instance_get_all_by_host(
+            self.ctxt, "fake_host", with_share_data=True, status=status
+        )
+
+        self.assertEqual(0, len(instances))
+
     def test_share_instance_get_all_by_share_group(self):
         group = db_utils.create_share_group()
         db_utils.create_share(share_group_id=group['id'])
