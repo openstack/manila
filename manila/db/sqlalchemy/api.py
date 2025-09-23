@@ -6450,6 +6450,11 @@ def purge_deleted_records(context, age_in_days):
 
     metadata = MetaData()
     metadata.reflect(get_engine())
+    tables = metadata.sorted_tables
+    if not tables:
+        msg = 'No tables found, check database connection'
+        raise exception.InvalidResults(msg)
+
     deleted_age = timeutils.utcnow() - datetime.timedelta(days=age_in_days)
 
     # Deleting rows in share_network_security_service_association
@@ -6464,7 +6469,7 @@ def purge_deleted_records(context, age_in_days):
         with context.session.begin_nested():
             context.session.delete(assoc)
 
-    for table in reversed(metadata.sorted_tables):
+    for table in reversed(tables):
         if 'deleted' not in table.columns.keys():
             continue
 
