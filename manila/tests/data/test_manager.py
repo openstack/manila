@@ -559,8 +559,14 @@ class DataManagerTestCase(test.TestCase):
             {'status': constants.STATUS_AVAILABLE})
         db.share_backup_update.assert_called()
 
-    @ddt.data('90', '100')
-    def test_create_share_backup_continue(self, progress):
+    @ddt.data(
+        ('90', False),
+        ('90', True),
+        ('100', False),
+        ('100', True)
+    )
+    @ddt.unpack
+    def test_create_share_backup_continue(self, progress, use_data_manager):
         share_info = db_utils.create_share(
             status=constants.STATUS_BACKUP_CREATING)
         backup_info = db_utils.create_backup(
@@ -569,10 +575,26 @@ class DataManagerTestCase(test.TestCase):
         # mocks
         self.mock_object(db, 'share_update')
         self.mock_object(db, 'share_backup_update')
+        self.mock_object(db, 'share_get',
+                         mock.Mock(return_value=share_info))
         self.mock_object(db, 'share_backups_get_all',
                          mock.Mock(return_value=[backup_info]))
         self.mock_object(self.manager, 'data_copy_get_progress',
                          mock.Mock(return_value={'total_progress': progress}))
+        self.mock_object(self.manager.backup_driver, 'get_backup_progress',
+                         mock.Mock(return_value=progress))
+
+        with mock.patch.object(
+            self.manager.backup_driver, 'use_data_manager', use_data_manager
+        ):
+            self.manager.create_backup_continue(self.context)
+
+            if use_data_manager is True:
+                self.manager.data_copy_get_progress.assert_called_with(
+                    self.context, share_info['id'])
+            else:
+                self.manager.backup_driver.get_backup_progress.\
+                    assert_called_with(self.context, backup_info, share_info)
 
         self.manager.create_backup_continue(self.context)
         if progress == '100':
@@ -744,8 +766,14 @@ class DataManagerTestCase(test.TestCase):
             self.context, share_info['id'],
             {'status': constants.STATUS_BACKUP_RESTORING_ERROR})
 
-    @ddt.data('90', '100')
-    def test_restore_share_backup_continue(self, progress):
+    @ddt.data(
+        ('90', False),
+        ('90', True),
+        ('100', False),
+        ('100', True)
+    )
+    @ddt.unpack
+    def test_restore_share_backup_continue(self, progress, use_data_manager):
         share_info = db_utils.create_share(
             status=constants.STATUS_BACKUP_RESTORING)
         backup_info = db_utils.create_backup(
@@ -762,21 +790,33 @@ class DataManagerTestCase(test.TestCase):
                          mock.Mock(return_value=[backup_info]))
         self.mock_object(self.manager, 'data_copy_get_progress',
                          mock.Mock(return_value={'total_progress': progress}))
+        self.mock_object(self.manager.backup_driver, 'get_restore_progress',
+                         mock.Mock(return_value=progress))
 
-        self.manager.restore_backup_continue(self.context)
+        with mock.patch.object(
+            self.manager.backup_driver, 'use_data_manager', use_data_manager
+        ):
+            self.manager.restore_backup_continue(self.context)
 
-        if progress == '100':
-            db.share_backup_update.assert_called_with(
-                self.context, backup_info['id'],
-                {'status': constants.STATUS_AVAILABLE,
-                 'restore_progress': '100'})
-            db.share_update.assert_called_with(
-                self.context, share_info['id'],
-                {'status': constants.STATUS_AVAILABLE})
-        else:
-            db.share_backup_update.assert_called_with(
-                self.context, backup_info['id'],
-                {'restore_progress': progress})
+            if use_data_manager is True:
+                self.manager.data_copy_get_progress.assert_called_with(
+                    self.context, share_info['id'])
+            else:
+                self.manager.backup_driver.get_restore_progress.\
+                    assert_called_with(self.context, backup_info, share_info)
+
+            if progress == '100':
+                db.share_backup_update.assert_called_with(
+                    self.context, backup_info['id'],
+                    {'status': constants.STATUS_AVAILABLE,
+                     'restore_progress': '100'})
+                db.share_update.assert_called_with(
+                    self.context, share_info['id'],
+                    {'status': constants.STATUS_AVAILABLE})
+            else:
+                db.share_backup_update.assert_called_with(
+                    self.context, backup_info['id'],
+                    {'restore_progress': progress})
 
     def test_restore_share_backup_continue_exception(self):
         share_info = db_utils.create_share(

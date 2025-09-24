@@ -53,6 +53,7 @@ class NFSBackupDriver(backup_driver.BackupDriver):
         self.backup_mount_options = CONF.backup_mount_options
         self.backup_mount_proto = CONF.backup_mount_proto
         super(NFSBackupDriver, self).__init__()
+        self.restore_to_target_support = True
 
     def get_backup_info(self, backup):
         """Get backup info of a specified backup."""

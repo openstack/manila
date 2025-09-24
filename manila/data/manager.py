@@ -446,17 +446,17 @@ class DataManager(manager.Manager):
                 else:
                     result = self.data_copy_get_progress(context, share_id)
                     progress = result.get('total_progress', '0')
-                    backup_values = {'progress': progress}
-                    if progress == '100':
-                        self.db.share_update(
-                            context, share_id,
-                            {'status': constants.STATUS_AVAILABLE})
-                        backup_values.update(
-                            {'status': constants.STATUS_AVAILABLE})
-                        LOG.info("Created share backup %s successfully.",
-                                 backup_id)
-                    self.db.share_backup_update(
-                        context, backup_id, backup_values)
+                backup_values = {'progress': progress}
+                if progress == '100':
+                    self.db.share_update(
+                        context, share_id,
+                        {'status': constants.STATUS_AVAILABLE})
+                    backup_values.update(
+                        {'status': constants.STATUS_AVAILABLE})
+                    LOG.info("Created share backup %s successfully.",
+                             backup_id)
+                self.db.share_backup_update(
+                    context, backup_id, backup_values)
             except Exception:
                 LOG.warning("Failed to get progress of share %(share)s "
                             "backing up in share_backup %(backup).",
@@ -701,17 +701,17 @@ class DataManager(manager.Manager):
                     else:
                         result = self.data_copy_get_progress(context, share_id)
                         progress = result.get('total_progress', '0')
-                        backup_values = {'restore_progress': progress}
-                        if progress == '100':
-                            self.db.share_update(
-                                context, share_id,
-                                {'status': constants.STATUS_AVAILABLE})
-                            backup_values.update(
-                                {'status': constants.STATUS_AVAILABLE})
-                            LOG.info("Share backup %s restored successfully.",
-                                     backup_id)
-                        self.db.share_backup_update(context, backup_id,
-                                                    backup_values)
+                    backup_values = {'restore_progress': progress}
+                    if progress == '100':
+                        self.db.share_update(
+                            context, share_id,
+                            {'status': constants.STATUS_AVAILABLE})
+                        backup_values.update(
+                            {'status': constants.STATUS_AVAILABLE})
+                        LOG.info("Share backup %s restored successfully.",
+                                 backup_id)
+                    self.db.share_backup_update(context, backup_id,
+                                                backup_values)
                 except Exception:
                     LOG.exception("Failed to get progress of share_backup "
                                   "%(backup)s restoring in share %(share).",
