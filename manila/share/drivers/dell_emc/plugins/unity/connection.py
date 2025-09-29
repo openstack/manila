@@ -44,9 +44,10 @@ from manila import utils
      8.0.0 - Supports manage/unmanage share server/share/snapshot
      9.0.0 - Implements default filter function
      9.0.1 - Bugfix: remove enable ace process when creating cifs share
+     9.0.2 - Bugfix: fix the driver startup issue with LACP ports configured
 """
 
-VERSION = "9.0.1"
+VERSION = "9.0.2"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
