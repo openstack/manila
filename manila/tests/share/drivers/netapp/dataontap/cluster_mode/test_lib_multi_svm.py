@@ -776,7 +776,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             versions, nfs_config=nfs_config)
         self.library._client.setup_security_services.assert_called_once_with(
             fake.NETWORK_INFO['security_services'], vserver_client,
-            vserver_name, False)
+            vserver_name, False, False)
         self.library._get_flexgroup_aggr_set.assert_called_once_with()
 
     @ddt.data(None, fake.IPSPACE)
@@ -3941,7 +3941,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         if curr_sec_service is None:
             mock_setup_sec_serv.assert_called_once_with(
-                [new_sec_service], fake_vserver_client, fake.VSERVER1, False)
+                [new_sec_service], fake_vserver_client, fake.VSERVER1,
+                False, False)
         else:
             mock_diff_keys.assert_called_once_with(curr_sec_service,
                                                    new_sec_service)

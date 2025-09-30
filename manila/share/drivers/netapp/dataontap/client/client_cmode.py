@@ -1715,7 +1715,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def setup_security_services(self, security_services, vserver_client,
-                                vserver_name, aes_encryption, timeout=30):
+                                vserver_name, aes_encryption, smb_signing,
+                                timeout=30):
         api_args = {
             'name-mapping-switch': [
                 {'nmswitch': 'ldap'},
@@ -1737,7 +1738,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             elif security_service['type'].lower() == 'active_directory':
                 vserver_client.configure_active_directory(security_service,
                                                           vserver_name,
-                                                          aes_encryption)
+                                                          aes_encryption,
+                                                          smb_signing)
                 vserver_client.configure_cifs_options(security_service)
 
             elif security_service['type'].lower() == 'kerberos':
@@ -1988,7 +1990,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def configure_active_directory(self, security_service,
-                                   vserver_name, aes_encryption):
+                                   vserver_name, aes_encryption, smb_signing):
         """Configures AD on Vserver."""
         self.configure_dns(security_service)
         self.configure_cifs_aes_encryption(aes_encryption)
@@ -2012,6 +2014,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         try:
             LOG.debug("Trying to setup CIFS server with data: %s", api_args)
             self.send_request('cifs-server-create', api_args)
+            if smb_signing:
+                try:
+                    self.wait_for_cifs_server(vserver_name)
+                    self.configure_cifs_signing()
+                except exception.NetAppException as e:
+                    LOG.error(f"Gave up waiting and proceed for cifs server "
+                              f"on vserver {vserver_name}. {e.message}")
         except netapp_api.NaApiError as e:
             credential_msg = "could not authenticate"
             privilege_msg = "insufficient access"
@@ -2377,6 +2386,50 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         except netapp_api.NaApiError as e:
             msg = _("Failed to set aes encryption. %s")
             raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def cifs_server_exists(self, vserver_name):
+        """Checks if cifs server exists on vserver."""
+        cifs_server = self._get_cifs_server_name(vserver_name)
+        LOG.debug('Checking if cifs server %s exists', cifs_server)
+
+        api_args = {
+            'query': {
+                'cifs-server-config': {
+                    'cifs-server': cifs_server,
+                },
+            },
+            'desired-attributes': {
+                'cifs-server-config': {
+                    'cifs-server': None,
+                },
+            },
+        }
+
+        result = self.send_iter_request('cifs-server-get-iter', api_args)
+        return self._has_records(result)
+
+    @na_utils.trace
+    def configure_cifs_signing(self):
+        api_args = {
+            'is-signing-required': 'true',
+        }
+
+        try:
+            self.send_request('cifs-security-modify', api_args)
+        except netapp_api.NaApiError as e:
+            msg = _("Failed to enable SMB signing. %s")
+            raise exception.NetAppException(msg % e.message)
+
+    @manila_utils.retry(retry_param=exception.NetAppException,
+                        interval=5,
+                        retries=60,
+                        backoff_rate=1)
+    def wait_for_cifs_server(self, vserver_name):
+        if not self.cifs_server_exists(vserver_name):
+            msg = _("CIFS server on vserver %(vserver_name)s not found.")
+            msg_args = {'vserver_name': vserver_name}
+            raise exception.NetAppException(msg % msg_args)
 
     @na_utils.trace
     def set_preferred_dc(self, security_service):
