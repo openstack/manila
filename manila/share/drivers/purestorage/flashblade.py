@@ -102,10 +102,11 @@ class FlashBladeShareDriver(driver.ShareDriver):
        7.0.0 - 2024.1 (Caracal) release
        8.0.0 - 2025.1 (Epoxy) release
        9.0.0 - 2025.2 (Flamingo) release
+       10.0.0 - 2026.1 (Gazpacho) release
 
     """
 
-    VERSION = "9.0"  # driver version
+    VERSION = "10.0"  # driver version
     USER_AGENT_BASE = "OpenStack Manila"
 
     def __init__(self, *args, **kwargs):
