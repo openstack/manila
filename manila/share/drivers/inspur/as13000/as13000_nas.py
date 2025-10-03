@@ -17,7 +17,6 @@
 Share driver for Inspur AS13000
 """
 
-import eventlet
 import functools
 import json
 import re
@@ -145,7 +144,7 @@ class RestAPIExecutor(object):
                 LOG.error(msge)
 
                 self.refresh_token(force=True)
-                eventlet.sleep(1)
+                time.sleep(1)
             except exception.ShareBackendException as e:
                 msge = str(e)
                 break

@@ -1169,7 +1169,7 @@ class TestNefProxy(test.TestCase):
                                      path)
         self.assertEqual(expected, result)
 
-    @mock.patch('eventlet.greenthread.sleep')
+    @mock.patch('time.sleep')
     def test_delay(self, sleep):
         sleep.return_value = None
         for attempt in range(0, 10):

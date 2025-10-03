@@ -156,7 +156,8 @@ class RestAPIExecutorTestCase(test.TestCase):
             'fake_params',
             'fake_type')
 
-    def test_send_rest_api_retry(self):
+    @mock.patch('time.sleep')
+    def test_send_rest_api_retry(self, mock_sleep):
         expected = {'value': 'abc'}
         mock_sa = self.mock_object(
             self.rest_api,
@@ -179,8 +180,10 @@ class RestAPIExecutorTestCase(test.TestCase):
             'fake_params',
             'fake_type')
         mock_rt.assert_called_with(force=True)
+        mock_sleep.assert_called_once_with(1)
 
-    def test_send_rest_api_3times_fail(self):
+    @mock.patch('time.sleep')
+    def test_send_rest_api_3times_fail(self, mock_sleep):
         mock_sa = self.mock_object(
             self.rest_api, 'send_api', mock.Mock(
                 side_effect=(exception.NetworkException)))
@@ -195,6 +198,9 @@ class RestAPIExecutorTestCase(test.TestCase):
                                    'fake_params',
                                    'fake_type')
         mock_rt.assert_called_with(force=True)
+        # Should sleep 3 times (once for each retry)
+        self.assertEqual(3, mock_sleep.call_count)
+        mock_sleep.assert_has_calls([mock.call(1), mock.call(1), mock.call(1)])
 
     def test_send_rest_api_backend_error_fail(self):
         mock_sa = self.mock_object(self.rest_api, 'send_api', mock.Mock(
