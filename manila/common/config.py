@@ -115,8 +115,8 @@ global_opts = [
                help='The full class name of the share API class to use.'),
     cfg.StrOpt('auth_strategy',
                default='keystone',
-               help='The strategy to use for auth. Supports noauth, keystone, '
-                    'and noauthv2.'),
+               choices=('noauth', 'noauthv2', 'keystone'),
+               help='The strategy to use for auth.'),
     cfg.ListOpt('enabled_share_backends',
                 help='A list of share backend names to use. These backend '
                      'names should be backed by a unique [CONFIG] group '
