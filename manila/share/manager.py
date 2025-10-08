@@ -521,6 +521,15 @@ class ShareManager(manager.SchedulerDependentManager):
                                                     ctxt, share_instance)
                         else:
                             self._ensure_share(ctxt, share_instance)
+                    # At this point, we assume that the ensuring operation is
+                    # complete or everything is okay, even though it might be
+                    # running on different threads.
+                    LOG.debug(
+                        "Shares' export locations were ensured individually, "
+                        "so triggering the ensure shares operation is "
+                        "complete.")
+                    self.db.service_update(
+                        ctxt, service['id'], {'ensuring': False})
 
         if new_backend_info:
             self.db.backend_info_update(
@@ -629,6 +638,14 @@ class ShareManager(manager.SchedulerDependentManager):
         if export_locations:
             self.db.export_locations_update(
                 ctxt, share_instance['id'], export_locations)
+
+        # NOTE(carloss): we can't determine if the share is actually alright,
+        # but we expect that after the export location is updated in the
+        # database, everything is okay.
+        self.db.share_instance_update(
+            ctxt, share_instance['id'],
+            {'status': constants.STATUS_AVAILABLE}
+        )
 
     def _check_share_server_backend_limits(
             self, context, available_share_servers, share_instance=None):
