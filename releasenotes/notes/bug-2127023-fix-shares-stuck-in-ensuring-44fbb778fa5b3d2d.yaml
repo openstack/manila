@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed an issue that caused shares to be stuck in `ensuring` status when
+    the back end driver does not support the bulk ensure shares operation.
