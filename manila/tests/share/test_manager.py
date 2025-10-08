@@ -405,6 +405,74 @@ class ShareManagerTestCase(test.TestCase):
             )
         ])
 
+    def test_ensure_driver_resources_ensure_shares_not_implemented(self):
+        old_hash = {'info_hash': '1e5ff444cfdc4a154126ddebc0223ffeae2d10c9'}
+        self.mock_object(self.share_manager.db,
+                         'backend_info_get',
+                         mock.Mock(return_value=old_hash))
+        self.mock_object(self.share_manager.driver,
+                         'get_backend_info',
+                         mock.Mock(return_value={'val': 'newval'}))
+        instances, rules = self._setup_init_mocks()
+        fake_service = {'id': 'fake_service_id', 'binary': 'manila-share'}
+        update_instances = [instances[0], instances[2], instances[4]]
+        update_instances_dict_list = [
+            self._get_share_instance_dict(instance)
+            for instance in update_instances
+        ]
+        self.mock_object(self.share_manager.db,
+                         'service_get_by_args',
+                         mock.Mock(return_value=fake_service))
+        self.mock_object(self.share_manager.db, 'service_update')
+        self.mock_object(self.share_manager.db, 'backend_info_update')
+        mock_share_get_all_by_host = self.mock_object(
+            self.share_manager.db, 'share_instance_get_all_by_host',
+            mock.Mock(return_value=instances))
+        self.mock_object(self.share_manager.db, 'share_instance_get',
+                         mock.Mock(side_effect=update_instances))
+        self.mock_object(self.share_manager.db, 'share_metadata_update')
+        mock_ensure_shares = self.mock_object(
+            self.share_manager.driver, 'ensure_shares',
+            mock.Mock(side_effect=NotImplementedError()))
+        mock_ensure_share = self.mock_object(
+            self.share_manager, '_ensure_share')
+
+        self.share_manager.ensure_driver_resources(self.context)
+
+        mock_share_get_all_by_host.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), self.share_manager.host)
+        mock_ensure_shares.assert_called_once()
+        mock_ensure_share.assert_has_calls(
+            [mock.call(utils.IsAMatcher(context.RequestContext), instance)
+             for instance in update_instances_dict_list])
+
+    def test__ensure_share(self):
+        fake_export_locations = [{'path': 'fake/path'}]
+        share_instance = {
+            'id': 'fake_id',
+            'share_server': 'fake_share_server'
+        }
+
+        mock_ensure_share = self.mock_object(
+            self.share_manager.driver, 'ensure_share',
+            mock.Mock(return_value=fake_export_locations))
+        mock_export_location_update = self.mock_object(
+            self.share_manager.db, 'export_locations_update')
+        mock_instance_update = self.mock_object(
+            self.share_manager.db, 'share_instance_update')
+
+        self.share_manager._ensure_share(self.context, share_instance)
+
+        mock_ensure_share.assert_called_once_with(
+            self.context, share_instance,
+            share_server=share_instance['share_server']
+        )
+        mock_export_location_update.assert_called_once_with(
+            self.context, share_instance['id'], fake_export_locations)
+        mock_instance_update.assert_called_once_with(
+            self.context, share_instance['id'],
+            {'status': constants.STATUS_AVAILABLE})
+
     def test_init_host_with_no_shares(self):
         self.mock_object(self.share_manager.db,
                          'share_instance_get_all_by_host',
