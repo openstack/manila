@@ -84,7 +84,10 @@ class VASTShareDriverTestCase(unittest.TestCase):
             execute=mock.MagicMock(), configuration=self.fake_conf
         )
         self._driver.do_setup(self._context)
-        m_auth_token.assert_called_once()
+        if self.fake_conf.vast_api_token:
+            m_auth_token.assert_not_called()
+        else:
+            m_auth_token.assert_called_once()
 
     def test_do_setup(self):
         session = self._driver.rest.session
@@ -94,7 +97,7 @@ class VASTShareDriverTestCase(unittest.TestCase):
         self.assertFalse(session.ssl_verify)
         self.assertEqual(session.base_url, "https://test:443/api")
 
-    @ddt.data("vast_mgmt_user", "vast_vippool_name", "vast_mgmt_host")
+    @ddt.data("vast_mgmt_user", "vast_mgmt_host")
     def test_do_setup_missing_required_fields(self, missing_field):
         self.fake_conf.set_default(missing_field, None)
         _driver = driver.VASTShareDriver(
@@ -123,7 +126,7 @@ class VASTShareDriverTestCase(unittest.TestCase):
         self.assertEqual(result["share_backend_name"], "vast")
         self.assertEqual(result["driver_handles_share_servers"], False)
         self.assertEqual(result["vendor_name"], "VAST STORAGE")
-        self.assertEqual(result["driver_version"], "1.0")
+        self.assertEqual(result["driver_version"], "1.1")
         self.assertEqual(result["storage_protocol"], "NFS")
         self.assertEqual(result["total_capacity_gb"], 471.1061706542969)
         self.assertEqual(result["free_capacity_gb"], 450.2256333641708)
@@ -158,7 +161,15 @@ class VASTShareDriverTestCase(unittest.TestCase):
         )
     )
     @ddt.unpack
-    def test_create_shares(self, capacity, proto, policy):
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_create_shares(
+            self,
+            capacity,
+            proto,
+            policy,
+            mock_get_extra_specs,
+    ):
+        mock_get_extra_specs.return_value = {}
         share = fake_share.fake_share(share_proto=proto)
         mock_rest = self._create_mocked_rest_api()
         mock_rest.view_policies.ensure.return_value = driver_util.Bunch(id=1)
@@ -168,7 +179,11 @@ class VASTShareDriverTestCase(unittest.TestCase):
         mock_rest.views.ensure.return_value = driver_util.Bunch(
             id=3, policy=policy
         )
-        mock_rest.vip_pools.vips.return_value = ["1.1.1.0", "1.1.1.1"]
+        # Mock vip_pools.one() to return pool with ip_ranges and tenant_id
+        mock_rest.vip_pools.one.return_value = driver_util.Bunch(
+            ip_ranges=[["1.1.1.0", "1.1.1.1"]],
+            tenant_id=123
+        )
         with mock.patch.object(self._driver, "rest", mock_rest):
             if proto != "NFS":
                 with self.assertRaises(exception.InvalidShare) as exc:
@@ -187,20 +202,26 @@ class VASTShareDriverTestCase(unittest.TestCase):
             else:
 
                 location = self._driver.create_share(self._context, share)
-                mock_rest.vip_pools.vips.assert_called_once_with(
-                    pool_name="vippool"
+                mock_rest.vip_pools.one.assert_called_once_with(
+                    name="vippool",
+                    fail_if_missing=True,
                 )
                 mock_rest.view_policies.ensure.assert_called_once_with(
-                    name="fakeid"
+                    name="fakeid",
+                    tenant_id=123,
                 )
                 mock_rest.quotas.ensure.assert_called_once_with(
                     name="fakeid",
                     path="/fake/manila-fakeid",
                     create_dir=True,
                     hard_limit=capacity,
+                    tenant_id=123,
                 )
                 mock_rest.views.ensure.assert_called_once_with(
-                    name="fakeid", path="/fake/manila-fakeid", policy_id=1
+                    name="fakeid",
+                    path="/fake/manila-fakeid",
+                    policy_id=1,
+                    tenant_id=123,
                 )
                 self.assertListEqual(
                     location,
@@ -592,15 +613,47 @@ class VASTShareDriverTestCase(unittest.TestCase):
                 self._driver.shrink_share(share, 9.7)
             self._driver.shrink_share(share, 10)
 
-    def test_create_snapshot(self):
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_create_snapshot(self, mock_get_extra_specs):
+        mock_get_extra_specs.return_value = {}
+        share = fake_share.fake_share(share_proto="NFS")
         snapshot = driver_util.Bunch(
-            name="fakesnap", share_instance_id="fakeid"
+            name="fakesnap", share_instance_id="fakeid", share=share
         )
         mock_rest = self._create_mocked_rest_api()
+        mock_rest.vip_pools.one.return_value = driver_util.Bunch(
+            tenant_id=123
+        )
         with mock.patch.object(self._driver, "rest", mock_rest):
             self._driver.create_snapshot(self._context, snapshot, None)
         mock_rest.snapshots.create.assert_called_once_with(
-            path="/fake/manila-fakeid", name="fakesnap"
+            path="/fake/manila-fakeid", name="fakesnap", tenant_id=123
+        )
+
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_create_snapshot_with_custom_vippool(self, mock_get_extra_specs):
+        """Test snapshot creation with custom vippool from extra specs."""
+        mock_get_extra_specs.return_value = {
+            'vast:vippool_name': 'custom-vippool'
+        }
+        share = fake_share.fake_share(share_proto="NFS")
+        snapshot = driver_util.Bunch(
+            name="fakesnap", share_instance_id="fakeid", share=share
+        )
+        mock_rest = self._create_mocked_rest_api()
+        mock_rest.vip_pools.one.return_value = driver_util.Bunch(
+            tenant_id=456
+        )
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            self._driver.create_snapshot(self._context, snapshot, None)
+
+        # Verify that custom-vippool was used
+        mock_rest.vip_pools.one.assert_called_once_with(
+            name="custom-vippool",
+            fail_if_missing=True,
+        )
+        mock_rest.snapshots.create.assert_called_once_with(
+            path="/fake/manila-fakeid", name="fakesnap", tenant_id=456
         )
 
     def test_delete_snapshot(self):
@@ -616,7 +669,9 @@ class VASTShareDriverTestCase(unittest.TestCase):
         self.assertEqual(self._driver.get_network_allocations_number(), 0)
 
     @ddt.data([], ['fake/path/1', 'fake/path'])
-    def test_ensure_shares(self, fake_export_locations):
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_ensure_shares(self, fake_export_locations, mock_get_extra_specs):
+        mock_get_extra_specs.return_value = {}
         mock_rest = self._create_mocked_rest_api()
         mock_rest.view_policies.ensure.return_value = driver_util.Bunch(id=1)
         mock_rest.quotas.ensure.return_value = driver_util.Bunch(
@@ -634,7 +689,10 @@ class VASTShareDriverTestCase(unittest.TestCase):
             )
             for _id, share_id in enumerate(["123", "456", "789"], 1)
         ]
-        mock_rest.vip_pools.vips.return_value = ["1.1.1.0", "1.1.1.1"]
+        mock_rest.vip_pools.one.return_value = driver_util.Bunch(
+            ip_ranges=[["1.1.1.0", "1.1.1.1"]],
+            tenant_id=123
+        )
         with mock.patch.object(self._driver, "rest", mock_rest):
             locations = self._driver.ensure_shares(self._context, shares)
 
@@ -669,6 +727,281 @@ class VASTShareDriverTestCase(unittest.TestCase):
             backend_info,
             {'vast_vippool_name': 'vippool', 'vast_mgmt_host': 'test'}
         )
+
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_create_share_with_extra_specs_vippool(self, mock_get_specs):
+        """Test that vippool_name from extra specs overrides config."""
+        share = fake_share.fake_share(
+            share_proto="NFS",
+            share_type_id="fake-type-id",
+        )
+        mock_get_specs.return_value = {
+            'vast:vippool_name': 'custom-vippool'
+        }
+
+        mock_rest = self._create_mocked_rest_api()
+        mock_rest.view_policies.ensure.return_value = driver_util.Bunch(id=1)
+        mock_rest.quotas.ensure.return_value = driver_util.Bunch(
+            id=2, hard_limit=1073741824
+        )
+        mock_rest.views.ensure.return_value = driver_util.Bunch(
+            id=3, policy="fakeid"
+        )
+        mock_rest.vip_pools.one.return_value = driver_util.Bunch(
+            ip_ranges=[["2.2.2.0", "2.2.2.1"]],
+            tenant_id=456
+        )
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            location = self._driver.create_share(self._context, share)
+
+            # Verify that custom-vippool was used instead of config's vippool
+            mock_rest.vip_pools.one.assert_called_once_with(
+                name="custom-vippool",
+                fail_if_missing=True,
+            )
+            self.assertEqual(len(location), 2)
+            self.assertEqual(
+                location[0]['path'], '2.2.2.0:/fake/manila-fakeid'
+            )
+            self.assertEqual(
+                location[1]['path'], '2.2.2.1:/fake/manila-fakeid'
+            )
+
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_create_share_without_extra_specs_uses_config(
+            self, mock_get_specs
+    ):
+        """Test that config vippool_name is used when no extra specs."""
+        share = fake_share.fake_share(
+            share_proto="NFS",
+            share_type_id="fake-type-id",
+        )
+        mock_get_specs.return_value = {}
+
+        mock_rest = self._create_mocked_rest_api()
+        mock_rest.view_policies.ensure.return_value = driver_util.Bunch(id=1)
+        mock_rest.quotas.ensure.return_value = driver_util.Bunch(
+            id=2, hard_limit=1073741824
+        )
+        mock_rest.views.ensure.return_value = driver_util.Bunch(
+            id=3, policy="fakeid"
+        )
+        mock_rest.vip_pools.one.return_value = driver_util.Bunch(
+            ip_ranges=[["1.1.1.0", "1.1.1.1"]],
+            tenant_id=123
+        )
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            self._driver.create_share(self._context, share)
+
+            # Verify that config's vippool was used
+            mock_rest.vip_pools.one.assert_called_once_with(
+                name="vippool",
+                fail_if_missing=True,
+            )
+
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_create_share_without_vippool_raises_error(self, mock_get_specs):
+        """Test that error is raised when vippool_name is not available."""
+        mock_get_specs.return_value = {}
+        # Create driver without vippool_name in config
+        self.fake_conf.set_default("vast_vippool_name", None)
+        _driver = driver.VASTShareDriver(
+            execute=mock.MagicMock(), configuration=self.fake_conf
+        )
+        _driver.do_setup(self._context)
+
+        # Create share without vippool in config or extra specs
+        share = fake_share.fake_share(
+            share_proto="NFS",
+        )
+
+        with self.assertRaises(exception.VastDriverException) as exc:
+            _driver._ensure_share(share)
+
+        self.assertIn(
+            "VIP pool name must be specified", str(exc.exception)
+        )
+
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_create_share_with_empty_vip_pool_raises_error(
+            self,
+            mock_get_specs,
+    ):
+        """Test that error is raised when vip pool has no available IPs."""
+        mock_get_specs.return_value = {}
+        share = fake_share.fake_share(share_proto="NFS")
+
+        mock_rest = self._create_mocked_rest_api()
+        # Mock vip_pools.one() to return pool with empty ip_ranges
+        mock_rest.vip_pools.one.return_value = driver_util.Bunch(
+            name="vippool",
+            ip_ranges=[],  # No IP ranges
+            tenant_id=123
+        )
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            with self.assertRaises(exception.VastDriverException) as exc:
+                self._driver.create_share(self._context, share)
+
+            self.assertIn("has no available vips", str(exc.exception))
+
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_get_vip_pool_for_share_from_extra_specs(self, mock_get_specs):
+        """Test _get_vip_pool_for_share using extra specs."""
+        mock_get_specs.return_value = {'vast:vippool_name': 'custom-pool'}
+        share = fake_share.fake_share(share_proto="NFS")
+
+        mock_rest = self._create_mocked_rest_api()
+        mock_vippool = driver_util.Bunch(
+            name="custom-pool",
+            ip_ranges=[["1.1.1.1", "1.1.1.2"]],
+            tenant_id=456
+        )
+        mock_rest.vip_pools.one.return_value = mock_vippool
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            result = self._driver._get_vip_pool_for_share(share)
+
+        self.assertEqual(result, mock_vippool)
+        mock_rest.vip_pools.one.assert_called_once_with(
+            name="custom-pool",
+            fail_if_missing=True,
+        )
+
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_get_vip_pool_for_share_from_config(self, mock_get_specs):
+        """Test _get_vip_pool_for_share using config default."""
+        mock_get_specs.return_value = {}
+        share = fake_share.fake_share(share_proto="NFS")
+
+        mock_rest = self._create_mocked_rest_api()
+        mock_vippool = driver_util.Bunch(
+            name="vippool",
+            ip_ranges=[["2.2.2.1", "2.2.2.2"]],
+            tenant_id=789
+        )
+        mock_rest.vip_pools.one.return_value = mock_vippool
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            result = self._driver._get_vip_pool_for_share(share)
+
+        self.assertEqual(result, mock_vippool)
+        mock_rest.vip_pools.one.assert_called_once_with(
+            name="vippool",
+            fail_if_missing=True,
+        )
+
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_get_tenant_id_for_share(self, mock_get_specs):
+        """Test _get_tenant_id_for_share returns correct tenant_id."""
+        mock_get_specs.return_value = {}
+        share = fake_share.fake_share(share_proto="NFS")
+
+        mock_rest = self._create_mocked_rest_api()
+        mock_rest.vip_pools.one.return_value = driver_util.Bunch(
+            name="vippool",
+            tenant_id=999
+        )
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            tenant_id = self._driver._get_tenant_id_for_share(share)
+
+        self.assertEqual(tenant_id, 999)
+
+
+class TestExtraSpecsParsing(unittest.TestCase):
+    """Test extra specs parsing functions."""
+
+    def test_get_opts_from_specs_with_vast_namespace(self):
+        """Test parsing extra specs with vast: namespace."""
+        specs = {
+            'vast:vippool_name': 'pool-1',
+            'capabilities:dedupe': 'true',
+            'other:setting': 'value',
+        }
+        opts = driver_util.get_opts_from_specs(specs)
+        self.assertEqual(opts['vippool_name'], 'pool-1')
+
+    def test_get_opts_from_specs_case_insensitive(self):
+        """Test that namespace and key are case insensitive."""
+        specs = {
+            'VAST:VipPool_Name': 'pool-1',
+            'Vast:VIPPOOL_NAME': 'pool-2',  # Should be ignored, first one wins
+        }
+        opts = driver_util.get_opts_from_specs(specs)
+        # First matching key should be used
+        self.assertIn(opts['vippool_name'], ['pool-1', 'pool-2'])
+
+    def test_get_opts_from_specs_without_namespace(self):
+        """Test that options without namespace are ignored."""
+        specs = {
+            'vippool_name': 'pool-1',
+            'other_setting': 'value',
+        }
+        opts = driver_util.get_opts_from_specs(specs)
+        self.assertIsNone(opts['vippool_name'])
+
+    def test_get_opts_from_specs_with_invalid_format(self):
+        """Test that invalid format keys are skipped."""
+        specs = {
+            'vast:vippool_name:extra': 'pool-1',  # Too many colons
+            'vast:vippool_name': 'pool-2',
+        }
+        opts = driver_util.get_opts_from_specs(specs)
+        self.assertEqual(opts['vippool_name'], 'pool-2')
+
+    def test_get_opts_from_specs_empty(self):
+        """Test parsing empty specs returns defaults."""
+        specs = {}
+        opts = driver_util.get_opts_from_specs(specs)
+        self.assertIsNone(opts['vippool_name'])
+
+    def test_get_opts_from_specs_with_empty_scope(self):
+        """Test that keys with empty scope are handled correctly."""
+        specs = {
+            ':vippool_name': 'pool-1',  # Empty scope
+            'vast:vippool_name': 'pool-2',
+        }
+        opts = driver_util.get_opts_from_specs(specs)
+        # Empty scope should be skipped, so pool-2 should be used
+        self.assertEqual(opts['vippool_name'], 'pool-2')
+
+    def test_get_opts_from_specs_with_empty_option_key(self):
+        """Test that keys with empty option_key are handled correctly."""
+        specs = {
+            'vast:': 'some-value',  # Empty option_key
+            'vast:vippool_name': 'pool-1',
+        }
+        opts = driver_util.get_opts_from_specs(specs)
+        # Empty option_key should be skipped, so pool-1 should be used
+        self.assertEqual(opts['vippool_name'], 'pool-1')
+
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_get_share_extra_specs_params(self, mock_get_specs):
+        """Test get_share_extra_specs_params function."""
+        mock_get_specs.return_value = {
+            'vast:vippool_name': 'pool-1',
+        }
+
+        share = {'share_type_id': 'fake-type-id'}
+        opts = driver_util.get_share_extra_specs_params(share)
+
+        self.assertEqual(opts['vippool_name'], 'pool-1')
+        mock_get_specs.assert_called_once_with(share)
+
+    @mock.patch('manila.share.share_types.get_extra_specs_from_share')
+    def test_get_share_extra_specs_params_no_extra_specs(self, mock_get_specs):
+        """Test get_share_extra_specs_params with no extra specs."""
+        mock_get_specs.return_value = {}
+
+        share = {'share_type_id': 'fake-type-id'}
+        opts = driver_util.get_share_extra_specs_params(share)
+
+        # Should return default VAST extra specs when no vast: specs provided
+        self.assertEqual(opts, {'vippool_name': None})
+        mock_get_specs.assert_called_once_with(share)
 
 
 class TestPolicyPayloadFromRules(unittest.TestCase):

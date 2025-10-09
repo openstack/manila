@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import copy
 import ipaddress
 import types
 
@@ -19,9 +20,79 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import timeutils
 
+from manila.share import share_types
+
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
+
+# VAST driver namespace for extra specs
+VAST_EXTRA_SPEC_NAMESPACE = 'vast'
+
+# Supported VAST extra specs options
+VAST_EXTRA_SPECS_OPTS = {
+    'vippool_name': None,
+}
+
+
+def get_share_extra_specs_params(share):
+    """Return the VAST-specific parameters from share extra specs.
+
+    Args:
+        share: The share object containing share_type_id
+
+    Returns:
+        dict: Dictionary of VAST-specific options extracted from extra specs
+    """
+    specs = share_types.get_extra_specs_from_share(share)
+    return get_opts_from_specs(specs)
+
+
+def get_opts_from_specs(specs):
+    """Parse extra specs and extract VAST-specific options.
+
+    This function extracts options with the 'vast:' namespace prefix.
+    For example: vast:vippool_name=pool-1
+
+    Args:
+        specs: Dictionary of extra specs from a share type
+
+    Returns:
+        dict: Dictionary of parsed VAST options
+    """
+    opts = copy.deepcopy(VAST_EXTRA_SPECS_OPTS)
+
+    for key, value in specs.items():
+        # Get the scope (namespace), if using scope format
+        scope = None
+        key_split = key.split(':')
+
+        # Skip invalid format (more than 2 parts)
+        if len(key_split) not in (1, 2):
+            continue
+
+        if len(key_split) == 1:
+            # No namespace, skip for VAST-specific options
+            continue
+        else:
+            scope = key_split[0]
+            option_key = key_split[1]
+
+        # Normalize to lowercase for comparison
+        if scope:
+            scope = scope.lower()
+        if option_key:
+            option_key = option_key.lower()
+
+        # Extract options with 'vast:' namespace
+        if scope == VAST_EXTRA_SPEC_NAMESPACE and option_key in opts:
+            opts[option_key] = value
+            LOG.debug(
+                "Found VAST extra spec: %s:%s = %s",
+                scope, option_key, value
+            )
+
+    return opts
 
 
 class Bunch(dict):

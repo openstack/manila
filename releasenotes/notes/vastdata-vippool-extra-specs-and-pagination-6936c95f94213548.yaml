@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    The VAST Manila driver enhances multitenancy via share types using
+    namespaced extra specs. Administrators can specify different VIP pools
+    per share type using the ``vast:vippool_name`` extra spec, enabling
+    network isolation between different tenants or projects. This allows
+    multiple share types to use different VIP pools while sharing the same
+    Manila backend. The configuration parameter ``vast_vippool_name`` in
+    ``manila.conf`` now serves as a default fallback and is no longer
+    strictly required when VIP pools are specified via share type extra specs.

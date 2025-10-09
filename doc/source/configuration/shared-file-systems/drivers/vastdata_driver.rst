@@ -1,6 +1,6 @@
-====================================
+=====================
 Vastdata Share Driver
-====================================
+=====================
 
 VAST Share Driver integrates OpenStack with
 `VAST Data <https://www.vastdata.com>`__'s Storage System.
@@ -46,13 +46,20 @@ share driver.
 
 
 VAST Share Driver configuration example
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following example shows parameters in the ``manila.conf`` file
 that are used to configure VAST Share Driver.
 They include two options under ``[DEFAULT]`` and parameters under ``[vast]``.
 Note that a real ``manila.conf`` file would also include
 other parameters that are not specific to VAST Share Driver.
+
+.. note::
+
+   The ``vast_vippool_name`` parameter can be omitted from ``manila.conf``
+   if you plan to specify different VIP pools per share type using the
+   ``vast:vippool_name`` extra spec. See the Multitenancy support section
+   for more details.
 
 .. code-block:: ini
 
@@ -79,7 +86,7 @@ changes to take effect.
 
 
 Pre-configurations for share support
---------------------------------------------------
+------------------------------------
 
 To create a file share, you need to:
 
@@ -96,8 +103,75 @@ Create an NFS share:
 
     openstack share create NFS ${size} --name ${share_name} --share-type ${share_type_name}
 
+Multitenancy support via Share Types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The VAST Share Driver supports multitenancy by allowing different share types
+to use different VIP pools. This enables tenant isolation and provides
+flexibility in network configuration.
+
+VIP Pool Configuration
+----------------------
+
+The VIP pool can be specified in two ways:
+
+1. **Global default** in ``manila.conf`` using ``vast_vippool_name``
+2. **Per share type** using the ``vast:vippool_name`` extra spec
+
+When both are specified, the share type extra spec takes precedence over
+the configuration file setting.
+
+Creating Share Types with Different VIP Pools
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can create multiple share types, each using a different VIP pool for
+multitenancy:
+
+.. code-block:: console
+
+    # Tenant A with dedicated VIP pool
+    openstack share type create vast-tenant-a false \
+        --extra-specs share_backend_name=vast \
+        --extra-specs vast:vippool_name=vippool-tenant-a
+
+    # Tenant B with dedicated VIP pool
+    openstack share type create vast-tenant-b false \
+        --extra-specs share_backend_name=vast \
+        --extra-specs vast:vippool_name=vippool-tenant-b
+
+Creating Shares with Specific VIP Pools
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When creating a share, specify the share type to determine which VIP pool
+will be used:
+
+.. code-block:: console
+
+    # Create a share for Tenant A (uses vippool-tenant-a)
+    openstack share create NFS 100 \
+        --name tenant-a-share \
+        --share-type vast-tenant-a
+
+    # Create a share for Tenant B (uses vippool-tenant-b)
+    openstack share create NFS 50 \
+        --name tenant-b-share \
+        --share-type vast-tenant-b
+
+This approach enables:
+
+- **Network isolation** between different tenants or projects
+- **Service differentiation** with different network configurations per tenant or environment
+- **Flexible deployment** without modifying ``manila.conf``
+
+.. note::
+
+   If ``vast_vippool_name`` is not specified in ``manila.conf`` and a share
+   is created without a share type that specifies ``vast:vippool_name``,
+   the share creation will fail with an error indicating that a VIP pool
+   must be specified.
+
 Pre-Configurations for Snapshot support
---------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The share type must have the following parameter specified:
 
@@ -119,7 +193,7 @@ Or you can add it to an existing share type:
 
 
 To snapshot a share and create share from the snapshot
-------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Create a share using a share type with snapshot_support=True.
 Then, create a snapshot of the share using the command:

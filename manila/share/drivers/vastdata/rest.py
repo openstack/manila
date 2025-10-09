@@ -22,12 +22,24 @@ from oslo_log import log as logging
 from oslo_utils import versionutils
 from packaging import version as packaging_version
 import requests
+from requests import cookies
 
 from manila import exception
 from manila.share.drivers.vastdata import driver_util
+from manila.share.drivers.vastdata.rest_iterator import DEFAULT_PAGE_SIZE
+from manila.share.drivers.vastdata.rest_iterator import ResourceIterator
 import manila.utils as manila_utils
 
 LOG = logging.getLogger(__name__)
+
+
+class NoCookiesJar(cookies.RequestsCookieJar):
+
+    def set(self, name, value, **kwargs):
+        return None
+
+    def set_cookie(self, cookie, *args, **kwargs):
+        return
 
 
 class Session(requests.Session):
@@ -47,6 +59,7 @@ class Session(requests.Session):
         self.username = username
         self.password = password
         self.token = api_token
+        self.cookies = NoCookiesJar()
         self.headers["Accept"] = "application/json"
         self.headers["Content-Type"] = "application/json"
         self.headers["User-Agent"] = (
@@ -126,6 +139,7 @@ class Session(requests.Session):
             raise exception.VastApiException(reason=str(exc))
 
         ret = ret.json() if ret.content else {}
+
         if ret and log_result:
             formatted_response = textwrap.indent(
                 pprint.pformat(ret), prefix="|  "
@@ -190,12 +204,17 @@ class VastResource(ABC):
         self.rest = rest  # For intercommunication between resources.
         self.session = rest.session
 
+    def iter(self, page_size=DEFAULT_PAGE_SIZE, **params):
+        """Create an iterator over list results (handles VMS pagination)."""
+        return ResourceIterator(
+            resource=self, initial_params=params, page_size=page_size)
+
     def list(self, **params):
-        """Get list of entries with optional filtering params"""
-        return self.session.get(self.resource_name, params=params)
+        """Get a list of entries with optional filtering params."""
+        return self.iter(**params).all()
 
     def create(self, **params):
-        """Create new entry with provided params"""
+        """Create a new entry with provided params"""
         return self.session.post(self.resource_name, data=params)
 
     def update(self, entry_id, **params):
@@ -204,51 +223,76 @@ class VastResource(ABC):
             f"{self.resource_name}/{entry_id}", data=params
         )
 
-    def delete(self, name):
-        """Delete entry by name. Skip if entry not found."""
-        entry = self.one(name)
+    def delete(self, **params):
+        """Delete entry by provided params. Skip if entry not found."""
+        entry = self.one(**params)
         if not entry:
             resource = self.__class__.__name__.lower()
+            serialized_params = json.dumps(params, separators=(",", ":"))
             LOG.warning(
-                f"{resource} {name} not found on VAST, skipping delete"
+                "%r not found for params %s, skipping delete",
+                resource, serialized_params
             )
             return
-        return self.session.delete(f"{self.resource_name}/{entry.id}")
+        return self.delete_by_id(entry["id"])
 
-    def one(self, name):
-        """Get single entry by name.
+    def delete_by_id(self, entry_id, **params):
+        """Delete entry by id"""
+        return self.session.delete(
+            f"{self.resource_name}/{entry_id}",
+            **params,
+        )
 
-         Raise exception if multiple entries found.
-         """
-        entries = self.list(name=name)
+    def one(self, *, fail_if_missing=False, **params):
+        """Retrieve a single entry by provided filter parameters.
+
+        Args:
+            fail_if_missing: If True, raise exception when entry not found
+            **params: Filter parameters (keyword-only)
+
+        Raises exception If no entry is found and `fail_if_missing` is True,
+        or if multiple entries are found.
+        """
+        entries = self.list(**params)
+        resource = self.__class__.__name__.lower()
         if not entries:
+            if fail_if_missing:
+                serialized_params = json.dumps(params, separators=(",", ":"))
+                raise exception.VastDriverException(
+                    reason=f"No {resource!r} "
+                           f"found for params {serialized_params}"
+                )
             return
         if len(entries) > 1:
-            resource = self.__class__.__name__.lower() + "s"
+            serialized_params = json.dumps(params, separators=(",", ":"))
             raise exception.VastDriverException(
-                reason=f"Too many {resource} found with name {name}"
+                reason=f"Too many '{resource}s' "
+                       f"found for params {serialized_params}: {entries}"
             )
         return entries[0]
 
     def ensure(self, name, **params):
-        entry = self.one(name)
+        entry = self.one(name=name)
         if not entry:
             entry = self.create(name=name, **params)
         return entry
+
+    def get(self, entry_id, **params):
+        """Get a single entry by id"""
+        return self.session.get(
+            f"{self.resource_name}/{entry_id}",
+            params=params,
+        )
 
 
 class View(VastResource):
     resource_name = "views"
 
-    def create(self, name, path, policy_id):
-        data = dict(
-            name=name,
-            path=path,
-            policy_id=policy_id,
-            create_dir=True,
-            protocols=["NFS"],
-        )
-        return super().create(**data)
+    def create(self, **params):
+        # Set defaults for view creation
+        params.setdefault("create_dir", True)
+        params.setdefault("protocols", ["NFS"])
+        return super().create(**params)
 
 
 class ViewPolicy(VastResource):
@@ -280,6 +324,13 @@ class Quota(VastResource):
 class VipPool(VastResource):
     resource_name = "vippools"
 
+    @cachetools.cached(cache=cachetools.TTLCache(ttl=60 * 30, maxsize=128))
+    def one(self, **params):
+        # Cache results to avoid repeated REST API calls for the same pool.
+        # The vippool is frequently accessed (e.g., to resolve tenant IDs
+        # for shares and snapshots), so heavy usage of this method is expected.
+        return super().one(**params)
+
     def vips(self, pool_name):
         """Get list of ip addresses from vip pool"""
         vippool = self.one(name=pool_name)
@@ -297,6 +348,16 @@ class VipPool(VastResource):
 
 class Snapshots(VastResource):
     resource_name = "snapshots"
+
+    def create(self, name, path, tenant_id=None):
+        data = dict(name=name, path=path)
+        if tenant_id:
+            data["tenant_id"] = tenant_id
+        return super().create(**data)
+
+
+class Versions(VastResource):
+    resource_name = "versions"
 
 
 class Folders(VastResource):
@@ -349,11 +410,13 @@ class RestApi:
         self.vip_pools = VipPool(self)
         self.snapshots = Snapshots(self)
         self.folders = Folders(self)
+        self.versions = Versions(self)
 
-        # Refresh auth token to avoid initial "forbidden" status error.
-        self.session.refresh_auth_token()
+        if not api_token:
+            # Refresh auth token to avoid initial "forbidden" status error.
+            self.session.refresh_auth_token()
 
     @cachetools.cached(cache=cachetools.TTLCache(ttl=60 * 60, maxsize=1))
     def get_sw_version(self):
         """Software version of cluster Rest API interacts with"""
-        return self.session.versions(status="success")[0].sys_version
+        return self.versions.list(status="success")[0].sys_version
