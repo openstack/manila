@@ -1,3 +1,107 @@
 [build-system]
 requires = ["pbr>=6.1.1"]
 build-backend = "pbr.build"
+
+[project]
+name = "manila"
+description = "OpenStack Shared File System Storage"
+authors = [
+    {name = "OpenStack", email = "openstack-discuss@lists.openstack.org"},
+]
+readme = {file = "README.rst", content-type = "text/x-rst"}
+license = {text = "Apache-2.0"}
+dynamic = ["version", "dependencies"]
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: OpenStack",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: System Admininstrators",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Homepage = "https://docs.openstack.org/manila"
+Repository = "https://opendev.org/openstack/manila"
+Bugs = "https://bugs.launchpad.net/manila"
+
+[project.entry-points."manila.scheduler.filters"]
+AffinityFilter = "manila.scheduler.filters.affinity:AffinityFilter"
+AntiAffinityFilter = "manila.scheduler.filters.affinity:AntiAffinityFilter"
+OnlyHostFilter = "manila.scheduler.filters.host:OnlyHostFilter"
+AvailabilityZoneFilter = "manila.scheduler.filters.availability_zone:AvailabilityZoneFilter"
+CapabilitiesFilter = "manila.scheduler.filters.capabilities:CapabilitiesFilter"
+CapacityFilter = "manila.scheduler.filters.capacity:CapacityFilter"
+DriverFilter = "manila.scheduler.filters.driver:DriverFilter"
+IgnoreAttemptedHostsFilter = "manila.scheduler.filters.ignore_attempted_hosts:IgnoreAttemptedHostsFilter"
+JsonFilter = "manila.scheduler.filters.json:JsonFilter"
+RetryFilter = "manila.scheduler.filters.retry:RetryFilter"
+ShareReplicationFilter = "manila.scheduler.filters.share_replication:ShareReplicationFilter"
+CreateFromSnapshotFilter = "manila.scheduler.filters.create_from_snapshot:CreateFromSnapshotFilter"
+# Share Group filters
+ConsistentSnapshotFilter = "manila.scheduler.filters.share_group_filters.consistent_snapshot:ConsistentSnapshotFilter"
+
+[project.entry-points."manila.scheduler.weighers"]
+CapacityWeigher = "manila.scheduler.weighers.capacity:CapacityWeigher"
+GoodnessWeigher = "manila.scheduler.weighers.goodness:GoodnessWeigher"
+PoolWeigher = "manila.scheduler.weighers.pool:PoolWeigher"
+HostAffinityWeigher = "manila.scheduler.weighers.host_affinity:HostAffinityWeigher"
+NetAppAIQWeigher = "manila.scheduler.weighers.netapp_aiq:NetAppAIQWeigher"
+
+[project.entry-points."manila.share.drivers.dell_emc.plugins"]
+vnx = "manila.share.drivers.dell_emc.plugins.vnx.connection:VNXStorageConnection"
+unity = "manila.share.drivers.dell_emc.plugins.unity.connection:UnityStorageConnection"
+powerscale = "manila.share.drivers.dell_emc.plugins.powerscale.powerscale:PowerScaleStorageConnection"
+powermax = "manila.share.drivers.dell_emc.plugins.powermax.connection:PowerMaxStorageConnection"
+powerstore = "manila.share.drivers.dell_emc.plugins.powerstore.connection:PowerStoreStorageConnection"
+powerflex = "manila.share.drivers.dell_emc.plugins.powerflex.connection:PowerFlexStorageConnection"
+
+[project.entry-points."manila.tests.scheduler.fakes"]
+FakeWeigher1 = "manila.tests.scheduler.fakes:FakeWeigher1"
+FakeWeigher2 = "manila.tests.scheduler.fakes:FakeWeigher2"
+
+[project.entry-points."oslo.config.opts"]
+manila = "manila.opts:list_opts"
+
+[project.entry-points."oslo.config.opts.defaults"]
+manila = "manila.common.config:set_lib_defaults"
+
+[project.entry-points."oslo.policy.enforcer"]
+manila = "manila.policy:get_enforcer"
+
+[project.entry-points."oslo.policy.policies"]
+# The sample policies will be ordered by entry point and then by list
+# returned from that entry point. If more control is desired split out each
+# list_rules method into a separate entry point rather than using the
+# aggregate method.
+manila = "manila.policies:list_rules"
+
+[project.scripts]
+manila-api = "manila.cmd.api:main"
+manila-data = "manila.cmd.data:main"
+manila-manage = "manila.cmd.manage:main"
+manila-rootwrap = "oslo_rootwrap.cmd:main"
+manila-scheduler = "manila.cmd.scheduler:main"
+manila-share = "manila.cmd.share:main"
+manila-status = "manila.cmd.status:main"
+
+[tool.setuptools]
+packages = [
+    "manila"
+]
+
+[tool.setuptools.data-files]
+"etc/manila" = [
+    "etc/manila/api-paste.ini",
+    "etc/manila/rootwrap.conf",
+]
+"etc/manila/rootwrap.d" = [
+    "etc/manila/rootwrap.d/*",
+]
