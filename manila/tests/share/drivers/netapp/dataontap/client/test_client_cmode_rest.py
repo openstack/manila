@@ -6122,6 +6122,41 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             mock.call(f'/svm/svms/{fake.FAKE_UUID}', 'patch', body=body_patch)
         ])
 
+    @ddt.data(0, 65535, 270000)
+    def test__create_vserver_delete_retention_hours(self,
+                                                    delete_retention_hours):
+        mock_sr = self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value=fake.FAKE_UUID))
+        body_post = {
+            'name': fake.VSERVER_NAME,
+            'nsswitch.namemap': fake.FAKE_SERVER_SWITCH_NAME,
+            'subtype': fake.FAKE_SUBTYPE,
+            'ipspace.name': fake.IPSPACE_NAME,
+            'is_space_reporting_logical': 'false',
+            'is_space_enforcement_logical': 'false',
+            'aggregates': [{
+                'name': fake.SHARE_AGGREGATE_NAME
+            }],
+        }
+
+        body_patch = {
+            'retention_period': delete_retention_hours,
+        }
+
+        self.client._create_vserver(
+            fake.VSERVER_NAME,
+            [fake.SHARE_AGGREGATE_NAME],
+            fake.IPSPACE_NAME,
+            delete_retention_hours,
+            fake.FAKE_SERVER_SWITCH_NAME,
+            fake.FAKE_SUBTYPE)
+
+        mock_sr.assert_has_calls([
+            mock.call('/svm/svms', 'post', body=body_post),
+            mock.call(f'/svm/svms/{fake.FAKE_UUID}', 'patch', body=body_patch)
+        ])
+
     def test_create_barbican_kms_config_for_specified_vserver(self):
         mock_sr = self.mock_object(self.client, 'send_request')
         body = {
