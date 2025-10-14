@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp Driver `bug #2128702
+    <https://bugs.launchpad.net/manila/+bug/2128702>`_:
+    Previously, setting netapp_delete_retention_hours to 0 in the
+    Manila configuration did not configure the retention period to zero.
+    This patch fixes the issue, and the retention period can now be set
+    to zero.
