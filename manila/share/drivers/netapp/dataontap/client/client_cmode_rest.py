@@ -4489,17 +4489,16 @@ class NetAppRestClient(object):
 
         self.send_request('/svm/svms', 'post', body=body)
 
-        if delete_retention_hours != 0:
-            try:
-                svm_uuid = self._get_unique_svm_by_name(vserver_name)
-                body = {
-                    'retention_period': delete_retention_hours
-                }
-                self.send_request(f'/svm/svms/{svm_uuid}', 'patch',
-                                  body=body)
-            except netapp_api.api.NaApiError:
-                LOG.warning('Failed to modify retention period for vserver '
-                            '%(server)s.', {'server': vserver_name})
+        try:
+            svm_uuid = self._get_unique_svm_by_name(vserver_name)
+            body = {
+                'retention_period': delete_retention_hours
+            }
+            self.send_request(f'/svm/svms/{svm_uuid}', 'patch',
+                              body=body)
+        except netapp_api.api.NaApiError:
+            LOG.warning('Failed to modify retention period for vserver '
+                        '%(server)s.', {'server': vserver_name})
 
     @na_utils.trace
     def create_barbican_kms_config_for_specified_vserver(self, vserver_name,
