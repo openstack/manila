@@ -1377,8 +1377,8 @@ Resource locks
 
     A ``delete`` (deletion) lock on a share would prevent deletion and other
     actions on a share that are similar to deletion. Similar actions include
-    moving a share to the recycle bin for deferred deletion (``soft
-    deletion``) or removing a share from the Shared File Systems service
+    moving a share to the recycle bin (``soft deletion``) or removing a
+    share from the Shared File Systems service
     (``unmanage``).
 
 
