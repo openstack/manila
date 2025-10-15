@@ -6,4 +6,4 @@ features:
     command and it enables encryption on the created share. The feature
     at this level offers only encrypted share creation and deletion.
     Note: Controlling encryption keys with NetApp will only be possible
-    with DHSS=True.
+    with DHSS=True. This feature is supported for ONTAP versions >= 9.17.1.
