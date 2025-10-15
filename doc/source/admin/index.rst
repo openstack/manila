@@ -69,6 +69,8 @@ deployment.
    export_location_metadata
    shared-file-systems-share-backup-management.rst
    shared-file-systems-services-manage.rst
+   deferred_deletion.rst
+
 
 Supported share back ends
 -------------------------
