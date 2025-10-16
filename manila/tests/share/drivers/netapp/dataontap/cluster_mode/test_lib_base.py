@@ -2387,6 +2387,83 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library._client.mark_qos_policy_group_for_deletion.called)
         self.assertEqual(1, lib_base.LOG.info.call_count)
 
+    def test_delete_share_clears_private_storage(self):
+        vserver_client = mock.Mock()
+        self.mock_object(
+            self.library,
+            '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1,
+                                    vserver_client))
+        )
+        mock_share_exists = self.mock_object(
+            self.library,
+            '_share_exists',
+            mock.Mock(return_value=True)
+        )
+        mock_remove_export = self.mock_object(self.library, '_remove_export')
+        mock_deallocate_container = self.mock_object(self.library,
+                                                     '_deallocate_container')
+        mock_delete_fpolicy = self.mock_object(
+            self.library, '_delete_fpolicy_for_share')
+        mock_get_qos = self.mock_object(
+            self.library,
+            '_get_backend_qos_policy_group_name',
+            mock.Mock(return_value='fake_qos_policy')
+        )
+        mock_mark_qos = self.mock_object(
+            vserver_client,
+            'mark_qos_policy_group_for_deletion'
+        )
+        mock_private_storage_delete = self.mock_object(
+            self.library.private_storage,
+            'delete',
+        )
+        self.library.delete_share(self.context, fake.SHARE,
+                                  share_server=fake.SHARE_SERVER)
+
+        share_name = self.library._get_backend_share_name(fake.SHARE['id'])
+        mock_share_exists.assert_called_once_with(share_name, vserver_client)
+        mock_remove_export.assert_called_once_with(fake.SHARE, vserver_client)
+        mock_deallocate_container.assert_called_once_with(share_name,
+                                                          vserver_client)
+        mock_delete_fpolicy.assert_called_once_with(
+            fake.SHARE, fake.VSERVER1, vserver_client)
+        mock_get_qos.assert_called_once_with(
+            fake.SHARE['id'])
+        mock_mark_qos.assert_called_once_with('fake_qos_policy')
+        mock_private_storage_delete.assert_called_once_with(fake.SHARE['id'])
+
+        self.assertEqual(0, lib_base.LOG.info.call_count)
+
+    def test_delete_share_nonexistent_does_not_delete_private_storage(self):
+        vserver_client = mock.Mock()
+        self.mock_object(
+            self.library,
+            '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client))
+        )
+        mock_share_exists = self.mock_object(
+            self.library,
+            '_share_exists',
+            mock.Mock(return_value=False)
+        )
+        mock_delete_fpolicy = self.mock_object(
+            self.library,
+            '_delete_fpolicy_for_share'
+        )
+        mock_private_storage_delete = self.mock_object(
+            self.library.private_storage, 'delete'
+        )
+        self.library.delete_share(
+            self.context, fake.SHARE, share_server=fake.SHARE_SERVER)
+        share_name = self.library._get_backend_share_name(fake.SHARE['id'])
+        mock_share_exists.assert_called_once_with(
+            share_name, vserver_client)
+        mock_delete_fpolicy.assert_called_once_with(
+            fake.SHARE, fake.VSERVER1, vserver_client)
+        mock_private_storage_delete.assert_called_once_with(
+            fake.SHARE['id'])
+
     def test_deallocate_container(self):
 
         vserver_client = mock.Mock()

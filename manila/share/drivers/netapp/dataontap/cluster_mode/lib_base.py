@@ -994,8 +994,6 @@ class NetAppCmodeFileStorageLibrary(object):
 
             self._delete_share(source_share, src_vserver, src_vserver_client,
                                remove_export=False)
-            # Delete private storage info
-            self.private_storage.delete(share['id'])
             msg = _('Could not complete share %(share_id)s creation due to an '
                     'internal error.')
             msg_args = {'share_id': share['id']}
@@ -1850,6 +1848,12 @@ class NetAppCmodeFileStorageLibrary(object):
                     qos_policy_for_share)
         else:
             LOG.info("Share %s does not exist.", share['id'])
+        try:
+            self.private_storage.delete(share['id'])
+        except Exception as e:
+            LOG.warning(
+                "Failed to delete private storage for share %s: %s",
+                share['id'], e)
 
     @na_utils.trace
     def delete_share(self, context, share, share_server=None):
