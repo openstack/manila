@@ -1119,6 +1119,24 @@ class CephFSDriverTestCase(test.TestCase):
                               self._context, fake_share_1,
                               'new_user', new_project, access_rules)
 
+    def test_get_share_status_returns_none_for_unexpected_status(self):
+        """Test get_share_status returns None for non-creating status."""
+        share = fake_share.fake_share(status=constants.STATUS_AVAILABLE)
+
+        result = self._driver.get_share_status(share)
+
+        self.assertIsNone(result)
+
+    def test__need_to_cancel_clone_returns_false_for_regular_subvolume(self):
+        """Test _need_to_cancel_clone handles non-clone subvolumes."""
+        driver.rados_command.side_effect = (
+            exception.ShareBackendException(msg="not allowed on subvolume"))
+
+        result = self._driver._need_to_cancel_clone(
+            self._share, self._share['id'])
+
+        self.assertFalse(result)
+
 
 @ddt.ddt
 class NativeProtocolHelperTestCase(test.TestCase):
