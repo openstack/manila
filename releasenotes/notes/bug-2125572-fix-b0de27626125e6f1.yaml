@@ -1,0 +1,6 @@
+---
+fixes:
+  - Fixed a bug that stopped share and share backup progress information
+    from being propagated to share and share backup models in manila.db.
+  - Fixed a misconfiguration that stopped the NFS Backup driver from
+    performing targeted restores.
