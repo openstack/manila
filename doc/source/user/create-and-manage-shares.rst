@@ -957,18 +957,14 @@ Delete snapshot
 
   .. code-block:: console
 
-     $ manila snapshot-delete mysnapshot
+     $ openstack share snapshot delete mysnapshot
 
 * List snapshots after deleting.
 
   .. code-block:: console
 
-     $ manila snapshot-list
+     $ openstack share snapshot list
 
-     +----+----------+--------+------+------------+
-     | ID | Share ID | Status | Name | Share Size |
-     +----+----------+--------+------+------------+
-     +----+----------+--------+------+------------+
 
   The snapshot is deleted.
 
