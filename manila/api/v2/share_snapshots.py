@@ -25,8 +25,10 @@ from webob import exc
 from manila.api import common
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
+from manila.api.schemas import share_snapshots as schema
 from manila.api.v1 import share_snapshots
 from manila.api.v2 import metadata
+from manila.api import validation
 from manila.api.views import share_snapshots as snapshot_views
 from manila.common import constants
 from manila.db import api as db_api
@@ -333,6 +335,13 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
         return self._access_list(req, snapshot_id)
 
     @wsgi.Controller.api_version("2.0")
+    @validation.request_query_schema(schema.index_request_query, "2.0", "2.35")
+    @validation.request_query_schema(
+        schema.index_request_query_v236, "2.36", "2.72")
+    @validation.request_query_schema(
+        schema.index_request_query_v273, "2.73", "2.78")
+    @validation.request_query_schema(schema.index_request_query_v279, "2.79")
+    @validation.response_body_schema(schema.index_response_body)
     def index(self, req):
         """Returns a summary list of shares."""
         if req.api_version_request < api_version.APIVersionRequest("2.36"):
