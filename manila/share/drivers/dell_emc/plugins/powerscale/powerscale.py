@@ -35,8 +35,9 @@ from manila.share.drivers.dell_emc.plugins.powerscale import powerscale_api
     1.0.2 - Add support for ensure shares
     1.0.3 - Add support for thin provisioning
     1.0.4 - Rename isilon to powerscale
+    1.0.5 - Add support for share shrink
 """
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 
 CONF = cfg.CONF
 
@@ -85,6 +86,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
         self.reserved_share_extend_percentage = None
         self.max_over_subscription_ratio = None
         self._threshold_limit = 0
+        self.shrink_share_support = True
 
     def _get_container_path(self, share):
         """Return path to a container."""
@@ -284,6 +286,37 @@ class PowerScaleStorageConnection(base.StorageConnection):
         new_quota_size = new_size * units.Gi
         self._powerscale_api.quota_set(
             self._get_container_path(share), 'directory', new_quota_size)
+
+    def shrink_share(self, share, new_size, share_server=None):
+        """Shrink a share by lowering its directory hard quota.
+
+        Rejects shrink if current logical usage exceeds the requested size.
+        """
+        LOG.debug(
+            'Shrinking share %(name)s to %(size)sG.',
+            {'name': share['name'], 'size': new_size}
+        )
+        path = self._get_container_path(share)
+        quota_json = self._powerscale_api.quota_get(path, 'directory')
+        used_bytes = 0
+        if quota_json:
+            used_bytes = quota_json.get('usage', {}).get('logical', 0)
+        new_quota_bytes = new_size * units.Gi
+        if used_bytes > new_quota_bytes:
+            message = (_(
+                'Cannot shrink share "%(name)s" to %(size)sG: '
+                'used space (%(used)s bytes) exceeds new size.'
+            ) % {
+                'name': share['name'],
+                'size': new_size,
+                'used': used_bytes
+            })
+            LOG.error(message)
+            raise exception.ShareShrinkingPossibleDataLoss(
+                share_id=share.get('id', share.get('name')),
+                reason=message,
+            )
+        self._powerscale_api.quota_set(path, 'directory', new_quota_bytes)
 
     def allow_access(self, context, share, access, share_server):
         """Allow access to the share."""
