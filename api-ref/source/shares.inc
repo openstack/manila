@@ -460,6 +460,7 @@ Request
    - share_network_id: share_network_id_request
    - availability_zone: availability_zone_request
    - scheduler_hints: scheduler_hints
+   - mount_point_name: mount_point_name_request
    - encryption_key_ref: encryption_key_ref_request
 
 Request example
