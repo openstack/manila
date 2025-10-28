@@ -7,9 +7,10 @@ Overview
 --------
 
 Manila supports deferred deletion for shares and snapshots, a feature
-introduced in Manila 18.0.1 (Caracal). When this feature is enabled,
-deletion requests release quotas immediately, but the actual deletion
-in the backend driver happens asynchronously.
+introduced in Manila during the 2024.1 (Caracal) release cycle.
+When this feature is enabled, deletion requests release quotas
+immediately, but the actual deletion in the backend driver happens
+asynchronously.
 
 Resources that encounter deletion errors are retried periodically.
 
