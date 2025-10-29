@@ -1,0 +1,9 @@
+---
+
+fixes:
+  - |
+    Fixed an issue that caused the share replica promotion to fail due to
+    missing replica attributes in the NetApp driver while using the REST API.
+    For more details, please refer to
+    `launchpad bug #2130717 <https://bugs.launchpad.net/manila/+bug/2130717>`_.
+
