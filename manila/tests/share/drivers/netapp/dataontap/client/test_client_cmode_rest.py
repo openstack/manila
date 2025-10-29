@@ -2438,6 +2438,89 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                           self.client._parse_timestamp,
                           test_time_str)
 
+    def test__build_autosize_attributes(self):
+        """Test _build_autosize_attributes with various input scenarios."""
+
+        # Test case 1: Basic functionality with all supported attributes
+        autosize_attrs = {
+            'grow-threshold-percent': 90,
+            'shrink-threshold-percent': 50,
+            'maximum-size': '10GB',
+            'minimum-size': '1GB',
+            'mode': 'grow'
+        }
+
+        result = self.client._build_autosize_attributes(autosize_attrs)
+
+        expected = {
+            'grow_threshold': 90,
+            'shrink_threshold': 50,
+            'maximum': '10GB',
+            'minimum': '1GB',
+            'mode': 'grow'
+        }
+        self.assertEqual(expected, result)
+
+    def test__build_autosize_attributes_reset_true(self):
+        """Test _build_autosize_attributes returns None when reset is true."""
+        autosize_attrs = {
+            'reset': 'true',
+            'grow-threshold-percent': 90,
+            'maximum-size': '10GB'
+        }
+
+        result = self.client._build_autosize_attributes(autosize_attrs)
+
+        self.assertIsNone(result)
+
+    def test__build_autosize_attributes_partial_attrs(self):
+        """Test _build_autosize_attributes with only some attributes."""
+        autosize_attrs = {
+            'grow-threshold-percent': 85,
+            'maximum-size': '5GB'
+        }
+
+        result = self.client._build_autosize_attributes(autosize_attrs)
+
+        expected = {
+            'grow_threshold': 85,
+            'maximum': '5GB'
+        }
+        self.assertEqual(expected, result)
+
+    def test__build_autosize_attributes_empty_dict(self):
+        """Test _build_autosize_attributes returns None for empty dict."""
+        autosize_attrs = {}
+
+        result = self.client._build_autosize_attributes(autosize_attrs)
+
+        self.assertIsNone(result)
+
+    def test__build_autosize_attributes_with_mode_only(self):
+        """Test _build_autosize_attributes with only mode attribute."""
+        autosize_attrs = {
+            'mode': 'grow_shrink'
+        }
+
+        result = self.client._build_autosize_attributes(autosize_attrs)
+
+        expected = {
+            'mode': 'grow_shrink'
+        }
+        self.assertEqual(expected, result)
+        autosize_attrs = {
+            'grow-threshold-percent': 90,
+            'maximum-size': '10GB'
+        }
+
+        result = self.client._build_autosize_attributes(autosize_attrs)
+
+        expected = {
+            'grow_threshold': 90,
+            'maximum': '10GB'
+        }
+        self.assertEqual(expected, result)
+
     def test_start_volume_move(self):
 
         mock__send_volume_move_request = self.mock_object(

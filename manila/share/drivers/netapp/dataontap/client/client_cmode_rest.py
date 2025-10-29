@@ -2524,14 +2524,9 @@ class NetAppRestClient(object):
         }
 
         if autosize_attributes:
-            attributes = autosize_attributes
-            body['autosize'] = {
-                'mode': attributes['mode'],
-                'grow_threshold': attributes['grow-threshold-percent'],
-                'shrink_threshold': attributes['shrink-threshold-percent'],
-                'maximum': attributes['maximum-size'],
-                'minimum': attributes['minimum-size'],
-            }
+            autosize = self._build_autosize_attributes(autosize_attributes)
+            if autosize:
+                body['autosize'] = autosize
 
         if language:
             body['language'] = language
@@ -2573,6 +2568,35 @@ class NetAppRestClient(object):
         )
         if self._is_snaplock_enabled_volume(volume_name):
             self.set_snaplock_attributes(volume_name, **options)
+
+    @na_utils.trace
+    def _build_autosize_attributes(self, autosize_attributes):
+        """Build autosize attributes dict from autosize_attributes."""
+        reset_val = autosize_attributes.get('reset', '')
+        if str(reset_val).lower() == 'true':
+            return None
+
+        src = autosize_attributes
+
+        # Build autosize dict directly
+        autosize_key_map = {
+            'grow-threshold-percent': 'grow_threshold',
+            'shrink-threshold-percent': 'shrink_threshold',
+            'maximum-size': 'maximum',
+            'minimum-size': 'minimum',
+        }
+
+        autosize = {
+            dest_key: src[src_key]
+            for src_key, dest_key in autosize_key_map.items()
+            if src_key in src
+        }
+
+        # Add mode if present
+        if 'mode' in src:
+            autosize['mode'] = src['mode']
+
+        return autosize if autosize else None
 
     @na_utils.trace
     def start_volume_move(self, volume_name, vserver, destination_aggregate,
