@@ -1,0 +1,9 @@
+---
+  fixes:
+    - |
+      `Bug #2060776 <https://bugs.launchpad.net/manila/+bug/2060776>`_:
+      Fixed an issue where ext-based shares showed less capacity than expected
+      due to the default 5% reserved blocks. A new configuration option,
+      ``set_zero_reserved_blocks``, has been added
+      to the generic share driver. When enabled (default True), the
+      generic driver makes the full volume capacity available to shares.
