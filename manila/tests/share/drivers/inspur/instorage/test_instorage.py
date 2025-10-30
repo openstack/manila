@@ -20,7 +20,6 @@ Share driver test for Inspur InStorage
 from unittest import mock
 
 import ddt
-from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_config import cfg
 import paramiko
@@ -356,10 +355,10 @@ class SSHRunnerTestCase(test.TestCase):
         )
         self.assertEqual('fake_value', ret)
 
-    def test__ssh_execute_success_run_again(self):
+    @mock.patch('time.sleep')
+    def test__ssh_execute_success_run_again(self, mock_sleep):
         mock_se = mock.Mock(side_effect=[Exception(), 'fake_value'])
         self.mock_object(processutils, 'ssh_execute', mock_se)
-        mock_sleep = self.mock_object(greenthread, 'sleep')
 
         runner = cli_helper.SSHRunner(
             '127.0.0.1', '22', 'fakeuser', 'fakepassword'
@@ -373,10 +372,11 @@ class SSHRunnerTestCase(test.TestCase):
 
         call = mock.call(self.fakessh, 'mcsinq lsvdisk', check_exit_code=True)
         mock_se.assert_has_calls([call, call])
-        mock_sleep.assert_called_once()
+        mock_sleep.assert_called_once_with(1)
         self.assertEqual('fake_value', ret)
 
-    def test__ssh_execute_failed_exec_failed(self):
+    @mock.patch('time.sleep')
+    def test__ssh_execute_failed_exec_failed(self, mock_sleep):
         exception = Exception()
         exception.exit_code = '1'
         exception.stdout = 'fake_stdout'
@@ -384,7 +384,6 @@ class SSHRunnerTestCase(test.TestCase):
         exception.cmd = 'fake_cmd_list'
         mock_se = mock.Mock(side_effect=exception)
         self.mock_object(processutils, 'ssh_execute', mock_se)
-        mock_sleep = self.mock_object(greenthread, 'sleep')
 
         runner = cli_helper.SSHRunner(
             '127.0.0.1', '22', 'fakeuser', 'fakepassword'
@@ -403,12 +402,12 @@ class SSHRunnerTestCase(test.TestCase):
             'mcsinq lsvdisk',
             check_exit_code=True
         )
-        mock_sleep.assert_called_once()
+        mock_sleep.assert_called_once_with(1)
 
-    def test__ssh_execute_failed_exec_failed_exception_error(self):
+    @mock.patch('time.sleep')
+    def test__ssh_execute_failed_exec_failed_exception_error(self, mock_sleep):
         mock_se = mock.Mock(side_effect=Exception())
         self.mock_object(processutils, 'ssh_execute', mock_se)
-        mock_sleep = self.mock_object(greenthread, 'sleep')
 
         runner = cli_helper.SSHRunner(
             '127.0.0.1', '22', 'fakeuser', 'fakepassword'
@@ -427,7 +426,7 @@ class SSHRunnerTestCase(test.TestCase):
             'mcsinq lsvdisk',
             check_exit_code=True
         )
-        mock_sleep.assert_called_once()
+        mock_sleep.assert_called_once_with(1)
 
 
 class CLIParserTestCase(test.TestCase):

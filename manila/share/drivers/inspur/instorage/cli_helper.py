@@ -19,8 +19,7 @@ CLI helpers for Inspur InStorage
 
 import paramiko
 import re
-
-from eventlet import greenthread
+import time
 
 from oslo_concurrency import processutils
 from oslo_log import log
@@ -91,7 +90,7 @@ class SSHRunner(object):
                     except Exception as e:
                         LOG.exception('Error has occurred')
                         last_exception = e
-                        greenthread.sleep(1)
+                        time.sleep(1)
 
                 try:
                     raise processutils.ProcessExecutionError(
