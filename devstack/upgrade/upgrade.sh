@@ -65,7 +65,7 @@ $MANILA_BIN_DIR/manila-manage db sync || die $LINENO "DB migration error"
 start_manila
 
 # Don't succeed unless the services come up
-ensure_services_started manila-api manila-share manila-scheduler manila-data
+ensure_services_started m-api m-sch m-shr m-dat
 
 set +o xtrace
 echo "*********************************************************************"

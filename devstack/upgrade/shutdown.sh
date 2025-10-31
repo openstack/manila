@@ -19,4 +19,4 @@ set -o xtrace
 stop_manila
 
 # Ensure everything is stopped
-ensure_services_stopped manila-api manila-share manila-scheduler manila-data
+ensure_services_stopped m-api m-sch m-shr m-dat
