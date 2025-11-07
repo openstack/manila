@@ -395,17 +395,17 @@ class ServicesTest(test.TestCase):
         body = {}
 
         self.assertRaises(
-            webob.exc.HTTPBadRequest,
+            exception.ValidationError,
             self.controller.ensure_shares,
             req,
-            body
+            body=body
         )
 
     def test_ensure_shares_host_not_found(self):
         req = fakes.HTTPRequest.blank(
             '/fooproject/services/ensure', version=ENSURE_SHARES_VERSION)
         req_context = req.environ['manila.context']
-        body = {'host': 'host1'}
+        body = {'ensure_shares': {'host': 'host1'}}
 
         mock_service_get = self.mock_object(
             db, 'service_get_by_args',
@@ -416,11 +416,11 @@ class ServicesTest(test.TestCase):
             webob.exc.HTTPNotFound,
             self.controller.ensure_shares,
             req,
-            body
+            body=body
         )
         mock_service_get.assert_called_once_with(
             req_context,
-            body['host'],
+            body['ensure_shares']['host'],
             'manila-share'
         )
 
@@ -428,7 +428,7 @@ class ServicesTest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             '/fooproject/services/ensure', version=ENSURE_SHARES_VERSION)
         req_context = req.environ['manila.context']
-        body = {'host': 'host1'}
+        body = {'ensure_shares': {'host': 'host1'}}
         fake_service = {'id': 'fake_service_id'}
 
         mock_service_get = self.mock_object(
@@ -446,22 +446,22 @@ class ServicesTest(test.TestCase):
             webob.exc.HTTPConflict,
             self.controller.ensure_shares,
             req,
-            body
+            body=body
         )
         mock_service_get.assert_called_once_with(
             req_context,
-            body['host'],
+            body['ensure_shares']['host'],
             'manila-share'
         )
         mock_ensure.assert_called_once_with(
-            req_context, fake_service, body['host']
+            req_context, fake_service, body['ensure_shares']['host']
         )
 
     def test_ensure_shares(self):
         req = fakes.HTTPRequest.blank(
             '/fooproject/services/ensure', version=ENSURE_SHARES_VERSION)
         req_context = req.environ['manila.context']
-        body = {'host': 'host1'}
+        body = {'ensure_shares': {'host': 'host1'}}
         fake_service = {'id': 'fake_service_id'}
 
         mock_service_get = self.mock_object(
@@ -473,14 +473,14 @@ class ServicesTest(test.TestCase):
             self.controller.service_api, 'ensure_shares',
         )
 
-        response = self.controller.ensure_shares(req, body)
+        response = self.controller.ensure_shares(req, body=body)
 
         self.assertEqual(202, response.status_int)
         mock_service_get.assert_called_once_with(
             req_context,
-            body['host'],
+            body['ensure_shares']['host'],
             'manila-share'
         )
         mock_ensure.assert_called_once_with(
-            req_context, fake_service, body['host']
+            req_context, fake_service, body['ensure_shares']['host']
         )
