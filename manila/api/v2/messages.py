@@ -25,6 +25,7 @@ import webob
 from webob import exc
 
 from manila.api import common
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.schemas import messages as schema
 from manila.api import validation
@@ -78,9 +79,14 @@ class MessagesController(wsgi.Controller):
 
         return webob.Response(status_int=http_client.NO_CONTENT)
 
-    @wsgi.Controller.api_version(MESSAGES_BASE_MICRO_VERSION, '2.51')
+    @wsgi.Controller.api_version(MESSAGES_BASE_MICRO_VERSION)
     @wsgi.Controller.authorize('get_all')
-    @validation.request_query_schema(schema.index_request_query)
+    @validation.request_query_schema(
+        schema.index_request_query, min_version='2.37', max_version='2.51'
+    )
+    @validation.request_query_schema(
+        schema.index_request_query_v252, min_version='2.52'
+    )
     @validation.response_body_schema(schema.index_response_body)
     def index(self, req):
         """Returns a list of messages, transformed through view builder."""
@@ -90,41 +96,22 @@ class MessagesController(wsgi.Controller):
         params = common.get_pagination_params(req)
         limit, offset = [params.get('limit'), params.get('offset')]
         sort_key, sort_dir = common.get_sort_params(filters)
-        filters.pop('created_since', None)
-        filters.pop('created_before', None)
 
-        messages = self.message_api.get_all(context, search_opts=filters,
-                                            limit=limit,
-                                            offset=offset,
-                                            sort_key=sort_key,
-                                            sort_dir=sort_dir)
+        if req.api_version_request < api_version.APIVersionRequest('2.52'):
+            filters.pop('created_since', None)
+            filters.pop('created_before', None)
+        else:
+            for time_comparison_filter in ['created_since', 'created_before']:
+                if time_comparison_filter in filters:
+                    time_str = filters.get(time_comparison_filter)
+                    try:
+                        parsed_time = timeutils.parse_isotime(time_str)
+                    except ValueError:
+                        msg = _('Invalid value specified for the query '
+                                'key: %s') % time_comparison_filter
+                        raise exc.HTTPBadRequest(explanation=msg)
 
-        return self._view_builder.index(req, messages)
-
-    @wsgi.Controller.api_version(MESSAGES_QUERY_BY_TIMESTAMP)   # noqa: F811
-    @wsgi.Controller.authorize('get_all')
-    @validation.request_query_schema(schema.index_request_query_v252)
-    @validation.response_body_schema(schema.index_response_body)
-    def index(self, req):  # pylint: disable=function-redefined  # noqa F811
-        """Returns a list of messages, transformed through view builder."""
-        context = req.environ['manila.context']
-        filters = req.params.copy()
-
-        params = common.get_pagination_params(req)
-        limit, offset = [params.get('limit'), params.get('offset')]
-        sort_key, sort_dir = common.get_sort_params(filters)
-
-        for time_comparison_filter in ['created_since', 'created_before']:
-            if time_comparison_filter in filters:
-                time_str = filters.get(time_comparison_filter)
-                try:
-                    parsed_time = timeutils.parse_isotime(time_str)
-                except ValueError:
-                    msg = _('Invalid value specified for the query '
-                            'key: %s') % time_comparison_filter
-                    raise exc.HTTPBadRequest(explanation=msg)
-
-                filters[time_comparison_filter] = parsed_time
+                    filters[time_comparison_filter] = parsed_time
 
         messages = self.message_api.get_all(context, search_opts=filters,
                                             limit=limit,
