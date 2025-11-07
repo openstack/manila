@@ -260,10 +260,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'aggr-list': aggr_list,
             'vserver-name': vserver_name,
         }
-        if (delete_retention_hours != 0 and
-                self.features.DELETE_RETENTION_HOURS):
+        if self.features.DELETE_RETENTION_HOURS:
             modify_args.update(
-                {'volume-delete-retention-hours': delete_retention_hours})
+                {'volume-delete-retention-hours': str(delete_retention_hours)})
 
         self.send_request('vserver-modify', modify_args)
 
