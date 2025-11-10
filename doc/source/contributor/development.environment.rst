@@ -163,6 +163,68 @@ basis by running::
 
      $ tox -e venv -- <your command>
 
+Code Style and Quality Checks
+------------------------------
+
+Manila uses `pre-commit <https://pre-commit.com/>`_ to perform automated
+linting tests and ensure conformance to the coding style guide. This repository
+follows an evolved form of the original `PEP 8 <https://peps.python.org/pep-0008/>`_
+guideline for Python code style.
+
+On top of PEP 8, Manila performs "hacking" checks where a collection of
+style and consistency checks are performed to adhere to coding standards
+established within the Manila project, as well as the wider OpenStack projects.
+These checks are defined in the `OpenStack Hacking Guidelines
+<https://docs.openstack.org/hacking/latest/user/hacking.html>`_.
+
+Setting up pre-commit
+~~~~~~~~~~~~~~~~~~~~~
+
+Pre-commit hooks are automatically configured when you run the pep8 tox environment::
+
+    tox -e pep8
+
+This will install pre-commit and run all configured checks on your codebase.
+
+The pre-commit configuration includes:
+
+* **Basic checks**: trailing whitespace, line ending normalization, merge conflict detection
+* **Python style checks**: PEP 8 compliance via hacking rules
+* **Documentation checks**: RST formatting and style via doc8
+* **Shell script checks**: Bash style checks via bashate
+
+You can also run pre-commit manually on all files::
+
+    pre-commit run --all-files
+
+Or install the git hook to run automatically on each commit::
+
+    pre-commit install
+
+In some cases, pre-commit will modify files in place. If you want to see what
+changes will be made without applying them, you can run::
+
+    pre-commit run --all-files --show-diff-on-failure
+
+Or, if you want to apply the changes, you can run::
+
+    pre-commit run --all-files --fix
+    git add .
+
+Manual style checking
+~~~~~~~~~~~~~~~~~~~~~
+
+You can also run style checks manually using tox::
+
+    # Run all style checks
+    tox -e pep8
+
+    # Run only Python style checks
+    tox -e fast8
+
+The style checks will report any violations that need to be fixed before
+your code can be merged.
+
 Contributing Your Work
 ----------------------
 

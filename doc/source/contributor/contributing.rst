@@ -255,6 +255,12 @@ from the `OpenStack CI system <https://zuul.opendev.org/t/openstack/status>`_
 in order for it to be merge-worthy. If these tests are failing and you can't
 determine why, contact the maintainers.
 
+**Code Style Requirements**: All code submissions must pass the automated
+style and quality checks. Manila uses pre-commit hooks to enforce coding
+standards based on PEP 8 and OpenStack hacking guidelines. See the
+:doc:`development.environment` guide for details on setting up and running
+these checks locally before submitting your changes.
+
 See the :doc:`manila-review-policy` to understand our code review
 conventions. Generally, reviewers look at new code submissions pro-actively;
 if you do not have sufficient attention to your change, or are looking for
