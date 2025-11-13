@@ -16,6 +16,7 @@ Unit tests for the NetApp Data ONTAP cDOT multi-SVM storage driver library.
 """
 
 import copy
+import time
 from unittest import mock
 
 import ddt
@@ -47,6 +48,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         super(NetAppFileStorageLibraryTestCase, self).setUp()
 
         self.mock_object(na_utils, 'validate_driver_instantiation')
+
+        self.sleep_patcher = mock.patch.object(time, 'sleep', lambda s: None)
+        self.sleep_patcher.start()
+        self.addCleanup(self.sleep_patcher.stop)
 
         # Mock loggers as themselves to allow logger arg validation
         mock_logger = log.getLogger('mock_logger')

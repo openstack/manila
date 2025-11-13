@@ -94,6 +94,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def setUp(self):
         super(NetAppFileStorageLibraryTestCase, self).setUp()
 
+        self.sleep_patcher = mock.patch.object(time, 'sleep', lambda s: None)
+        self.sleep_patcher.start()
+        self.addCleanup(self.sleep_patcher.stop)
+
         self.mock_object(na_utils, 'validate_driver_instantiation')
         self.mock_object(na_utils, 'setup_tracing')
 

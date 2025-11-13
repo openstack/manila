@@ -172,6 +172,11 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppCDOTDataMotionSessionTestCase, self).setUp()
+
+        self.sleep_patcher = mock.patch.object(time, 'sleep', lambda s: None)
+        self.sleep_patcher.start()
+        self.addCleanup(self.sleep_patcher.stop)
+
         self.source_backend = 'backend1'
         self.dest_backend = 'backend2'
 

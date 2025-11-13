@@ -77,6 +77,10 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             **fake.CONNECTION_INFO)
         self.client.connection = mock.MagicMock()
 
+        self.sleep_patcher = mock.patch.object(time, 'sleep', lambda s: None)
+        self.sleep_patcher.start()
+        self.addCleanup(self.sleep_patcher.stop)
+
     def _mock_api_error(self, code='fake', message='fake'):
         return mock.Mock(
             side_effect=netapp_api.api.NaApiError(code=code, message=message))
