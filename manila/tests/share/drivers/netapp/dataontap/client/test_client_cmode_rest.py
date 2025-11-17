@@ -6786,7 +6786,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'style': 'flex',
             'owning-vserver-name': fake.VSERVER_NAME,
             'size': fake.SHARE_SIZE,
-            'qos-policy-group-name': fake.QOS_POLICY_GROUP_NAME
+            'qos-policy-group-name': fake.QOS_POLICY_GROUP_NAME,
+            'created_at': fake.CREATE_TIME_ISO
         }
 
         result = self.client.get_volume_to_manage(fake.SHARE_AGGREGATE_NAME,
@@ -6794,7 +6795,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         query = {
             'name': fake.VOLUME_NAMES[0],
             'fields': 'name,aggregates.name,nas.path,name,type,style,'
-                      'svm.name,qos.policy.name,space.size',
+                      'svm.name,qos.policy.name,space.size,create_time',
             'aggregates.name': fake.SHARE_AGGREGATE_NAME
         }
         mock_sr.assert_called_once_with('/storage/volumes', 'get',

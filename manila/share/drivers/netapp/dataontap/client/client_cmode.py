@@ -17,6 +17,8 @@
 
 
 import copy
+from datetime import datetime
+from datetime import timezone
 import hashlib
 import re
 import time
@@ -3468,6 +3470,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                         'type': None,
                         'style': None,
                         'owning-vserver-name': None,
+                        'creation-time': None
                     },
                     'volume-qos-attributes': {
                         'policy-group-name': None,
@@ -3512,7 +3515,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'aggr-list') or netapp_api.NaElement('none')
             aggregate_list = [aggr_elem.get_content()
                               for aggr_elem in aggr_list_attr.get_children()]
-
+        creation_time = volume_id_attributes.get_child_content('creation-time')
+        creation_time_iso = datetime.fromtimestamp(
+            int(creation_time), tz=timezone.utc).isoformat()
         volume = {
             'aggregate': aggregate,
             'aggr-list': aggregate_list,
@@ -3529,6 +3534,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'adaptive-qos-policy-group-name': (
                 volume_qos_attributes.get_child_content(
                     'adaptive-policy-group-name')),
+            'created_at': creation_time_iso
+
         }
         return volume
 
@@ -4102,6 +4109,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'busy': strutils.bool_from_string(
                 snapshot_info.get_child_content('busy')),
         }
+        # Convert a Unix timestamp to a datetime object
+        # (set it to UTC timezone by default, then change it to the local
+        # timezone in the Manager because the test code behaves differently
+        # depending on the execution conditions).
+        snapshot['access-time'] = datetime.fromtimestamp(
+            int(snapshot['access-time']), tz=timezone.utc).isoformat()
 
         snapshot_owners_list = snapshot_info.get_child_by_name(
             'snapshot-owners-list') or netapp_api.NaElement('none')

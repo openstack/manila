@@ -3094,6 +3094,13 @@ class ShareManager(manager.SchedulerDependentManager):
         share_type_supports_replication = share_type_extra_specs.get(
             'replication_type', None)
 
+        metadata_updates = {
+            constants.AdminOnlyMetadata.MANAGED_AT_KEY:
+                share_ref.get('created_at')
+        }
+        self.db.share_metadata_update(
+            context, share_id, metadata_updates, False)
+
         project_id = share_ref['project_id']
 
         try:
@@ -3200,6 +3207,14 @@ class ShareManager(manager.SchedulerDependentManager):
         snapshot_instance = self.db.share_snapshot_instance_get(
             context, snapshot_ref.instance['id'], with_share_data=True
         )
+
+        metadata_updates = {
+            constants.AdminOnlyMetadata.MANAGED_AT_KEY:
+                snapshot_ref.get('created_at')
+        }
+        self.db.share_snapshot_metadata_update(
+            context, snapshot_ref['id'], metadata_updates, delete='False')
+
         project_id = snapshot_ref['project_id']
 
         driver_dhss = self.driver.driver_handles_share_servers

@@ -21,6 +21,7 @@ single-SVM or multi-SVM functionality needed by the cDOT Manila drivers.
 
 import copy
 import datetime
+from datetime import datetime as from_datetime
 from enum import Enum
 import json
 import math
@@ -2532,10 +2533,13 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def manage_existing(self, share, driver_options, share_server=None):
         vserver, vserver_client = self._get_vserver(share_server=share_server)
-        share_size = self._manage_container(share, vserver, vserver_client)
+        share_size, create_time = self._manage_container(
+            share, vserver, vserver_client)
         export_locations = self._create_export(share, share_server, vserver,
                                                vserver_client)
-        return {'size': share_size, 'export_locations': export_locations}
+        created_at = from_datetime.fromisoformat(create_time).astimezone()
+        return {'size': share_size, 'export_locations': export_locations,
+                'created_at': created_at}
 
     @na_utils.trace
     def unmanage(self, share, share_server=None):
@@ -2710,11 +2714,11 @@ class NetAppCmodeFileStorageLibrary(object):
         # Save original volume info to private storage.
         original_data = {
             'original_name': volume['name'],
-            'original_junction_path': volume['junction-path']
+            'original_junction_path': volume['junction-path'],
+            'managed_at': share['created_at']
         }
         self.private_storage.update(share['id'], original_data)
-
-        return volume_size
+        return volume_size, volume['created_at']
 
     @na_utils.trace
     def _get_provisioning_options_for_snap_attributes(self, vserver_client,
@@ -2791,8 +2795,9 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.ShareNotFound(share_id=snapshot['share_id'])
 
         # Ensure snapshot is from the share.
-        if not vserver_client.snapshot_exists(
-                existing_snapshot_name, share_name):
+        backend_snapshot = vserver_client.get_snapshot(
+            share_name, existing_snapshot_name)
+        if not backend_snapshot:
             msg = _('Snapshot %(snap)s is not from the share %(vol)s.')
             msg_args = {'snap': existing_snapshot_name, 'vol': share_name}
             raise exception.ManageInvalidShareSnapshot(reason=msg % msg_args)
@@ -2805,8 +2810,15 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # When calculating the size, round up to the next GB.
         size = int(math.ceil(float(volume['size']) / units.Gi))
-
-        return {'size': size}
+        snapshot_private_data = {
+            'managed_at': snapshot['created_at'],
+            'original_snapshot_name': existing_snapshot_name
+        }
+        self.private_storage.update(snapshot['id'], snapshot_private_data)
+        created_at = from_datetime.fromisoformat(
+            backend_snapshot['access-time']).astimezone()
+        return {'size': size,
+                'created_at': created_at}
 
     @na_utils.trace
     def unmanage_snapshot(self, snapshot, share_server=None):

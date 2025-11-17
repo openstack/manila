@@ -17,6 +17,7 @@ Unit tests for the NetApp Data ONTAP cDOT base storage driver library.
 """
 
 import copy
+from datetime import datetime as from_datetime
 import json
 import math
 import socket
@@ -3104,7 +3105,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_manage_container = self.mock_object(
             self.library,
             '_manage_container',
-            mock.Mock(return_value=fake.SHARE_SIZE))
+            mock.Mock(return_value=(fake.SHARE_SIZE, fake.CREATE_TIME)))
         mock_create_export = self.mock_object(
             self.library,
             '_create_export',
@@ -3115,7 +3116,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         expected = {
             'size': fake.SHARE_SIZE,
-            'export_locations': fake.NFS_EXPORTS
+            'export_locations': fake.NFS_EXPORTS,
+            'created_at': from_datetime.fromisoformat(
+                fake.CREATE_TIME).astimezone()
         }
 
         mock__get_vserver.assert_called_once_with(share_server=fake_vserver)
@@ -3208,9 +3211,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_modify_fpolicy = self.mock_object(
             vserver_client, 'modify_fpolicy_scope')
 
-        result = self.library._manage_container(share_to_manage,
-                                                fake.VSERVER1,
-                                                vserver_client)
+        size, created_at = self.library._manage_container(
+            share_to_manage, fake.VSERVER1, vserver_client)
 
         mock_is_flexgroup_pool.assert_called_once_with(fake.POOL_NAME)
         if is_flexgroup:
@@ -3256,13 +3258,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         original_data = {
             'original_name': fake.FLEXVOL_TO_MANAGE['name'],
             'original_junction_path': fake.FLEXVOL_TO_MANAGE['junction-path'],
+            'managed_at': fake.CREATE_TIME,
         }
         self.library.private_storage.update.assert_called_once_with(
             fake.SHARE['id'], original_data)
 
         expected_size = int(
             math.ceil(float(fake.FLEXVOL_TO_MANAGE['size']) / units.Gi))
-        self.assertEqual(expected_size, result)
+        self.assertEqual(expected_size, size)
+        self.assertEqual(fake.CREATE_TIME, created_at)
 
     def test_manage_container_invalid_export_location(self):
 
@@ -3484,7 +3488,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library, '_get_vserver',
             mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
         vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
-        vserver_client.snapshot_exists.return_value = True
+        vserver_client.get_snapshot.return_value = fake.CDOT_SNAPSHOT
         vserver_client.volume_has_snapmirror_relationships.return_value = False
 
         result = self.library.manage_existing_snapshot(
@@ -3493,11 +3497,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         share_name = self.library._get_backend_share_name(
             fake.SNAPSHOT['share_id'])
         mock_get_vserver.assert_called_once_with(share_server=fake_vserver)
-        vserver_client.snapshot_exists.assert_called_once_with(
-            fake.SNAPSHOT_NAME, share_name)
+        vserver_client.get_snapshot.assert_called_once_with(
+            share_name, fake.SNAPSHOT_NAME)
         (vserver_client.volume_has_snapmirror_relationships.
             assert_called_once_with(fake.FLEXVOL_TO_MANAGE))
-        expected_result = {'size': 2}
+        expected_result = {'size': 2,
+                           'created_at': from_datetime.fromisoformat(
+                               fake.SNAPSHOT_ACCESS_TIME).astimezone()}
         self.assertEqual(expected_result, result)
 
     def test_manage_existing_snapshot_no_snapshot_name(self):

@@ -5000,6 +5000,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                         'type': None,
                         'style': None,
                         'owning-vserver-name': None,
+                        'creation-time': None,
                     },
                     'volume-space-attributes': {
                         'size': None,
@@ -5029,6 +5030,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'owning-vserver-name': fake.VSERVER_NAME,
             'qos-policy-group-name': fake.QOS_POLICY_GROUP_NAME,
             'adaptive-qos-policy-group-name': None,
+            'created_at': fake.CREATE_TIME_ISO
         }
         self.client.send_iter_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
@@ -5479,7 +5481,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
     @ddt.data({
         'mock_return': fake.SNAPSHOT_GET_ITER_NOT_BUSY_RESPONSE,
         'expected': {
-            'access-time': fake.SNAPSHOT_ACCESS_TIME,
+            'access-time': fake.CONVERTED_SNAPSHOT_ACCESS_TIME,
             'name': fake.SNAPSHOT_NAME,
             'volume': fake.SHARE_NAME,
             'busy': False,
@@ -5489,7 +5491,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
     }, {
         'mock_return': fake.SNAPSHOT_GET_ITER_BUSY_RESPONSE,
         'expected': {
-            'access-time': fake.SNAPSHOT_ACCESS_TIME,
+            'access-time': fake.CONVERTED_SNAPSHOT_ACCESS_TIME,
             'name': fake.SNAPSHOT_NAME,
             'volume': fake.SHARE_NAME,
             'busy': True,

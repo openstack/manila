@@ -89,6 +89,7 @@ class LockedOperationsTestCase(test.TestCase):
 
 @ddt.ddt
 class ShareManagerTestCase(test.TestCase):
+    CREATED_AT = "2025-10-29T13:10:50.000000"
 
     def setUp(self):
         super(ShareManagerTestCase, self).setUp()
@@ -8127,20 +8128,25 @@ class ShareManagerTestCase(test.TestCase):
             {'status': constants.STATUS_UNMANAGE_ERROR}
         )
 
-    @ddt.data({'dhss': True, 'driver_data': {'size': 1},
+    @ddt.data({'dhss': True, 'driver_data': {'size': 1,
+                                             'created_at': CREATED_AT},
                'mount_snapshot_support': False},
-              {'dhss': True, 'driver_data': {'size': 2, 'name': 'fake'},
+              {'dhss': True, 'driver_data': {'size': 2, 'name': 'fake',
+                                             'created_at': CREATED_AT},
                'mount_snapshot_support': False},
-              {'dhss': False, 'driver_data': {'size': 3},
+              {'dhss': False, 'driver_data': {'size': 3,
+                                              'created_at': CREATED_AT},
                'mount_snapshot_support': False},
-              {'dhss': False, 'driver_data': {'size': 3, 'export_locations': [
-                  {'path': '/path1', 'is_admin_only': True},
-                  {'path': '/path2', 'is_admin_only': False}
-              ]}, 'mount_snapshot_support': False},
-              {'dhss': False, 'driver_data': {'size': 3, 'export_locations': [
-                  {'path': '/path1', 'is_admin_only': True},
-                  {'path': '/path2', 'is_admin_only': False}
-              ]}, 'mount_snapshot_support': True})
+              {'dhss': False, 'driver_data': {
+                  'size': 3, 'created_at': CREATED_AT, 'export_locations': [
+                      {'path': '/path1', 'is_admin_only': True},
+                      {'path': '/path2', 'is_admin_only': False}
+                  ]}, 'mount_snapshot_support': False},
+              {'dhss': False, 'driver_data': {
+                  'size': 3, 'created_at': CREATED_AT, 'export_locations': [
+                      {'path': '/path1', 'is_admin_only': True},
+                      {'path': '/path2', 'is_admin_only': False}
+                  ]}, 'mount_snapshot_support': True})
     @ddt.unpack
     def test_manage_snapshot_valid_snapshot(
             self, driver_data, mount_snapshot_support, dhss):
@@ -8173,6 +8179,9 @@ class ShareManagerTestCase(test.TestCase):
         mock_get = self.mock_object(self.share_manager.db,
                                     'share_snapshot_get',
                                     mock.Mock(return_value=snapshot))
+        mock_snap_update = self.mock_object(self.share_manager.db,
+                                            'share_snapshot_update',
+                                            mock.Mock(return_value=snapshot))
         mock_export_update = self.mock_object(
             self.share_manager.db,
             'share_snapshot_instance_export_location_create')
@@ -8187,7 +8196,7 @@ class ShareManagerTestCase(test.TestCase):
         valid_snapshot_data = {
             'status': constants.STATUS_AVAILABLE}
         valid_snapshot_data.update(driver_data)
-        self.share_manager.db.share_snapshot_update.assert_called_once_with(
+        mock_snap_update.assert_called_with(
             utils.IsAMatcher(context.RequestContext),
             snapshot_id, valid_snapshot_data)
         if dhss:
@@ -8226,10 +8235,13 @@ class ShareManagerTestCase(test.TestCase):
         mock_get = self.mock_object(self.share_manager.db,
                                     'share_snapshot_get',
                                     mock.Mock(return_value=snapshot))
+        mock_snap_update = self.mock_object(self.share_manager.db,
+                                            'share_snapshot_update',
+                                            mock.Mock(return_value=snapshot))
 
         self.share_manager.unmanage_snapshot(self.context, snapshot['id'])
 
-        self.share_manager.db.share_snapshot_update.assert_called_once_with(
+        mock_snap_update.assert_called_with(
             utils.IsAMatcher(context.RequestContext), snapshot['id'],
             {'status': constants.STATUS_UNMANAGE_ERROR})
         self.share_manager.driver.unmanage_snapshot.assert_called_once_with(
