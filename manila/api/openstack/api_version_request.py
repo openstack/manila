@@ -212,13 +212,14 @@ REST_API_VERSION_HISTORY = """
     * 2.91 - Added support for targeted restores via the share backup API
     * 2.92 - Added mount_point_name to share manage API.
     * 2.93 - Added support for filtering services by 'ensuring'.
+    * 2.94 - Added QoS type and specs APIs.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.93"
+_MAX_API_VERSION = "2.94"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

@@ -19,6 +19,8 @@ import itertools
 from manila.policies import availability_zone
 from manila.policies import base
 from manila.policies import message
+from manila.policies import qos_type
+from manila.policies import qos_type_specs
 from manila.policies import quota_class_set
 from manila.policies import quota_set
 from manila.policies import resource_lock
@@ -84,4 +86,6 @@ def list_rules():
         share_access_metadata.list_rules(),
         share_transfer.list_rules(),
         share_backup.list_rules(),
+        qos_type.list_rules(),
+        qos_type_specs.list_rules(),
     )

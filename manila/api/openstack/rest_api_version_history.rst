@@ -493,3 +493,7 @@ user documentation.
 2.93
 ----
   Added support for filtering services through the ``ensuring`` field.
+
+2.94
+----
+  Added qos_type and specs APIs.

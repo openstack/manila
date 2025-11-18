@@ -297,6 +297,25 @@ def parse_is_public(is_public):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
 
+def verify_specs(specs):
+    def is_valid_string(v):
+        return isinstance(v, str) and len(v) in range(1, 256)
+
+    def is_valid_spec(k, v):
+        valid_spec_key = is_valid_string(k)
+        valid_type = is_valid_string(v) or isinstance(v, bool)
+        return valid_spec_key and valid_type
+
+    for k, v in specs.items():
+        if is_valid_string(k) and isinstance(v, dict):
+            verify_specs(v)
+        elif not is_valid_spec(k, v):
+            expl = _('Invalid spec: %(key)s: %(value)s') % {
+                'key': k, 'value': v
+            }
+            raise webob.exc.HTTPBadRequest(explanation=expl)
+
+
 class ViewBuilder(object):
     """Model API responses as dictionaries."""
 

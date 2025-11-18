@@ -1,0 +1,11 @@
+{
+    "qos_type": {
+        "specs": {
+            "policy_type": "adaptive",
+            "peak_iops": 5000,
+            "expected_iops": 2000
+        },
+        "name": "testing",
+        "description": "qos type description"
+    }
+}

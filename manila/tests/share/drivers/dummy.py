@@ -152,6 +152,7 @@ class DummyDriver(driver.ShareDriver):
         self.network_allocation_update_support = True
         self.share_replicas_migration_support = True
         self.encryption_support = ['share_server']
+        self.qos_type_support = True
 
     def _verify_configuration(self):
         allowed_driver_methods = [m for m in dir(self) if m[0] != '_']

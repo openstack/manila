@@ -696,6 +696,10 @@ class InvalidExtraSpec(Invalid):
     message = _("Invalid extra_spec: %(reason)s.")
 
 
+class InvalidQosTypeSpec(Invalid):
+    message = _("Invalid qos_type spec: %(reason)s.")
+
+
 class VolumeNotFound(NotFound):
     message = _("Volume %(volume_id)s could not be found.")
 
@@ -1234,3 +1238,26 @@ class VastDriverException(ShareBackendException):
 # HPE Alletra B10000 Storage driver
 class HPEAlletraB10000DriverException(ShareBackendException):
     message = _("HPEAlletraB10000 driver error: %(reason)s.")
+
+
+# Qos Type and its specs
+class QosTypeNotFound(NotFound):
+    message = _("QoS Type %(qos_type_id)s could not be found.")
+
+
+class QosTypeNotFoundByName(QosTypeNotFound):
+    message = _("Qos type with name %(qos_type_name)s "
+                "could not be found.")
+
+
+class QosTypeExists(ManilaException):
+    message = _("Qos Type %(id)s already exists.")
+
+
+class QosTypeSpecsNotFound(NotFound):
+    message = _("Qos Type %(qos_type_id)s has no specs with key %(key)s.")
+
+
+class QosTypeInUse(ManilaException):
+    message = _("Qos Type %(qos_type_id)s deletion is not allowed while "
+                "shares are associated with the qos type.")

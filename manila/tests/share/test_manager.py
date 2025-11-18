@@ -6531,8 +6531,11 @@ class ShareManagerTestCase(test.TestCase):
             'nondisruptive': False,
             'preserve_snapshots': has_snapshots,
         }
+        share_type = {'id': 'fake_type_id', 'extra_specs': {}}
 
         # mocks
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=share_type))
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(return_value=migrating_instance))
         self.mock_object(self.share_manager.db, 'share_server_get',
@@ -6616,7 +6619,7 @@ class ShareManagerTestCase(test.TestCase):
         (api.API.create_share_instance_and_get_request_spec.
          assert_called_once_with(self.context, share, 'fake_az_id', None,
                                  'fake_host', share_network_id,
-                                 'fake_type_id'))
+                                 'fake_type_id', qos_type_id=None))
         (self.share_manager.driver.migration_check_compatibility.
          assert_called_once_with(self.context, src_instance,
                                  migrating_instance, src_server, dest_server))
@@ -6702,8 +6705,11 @@ class ShareManagerTestCase(test.TestCase):
             'preserve_snapshots': preserve_snapshots,
         }
         snapshot = db_utils.create_snapshot(share_id=share['id'])
+        share_type = {'id': 'fake_type_id', 'extra_specs': {}}
 
         # mocks
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=share_type))
         self.mock_object(self.share_manager.db, 'share_server_get',
                          mock.Mock(return_value=src_server))
         self.mock_object(self.share_manager.db, 'share_instance_get',
@@ -6761,7 +6767,7 @@ class ShareManagerTestCase(test.TestCase):
         (api.API.create_share_instance_and_get_request_spec.
          assert_called_once_with(self.context, share, 'fake_az_id', None,
                                  'fake_host', 'fake_net_id',
-                                 'fake_new_type_id'))
+                                 'fake_new_type_id', qos_type_id=None))
         self.share_manager._migration_delete_instance.assert_called_once_with(
             self.context, migrating_instance['id'])
 
@@ -9295,7 +9301,8 @@ class ShareManagerTestCase(test.TestCase):
     def test__build_server_metadata(self):
         share = {'host': 'host', 'share_type_id': 'id'}
         expected_metadata = {'request_host': 'host', 'share_type_id': 'id',
-                             'encryption_key_ref': None, 'keystone_url': None}
+                             'encryption_key_ref': None, 'keystone_url': None,
+                             'qos_type_id': None}
 
         metadata = self.share_manager._build_server_metadata(
             self.context, share['host'], share['share_type_id'])

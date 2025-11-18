@@ -162,6 +162,7 @@ class HostState(object):
         self.mount_point_name_support = False
         self.share_replicas_migration_support = False
         self.encryption_support = None
+        self.qos_type_support = None
 
         # PoolState for all pools
         self.pools = {}
@@ -375,6 +376,9 @@ class HostState(object):
             pool_cap['encryption_support'] = (
                 self.encryption_support)
 
+        if 'qos_type_support' not in pool_cap:
+            pool_cap['qos_type_support'] = self.qos_type_support
+
         if self.ipv4_support is not None:
             pool_cap['ipv4_support'] = self.ipv4_support
 
@@ -413,6 +417,7 @@ class HostState(object):
         self.share_replicas_migration_support = capability.get(
             'share_replicas_migration_support', False)
         self.encryption_support = capability.get('encryption_support', None)
+        self.qos_type_support = capability.get('qos_type_support', False)
 
     def consume_from_share(self, share):
         """Incrementally update host state from an share."""
@@ -515,6 +520,7 @@ class PoolState(HostState):
             self.share_replicas_migration_support = capability.get(
                 'share_replicas_migration_support', False)
             self.encryption_support = capability.get('encryption_support')
+            self.qos_type_support = capability.get('qos_type_support')
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet

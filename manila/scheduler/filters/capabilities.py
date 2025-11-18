@@ -34,6 +34,10 @@ class CapabilitiesFilter(base_host.BaseHostFilter):
         if not extra_specs:
             return True
 
+        if extra_specs.get('default_qos_type'):
+            if not capabilities.get('qos_type_support', False):
+                return False
+
         return utils.capabilities_satisfied(capabilities, extra_specs)
 
     def host_passes(self, host_state, filter_properties):

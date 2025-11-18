@@ -2441,6 +2441,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             "network_allocation_update_support": False,
             "share_replicas_migration_support": False,
             'encryption_support': None,
+            'qos_type_support': False,
         }
 
         if replication_support:

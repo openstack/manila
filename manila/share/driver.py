@@ -297,6 +297,7 @@ class ShareDriver(object):
         self.dhss_mandatory_security_service_association = {}
         self.share_replicas_migration_support = False
         self.encryption_support = None
+        self.qos_type_support = False
 
         self.pools = []
         if self.configuration:
@@ -1369,6 +1370,7 @@ class ShareDriver(object):
             share_replicas_migration_support=(
                 self.share_replicas_migration_support),
             encryption_support=self.encryption_support,
+            qos_type_support=self.qos_type_support,
         )
         if isinstance(data, dict):
             common.update(data)

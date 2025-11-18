@@ -25,6 +25,8 @@ import manila.api.openstack
 from manila.api.v2 import availability_zones
 from manila.api.v2 import limits
 from manila.api.v2 import messages
+from manila.api.v2 import qos_type_specs
+from manila.api.v2 import qos_types
 from manila.api.v2 import quota_class_sets
 from manila.api.v2 import quota_sets
 from manila.api.v2 import resource_locks
@@ -702,3 +704,42 @@ class APIRouter(manila.api.openstack.APIRouter):
         self.resources["resource_locks"] = resource_locks.create_resource()
         mapper.resource("resource-lock", "resource-locks",
                         controller=self.resources["resource_locks"])
+
+        self.resources['qos_types'] = qos_types.create_resource()
+        mapper.resource("qos-type", "qos-types",
+                        controller=self.resources['qos_types'])
+
+        self.resources["qos_type_specs"] = (
+            qos_type_specs.create_resource())
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect(
+                "qos-types",
+                "%s/qos-types/{id}/specs" % path_prefix,
+                controller=self.resources["qos_type_specs"],
+                action="create",
+                conditions={"method": ["POST"]})
+            mapper.connect(
+                "qos-types",
+                "%s/qos-types/{id}/specs/{key}" % path_prefix,
+                controller=self.resources["qos_type_specs"],
+                action="show",
+                conditions={"method": ["GET"]})
+            mapper.connect(
+                "qos-types",
+                "%s/qos-types/{id}/specs" % path_prefix,
+                controller=self.resources["qos_type_specs"],
+                action="index",
+                conditions={"method": ["GET"]})
+            mapper.connect(
+                "qos-types",
+                "%s/qos-types/{id}/specs/{key}" % path_prefix,
+                controller=self.resources["qos_type_specs"],
+                action="delete",
+                conditions={"method": ["DELETE"]})
+            mapper.connect(
+                "qos-types",
+                "%s/qos-types/{id}/specs/{key}" % path_prefix,
+                controller=self.resources["qos_type_specs"],
+                action="update",
+                conditions={"method": ["PUT"]})

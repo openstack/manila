@@ -396,6 +396,8 @@ class ShareInstance(BASE, ManilaBase):
     cast_rules_to_readonly = Column(Boolean, default=False, nullable=False)
     share_type_id = Column(String(36), ForeignKey('share_types.id'),
                            nullable=True)
+    qos_type_id = Column(String(36), ForeignKey('qos_types.id'),
+                         nullable=True)
     availability_zone_id = Column(String(36),
                                   ForeignKey('availability_zones.id'),
                                   nullable=True)
@@ -433,6 +435,14 @@ class ShareInstance(BASE, ManilaBase):
         primaryjoin='and_('
                     'ShareInstance.share_type_id == ShareTypes.id, '
                     'ShareTypes.deleted == "False")')
+    qos_type = orm.relationship(
+        "QosTypes",
+        lazy='subquery',
+        foreign_keys=qos_type_id,
+        primaryjoin='and_('
+                    'ShareInstance.qos_type_id == QosTypes.id, '
+                    'QosTypes.deleted == "False")')
+
     share = orm.relationship(
         'Share',
         foreign_keys=share_id,
@@ -1603,6 +1613,39 @@ class ShareBackup(BASE, ManilaBase):
             'AvailabilityZone.id, '
             'AvailabilityZone.deleted == \'False\')'
         )
+    )
+
+
+class QosTypes(BASE, ManilaBase):
+    """Represent possible qos_types offered."""
+    __tablename__ = "qos_types"
+
+    __table_args__ = (
+        schema.UniqueConstraint('name', 'deleted', name='uc_qos_type_name'),
+    )
+
+    id = Column(String(36), primary_key=True)
+    deleted = Column(String(36), default='False')
+    name = Column(String(255), nullable=False)
+    description = Column(String(255))
+
+
+class QosTypeSpecs(BASE, ManilaBase):
+    """Represents additional specs as key/value pairs for a qos_type."""
+    __tablename__ = 'qos_type_specs'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255), nullable=False)
+    value = Column(String(255), nullable=False)
+    deleted = Column(String(36), default='False')
+    qos_type_id = Column(String(36), ForeignKey('qos_types.id'),
+                         nullable=False)
+    qos_type = orm.relationship(
+        QosTypes,
+        backref="specs",
+        foreign_keys=qos_type_id,
+        primaryjoin='and_('
+        'QosTypeSpecs.qos_type_id == QosTypes.id,'
+        'QosTypeSpecs.deleted == "False")'
     )
 
 

@@ -279,6 +279,21 @@ class ShareController(
                 payload = {'type': share_type}
                 raise exc.HTTPBadRequest(explanation=msg % payload)
 
+        if share_type and share_type.get('extra_specs'):
+            qos_type = share_type.get('extra_specs').get('default_qos_type')
+        else:
+            qos_type = None
+
+        if share_type and qos_type:
+            qos_db = db.qos_type_get_by_name_or_id(context, qos_type)
+            if qos_db:
+                kwargs['qos_type'] = qos_db
+            else:
+                msg = _("The 'default_qos_type' specified in the share type "
+                        "%(type)s does not exist.")
+                payload = {'type': share_type}
+                raise exc.HTTPBadRequest(explanation=msg % payload)
+
         if share_type:
             kwargs['share_type'] = share_type
         if share_network_id:

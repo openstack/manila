@@ -756,6 +756,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'network_allocation_update_support': False,
             'share_replicas_migration_support': False,
             'encryption_support': None,
+            'qos_type_support': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -847,6 +848,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'mount_point_name_support': False,
             'ipv4_support': True,
             'ipv6_support': False,
+            'qos_type_support': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -901,6 +903,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'mount_point_name_support': False,
             'ipv4_support': True,
             'ipv6_support': False,
+            'qos_type_support': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)
