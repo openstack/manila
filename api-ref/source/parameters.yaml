@@ -724,6 +724,16 @@ snapshot_id_query:
   in: query
   required: false
   type: string
+snapshot_metadata_query:
+  description: |
+    Filters the list of snapshots by metadata. The value must be a string
+    representation of a key-value mapping that can be parsed by the API.
+    For example: ``{"env": "prod"}`` or ``{"key": "value"}``. If the
+    value cannot be parsed, the API responds with ``400 Bad Request``.
+  in: query
+  required: false
+  type: string
+  min_version: 2.73
 sort_dir:
   description: |
     The direction to sort a list of resources. A valid

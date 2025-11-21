@@ -68,8 +68,18 @@ Request
 
    - project_id: project_id_path
    - all_tenants: all_tenants_query
+   - limit: limit
+   - offset: offset
+   - sort_key: sort_key
+   - sort_dir: sort_dir
+   - name: name_query
+   - description: description_query
+   - status: snapshot_status
+   - share_id: snapshot_share_id
+   - size: snapshot_size
    - name~: name_inexact_query
    - description~: description_inexact_query
+   - metadata: snapshot_metadata_query
    - with_count: with_count_snapshot_query
 
 Response parameters
@@ -113,8 +123,18 @@ Request
 
    - project_id: project_id_path
    - all_tenants: all_tenants_query
+   - limit: limit
+   - offset: offset
+   - sort_key: sort_key
+   - sort_dir: sort_dir
+   - name: name_query
+   - description: description_query
+   - status: snapshot_status
+   - share_id: snapshot_share_id
+   - size: snapshot_size
    - name~: name_inexact_query
    - description~: description_inexact_query
+   - metadata: snapshot_metadata_query
    - with_count: with_count_snapshot_query
 
 Response parameters
