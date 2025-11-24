@@ -27,6 +27,7 @@ shared file system storage resources.
 .. include:: limits.inc
 .. include:: shares.inc
 .. include:: share-export-locations.inc
+.. include:: share-export-locations-metadata.inc
 .. include:: share-metadata.inc
 .. include:: share-actions.inc
 .. include:: snapshots.inc
