@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    HPE Alletra MP B10000 driver: Added new driver that supports share
+    resize (extend), IP-based access control, manage/unmanage shares, and
+    share types with reduce (deduplication/compression) settings, along
+    with all the minimum driver features. Requires HPE Alletra MP B10000
+    firmware version 10.5.0 or later.
