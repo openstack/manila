@@ -485,3 +485,7 @@ user documentation.
 2.91 (Maximum in 2025.2/Flamingo)
 ---------------------------------
   Added targeted restores to the share backup API
+
+2.92
+----
+  Added ``mount_point_name`` option to share manage API.

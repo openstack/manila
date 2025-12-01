@@ -383,16 +383,9 @@ class API(base.Base):
         share_type_attributes = self.get_share_attributes_from_share_type(
             share_type)
 
-        mount_point_name_support = share_type_attributes.get(
-            constants.ExtraSpecs.MOUNT_POINT_NAME_SUPPORT, None)
-        if mount_point_name is not None:
-            if not mount_point_name_support:
-                msg = _("Setting a mount point name is not supported"
-                        " by the share type used: %s." % share_type_id)
-                raise exception.InvalidInput(reason=msg)
-            mount_point_name = self._prefix_mount_point_name(
-                share_type, context, mount_point_name
-            )
+        mount_point_name = self._get_mount_point_name(
+            context, mount_point_name, share_type_id,
+            share_type, share_type_attributes)
 
         share_type_supports_replication = share_type_attributes.get(
             'replication_type', None)
@@ -1163,11 +1156,19 @@ class API(base.Base):
             # Check if share network is active, otherwise raise a BadRequest
             api_common.check_share_network_is_active(share_network)
 
+        share_type_attributes = self.get_share_attributes_from_share_type(
+            share_type)
+
+        mount_point_name = self._get_mount_point_name(
+            context, share_data.get('mount_point_name'),
+            share_type['id'], share_type, share_type_attributes)
+
         share_data.update({
             'user_id': context.user_id,
             'project_id': context.project_id,
             'status': constants.STATUS_MANAGING,
             'scheduled_at': timeutils.utcnow(),
+            'mount_point_name': mount_point_name,
         })
         share_data.update(
             self.get_share_attributes_from_share_type(share_type))
@@ -1190,6 +1191,20 @@ class API(base.Base):
                                            driver_options, request_spec)
 
         return self.db.share_get(context, share['id'])
+
+    def _get_mount_point_name(self, context, mount_point_name, share_type_id,
+                              share_type, share_type_attributes):
+        mount_point_name_support = share_type_attributes.get(
+            constants.ExtraSpecs.MOUNT_POINT_NAME_SUPPORT, None)
+        if mount_point_name is not None:
+            if not mount_point_name_support:
+                msg = _("Setting a mount point name is not supported"
+                        " by the share type used: %s." % share_type_id)
+                raise exception.InvalidInput(reason=msg)
+            mount_point_name = self._prefix_mount_point_name(
+                share_type, context, mount_point_name
+            )
+        return mount_point_name
 
     def _get_request_spec_dict(self, context, share, share_type, **kwargs):
 

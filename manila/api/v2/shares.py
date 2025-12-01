@@ -1049,6 +1049,9 @@ class ShareController(
         if allow_dhss_true:
             share['share_server_id'] = share_data.get('share_server_id')
 
+        if share_data.get('mount_point_name') is not None:
+            share['mount_point_name'] = share_data['mount_point_name']
+
         try:
             share_ref = self.share_api.manage(context, share, driver_options)
         except exception.PolicyNotAuthorized as e:
@@ -1124,6 +1127,9 @@ class ShareController(
         allow_dhss_true = False
         if req.api_version_request >= api_version.APIVersionRequest('2.49'):
             allow_dhss_true = True
+
+        if req.api_version_request < api_version.APIVersionRequest('2.92'):
+            body.get('share', {}).pop('mount_point_name', None)
 
         detail = self._manage(req, body, allow_dhss_true=allow_dhss_true)
         return detail

@@ -1424,19 +1424,33 @@ class ShareAPITestCase(test.TestCase):
                           share_type)
 
     @ddt.data(
-        {'replication_type': 'dr', 'dhss': False, 'share_server_id': None},
+        {'replication_type': 'dr', 'dhss': False, 'share_server_id': None,
+         'mount_point_name_support': False, 'mount_point_name': None},
         {'replication_type': 'readable', 'dhss': False,
-         'share_server_id': None},
-        {'replication_type': None, 'dhss': False, 'share_server_id': None},
-        {'replication_type': None, 'dhss': True, 'share_server_id': 'fake'}
+         'share_server_id': None, 'mount_point_name_support': False,
+         'mount_point_name': None},
+        {'replication_type': None, 'dhss': False, 'share_server_id': None,
+         'mount_point_name_support': False, 'mount_point_name': None},
+        {'replication_type': None, 'dhss': True, 'share_server_id': 'fake',
+         'mount_point_name_support': False, 'mount_point_name': None},
+        {'replication_type': None, 'dhss': False,
+         'share_server_id': None, 'mount_point_name_support': True,
+         'mount_point_name': 'fake_mount'},
+        {'replication_type': None, 'dhss': True,
+         'share_server_id': 'fake', 'mount_point_name_support': True,
+         'mount_point_name': 'fake_mount'}
     )
     @ddt.unpack
-    def test_manage_new(self, replication_type, dhss, share_server_id):
+    def test_manage_new(self, replication_type, dhss, share_server_id,
+                        mount_point_name_support, mount_point_name):
+        CONF.set_default("default_mount_point_prefix", "manila_")
+
         share_data = {
             'host': 'fake',
             'export_location_path': 'fake',
             'share_proto': 'fake',
             'share_type_id': 'fake',
+            'mount_point_name': mount_point_name
         }
         if dhss:
             share_data['share_server_id'] = share_server_id
@@ -1461,7 +1475,7 @@ class ShareAPITestCase(test.TestCase):
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
-                'mount_point_name_support': False,
+                'mount_point_name_support': mount_point_name_support,
                 'driver_handles_share_servers': dhss,
             },
         }
@@ -1486,6 +1500,9 @@ class ShareAPITestCase(test.TestCase):
         self.api.manage(self.context, copy.deepcopy(share_data),
                         driver_options)
 
+        if mount_point_name:
+            mount_point_name = 'manila_' + mount_point_name
+
         share_data.update({
             'user_id': self.context.user_id,
             'project_id': self.context.project_id,
@@ -1501,6 +1518,7 @@ class ShareAPITestCase(test.TestCase):
             'mount_point_name_support':
                 fake_type['extra_specs']['mount_point_name_support'],
             'replication_type': replication_type,
+            'mount_point_name': mount_point_name
         })
 
         expected_request_spec = self._get_request_spec_dict(
@@ -1688,6 +1706,180 @@ class ShareAPITestCase(test.TestCase):
         db_api.share_server_get.assert_called_once_with(
             self.context, share_data['share_server_id']
         )
+
+    @ddt.data('', 'prefix_')
+    def test_manage_new_prefix_with_valid_mount_point_name(self, prefix):
+        share_data = {
+            'host': 'fake',
+            'export_location_path': 'fake',
+            'share_proto': 'fake',
+            'share_type_id': 'fake',
+            'mount_point_name': 'mount_point'
+        }
+
+        driver_options = {}
+        date = datetime.datetime(1, 1, 1, 1, 1, 1)
+        timeutils.utcnow.return_value = date
+
+        fake_share_data = {
+            'id': 'fakeid',
+            'status': constants.STATUS_CREATING,
+        }
+        fake_type = {
+            'id': 'fake_type_id',
+            'extra_specs': {
+                'snapshot_support': False,
+                'replication_type': 'dr',
+                'create_share_from_snapshot_support': False,
+                'revert_to_snapshot_support': False,
+                'mount_snapshot_support': False,
+                'mount_point_name_support': True,
+                'driver_handles_share_servers': False,
+                'provisioning:mount_point_prefix': prefix,
+            },
+        }
+
+        share = db_api.share_create(self.context, fake_share_data)
+
+        self.mock_object(self.scheduler_rpcapi, 'manage_share')
+        self.mock_object(db_api, 'share_create',
+                         mock.Mock(return_value=share))
+        self.mock_object(db_api, 'export_locations_update')
+        self.mock_object(db_api, 'share_get',
+                         mock.Mock(return_value=share))
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=fake_type))
+        self.mock_object(db_api, 'share_instance_get_all',
+                         mock.Mock(return_value=[]))
+
+        self.api.manage(self.context, copy.deepcopy(share_data),
+                        driver_options)
+
+        share_data.update({
+            'user_id': self.context.user_id,
+            'project_id': self.context.project_id,
+            'status': constants.STATUS_MANAGING,
+            'scheduled_at': date,
+            'snapshot_support': fake_type['extra_specs']['snapshot_support'],
+            'create_share_from_snapshot_support':
+                fake_type['extra_specs']['create_share_from_snapshot_support'],
+            'revert_to_snapshot_support':
+                fake_type['extra_specs']['revert_to_snapshot_support'],
+            'mount_snapshot_support':
+                fake_type['extra_specs']['mount_snapshot_support'],
+            'mount_point_name_support':
+                fake_type['extra_specs']['mount_point_name_support'],
+            'replication_type': 'dr',
+            'mount_point_name': f"{prefix}mount_point"
+        })
+
+        expected_request_spec = self._get_request_spec_dict(
+            share, fake_type, self.context, size=0,
+            share_proto=share_data['share_proto'],
+            host=share_data['host'])
+
+        export_location = share_data.pop('export_location_path')
+        filters = {'export_location_path': export_location,
+                   'host': share_data['host']
+                   }
+        db_api.share_instance_get_all.assert_called_once_with(
+            self.context, filters=filters)
+        db_api.share_create.assert_called_once_with(self.context, share_data)
+        db_api.share_get.assert_called_once_with(self.context, share['id'])
+        db_api.export_locations_update.assert_called_once_with(
+            self.context, share.instance['id'], export_location)
+        self.scheduler_rpcapi.manage_share.assert_called_once_with(
+            self.context, share['id'], driver_options, expected_request_spec)
+
+    def test_manage_new_mount_point_name_support_false(self):
+        share_data = {
+            'host': 'fake',
+            'export_location_path': 'fake',
+            'share_proto': 'fake',
+            'share_type_id': 'fake',
+            'mount_point_name': 'fake'
+        }
+
+        driver_options = {}
+        date = datetime.datetime(1, 1, 1, 1, 1, 1)
+        timeutils.utcnow.return_value = date
+        fake_type = {
+            'id': 'fake_type_id',
+            'extra_specs': {
+                'snapshot_support': False,
+                'create_share_from_snapshot_support': False,
+                'revert_to_snapshot_support': False,
+                'mount_snapshot_support': False,
+                'mount_point_name_support': False,
+                'driver_handles_share_servers': False,
+            },
+        }
+
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=fake_type))
+        self.mock_object(db_api, 'share_instance_get_all',
+                         mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.InvalidInput,
+                          self.api.manage,
+                          self.context,
+                          share_data=share_data,
+                          driver_options=driver_options
+                          )
+        share_types.get_share_type.assert_called_once_with(
+            self.context, share_data['share_type_id']
+        )
+        filters = {'export_location_path': share_data['export_location_path'],
+                   'host': share_data['host']
+                   }
+
+        db_api.share_instance_get_all.assert_called_once_with(
+            self.context, filters=filters)
+
+    def test_manage_new_invalid_mount_point_name(self):
+        share_data = {
+            'host': 'fake',
+            'export_location_path': 'fake',
+            'share_proto': 'fake',
+            'share_type_id': 'fake',
+            'mount_point_name': 'invalid*name'
+        }
+
+        driver_options = {}
+        date = datetime.datetime(1, 1, 1, 1, 1, 1)
+        timeutils.utcnow.return_value = date
+        fake_type = {
+            'id': 'fake_type_id',
+            'extra_specs': {
+                'snapshot_support': False,
+                'create_share_from_snapshot_support': False,
+                'revert_to_snapshot_support': False,
+                'mount_snapshot_support': False,
+                'mount_point_name_support': True,
+                'driver_handles_share_servers': False,
+            },
+        }
+
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=fake_type))
+        self.mock_object(db_api, 'share_instance_get_all',
+                         mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.InvalidInput,
+                          self.api.manage,
+                          self.context,
+                          share_data=share_data,
+                          driver_options=driver_options
+                          )
+        share_types.get_share_type.assert_called_once_with(
+            self.context, share_data['share_type_id']
+        )
+        filters = {'export_location_path': share_data['export_location_path'],
+                   'host': share_data['host']
+                   }
+
+        db_api.share_instance_get_all.assert_called_once_with(
+            self.context, filters=filters)
 
     @ddt.data(constants.STATUS_MANAGE_ERROR, constants.STATUS_AVAILABLE)
     def test_manage_duplicate(self, status):
