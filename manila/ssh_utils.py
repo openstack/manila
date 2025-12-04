@@ -12,11 +12,13 @@
 
 """Ssh utilities."""
 
+from collections import deque
+from contextlib import contextmanager
 import hashlib
 import logging
 import os
+import threading
 
-from eventlet import pools
 from oslo_config import cfg
 from oslo_log import log
 
@@ -53,20 +55,28 @@ if paramiko is None:
 paramiko.pkey.PKey.get_fingerprint = get_fingerprint
 
 
-class SSHPool(pools.Pool):
-    """A simple eventlet pool to hold ssh connections."""
+class SSHPool:
+    """A thread-safe SSH connection pool."""
 
     def __init__(self, ip, port, conn_timeout, login, password=None,
-                 privatekey=None, *args, **kwargs):
+                 privatekey=None, min_size=1, max_size=10):
         self.ip = ip
         self.port = port
         self.login = login
         self.password = password
         self.conn_timeout = conn_timeout if conn_timeout else None
         self.path_to_private_key = privatekey
-        super(SSHPool, self).__init__(*args, **kwargs)
+        self.min_size = min_size
+        self.max_size = max_size
 
-    def create(self, quiet=False):  # pylint: disable=method-hidden
+        # Concurrent connection management
+        self._lock = threading.RLock()
+        self._connections = deque()
+        self._current_size = 0
+        self._condition = threading.Condition(self._lock)
+
+    def create(self, quiet=False):
+        """Create one new SSH connection."""
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         look_for_keys = True
@@ -108,28 +118,100 @@ class SSHPool(pools.Pool):
     def get(self):
         """Return an item from the pool, when one is available.
 
-        This may cause the calling greenthread to block. Check if a
-        connection is active before returning it. For dead connections
-        create and return a new connection.
+        This method will block if no connections are available and the pool
+        is at maximum capacity. Check if a connection is active before
+        returning it. For dead connections create and return a new connection.
         """
-        if self.free_items:
-            conn = self.free_items.popleft()
-            if conn:
-                if conn.get_transport().is_active():
-                    return conn
-                else:
-                    conn.close()
-            return self.create()
-        if self.current_size < self.max_size:
-            created = self.create()
-            self.current_size += 1
-            return created
-        return self.channel.get()
+        with self._condition:
+            # Try to get an existing connection
+            while True:
+                if self._connections:
+                    conn = self._connections.popleft()
+                    if conn and self._is_connection_active(conn):
+                        return conn
+                    else:
+                        # Connection is dead, close it and try again
+                        if conn:
+                            self._close_connection(conn)
+                            self._current_size -= 1
+                        continue
+
+                # No active connections available
+                if self._current_size < self.max_size:
+                    # Create new connection
+                    conn = self.create()
+                    if conn:
+                        self._current_size += 1
+                        return conn
+
+                # Pool is at max capacity, wait for a connection
+                self._condition.wait(timeout=30)
+                # If we timeout, try to create anyway
+                if (not self._connections and
+                        self._current_size < self.max_size):
+                    conn = self.create()
+                    if conn:
+                        self._current_size += 1
+                        return conn
+
+    def put(self, conn):
+        """Return a connection to the pool."""
+        if not conn:
+            return
+
+        with self._condition:
+            if self._is_connection_active(conn):
+                self._connections.append(conn)
+            else:
+                self._close_connection(conn)
+                if self._current_size > 0:
+                    self._current_size -= 1
+            self._condition.notify()
 
     def remove(self, ssh):
-        """Close an ssh client and remove it from free_items."""
-        ssh.close()
-        if ssh in self.free_items:
-            self.free_items.remove(ssh)
-            if self.current_size > 0:
-                self.current_size -= 1
+        """Close an ssh client and remove it from the pool."""
+        with self._lock:
+            if ssh in self._connections:
+                self._connections.remove(ssh)
+            self._close_connection(ssh)
+            if self._current_size > 0:
+                self._current_size -= 1
+
+    @contextmanager
+    def item(self):
+        """Context manager for getting/returning connections."""
+        conn = self.get()
+        try:
+            yield conn
+        finally:
+            self.put(conn)
+
+    def _is_connection_active(self, conn):
+        """Check if SSH connection is still active."""
+        try:
+            return (conn and
+                    conn.get_transport() and
+                    conn.get_transport().is_active())
+        except Exception:
+            return False
+
+    def _close_connection(self, conn):
+        """Safely close an SSH connection."""
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass  # Ignore errors when closing
+
+    # Properties for backward compatibility with eventlet.pools.Pool
+    @property
+    def current_size(self):
+        """Current number of connections in the pool."""
+        with self._lock:
+            return self._current_size
+
+    @property
+    def free_items(self):
+        """Available connections (for backward compatibility)."""
+        with self._lock:
+            return self._connections
