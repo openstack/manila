@@ -1694,7 +1694,7 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       version='2.69')
         body = {"soft_delete": None}
-        resp = self.controller.share_soft_delete(req, 1, body)
+        resp = self.controller.share_soft_delete(req, 1, body=body)
         self.assertEqual(202, resp.status_int)
 
     def test_share_soft_delete_has_been_soft_deleted_already(self):
@@ -1709,7 +1709,7 @@ class ShareAPITest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPForbidden, self.controller.share_soft_delete,
-            req, 1, body)
+            req, 1, body=body)
 
     def test_share_soft_delete_has_replicas(self):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
@@ -1722,7 +1722,7 @@ class ShareAPITest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPConflict, self.controller.share_soft_delete,
-            req, 1, body)
+            req, 1, body=body)
 
     def test_share_restore(self):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
@@ -1730,7 +1730,7 @@ class ShareAPITest(test.TestCase):
         body = {"restore": None}
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=self.share_in_recycle_bin))
-        resp = self.controller.share_restore(req, 1, body)
+        resp = self.controller.share_restore(req, 1, body=body)
         self.assertEqual(202, resp.status_int)
 
     def test_share_restore_with_deleting_status(self):
@@ -1742,7 +1742,7 @@ class ShareAPITest(test.TestCase):
             mock.Mock(return_value=self.share_in_recycle_bin_is_deleting))
         self.assertRaises(
             webob.exc.HTTPForbidden, self.controller.share_restore,
-            req, 1, body)
+            req, 1, body=body)
 
     def test_share_delete(self):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1')
