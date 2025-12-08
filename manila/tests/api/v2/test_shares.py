@@ -2743,7 +2743,7 @@ class ShareActionsTest(test.TestCase):
         size = '2'
         req = fakes.HTTPRequest.blank(
             '/v2/shares/%s/action' % id, version=version)
-        actual_response = self.controller._extend(req, id, body)
+        actual_response = self.controller._extend(req, id, body=body)
 
         share_api.API.get.assert_called_once_with(mock.ANY, id)
         share_api.API.extend.assert_called_once_with(
@@ -2758,7 +2758,7 @@ class ShareActionsTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/shares/%s/action' % id)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller._extend, req, id, body)
+                          self.controller._extend, req, id, body=body)
 
     @ddt.data({'source': exception.InvalidInput,
                'target': webob.exc.HTTPBadRequest},
@@ -2774,7 +2774,7 @@ class ShareActionsTest(test.TestCase):
         self.mock_object(share_api.API, "extend",
                          mock.Mock(side_effect=source('fake')))
 
-        self.assertRaises(target, self.controller._extend, req, id, body)
+        self.assertRaises(target, self.controller._extend, req, id, body=body)
 
     @ddt.unpack
     @ddt.data(
@@ -2790,7 +2790,7 @@ class ShareActionsTest(test.TestCase):
         size = '1'
         req = fakes.HTTPRequest.blank(
             '/v2/shares/%s/action' % id, version=version)
-        actual_response = self.controller._shrink(req, id, body)
+        actual_response = self.controller._shrink(req, id, body=body)
 
         share_api.API.get.assert_called_once_with(mock.ANY, id)
         share_api.API.shrink.assert_called_once_with(
@@ -2805,7 +2805,7 @@ class ShareActionsTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/shares/%s/action' % id)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller._shrink, req, id, body)
+                          self.controller._shrink, req, id, body=body)
 
     @ddt.data({'source': exception.InvalidInput,
                'target': webob.exc.HTTPBadRequest},
@@ -2819,7 +2819,7 @@ class ShareActionsTest(test.TestCase):
         self.mock_object(share_api.API, "shrink",
                          mock.Mock(side_effect=source('fake')))
 
-        self.assertRaises(target, self.controller._shrink, req, id, body)
+        self.assertRaises(target, self.controller._shrink, req, id, body=body)
 
 
 @ddt.ddt

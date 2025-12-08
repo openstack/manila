@@ -548,32 +548,36 @@ class ShareController(wsgi.Controller,
 
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-extend')
+    @validation.request_body_schema(schema.extend_request_body)
+    @validation.response_body_schema(schema.extend_response_body)
     def extend_legacy(self, req, id, body):
         """Extend size of a share."""
         body.get('os-extend', {}).pop('force', None)
         return self._extend(req, id, body)
 
-    @wsgi.Controller.api_version('2.7', '2.63')
+    @wsgi.Controller.api_version('2.7')
     @wsgi.action('extend')
+    @validation.request_body_schema(schema.extend_request_body_v27, '2.7', '2.63')  # noqa: E501
+    @validation.request_body_schema(schema.extend_request_body_v264, '2.64')
+    @validation.response_body_schema(schema.extend_response_body)
     def extend(self, req, id, body):
         """Extend size of a share."""
-        body.get('extend', {}).pop('force', None)
-        return self._extend(req, id, body)
-
-    @wsgi.Controller.api_version('2.64')  # noqa
-    @wsgi.action('extend')
-    def extend(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
-        """Extend size of a share."""
+        if req.api_version_request < api_version.APIVersionRequest('2.64'):
+            body.get('extend', {}).pop('force', None)
         return self._extend(req, id, body)
 
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-shrink')
+    @validation.request_body_schema(schema.shrink_request_body)
+    @validation.response_body_schema(schema.shrink_response_body)
     def shrink_legacy(self, req, id, body):
         """Shrink size of a share."""
         return self._shrink(req, id, body)
 
     @wsgi.Controller.api_version('2.7')
     @wsgi.action('shrink')
+    @validation.request_body_schema(schema.shrink_request_body_v27, '2.7')
+    @validation.response_body_schema(schema.shrink_response_body)
     def shrink(self, req, id, body):
         """Shrink size of a share."""
         return self._shrink(req, id, body)
