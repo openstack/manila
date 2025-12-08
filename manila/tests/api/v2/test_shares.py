@@ -2990,7 +2990,8 @@ class ShareUnmanageTest(test.TestCase):
             self.controller.share_api.db, 'share_snapshot_get_all_for_share',
             mock.Mock(return_value=[]))
 
-        actual_result = self.controller.unmanage(self.request, share['id'])
+        actual_result = self.controller.unmanage(
+            self.request, share['id'], body={'unmanage': None})
 
         self.assertEqual(202, actual_result.status_int)
         (self.controller.share_api.db.share_snapshot_get_all_for_share.
@@ -3001,16 +3002,18 @@ class ShareUnmanageTest(test.TestCase):
         share_api.API.unmanage.assert_called_once_with(
             self.request.environ['manila.context'], share)
 
-    def test__unmanage(self):
-        body = {}
+    def test_unmanage_v249(self):
+        body = {'unmanage': None}
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       use_admin_context=False,
                                       version='2.49')
         share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
                      instance={})
-        mock_unmanage = self.mock_object(self.controller, '_unmanage')
+        mock_unmanage = self.mock_object(
+            self.controller, '_unmanage',
+            mock.Mock(return_value=None))
 
-        self.controller.unmanage(req, share['id'], body)
+        self.controller.unmanage(req, share['id'], body=body)
 
         mock_unmanage.assert_called_once_with(
             req, share['id'], body, allow_dhss_true=True
@@ -3030,7 +3033,8 @@ class ShareUnmanageTest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPForbidden,
-            self.controller.unmanage, self.request, share['id'])
+            self.controller.unmanage, self.request, share['id'],
+            body={'unmanage': None})
 
         self.assertFalse(self.controller.share_api.unmanage.called)
         (self.controller.share_api.db.share_snapshot_get_all_for_share.
@@ -3047,7 +3051,8 @@ class ShareUnmanageTest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPForbidden,
-            self.controller.unmanage, self.request, share['id'])
+            self.controller.unmanage, self.request, share['id'],
+            body={'unmanage': None})
 
         self.controller.share_api.get.assert_called_once_with(
             self.request.environ['manila.context'], share['id'])
@@ -3061,7 +3066,8 @@ class ShareUnmanageTest(test.TestCase):
 
         self.assertRaises(
             webob.exc.HTTPForbidden,
-            self.controller.unmanage, self.request, share['id'])
+            self.controller.unmanage, self.request, share['id'],
+            body={'unmanage': None})
 
         self.controller.share_api.get.assert_called_once_with(
             self.request.environ['manila.context'], share['id'])
@@ -3071,9 +3077,10 @@ class ShareUnmanageTest(test.TestCase):
             side_effect=exception.NotFound))
         self.mock_object(share_api.API, 'unmanage', mock.Mock())
 
-        self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.unmanage,
-                          self.request, self.share_id)
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller.unmanage, self.request, self.share_id,
+            body={'unmanage': None})
 
     @ddt.data(exception.InvalidShare(reason="fake"),
               exception.PolicyNotAuthorized(action="fake"),)
@@ -3084,29 +3091,28 @@ class ShareUnmanageTest(test.TestCase):
         self.mock_object(share_api.API, 'unmanage', mock.Mock(
             side_effect=side_effect))
 
-        self.assertRaises(webob.exc.HTTPForbidden,
-                          self.controller.unmanage,
-                          self.request, self.share_id)
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller.unmanage, self.request, self.share_id,
+            body={'unmanage': None})
 
     def test_wrong_permissions(self):
         share_id = 'fake'
         req = fakes.HTTPRequest.blank('/v2/fake/share/%s/unmanage' % share_id,
                                       use_admin_context=False, version='2.7')
 
-        self.assertRaises(webob.exc.HTTPForbidden,
-                          self.controller.unmanage,
-                          req,
-                          share_id)
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller.unmanage, req, share_id, body={'unmanage': None})
 
     def test_unsupported_version(self):
         share_id = 'fake'
         req = fakes.HTTPRequest.blank('/v2/fake/share/%s/unmanage' % share_id,
                                       use_admin_context=False, version='2.6')
 
-        self.assertRaises(exception.VersionNotFoundForAPIMethod,
-                          self.controller.unmanage,
-                          req,
-                          share_id)
+        self.assertRaises(
+            exception.VersionNotFoundForAPIMethod,
+            self.controller.unmanage, req, share_id, body={'unmanage': None})
 
 
 def get_fake_manage_body(export_path='/fake', service_host='fake@host#POOL',
