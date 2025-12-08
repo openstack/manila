@@ -210,7 +210,7 @@ class PowerScaleTest(test.TestCase):
         snapshot_name = "snapshot01"
         snapshot_path = '/ifs/home/admin'
         snapshot = {'name': snapshot_name, 'share_name': snapshot_path}
-        self._mock_powerscale_api.create_snapshot.return_value = False
+        self._mock_powerscale_api.create_snapshot.return_value = None
 
         self.assertRaises(
             exception.ShareBackendException,
@@ -226,8 +226,10 @@ class PowerScaleTest(test.TestCase):
         snapshot_path = '/ifs/home/admin'
 
         # execute method under test
-        snapshot = {'name': snapshot_name, 'share_name': snapshot_path}
-        share = {"name": self.SHARE_NAME, "share_proto": 'NFS', 'size': 5}
+        snapshot = {'name': snapshot_name, 'share_name': snapshot_path,
+                    'provider_location': None, }
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS', 'size': 5,
+                 'share_type_id': 'fake_id', }
         location = self.storage_connection.create_share_from_snapshot(
             self.mock_context, share, snapshot, None)
 
@@ -237,7 +239,7 @@ class PowerScaleTest(test.TestCase):
 
         # verify clone_directory(container_path) method called
         self._mock_powerscale_api.clone_snapshot.assert_called_once_with(
-            snapshot_name, self.SHARE_DIR)
+            snapshot_name, self.SHARE_DIR, None)
         path = '{0}:{1}'.format(
             self.POWERSCALE_ADDR, self.SHARE_DIR)
         expected_location = {'is_admin_only': False,
@@ -260,8 +262,10 @@ class PowerScaleTest(test.TestCase):
         new_share_name = 'clone-dir'
 
         # execute method under test
-        snapshot = {'name': snapshot_name, 'share_name': snapshot_path}
-        share = {"name": new_share_name, "share_proto": 'CIFS', "size": 2}
+        snapshot = {'name': snapshot_name, 'share_name': snapshot_path,
+                    'provider_location': None, }
+        share = {"name": new_share_name, "share_proto": 'CIFS', "size": 2,
+                 'share_type_id': 'fake_id', }
         location = self.storage_connection.create_share_from_snapshot(
             self.mock_context, share, snapshot, None)
 
@@ -269,7 +273,7 @@ class PowerScaleTest(test.TestCase):
         self._mock_powerscale_api.create_smb_share.assert_called_once_with(
             new_share_name, self.CLONE_DIR)
         self._mock_powerscale_api.clone_snapshot.assert_called_once_with(
-            snapshot_name, self.CLONE_DIR)
+            snapshot_name, self.CLONE_DIR, None)
         path = '\\\\{0}\\{1}'.format(self.POWERSCALE_ADDR, new_share_name)
         expected_location = {'is_admin_only': False,
                              'metadata': {"preferred": True},
@@ -446,7 +450,8 @@ class PowerScaleTest(test.TestCase):
         # create a snapshot
         snapshot_name = "snapshot01"
         snapshot_path = '/ifs/home/admin'
-        snapshot = {'name': snapshot_name, 'share_name': snapshot_path}
+        snapshot = {'name': snapshot_name, 'share_name': snapshot_path,
+                    'provider_location': None}
         self.assertFalse(self._mock_powerscale_api.delete_snapshot.called)
 
         # delete the created snapshot
@@ -458,7 +463,7 @@ class PowerScaleTest(test.TestCase):
             snapshot_name)
 
     def test_delete_snapshot_failure(self):
-        snapshot = {'name': 'test_snapshot'}
+        snapshot = {'name': 'test_snapshot', 'provider_location': None}
         self._mock_powerscale_api.delete_snapshot.return_value = False
         self.assertRaises(
             exception.ShareBackendException,
@@ -1122,3 +1127,366 @@ class PowerScaleTest(test.TestCase):
             path, 'directory'
         )
         self._mock_powerscale_api.quota_set.assert_not_called()
+
+    def _get_base_snapshot(self):
+        return {
+            'id': 'snapshot-id-123',
+            'provider_location': '123',
+            'share': {
+                'id': 'share-id-123',
+                'name': self.SHARE_NAME,
+                'size': 8,
+                'export_locations': [{
+                    # NFS-style export: <ip>:/ifs/manila-test/share-foo
+                    'path': '%s:%s' % (self.POWERSCALE_ADDR, self.SHARE_DIR),
+                }],
+            },
+        }
+
+    def test_manage_existing_snapshot_not_found_in_backend(self):
+        snapshot = self._get_base_snapshot()
+        driver_options = {}
+
+        # Backend returns no snapshot
+        self._mock_powerscale_api.get_snapshot_id.return_value = None
+
+        self.assertRaises(
+            exception.ManageInvalidShareSnapshot,
+            self.storage_connection.manage_existing_snapshot,
+            snapshot,
+            driver_options,
+        )
+        self._mock_powerscale_api.get_snapshot_id.assert_called_once_with(
+            snapshot['provider_location'])
+
+    def test_manage_existing_snapshot_share_path_mismatch(self):
+        snapshot = self._get_base_snapshot()
+        driver_options = {}
+
+        # Snapshot exists but path does not match share export path
+        self._mock_powerscale_api.get_snapshot_id.return_value = {
+            'id': 'backend-snap-id',
+            'path': '/ifs/some/other/path',
+        }
+
+        self.assertRaises(
+            exception.ManageInvalidShareSnapshot,
+            self.storage_connection.manage_existing_snapshot,
+            snapshot,
+            driver_options,
+        )
+        self._mock_powerscale_api.get_snapshot_id.assert_called_once_with(
+            snapshot['provider_location'])
+
+    def test_manage_existing_snapshot_invalid_size_value(self):
+        snapshot = self._get_base_snapshot()
+        driver_options = {
+            # This will cause int("invalid") to raise ValueError
+            'size': 'invalid',
+        }
+
+        self._mock_powerscale_api.get_snapshot_id.return_value = {
+            'id': 'backend-snap-id',
+            'path': self.SHARE_DIR,
+        }
+
+        self.assertRaises(
+            exception.ManageInvalidShareSnapshot,
+            self.storage_connection.manage_existing_snapshot,
+            snapshot,
+            driver_options,
+        )
+
+    def test_manage_existing_snapshot_invalid_size_type(self):
+        snapshot = self._get_base_snapshot()
+        driver_options = {
+            # This will cause int(None) to raise TypeError
+            'size': None,
+        }
+
+        self._mock_powerscale_api.get_snapshot_id.return_value = {
+            'id': 'backend-snap-id',
+            'path': self.SHARE_DIR,
+        }
+
+        self.assertRaises(
+            exception.ManageInvalidShareSnapshot,
+            self.storage_connection.manage_existing_snapshot,
+            snapshot,
+            driver_options,
+        )
+
+    def test_manage_existing_snapshot_no_size_uses_share_size(self):
+        snapshot = self._get_base_snapshot()
+        driver_options = {}  # size not provided
+
+        self._mock_powerscale_api.get_snapshot_id.return_value = {
+            'id': 'backend-snap-id',
+            'path': self.SHARE_DIR,
+        }
+
+        result = self.storage_connection.manage_existing_snapshot(
+            snapshot, driver_options)
+
+        self._mock_powerscale_api.get_snapshot_id.assert_called_once_with(
+            snapshot['provider_location'])
+        # Should fall back to share['size']
+        self.assertEqual(
+            {'size': snapshot['share']['size'],
+             'provider_location': snapshot['provider_location']},
+            result)
+
+    def test_manage_existing_snapshot_explicit_size_used(self):
+        snapshot = self._get_base_snapshot()
+        driver_options = {
+            'size': '3',  # valid integer string
+        }
+
+        self._mock_powerscale_api.get_snapshot_id.return_value = {
+            'id': 'backend-snap-id',
+            'path': self.SHARE_DIR,
+        }
+
+        result = self.storage_connection.manage_existing_snapshot(
+            snapshot, driver_options)
+
+        self._mock_powerscale_api.get_snapshot_id.assert_called_once_with(
+            snapshot['provider_location'])
+        self.assertEqual(
+            {'size': 3, 'provider_location': snapshot['provider_location']},
+            result)
+
+    def test_delete_snapshot_with_provider_location_success(self):
+        snapshot = {
+            'name': 'snap-001',
+            'provider_location': 'backend-snap-loc-001',
+        }
+
+        # Backend delete succeeds
+        (self._mock_powerscale_api.
+         delete_snapshot_by_id).return_value = True
+
+        # Should not raise
+        self.storage_connection.delete_snapshot(
+            self.mock_context, snapshot, share_server=None)
+
+        # Must be called with provider_location, not name
+        (self._mock_powerscale_api.delete_snapshot_by_id.
+         assert_called_once_with(snapshot['provider_location']))
+
+    def test_delete_snapshot_with_provider_location_failure(self):
+        snapshot = {
+            'name': 'snap-001',
+            'provider_location': 'backend-snap-loc-001',
+        }
+
+        # Backend delete fails
+        (self._mock_powerscale_api.
+         delete_snapshot_by_id).return_value = False
+
+        # Expect backend exception
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.delete_snapshot,
+            self.mock_context,
+            snapshot,
+            None,
+        )
+
+        # Must be called with provider_location
+        (self._mock_powerscale_api.delete_snapshot_by_id.
+         assert_called_once_with(snapshot['provider_location']))
+
+    def test_manage_existing_nfs_success(self):
+        share = {
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/manila-test/share-foo',
+        }
+        self._mock_powerscale_api.lookup_nfs_export.return_value = 42
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 10 * units.Gi},
+        }
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+        self.assertEqual(
+            ['10.0.0.1:/ifs/manila-test/share-foo'],
+            result['export_locations'],
+        )
+        self.assertEqual(10, result['size'])
+        self._mock_powerscale_api.lookup_nfs_export.assert_called_once_with(
+            '/ifs/manila-test/share-foo'
+        )
+        self._mock_powerscale_api.quota_get.assert_called_once_with(
+            '/ifs/manila-test/share-foo', 'directory'
+        )
+
+    def test_manage_existing_nfs_not_found(self):
+        share = {
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/missing',
+        }
+        self._mock_powerscale_api.lookup_nfs_export.return_value = None
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )
+
+    def test_manage_existing_cifs_success(self):
+        share = {
+            'share_proto': 'CIFS',
+            'export_location': '\\\\10.0.0.1\\share-foo',
+        }
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'name': 'share-foo',
+            'path': '/ifs/manila-test/share-foo',
+        }
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 5 * units.Gi},
+        }
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+        self.assertEqual(
+            ['\\\\10.0.0.1\\share-foo'], result['export_locations'],
+        )
+        self.assertEqual(5, result['size'])
+        self._mock_powerscale_api.lookup_smb_share.assert_called_once_with(
+            'share-foo'
+        )
+        self._mock_powerscale_api.quota_get.assert_called_once_with(
+            '/ifs/manila-test/share-foo', 'directory'
+        )
+
+    def test_manage_existing_cifs_share_not_found(self):
+        share = {
+            'share_proto': 'CIFS',
+            'export_location': '\\\\10.0.0.1\\missing',
+        }
+        self._mock_powerscale_api.lookup_smb_share.return_value = None
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )
+
+    def test_manage_existing_cifs_path_not_resolved(self):
+        share = {
+            'share_proto': 'CIFS',
+            'export_location': '\\\\10.0.0.1\\share-foo',
+        }
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'name': 'share-foo'
+        }
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )
+
+    def test_manage_existing_nfs_export_locations_fallback(self):
+        """Fallback for export_location using export_locations list."""
+        share = {
+            'share_proto': 'NFS',
+            'export_locations': ['10.0.0.2:/ifs/projects/teamX'],
+        }
+        self._mock_powerscale_api.lookup_nfs_export.return_value = 77
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 9 * units.Gi},
+        }
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+        self.assertEqual(
+            ['10.0.0.2:/ifs/projects/teamX'], result['export_locations'],
+        )
+        self.assertEqual(9, result['size'])
+        self._mock_powerscale_api.lookup_nfs_export.assert_called_once_with(
+            '/ifs/projects/teamX'
+        )
+        self._mock_powerscale_api.quota_get.assert_called_once_with(
+            '/ifs/projects/teamX', 'directory'
+        )
+
+    def test_manage_existing_cifs_export_locations_fallback(self):
+        share = {
+            'share_proto': 'CIFS',
+            'export_locations': ['\\\\10.0.0.1\\share-foo'],
+        }
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'name': 'share-foo',
+            'path': f'{self.ROOT_DIR}/{self.SHARE_NAME}',
+        }
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 12 * units.Gi},
+        }
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+        self.assertEqual(
+            ['\\\\10.0.0.1\\share-foo'],
+            result['export_locations'],
+        )
+        self.assertEqual(12, result['size'])
+        self._mock_powerscale_api.lookup_smb_share.assert_called_once_with(
+            'share-foo'
+        )
+        self._mock_powerscale_api.quota_get.assert_called_once_with(
+            f'{self.ROOT_DIR}/{self.SHARE_NAME}', 'directory'
+        )
+
+    def test_manage_existing_cifs_raises_when_quota_absent(self):
+        share = {
+            'share_proto': 'CIFS',
+            'export_location': '\\\\10.0.0.1\\share-foo',
+        }
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'name': 'share-foo',
+            'path': f'{self.ROOT_DIR}/{self.SHARE_NAME}',
+        }
+        self._mock_powerscale_api.quota_get.return_value = None
+
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )
+
+    def test_manage_existing_nfs_raises_when_quota_absent(self):
+        share = {
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/projects/teamX',
+        }
+        self._mock_powerscale_api.lookup_nfs_export.return_value = 42
+        self._mock_powerscale_api.quota_get.return_value = None
+
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )
+
+    def test_manage_existing_raises_when_hard_limit_missing_usage_only(self):
+        share = {
+            'share_proto': 'CIFS',
+            'export_location': '\\\\10.0.0.1\\share-foo',
+        }
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'name': 'share-foo',
+            'path': f'{self.ROOT_DIR}/{self.SHARE_NAME}',
+        }
+        self._mock_powerscale_api.quota_get.return_value = {
+            'usage': {'logical': 7 * units.Gi},
+        }
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )

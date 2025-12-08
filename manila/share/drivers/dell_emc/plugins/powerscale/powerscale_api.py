@@ -94,9 +94,14 @@ class PowerScaleApi(object):
         r = self.send_put_request(url, headers=headers)
         return r.status_code == 200
 
-    def clone_snapshot(self, snapshot_name, fq_target_dir):
+    def clone_snapshot(self, snapshot_name, fq_target_dir,
+                       provider_location):
         self.create_directory(fq_target_dir)
-        snapshot = self.get_snapshot(snapshot_name)
+        if provider_location is not None:
+            snapshot = self.get_snapshot_id(provider_location)
+            snapshot_name = snapshot['name']
+        else:
+            snapshot = self.get_snapshot(snapshot_name)
         snapshot_path = snapshot['path']
         # remove /ifs from start of path
         relative_snapshot_path = snapshot_path[4:]
@@ -166,6 +171,18 @@ class PowerScaleApi(object):
             self.host_url + '/platform/1/snapshot/snapshots')
         if r.status_code == 200:
             return r.json()
+        else:
+            r.raise_for_status()
+
+    def get_snapshot_id(self, snap_id):
+        r = self.send_get_request(
+            self.host_url + '/platform/1/snapshot/snapshots/' +
+            snap_id)
+        snapshot_json = r.json()
+        if r.status_code == 200:
+            return snapshot_json['snapshots'][0]
+        elif r.status_code == 404:
+            return None
         else:
             r.raise_for_status()
 
@@ -252,7 +269,11 @@ class PowerScaleApi(object):
         r = self.send_post_request(
             self.host_url + '/platform/1/snapshot/snapshots',
             data=data)
-        return r.status_code == 201
+        if r.status_code == 201:
+            data = r.json()
+            snap_id = data['id']
+            return snap_id
+        return None
 
     def delete_path(self, fq_resource_path, recursive=False):
         """Deletes a file or folder."""
@@ -277,6 +298,12 @@ class PowerScaleApi(object):
         response = self.send_delete_request(
             '{0}/platform/1/snapshot/snapshots/{1}'
             .format(self.host_url, snapshot_name))
+        return response.status_code == 204
+
+    def delete_snapshot_by_id(self, snapshot_id):
+        response = self.send_delete_request(
+            '{0}/platform/1/snapshot/snapshots/{1}'
+            .format(self.host_url, snapshot_id))
         return response.status_code == 204
 
     def quota_create(self, path, quota_type, size):

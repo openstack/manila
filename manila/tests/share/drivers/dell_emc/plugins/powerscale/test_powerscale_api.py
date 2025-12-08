@@ -198,7 +198,7 @@ class PowerScaleApiTest(test.TestCase):
                                       snapshot_name)
 
         # Call method under test
-        self.powerscale_api.clone_snapshot(snapshot_name, fq_target_dir)
+        self.powerscale_api.clone_snapshot(snapshot_name, fq_target_dir, None)
 
         # Verify calls needed to clone the source snapshot to the target dir
         expected_calls = []
@@ -308,6 +308,30 @@ class PowerScaleApiTest(test.TestCase):
 
             self.assertEqual(1, len(m.request_history))
             self.assertEqual(expected_return_value, r)
+
+    def test_clone_snapshot_with_provider_location(self):
+        """clone_snapshot should use provider_location to get snapshot"""
+        self.powerscale_api.create_directory = mock.Mock()
+        self.powerscale_api.get_snapshot_id = mock.Mock()
+        self.powerscale_api.get_snapshot = mock.Mock()
+        self.powerscale_api._clone_directory_contents = mock.Mock()
+        fq_target_dir = '/ifs/data/clone1'
+        provider_location = '1234'
+        snapshot = {
+            'name': 'snap-123',
+            'path': '/ifs/data/share1'
+        }
+        self.powerscale_api.get_snapshot_id.return_value = snapshot
+        self.powerscale_api.clone_snapshot(
+            snapshot_name='ignored-snapshot-name',
+            fq_target_dir=fq_target_dir,
+            provider_location=provider_location
+        )
+        (self.powerscale_api.
+         create_directory.assert_called_once_with(fq_target_dir))
+        (self.powerscale_api.
+         get_snapshot_id.assert_called_once_with(provider_location))
+        self.powerscale_api.get_snapshot.assert_not_called()
 
     @requests_mock.mock()
     def test_get_snapshot_unexpected_error(self, m):
@@ -466,8 +490,11 @@ class PowerScaleApiTest(test.TestCase):
         self.assertEqual(0, len(m.request_history))
         snapshot_name = 'my_snapshot_01'
         snapshot_path = '/ifs/home/admin'
-        m.post(self._mock_url + '/platform/1/snapshot/snapshots',
-               status_code=201)
+        m.post(
+            self._mock_url + '/platform/1/snapshot/snapshots',
+            status_code=201,
+            json={"id": 123, "name": snapshot_name, "path": snapshot_path}
+        )
 
         r = self.powerscale_api.create_snapshot(snapshot_name, snapshot_path)
 
@@ -488,10 +515,8 @@ class PowerScaleApiTest(test.TestCase):
         m.post(self._mock_url + '/platform/1/snapshot/snapshots',
                status_code=404)
 
-        self.assertEqual(
-            self.powerscale_api.create_snapshot(snapshot_name, snapshot_path),
-            False
-        )
+        self.assertIsNone(self.powerscale_api.create_snapshot(snapshot_name,
+                                                              snapshot_path))
 
     @ddt.data(True, False)
     def test_delete_path(self, is_recursive_delete):
@@ -1062,3 +1087,63 @@ class PowerScaleApiTest(test.TestCase):
         self.assertRaises(requests.exceptions.HTTPError,
                           self.powerscale_api.modify_smb_share_access,
                           share_name, host_acl, smb_permission)
+
+    @requests_mock.mock()
+    def test_get_snapshot_id_status_200_returns_first_snapshot(self, m):
+        snap_id = "snap123"
+        fake_snapshot = {'id': 'snap123', 'path': '/ifs/test'}
+
+        url = self._mock_url + '/platform/1/snapshot/snapshots/' + snap_id
+
+        m.get(url, status_code=200,
+              json={'snapshots': [fake_snapshot]})
+
+        result = self.powerscale_api.get_snapshot_id(snap_id)
+
+        self.assertEqual(fake_snapshot, result)
+
+    @requests_mock.mock()
+    def test_get_snapshot_id_status_404_returns_none(self, m):
+        snap_id = "snap404"
+        url = self._mock_url + '/platform/1/snapshot/snapshots/' + snap_id
+
+        # Provide a valid JSON body so r.json() doesn't fail
+        m.get(url, status_code=404, json={})
+
+        result = self.powerscale_api.get_snapshot_id(snap_id)
+
+        self.assertIsNone(result)
+
+    @requests_mock.mock()
+    def test_get_snapshot_id_other_status_raises(self, m):
+        snap_id = "snapFail"
+        url = self._mock_url + '/platform/1/snapshot/snapshots/' + snap_id
+
+        # Again, give it valid JSON so r.json() succeeds first
+        m.get(url, status_code=500, json={"error": "Fake error"})
+
+        self.assertRaises(
+            requests.exceptions.HTTPError,
+            self.powerscale_api.get_snapshot_id,
+            snap_id,
+        )
+
+    @requests_mock.mock()
+    def test_delete_snapshot_by_id_success_204(self, m):
+        snapshot_id = "snap123"
+        url = self._mock_url + '/platform/1/snapshot/snapshots/' + snapshot_id
+
+        m.delete(url, status_code=204)
+
+        result = self.powerscale_api.delete_snapshot_by_id(snapshot_id)
+        self.assertTrue(result)
+
+    @requests_mock.mock()
+    def test_delete_snapshot_by_id_non_204(self, m):
+        snapshot_id = "snap123"
+        url = self._mock_url + '/platform/1/snapshot/snapshots/' + snapshot_id
+
+        m.delete(url, status_code=409)
+
+        result = self.powerscale_api.delete_snapshot_by_id(snapshot_id)
+        self.assertFalse(result)

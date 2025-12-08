@@ -260,33 +260,52 @@ class EMCShareFrameworkTestCase(test.TestCase):
         snapshot = mock.Mock()
         identifier = mock.Mock()
         self.driver.plugin = mock.Mock()
-        result = self.driver.manage_existing(share, driver_options)
-        self.assertIsInstance(result, NotImplementedError)
+        self.driver.manage_existing_support = False
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.manage_existing,
+            share,
+            driver_options,
+        )
         result = self.driver.manage_existing_with_server(
-            share, driver_options, share_server)
+            share, driver_options, share_server
+        )
         self.assertIsInstance(result, NotImplementedError)
         result = self.driver.manage_existing_snapshot(snapshot, driver_options)
         self.assertIsInstance(result, NotImplementedError)
         result = self.driver.manage_existing_snapshot_with_server(
-            snapshot, driver_options, share_server)
+            snapshot, driver_options, share_server
+        )
         self.assertIsInstance(result, NotImplementedError)
-        result = self.driver.manage_server(None, share_server, identifier,
-                                           driver_options)
+        result = self.driver.manage_server(
+            None,
+            share_server,
+            identifier,
+            driver_options,
+        )
         self.assertIsInstance(result, NotImplementedError)
-        result = self.driver.get_share_server_network_info(None,
-                                                           share_server,
-                                                           identifier,
-                                                           driver_options)
+        result = self.driver.get_share_server_network_info(
+            None, share_server, identifier, driver_options
+        )
         self.assertIsInstance(result, NotImplementedError)
-
-        self.assertRaises(NotImplementedError, self.driver.shrink_share, share,
-                          20, share_server)
-
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.shrink_share,
+            share,
+            20,
+            share_server,
+        )
         share_access_rules = mock.Mock()
         snapshot_access_rules = mock.Mock()
-        self.assertRaises(NotImplementedError, self.driver.revert_to_snapshot,
-                          None, snapshot, share_access_rules,
-                          snapshot_access_rules, share_server)
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.revert_to_snapshot,
+            None,
+            snapshot,
+            share_access_rules,
+            snapshot_access_rules,
+            share_server,
+        )
 
     def test_unmanage_manage(self):
         share = {}
