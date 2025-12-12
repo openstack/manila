@@ -1151,7 +1151,8 @@ class ShareAPITest(test.TestCase):
 
         self.mock_object(db, 'share_update')
 
-        response = self.controller.reset_task_state(req, share['id'], body)
+        response = self.controller.reset_task_state(
+            req, share['id'], body=body)
 
         self.assertEqual(202, response.status_int)
 
@@ -1173,7 +1174,7 @@ class ShareAPITest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.reset_task_state, req, share['id'],
-                          body)
+                          body=body)
 
     def test_reset_task_state_error_invalid(self):
         share = db_utils.create_share()
@@ -1188,9 +1189,9 @@ class ShareAPITest(test.TestCase):
         update = {'task_state': 'error'}
         body = {'reset_task_state': update}
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.reset_task_state, req, share['id'],
-                          body)
+                          body=body)
 
     def test_reset_task_state_not_found(self):
         share = db_utils.create_share()
@@ -1211,7 +1212,7 @@ class ShareAPITest(test.TestCase):
 
         self.assertRaises(exception.NotFound,
                           self.controller.reset_task_state, req, share['id'],
-                          body)
+                          body=body)
 
         share_api.API.get.assert_called_once_with(utils.IsAMatcher(
             context.RequestContext), share['id'])
@@ -1240,7 +1241,7 @@ class ShareAPITest(test.TestCase):
                              mock.Mock(return_value=share))
             self.assertRaises(webob.exc.HTTPForbidden,
                               self.controller.reset_task_state,
-                              req, share['id'], body)
+                              req, share['id'], body=body)
 
     def test_reset_task_state_share_has_been_soft_deleted(self):
         share = self.share_in_recycle_bin
@@ -1258,7 +1259,7 @@ class ShareAPITest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPForbidden,
                           self.controller.reset_task_state, req, share['id'],
-                          body)
+                          body=body)
 
     def test_migration_complete(self):
         share = db_utils.create_share()
