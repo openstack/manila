@@ -286,11 +286,15 @@ class ShareController(wsgi.Controller,
 
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-force_delete')
+    @validation.request_body_schema(schema.force_delete_request_body)
+    @validation.response_body_schema(schema.force_delete_response_body)
     def share_force_delete_legacy(self, req, id, body):
         return self._force_delete(req, id, body)
 
     @wsgi.Controller.api_version('2.7')
     @wsgi.action('force_delete')
+    @validation.request_body_schema(schema.force_delete_request_body_v27)
+    @validation.response_body_schema(schema.force_delete_response_body)
     def share_force_delete(self, req, id, body):
         return self._force_delete(req, id, body)
 
