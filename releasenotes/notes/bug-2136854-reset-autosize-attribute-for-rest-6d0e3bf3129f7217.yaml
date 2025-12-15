@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    NetApp Driver: bug #2136854
+    <https://bugs.launchpad.net/manila/+bug/2136854>_:
+    Implemented reset functionality in Netapp driver's REST API client for
+    volume autosize attributes.
+    In ZAPI, the volume-autosize-attributes includes a reset property that
+    resets the volume's minimum and maximum size and sets the autosize mode
+    to either off or grow_shrink, depending on the volume type (DP or RW).
+    However, this functionality is missing in the REST API, so we use the
+    private CLI endpoint to handle autosize reset operations in REST.
+
