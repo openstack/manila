@@ -16,8 +16,8 @@
 Handles all requests to Glance.
 """
 
-from glanceclient import client as glance_client
 from keystoneauth1 import loading as ks_loading
+import openstack
 from oslo_config import cfg
 
 from manila.common import client_auth
@@ -25,7 +25,6 @@ from manila.common.config import core_opts
 from manila.db import base
 
 GLANCE_GROUP = 'glance'
-AUTH_OBJ = None
 
 
 glance_opts = [
@@ -53,22 +52,20 @@ def list_opts():
     return client_auth.AuthClientLoader.list_opts(GLANCE_GROUP)
 
 
-def glanceclient(context):
-    global AUTH_OBJ
-    if not AUTH_OBJ:
-        AUTH_OBJ = client_auth.AuthClientLoader(
-            client_class=glance_client.Client, cfg_group=GLANCE_GROUP)
-    return AUTH_OBJ.get_client(context,
-                               version=CONF[GLANCE_GROUP].api_microversion,
-                               interface=CONF[GLANCE_GROUP].endpoint_type,
-                               region_name=CONF[GLANCE_GROUP].region_name)
+def openstackclient(context):
+    auth = ks_loading.load_auth_from_conf_options(CONF, 'glance')
+    session = ks_loading.load_session_from_conf_options(
+        CONF, 'glance', auth=auth)
+    return openstack.connection.Connection(
+        session=session,
+        context=context,
+        image_version=CONF[GLANCE_GROUP].api_microversion,
+        image_interface=CONF[GLANCE_GROUP].endpoint_type,
+        region_name=CONF[GLANCE_GROUP].region_name)
 
 
 class API(base.Base):
-    """API for interacting with glanceclient."""
 
     def image_list(self, context):
-        client = glanceclient(context)
-        if hasattr(client, 'images'):
-            return client.images.list()
-        return client.glance.list()
+        client = openstackclient(context)
+        return client.image.images()

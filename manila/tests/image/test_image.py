@@ -21,11 +21,11 @@ from manila import test
 from manila.tests import utils as test_utils
 
 
-class FakeGlanceClient(object):
+class FakeImageClient:
 
-    class Image(object):
+    class Image:
 
-        def list(self, *args, **kwargs):
+        def images(self, *args, **kwargs):
             return [{'id': 'id1'}, {'id': 'id2'}]
 
         def __getattr__(self, item):
@@ -35,16 +35,12 @@ class FakeGlanceClient(object):
         self.image = self.Image()
 
 
-def get_fake_auth_obj():
-    return type('FakeAuthObj', (object, ), {'get_client': mock.Mock()})
+class OpenStackClientTestCase(test.TestCase):
 
-
-class GlanceClientTestCase(test.TestCase):
-
-    @mock.patch('manila.image.glance.AUTH_OBJ', None)
-    def test_no_auth_obj(self):
-        mock_client_loader = self.mock_object(
-            glance.client_auth, 'AuthClientLoader')
+    @mock.patch('manila.image.glance.openstack.connection.Connection')
+    @mock.patch('manila.image.glance.ks_loading.load_session_from_conf_options')  # noqa
+    def test_auth(self, mock_load_session, mock_connection):
+        mock_load_session.return_value = 'fake_session'
         fake_context = 'fake_context'
         data = {
             'glance': {
@@ -55,79 +51,36 @@ class GlanceClientTestCase(test.TestCase):
         }
 
         with test_utils.create_temp_config_with_opts(data):
-            glance.glanceclient(fake_context)
+            glance.openstackclient(fake_context)
 
-        mock_client_loader.assert_called_once_with(
-            client_class=glance.glance_client.Client,
-            cfg_group=glance.GLANCE_GROUP
-        )
-        mock_client_loader.return_value.get_client.assert_called_once_with(
-            fake_context,
-            version=data['glance']['api_microversion'],
-            interface=data['glance']['endpoint_type'],
-            region_name=data['glance']['region_name']
-        )
-
-    @mock.patch('manila.image.glance.AUTH_OBJ', get_fake_auth_obj())
-    def test_with_auth_obj(self):
-        fake_context = 'fake_context'
-        data = {
-            'glance': {
-                'api_microversion': 'foo_api_microversion',
-                'endpoint_type': 'internal',
-                'region_name': 'foo_region_name'
-            }
-        }
-
-        with test_utils.create_temp_config_with_opts(data):
-            glance.glanceclient(fake_context)
-
-        glance.AUTH_OBJ.get_client.assert_called_once_with(
-            fake_context,
-            version=data['glance']['api_microversion'],
-            interface=data['glance']['endpoint_type'],
-            region_name=data['glance']['region_name']
+        mock_connection.assert_called_once_with(
+            session='fake_session',
+            context=fake_context,
+            image_version=data['glance']['api_microversion'],
+            image_interface=data['glance']['endpoint_type'],
+            region_name=data['glance']['region_name'],
         )
 
 
-class GlanceApiTestCase(test.TestCase):
+class ImageApiTestCase(test.TestCase):
     def setUp(self):
-        super(GlanceApiTestCase, self).setUp()
+        super().setUp()
 
         self.api = glance.API()
-        self.glanceclient = FakeGlanceClient()
+        self.imageclient = FakeImageClient()
         self.ctx = context.get_admin_context()
-        self.mock_object(glance, 'glanceclient',
-                         mock.Mock(return_value=self.glanceclient))
+        self.mock_object(glance, 'openstackclient',
+                         mock.Mock(return_value=self.imageclient))
 
-    def test_image_list_glanceclient_has_no_proxy(self):
+    def test_image_list(self):
         image_list = ['fake', 'image', 'list']
 
-        class FakeGlanceClient(object):
-            def list(self):
+        class FakeImageClient(object):
+            def images(self):
                 return image_list
 
-        self.glanceclient.glance = FakeGlanceClient()
+        self.imageclient.image = FakeImageClient()
 
         result = self.api.image_list(self.ctx)
 
         self.assertEqual(image_list, result)
-
-    def test_image_list_glanceclient_has_proxy(self):
-        image_list1 = ['fake', 'image', 'list1']
-        image_list2 = ['fake', 'image', 'list2']
-
-        class FakeImagesClient(object):
-            def list(self):
-                return image_list1
-
-        class FakeGlanceClient(object):
-            def list(self):
-                return image_list2
-
-        self.glanceclient.images = FakeImagesClient()
-        self.glanceclient.glance = FakeGlanceClient()
-
-        result = self.api.image_list(self.ctx)
-
-        self.assertEqual(image_list1, result)
