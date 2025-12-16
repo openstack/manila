@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed an issue that made the creation of shares from snapshots targeting
+    different availability zones fail in the NetApp ONTAP driver.
+    For more details, please refer to
+    `launchpad bug #2131716 <https://bugs.launchpad.net/manila/+bug/2131716>`_.
+

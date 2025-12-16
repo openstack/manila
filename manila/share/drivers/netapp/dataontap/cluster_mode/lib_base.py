@@ -1103,10 +1103,10 @@ class NetAppCmodeFileStorageLibrary(object):
                 # 3. Delete the source volume
                 self._delete_share(src_share, src_vserver, src_vserver_client,
                                    remove_export=False)
-                share_name = self._get_backend_share_name(src_share['id'])
                 # 4. Set File system size fixed to false
+                dest_share_name = self._get_backend_share_name(share['id'])
                 dest_vserver_client.set_volume_filesys_size_fixed(
-                    share_name, filesys_size_fixed=False)
+                    dest_share_name, filesys_size_fixed=False)
                 apply_qos_on_dest = True
                 return_values['status'] = constants.STATUS_AVAILABLE
         else:
