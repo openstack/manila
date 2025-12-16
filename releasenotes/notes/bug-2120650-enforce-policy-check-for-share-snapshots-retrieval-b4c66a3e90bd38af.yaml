@@ -1,0 +1,6 @@
+---
+security:
+  - |
+    Closes a gap where a user can see the snapshots belonging to another
+    project if the uuid of the snapshot is leaked, stolen or (improbably)
+    guessed.
