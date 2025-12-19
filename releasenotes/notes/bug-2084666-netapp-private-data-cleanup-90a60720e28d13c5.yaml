@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The NetApp share driver now correctly deletes its stored private metadata
+    (such as original volume name and junction path) when a share is deleted,
+    preventing the creation of orphaned internal records.
