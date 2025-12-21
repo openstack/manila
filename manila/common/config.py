@@ -27,6 +27,7 @@ stepping stone.
 import socket
 
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log
 from oslo_middleware import cors
 from oslo_utils import netutils
@@ -123,9 +124,11 @@ global_opts = [
                      'with its options.'),
     cfg.ListOpt('enabled_share_protocols',
                 default=['NFS', 'CIFS'],
+                item_type=types.String(
+                    choices=constants.SUPPORTED_SHARE_PROTOCOLS,
+                    ignore_case=True),
                 help="Specify list of protocols to be allowed for share "
-                     "creation. Available values are '%s'" %
-                     list(constants.SUPPORTED_SHARE_PROTOCOLS)),
+                     "creation."),
     cfg.IntOpt('soft_deleted_share_retention_time',
                default=604800,
                help='Maximum time (in seconds) to keep a share in the recycle '
@@ -168,25 +171,12 @@ CONF.register_opts(global_opts)
 
 
 def verify_share_protocols():
-    """Perform verification of 'enabled_share_protocols'."""
-    msg = None
-    supported_protocols = constants.SUPPORTED_SHARE_PROTOCOLS
-    data = dict(supported=', '.join(supported_protocols))
-    if CONF.enabled_share_protocols:
-        for share_proto in CONF.enabled_share_protocols:
-            if share_proto.upper() not in supported_protocols:
-                data.update({'share_proto': share_proto})
-                msg = ("Unsupported share protocol '%(share_proto)s' "
-                       "is set as enabled. Available values are "
-                       "%(supported)s. ")
-                break
-    else:
+    """Verify 'enabled_share_protocols'."""
+    if not CONF.enabled_share_protocols:
         msg = ("No share protocols were specified as enabled. "
-               "Available values are %(supported)s. ")
-    if msg:
-        msg += ("Please specify one or more protocols using "
-                "configuration option 'enabled_share_protocols'.")
-        raise exception.ManilaException(message=msg % data)
+               "Please specify one or more protocols using "
+               "configuration option 'enabled_share_protocols'.")
+        raise exception.ManilaException(message=msg)
 
 
 def set_lib_defaults():
