@@ -310,3 +310,17 @@ class EMCShareDriver(driver.ShareDriver):
         if hasattr(self.plugin, 'ensure_shares'):
             return self.plugin.ensure_shares(context, shares)
         raise NotImplementedError()
+
+    def snapshot_update_access(self, context, snapshot, access_rules,
+                               add_rules, delete_rules, share_server=None):
+        """Update snapshot access"""
+        if hasattr(self.plugin, 'snapshot_update_access'):
+            return self.plugin.snapshot_update_access(
+                context=context,
+                snapshot=snapshot,
+                access_rules=access_rules,
+                add_rules=add_rules,
+                delete_rules=delete_rules,
+                share_server=share_server,
+            )
+        raise NotImplementedError()

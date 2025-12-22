@@ -84,6 +84,10 @@ class FakeConnection(base.StorageConnection):
     def ensure_shares(self, context, shares):
         """Invoked to ensure that shares are exported."""
 
+    def snapshot_update_access(self, context, snapshot, access_rules,
+                               add_rules, delete_rules, share_server=None):
+        """Update snapshot access"""
+
 
 class FakeConnection_powermax(FakeConnection):
     def __init__(self, *args, **kwargs):
@@ -252,6 +256,11 @@ class EMCShareFrameworkTestCase(test.TestCase):
                                        snapshot_access_rules, share_server)
         self.driver.ipv6_implemented = False
         self.driver.get_configured_ip_versions()
+        self.driver.mount_snapshot_support = True
+        snap_access_rules = mock.Mock()
+        self.driver.snapshot_update_access(context, snapshot,
+                                           snap_access_rules,
+                                           None, None, None)
 
     def test_not_support_manage(self):
         share = mock.Mock()

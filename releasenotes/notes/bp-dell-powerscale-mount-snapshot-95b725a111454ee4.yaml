@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added support of mount snapshot for Dell PowerScale.
