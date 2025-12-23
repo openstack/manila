@@ -48,13 +48,13 @@ index_request_query = {
             'maxLength': 255,
         }),
         # Admin only
-        'all_tenants': {
+        'all_tenants': parameter_types.single_param({
             **parameter_types.boolean,
-            'enum': [1, 0],
             'description': (
                 "Set 1 to list resources for all projects;"
                 "set 0 to list resources only for the current project"
-            )},
+            )
+        }),
 
         # Basic filters
         'name': parameter_types.single_param({
