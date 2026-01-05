@@ -16,7 +16,6 @@ Manila Specific Commandments
   included in translated message.
 - [M336] Must use a dict comprehension instead of a dict constructor
   with a sequence of key-value pairs.
-- [M337] Ensure to not use xrange().
 - [M338] Ensure to not use LOG.warn().
 - [M354] Use oslo_utils.uuidutils to generate UUID instead of uuid4().
 - [M359] Validate that log messages are not translated.
