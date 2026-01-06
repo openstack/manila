@@ -750,7 +750,7 @@ function install_manila {
             if [[ $(sudo zfs list &> /dev/null && sudo zpool list &> /dev/null || echo 'absent') == 'absent' ]]; then
                 # ZFS not found, try to install it
                 if is_ubuntu; then
-                    sudo apt-get install -y zfsutils-linux
+                    apt_get install -y zfsutils-linux zfs-dkms
                 else
                     echo "Manila Devstack plugin supports installation "\
                         "of ZFS packages only for 'Ubuntu' distros. "\
@@ -759,7 +759,6 @@ function install_manila {
                     exit 1
                 fi
                 sudo modprobe zfs
-                sudo modprobe zpool
             fi
             check_nfs_kernel_service_state_ubuntu
         elif [ "$SHARE_DRIVER" == $MANILA_CONTAINER_DRIVER ]; then
