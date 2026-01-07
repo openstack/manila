@@ -17,6 +17,7 @@
         - openstack-tox-cover:
             voting: false
         - manila-tempest-plugin-dummy-no-dhss
+        - manila-tempest-plugin-dummy-no-dhss-rbac
         - manila-tempest-plugin-dummy-dhss
         - manila-tempest-plugin-container:
             voting: false
@@ -37,6 +38,7 @@
     gate:
       jobs:
         - manila-tempest-plugin-dummy-no-dhss
+        - manila-tempest-plugin-dummy-no-dhss-rbac
         - manila-tempest-plugin-dummy-dhss
 
 - job:
