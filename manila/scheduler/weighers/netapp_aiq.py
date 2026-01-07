@@ -16,6 +16,7 @@
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
+from oslo_utils import netutils
 import requests
 from requests.adapters import HTTPAdapter
 from requests import auth
@@ -158,9 +159,7 @@ class NetAppAIQWeigher(base_host.BaseHostWeigher):
 
     def _get_url(self):
         """Get the base URL for REST requests."""
-        host = self.host
-        if ':' in host:
-            host = '[%s]' % host
+        host = netutils.escape_ipv6(self.host)
         return f'{self.protocol}://{host}:{self.port}/api/'
 
     def _get_request_method(self, method, session):

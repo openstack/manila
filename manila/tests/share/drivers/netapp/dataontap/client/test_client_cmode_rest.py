@@ -19,6 +19,7 @@ from unittest import mock
 
 import ddt
 from oslo_log import log
+from oslo_utils import netutils
 from oslo_utils import units
 
 from manila import exception
@@ -6065,7 +6066,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         netmask = None
         destination = None if omit_destination else subnet
         if not destination:
-            if ':' in gateway:
+            if netutils.is_valid_ipv6(destination):
                 destination = '::/0'
             else:
                 destination = '0.0.0.0/0'
@@ -7155,7 +7156,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         mock_sr = self.mock_object(self.client, 'send_request')
         body = {
             'gateway': gateway,
-            'destination.address': '::' if ":" in gateway else '0.0.0.0',
+            'destination.address': ('::' if netutils.is_valid_ipv6(gateway)
+                                    else '0.0.0.0'),
             'destination.netmask': '0'
         }
         self.client.create_route(gateway)

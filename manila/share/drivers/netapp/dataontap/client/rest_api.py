@@ -21,6 +21,7 @@ import re
 
 from oslo_log import log
 from oslo_serialization import jsonutils
+from oslo_utils import netutils
 import requests
 from requests.adapters import HTTPAdapter
 from requests import auth
@@ -202,9 +203,7 @@ class RestNaServer(object):
 
     def _get_base_url(self):
         """Get the base URL for REST requests."""
-        host = self._host
-        if ':' in host:
-            host = '[%s]' % host
+        host = netutils.escape_ipv6(self._host)
         return f'{self._protocol}://{host}:{self._port}/api'
 
     def _build_session(self, headers):

@@ -21,6 +21,7 @@ import time
 
 from oslo_log import log
 from oslo_utils import excutils
+from oslo_utils import netutils
 from oslo_utils import strutils
 from oslo_utils import units
 
@@ -5139,7 +5140,7 @@ class NetAppRestClient(object):
         address = None
         netmask = None
         if not destination:
-            if ':' in gateway:
+            if netutils.is_valid_ipv6(gateway):
                 destination = '::/0'
             else:
                 destination = '0.0.0.0/0'
