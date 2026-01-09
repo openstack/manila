@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    Manila now allows running all services in threading mode instead of using
+    eventlet. For more details, please check the deployment documentation.

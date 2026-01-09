@@ -17,9 +17,6 @@
 
 """Starter script for manila Share."""
 
-import eventlet
-eventlet.monkey_patch()
-
 import sys
 
 from oslo_config import cfg

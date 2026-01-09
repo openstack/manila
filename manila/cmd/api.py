@@ -18,9 +18,6 @@
 
 """Starter script for manila OS API."""
 
-import eventlet
-eventlet.monkey_patch()
-
 import sys
 
 from oslo_config import cfg
