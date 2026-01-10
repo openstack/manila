@@ -86,6 +86,39 @@ restore_request_body = {
     'additionalProperties': False,
 }
 
+migration_start_request_body = {
+    'type': 'object',
+    'properties': {
+        'migration_start': {
+            'type': 'object',
+            'properties': {
+                'force_host_assisted_migration': parameter_types.boolean,
+                # TODO(stephenfin): Add pattern for `host@backend#pool`
+                'host': {'type': 'string'},
+                # TODO(stephenfin): Should we enforce format=uuid here?
+                'new_share_network_id': {'type': ['string', 'null']},
+                'new_share_type_id': {'type': ['string', 'null']},
+                'nondisruptive': parameter_types.boolean,
+                'preserve_metadata': parameter_types.boolean,
+                'preserve_snapshots': parameter_types.boolean,
+                'writable': parameter_types.boolean,
+            },
+            'required': [
+                'host',
+                'nondisruptive',
+                'preserve_metadata',
+                'preserve_snapshots',
+                'writable',
+            ],
+            # TODO(stephenfin): Set to False in a future microversion
+            'additionalProperties': True,
+        },
+    },
+    'required': ['migration_start'],
+    'additionalProperties': False,
+}
+
+
 migration_complete_request_body = {
     'type': 'object',
     'properties': {
@@ -105,6 +138,17 @@ migration_cancel_request_body = {
         'migration_cancel': {},
     },
     'required': ['migration_cancel'],
+    'additionalProperties': False,
+}
+
+migration_get_progress_request_body = {
+    'type': 'object',
+    'properties': {
+        # TODO(stephenfin): We should restrict this to 'null' in a future
+        # microversion
+        'migration_get_progress': {},
+    },
+    'required': ['migration_get_progress'],
     'additionalProperties': False,
 }
 
@@ -203,9 +247,32 @@ soft_delete_response_body = {'type': 'null'}
 
 restore_response_body = {'type': 'null'}
 
+migration_start_response_body = {'type': 'null'}
+
 migration_complete_response_body = {'type': 'null'}
 
 migration_cancel_response_body = {'type': 'null'}
+
+migration_get_progress_response_body = {
+    'type': 'object',
+    'properties': {
+        'task_state': {
+
+        },
+        'total_progress': {'type': 'integer', 'min': 0, 'max': 100},
+    },
+    'required': ['task_state', 'total_progress'],
+    'additionalProperties': False,
+}
+
+migration_get_progress_response_body_v259 = copy.deepcopy(
+    migration_get_progress_response_body
+)
+migration_get_progress_response_body_v259['properties'].update({
+    # TODO(stephenfin): What is the type of this?
+    'details': {},
+})
+migration_get_progress_response_body_v259['required'].append('details')
 
 reset_task_state_response_body = {'type': 'null'}
 
