@@ -86,6 +86,28 @@ restore_request_body = {
     'additionalProperties': False,
 }
 
+migration_complete_request_body = {
+    'type': 'object',
+    'properties': {
+        # TODO(stephenfin): We should restrict this to 'null' in a future
+        # microversion
+        'migration_complete': {},
+    },
+    'required': ['migration_complete'],
+    'additionalProperties': False,
+}
+
+migration_cancel_request_body = {
+    'type': 'object',
+    'properties': {
+        # TODO(stephenfin): We should restrict this to 'null' in a future
+        # microversion
+        'migration_cancel': {},
+    },
+    'required': ['migration_cancel'],
+    'additionalProperties': False,
+}
+
 _task_state = {
     'type': ['string', 'null'],
     'enum': constants.TASK_STATE_STATUSES,
@@ -180,6 +202,10 @@ force_delete_response_body = {'type': 'null'}
 soft_delete_response_body = {'type': 'null'}
 
 restore_response_body = {'type': 'null'}
+
+migration_complete_response_body = {'type': 'null'}
+
+migration_cancel_response_body = {'type': 'null'}
 
 reset_task_state_response_body = {'type': 'null'}
 

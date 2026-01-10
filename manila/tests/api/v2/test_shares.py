@@ -1278,7 +1278,8 @@ class ShareAPITest(test.TestCase):
 
         self.mock_object(share_api.API, 'migration_complete')
 
-        response = self.controller.migration_complete(req, share['id'], body)
+        response = self.controller.migration_complete(
+            req, share['id'], body=body)
 
         self.assertEqual(202, response.status_int)
 
@@ -1303,7 +1304,7 @@ class ShareAPITest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.migration_complete, req, share['id'],
-                          body)
+                          body=body)
 
     def test_migration_cancel(self):
         share = db_utils.create_share()
@@ -1322,7 +1323,8 @@ class ShareAPITest(test.TestCase):
 
         self.mock_object(share_api.API, 'migration_cancel')
 
-        response = self.controller.migration_cancel(req, share['id'], body)
+        response = self.controller.migration_cancel(
+            req, share['id'], body=body)
 
         self.assertEqual(202, response.status_int)
 
@@ -1347,7 +1349,7 @@ class ShareAPITest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.migration_cancel, req, share['id'],
-                          body)
+                          body=body)
 
     def test_migration_get_progress(self):
         share = db_utils.create_share(

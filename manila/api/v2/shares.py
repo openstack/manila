@@ -435,6 +435,8 @@ class ShareController(wsgi.Controller,
 
     @wsgi.Controller.api_version('2.22', experimental=True)
     @wsgi.action("migration_complete")
+    @validation.request_body_schema(schema.migration_complete_request_body)
+    @validation.response_body_schema(schema.migration_complete_response_body)
     @wsgi.Controller.authorize
     def migration_complete(self, req, id, body):
         """Invokes 2nd phase of share migration."""
@@ -450,6 +452,8 @@ class ShareController(wsgi.Controller,
     @wsgi.Controller.api_version('2.22', experimental=True)
     @wsgi.action("migration_cancel")
     @wsgi.Controller.authorize
+    @validation.request_body_schema(schema.migration_cancel_request_body)
+    @validation.response_body_schema(schema.migration_cancel_response_body)
     def migration_cancel(self, req, id, body):
         """Attempts to cancel share migration."""
         context = req.environ['manila.context']
