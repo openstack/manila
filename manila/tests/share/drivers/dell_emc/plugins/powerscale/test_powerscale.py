@@ -1,4 +1,4 @@
-# Copyright (c) 2015 EMC Corporation.
+# Copyright (c) 2026 EMC Corporation.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -23,6 +23,7 @@ from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
 from manila.share.drivers.dell_emc.plugins.powerscale import powerscale
+from manila.share import share_types
 from manila import test
 
 LOG = log.getLogger(__name__)
@@ -110,13 +111,38 @@ class PowerScaleTest(test.TestCase):
             share_server=None,
         )
 
+    def get_fake_share_type(self):
+        fake_share_type = {
+            'name': 'fake-st',
+            'id': 'fake-st-id',
+            'extra_specs': {
+                'dedupe': 'True',
+            },
+        }
+        return fake_share_type
+
+    def get_fake_share_type_dedupe_disabled(self):
+        fake_share_type = {
+            'name': 'fake-st',
+            'id': 'fake-st-id',
+            'extra_specs': {}
+        }
+        return fake_share_type
+
     def test_create_share_nfs(self):
         share_path = self.SHARE_DIR
         self.assertFalse(self._mock_powerscale_api.create_directory.called)
         self.assertFalse(self._mock_powerscale_api.create_nfs_export.called)
 
         # create the share
-        share = {"name": self.SHARE_NAME, "share_proto": 'NFS', "size": 8}
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 "share_type_id": 'fake-st-id', "size": 8}
+
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
+
         location = self.storage_connection.create_share(self.mock_context,
                                                         share, None)
 
@@ -141,7 +167,14 @@ class PowerScaleTest(test.TestCase):
         self.assertFalse(self._mock_powerscale_api.create_smb_share.called)
 
         # create the share
-        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS', "size": 8}
+        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS',
+                 "share_type_id": 'fake-st-id', "size": 8}
+
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
+
         location = self.storage_connection.create_share(self.mock_context,
                                                         share, None)
         path = '\\\\{0}\\{1}'.format(self.POWERSCALE_ADDR, self.SHARE_NAME)
@@ -236,7 +269,11 @@ class PowerScaleTest(test.TestCase):
         snapshot = {'name': snapshot_name, 'share_name': snapshot_path,
                     'provider_location': None, }
         share = {"name": self.SHARE_NAME, "share_proto": 'NFS', 'size': 5,
-                 'share_type_id': 'fake_id', }
+                 'share_type_id': 'fake-st-id'}
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         location = self.storage_connection.create_share_from_snapshot(
             self.mock_context, share, snapshot, None)
 
@@ -272,7 +309,11 @@ class PowerScaleTest(test.TestCase):
         snapshot = {'name': snapshot_name, 'share_name': snapshot_path,
                     'provider_location': None, }
         share = {"name": new_share_name, "share_proto": 'CIFS', "size": 2,
-                 'share_type_id': 'fake_id', }
+                 'share_type_id': 'fake-st-id'}
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         location = self.storage_connection.create_share_from_snapshot(
             self.mock_context, share, snapshot, None)
 
@@ -293,7 +334,12 @@ class PowerScaleTest(test.TestCase):
             expected_share_path, 'directory', 2 * units.Gi)
 
     def test_delete_share_nfs(self):
-        share = {"name": self.SHARE_NAME, "share_proto": 'NFS'}
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 'share_type_id': 'fake-st-id'}
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         fake_share_num = 42
         self._mock_powerscale_api.lookup_nfs_export.return_value = (
             fake_share_num)
@@ -310,7 +356,12 @@ class PowerScaleTest(test.TestCase):
         self.assertFalse(self._mock_powerscale_api.delete_smb_share.called)
 
         # delete the share
-        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS'}
+        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS',
+                 'share_type_id': 'fake-st-id'}
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         self._mock_powerscale_api.lookup_smb_share.return_value = {
             'id': self.SHARE_NAME,
             'path': '/ifs/manila-test/share-foo',
@@ -334,8 +385,12 @@ class PowerScaleTest(test.TestCase):
             'Unsupported share type: FOO_PROTOCOL.')
 
     def test_delete_nfs_share_backend_failure(self):
-        share = {"name": self.SHARE_NAME, "share_proto": 'NFS'}
-
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 'share_type_id': 'fake-st-id'}
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         self._mock_powerscale_api.delete_nfs_share.return_value = False
         self.assertRaises(
             exception.ShareBackendException,
@@ -345,14 +400,23 @@ class PowerScaleTest(test.TestCase):
 
     def test_delete_nfs_share_share_does_not_exist(self):
         self._mock_powerscale_api.lookup_nfs_export.return_value = None
-        share = {"name": self.SHARE_NAME, "share_proto": 'NFS'}
-
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 'share_type_id': 'fake-st-id'}
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         # verify the calling delete on a non-existent share returns and does
         # not throw exception
         self.storage_connection.delete_share(self.mock_context, share, None)
 
     def test_delete_cifs_share_backend_failure(self):
-        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS'}
+        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS',
+                 'share_type_id': 'fake-st-id'}
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         self._mock_powerscale_api.lookup_smb_share.return_value = {
             'id': self.SHARE_NAME,
             'path': '/ifs/manila-test/share-foo',
@@ -368,7 +432,12 @@ class PowerScaleTest(test.TestCase):
         )
 
     def test_delete_cifs_share_share_does_not_exist(self):
-        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS'}
+        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS',
+                 'share_type_id': 'fake-st-id'}
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         self._mock_powerscale_api.lookup_smb_share.return_value = None
 
         # verify the calling delete on a non-existent share returns and does
@@ -576,6 +645,7 @@ class PowerScaleTest(test.TestCase):
             'qos': False,
             'mount_snapshot_support': True,
             'mount_point_name_support': True,
+            'dedupe': True
         }
         expected_stats = {
             'share_backend_name': 'PowerScale_backend',
@@ -1360,9 +1430,15 @@ class PowerScaleTest(test.TestCase):
 
     def test_manage_existing_nfs_success(self):
         share = {
+            "name": self.SHARE_NAME,
             'share_proto': 'NFS',
             'export_location': '10.0.0.1:/ifs/manila-test/share-foo',
+            'share_type_id': 'fake-st-id'
         }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type_dedupe_disabled())
+        )
         self._mock_powerscale_api.lookup_nfs_export.return_value = 42
         self._mock_powerscale_api.quota_get.return_value = {
             'thresholds': {'hard': 10 * units.Gi},
@@ -1397,9 +1473,15 @@ class PowerScaleTest(test.TestCase):
 
     def test_manage_existing_cifs_success(self):
         share = {
+            "name": self.SHARE_NAME,
             'share_proto': 'CIFS',
             'export_location': '\\\\10.0.0.1\\share-foo',
+            'share_type_id': 'fake-st-id'
         }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type_dedupe_disabled())
+        )
         self._mock_powerscale_api.lookup_smb_share.return_value = {
             'name': 'share-foo',
             'path': '/ifs/manila-test/share-foo',
@@ -1452,9 +1534,15 @@ class PowerScaleTest(test.TestCase):
     def test_manage_existing_nfs_export_locations_fallback(self):
         """Fallback for export_location using export_locations list."""
         share = {
+            "name": self.SHARE_NAME,
             'share_proto': 'NFS',
             'export_locations': ['10.0.0.2:/ifs/projects/teamX'],
+            'share_type_id': 'fake-st-id'
         }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type_dedupe_disabled())
+        )
         self._mock_powerscale_api.lookup_nfs_export.return_value = 77
         self._mock_powerscale_api.quota_get.return_value = {
             'thresholds': {'hard': 9 * units.Gi},
@@ -1475,9 +1563,15 @@ class PowerScaleTest(test.TestCase):
 
     def test_manage_existing_cifs_export_locations_fallback(self):
         share = {
+            "name": self.SHARE_NAME,
             'share_proto': 'CIFS',
             'export_locations': ['\\\\10.0.0.1\\share-foo'],
+            'share_type_id': 'fake-st-id'
         }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type_dedupe_disabled())
+        )
         self._mock_powerscale_api.lookup_smb_share.return_value = {
             'name': 'share-foo',
             'path': f'{self.ROOT_DIR}/{self.SHARE_NAME}',
@@ -1729,8 +1823,12 @@ class PowerScaleTest(test.TestCase):
             "share_proto": 'NFS',
             "size": 8,
             "mount_point_name": "my_custom_share",
-            'share_type_id': 'fake_id',
+            'share_type_id': 'fake-st-id',
         }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         location = self.storage_connection.create_share(
             self.mock_context, share, None)
         original_path = '%s:%s' % (self.POWERSCALE_ADDR, share_path)
@@ -1783,8 +1881,12 @@ class PowerScaleTest(test.TestCase):
             "share_proto": 'CIFS',
             "size": 8,
             "mount_point_name": "custom_smb",
-            'share_type_id': 'fake_id',
+            'share_type_id': 'fake-st-id',
         }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         location = self.storage_connection.create_share(
             self.mock_context, share, None)
 
@@ -1803,7 +1905,12 @@ class PowerScaleTest(test.TestCase):
             "name": self.SHARE_NAME,
             "share_proto": "NFS",
             "mount_point_name": "my_custom_share",
+            'share_type_id': 'fake-st-id'
         }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         fake_share_id = 42
         (self._mock_powerscale_api.
          lookup_nfs_export).return_value = fake_share_id
@@ -1825,7 +1932,12 @@ class PowerScaleTest(test.TestCase):
             "name": self.SHARE_NAME,
             "share_proto": "NFS",
             "mount_point_name": "my_custom_share",
+            'share_type_id': 'fake-st-id'
         }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         fake_share_id = 42
         (self._mock_powerscale_api.
          lookup_nfs_export).return_value = fake_share_id
@@ -1846,7 +1958,11 @@ class PowerScaleTest(test.TestCase):
             "name": self.SHARE_NAME,
             "share_proto": "NFS",
             "mount_point_name": "my_custom_share",
-        }
+            'share_type_id': 'fake-st-id'}
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         fake_share_id = 42
         (self._mock_powerscale_api.
          lookup_nfs_export).return_value = fake_share_id
@@ -1863,7 +1979,12 @@ class PowerScaleTest(test.TestCase):
     def test_delete_share_cifs_with_mount_point_name(self):
         self.assertFalse(self._mock_powerscale_api.delete_smb_share.called)
         share = {"name": self.SHARE_NAME, "share_proto": 'CIFS',
-                 "mount_point_name": "my_custom_share", }
+                 "mount_point_name": "my_custom_share",
+                 'share_type_id': 'fake-st-id'}
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type_dedupe_disabled())
+        )
         self._mock_powerscale_api.lookup_smb_share.return_value = {
             'id': self.SHARE_NAME,
             'path': '/ifs/manila-test/share-foo',
@@ -1878,7 +1999,12 @@ class PowerScaleTest(test.TestCase):
     def test_delete_invalid_share_cifs_with_mount_point_name(self):
         self.assertFalse(self._mock_powerscale_api.delete_smb_share.called)
         share = {"name": self.SHARE_NAME, "share_proto": 'CIFS',
-                 "mount_point_name": "my_custom_share", }
+                 "mount_point_name": "my_custom_share",
+                 'share_type_id': 'fake-st-id'}
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
         self._mock_powerscale_api.lookup_smb_share.return_value = {
             'id': self.SHARE_NAME,
             'path': '/ifs/manila-test/share-foo-test',
@@ -1957,3 +2083,182 @@ class PowerScaleTest(test.TestCase):
         self.assertFalse(result)
         (self._mock_powerscale_api.
          get_nfs_export_aliases.assert_called_once_with(mount_point_name))
+
+    @mock.patch("manila.share.share_types.get_share_type_extra_specs")
+    def test_dedupe_false_path_in_dedupe_paths_raises(self, mock_extra_specs):
+
+        share = {"name": self.SHARE_NAME,
+                 "share_type_id": "type1"}
+        mock_extra_specs.return_value = {"dedupe": "False"}
+        self._mock_powerscale_api.get_dedupe_settings.return_value = {
+            "settings": {
+                "paths": ["/ifs/manila-test/share1"]
+            }
+        }
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection._process_dedupe,
+            share,
+            manage_share_path="/ifs/manila-test/share1",
+            delete_share=False,
+        )
+
+    @mock.patch("manila.share.share_types.get_share_type_extra_specs")
+    def test_dedupe_true_path_not_in_paths_raises(self, mock_extra_specs):
+        share = {"name": self.SHARE_NAME,
+                 "share_type_id": "type1"}
+        mock_extra_specs.return_value = {"dedupe": "True"}
+        self._mock_powerscale_api.get_dedupe_settings.return_value = {
+            "settings": {
+                "paths": ["/ifs/manila-test/share1"]
+            }
+        }
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection._process_dedupe,
+            share,
+            manage_share_path="/ifs/manila-test/other",
+            delete_share=False,
+        )
+
+    @mock.patch("manila.share.share_types.get_share_type_extra_specs")
+    def test_dedupe_false_path_not_in_paths_pass(self, mock_extra_specs):
+        share = {"name": self.SHARE_NAME,
+                 "share_type_id": "type1"}
+        mock_extra_specs.return_value = {"dedupe": "False"}
+        self._mock_powerscale_api.get_dedupe_settings.return_value = {
+            "settings": {
+                "paths": ["/ifs/manila-test/share1"]
+            }
+        }
+        # Should not raise
+        self.storage_connection._process_dedupe(
+            share,
+            manage_share_path="/ifs/manila-test/other",
+            delete_share=False,
+        )
+
+    @mock.patch("manila.share.share_types.get_share_type_extra_specs")
+    def test_dedupe_true_path_in_paths_pass(self, mock_extra_specs):
+        share = {"name": self.SHARE_NAME,
+                 "share_type_id": "type1"}
+        mock_extra_specs.return_value = {"dedupe": "True"}
+        self._mock_powerscale_api.get_dedupe_settings.return_value = {
+            "settings": {
+                "paths": ["/ifs/manila-test/share1"]
+            }
+        }
+        # Should not raise
+        self.storage_connection._process_dedupe(
+            share,
+            manage_share_path="/ifs/manila-test/share1",
+            delete_share=False,
+        )
+
+    @mock.patch("manila.share.share_types.get_share_type_extra_specs")
+    def test_no_manage_share_path_returns(self, mock_extra_specs):
+        share = {"name": self.SHARE_NAME,
+                 "share_type_id": "type1"}
+        mock_extra_specs.return_value = {"dedupe": "False"}
+
+        self.storage_connection._process_dedupe(
+            share,
+            manage_share_path=None,
+            delete_share=False,
+        )
+
+    def test_remove_share_from_both_lists(self):
+        paths = ["/ifs/data/share1", "/ifs/data/share2",
+                 "/ifs/data/share3"]
+        assess_paths = ["/ifs/data/share1",
+                        "/ifs/data/assess1", "/ifs/data/assess2"]
+        share_path = "/ifs/data/share1"
+        result_paths, result_assess_paths = (
+            self.storage_connection.remove_share_from_paths(
+                share_path, paths, assess_paths
+            )
+        )
+
+        expected_paths = ["/ifs/data/share2", "/ifs/data/share3"]
+        expected_assess_paths = ["/ifs/data/assess1", "/ifs/data/assess2"]
+
+        self.assertEqual(expected_paths, result_paths)
+        self.assertEqual(expected_assess_paths, result_assess_paths)
+
+    def get_fake_dedupe_settings(self):
+        fake_dedupe_settings = {
+            "settings": {
+                "paths": [],
+                "assess_paths": []
+            }
+        }
+        return fake_dedupe_settings
+
+    def test_manage_share_path_assignment(self):
+        # Arrange
+        self.share = {"name": "test_share", "id": "share_id"}
+        self.manage_share_path = f"/ifs/manila-test/{self.share['name']}"
+        self.storage_connection._dedupe_schedule = "daily"
+        dedupe_settings = {
+            "settings": {
+                "paths": ["/ifs/data/existing"],
+                "assess_paths": ["/ifs/data/existing"]
+            }
+        }
+        self._mock_powerscale_api.get_dedupe_settings.return_value = (
+            dedupe_settings)
+        self._mock_powerscale_api.get_dedupe_schedule.return_value = {
+            "types": []}
+        # Act
+        self.storage_connection._update_dedupe_settings(self.share)
+        # Assert
+        expected_paths = ["/ifs/data/existing", self.manage_share_path]
+        expected_assess_paths = ["/ifs/data/existing", self.manage_share_path]
+        (self._mock_powerscale_api.modify_dedupe_settings
+         .assert_called_once_with(expected_paths, expected_assess_paths))
+
+    def test_normalize_function(self):
+        # Arrange
+        self.share = {"name": "test_share", "id": "share_id"}
+        self.manage_share_path = "/ifs/data/test_share"
+        self.storage_connection._dedupe_schedule = "daily"
+        dedupe_schedule = {
+            "types": [
+                {
+                    "id": "Dedupe",
+                    "schedule": "  daily  at  2am  ",
+                    "enabled": True
+                }
+            ]
+        }
+        self._mock_powerscale_api.get_dedupe_settings.return_value = (
+            self.get_fake_dedupe_settings())
+        self._mock_powerscale_api.get_dedupe_schedule.return_value = (
+            dedupe_schedule)
+        # Act
+        self.storage_connection._update_dedupe_settings(self.share)
+        # Assert
+        self._mock_powerscale_api.schedule_dedupe_job.assert_called_once()
+
+    def test_schedule_dedupe_job_call(self):
+        # Arrange
+        self.share = {"name": "test_share", "id": "share_id"}
+        self.manage_share_path = "/ifs/data/test_share"
+        self.storage_connection._dedupe_schedule = "daily"
+        dedupe_schedule = {
+            "types": [
+                {
+                    "id": "Dedupe",
+                    "schedule": "weekly",
+                    "enabled": False
+                }
+            ]
+        }
+        self._mock_powerscale_api.get_dedupe_settings.return_value = (
+            self.get_fake_dedupe_settings())
+        self._mock_powerscale_api.get_dedupe_schedule.return_value = (
+            dedupe_schedule)
+        # Act
+        self.storage_connection._update_dedupe_settings(self.share)
+        # Assert
+        self._mock_powerscale_api.schedule_dedupe_job.assert_called_once()

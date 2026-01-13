@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added support to schedule dedupe job at share level on Dell PowerScale

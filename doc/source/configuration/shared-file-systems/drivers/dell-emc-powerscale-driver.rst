@@ -59,6 +59,8 @@ The following operations are supported:
 
 - Mount point name.
 
+- Schedule Dedupe job for a share
+
 Back end configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -193,6 +195,65 @@ documentation:
 
 .. note::
     - provider_location is the snapshot id in PowerScale system.
+
+Schedule Dedupe job for a share
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To schedule Dedupe job for NFS/CIFS share, create share type with extra-specs
+
+.. code-block:: ini
+
+    openstack share type create <share_type_name> False --extra-specs \
+    dedupe=True
+
+    openstack share create <protocol> <size>
+    --name <share_name> --share-type <share_type>
+
+On PowerScale, Dedupe job will be scheduled weekly
+on Sunday at 12:00 AM by default for the created
+NFS/CIFS share.
+
+Add the parameter below to set a schedule.
+
+Format
+every <N> weeks on <day1>[, day2, ...] at <time>
+.. code-block:: ini
+
+    powerscale_dedupe_schedule = "every 2 weeks on wednesday, sunday at 12:00 AM"
+    powerscale_dedupe_schedule = "every 4 weeks on wednesday, sunday, monday, tuesday at 09:00 PM"
+
+every <N> days at <time>
+.. code-block:: ini
+
+    powerscale_dedupe_schedule = "every 4 days at 09:10 PM"
+
+the <ordinal> <weekday> every <N> months at <time>
+.. code-block:: ini
+
+    powerscale_dedupe_schedule = "the 3rd sunday every 4 month at 09:10 PM"
+    powerscale_dedupe_schedule = "the 15th weekday every 4 month at 09:10 PM"
+
+the <day> every <N> months at <time>
+.. code-block:: ini
+
+    powerscale_dedupe_schedule = "the 15 every 4 month at 09:10 PM"
+
+yearly on the <ordinal> <weekday> of <month> at <time>
+.. code-block:: ini
+
+    powerscale_dedupe_schedule = "yearly on the 4th sunday of january at 09:10 PM"
+
+yearly on the <day> of <month> at <time>
+.. code-block:: ini
+
+    powerscale_dedupe_schedule = "yearly on the 15 of january at 09:10 PM"
+
+If you do not want to schedule dedupe job, then do not
+provide extra spec while creating share type.
+
+Managing a share : If you are trying to manage a share which is dedupe enabled,
+then, please associate it with openstack share type with dedupe enabled and vice-versa
+otherwise manage will result in error.
 
 Driver options
 ~~~~~~~~~~~~~~

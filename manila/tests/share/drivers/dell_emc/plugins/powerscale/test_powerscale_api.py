@@ -1,4 +1,4 @@
-# Copyright (c) 2015 EMC Corporation.
+# Copyright (c) 2026 EMC Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -1288,3 +1288,166 @@ class PowerScaleApiTest(test.TestCase):
                 alias_name
             )
             self.assertEqual(1, len(m.request_history))
+
+    def test_get_dedupe_settings_returns_success(self):
+        expected_url = f'{self._mock_url}/platform/1/dedupe/settings'
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'settings': {
+                'paths': ['/ifs/a'],
+                'assess_paths': ['/ifs/a']
+            }
+        }
+
+        with mock.patch.object(self.powerscale_api,
+                               'send_get_request',
+                               return_value=mock_response) as mock_get:
+            result = self.powerscale_api.get_dedupe_settings()
+
+            mock_get.assert_called_once_with(expected_url)
+            mock_response.json.assert_called_once()
+            self.assertEqual(result, {
+                'settings': {
+                    'paths': ['/ifs/a'],
+                    'assess_paths': ['/ifs/a']
+                }
+            })
+
+    def test_modify_dedupe_settings_returns_true(self):
+        paths = ['/ifs/manila/foo']
+        assess_paths = ['/ifs/manila/foo']
+        expected_url = f'{self._mock_url}/platform/1/dedupe/settings'
+        mock_response = mock.MagicMock(status_code=204)
+
+        with mock.patch.object(self.powerscale_api,
+                               'send_put_request',
+                               return_value=mock_response) as mock_put:
+            result = self.powerscale_api.modify_dedupe_settings(paths,
+                                                                assess_paths)
+
+            self.assertTrue(result)
+            mock_put.assert_called_once_with(
+                expected_url,
+                data={'paths': paths,
+                      'assess_paths': assess_paths}
+            )
+
+    def test_modify_dedupe_settings_returns_false(self):
+        paths = ['/ifs/manila/foo']
+        assess_paths = ['/ifs/manila/foo']
+        expected_url = f'{self._mock_url}/platform/1/dedupe/settings'
+        mock_response = mock.MagicMock(status_code=400)
+
+        with mock.patch.object(self.powerscale_api,
+                               'send_put_request',
+                               return_value=mock_response) as mock_put:
+            result = self.powerscale_api.modify_dedupe_settings(paths,
+                                                                assess_paths)
+
+            self.assertFalse(result)
+            mock_put.assert_called_once_with(
+                expected_url,
+                data={'paths': paths,
+                      'assess_paths': assess_paths}
+            )
+
+    def test_schedule_dedupe_job_returns_true(self):
+        expected_url = f'{self._mock_url}/platform/1/job/types/Dedupe'
+        expected_payload = {
+            "enabled": True,
+            "policy": "LOW",
+            "priority": 4,
+            "schedule": None
+        }
+        mock_response = mock.MagicMock(status_code=204)
+
+        with mock.patch.object(self.powerscale_api,
+                               'send_put_request',
+                               return_value=mock_response) as mock_put:
+            result = self.powerscale_api.schedule_dedupe_job()
+
+            self.assertTrue(result)
+            mock_put.assert_called_once_with(expected_url,
+                                             data=expected_payload)
+
+    def test_schedule_dedupe_job_returns_false(self):
+        expected_url = f'{self._mock_url}/platform/1/job/types/Dedupe'
+        mock_response = mock.MagicMock(status_code=500)
+
+        with mock.patch.object(self.powerscale_api,
+                               'send_put_request',
+                               return_value=mock_response) as mock_put:
+            result = self.powerscale_api.schedule_dedupe_job()
+
+            self.assertFalse(result)
+            mock_put.assert_called_once()
+            # Validate URL from the call args
+            called_url = mock_put.call_args[0][0]
+            self.assertEqual(called_url, expected_url)
+
+    def test_get_dedupe_schedule_returns_json_on_200(self):
+        mock_response = mock.Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"schedule": "daily"}
+
+        # Stub out the low-level call
+        self.powerscale_api.send_get_request = mock.Mock(
+            return_value=mock_response)
+
+        result = self.powerscale_api.get_dedupe_schedule()
+
+        self.assertEqual({"schedule": "daily"}, result)
+        self.powerscale_api.send_get_request.assert_called_once_with(
+            self._mock_url + '/platform/1/job/types/Dedupe'
+        )
+        mock_response.json.assert_called_once()
+
+    def test_get_dedupe_schedule_raises_on_non_200(self):
+        from requests import HTTPError
+        mock_response = mock.Mock()
+        mock_response.status_code = 404
+        mock_response.raise_for_status.side_effect = HTTPError("Not Found")
+        self.powerscale_api.send_get_request = mock.Mock(
+            return_value=mock_response)
+        with self.assertRaisesRegex(HTTPError, "Not Found"):
+            self.powerscale_api.get_dedupe_schedule()
+
+        self.powerscale_api.send_get_request.assert_called_once_with(
+            self._mock_url + '/platform/1/job/types/Dedupe'
+        )
+        mock_response.raise_for_status.assert_called_once()
+
+    def test_get_dedupe_schedule_propagates_send_exception(self):
+        from requests import ConnectionError
+        self.powerscale_api.send_get_request = mock.Mock(
+            side_effect=ConnectionError("Network down")
+        )
+        with self.assertRaisesRegex(ConnectionError, "Network down"):
+            self.powerscale_api.get_dedupe_schedule()
+
+    def test_get_dedupe_schedule_correct_url_with_trailing_host_slash(self):
+        self.powerscale_api.host_url = self._mock_url + '/'
+        mock_response = mock.Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"schedule": "daily"}
+        self.powerscale_api.send_get_request = mock.Mock(
+            return_value=mock_response)
+
+        self.powerscale_api.get_dedupe_schedule()
+
+        self.powerscale_api.send_get_request.assert_called_once_with(
+            self._mock_url + '//platform/1/job/types/Dedupe'
+        )
+
+    def test_get_dedupe_settings_calls_raise_for_error(self):
+        mock_response = mock.Mock()
+        mock_response.status_code = 500
+        mock_response.raise_for_status = mock.Mock()
+        self.powerscale_api.send_get_request = mock.Mock(
+            return_value=mock_response)
+        self.powerscale_api.get_dedupe_settings()
+        self.powerscale_api.send_get_request.assert_called_once_with(
+            self._mock_url + '/platform/1/dedupe/settings'
+        )
+        mock_response.raise_for_status.assert_called_once()
