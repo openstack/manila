@@ -929,6 +929,7 @@ class ShareManagerTestCase(test.TestCase):
                 'source_share_group_snapshot_member_id'),
             'availability_zone': share_instance.get('availability_zone'),
             'export_locations': share_instance.get('export_locations') or [],
+            'mount_point_name': share_instance.get('mount_point_name'),
         }
         return share_instance_ref
 

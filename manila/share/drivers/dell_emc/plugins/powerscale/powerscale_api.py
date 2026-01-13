@@ -19,10 +19,10 @@ import functools
 from oslo_log import log
 from oslo_serialization import jsonutils
 import requests
+from urllib.parse import quote
 
 from manila import exception
 from manila.i18n import _
-
 
 LOG = log.getLogger(__name__)
 
@@ -479,6 +479,31 @@ class PowerScaleApi(object):
                 msg=_('Failed to get cluster version from PowerScale.')
             )
         return r.json()['nodes'][0]['release']
+
+    def create_nfs_export_aliases(self, alias_name, path):
+        data = {'name': alias_name, 'path': path}
+        r = self.send_post_request(
+            self.host_url + '/platform/12/protocols/nfs/aliases?zone=System',
+            data=data)
+        return r.status_code == 201
+
+    def get_nfs_export_aliases(self, alias_name):
+        encoded_alias = quote(alias_name, safe='')
+        url = (self.host_url + '/platform/12/protocols/nfs/aliases/'
+               + encoded_alias + "?zone=System")
+        r = self.send_get_request(url)
+        if r.status_code != 200:
+            raise exception.ShareBackendException(
+                msg=_('Failed to get nfs aliases from PowerScale.')
+            )
+        return r.json()['aliases'][0]
+
+    def delete_nfs_export_aliases(self, alias_name):
+        encoded_alias = quote(alias_name, safe='')
+        url = (self.host_url + '/platform/12/protocols/nfs/aliases/'
+               + encoded_alias + "?zone=System")
+        response = self.send_delete_request(url)
+        return response.status_code == 204
 
     def request(self, method, url, headers=None, data=None, params=None):
         if data is not None:

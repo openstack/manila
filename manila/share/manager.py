@@ -5498,6 +5498,7 @@ class ShareManager(manager.SchedulerDependentManager):
             'source_share_group_snapshot_member_id': share_instance.get(
                 'source_share_group_snapshot_member_id'),
             'availability_zone': share_instance.get('availability_zone'),
+            'mount_point_name': share_instance.get('mount_point_name'),
         }
         if share_instance_ref['share_server']:
             share_instance_ref['share_server'] = self._get_share_server_dict(

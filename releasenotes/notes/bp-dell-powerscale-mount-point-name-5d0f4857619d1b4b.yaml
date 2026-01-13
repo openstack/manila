@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added support of mount point name for Dell PowerScale.
