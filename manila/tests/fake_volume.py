@@ -70,3 +70,6 @@ class API(object):
 
     def get_all_snapshots(self, search_opts):
         pass
+
+    def wait_for_available_volume(self, volume, timeout, **kwargs):
+        return volume

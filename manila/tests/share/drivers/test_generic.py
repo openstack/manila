@@ -823,78 +823,6 @@ class GenericShareDriverTestCase(test.TestCase):
             volume_type=None,
             availability_zone=self.share['availability_zone'])
 
-    def test_allocate_container_error(self):
-        fake_vol = fake_volume.FakeVolume(status='error')
-        self.mock_object(self._driver.volume_api, 'create',
-                         mock.Mock(return_value=fake_vol))
-
-        self.assertRaises(exception.ManilaException,
-                          self._driver._allocate_container,
-                          self._context,
-                          self.share)
-
-    def test_wait_for_available_volume(self):
-        fake_volume = {'status': 'creating', 'id': 'fake'}
-        fake_available_volume = {'status': 'available', 'id': 'fake'}
-        self.mock_object(self._driver.volume_api, 'get',
-                         mock.Mock(return_value=fake_available_volume))
-
-        actual_result = self._driver._wait_for_available_volume(
-            fake_volume, 5, "error", "timeout")
-
-        self.assertEqual(fake_available_volume, actual_result)
-        self._driver.volume_api.get.assert_called_once_with(
-            mock.ANY, fake_volume['id'])
-
-    @mock.patch('time.sleep')
-    def test_wait_for_available_volume_error_extending(self, mock_sleep):
-        fake_volume = {'status': const.STATUS_EXTENDING_ERROR, 'id': 'fake'}
-        self.assertRaises(exception.ManilaException,
-                          self._driver._wait_for_available_volume,
-                          fake_volume, 5, 'error', 'timeout')
-        self.assertFalse(mock_sleep.called)
-
-    @mock.patch('time.sleep')
-    def test_wait_for_extending_volume(self, mock_sleep):
-        initial_size = 1
-        expected_size = 2
-        mock_volume = fake_volume.FakeVolume(status='available',
-                                             size=initial_size)
-        mock_extending_vol = fake_volume.FakeVolume(status='extending',
-                                                    size=initial_size)
-        mock_extended_vol = fake_volume.FakeVolume(status='available',
-                                                   size=expected_size)
-
-        self.mock_object(self._driver.volume_api, 'get',
-                         mock.Mock(side_effect=[mock_extending_vol,
-                                                mock_extended_vol]))
-
-        result = self._driver._wait_for_available_volume(
-            mock_volume, 5, "error", "timeout",
-            expected_size=expected_size)
-
-        expected_get_count = 2
-
-        self.assertEqual(mock_extended_vol, result)
-        self._driver.volume_api.get.assert_has_calls(
-            [mock.call(self._driver.admin_context, mock_volume['id'])] *
-            expected_get_count)
-        mock_sleep.assert_has_calls([mock.call(1)] * expected_get_count)
-
-    @ddt.data(mock.Mock(return_value={'status': 'creating', 'id': 'fake'}),
-              mock.Mock(return_value={'status': 'error', 'id': 'fake'}))
-    def test_wait_for_available_volume_invalid(self, volume_get_mock):
-        fake_volume = {'status': 'creating', 'id': 'fake'}
-        self.mock_object(self._driver.volume_api, 'get', volume_get_mock)
-        self.mock_object(time, 'time',
-                         mock.Mock(side_effect=[1.0, 1.33, 1.67, 2.0]))
-
-        self.assertRaises(
-            exception.ManilaException,
-            self._driver._wait_for_available_volume,
-            fake_volume, 1, "error", "timeout"
-        )
-
     def test_deallocate_container(self):
         fake_vol = fake_volume.FakeVolume()
         self.mock_object(self._driver, '_get_volume',
@@ -1642,14 +1570,15 @@ class GenericShareDriverTestCase(test.TestCase):
         fake_volume = {'id': 'fake'}
         new_size = 123
         self.mock_object(self._driver.volume_api, 'extend')
-        self.mock_object(self._driver, '_wait_for_available_volume')
+        self.mock_object(self._driver.volume_api, 'wait_for_available_volume')
 
         self._driver._extend_volume(self._context, fake_volume, new_size)
 
         self._driver.volume_api.extend.assert_called_once_with(
             self._context, fake_volume['id'], new_size
         )
-        self._driver._wait_for_available_volume.assert_called_once_with(
+        m_wfav = self._driver.volume_api.wait_for_available_volume
+        m_wfav.assert_called_once_with(
             fake_volume, mock.ANY, msg_timeout=mock.ANY, msg_error=mock.ANY,
             expected_size=new_size
         )
