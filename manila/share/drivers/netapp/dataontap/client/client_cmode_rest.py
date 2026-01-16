@@ -2596,7 +2596,7 @@ class NetAppRestClient(object):
         fields = ['state', 'source.svm.name', 'source.path',
                   'destination.svm.name', 'destination.path',
                   'transfer.end_time', 'uuid', 'policy.type',
-                  'transfer_schedule.name', 'transfer.state',
+                  'policy.name', 'transfer_schedule.name', 'transfer.state',
                   'last_transfer_type', 'transfer.bytes_transferred',
                   'healthy']
 
@@ -2649,6 +2649,7 @@ class NetAppRestClient(object):
                      record.get('transfer', {}).get('end_time') else 0),
                 'uuid': record['uuid'],
                 'policy-type': record.get('policy', {}).get('type'),
+                'policy': record.get('policy', {}).get('name'),
                 'is-healthy': (
                     'true'
                     if record.get('healthy', {}) is True else 'false'),
@@ -3486,27 +3487,34 @@ class NetAppRestClient(object):
     def initialize_snapmirror_vol(self, source_vserver, source_volume,
                                   dest_vserver, dest_volume,
                                   source_snapshot=None,
-                                  transfer_priority=None):
+                                  transfer_priority=None,
+                                  state=None):
         """Initializes a SnapMirror relationship between volumes."""
         return self._initialize_snapmirror(
             source_vserver=source_vserver, dest_vserver=dest_vserver,
             source_volume=source_volume, dest_volume=dest_volume,
             source_snapshot=source_snapshot,
-            transfer_priority=transfer_priority)
+            transfer_priority=transfer_priority,
+            state=state)
 
     @na_utils.trace
     def _initialize_snapmirror(self, source_path=None, dest_path=None,
                                source_vserver=None, dest_vserver=None,
                                source_volume=None, dest_volume=None,
-                               source_snapshot=None, transfer_priority=None):
+                               source_snapshot=None, transfer_priority=None,
+                               state=None):
         """Initializes a SnapMirror relationship."""
 
         # NOTE(nahimsouza): The args source_snapshot and transfer_priority are
         # always None and they are not available on REST API, they were
-        # kept in the signature due to compatilbity with ZAPI implementation.
+        # kept in the signature due to compatibility with ZAPI implementation.
+
+        # If state is not passed use async init state
+        if not state:
+            state = na_utils.SM_SNAPMIRRORED_STATE
 
         return self._set_snapmirror_state(
-            'snapmirrored', source_path, dest_path,
+            state, source_path, dest_path,
             source_vserver, source_volume,
             dest_vserver, dest_volume, wait_result=False)
 
@@ -6100,3 +6108,8 @@ class NetAppRestClient(object):
                 if failover_policy in ('default', 'sfo_partners_only'):
                     migratable_lif.append(lif["name"])
         return migratable_lif
+
+    @na_utils.trace
+    def get_desired_sync_snapmirror_state(self):
+        """Returns the desired Sync SnapMirror state for REST."""
+        return na_utils.SM_IN_SYNC_STATE

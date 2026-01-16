@@ -183,6 +183,19 @@ class DataMotionSession(object):
 
         return volume_name, vserver, backend_name
 
+    @na_utils.trace
+    def get_policy_from_share_replica_metadata(self, share_replica):
+        """Extracts replication policy from share replica metadata."""
+        metadata = share_replica.get('metadata', {})
+        LOG.debug("share_replica metadata is %s", metadata)
+        replication_policy = (metadata.get('replication_policy',
+                              na_utils.MIRROR_ALL_SNAP_POLICY))
+        # Determine if the policy is synchronous. We need to change
+        # to call ONTAP when we support custom policies.
+        is_sync_policy = replication_policy in na_utils.SUPPORTED_SYNC_POLICIES
+        LOG.debug("is_sync_policy: %s", is_sync_policy)
+        return replication_policy, is_sync_policy
+
     def get_client_and_vserver_name(self, share_server):
         destination_host = share_server.get('host')
         vserver = self.get_vserver_from_share_server(share_server)
@@ -204,6 +217,8 @@ class DataMotionSession(object):
             source_vserver=src_vserver, dest_vserver=dest_vserver,
             source_volume=src_volume_name, dest_volume=dest_volume_name,
             desired_attributes=['relationship-status',
+                                'policy',
+                                'policy-type',
                                 'mirror-state',
                                 'schedule',
                                 'source-vserver',
@@ -213,6 +228,7 @@ class DataMotionSession(object):
                                 'last-transfer-error'])
         return snapmirrors
 
+    @na_utils.trace
     def create_snapmirror(self, source_share_obj, dest_share_obj,
                           relationship_type, mount=False):
         """Sets up a SnapMirror relationship between two volumes.
@@ -229,21 +245,37 @@ class DataMotionSession(object):
         src_volume_name, src_vserver, __ = self.get_backend_info_for_share(
             source_share_obj)
 
+        policy, is_sync_policy = (
+            self.get_policy_from_share_replica_metadata(dest_share_obj))
+
         # 1. Create SnapMirror relationship
         config = get_backend_configuration(dest_backend)
-        schedule = config.netapp_snapmirror_schedule
+        if is_sync_policy:
+            """skip the schedule setting incase of sync policy type
+            as per NetApp design"""
+            schedule = None
+        else:
+            schedule = config.netapp_snapmirror_schedule
+
         dest_client.create_snapmirror_vol(src_vserver,
                                           src_volume_name,
                                           dest_vserver,
                                           dest_volume_name,
                                           relationship_type,
-                                          schedule=schedule)
+                                          schedule=schedule,
+                                          policy=policy)
 
-        # 2. Initialize async transfer of the initial data
+        # 2. Initialize snapmirror transfer of the initial data
+        state = (
+            na_utils.SM_IN_SYNC_STATE
+            if is_sync_policy
+            else na_utils.SM_SNAPMIRRORED_STATE
+        )
         dest_client.initialize_snapmirror_vol(src_vserver,
                                               src_volume_name,
                                               dest_vserver,
-                                              dest_volume_name)
+                                              dest_volume_name,
+                                              state=state)
 
         # 3. Mount the destination volume and create a junction path
         if mount:
@@ -257,8 +289,9 @@ class DataMotionSession(object):
         """Ensures all information about a SnapMirror relationship is removed.
 
         1. Abort snapmirror
-        2. Delete the snapmirror
-        3. Release snapmirror to cleanup snapmirror metadata and snapshots
+        2. Quiesce snapmirror
+        3. Delete the snapmirror
+        3. Release snapmirror to clean up snapmirror metadata and snapshots
         """
         dest_volume_name, dest_vserver, dest_backend = (
             self.get_backend_info_for_share(dest_share_obj))
@@ -279,7 +312,17 @@ class DataMotionSession(object):
             # Snapmirror is already deleted
             pass
 
-        # 2. Delete SnapMirror Relationship and cleanup destination snapshots
+        # 2. Quiesce the snapmirror relationship
+        try:
+            dest_client.quiesce_snapmirror_vol(src_vserver,
+                                               src_volume_name,
+                                               dest_vserver,
+                                               dest_volume_name)
+        except netapp_api.NaApiError:
+            # Snapmirror is already deleted
+            pass
+
+        # 3. Delete SnapMirror Relationship and cleanup destination snapshots
         try:
             dest_client.delete_snapmirror_vol(src_vserver,
                                               src_volume_name,
@@ -301,7 +344,7 @@ class DataMotionSession(object):
             except Exception:
                 src_client = None
 
-            # 3. Cleanup SnapMirror relationship on source
+            # 4. Cleanup SnapMirror relationship on source
             if src_client:
                 src_config = get_backend_configuration(src_backend)
                 release_timeout = (
@@ -489,6 +532,7 @@ class DataMotionSession(object):
                                           dest_vserver,
                                           dest_volume_name)
 
+    @na_utils.trace
     def change_snapmirror_source(self, replica,
                                  orig_source_replica,
                                  new_source_replica, replica_list,
@@ -511,6 +555,30 @@ class DataMotionSession(object):
         new_src_volume_name, new_src_vserver, new_src_backend = (
             self.get_backend_info_for_share(new_source_replica))
 
+        if replica['id'] == orig_source_replica['id']:
+            # Take the policy from the existing snapmirror relationship
+            # if the replica is the original active replica. This is to ensure
+            # the same policy is used when the replica is resynced with the
+            # new source.
+            try:
+                snapmirrors = self.get_snapmirrors(
+                    orig_source_replica, new_source_replica)
+                policy = (snapmirrors[0].get("policy")
+                          if snapmirrors and len(snapmirrors) > 0
+                          else None)
+                is_sync_policy = policy in na_utils.SUPPORTED_SYNC_POLICIES
+            except netapp_api.NaApiError:
+                LOG.exception("Could not get snapmirrors for replica %s.",
+                              replica['id'])
+                msg = (_('Could not get snapmirrors for replica %s.')
+                       % replica['id'])
+                raise exception.NetAppException(message=msg)
+        else:
+            """If the replica is not the original active replica then
+            get the policy from the replica's metadata."""
+            policy, is_sync_policy = (
+                self.get_policy_from_share_replica_metadata(replica))
+
         # 1. delete
         for other_replica in replica_list:
             if other_replica['id'] == replica['id']:
@@ -518,14 +586,13 @@ class DataMotionSession(object):
 
             # deletes all snapmirror relationships involving this replica to
             # ensure new relation can be set. For efficient snapmirror, it
-            # does not remove the snapshots, only releasing the relationship
-            # info if FlexGroup volume.
+            # does not remove the snapshots, always releasing the relationship.
             self.delete_snapmirror(other_replica, replica,
-                                   release=is_flexgroup,
-                                   relationship_info_only=is_flexgroup)
+                                   release=True,
+                                   relationship_info_only=True)
             self.delete_snapmirror(replica, other_replica,
-                                   release=is_flexgroup,
-                                   relationship_info_only=is_flexgroup)
+                                   release=True,
+                                   relationship_info_only=True)
 
         # 2. vserver operations when driver handles share servers
         replica_config = get_backend_configuration(replica_backend)
@@ -548,20 +615,28 @@ class DataMotionSession(object):
                                                        replica_vserver)
 
         # 3. create
-        relationship_type = na_utils.get_relationship_type(is_flexgroup)
-        schedule = replica_config.netapp_snapmirror_schedule
+        if is_sync_policy:
+            """skip the schedule setting incase of sync policy type
+            as per NetApp design"""
+            schedule = None
+        else:
+            schedule = replica_config.netapp_snapmirror_schedule
+        relationship_type = na_utils.EXTENDED_DATA_PROTECTION_TYPE
         replica_client.create_snapmirror_vol(new_src_vserver,
                                              new_src_volume_name,
                                              replica_vserver,
                                              replica_volume_name,
                                              relationship_type,
-                                             schedule=schedule)
+                                             schedule=schedule,
+                                             policy=policy)
 
         # 4. resync
         replica_client.resync_snapmirror_vol(new_src_vserver,
                                              new_src_volume_name,
                                              replica_vserver,
                                              replica_volume_name)
+
+        return is_sync_policy
 
     @na_utils.trace
     def remove_qos_on_old_active_replica(self, orig_active_replica):

@@ -263,11 +263,44 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
 
         mock_dest_client.create_snapmirror_vol.assert_called_once_with(
             mock.ANY, self.fake_src_vol_name, mock.ANY,
-            self.fake_dest_vol_name, 'data_protection', schedule='hourly'
+            self.fake_dest_vol_name, 'data_protection', schedule='hourly',
+            policy='MirrorAllSnapshots'
         )
         mock_dest_client.initialize_snapmirror_vol.assert_called_once_with(
             mock.ANY, self.fake_src_vol_name, mock.ANY,
-            self.fake_dest_vol_name
+            self.fake_dest_vol_name, state='snapmirrored'
+        )
+        if mount:
+            self.dm_session.wait_for_mount_replica.assert_called_once_with(
+                mock_dest_client, self.fake_dest_vol_name, timeout=30)
+        else:
+            self.dm_session.wait_for_mount_replica.assert_not_called()
+
+    @ddt.data(True, False)
+    def test_create_snapmirror_sync_policy(self, mount):
+        mock_dest_client = mock.Mock()
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=mock_dest_client))
+        self.mock_object(self.dm_session, 'wait_for_mount_replica')
+        mock_backend_config = na_fakes.create_configuration()
+        mock_backend_config.netapp_mount_replica_timeout = 30
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
+
+        self.fake_dest_share['metadata'] = {'replication_policy': 'Sync'}
+
+        self.dm_session.create_snapmirror(self.fake_src_share,
+                                          self.fake_dest_share,
+                                          'data_protection', mount=mount)
+
+        mock_dest_client.create_snapmirror_vol.assert_called_once_with(
+            mock.ANY, self.fake_src_vol_name, mock.ANY,
+            self.fake_dest_vol_name, 'data_protection', schedule=None,
+            policy='Sync'
+        )
+        mock_dest_client.initialize_snapmirror_vol.assert_called_once_with(
+            mock.ANY, self.fake_src_vol_name, mock.ANY,
+            self.fake_dest_vol_name, state='in_sync'
         )
         if mount:
             self.dm_session.wait_for_mount_replica.assert_called_once_with(
@@ -746,14 +779,14 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
 
         self.assertEqual(4, self.dm_session.delete_snapmirror.call_count)
         self.dm_session.delete_snapmirror.assert_called_with(
-            mock.ANY, mock.ANY, release=False, relationship_info_only=False
+            mock.ANY, mock.ANY, release=True, relationship_info_only=True
         )
 
-        na_utils.get_relationship_type.assert_called_once_with(False)
         self.mock_dest_client.create_snapmirror_vol.assert_called_once_with(
             mock.ANY, fake_new_src_share_name, mock.ANY,
-            self.fake_dest_vol_name, na_utils.DATA_PROTECTION_TYPE,
-            schedule='hourly'
+            self.fake_dest_vol_name, na_utils.EXTENDED_DATA_PROTECTION_TYPE,
+            schedule='hourly',
+            policy=na_utils.MIRROR_ALL_SNAP_POLICY
         )
 
         self.mock_dest_client.resync_snapmirror_vol.assert_called_once_with(
@@ -801,14 +834,15 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
         self.mock_src_client.accept_vserver_peer.assert_called_once_with(
             fake_new_src_ss_name, self.dest_vserver
         )
-        na_utils.get_relationship_type.assert_called_once_with(False)
         self.dm_session.delete_snapmirror.assert_called_with(
-            mock.ANY, mock.ANY, release=False, relationship_info_only=False
+            mock.ANY, mock.ANY, release=True, relationship_info_only=True
         )
         self.mock_dest_client.create_snapmirror_vol.assert_called_once_with(
             mock.ANY, fake_new_src_share_name, mock.ANY,
-            self.fake_dest_vol_name, na_utils.DATA_PROTECTION_TYPE,
-            schedule='hourly'
+            self.fake_dest_vol_name,
+            na_utils.EXTENDED_DATA_PROTECTION_TYPE,
+            schedule='hourly',
+            policy=na_utils.MIRROR_ALL_SNAP_POLICY
         )
         self.mock_dest_client.resync_snapmirror_vol.assert_called_once_with(
             mock.ANY, fake_new_src_share_name, mock.ANY,
@@ -827,6 +861,8 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
             source_volume=self.fake_src_vol_name,
             dest_volume=self.fake_dest_vol_name,
             desired_attributes=['relationship-status',
+                                'policy',
+                                'policy-type',
                                 'mirror-state',
                                 'schedule',
                                 'source-vserver',
@@ -1341,3 +1377,18 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
                                  source_snapshot=mock.ANY,
                                  transfer_priority=mock.ANY,
                                  ))
+
+    def test_get_policy_from_share_replica_metadata_with_sync_policy(self):
+        share = copy.deepcopy(fake.SHARE)
+        share['metadata'] = {'replication_policy': 'Sync'}
+        policy, is_async_policy = (
+            self.dm_session.get_policy_from_share_replica_metadata(share))
+        self.assertEqual('Sync', policy)
+        self.assertTrue(is_async_policy)
+
+    def test_get_policy_from_share_replica_metadata_without_metadata(self):
+        share = copy.deepcopy(fake.SHARE)
+        policy, is_async_policy = (
+            self.dm_session.get_policy_from_share_replica_metadata(share))
+        self.assertEqual('MirrorAllSnapshots', policy)
+        self.assertFalse(is_async_policy)

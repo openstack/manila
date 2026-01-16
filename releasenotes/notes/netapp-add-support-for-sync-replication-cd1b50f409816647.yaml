@@ -1,0 +1,32 @@
+---
+features:
+  - |
+    NetApp ONTAP driver now allows creating a share replica with
+    Sync/StrictSync policy by setting "replication_policy" metadata during
+    replica creation. If "replication_policy" is not set, the default async
+    policy (MirrorAllSnapshots) is used.
+
+    "replication_policy" accepted values:
+
+    - Sync - for Sync replication policy.
+    - StrictSync - for StrictSync replication policy.
+    - MirrorAllSnapshots - for Async replication policy.
+
+    The following operation are supported by Sync/StrictSync replication:
+    - Create replica
+    - Promote replica
+    - Delete replica
+    - Resync replica
+
+    Note:
+
+    - Synchronous replica creation is supported only for shares without
+      existing snapshots at the time of replica creation. If a share contains
+      snapshots, replica creation will fail.
+    - "MirrorAllSnapshots" policy can mirror all snapshots, including those
+      created before replica setup, to the secondary site.
+    - Changing replication policy of an existing share replica is
+      not supported.
+    - Metadata set on destination share replica will be used during unplanned
+      failover and failback operations.
+    - Sync/StrictSync replication policies are supported only for FlexVols.
