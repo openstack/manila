@@ -373,7 +373,9 @@ class NetAppCmodeFileStorageLibrary(object):
         housekeeping_periodic_task = loopingcall.FixedIntervalLoopingCall(
             self._handle_housekeeping_tasks)
         housekeeping_periodic_task.start(
-            interval=self.HOUSEKEEPING_INTERVAL_SECONDS, initial_delay=0)
+            interval=self.HOUSEKEEPING_INTERVAL_SECONDS,
+            initial_delay=0,
+            stop_on_exception=False)
 
     def _get_backend_share_name(self, share_id):
         """Get share name according to share name template."""
@@ -1876,7 +1878,8 @@ class NetAppCmodeFileStorageLibrary(object):
         self._delete_fpolicy_for_share(share, vserver, vserver_client)
 
         if self._share_exists(share_name, vserver_client):
-            if vserver_client.volume_clone_split_status(share_name) != 100:
+            clone_status = vserver_client.volume_clone_split_status(share_name)
+            if clone_status == na_utils.CLONE_SPLIT_STATUS_ONGOING:
                 vserver_client.volume_clone_split_stop(share_name)
             if remove_export:
                 self._remove_export(share, vserver_client)
