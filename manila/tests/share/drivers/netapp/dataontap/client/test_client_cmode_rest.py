@@ -2069,6 +2069,44 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.assertTrue(flexgroup_supported)
 
+    def test_reset_volume_autosize(self):
+        """Test reset_volume_autosize method."""
+        mock_sr = self.mock_object(self.client, 'send_request')
+
+        volume_name = fake.VOLUME_NAMES[0]
+        vserver_name = fake.VSERVER_NAME
+
+        self.client.reset_volume_autosize(volume_name, vserver_name)
+
+        expected_query = {
+            "vserver": vserver_name,
+            "volume": volume_name
+        }
+        expected_body = {
+            "autosize-reset": "true"
+        }
+
+        mock_sr.assert_called_once_with(
+            '/private/cli/volume', 'patch',
+            query=expected_query, body=expected_body)
+
+    def test_reset_volume_autosize_api_error(self):
+        """Test reset_volume_autosize method handles API errors."""
+        mock_sr = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=netapp_api.api.NaApiError(
+                code='fake_code', message='fake_message')))
+
+        volume_name = fake.VOLUME_NAMES[0]
+        vserver_name = fake.VSERVER_NAME
+
+        self.assertRaises(
+            netapp_api.api.NaApiError,
+            self.client.reset_volume_autosize,
+            volume_name, vserver_name)
+
+        self.assertTrue(mock_sr.called)
+
     @ddt.data(True, False)
     def test_is_flexgroup_volume(self, is_flexgroup):
         response = copy.deepcopy(fake.VOLUME_LIST_SIMPLE_RESPONSE_REST)
@@ -2666,18 +2704,6 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'mode': 'grow'
         }
         self.assertEqual(expected, result)
-
-    def test__build_autosize_attributes_reset_true(self):
-        """Test _build_autosize_attributes returns None when reset is true."""
-        autosize_attrs = {
-            'reset': 'true',
-            'grow-threshold-percent': 90,
-            'maximum-size': '10GB'
-        }
-
-        result = self.client._build_autosize_attributes(autosize_attrs)
-
-        self.assertIsNone(result)
 
     def test__build_autosize_attributes_partial_attrs(self):
         """Test _build_autosize_attributes with only some attributes."""

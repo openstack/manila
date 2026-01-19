@@ -2738,11 +2738,18 @@ class NetAppRestClient(object):
         body = {
             'guarantee': {'type': 'none' if thin_provisioned else 'volume'}
         }
-
         if autosize_attributes:
-            autosize = self._build_autosize_attributes(autosize_attributes)
-            if autosize:
-                body['autosize'] = autosize
+            reset_val = str(autosize_attributes.get('reset', False)).lower()
+            if reset_val == 'true':
+                # Handle autosize reset
+                vserver = autosize_attributes.get('vserver') or self.vserver
+                if volume_name and vserver:
+                    self.reset_volume_autosize(volume_name, vserver)
+            else:
+                # Build autosize attributes
+                autosize = self._build_autosize_attributes(autosize_attributes)
+                if autosize:
+                    body['autosize'] = autosize
 
         if language:
             body['language'] = language
@@ -2788,10 +2795,6 @@ class NetAppRestClient(object):
     @na_utils.trace
     def _build_autosize_attributes(self, autosize_attributes):
         """Build autosize attributes dict from autosize_attributes."""
-        reset_val = autosize_attributes.get('reset', '')
-        if str(reset_val).lower() == 'true':
-            return None
-
         src = autosize_attributes
 
         # Build autosize dict directly
@@ -2813,6 +2816,30 @@ class NetAppRestClient(object):
             autosize['mode'] = src['mode']
 
         return autosize if autosize else None
+
+    @na_utils.trace
+    def reset_volume_autosize(self, volume_name, vserver_name):
+        """Resets volume autosize configuration to default values.
+
+        This method resets the autosize configuration for a FlexVol volume
+        back to its default settings. The autosize feature automatically
+        grows or shrinks a volume based on the amount of used space.
+        """
+        query = {
+            "vserver": vserver_name,
+            "volume": volume_name
+        }
+        body = {
+            "autosize-reset": "true"
+        }
+
+        try:
+            self.send_request('/private/cli/volume', 'patch',
+                              query=query, body=body)
+        except netapp_api.api.NaApiError as e:
+            LOG.error('Failed to reset volume autosize for %s. Error: %s. '
+                      'Code: %s', volume_name, e.message, e.code)
+            raise
 
     @na_utils.trace
     def start_volume_move(self, volume_name, vserver, destination_aggregate,
