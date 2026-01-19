@@ -657,6 +657,25 @@ class ShareInstanceAccessMapping(BASE, ManilaBase):
     )
 
 
+class ShareInstanceMetadata(BASE, ManilaBase):
+    """Represents a metadata key/value pair for an instance."""
+    __tablename__ = 'share_instance_metadata'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255), nullable=False)
+    value = Column(String(1023), nullable=False)
+    deleted = Column(String(36), default='False')
+    share_instance_id = Column(String(36), ForeignKey(
+        'share_instances.id'), nullable=False)
+
+    share_instance = orm.relationship(
+        ShareInstance,
+        backref=orm.backref('share_instance_metadata'),
+        foreign_keys=share_instance_id,
+        primaryjoin='and_('
+        'ShareInstanceMetadata.share_instance_id == ShareInstance.id,'
+        'ShareInstanceMetadata.deleted == "False")')
+
+
 class ShareSnapshot(BASE, ManilaBase):
     """Represents a snapshot of a share."""
     __tablename__ = 'share_snapshots'

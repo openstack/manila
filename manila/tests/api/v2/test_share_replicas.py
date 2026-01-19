@@ -72,6 +72,8 @@ class ShareReplicasApiTest(test.TestCase):
             'security_service_update_support': True,
             'status': 'active'
         }
+        self.share = db_utils.create_share()
+        self.share_replica_id = self.share.instance.id
 
     def _get_context(self, role):
         return getattr(self, '%s_context' % role)
@@ -123,6 +125,10 @@ class ShareReplicasApiTest(test.TestCase):
                 api_version.APIVersionRequest(CAST_RULES_READONLY_VERSION)
                 and admin):
             expected_replica['cast_rules_to_readonly'] = False
+
+        if (api_version.APIVersionRequest(microversion) >=
+                api_version.APIVersionRequest("2.95")):
+            expected_replica['metadata'] = {}
 
         return replica, expected_replica
 
@@ -486,7 +492,7 @@ class ShareReplicasApiTest(test.TestCase):
             share_network)
 
     @ddt.data((True, PRE_GRADUATION_VERSION), (False, GRADUATION_VERSION),
-              (False, "2.72"))
+              (False, "2.72"), (False, "2.95"))
     @ddt.unpack
     def test_create(self, is_admin, microversion):
         fake_replica, expected_replica = self._get_fake_replica(
@@ -503,6 +509,9 @@ class ShareReplicasApiTest(test.TestCase):
             share_network = {'id': 'FAKE_NETID'}
         else:
             share_network = db_utils.create_share_network()
+
+        if self.is_microversion_ge(microversion, '2.95'):
+            body["share_replica"].update({"metadata": {"foo": "bar"}})
 
         self.mock_object(share_replicas.db, 'share_get',
                          mock.Mock(return_value=fake_replica))
@@ -975,3 +984,82 @@ class ShareReplicasApiTest(test.TestCase):
         else:
             self.assertEqual(202, resp.status_int)
             self.assertTrue(share_api_call.called)
+
+    def test_index_metadata(self):
+        req = fakes.HTTPRequest.blank('/share-replicas/', version="2.95")
+        mock_index = self.mock_object(
+            self.controller, '_index_metadata',
+            mock.Mock(return_value='fake_metadata'))
+
+        result = self.controller.index_metadata(req, self.share_replica_id)
+
+        self.assertEqual('fake_metadata', result)
+        mock_index.assert_called_once_with(req, self.share_replica_id)
+
+    def test_create_metadata(self):
+        req = fakes.HTTPRequest.blank('/share-replicas/', version="2.95")
+        mock_index = self.mock_object(
+            self.controller, '_create_metadata',
+            mock.Mock(return_value={'metadata': 'fake_metadata'}))
+
+        body = 'fake_metadata_body'
+        result = self.controller.create_metadata(req, self.share_replica_id,
+                                                 body)
+
+        self.assertEqual('fake_metadata', result['metadata'])
+        mock_index.assert_called_once_with(req, self.share_replica_id, body)
+
+    def test_update_all_metadata(self):
+        req = fakes.HTTPRequest.blank('/share-replicas/', version="2.95")
+
+        mock_index = self.mock_object(
+            self.controller, '_update_all_metadata',
+            mock.Mock(return_value={'metadata': 'fake_metadata'}))
+
+        body = 'fake_metadata_body'
+        result = self.controller.update_all_metadata(
+            req, self.share_replica_id, body)
+
+        self.assertEqual('fake_metadata', result['metadata'])
+        mock_index.assert_called_once_with(req, self.share_replica_id, body)
+
+    def test_update_metadata_item(self):
+        req = fakes.HTTPRequest.blank('/share-replicas/', version="2.95")
+        mock_index = self.mock_object(
+            self.controller, '_update_metadata_item',
+            mock.Mock(return_value={'metadata': 'fake_metadata'}))
+
+        body = 'fake_metadata_body'
+        key = 'fake_key'
+        result = self.controller.update_metadata_item(
+            req, self.share_replica_id, body, key)
+
+        self.assertEqual('fake_metadata', result['metadata'])
+        mock_index.assert_called_once_with(req, self.share_replica_id,
+                                           body, key)
+
+    def test_show_metadata(self):
+        req = fakes.HTTPRequest.blank('/share-replicas/', version="2.95")
+        mock_index = self.mock_object(
+            self.controller, '_show_metadata',
+            mock.Mock(return_value='fake_metadata'))
+
+        key = 'fake_key'
+        result = self.controller.show_metadata(
+            req, self.share_replica_id, key)
+
+        self.assertEqual('fake_metadata', result)
+        mock_index.assert_called_once_with(req, self.share_replica_id, key)
+
+    def test_delete_metadata(self):
+        req = fakes.HTTPRequest.blank('/share-replicas/', version="2.95")
+        mock_index = self.mock_object(
+            self.controller, '_delete_metadata',
+            mock.Mock(return_value='fake_metadata'))
+
+        key = 'fake_key'
+        result = self.controller.delete_metadata(
+            req, self.share_replica_id, key)
+
+        self.assertEqual('fake_metadata', result)
+        mock_index.assert_called_once_with(req, self.share_replica_id, key)

@@ -1697,7 +1697,8 @@ def _share_instance_create(context, share_id, values):
     if not values.get('id'):
         values['id'] = uuidutils.generate_uuid()
     values.update({'share_id': share_id})
-
+    values['share_instance_metadata'] = _metadata_refs(
+        values.pop('metadata', {}), models.ShareInstanceMetadata)
     share_instance_ref = models.ShareInstance()
     share_instance_ref.update(values)
     share_instance_ref.save(session=context.session)
@@ -1801,6 +1802,124 @@ def _share_instance_status_update(context, share_instance_ids, values):
     return result
 
 
+###################################
+# Share Replica Metadata functions
+###################################
+
+
+@require_context
+@require_share_instance_exists
+@context_manager.reader
+def share_replica_metadata_get(context, share_replica_id):
+    return _share_replica_metadata_get(context, share_replica_id)
+
+
+@require_context
+@require_share_instance_exists
+@context_manager.writer
+def share_replica_metadata_delete(context, share_replica_id, key):
+    meta_ref = _share_replica_metadata_get_item(
+        context, share_replica_id, key)
+    meta_ref.soft_delete(session=context.session)
+
+
+@require_context
+@require_share_instance_exists
+@context_manager.writer
+def share_replica_metadata_update(context, share_replica_id,
+                                  metadata, delete):
+    return _share_replica_metadata_update(context, share_replica_id,
+                                          metadata, delete)
+
+
+@context_manager.writer
+def share_replica_metadata_update_item(context, share_replica_id, item):
+    return _share_replica_metadata_update(context, share_replica_id,
+                                          item, delete=False)
+
+
+@context_manager.reader
+def share_replica_metadata_get_item(context, share_replica_id, key):
+
+    row = _share_replica_metadata_get_item(context, share_replica_id, key)
+    result = {}
+    result[row['key']] = row['value']
+
+    return result
+
+
+def _share_replica_metadata_get_query(context, share_replica_id):
+    return model_query(
+        context, models.ShareInstanceMetadata, read_deleted="no",
+    ).filter_by(
+        share_instance_id=share_replica_id,
+    )
+
+
+def _share_replica_metadata_get(context, share_replica_id):
+    rows = _share_replica_metadata_get_query(
+        context, share_replica_id,
+    ).all()
+
+    result = {}
+    for row in rows:
+        result[row['key']] = row['value']
+    return result
+
+
+def _share_replica_metadata_get_item(context, share_replica_id, key):
+    result = _share_replica_metadata_get_query(
+        context, share_replica_id).filter_by(
+            key=key).first()
+    if not result:
+        raise exception.MetadataItemNotFound
+    return result
+
+
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def _share_replica_metadata_update(context, share_replica_id,
+                                   metadata, delete):
+    delete = strutils.bool_from_string(delete)
+
+    if delete:
+        original_metadata = _share_replica_metadata_get(
+            context, share_replica_id)
+        for meta_key, meta_value in original_metadata.items():
+            if meta_key not in metadata:
+                meta_ref = _share_replica_metadata_get_item(
+                    context, share_replica_id, meta_key,
+                )
+                meta_ref.soft_delete(session=context.session)
+
+    # Now update all existing items with new values, or create new meta
+    # objects
+    meta_ref = None
+
+    if metadata is None:
+        metadata = {}
+
+        # Fetch all existing metadata once
+    existing_meta = {
+        m.key: m for m in _share_replica_metadata_get_query(
+            context, share_replica_id
+        ).all()
+    }
+
+    for meta_key, meta_value in metadata.items():
+        meta_ref = existing_meta.get(meta_key)
+        item = {"value": meta_value}
+        if not meta_ref:
+            meta_ref = models.ShareInstanceMetadata()
+            item.update({"key": meta_key,
+                         "share_instance_id": share_replica_id})
+        meta_ref.update(item)
+        meta_ref.save(session=context.session)
+
+    return metadata
+
+#################################
+
+
 @require_context
 @context_manager.reader
 def share_instance_get(context, share_instance_id, with_share_data=False):
@@ -1820,6 +1939,7 @@ def _share_instance_get(context, share_instance_id, with_share_data=False):
             models.ShareInstance.export_locations
         ).joinedload(models.ShareInstanceExportLocations._el_metadata_bare),
         orm.joinedload(models.ShareInstance.share_type),
+        orm.joinedload(models.ShareInstance.share_instance_metadata),
     ).first()
     if result is None:
         raise exception.NotFound()
@@ -1843,6 +1963,7 @@ def _share_instance_get_all(context, filters=None):
         context, models.ShareInstance, read_deleted="no",
     ).options(
         orm.joinedload(models.ShareInstance.export_locations),
+        orm.joinedload(models.ShareInstance.share_instance_metadata),
     )
 
     filters = filters or {}
@@ -1898,7 +2019,19 @@ def _share_instance_get_all(context, filters=None):
     if encryption_key_ref:
         query = query.filter(
             models.ShareInstance.encryption_key_ref == encryption_key_ref)
-
+    if 'metadata' in filters:
+        for k, v in filters['metadata'].items():
+            alias = orm.aliased(models.ShareInstanceMetadata)
+            query = query.join(
+                alias,
+                and_(
+                    alias.share_instance_id == models.ShareInstance.id,
+                    alias.key == k,
+                    alias.value == v,
+                    alias.deleted == 'False'
+                )
+            )
+        filters.pop('metadata')
     # Returns list of share instances that satisfy filters.
     query = query.all()
     return query
@@ -1986,6 +2119,10 @@ def _share_instance_delete(context, instance_id,
         context.session.query(models.ShareMetadata).filter_by(
             share_id=share['id'],
         ).soft_delete()
+        context.session.query(models.ShareInstanceMetadata).filter_by(
+            share_instance_id=instance_id,
+        ).soft_delete()
+
         share.soft_delete(session=context.session)
 
     if need_to_update_usages:
@@ -2150,6 +2287,10 @@ def _share_replica_get_with_filters(context, share_id=None, replica_id=None,
         query = query.options(
             orm.joinedload(models.ShareInstance.share_server),
         )
+
+    query = query.options(
+        orm.joinedload(models.ShareInstance.share_instance_metadata)
+    )
 
     return query
 

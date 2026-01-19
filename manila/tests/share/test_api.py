@@ -1282,6 +1282,7 @@ class ShareAPITestCase(test.TestCase):
                 'mount_point_name': None,
                 'encryption_key_ref': None,
                 'qos_type_id': None,
+                'metadata': None
             }
         )
         db_api.share_type_get.assert_called_once_with(
@@ -1318,6 +1319,7 @@ class ShareAPITestCase(test.TestCase):
                 'mount_point_name': 'fake_mp',
                 'encryption_key_ref': None,
                 'qos_type_id': None,
+                'metadata': None
             }
         )
 
@@ -4880,7 +4882,8 @@ class ShareAPITestCase(test.TestCase):
              availability_zones=expected_azs,
              az_request_multiple_subnet_support_map={},
              cast_rules_to_readonly=cast_rules_to_readonly,
-             qos_type_id=None))
+             qos_type_id=None,
+             share_instance_metadata=None))
         db_api.share_replica_update.assert_called_once()
         mock_snapshot_get_all_call.assert_called_once()
         mock_sched_rpcapi_call.assert_called_once()
@@ -5021,7 +5024,8 @@ class ShareAPITestCase(test.TestCase):
              availability_zones=expected_azs,
              az_request_multiple_subnet_support_map=az_id,
              cast_rules_to_readonly=cast_rules_to_readonly,
-             qos_type_id=None))
+             qos_type_id=None,
+             share_instance_metadata=None))
 
     def test_delete_last_active_replica(self):
         fake_replica = fakes.fake_replica(
@@ -5260,7 +5264,8 @@ class ShareAPITestCase(test.TestCase):
                                  availability_zones=expected_azs,
                                  az_request_multiple_subnet_support_map={},
                                  cast_rules_to_readonly=False,
-                                 qos_type_id=None))
+                                 qos_type_id=None,
+                                 share_instance_metadata=None))
 
     def test_migration_complete(self):
 

@@ -704,6 +704,16 @@ share_network_id_query:
   in: query
   required: false
   type: string
+share_replica_metadata_query:
+  description: |
+    Filters the list of share replicas by metadata. The value must be a string
+    representation of a key-value mapping that can be parsed by the API.
+    For example: ``{"env": "prod"}`` or ``{"key": "value"}``. If the
+    value cannot be parsed, the API responds with ``400 Bad Request``.
+  in: query
+  required: false
+  type: string
+  min_version: 2.95
 share_server_id_query:
   description: |
     The UUID of the share server.

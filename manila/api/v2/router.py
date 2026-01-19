@@ -637,6 +637,45 @@ class APIRouter(manila.api.openstack.APIRouter):
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
 
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("share_replica_metadata",
+                           "%s/share-replicas/{resource_id}/metadata"
+                           % path_prefix,
+                           controller=self.resources["share-replicas"],
+                           action="create_metadata",
+                           conditions={"method": ["POST"]})
+            mapper.connect("share_replica_metadata",
+                           "%s/share-replicas/{resource_id}/metadata"
+                           % path_prefix,
+                           controller=self.resources["share-replicas"],
+                           action="update_all_metadata",
+                           conditions={"method": ["PUT"]})
+            mapper.connect("share_replica_metadata",
+                           "%s/share-replicas/{resource_id}/metadata/{key}"
+                           % path_prefix,
+                           controller=self.resources["share-replicas"],
+                           action="update_metadata_item",
+                           conditions={"method": ["POST"]})
+            mapper.connect("share_replica_metadata",
+                           "%s/share-replicas/{resource_id}/metadata"
+                           % path_prefix,
+                           controller=self.resources["share-replicas"],
+                           action="index_metadata",
+                           conditions={"method": ["GET"]})
+            mapper.connect("share_replica_metadata",
+                           "%s/share-replicas/{resource_id}/metadata/{key}"
+                           % path_prefix,
+                           controller=self.resources["share-replicas"],
+                           action="show_metadata",
+                           conditions={"method": ["GET"]})
+            mapper.connect("share_replica_metadata",
+                           "%s/share-replicas/{resource_id}/metadata/{key}"
+                           % path_prefix,
+                           controller=self.resources["share-replicas"],
+                           action="delete_metadata",
+                           conditions={"method": ["DELETE"]})
+
         self.resources['share_transfers'] = (
             share_transfer.create_resource())
         mapper.resource("share-transfer", "share-transfers",

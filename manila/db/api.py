@@ -1691,6 +1691,39 @@ def share_replica_delete(context, replica_id, need_to_update_usages=True):
         context, replica_id, need_to_update_usages=need_to_update_usages)
 
 
+def share_replica_metadata_get(context, share_replica_id, **kwargs):
+    """Get all metadata for a share replica."""
+    return IMPL.share_replica_metadata_get(context,
+                                           share_replica_id,
+                                           **kwargs)
+
+
+def share_replica_metadata_get_item(context, share_replica_id, key):
+    """Get metadata item for a share replica."""
+    return IMPL.share_replica_metadata_get_item(context,
+                                                share_replica_id, key)
+
+
+def share_replica_metadata_delete(context, share_replica_id, key):
+    """Delete the given metadata item."""
+    IMPL.share_replica_metadata_delete(context, share_replica_id, key)
+
+
+def share_replica_metadata_update(context, share_replica_id,
+                                  metadata, delete):
+    """Update metadata if it exists, otherwise create it."""
+    return IMPL.share_replica_metadata_update(context, share_replica_id,
+                                              metadata, delete)
+
+
+def share_replica_metadata_update_item(context, share_replica_id,
+                                       metadata):
+    """Update metadata item if it exists, otherwise create it."""
+    return IMPL.share_replica_metadata_update_item(context,
+                                                   share_replica_id,
+                                                   metadata)
+
+
 def purge_deleted_records(context, age_in_days):
     """Purge deleted rows older than given age from all tables
 

@@ -770,7 +770,7 @@ class API(base.Base):
             availability_zones=None, snapshot_host=None,
             az_request_multiple_subnet_support_map=None,
             mount_point_name=None, encryption_key_ref=None,
-            qos_type_id=None):
+            qos_type_id=None, share_instance_metadata=None):
 
         availability_zone_id = None
         if availability_zone:
@@ -793,6 +793,7 @@ class API(base.Base):
                 'mount_point_name': mount_point_name,
                 'encryption_key_ref': encryption_key_ref,
                 'qos_type_id': qos_type_id,
+                'metadata': share_instance_metadata,
             }
         )
 
@@ -853,7 +854,10 @@ class API(base.Base):
         return request_spec, share_instance
 
     def create_share_replica(self, context, share, availability_zone=None,
-                             share_network_id=None, scheduler_hints=None):
+                             share_network_id=None, scheduler_hints=None,
+                             metadata=None):
+        if metadata:
+            api_common.check_metadata_properties(metadata)
 
         parent_share_network_id = share.get('share_network_id')
         if (parent_share_network_id and share_network_id and
@@ -992,7 +996,8 @@ class API(base.Base):
                     availability_zones=type_azs,
                     az_request_multiple_subnet_support_map=(
                         az_request_multiple_subnet_support_map),
-                    qos_type_id=qos_type_id)
+                    qos_type_id=qos_type_id,
+                    share_instance_metadata=metadata)
             )
             QUOTAS.commit(
                 context, reservations, project_id=share['project_id'],

@@ -3451,3 +3451,86 @@ class ServiceDisabledReason(BaseMigrationChecks):
         service_table = utils.load_table('services', conn)
         for s in conn.execute(service_table.select()):
             self.test_case.assertFalse(hasattr(s, 'disabled_reason'))
+
+
+@map_to_migration('004e506e922e')
+class AddShareReplicaMetadata(BaseMigrationChecks):
+    share_instance_id = uuidutils.generate_uuid()
+    new_table_name = 'share_instance_metadata'
+
+    def setup_upgrade_data(self, engine):
+        # Setup Availability Zone
+        availability_zone_table = utils.load_table('availability_zones',
+                                                   engine)
+        engine.execute(availability_zone_table.insert().values(
+            {'id': 'fake', 'name': 'fake',
+             'created_at': datetime.datetime.utcnow(),
+             'updated_at': datetime.datetime.utcnow()}
+        ))
+        # Setup Share
+        share_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_proto': "NFS",
+            'size': 1,
+            'snapshot_id': None,
+            'user_id': 'fake',
+            'project_id': 'fake'
+        }
+        share_table = utils.load_table('shares', engine)
+        engine.execute(share_table.insert().values(share_data))
+        # Setup Share Instance
+        share_instance_data = {
+            'id': self.share_instance_id,
+            'deleted': 'False',
+            'host': 'fake',
+            'share_id': share_data['id'],
+            'status': 'available',
+            'access_rules_status': 'active',
+            'cast_rules_to_readonly': False,
+        }
+        share_instance_table = utils.load_table('share_instances', engine)
+        engine.execute(share_instance_table.insert().values(
+            share_instance_data))
+        # Setup Share Replica
+        share_replica_data = {
+            'id': uuidutils.generate_uuid(),
+            'status': 'available',
+            'host': 'fake',
+            'share_id': share_data['id'],
+            'replica_state': 'in_sync',
+            'availability_zone_id': 'fake',
+            'cast_rules_to_readonly': True
+        }
+        engine.execute(share_instance_table.insert().values(
+            share_replica_data))
+
+    def check_upgrade(self, engine, data):
+        data = {
+            'id': 1,
+            'key': 't' * 255,
+            'value': 'v' * 1023,
+            'share_instance_id': self.share_instance_id,
+            'deleted': 'False',
+        }
+
+        new_table = utils.load_table(self.new_table_name, engine)
+        engine.execute(new_table.insert().values(data))
+
+        item = engine.execute(
+            new_table.select().where(new_table.c.id ==
+                                     data['id'])).mappings().first()
+        self.test_case.assertTrue(hasattr(item, 'id'))
+        self.test_case.assertEqual(data['id'], item['id'])
+        self.test_case.assertTrue(hasattr(item, 'key'))
+        self.test_case.assertEqual(data['key'], item['key'])
+        self.test_case.assertTrue(hasattr(item, 'value'))
+        self.test_case.assertEqual(data['value'], item['value'])
+        self.test_case.assertTrue(hasattr(item, 'share_instance_id'))
+        self.test_case.assertEqual(self.share_instance_id,
+                                   item['share_instance_id'])
+        self.test_case.assertTrue(hasattr(item, 'deleted'))
+        self.test_case.assertEqual('False', item['deleted'])
+
+    def check_downgrade(self, engine):
+        self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
+                                    self.new_table_name, engine)

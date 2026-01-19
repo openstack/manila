@@ -1366,8 +1366,11 @@ class ShareManagerTestCase(test.TestCase):
         fake_access_rules = [{'id': '1'}, {'id': '2'}, {'id': '3'}]
         replica = fake_replica()
         replica_2 = fake_replica(id='fake2')
+        replica_metadata = {'fake_key': 'fake_value'}
         self.mock_object(db, 'share_replica_get',
                          mock.Mock(return_value=replica))
+        self.mock_object(db, 'share_replica_metadata_get',
+                         mock.Mock(return_value=replica_metadata))
         self.mock_object(db, 'share_instance_access_copy',
                          mock.Mock(return_value=fake_access_rules))
         self.mock_object(db, 'share_replicas_get_available_active_replica',
@@ -1427,6 +1430,9 @@ class ShareManagerTestCase(test.TestCase):
                                access_rules_status=constants.STATUS_ACTIVE)
         replica_2 = fake_replica(id='fake2')
         fake_access_rules = [{'id': '1'}, {'id': '2'}]
+        replica_metadata = {'fake_key': 'fake_value'}
+        self.mock_object(db, 'share_replica_metadata_get',
+                         mock.Mock(return_value=replica_metadata))
         self.mock_object(db, 'share_replicas_get_available_active_replica',
                          mock.Mock(return_value=replica_2))
         self.mock_object(db, 'share_replicas_get_all_by_share',
@@ -1482,12 +1488,15 @@ class ShareManagerTestCase(test.TestCase):
             replica_state=constants.REPLICA_STATE_OUT_OF_SYNC,
             access_rules_status=None)
         replica_2 = fake_replica(id='fake2')
+        replica_metadata = {'fake_key': 'fake_value'}
         self.mock_object(db, 'share_replicas_get_all_by_share',
                          mock.Mock(return_value=[replica, replica_2]))
         self.share_manager.availability_zone = 'fake_az'
         fake_access_rules = [{'id': '1'}, {'id': '2'}, {'id': '3'}]
         self.mock_object(db, 'share_replica_get',
                          mock.Mock(return_value=replica))
+        self.mock_object(db, 'share_replica_metadata_get',
+                         mock.Mock(return_value=replica_metadata))
         self.mock_object(db, 'share_instance_access_copy',
                          mock.Mock(return_value=fake_access_rules))
         self.mock_object(db, 'share_replicas_get_available_active_replica',
@@ -1549,6 +1558,7 @@ class ShareManagerTestCase(test.TestCase):
             replica_state=constants.REPLICA_STATE_IN_SYNC,
             access_rules_status='active')
         replica_2 = fake_replica(id='fake2')
+        replica_metadata = {'fake_key': 'fake_value'}
         snapshots = ([fakes.fake_snapshot(create_instance=True)]
                      if has_snapshots else [])
         snapshot_instances = [
@@ -1558,6 +1568,8 @@ class ShareManagerTestCase(test.TestCase):
         fake_access_rules = [{'id': '1'}, {'id': '2'}, {'id': '3'}]
         self.mock_object(db, 'share_replica_get',
                          mock.Mock(return_value=replica))
+        self.mock_object(db, 'share_replica_metadata_get',
+                         mock.Mock(return_value=replica_metadata))
         self.mock_object(db, 'share_instance_access_copy',
                          mock.Mock(return_value=fake_access_rules))
         self.mock_object(db, 'share_replicas_get_available_active_replica',
@@ -1821,11 +1833,14 @@ class ShareManagerTestCase(test.TestCase):
     def test_promote_share_replica_no_active_replica(self):
         replica = fake_replica()
         replica_list = [replica]
+        replica_metadata = {'fake_key': 'fake_value'}
         self.mock_object(db, 'share_replica_get',
                          mock.Mock(return_value=replica))
         self.mock_object(self.share_manager, '_get_share_server')
         self.mock_object(db, 'share_replicas_get_available_active_replica',
                          mock.Mock(return_value=replica_list))
+        self.mock_object(db, 'share_replica_metadata_get',
+                         mock.Mock(return_value=replica_metadata))
         mock_info_log = self.mock_object(manager.LOG, 'info')
         mock_driver_call = self.mock_object(self.share_manager.driver,
                                             'promote_replica')
@@ -1846,6 +1861,7 @@ class ShareManagerTestCase(test.TestCase):
             id='current_active_replica',
             replica_state=constants.REPLICA_STATE_ACTIVE)
         replica_list = [replica, active_replica]
+        replica_metadata = {'fake_key': 'fake_value'}
         self.mock_object(db, 'share_access_get_all_for_share',
                          mock.Mock(return_value=[]))
         self.mock_object(db, 'share_replica_get',
@@ -1853,6 +1869,8 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager, '_get_share_server')
         self.mock_object(db, 'share_replicas_get_all_by_share',
                          mock.Mock(return_value=replica_list))
+        self.mock_object(db, 'share_replica_metadata_get',
+                         mock.Mock(return_value=replica_metadata))
         self.mock_object(self.share_manager.driver, 'promote_replica',
                          mock.Mock(side_effect=exception.ManilaException))
         mock_info_log = self.mock_object(manager.LOG, 'info')
@@ -1887,6 +1905,7 @@ class ShareManagerTestCase(test.TestCase):
         active_replica = fake_replica(
             id='current_active_replica',
             replica_state=constants.REPLICA_STATE_ACTIVE)
+        replica_metadata = {'fake_key': 'fake_value'}
         snapshots_instances = [
             fakes.fake_snapshot(create_instance=True,
                                 share_id=replica['share_id'],
@@ -1907,6 +1926,8 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(
             db, 'share_snapshot_instance_get_all_with_filters',
             mock.Mock(return_value=snapshots_instances))
+        self.mock_object(db, 'share_replica_metadata_get',
+                         mock.Mock(return_value=replica_metadata))
         self.mock_object(
             self.share_manager.driver, 'promote_replica',
             mock.Mock(return_value=retval))
@@ -1948,6 +1969,7 @@ class ShareManagerTestCase(test.TestCase):
             replica, active_replica, fake_replica(id=3),
             fake_replica(id='one_more_replica'),
         ]
+        replica_metadata = {'fake_key': 'fake_value'}
         updated_replica_list = [
             {
                 'id': replica['id'],
@@ -1981,6 +2003,8 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=replica_list))
         mock_snap_instance_update = self.mock_object(
             db, 'share_snapshot_instance_update')
+        self.mock_object(db, 'share_replica_metadata_get',
+                         mock.Mock(return_value=replica_metadata))
         self.mock_object(
             self.share_manager.driver, 'promote_replica',
             mock.Mock(return_value=updated_replica_list))
@@ -2060,6 +2084,8 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(side_effect=exception.ManilaException))
         mock_db_update_call = self.mock_object(
             self.share_manager.db, 'share_replica_update')
+        self.mock_object(db, 'share_replica_metadata_get',
+                         mock.Mock(return_value=None))
 
         self.share_manager._share_replica_update(
             self.context, replica['id'], share_id=replica['share_id'])
@@ -2091,6 +2117,8 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.host = replica['host']
         self.mock_object(self.share_manager.driver, 'update_replica_state',
                          mock.Mock(side_effect=exception.ManilaException))
+        self.mock_object(db, 'share_replica_metadata_get',
+                         mock.Mock(return_value=None))
         mock_db_update_call = self.mock_object(
             self.share_manager.db, 'share_replica_update')
 
@@ -2170,6 +2198,8 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=[replica, active_replica]))
         self.mock_object(db, 'share_server_get',
                          mock.Mock(return_value=fakes.fake_share_server_get()))
+        self.mock_object(db, 'share_replica_metadata_get',
+                         mock.Mock(return_value=None))
         mock_db_update_calls = []
         self.mock_object(self.share_manager.db, 'share_replica_get',
                          mock.Mock(return_value=replica))

@@ -501,3 +501,8 @@ user documentation.
 2.94
 ----
   Added qos_type and specs APIs.
+
+2.95
+----
+  Added Metadata API methods (GET, PUT, POST, DELETE)
+  to Share Replicas.

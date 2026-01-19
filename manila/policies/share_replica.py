@@ -76,7 +76,24 @@ deprecated_replica_reset_status = policy.DeprecatedRule(
     deprecated_reason=DEPRECATED_REASON,
     deprecated_since=versionutils.deprecated.WALLABY
 )
-
+deprecated_update_replica_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'update_metadata',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2026.1/Gazpacho'
+)
+deprecated_delete_replica_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'delete_metadata',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2026.1/Gazpacho'
+)
+deprecated_get_replica_metadata = policy.DeprecatedRule(
+    name=BASE_POLICY_NAME % 'get_metadata',
+    check_str=base.RULE_DEFAULT,
+    deprecated_reason=DEPRECATED_REASON,
+    deprecated_since='2026.1/Gazpacho'
+)
 
 share_replica_policies = [
     policy.DocumentedRuleDefault(
@@ -203,6 +220,57 @@ share_replica_policies = [
             }
         ],
         deprecated_rule=deprecated_replica_reset_status
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'update_metadata',
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Update replica metadata.",
+        operations=[
+            {
+                'method': 'PUT',
+                'path': '/share-replicas/{share_replica_id}/metadata',
+            },
+            {
+                'method': 'POST',
+                'path': '/share-replicas/{share_replica_id}/metadata/{key}',
+            },
+            {
+                'method': 'POST',
+                'path': '/share-replicas/{share_replica_id}/metadata',
+            },
+        ],
+        deprecated_rule=deprecated_update_replica_metadata
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'delete_metadata',
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Delete replica metadata.",
+        operations=[
+            {
+                'method': 'DELETE',
+                'path': '/share-replicas/{share_replica_id}/metadata/{key}',
+            }
+        ],
+        deprecated_rule=deprecated_delete_replica_metadata
+    ),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'get_metadata',
+        check_str=base.ADMIN_OR_PROJECT_MEMBER,
+        scope_types=['system', 'project'],
+        description="Get replica metadata.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/share-replicas/{share_replica_id}/metadata',
+            },
+            {
+                'method': 'GET',
+                'path': '/share-replicas/{share_replica_id}/metadata/{key}',
+            }
+        ],
+        deprecated_rule=deprecated_get_replica_metadata
     ),
 ]
 

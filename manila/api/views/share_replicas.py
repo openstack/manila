@@ -25,6 +25,7 @@ class ReplicationViewBuilder(common.ViewBuilder):
 
     _detail_version_modifiers = [
         "add_cast_rules_to_readonly_field",
+        "add_metadata",
     ]
 
     def summary_list(self, request, replicas):
@@ -89,3 +90,9 @@ class ReplicationViewBuilder(common.ViewBuilder):
         if context.is_admin:
             replica_dict['cast_rules_to_readonly'] = replica.get(
                 'cast_rules_to_readonly', False)
+
+    @common.ViewBuilder.versioned_method("2.95")
+    def add_metadata(self, context, replica_dict, replica):
+        metadata = replica.get('share_instance_metadata', [])
+        metadata_dict = {meta['key']: meta['value'] for meta in metadata}
+        replica_dict['metadata'] = metadata_dict
