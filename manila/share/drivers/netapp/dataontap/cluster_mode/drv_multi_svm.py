@@ -49,6 +49,7 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
         # NetApp driver supports share server encryption and enables encryption
         # on the created share.
         self.encryption_support = ["share_server"]
+        self.qos_type_support = True
 
     def do_setup(self, context):
         self.library.do_setup(context)

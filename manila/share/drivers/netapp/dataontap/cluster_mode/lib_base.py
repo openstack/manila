@@ -52,6 +52,7 @@ from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila.share.drivers.netapp import options as na_opts
 from manila.share.drivers.netapp import utils as na_utils
+from manila.share import qos_types
 from manila.share import share_types
 from manila.share import utils as share_utils
 from manila import utils as manila_utils
@@ -97,6 +98,9 @@ class NetAppCmodeFileStorageLibrary(object):
 
     # Maximum number of FPolicis per vServer
     FPOLICY_MAX_VSERVER_POLICIES = 10
+
+    FIXED_QOS_POLICY_TYPE = "fixed"
+    ADAPTIVE_QOS_POLICY_TYPE = "adaptive"
 
     # Maps NetApp qualified extra specs keys to corresponding backend API
     # client library argument keywords.  When we expose more backend
@@ -567,8 +571,10 @@ class NetAppCmodeFileStorageLibrary(object):
         """Gets the pool dictionary."""
         if self._have_cluster_creds:
             qos_support = True
+            qos_type_support = True
         else:
             qos_support = False
+            qos_type_support = False
 
         # Share-server/share encryption support with NetApp will only be
         # possible with DHSS=True
@@ -614,6 +620,7 @@ class NetAppCmodeFileStorageLibrary(object):
             'mount_point_name_support': True,
             'share_replicas_migration_support': True,
             'encryption_support': encryption_support,
+            'qos_type_support': qos_type_support,
         }
 
         # Add storage service catalog data.
@@ -1146,12 +1153,29 @@ class NetAppCmodeFileStorageLibrary(object):
                 extra_specs = share_types.get_extra_specs_from_share(share)
                 provisioning_options = self._get_provisioning_options(
                     extra_specs)
-                qos_policy_group_name = (
-                    self._modify_or_create_qos_for_existing_share(
-                        share, extra_specs, dest_vserver, dest_vserver_client))
-                if qos_policy_group_name:
-                    provisioning_options['qos_policy_group'] = (
-                        qos_policy_group_name)
+
+                qos_type_specs = qos_types.get_specs_from_share(share)
+                qos_type_specs = self._get_normalized_qos_type_specs(
+                    qos_type_specs)
+                if qos_type_specs:
+                    qos_policy_group_name = self._create_qos_type_policy_group(
+                        share, dest_vserver, qos_type_specs,
+                        dest_vserver_client)
+                    if qos_type_specs.get('policy_type') == (
+                            self.FIXED_QOS_POLICY_TYPE):
+                        provisioning_options['qos_policy_group'] = (
+                            qos_policy_group_name)
+                    else:
+                        provisioning_options['adaptive_qos_policy_group'] = (
+                            qos_policy_group_name)
+                else:
+                    qos_policy_group_name = (
+                        self._modify_or_create_qos_for_existing_share(
+                            share, extra_specs, dest_vserver,
+                            dest_vserver_client))
+                    if qos_policy_group_name:
+                        provisioning_options['qos_policy_group'] = (
+                            qos_policy_group_name)
                 share_name = self._get_backend_share_name(share['id'])
                 # Modify volume to match extra specs
                 dest_vserver_client.modify_volume(
@@ -1617,6 +1641,200 @@ class NetAppCmodeFileStorageLibrary(object):
         # provisioning methods from the client API library.
         return dict(zip(provisioning_args, provisioning_values))
 
+    def _get_normalized_qos_type_specs(self, qos_type_specs):
+        if not qos_type_specs:
+            return {}
+
+        policy_type = None
+        specs = dict(qos_type_specs)
+        for key, value in specs.items():
+            if key.lower() == 'policy_type':
+                policy_type = value.lower()
+                specs.pop(key)
+                break
+
+        if not policy_type:
+            msg = _("The qos-type specs is missing spec 'policy_type'.")
+            raise exception.NetAppException(msg)
+
+        if policy_type == self.FIXED_QOS_POLICY_TYPE:
+            FIXED_QOS_MAX_SPECS = [
+                'max_throughput_iops', 'max_throughput_mbps']
+            FIXED_QOS_MIN_SPECS = [
+                'min_throughput_iops', 'min_throughput_mbps']
+            FIXED_QOS_SPECS = ['capacity_shared']
+
+            valid_spec_keys = FIXED_QOS_MAX_SPECS.copy()
+            valid_spec_keys.extend(FIXED_QOS_MIN_SPECS)
+            valid_spec_keys.extend(FIXED_QOS_SPECS)
+
+            for key, value in specs.items():
+                if key.lower() not in valid_spec_keys:
+                    msg = _("The qos-type spec policy_type is set to 'fixed', "
+                            "but invalid key %s is specified in qos type.")
+                    raise exception.NetAppException(msg % key)
+                if key.lower() == 'capacity_shared':
+                    if value.lower() not in ['true', 'false']:
+                        msg = _('Fixed QoS Optional spec capacity_shared from '
+                                'qos-type specs is having invalid value %s.')
+                        raise exception.NetAppException(msg % value)
+
+            fixed_max_qos_specs = {
+                key.lower(): value
+                for key, value in specs.items()
+                if key.lower() in FIXED_QOS_MAX_SPECS
+            }
+            fixed_min_qos_specs = {
+                key.lower(): value
+                for key, value in specs.items()
+                if key.lower() in FIXED_QOS_MIN_SPECS
+            }
+            fixed_qos_specs = {
+                key.lower(): value.lower()
+                for key, value in specs.items()
+                if key.lower() in FIXED_QOS_SPECS
+            }
+
+            if not (fixed_max_qos_specs or fixed_min_qos_specs):
+                msg = _("The qos-type spec policy_type is set to 'fixed', but "
+                        "no netapp supported specs have been specified in the "
+                        "qos type. Cannot provision a QoS policy. ")
+                raise exception.NetAppException(msg)
+
+            fixed_qos_specs.update(fixed_min_qos_specs)
+            fixed_qos_specs.update(fixed_max_qos_specs)
+            fixed_qos_specs.update({'policy_type': policy_type})
+            return fixed_qos_specs
+        elif policy_type == self.ADAPTIVE_QOS_POLICY_TYPE:
+            ADAPTIVE_QOS_OPTIONAL_SPECS = [
+                'absolute_min_iops', 'block_size', 'expected_iops_allocation',
+                'peak_iops_allocation']
+            ADAPTIVE_QOS_REQUIRED_SPECS = [
+                'expected_iops', 'peak_iops'
+            ]
+            valid_spec_keys = ADAPTIVE_QOS_REQUIRED_SPECS.copy()
+            valid_spec_keys.extend(ADAPTIVE_QOS_OPTIONAL_SPECS)
+
+            for key, value in specs.items():
+                if key.lower() not in valid_spec_keys:
+                    msg = _("The qos-type spec policy_type is set to "
+                            "'adaptive' but invalid key %s is specified in "
+                            "qos type.")
+                    raise exception.NetAppException(msg % key)
+                if (key.lower() == 'expected_iops_allocation' or
+                        key.lower() == 'peak_iops_allocation'):
+                    if value not in ['used_space', 'allocated_space']:
+                        msg = _('Adaptive QoS optional spec %s from '
+                                'qos-type specs is having invalid value')
+                        raise exception.NetAppException(msg % key)
+                if key.lower() == 'block_size':
+                    if value not in [
+                        '4k', '8k', '16k', '32k', '64k', '128k', 'any'
+                    ]:
+                        msg = _('Adaptive QoS Optional spec block-size from '
+                                'qos-type specs is having invalid value %s.')
+                        raise exception.NetAppException(msg % value)
+                if key.lower() in [
+                        'peak_iops', 'expected_iops', 'absolute_min_iops']:
+                    try:
+                        specs[key] = int(value)
+                    except ValueError:
+                        msg = _('Adaptive QoS spec %s from qos-type specs '
+                                'must have valid integer value.')
+                        raise exception.NetAppException(msg % key)
+
+            adaptive_qos_required_specs = {
+                key.lower(): value
+                for key, value in specs.items()
+                if key.lower() in ADAPTIVE_QOS_REQUIRED_SPECS
+            }
+            adaptive_qos_optional_specs = {
+                key.lower(): value
+                for key, value in specs.items()
+                if key.lower() in ADAPTIVE_QOS_OPTIONAL_SPECS
+            }
+
+            if len(adaptive_qos_required_specs) != 2:
+                msg = _('Adaptive QoS policy required spec is missing in '
+                        'qos-type specs. Specified required specs: %s ')
+                raise exception.NetAppException(
+                    msg % adaptive_qos_required_specs)
+
+            adaptive_qos_required_specs.update(adaptive_qos_optional_specs)
+            adaptive_qos_required_specs.update({'policy_type': policy_type})
+            return adaptive_qos_required_specs
+        else:
+            msg = _("Unsupported value of qos-type spec 'policy_type'. Only "
+                    "supported values are 'fixed' and 'adaptive'. ")
+            raise exception.NetAppException(msg)
+
+    def _generate_policy_group_name(self, prefix, vserver, qos_type_name):
+        qos_policy_group_full_name = (
+            prefix + "_" + vserver + "_" + qos_type_name)
+        return qos_policy_group_full_name[:127]
+
+    def _modify_or_create_qos_policy_group(
+        self, qos_policy_group_name, vserver, qos_type_specs,
+        vserver_client=None
+    ):
+        client = vserver_client or self._client
+        try:
+            policy_info = client.qos_policy_group_get(qos_policy_group_name)
+            updated_needed = False
+            for key, value in qos_type_specs.items():
+                if key not in policy_info or policy_info[key] != value:
+                    updated_needed = True
+            if updated_needed:
+                client.qos_policy_group_modify(
+                    qos_policy_group_name, qos_type_specs)
+        except exception.NetAppException:
+            client.qos_policy_group_create(
+                qos_policy_group_name, vserver, qos_type_specs)
+
+    def _modify_or_create_adaptive_qos_policy_group(
+        self, adaptive_qos_policy_group_name, vserver, qos_type_specs,
+        vserver_client=None,
+    ):
+        client = vserver_client or self._client
+        try:
+            policy_info = client.adaptive_qos_policy_group_get(
+                adaptive_qos_policy_group_name)
+            updated_specs = {}
+            for key, value in qos_type_specs.items():
+                if key not in policy_info or policy_info[key] != value:
+                    updated_specs.update({key: value})
+            if updated_specs:
+                client.adaptive_qos_policy_group_modify(
+                    adaptive_qos_policy_group_name, updated_specs)
+        except exception.NetAppException:
+            client.adaptive_qos_policy_group_create(
+                adaptive_qos_policy_group_name, vserver, qos_type_specs)
+
+    @na_utils.trace
+    def _create_qos_type_policy_group(self, share, vserver, qos_type_specs,
+                                      vserver_client=None):
+        # With Qos Type we create policy for share server instead of
+        # individual share.
+        qos_type_name = qos_types.get_qos_type_name_from_share(share)
+        if qos_type_specs.get('policy_type') == self.FIXED_QOS_POLICY_TYPE:
+            prefix = self.configuration.netapp_fixed_qos_policy_prefix
+            qos_policy_group_name = self._generate_policy_group_name(
+                prefix, vserver, qos_type_name)
+            self._modify_or_create_qos_policy_group(
+                qos_policy_group_name, vserver, qos_type_specs,
+                vserver_client=vserver_client
+            )
+            return qos_policy_group_name
+        elif qos_type_specs.get('policy_type') == (
+                self.ADAPTIVE_QOS_POLICY_TYPE):
+            prefix = self.configuration.netapp_adaptive_qos_policy_prefix
+            adaptive_qos_policy_group_name = self._generate_policy_group_name(
+                prefix, vserver, qos_type_name)
+            self._modify_or_create_adaptive_qos_policy_group(
+                adaptive_qos_policy_group_name, vserver, qos_type_specs,
+                vserver_client=vserver_client)
+            return adaptive_qos_policy_group_name
+
     def _get_normalized_qos_specs(self, extra_specs):
         if not extra_specs.get('qos'):
             return {}
@@ -1691,9 +1909,9 @@ class NetAppCmodeFileStorageLibrary(object):
         qos_policy_group_name = self._get_backend_qos_policy_group_name(
             share['id'])
         client = vserver_client or self._client
-        client.qos_policy_group_create(qos_policy_group_name, vserver,
-                                       max_throughput=max_throughput,
-                                       min_throughput=min_throughput)
+        client.qos_policy_group_create_legacy(qos_policy_group_name, vserver,
+                                              max_throughput=max_throughput,
+                                              min_throughput=min_throughput)
         return qos_policy_group_name
 
     @na_utils.trace
@@ -1711,13 +1929,45 @@ class NetAppCmodeFileStorageLibrary(object):
         self._check_extra_specs_validity(share, extra_specs)
         provisioning_options = self._get_provisioning_options(extra_specs)
         qos_specs = self._get_normalized_qos_specs(extra_specs)
-        self.validate_provisioning_options_for_share(provisioning_options,
-                                                     extra_specs=extra_specs,
-                                                     qos_specs=qos_specs)
-        if qos_specs and set_qos:
-            qos_policy_group = self._create_qos_policy_group(
-                share, vserver, qos_specs, vserver_client)
-            provisioning_options['qos_policy_group'] = qos_policy_group
+
+        qos_type_specs = qos_types.get_specs_from_share(share)
+        qos_type_specs = self._get_normalized_qos_type_specs(qos_type_specs)
+
+        if qos_type_specs:
+            if qos_specs:
+                msg = _("The share type extra specs for fixed qos policy "
+                        "group are not supported when share type extra-spec"
+                        "'default_qos_type' is specified .")
+                raise exception.NetAppException(msg)
+
+            if provisioning_options.get('adaptive_qos_policy_group'):
+                msg = _("The share type extra spec for adaptive qos policy "
+                        "group name is not supported when share type "
+                        "extra-spec 'default_qos_type' is specified .")
+                raise exception.NetAppException(msg)
+
+        self.validate_provisioning_options_for_share(
+            provisioning_options,
+            extra_specs=extra_specs,
+            qos_specs=qos_specs,
+            qos_type_specs=qos_type_specs)
+
+        if set_qos:
+            if qos_specs:
+                qos_policy_group = self._create_qos_policy_group(
+                    share, vserver, qos_specs, vserver_client)
+                provisioning_options['qos_policy_group'] = qos_policy_group
+            if qos_type_specs:
+                qos_policy_group = self._create_qos_type_policy_group(
+                    share, vserver, qos_type_specs, vserver_client)
+                if qos_type_specs.get('policy_type') == (
+                        self.FIXED_QOS_POLICY_TYPE):
+                    provisioning_options['qos_policy_group'] = (
+                        qos_policy_group)
+                else:
+                    provisioning_options['adaptive_qos_policy_group'] = (
+                        qos_policy_group)
+
         return provisioning_options
 
     @na_utils.trace
@@ -1738,7 +1988,8 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def validate_provisioning_options_for_share(self, provisioning_options,
                                                 extra_specs=None,
-                                                qos_specs=None):
+                                                qos_specs=None,
+                                                qos_type_specs=None):
         """Checks if provided provisioning options are valid."""
         adaptive_qos = provisioning_options.get('adaptive_qos_policy_group')
         max_files = provisioning_options.get('max_files')
@@ -1759,6 +2010,15 @@ class NetAppCmodeFileStorageLibrary(object):
             }
             raise exception.NetAppException(msg % msg_args)
 
+        if adaptive_qos and qos_type_specs:
+            msg = _('Share cannot be provisioned with both qos_type_specs and '
+                    'adaptive_qos_policy_group %(adaptive_qos_policy_group)s.')
+            msg_args = {
+                'adaptive_qos_policy_group':
+                    provisioning_options['adaptive_qos_policy_group'],
+            }
+            raise exception.NetAppException(msg % msg_args)
+
         if adaptive_qos and replication_type:
             msg = _("The extra spec 'adaptive_qos_policy_group' is not "
                     "supported by share replication feature.")
@@ -1772,7 +2032,8 @@ class NetAppCmodeFileStorageLibrary(object):
         # NOTE(dviroel): This validation will need to be updated if newer
         # versions of ONTAP stop requiring cluster credentials to associate
         # QoS to volumes.
-        if (adaptive_qos or qos_specs) and not self._have_cluster_creds:
+        if (adaptive_qos or qos_specs or qos_type_specs) and (
+                not self._have_cluster_creds):
             msg = _('Share cannot be provisioned with QoS without having '
                     'cluster credentials.')
             raise exception.NetAppException(msg)
@@ -2264,9 +2525,21 @@ class NetAppCmodeFileStorageLibrary(object):
 
         provisioning_options = self._get_provisioning_options(extra_specs)
         qos_specs = self._get_normalized_qos_specs(extra_specs)
-        self.validate_provisioning_options_for_share(provisioning_options,
-                                                     extra_specs=extra_specs,
-                                                     qos_specs=qos_specs)
+
+        qos_type_specs = qos_types.get_specs_from_share(share)
+        qos_type_specs = self._get_normalized_qos_type_specs(qos_type_specs)
+        if qos_type_specs and qos_specs:
+            msg = _("The share type extra specs for fixed qos policy "
+                    "group are not supported when share type extra-spec"
+                    "'default_qos_type' is specified.")
+            raise exception.ManageExistingShareTypeMismatch(
+                reason=msg)
+
+        self.validate_provisioning_options_for_share(
+            provisioning_options,
+            extra_specs=extra_specs,
+            qos_specs=qos_specs,
+            qos_type_specs=qos_type_specs)
         # Check fpolicy extra-specs.
         fpolicy_ext_include = provisioning_options.get(
             'fpolicy_extensions_to_include')
@@ -2299,10 +2572,22 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client.set_volume_name(volume_name, share_name)
         vserver_client.mount_volume(share_name, mount_point_name)
 
-        qos_policy_group_name = self._modify_or_create_qos_for_existing_share(
-            share, extra_specs, vserver, vserver_client)
-        if qos_policy_group_name:
-            provisioning_options['qos_policy_group'] = qos_policy_group_name
+        if qos_type_specs:
+            qos_policy_group_name = self._create_qos_type_policy_group(
+                share, vserver, qos_type_specs, vserver_client)
+            if qos_type_specs.get('policy_type') == self.FIXED_QOS_POLICY_TYPE:
+                provisioning_options['qos_policy_group'] = (
+                    qos_policy_group_name)
+            else:
+                provisioning_options['adaptive_qos_policy_group'] = (
+                    qos_policy_group_name)
+        else:
+            qos_policy_group_name = (
+                self._modify_or_create_qos_for_existing_share(
+                    share, extra_specs, vserver, vserver_client))
+            if qos_policy_group_name:
+                provisioning_options['qos_policy_group'] = (
+                    qos_policy_group_name)
 
         snap_attributes = self._get_provisioning_options_for_snap_attributes(
             vserver_client, share_name)
@@ -2621,7 +2906,7 @@ class NetAppCmodeFileStorageLibrary(object):
                     new_size, size_dependent_specs)
                 min_throughput = self._get_min_throughput(
                     new_size, size_dependent_specs)
-                self._client.qos_policy_group_modify(
+                self._client.qos_policy_group_modify_legacy(
                     qos_policy_on_share, max_throughput, min_throughput)
 
     @na_utils.trace
@@ -3462,8 +3747,13 @@ class NetAppCmodeFileStorageLibrary(object):
             orig_active_replica)
         qos_specs = self._get_normalized_qos_specs(extra_specs)
 
-        if is_dr and qos_specs:
-            dm_session.remove_qos_on_old_active_replica(orig_active_replica)
+        qos_type_specs = qos_types.get_specs_from_share(orig_active_replica)
+        qos_type_specs = self._get_normalized_qos_type_specs(
+            qos_type_specs)
+
+        if is_dr and (qos_specs or qos_type_specs):
+            dm_session.remove_qos_on_old_active_replica(
+                orig_active_replica, qos_type_specs)
 
         if qos_specs:
             # Check if a QoS policy already exists for the promoted replica,
@@ -3486,7 +3776,7 @@ class NetAppCmodeFileStorageLibrary(object):
                         new_active_replica['size'], qos_specs)
                     min_throughput = self._get_min_throughput(
                         new_active_replica['size'], qos_specs)
-                    self._client.qos_policy_group_modify(
+                    self._client.qos_policy_group_modify_legacy(
                         new_active_replica_qos_policy, max_throughput,
                         min_throughput)
                 vserver_client.set_qos_policy_group_for_volume(
@@ -3889,9 +4179,21 @@ class NetAppCmodeFileStorageLibrary(object):
                 provisioning_options = self._get_provisioning_options(
                     extra_specs)
                 qos_specs = self._get_normalized_qos_specs(extra_specs)
+                qos_type_specs = qos_types.get_specs_from_share(
+                    destination_share)
+                qos_type_specs = self._get_normalized_qos_type_specs(
+                    qos_type_specs)
+                if qos_type_specs and qos_specs:
+                    msg = _("Cannot migrate share because the share type "
+                            "extra specs for fixed qos policy group are "
+                            "not supported when share type extra-spec "
+                            "'default_qos_type' is specified.")
+                    raise exception.NetAppException(msg)
+
                 self.validate_provisioning_options_for_share(
                     provisioning_options, extra_specs=extra_specs,
-                    qos_specs=qos_specs)
+                    qos_specs=qos_specs,
+                    qos_type_specs=qos_type_specs)
                 # Validate destination against fpolicy extra specs
                 fpolicy_ext_include = provisioning_options.get(
                     'fpolicy_extensions_to_include')
@@ -4221,20 +4523,38 @@ class NetAppCmodeFileStorageLibrary(object):
         extra_specs = self._remap_standard_boolean_extra_specs(extra_specs)
         self._check_extra_specs_validity(destination_share, extra_specs)
         provisioning_options = self._get_provisioning_options(extra_specs)
-        qos_policy_group_name = self._modify_or_create_qos_for_existing_share(
-            destination_share, extra_specs, vserver, vserver_client)
-        if qos_policy_group_name:
-            provisioning_options['qos_policy_group'] = qos_policy_group_name
-        else:
-            # Removing the QOS Policy on the migrated share as the
-            # new extra-spec for which this share is being migrated to
-            # does not specify any QOS settings.
-            provisioning_options['qos_policy_group'] = "none"
 
-            qos_policy_of_src_share = self._get_backend_qos_policy_group_name(
-                source_share['id'])
-            self._client.mark_qos_policy_group_for_deletion(
-                qos_policy_of_src_share)
+        qos_type_specs = qos_types.get_specs_from_share(destination_share)
+        qos_type_specs = self._get_normalized_qos_type_specs(
+            qos_type_specs)
+
+        if qos_type_specs:
+            qos_policy_group_name = self._create_qos_type_policy_group(
+                destination_share, vserver, qos_type_specs, vserver_client)
+            if qos_type_specs.get('policy_type') == self.FIXED_QOS_POLICY_TYPE:
+                provisioning_options['qos_policy_group'] = (
+                    qos_policy_group_name)
+            else:
+                provisioning_options['adaptive_qos_policy_group'] = (
+                    qos_policy_group_name)
+        else:
+            qos_policy_group_name = (
+                self._modify_or_create_qos_for_existing_share(
+                    destination_share, extra_specs, vserver, vserver_client))
+            if qos_policy_group_name:
+                provisioning_options['qos_policy_group'] = (
+                    qos_policy_group_name)
+            else:
+                # Removing the QOS Policy on the migrated share as the
+                # new extra-spec for which this share is being migrated to
+                # does not specify any QOS settings.
+                provisioning_options['qos_policy_group'] = "none"
+
+                qos_policy_of_src_share = (
+                    self._get_backend_qos_policy_group_name(
+                        source_share['id']))
+                self._client.mark_qos_policy_group_for_deletion(
+                    qos_policy_of_src_share)
 
         snap_attributes = self._get_provisioning_options_for_snap_attributes(
             vserver_client, new_share_volume_name)
@@ -4338,8 +4658,9 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # Does the volume have an exclusive QoS policy that we can rename?
         if backend_volume['qos-policy-group-name'] is not None:
-            existing_qos_policy_group = self._client.qos_policy_group_get(
-                backend_volume['qos-policy-group-name'])
+            existing_qos_policy_group = (
+                self._client.qos_policy_group_get_legacy(
+                    backend_volume['qos-policy-group-name']))
             if existing_qos_policy_group['num-workloads'] == 1:
                 # Yay, can set max-throughput and rename
 
@@ -4361,7 +4682,7 @@ class NetAppCmodeFileStorageLibrary(object):
                         != max_throughput or
                     existing_qos_policy_group['min-throughput']
                         != min_throughput):
-                    self._client.qos_policy_group_modify(
+                    self._client.qos_policy_group_modify_legacy(
                         backend_volume['qos-policy-group-name'],
                         max_throughput, min_throughput)
                 self._client.qos_policy_group_rename(

@@ -111,6 +111,12 @@ QOS_MIN_THROUGHPUT_NO_UNIT = 1000
 QOS_MAX_THROUGHPUT_IOPS_NO_UNIT = 5000
 QOS_MIN_THROUGHPUT_IOPS_NO_UNIT = 1000
 ADAPTIVE_QOS_POLICY_GROUP_NAME = 'fake_adaptive_qos_policy_group_name'
+ADAPTIVE_QOS_PEAK_IOPS = '5000'
+ADAPTIVE_QOS_EXPECTED_IOPS = '2000'
+ADAPTIVE_QOS_PEAK_IOPS_ALLOCATION = 'used_space'
+ADAPTIVE_QOS_EXPECTED_IOPS_ALLOCATION = 'used_space'
+ADAPTIVE_QOS_BLOCK_SIZE = 'any'
+ADAPTIVE_ABSOLUTE_MIN_IOPS = '100'
 VSERVER_TYPE_DEFAULT = 'default'
 VSERVER_TYPE_DP_DEST = 'dp_destination'
 VSERVER_OP_STATE_RUNNING = 'running'
@@ -235,6 +241,18 @@ QOS_POLICY_GROUP = {
     'vserver': VSERVER_NAME,
     'max-throughput': QOS_MAX_THROUGHPUT,
     'min-throughput': QOS_MIN_THROUGHPUT,
+    'num-workloads': 1,
+}
+
+ADAPTIVE_QOS_POLICY_GROUP = {
+    'policy-group': ADAPTIVE_QOS_POLICY_GROUP_NAME,
+    'vserver': VSERVER_NAME,
+    'peak_iops': ADAPTIVE_QOS_PEAK_IOPS,
+    'expected_iops': ADAPTIVE_QOS_EXPECTED_IOPS,
+    'peak_iops_allocation': ADAPTIVE_QOS_PEAK_IOPS_ALLOCATION,
+    'expected_iops_allocation': ADAPTIVE_QOS_EXPECTED_IOPS_ALLOCATION,
+    'block_size': ADAPTIVE_QOS_BLOCK_SIZE,
+    'absolute_min_iops': ADAPTIVE_ABSOLUTE_MIN_IOPS,
     'num-workloads': 1,
 }
 
@@ -2991,6 +3009,33 @@ QOS_POLICY_GROUP_GET_ITER_RESPONSE = etree.XML("""
     'vserver': VSERVER_NAME,
     'max_throughput': QOS_MAX_THROUGHPUT,
     'min_throughput': QOS_MIN_THROUGHPUT,
+})
+
+ADAPTIVE_QOS_POLICY_GROUP_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <qos-adaptive-policy-group-info>
+        <peak-iops>%(peak_iops)s</peak-iops>
+        <expected-iops>%(expected_iops)s</expected-iops>
+        <peak-iops-allocation>%(peak_iops_allocation)s</peak-iops-allocation>
+        <expected-iops-allocation>%(expected_iops_allocation)s</expected-iops-allocation>
+        <block-size>%(block_size)s</block-size>
+        <absolute-min-iops>%(absolute_min_iops)s</absolute-min-iops>
+        <num-workloads>1</num-workloads>
+        <policy-group>%(adaptive_qos_policy_group_name)s</policy-group>
+        <vserver>%(vserver)s</vserver>
+      </qos-adaptive-policy-group-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>""" % {
+    'adaptive_qos_policy_group_name': ADAPTIVE_QOS_POLICY_GROUP_NAME,
+    'vserver': VSERVER_NAME,
+    'peak_iops': ADAPTIVE_QOS_PEAK_IOPS,
+    'expected_iops': ADAPTIVE_QOS_EXPECTED_IOPS,
+    'peak_iops_allocation': ADAPTIVE_QOS_PEAK_IOPS_ALLOCATION,
+    'expected_iops_allocation': ADAPTIVE_QOS_EXPECTED_IOPS_ALLOCATION,
+    'block_size': ADAPTIVE_QOS_BLOCK_SIZE,
+    'absolute_min_iops': ADAPTIVE_ABSOLUTE_MIN_IOPS,
 })
 
 SNAPMIRROR_POLICY_GET_ITER_RESPONSE = etree.XML("""

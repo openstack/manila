@@ -782,7 +782,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
               (None, fake.QOS_MIN_THROUGHPUT_IOPS),
               (fake.QOS_MAX_THROUGHPUT_IOPS, fake.QOS_MIN_THROUGHPUT_IOPS))
     @ddt.unpack
-    def test_qos_policy_group_create(self, max_throughput, min_throughput):
+    def test_qos_policy_group_create_legacy(self, max_throughput,
+                                            min_throughput):
         return_value = fake.GENERIC_JOB_POST_RESPONSE
         body = {
             'name': fake.QOS_POLICY_GROUP_NAME,
@@ -807,7 +808,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.mock_object(self.client, 'send_request',
                          mock.Mock(return_value=return_value))
 
-        result = self.client.qos_policy_group_create(
+        result = self.client.qos_policy_group_create_legacy(
             fake.QOS_POLICY_GROUP_NAME, fake.VSERVER_NAME,
             max_throughput, min_throughput)
 
@@ -1811,6 +1812,116 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         mock_send_request.assert_called_once_with(f'/storage/volumes/{uuid}',
                                                   'patch', body=body)
 
+    def test_adaptive_qos_policy_group_create(self):
+        return_value = fake.GENERIC_JOB_POST_RESPONSE
+        body = {
+            'name': fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+            'svm.name': fake.VSERVER_NAME,
+        }
+
+        qos_type_specs = {
+            'peak_iops': 100,
+            'expected_iops': 50,
+            'absolute_min_iops': 20,
+            'block_size': 'any',
+        }
+
+        body['adaptive.peak_iops'] = 100
+        body['adaptive.expected_iops'] = 50
+        body['adaptive.absolute_min_iops'] = 20
+        body['adaptive.block_size'] = 'any'
+
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=return_value))
+
+        result = self.client.adaptive_qos_policy_group_create(
+            fake.ADAPTIVE_QOS_POLICY_GROUP_NAME, fake.VSERVER_NAME,
+            qos_type_specs)
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/qos/policies', 'post', body=body)
+        self.assertEqual(result, return_value)
+
+    def test_adaptive_qos_policy_group_get(self):
+        adaptive_qos_policy_group_name = 'extreme'
+        qos_policy_group = fake.QOS_POLICY_GROUP_REST
+        qos_policy = qos_policy_group.get('records')[0]
+        absolute_min_iops = qos_policy.get(
+            'adaptive', {}).get('absolute_min_iops')
+        block_size = qos_policy.get(
+            'adaptive', {}).get('block_size')
+        peak_iops = qos_policy.get(
+            'adaptive', {}).get('peak_iops')
+        peak_iops_allocation = qos_policy.get(
+            'adaptive', {}).get('peak_iops_allocation')
+        expected_iops = qos_policy.get(
+            'adaptive', {}).get('expected_iops')
+        expected_iops_allocation = qos_policy.get(
+            'adaptive', {}).get('expected_iops_allocation')
+
+        expected = {
+            'policy-group': qos_policy.get('name'),
+            'vserver': qos_policy.get('svm', {}).get('name'),
+            'absolute_min_iops': (
+                absolute_min_iops if absolute_min_iops else 0),
+            'block_size': block_size if block_size else None,
+            'peak_iops': peak_iops if peak_iops else 0,
+            'peak_iops_allocation': (
+                peak_iops_allocation if peak_iops_allocation else None),
+            'expected_iops_allocation': (
+                expected_iops_allocation if
+                expected_iops_allocation else None),
+            'expected_iops': expected_iops if expected_iops else 0,
+            'num-workloads': int(qos_policy.get('object_count')),
+        }
+
+        query = {
+            'name': adaptive_qos_policy_group_name,
+            'fields': 'name,object_count,adaptive.absolute_min_iops,'
+                      'adaptive.block_size,svm.name,'
+                      'adaptive.expected_iops,adaptive.peak_iops,'
+                      'adaptive.expected_iops_allocation,'
+                      'adaptive.peak_iops_allocation',
+        }
+
+        mock_sr = self.mock_object(self.client, 'send_request',
+                                   mock.Mock(return_value=qos_policy_group))
+
+        result = self.client.adaptive_qos_policy_group_get(
+            adaptive_qos_policy_group_name)
+        mock_sr.assert_called_once_with('/storage/qos/policies', 'get',
+                                        query=query)
+        self.assertEqual(expected, result)
+
+    def test_adaptive_qos_policy_group_modify(self):
+        return_request = {
+            'records': [{'uuid': 'fake_uuid'}]
+        }
+        mock_sr = self.mock_object(self.client, 'send_request',
+                                   mock.Mock(return_value=return_request))
+        self.client.adaptive_qos_policy_group_modify(
+            'qos_fake_name', {'expected_iops': 100})
+
+        query = {
+            'name': 'qos_fake_name',
+        }
+        body = {
+            'adaptive.expected_iops': 100,
+        }
+        mock_sr.assert_has_calls([
+            mock.call('/storage/qos/policies', 'get', query=query),
+            mock.call('/storage/qos/policies/fake_uuid', 'patch', body=body),
+        ])
+
+    def test_adaptive_qos_policy_group_modify_error(self):
+        response = fake.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=response))
+        self.assertRaises(exception.NetAppException,
+                          self.client.adaptive_qos_policy_group_modify,
+                          fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+                          {})
+
     def test_qos_policy_group_rename(self):
         """Renames a QoS policy group."""
 
@@ -1834,7 +1945,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                       body=body),
         ])
 
-    def test_qos_policy_group_get(self):
+    def test_qos_policy_group_get_legacy(self):
         qos_policy_group_name = 'extreme'
         qos_policy_group = fake.QOS_POLICY_GROUP_REST
         qos_policy = qos_policy_group.get('records')[0]
@@ -1855,16 +1966,45 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'name': qos_policy_group_name,
             'fields': 'name,object_count,fixed.max_throughput_iops,' +
                       'fixed.max_throughput_mbps,svm.name,' +
-                      'fixed.min_throughput_iops,fixed.min_throughput_mbps'
+                      'fixed.min_throughput_iops,fixed.min_throughput_mbps',
         }
 
         mock_sr = self.mock_object(self.client, 'send_request',
                                    mock.Mock(return_value=qos_policy_group))
 
-        result = self.client.qos_policy_group_get(qos_policy_group_name)
+        result = self.client.qos_policy_group_get_legacy(qos_policy_group_name)
         mock_sr.assert_called_once_with('/storage/qos/policies', 'get',
                                         query=query)
         self.assertEqual(expected, result)
+
+    def test_qos_policy_group_create(self):
+        return_value = fake.GENERIC_JOB_POST_RESPONSE
+        body = {
+            'name': fake.QOS_POLICY_GROUP_NAME,
+            'svm.name': fake.VSERVER_NAME,
+        }
+        qos_type_specs = {
+            'max_throughput_mbps': '10',
+            'max_throughput_iops': '20',
+            'min_throughput_mbps': '30',
+            'min_throughput_iops': '40',
+        }
+
+        body['fixed.max_throughput_mbps'] = 10
+        body['fixed.max_throughput_iops'] = 20
+        body['fixed.min_throughput_mbps'] = 30
+        body['fixed.min_throughput_iops'] = 40
+        body['fixed.capacity_shared'] = 'false'
+
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=return_value))
+
+        result = self.client.qos_policy_group_create(
+            fake.QOS_POLICY_GROUP_NAME, fake.VSERVER_NAME, qos_type_specs)
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/qos/policies', 'post', body=body)
+        self.assertEqual(result, return_value)
 
     def test_remove_unused_qos_policy_groups(self):
 
@@ -1946,7 +2086,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.assertEqual(10, client_cmode_rest.LOG.warning.call_count)
 
     def test_qos_policy_group_exists(self):
-        mock = self.mock_object(self.client, 'qos_policy_group_get')
+        mock = self.mock_object(self.client, 'qos_policy_group_get_legacy')
         response = self.client.qos_policy_group_exists('extreme')
         mock.assert_called_once_with('extreme')
         self.assertTrue(response)
@@ -2009,20 +2149,23 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         mock_sr.assert_called_once_with(
             '/storage/volumes/fake_uuid', 'patch', body=body)
 
-    def test_qos_policy_group_modify(self):
+    def test_qos_policy_group_modify_legacy(self):
         return_request = {
             'records': [{'uuid': 'fake_uuid'}]
         }
         mock_sr = self.mock_object(self.client, 'send_request',
                                    mock.Mock(return_value=return_request))
-        self.client.qos_policy_group_modify('qos_fake_name', '1000iops')
+        self.client.qos_policy_group_modify_legacy(
+            'qos_fake_name', '1000iops', '500iops')
 
         query = {
             'name': 'qos_fake_name',
         }
         body = {
             'fixed.max_throughput_iops': 1000,
-            'fixed.max_throughput_mbps': 0
+            'fixed.max_throughput_mbps': 0,
+            'fixed.min_throughput_iops': 500,
+            'fixed.min_throughput_mbps': 0,
         }
         mock_sr.assert_has_calls([
             mock.call('/storage/qos/policies', 'get', query=query),
@@ -6812,7 +6955,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.mock_object(self.client, 'send_request',
                          mock.Mock(side_effect=self._mock_api_error(code)))
         self.assertRaises(exception.NetAppException,
-                          self.client.qos_policy_group_get,
+                          self.client.qos_policy_group_get_legacy,
                           fake.QOS_POLICY_GROUP_NAME)
 
     def test_qos_policy_group_get_not_found(self):
@@ -6820,7 +6963,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.mock_object(self.client, 'send_request',
                          mock.Mock(return_value=response))
         self.assertRaises(exception.NetAppException,
-                          self.client.qos_policy_group_get,
+                          self.client.qos_policy_group_get_legacy,
                           fake.QOS_POLICY_GROUP_NAME)
 
     def test_remove_unused_qos_policy_groups_error(self):
@@ -7193,7 +7336,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             self.assertIsNone(result)
 
     def test_qos_policy_group_does_not_exists(self):
-        self.mock_object(self.client, 'qos_policy_group_get',
+        self.mock_object(self.client, 'qos_policy_group_get_legacy',
                          mock.Mock(side_effect=exception.NetAppException))
         result = self.client.qos_policy_group_exists(fake.QOS_POLICY_GROUP)
         self.assertFalse(result)
@@ -7212,14 +7355,15 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                                   fake.QOS_POLICY_GROUP_NAME)
         self.assertIsNone(res)
 
-    def test_qos_policy_group_modify_error(self):
+    def test_qos_policy_group_modify_legacy_error(self):
         response = fake.NO_RECORDS_RESPONSE_REST
         self.mock_object(self.client, 'send_request',
                          mock.Mock(return_value=response))
         self.assertRaises(exception.NetAppException,
-                          self.client.qos_policy_group_modify,
+                          self.client.qos_policy_group_modify_legacy,
                           fake.QOS_POLICY_GROUP_NAME,
-                          fake.QOS_MAX_THROUGHPUT)
+                          fake.QOS_MAX_THROUGHPUT,
+                          fake.QOS_MIN_THROUGHPUT)
 
     def test_update_kerberos_realm_error(self):
         self.mock_object(self.client,

@@ -2263,7 +2263,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
     def validate_provisioning_options_for_share(self, provisioning_options,
                                                 extra_specs=None,
-                                                qos_specs=None):
+                                                qos_specs=None,
+                                                qos_type_specs=None):
         if provisioning_options.get('adaptive_qos_policy_group') is not None:
             msg = _("The extra spec 'adaptive_qos_policy_group' is not "
                     "supported by backends configured with "
@@ -2278,9 +2279,11 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             raise exception.NetAppException(msg)
 
         (super(NetAppCmodeMultiSVMFileStorageLibrary, self)
-         .validate_provisioning_options_for_share(provisioning_options,
-                                                  extra_specs=extra_specs,
-                                                  qos_specs=qos_specs))
+         .validate_provisioning_options_for_share(
+            provisioning_options,
+            extra_specs=extra_specs,
+            qos_specs=qos_specs,
+            qos_type_specs=qos_type_specs))
 
     def _get_different_keys_for_equal_ss_type(self, current_sec_service,
                                               new_sec_service):

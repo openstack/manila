@@ -4776,6 +4776,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     },
                     'volume-qos-attributes': {
                         'policy-group-name': None,
+                        'adaptive-policy-group-name': None,
                     },
                     'volume-snaplock-attributes': {
                         'snaplock-type': None,
@@ -4795,6 +4796,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'size-used': fake.SHARE_USED_SIZE,
             'owning-vserver-name': fake.VSERVER_NAME,
             'qos-policy-group-name': fake.QOS_POLICY_GROUP_NAME,
+            'adaptive-qos-policy-group-name': None,
             'style-extended': (fake.FLEXGROUP_STYLE_EXTENDED
                                if is_flexgroup
                                else fake.FLEXVOL_STYLE_EXTENDED),
@@ -4841,6 +4843,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     },
                     'volume-qos-attributes': {
                         'policy-group-name': None,
+                        'adaptive-policy-group-name': None,
                     },
                     'volume-snaplock-attributes': {
                         'snaplock-type': None,
@@ -4860,6 +4863,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'size-used': fake.SHARE_USED_SIZE,
             'owning-vserver-name': fake.VSERVER_NAME,
             'qos-policy-group-name': None,
+            'adaptive-qos-policy-group-name': None,
             'style-extended': fake.FLEXVOL_STYLE_EXTENDED,
             'snaplock-type': "compliance",
         }
@@ -4985,6 +4989,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     },
                     'volume-qos-attributes': {
                         'policy-group-name': None,
+                        'adaptive-policy-group-name': None,
                     },
                 },
             },
@@ -5006,6 +5011,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'size': fake.SHARE_SIZE,
             'owning-vserver-name': fake.VSERVER_NAME,
             'qos-policy-group-name': fake.QOS_POLICY_GROUP_NAME,
+            'adaptive-qos-policy-group-name': None,
         }
         self.client.send_iter_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
@@ -7999,9 +8005,221 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_iter_request.assert_called_once_with(
             'volume-move-get-iter', expected_api_args)
 
+    def test_adaptive_qos_policy_group_exists_no_records(self):
+        self.mock_object(
+            self.client, 'adaptive_qos_policy_group_get',
+            mock.Mock(side_effect=exception.NetAppException))
+
+        policy_exists = self.client.adaptive_qos_policy_group_exists(
+            'i-dont-exist-but-i-am')
+
+        self.assertIs(False, policy_exists)
+
+    def test_adaptive_qos_policy_group_exists(self):
+        self.mock_object(
+            self.client, 'adaptive_qos_policy_group_get',
+            mock.Mock(return_value=fake.ADAPTIVE_QOS_POLICY_GROUP))
+
+        policy_exists = self.client.adaptive_qos_policy_group_exists(
+            fake.ADAPTIVE_QOS_POLICY_GROUP_NAME)
+
+        self.assertIs(True, policy_exists)
+
+    def test_adaptive_qos_policy_grp_get_no_permissions_to_execute_zapi(self):
+        naapi_error = self._mock_api_error(code=netapp_api.EAPINOTFOUND,
+                                           message='13005:Unable to find API')
+        self.mock_object(self.client, 'send_request', naapi_error)
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.adaptive_qos_policy_group_get,
+                          'possibly-valid-qos-policy')
+
+    def test_adaptive_qos_policy_group_get_other_zapi_errors(self):
+        naapi_error = self._mock_api_error(code=netapp_api.EINTERNALERROR,
+                                           message='13114:Internal error')
+        self.mock_object(self.client, 'send_request', naapi_error)
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.adaptive_qos_policy_group_get,
+                          'possibly-valid-qos-policy')
+
+    def test_adaptive_qos_policy_group_get_none_found(self):
+        no_records_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=no_records_response))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.adaptive_qos_policy_group_get,
+                          'non-existent-qos-policy')
+
+        adaptive_qos_policy_group_get_iter_args = {
+            'query': {
+                'qos-adaptive-policy-group-info': {
+                    'policy-group': 'non-existent-qos-policy',
+                },
+            },
+            'desired-attributes': {
+                'qos-adaptive-policy-group-info': {
+                    'policy-group': None,
+                    'vserver': None,
+                    'peak-iops': None,
+                    'peak-iops-allocation': None,
+                    'expected-iops': None,
+                    'expected-iops-allocation': None,
+                    'absolute-min-iops': None,
+                    'block-size': None,
+                    'num-workloads': None
+                },
+            },
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'qos-adaptive-policy-group-get-iter',
+            adaptive_qos_policy_group_get_iter_args, False)
+
+    def test_adaptive_qos_policy_group_get(self):
+        api_response = netapp_api.NaElement(
+            fake.ADAPTIVE_QOS_POLICY_GROUP_GET_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        qos_info = self.client.adaptive_qos_policy_group_get(
+            fake.ADAPTIVE_QOS_POLICY_GROUP_NAME)
+
+        qos_adaptive_policy_group_get_iter_args = {
+            'query': {
+                'qos-adaptive-policy-group-info': {
+                    'policy-group': fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+                },
+            },
+            'desired-attributes': {
+                'qos-adaptive-policy-group-info': {
+                    'policy-group': None,
+                    'vserver': None,
+                    'peak-iops': None,
+                    'peak-iops-allocation': None,
+                    'expected-iops': None,
+                    'expected-iops-allocation': None,
+                    'absolute-min-iops': None,
+                    'block-size': None,
+                    'num-workloads': None
+                },
+            },
+        }
+        self.client.send_request.assert_called_once_with(
+            'qos-adaptive-policy-group-get-iter',
+            qos_adaptive_policy_group_get_iter_args, False)
+        self.assertDictEqual(fake.ADAPTIVE_QOS_POLICY_GROUP, qos_info)
+
+    def test_adaptive_qos_policy_group_create(self):
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=fake.PASSED_RESPONSE))
+
+        qos_type_specs = {
+            'peak_iops': 3000,
+            'expected_iops': 1000,
+            'block_size': '4k',
+        }
+
+        self.client.adaptive_qos_policy_group_create(
+            fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+            fake.VSERVER_NAME,
+            qos_type_specs)
+
+        adaptive_qos_policy_group_create_args = {
+            'policy-group': fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+            'vserver': fake.VSERVER_NAME,
+            'peak-iops': qos_type_specs.get('peak_iops'),
+            'expected-iops': qos_type_specs.get('expected_iops'),
+        }
+
+        if qos_type_specs.get('absolute_min_iops'):
+            adaptive_qos_policy_group_create_args.update(
+                {'absolute-min-iops': qos_type_specs.get(
+                    'absolute_min_iops')})
+        if qos_type_specs.get('block_size'):
+            adaptive_qos_policy_group_create_args.update(
+                {'block-size': qos_type_specs.get('block_size')})
+        if qos_type_specs.get('peak_iops_allocation'):
+            adaptive_qos_policy_group_create_args.update(
+                {'peak-iops-allocation': qos_type_specs.get(
+                    'peak_iops_allocation')})
+        if qos_type_specs.get('expected_iops_allocation'):
+            adaptive_qos_policy_group_create_args.update(
+                {'expected-iops-allocation': qos_type_specs.get(
+                    'expected_iops_allocation')})
+
+        self.client.send_request.assert_called_once_with(
+            'qos-adaptive-policy-group-create',
+            adaptive_qos_policy_group_create_args, False)
+
+    def test_adaptive_qos_policy_group_modify(self):
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=fake.PASSED_RESPONSE))
+
+        qos_type_specs = {
+            'block_size': '4k'
+        }
+
+        self.client.adaptive_qos_policy_group_modify(
+            fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+            qos_type_specs)
+
+        adaptive_qos_policy_group_modify_args = {
+            'policy-group': fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+            'block-size': '4k'
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'qos-adaptive-policy-group-modify',
+            adaptive_qos_policy_group_modify_args, False)
+
+    def test_adaptive_qos_policy_group_delete(self):
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=fake.PASSED_RESPONSE))
+
+        self.client.adaptive_qos_policy_group_delete(
+            fake.ADAPTIVE_QOS_POLICY_GROUP_NAME)
+
+        adaptive_qos_policy_group_delete_args = {
+            'policy-group': fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'qos-adaptive-policy-group-delete',
+            adaptive_qos_policy_group_delete_args, False)
+
+    def test_adaptive_qos_policy_group_rename(self):
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=fake.PASSED_RESPONSE))
+
+        self.client.adaptive_qos_policy_group_rename(
+            fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+            'new_' + fake.ADAPTIVE_QOS_POLICY_GROUP_NAME)
+
+        adaptive_qos_policy_group_rename_args = {
+            'policy-group-name': fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+            'new-name': 'new_' + fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'qos-adaptive-policy-group-rename',
+            adaptive_qos_policy_group_rename_args, False)
+
+    def test_adaptive_qos_policy_group_rename_noop(self):
+        self.mock_object(self.client, 'send_request')
+
+        # rename to same name = no-op
+        self.client.adaptive_qos_policy_group_rename(
+            fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+            fake.ADAPTIVE_QOS_POLICY_GROUP_NAME)
+
+        self.assertFalse(self.client.send_request.called)
+
     def test_qos_policy_group_exists_no_records(self):
-        self.mock_object(self.client, 'qos_policy_group_get', mock.Mock(
-            side_effect=exception.NetAppException))
+        self.mock_object(
+            self.client, 'qos_policy_group_get_legacy',
+            mock.Mock(side_effect=exception.NetAppException))
 
         policy_exists = self.client.qos_policy_group_exists(
             'i-dont-exist-but-i-am')
@@ -8009,7 +8227,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertIs(False, policy_exists)
 
     def test_qos_policy_group_exists(self):
-        self.mock_object(self.client, 'qos_policy_group_get',
+        self.mock_object(self.client, 'qos_policy_group_get_legacy',
                          mock.Mock(return_value=fake.QOS_POLICY_GROUP))
 
         policy_exists = self.client.qos_policy_group_exists(
@@ -8017,31 +8235,31 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertIs(True, policy_exists)
 
-    def test_qos_policy_group_get_no_permissions_to_execute_zapi(self):
+    def test_qos_policy_group_get_legacy_no_permissions_to_execute_zapi(self):
         naapi_error = self._mock_api_error(code=netapp_api.EAPINOTFOUND,
                                            message='13005:Unable to find API')
         self.mock_object(self.client, 'send_request', naapi_error)
 
         self.assertRaises(exception.NetAppException,
-                          self.client.qos_policy_group_get,
+                          self.client.qos_policy_group_get_legacy,
                           'possibly-valid-qos-policy')
 
-    def test_qos_policy_group_get_other_zapi_errors(self):
+    def test_qos_policy_group_get_legacy_other_zapi_errors(self):
         naapi_error = self._mock_api_error(code=netapp_api.EINTERNALERROR,
                                            message='13114:Internal error')
         self.mock_object(self.client, 'send_request', naapi_error)
 
         self.assertRaises(netapp_api.NaApiError,
-                          self.client.qos_policy_group_get,
+                          self.client.qos_policy_group_get_legacy,
                           'possibly-valid-qos-policy')
 
-    def test_qos_policy_group_get_none_found(self):
+    def test_qos_policy_group_get_legacy_none_found(self):
         no_records_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client, 'send_request',
                          mock.Mock(return_value=no_records_response))
 
         self.assertRaises(exception.NetAppException,
-                          self.client.qos_policy_group_get,
+                          self.client.qos_policy_group_get_legacy,
                           'non-existent-qos-policy')
 
         qos_policy_group_get_iter_args = {
@@ -8064,13 +8282,14 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             'qos-policy-group-get-iter', qos_policy_group_get_iter_args, False)
 
-    def test_qos_policy_group_get(self):
+    def test_qos_policy_group_get_legacy(self):
         api_response = netapp_api.NaElement(
             fake.QOS_POLICY_GROUP_GET_ITER_RESPONSE)
         self.mock_object(self.client, 'send_request',
                          mock.Mock(return_value=api_response))
 
-        qos_info = self.client.qos_policy_group_get(fake.QOS_POLICY_GROUP_NAME)
+        qos_info = self.client.qos_policy_group_get_legacy(
+            fake.QOS_POLICY_GROUP_NAME)
 
         qos_policy_group_get_iter_args = {
             'query': {
@@ -8099,11 +8318,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
         {'max_throughput': fake.QOS_MAX_THROUGHPUT,
          'min_throughput': fake.QOS_MIN_THROUGHPUT})
     @ddt.unpack
-    def test_qos_policy_group_create(self, max_throughput, min_throughput):
+    def test_qos_policy_group_create_legacy(self, max_throughput,
+                                            min_throughput):
         self.mock_object(self.client, 'send_request',
                          mock.Mock(return_value=fake.PASSED_RESPONSE))
 
-        self.client.qos_policy_group_create(
+        self.client.qos_policy_group_create_legacy(
             fake.QOS_POLICY_GROUP_NAME, fake.VSERVER_NAME,
             max_throughput=max_throughput,
             min_throughput=min_throughput)
@@ -8122,12 +8342,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             'qos-policy-group-create', qos_policy_group_create_args, False)
 
-    def test_qos_policy_group_modify(self):
+    def test_qos_policy_group_modify_legacy(self):
         self.mock_object(self.client, 'send_request',
                          mock.Mock(return_value=fake.PASSED_RESPONSE))
 
-        self.client.qos_policy_group_modify(fake.QOS_POLICY_GROUP_NAME,
-                                            '3000iops', '20iops')
+        self.client.qos_policy_group_modify_legacy(fake.QOS_POLICY_GROUP_NAME,
+                                                   '3000iops', '20iops')
 
         qos_policy_group_modify_args = {
             'policy-group': fake.QOS_POLICY_GROUP_NAME,
@@ -8137,6 +8357,59 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_request.assert_called_once_with(
             'qos-policy-group-modify', qos_policy_group_modify_args, False)
+
+    @ddt.data(
+        {'throughput': '100MB/s,200iops',
+            'expected': {'mbps': 100, 'iops': 200}},
+        {'throughput': '100MB/s',
+            'expected': {'mbps': 100, 'iops': None}},
+        {'throughput': '200iops',
+            'expected': {'mbps': None, 'iops': 200}},
+        {'throughput': '',
+            'expected': {'mbps': None, 'iops': None}})
+    @ddt.unpack
+    def test__extract_qos_policy_throughput(self, throughput, expected):
+        mbps, iops = self.client._extract_qos_policy_throughput(throughput)
+        self.assertEqual(mbps, expected['mbps'])
+        self.assertEqual(iops, expected['iops'])
+
+    @ddt.data(
+        {'mbps': 100, 'iops': 200, 'expected': '100MB/s,200iops'},
+        {'mbps': 100, 'iops': None, 'expected': '100MB/s'},
+        {'mbps': None, 'iops': 200, 'expected': '200iops'},
+        {'mbps': None, 'iops': None, 'expected': ''},
+        {'mbps': 0, 'iops': 0, 'expected': '0MB/s,0iops'})
+    @ddt.unpack
+    def test__generate_qos_policy_throughput(self, mbps, iops, expected):
+        throughput = self.client._generate_qos_policy_throughput(mbps, iops)
+        self.assertEqual(throughput, expected)
+
+    def test_qos_policy_group_create(self):
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=fake.PASSED_RESPONSE))
+
+        qos_type_specs = {
+            'max_throughput_mbps': '40',
+            'max_throughput_iops': '30',
+            'min_throughput_mbps': '20',
+            'min_throughput_iops': '10',
+        }
+
+        self.client.qos_policy_group_create(
+            fake.QOS_POLICY_GROUP_NAME, fake.VSERVER_NAME, qos_type_specs)
+
+        qos_policy_group_create_args = {
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'vserver': fake.VSERVER_NAME,
+        }
+        qos_policy_group_create_args.update(
+            {'max-throughput': '40MB/s,30iops'})
+        qos_policy_group_create_args.update(
+            {'min-throughput': '20MB/s,10iops'})
+        qos_policy_group_create_args['is-shared'] = 'false'
+
+        self.client.send_request.assert_called_once_with(
+            'qos-policy-group-create', qos_policy_group_create_args, False)
 
     def test_qos_policy_group_delete(self):
         self.mock_object(self.client, 'send_request',
