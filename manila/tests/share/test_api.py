@@ -7672,6 +7672,45 @@ class ShareAPITestCase(test.TestCase):
             data_rpc.DataAPI.create_backup.assert_called_once_with(
                 self.context, backup_ref)
 
+    @ddt.data('CEPHFS', 'CIFS')
+    def test_create_generic_share_backup_invalid_protocol(self, share_proto):
+        CONF.set_default(
+            "data_manager_backup_supported_share_protocols", ["MANGO"])
+        share = db_utils.create_share(
+            is_public=True, status='available', share_proto=share_proto)
+        backup_ref = db_utils.create_backup(share['id'], status='available')
+
+        reservation = 'fake'
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(return_value=reservation))
+        self.mock_object(quota.QUOTAS, 'commit')
+        self.mock_object(quota.QUOTAS, 'rollback')
+        self.mock_object(db_api, 'share_backup_create',
+                         mock.Mock(return_value=backup_ref))
+        self.mock_object(data_rpc.DataAPI, 'create_backup', mock.Mock())
+
+        backup = {
+            'display_name': 'tmp_backup',
+            'backup_options': {},
+            'id': 'dbe28dff-ce7d-4c3d-a795-c31f6fee31ab',
+        }
+        self.assertRaises(
+            exception.InvalidShare,
+            self.api.create_share_backup,
+            self.context,
+            share,
+            backup,
+        )
+
+        quota.QUOTAS.reserve.assert_called_once_with(
+            self.context, backups=1, backup_gigabytes=share['size']
+        )
+        db_api.share_backup_create.assert_not_called()
+        quota.QUOTAS.rollback.assert_called_once_with(
+            self.context, reservation)
+        quota.QUOTAS.commit.assert_not_called()
+        data_rpc.DataAPI.create_backup.assert_not_called()
+
     def test_create_share_backup_share_error_state(self):
         share = db_utils.create_share(is_public=True, status='error')
         backup = {

@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    A new configuration  option named
+    ``data_manager_backup_supported_share_protocols`` is now available to
+    allow operators define which protocols are supported when using the
+    data manager for share backups. In case the backup creation is
+    requested for a share whose protocol is not supported by the data
+    manager service, the operation will fail. For more details, please
+    refer to
+    `Launchpad bug 2088063 <https://bugs.launchpad.net/manila/+bug/2088063>`_.

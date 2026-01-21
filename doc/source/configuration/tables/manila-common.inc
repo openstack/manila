@@ -134,3 +134,5 @@
      - (String) DEPRECATED: The path to respond to healtcheck requests on.
    * - ``update_shares_status_on_ensure`` = ``True``
      - (Boolean) Defines whether Manila should update the status of the shares when ensuring shares or not.
+   * - ``data_manager_backup_supported_share_protocols`` = ``NFS``
+     - (List) The list of supported share protocols while creating share backups using the manila-data service's generic backup approach.
