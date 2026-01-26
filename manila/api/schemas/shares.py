@@ -239,6 +239,27 @@ unmanage_request_body = {
     'additionalProperties': False,
 }
 
+revert_request_body = {
+    'type': 'object',
+    'properties': {
+        # TODO(stephenfin): We should restrict this to 'null' in a future
+        # microversion
+        'revert': {
+            'type': 'object',
+            'properties': {
+                'snapshot_id': {
+                    'type': 'string', 'format': 'uuid'
+                },
+            },
+            'required': ['snapshot_id'],
+            # TODO(stephenfin): Set to False in a future microversion
+            'additionalProperties': True,
+        },
+    },
+    'required': ['revert'],
+    'additionalProperties': False,
+}
+
 reset_status_response_body = {'type': 'null'}
 
 force_delete_response_body = {'type': 'null'}
@@ -281,3 +302,5 @@ extend_response_body = {'type': 'null'}
 shrink_response_body = {'type': 'null'}
 
 unmanage_response_body = {'type': 'null'}
+
+revert_response_body = {'type': 'null'}

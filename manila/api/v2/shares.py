@@ -69,11 +69,10 @@ class ShareController(wsgi.Controller,
     def _revert(self, req, id, body=None):
         """Revert a share to a snapshot."""
         context = req.environ['manila.context']
-        revert_data = self._validate_revert_parameters(context, body)
 
         try:
             share_id = id
-            snapshot_id = revert_data['snapshot_id']
+            snapshot_id = body['revert']['snapshot_id']
 
             share = self.share_api.get(context, share_id)
             snapshot = self.share_api.get_snapshot(context, snapshot_id)
@@ -177,24 +176,6 @@ class ShareController(wsgi.Controller,
             raise exc.HTTPBadRequest(explanation=e.msg)
 
         return webob.Response(status_int=http_client.ACCEPTED)
-
-    def _validate_revert_parameters(self, context, body):
-        if not (body and self.is_valid_body(body, 'revert')):
-            msg = _("Revert entity not found in request body.")
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        required_parameters = ('snapshot_id',)
-        data = body['revert']
-
-        for parameter in required_parameters:
-            if parameter not in data:
-                msg = _("Required parameter %s not found.") % parameter
-                raise exc.HTTPBadRequest(explanation=msg)
-            if not data.get(parameter):
-                msg = _("Required parameter %s is empty.") % parameter
-                raise exc.HTTPBadRequest(explanation=msg)
-
-        return data
 
     @wsgi.Controller.api_version("2.90")
     def create(self, req, body):
@@ -617,7 +598,9 @@ class ShareController(wsgi.Controller,
 
     @wsgi.Controller.api_version('2.27')
     @wsgi.action('revert')
-    def revert(self, req, id, body=None):
+    @validation.request_body_schema(schema.revert_request_body)
+    @validation.response_body_schema(schema.revert_response_body)
+    def revert(self, req, id, body):
         return self._revert(req, id, body)
 
     @wsgi.Controller.api_version("2.0")
