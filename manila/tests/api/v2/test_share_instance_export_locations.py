@@ -51,9 +51,29 @@ class ShareInstanceExportLocationsAPITest(test.TestCase):
         self.share = db_utils.create_share()
         self.share_instance_id = self.share.instance.id
         self.req = self._get_request()
-        paths = ['fake1/1/', 'fake2/2', 'fake3/3']
+        data = [
+            {
+                "path": ("10.254.0.3:/shares/"
+                         "share-e1c2d35e-fe67-4028-ad7a-45f668732b1d"),
+                "share_instance_id":
+                    "e1c2d35e-fe67-4028-ad7a-45f668732b1d",
+                "is_admin_only": False,
+                "id": "b6bd76ce-12a2-42a9-a30a-8a43b503867d",
+                "preferred": False
+            },
+            {
+                "path": ("10.0.0.3:/shares/"
+                         "share-e1c2d35e-fe67-4028-ad7a-45f668732b1d"),
+                "share_instance_id":
+                    "e1c2d35e-fe67-4028-ad7a-45f668732b1d",
+                "is_admin_only": True,
+                "id": "6921e862-88bc-49a5-a2df-efeed9acd583",
+                "preferred": False
+            }
+        ]
         db.export_locations_update(
-            self.ctxt['admin'], self.share_instance_id, paths, False)
+            self.ctxt['admin'], self.share_instance_id,
+            data, False)
 
     @ddt.data({'role': 'admin', 'version': '2.9'},
               {'role': 'user', 'version': '2.9'},
@@ -92,7 +112,7 @@ class ShareInstanceExportLocationsAPITest(test.TestCase):
 
         self.assertIn('export_locations', index_result)
         self.assertEqual(1, len(index_result))
-        self.assertEqual(3, len(index_result['export_locations']))
+        self.assertEqual(2, len(index_result['export_locations']))
 
         for index_el in index_result['export_locations']:
             self.assertIn('id', index_el)
