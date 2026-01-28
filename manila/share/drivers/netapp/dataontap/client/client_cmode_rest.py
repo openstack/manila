@@ -2302,23 +2302,37 @@ class NetAppRestClient(object):
                     'delete')
 
     @na_utils.trace
-    def soft_delete_snapshot(self, volume_name, snapshot_name):
-        """Deletes a volume snapshot, or renames it if delete fails."""
+    def rename_snapshot_and_split_clones(self, volume_name, snapshot_name):
+        """Renames volume snapshot & splits clones."""
+
+        msg_args = {'snap': snapshot_name, 'vol': volume_name}
         try:
-            self.delete_snapshot(volume_name, snapshot_name)
-        except netapp_api.NaApiError:
             self.rename_snapshot(volume_name,
                                  snapshot_name,
                                  DELETED_PREFIX + snapshot_name)
-            msg = _('Soft-deleted snapshot %(snapshot)s on volume %(volume)s.')
-            msg_args = {'snapshot': snapshot_name, 'volume': volume_name}
+            msg = _('Soft-deleted snapshot %(snap)s on volume %(vol)s.')
             LOG.info(msg, msg_args)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EREST_SNAPSHOT_NOT_FOUND:
+                msg = _('Snapshot %(snap)s on volume %(vol)s not found.')
+                LOG.debug(msg, msg_args)
+                return
+            else:
+                raise
 
-            # Snapshots are locked by clone(s), so split the clone(s)
-            snapshot_children = self.get_clone_children_for_snapshot(
-                volume_name, snapshot_name)
-            for snapshot_child in snapshot_children:
-                self.volume_clone_split_start(snapshot_child['name'])
+        # Snapshots are locked by clone(s), so split the clone(s)
+        snapshot_children = self.get_clone_children_for_snapshot(
+            volume_name, DELETED_PREFIX + snapshot_name)
+        for snapshot_child in snapshot_children:
+            self.volume_clone_split_start(snapshot_child['name'])
+
+    @na_utils.trace
+    def soft_delete_snapshot(self, volume_name, snapshot_name):
+        """Deletes a volume snapshot, or renames & splits if delete fails."""
+        try:
+            self.delete_snapshot(volume_name, snapshot_name)
+        except netapp_api.NaApiError:
+            self.rename_snapshot_and_split_clones(volume_name, snapshot_name)
 
     @na_utils.trace
     def rename_snapshot(self, volume_name, snapshot_name, new_snapshot_name):

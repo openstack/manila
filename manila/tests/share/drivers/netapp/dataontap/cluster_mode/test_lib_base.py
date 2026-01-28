@@ -2214,6 +2214,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=provisioning_options))
         mock_create_fpolicy = self.mock_object(
             self.library, '_create_fpolicy_for_share')
+
         vserver = fake.VSERVER1
         vserver_client = mock.Mock()
         original_snapshot_size = 20
@@ -2223,6 +2224,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
         fake_snapshot['provider_location'] = provider_location
         fake_snapshot['size'] = original_snapshot_size
+        mock_rename_snapshot_and_split_clones = self.mock_object(
+            vserver_client,
+            'rename_snapshot_and_split_clones'
+        )
 
         self.library._allocate_container_from_snapshot(
             fake_share_inst,
@@ -2263,10 +2268,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         else:
             mock_create_fpolicy.assert_not_called()
 
-        if split is None:
-            vserver_client.volume_clone_split_start.assert_called_once_with(
-                fake.SHARE_INSTANCE_NAME)
-        if split:
+        if split or split is None:
+            mock_rename_snapshot_and_split_clones.assert_called_once_with(
+                fake.SHARE_INSTANCE_NAME,
+                parent_snapshot_name,
+                )
             vserver_client.volume_clone_split_start.assert_called_once_with(
                 fake.SHARE_INSTANCE_NAME)
         if split is False:

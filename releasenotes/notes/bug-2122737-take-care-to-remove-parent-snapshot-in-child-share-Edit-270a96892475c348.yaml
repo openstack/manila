@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    NetApp Driver bug #2122737
+    <https://bugs.launchpad.net/manila/+bug/2122737>_: During the "Create
+    share from snapshot" operation, the NetApp Manila driver first creates the
+    clone and then splits it. During this process, the newly created Manila
+    share from the snapshot initially contains the same snapshot as the parent
+    share. As part of this fix, the snapshot copied to the new share is
+    deleted.
