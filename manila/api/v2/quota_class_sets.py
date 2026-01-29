@@ -17,6 +17,8 @@
 import webob
 
 from manila.api.openstack import wsgi
+from manila.api.schemas import quota_class_sets as schema
+from manila.api import validation
 from manila.api.views import quota_class_sets as quota_class_sets_views
 from manila import db
 from manila import exception
@@ -44,7 +46,8 @@ class QuotaClassSetsMixin(object):
             raise webob.exc.HTTPForbidden()
 
         return self._view_builder.detail_list(
-            req, QUOTAS.get_class_quotas(context, id), id)
+            req, QUOTAS.get_class_quotas(context, id), id
+        )
 
     @wsgi.Controller.authorize("update")
     def _update(self, req, id, body):
@@ -60,9 +63,11 @@ class QuotaClassSetsMixin(object):
                 except exception.AdminRequired:
                     raise webob.exc.HTTPForbidden()
         return self._view_builder.detail_list(
-            req, QUOTAS.get_class_quotas(context, quota_class))
+            req, QUOTAS.get_class_quotas(context, quota_class)
+        )
 
 
+@validation.validated
 class QuotaClassSetsControllerLegacy(QuotaClassSetsMixin, wsgi.Controller):
     """Deprecated Quota Class Sets API controller.
 
@@ -71,14 +76,19 @@ class QuotaClassSetsControllerLegacy(QuotaClassSetsMixin, wsgi.Controller):
     """
 
     @wsgi.Controller.api_version('1.0', '2.6')
+    @validation.request_query_schema(schema.show_request_query)
+    @validation.response_body_schema(schema.show_response_body)
     def show(self, req, id):
         return self._show(req, id)
 
     @wsgi.Controller.api_version('1.0', '2.6')
+    @validation.request_body_schema(schema.update_request_body)
+    @validation.response_body_schema(schema.update_response_body)
     def update(self, req, id, body):
         return self._update(req, id, body)
 
 
+@validation.validated
 class QuotaClassSetsController(QuotaClassSetsMixin, wsgi.Controller):
     """Quota Class Sets API controller.
 
@@ -87,10 +97,42 @@ class QuotaClassSetsController(QuotaClassSetsMixin, wsgi.Controller):
     """
 
     @wsgi.Controller.api_version('2.7')
+    @validation.request_query_schema(schema.show_request_query, '2.7')
+    @validation.response_body_schema(
+        schema.show_response_body, '1.0', '2.39')
+    @validation.response_body_schema(
+        schema.show_response_body_v240, '2.40', '2.52')
+    @validation.response_body_schema(
+        schema.show_response_body_v253, '2.53', '2.61')
+    @validation.response_body_schema(
+        schema.show_response_body_v262, '2.62', '2.79')
+    @validation.response_body_schema(
+        schema.show_response_body_v280, '2.80', '2.89')
+    @validation.response_body_schema(schema.show_response_body_v290, '2.90')
     def show(self, req, id):
         return self._show(req, id)
 
     @wsgi.Controller.api_version('2.7')
+    @validation.request_body_schema(
+        schema.update_request_body, '2.7', '2.52')
+    @validation.request_body_schema(
+        schema.update_request_body_v253, '2.53', '2.61')
+    @validation.request_body_schema(
+        schema.update_request_body_v262, '2.62', '2.79')
+    @validation.request_body_schema(
+        schema.update_request_body_v280, '2.80', '2.89')
+    @validation.request_body_schema(schema.update_request_body_v290, '2.90')
+    @validation.response_body_schema(
+        schema.update_response_body, '2.7', '2.39')
+    @validation.response_body_schema(
+        schema.update_response_body_v240, '2.40', '2.52')
+    @validation.response_body_schema(
+        schema.update_response_body_v253, '2.53', '2.61')
+    @validation.response_body_schema(
+        schema.update_response_body_v262, '2.62', '2.79')
+    @validation.response_body_schema(
+        schema.update_response_body_v280, '2.80', '2.89')
+    @validation.response_body_schema(schema.update_response_body_v290, '2.90')
     def update(self, req, id, body):
         return self._update(req, id, body)
 

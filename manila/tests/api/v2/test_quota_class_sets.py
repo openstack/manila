@@ -78,6 +78,7 @@ class QuotaSetsControllerTest(test.TestCase):
             "snapshot_gigabytes": 56,
             "share_networks": 67,
         }
+
         expected = {
             'quota_class_set': {
                 'id': self.class_name,
@@ -112,6 +113,10 @@ class QuotaSetsControllerTest(test.TestCase):
             req.environ['manila.context'], self.resource_name, 'show')
 
     def test_show_quota_not_authorized(self):
+        req = fakes.HTTPRequest.blank(
+            '/fooproject/quota-class-sets',
+            version='2.62', use_admin_context=True)
+
         self.mock_object(
             quota_class_sets.db,
             'authorize_quota_class_context',
@@ -120,9 +125,9 @@ class QuotaSetsControllerTest(test.TestCase):
         self.assertRaises(
             webob.exc.HTTPForbidden,
             self.controller.show,
-            REQ, self.class_name)
+            req, self.class_name)
         self.mock_policy_check.assert_called_once_with(
-            REQ.environ['manila.context'], self.resource_name, 'show')
+            req.environ['manila.context'], self.resource_name, 'show')
 
     @ddt.data(
         ('os-', '1.0', quota_class_sets.QuotaClassSetsControllerLegacy),
@@ -130,6 +135,8 @@ class QuotaSetsControllerTest(test.TestCase):
         ('', '2.7', quota_class_sets.QuotaClassSetsController),
         ('', '2.53', quota_class_sets.QuotaClassSetsController),
         ('', '2.62', quota_class_sets.QuotaClassSetsController),
+        ('', '2.80', quota_class_sets.QuotaClassSetsController),
+        ('', '2.90', quota_class_sets.QuotaClassSetsController),
     )
     @ddt.unpack
     def test_update_quota(self, url, version, controller):
@@ -152,7 +159,6 @@ class QuotaSetsControllerTest(test.TestCase):
                 'share_networks': 10,
             }
         }
-
         if req.api_version_request >= api_version.APIVersionRequest("2.40"):
             expected['quota_class_set']['share_groups'] = 50
             expected['quota_class_set']['share_group_snapshots'] = 50
@@ -164,6 +170,8 @@ class QuotaSetsControllerTest(test.TestCase):
         if req.api_version_request >= api_version.APIVersionRequest("2.80"):
             expected['quota_class_set']['backups'] = 10
             expected['quota_class_set']['backup_gigabytes'] = 1000
+        if req.api_version_request >= api_version.APIVersionRequest("2.90"):
+            expected['quota_class_set']['encryption_keys'] = 100
 
         update_result = controller().update(
             req, self.class_name, body=body)
