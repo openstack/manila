@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2129743
+    <https://bugs.launchpad.net/manila/+bug/2129743>`_:
+    When the `mount_point_name` parameter is given during managing share,
+    NetApp ONTAP driver can now mount volumes using the `mount_point_name`
+    value itself. Fixed this by adding '/' before mount_point_name when calling
+    NetApp driver's volume mount API.

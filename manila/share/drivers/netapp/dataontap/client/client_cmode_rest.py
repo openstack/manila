@@ -2471,7 +2471,7 @@ class NetAppRestClient(object):
         uuid = volume['uuid']
 
         body = {
-            'nas.path': (junction_path if junction_path
+            'nas.path': ('/%s' % junction_path if junction_path
                          else '/%s' % volume_name)
         }
 
