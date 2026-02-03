@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Purge DB records is fixed to raise error in case of missing or invalid
+    db config. For more details, please check
+    `launchpad bug #2124043 <https://bugs.launchpad.net/manila/+bug/2124043>`_
