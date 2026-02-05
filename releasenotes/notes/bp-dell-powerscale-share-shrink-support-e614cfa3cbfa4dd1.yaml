@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Dell PowerScale Manila Driver: The Dell PowerScale driver in Manila
+    now supports shrinking shares. This allows users to reduce the size
+    of an existing share using the Manila API.

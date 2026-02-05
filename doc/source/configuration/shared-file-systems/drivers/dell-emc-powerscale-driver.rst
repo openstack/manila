@@ -49,6 +49,8 @@ The following operations are supported:
 
 - Ensure shares.
 
+- Shrink share.
+
 Back end configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -72,6 +74,26 @@ Add the parameter below to set an advisory limit.
 .. code-block:: ini
 
     powerscale_threshold_limit = <threshold percentage value>
+
+Shrink a share
+~~~~~~~~~~~~~~
+
+Overview
+^^^^^^^^
+Shrinking reduces the size (GiB) of an existing Manila share to a
+smaller value. The operation enforces quota limits and rejects invalid
+sizes (e.g., 0 or any value greater than the current size).
+
+Limitations and behavior
+^^^^^^^^^^^^^^^^^^^^^^^^
+* New size must be a positive integer **less than** the current size and
+  within quotas.
+* During the operation, the share status transitions to **shrinking**
+  and returns to **available** on success.
+
+For information on resizing shares, refer to the OpenStack Manila
+administration guide:
+:doc:`/admin/shared-file-systems-share-resize`
 
 Restrictions
 ~~~~~~~~~~~~

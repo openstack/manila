@@ -1092,3 +1092,33 @@ class PowerScaleTest(test.TestCase):
             }
         }
         self.assertEqual(result, expected_result)
+
+    def test_shrink_share_success(self):
+        share = {"name": self.SHARE_NAME, "share_proto": "CIFS", "size": 8}
+        path = f"{self.ROOT_DIR}/{self.SHARE_NAME}"
+        self._mock_powerscale_api.quota_get.return_value = {
+            'usage': {'logical': 5 * units.Gi}
+        }
+        self.storage_connection.shrink_share(share, new_size=6)
+        self._mock_powerscale_api.quota_get.assert_called_once_with(
+            path, 'directory'
+        )
+        self._mock_powerscale_api.quota_set.assert_called_once_with(
+            path, 'directory', 6 * units.Gi
+        )
+
+    def test_shrink_share_raises_when_new_quota_less_than_used(self):
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS", "size": 8}
+        path = f"{self.ROOT_DIR}/{self.SHARE_NAME}"
+        self._mock_powerscale_api.quota_get.return_value = {
+            'usage': {'logical': 7 * units.Gi}
+        }
+        self.assertRaises(
+            exception.ShareShrinkingPossibleDataLoss,
+            self.storage_connection.shrink_share,
+            share, 6
+        )
+        self._mock_powerscale_api.quota_get.assert_called_once_with(
+            path, 'directory'
+        )
+        self._mock_powerscale_api.quota_set.assert_not_called()
