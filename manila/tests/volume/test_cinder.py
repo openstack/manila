@@ -17,9 +17,11 @@ from unittest import mock
 from cinderclient import exceptions as cinder_exception
 import ddt
 
+from manila.common import constants as const
 from manila import context
 from manila import exception
 from manila import test
+from manila.tests import fake_volume
 from manila.tests import utils as test_utils
 from manila.volume import cinder
 
@@ -287,3 +289,75 @@ class CinderApiTestCase(test.TestCase):
         self.api.delete_snapshot(self.ctx, 'id1')
         self.cinderclient.volume_snapshots.delete.assert_called_once_with(
             'id1')
+
+    def test_wait_for_available_volume(self):
+        fake_volume = {'status': 'creating', 'id': 'fake'}
+        fake_available_volume = {'status': 'available', 'id': 'fake'}
+        self.mock_object(self.cinderclient.volumes, 'get',
+                         mock.Mock(return_value=fake_available_volume))
+
+        actual_result = self.api.wait_for_available_volume(
+            fake_volume, 5, "error", "timeout")
+
+        self.assertEqual(fake_available_volume, actual_result)
+        self.cinderclient.volumes.get.assert_called_once_with(
+            fake_volume['id'])
+
+    def test_wait_for_available_volume_error_extending(self):
+        fake_volume = {'status': const.STATUS_EXTENDING_ERROR, 'id': 'fake'}
+        self.mock_object(self.cinderclient.volumes, 'get',
+                         mock.Mock(return_value=fake_volume))
+        self.assertRaises(exception.ManilaException,
+                          self.api.wait_for_available_volume,
+                          fake_volume, 5, 'error', 'timeout')
+
+    @mock.patch('time.sleep')
+    def test_wait_for_extending_volume(self, mock_sleep):
+        initial_size = 1
+        expected_size = 2
+        mock_volume = fake_volume.FakeVolume(status='available',
+                                             size=initial_size)
+        mock_extending_vol = fake_volume.FakeVolume(status='extending',
+                                                    size=initial_size)
+        mock_extended_vol = fake_volume.FakeVolume(status='available',
+                                                   size=expected_size)
+
+        self.mock_object(self.cinderclient.volumes, 'get',
+                         mock.Mock(side_effect=[mock_extending_vol,
+                                                mock_extended_vol]))
+
+        result = self.api.wait_for_available_volume(
+            mock_volume, 5, "error", "timeout",
+            expected_size=expected_size)
+
+        expected_get_count = 2
+
+        self.assertEqual(mock_extended_vol, result)
+        self.cinderclient.volumes.get.assert_has_calls(
+            [mock.call(mock_volume['id'])] * expected_get_count
+        )
+        # utils.retry sleeps before retries, so 1 sleep for 2 get calls
+        self.assertEqual(1, mock_sleep.call_count)
+
+    def test_wait_for_available_volume_timeout(self):
+        fake_volume = {'status': 'creating', 'id': 'fake'}
+        self.mock_object(self.cinderclient.volumes, 'get',
+                         mock.Mock(return_value=fake_volume))
+
+        self.assertRaises(
+            exception.ManilaException,
+            self.api.wait_for_available_volume,
+            fake_volume, 1, "error", "timeout"
+        )
+
+    def test_wait_for_available_volume_error(self):
+        fake_volume = {'status': 'creating', 'id': 'fake'}
+        error_volume = {'status': 'error', 'id': 'fake'}
+        self.mock_object(self.cinderclient.volumes, 'get',
+                         mock.Mock(return_value=error_volume))
+
+        self.assertRaises(
+            exception.ManilaException,
+            self.api.wait_for_available_volume,
+            fake_volume, 1, "error", "timeout"
+        )

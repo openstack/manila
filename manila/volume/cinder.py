@@ -23,13 +23,18 @@ from cinderclient import exceptions as cinder_exception
 from cinderclient.v3 import client as cinder_client
 from keystoneauth1 import loading as ks_loading
 from oslo_config import cfg
+from oslo_log import log
 
 from manila.common import client_auth
 from manila.common.config import core_opts
+from manila.common import constants as const
 import manila.context as ctxt
 from manila.db import base
 from manila import exception
 from manila.i18n import _
+from manila import utils
+
+LOG = log.getLogger(__name__)
 
 CINDER_GROUP = 'cinder'
 AUTH_OBJ = None
@@ -235,7 +240,7 @@ class API(base.Base):
 
     def create(self, context, size, name, description, snapshot=None,
                image_id=None, volume_type=None, metadata=None,
-               availability_zone=None):
+               availability_zone=None, source_volid=None):
 
         if snapshot is not None:
             snapshot_id = snapshot['id']
@@ -250,7 +255,9 @@ class API(base.Base):
                       project_id=context.project_id,
                       availability_zone=availability_zone,
                       metadata=metadata,
-                      imageRef=image_id)
+                      imageRef=image_id,
+                      source_volid=source_volid
+                      )
 
         try:
             item = cinderclient(context).volumes.create(size, **kwargs)
@@ -318,3 +325,40 @@ class API(base.Base):
     @translate_snapshot_exception
     def delete_snapshot(self, context, snapshot_id):
         cinderclient(context).volume_snapshots.delete(snapshot_id)
+
+    def wait_for_available_volume(self, volume, timeout,
+                                  msg_error="Volume failed.",
+                                  msg_timeout="Volume action timeout.",
+                                  expected_size=None):
+
+        class VolumeNotReady(Exception):
+            pass
+
+        @utils.retry(
+            retry_param=VolumeNotReady,
+            interval=1,
+            retries=timeout,
+            backoff_rate=1,
+        )
+        def check_volume_status():
+            vol = self.get(ctxt.get_admin_context(), volume['id'])
+            if vol['status'] == const.STATUS_AVAILABLE:
+                if expected_size and vol['size'] != expected_size:
+                    LOG.debug("The volume %(vol_id)s is available but the "
+                              "volume size does not match the expected size. "
+                              "A volume resize operation may be pending. "
+                              "Expected size: %(expected_size)s, "
+                              "Actual size: %(volume_size)s.",
+                              dict(vol_id=vol['id'],
+                                   expected_size=expected_size,
+                                   volume_size=vol['size']))
+                    raise VolumeNotReady()
+                return vol
+            elif 'error' in vol['status'].lower():
+                raise exception.ManilaException(msg_error)
+            raise VolumeNotReady()
+
+        try:
+            return check_volume_status()
+        except VolumeNotReady:
+            raise exception.ManilaException(msg_timeout)

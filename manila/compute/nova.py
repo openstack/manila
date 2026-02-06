@@ -77,7 +77,9 @@ def _untranslate_server_summary_view(server):
     d['status'] = server.status
     d['flavor'] = server.flavor.get('id') or server.flavor['original_name']
     d['name'] = server.name
-    d['image'] = server.image['id']
+    d['image'] = server.image['id'] if server.image else None
+    d['volume_attached'] = getattr(
+        server, "os-extended-volumes:volumes_attached", [])
     d['created'] = server.created
     d['addresses'] = server.addresses
     d['networks'] = server.networks

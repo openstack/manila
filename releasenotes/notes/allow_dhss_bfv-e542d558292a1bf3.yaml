@@ -1,0 +1,30 @@
+---
+features:
+  - |
+    Support boot from volume for DHSS mode service instance.
+    Boot volume can be created either from an image or an assigned base volume,
+    depending on configuration.
+
+    For create boot from volume with image as source.
+    You can now use:
+
+    .. code-block:: ini
+
+        [$DRIVER_NAME|DEFAULT]
+        service_image_name = 'manila-service-image'
+        service_instance_boot_from_volume = True
+
+    This will automatically create volume that base on the service image.
+
+    And for create boot from volume with base volume as source.
+    You can now use:
+
+    .. code-block:: ini
+
+        [$DRIVER_NAME|DEFAULT]
+        base_boot_volume_id = '42c3cdca-1e84-4654-9068-59b192ff8f32'
+        service_instance_boot_from_volume = True
+
+    This will create new volume base on that base boot volume.
+
+    Once volume is ready, it will attached to server as bootable volume.

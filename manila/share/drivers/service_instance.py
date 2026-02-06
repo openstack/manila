@@ -37,6 +37,7 @@ from manila.network.linux import ip_lib
 from manila.network.neutron import api as neutron
 from manila import ssh_utils
 from manila import utils
+from manila import volume
 
 LOG = log.getLogger(__name__)
 NEUTRON_NAME = "neutron"
@@ -126,6 +127,38 @@ share_servers_handling_mode_opts = [
         help="ID of neutron subnet used to communicate with admin network,"
              " to create additional admin export locations on. "
              "Related to 'admin_network_id'."),
+    cfg.BoolOpt(
+        'service_instance_boot_from_volume',
+        default=False,
+        help='Boot service instances (share servers) from a Cinder volume. '
+             'If False, boot from the image as before. '
+             'Only used if driver_handles_share_servers=True.'
+    ),
+    cfg.IntOpt(
+        'service_instance_boot_volume_size',
+        default=10,
+        min=1,
+        help='Size (GiB) of the root volume when booting from volume. '
+             'Only used if driver_handles_share_servers=True.'
+    ),
+    cfg.StrOpt(
+        'service_instance_boot_volume_type',
+        help='Name or id of cinder volume type which will be used '
+             'for all boot volumes created by driver.'),
+    cfg.StrOpt(
+        'service_instance_base_boot_volume_id',
+        help="UUID of volume in Cinder, that will be used as base volume "
+             "that bootable volume clone from during service instance "
+             "creation. Only used if driver_handles_share_servers=True."),
+    cfg.BoolOpt(
+        'service_instance_boot_volume_delete_on_termination',
+        default=True,
+        help='Whether the root volume is deleted when the service instance '
+             'is terminated. Only used if driver_handles_share_servers=True.'
+    ),
+    cfg.StrOpt('service_instance_boot_volume_name_template',
+               default='manila-share-%s-boot',
+               help="Boot volume name template."),
 ]
 
 no_share_servers_handling_mode_opts = [
@@ -229,6 +262,7 @@ class ServiceInstanceManager(object):
 
         self.image_api = image.API()
         self.compute_api = compute.API()
+        self.volume_api = volume.API()
 
         self.path_to_private_key = self.get_config_option(
             "path_to_private_key")
@@ -554,9 +588,84 @@ class ServiceInstanceManager(object):
                 service_image_name)
         return images[0]
 
+    def _build_bdm_from_volume(self, volume_id, delete_on_termination=True):
+        return [{
+            'boot_index': 0,
+            'uuid': volume_id,
+            'source_type': 'volume',
+            'destination_type': 'volume',
+            'delete_on_termination': bool(delete_on_termination),
+        }]
+
+    def _build_bdm_from_image(self, image_id, size_gb,
+                              delete_on_termination=True):
+        # Nova will create the volume in Cinder and attach as root
+        return [{
+            'boot_index': 0,
+            'uuid': image_id,
+            'source_type': 'image',
+            'destination_type': 'volume',
+            'volume_size': int(size_gb),
+            'delete_on_termination': bool(delete_on_termination),
+        }]
+
     def _create_service_instance(self, context, instance_name, network_info):
         """Creates service vm and sets up networking for it."""
+        boot_from_volume = self.get_config_option(
+            'service_instance_boot_from_volume')
+        block_device_mapping_v2 = None
+        boot_volume_id = None
         service_image_id = self._get_service_image(context)
+        if boot_from_volume:
+            del_root = self.get_config_option(
+                'service_instance_boot_volume_delete_on_termination')
+            base_vol_id = self.get_config_option(
+                "service_instance_base_boot_volume_id")
+            root_size = self.get_config_option(
+                'service_instance_boot_volume_size')
+            if base_vol_id:
+                msg = "Creating boot volume for share server '%s'."
+                LOG.debug(msg, network_info['server_id'])
+                name = self.get_config_option(
+                    'service_instance_boot_volume_name_template'
+                ) % network_info[
+                    'server_id']
+
+                volume_info = {
+                    'size': root_size,
+                    'name': name,
+                    'description': '',
+                    'availability_zone': (
+                        self.availability_zone
+                    ),
+                    'source_volid': base_vol_id
+                }
+                vol_type = self.get_config_option(
+                    "service_instance_boot_volume_type")
+                volume_info['volume_type'] = vol_type
+                volume = self.volume_api.create(context, **volume_info)
+                msg_error = _('Failed to create bootable volume')
+                timeout = self.get_config_option('max_time_to_create_volume')
+                msg_timeout = (
+                    _('Volume has not been created in %ss. Giving up') %
+                    timeout
+                )
+
+                volume = self.volume_api.wait_for_available_volume(
+                    volume, timeout,
+                    msg_error=msg_error, msg_timeout=msg_timeout
+                )
+                boot_volume_id = volume['id']
+                block_device_mapping_v2 = self._build_bdm_from_volume(
+                    boot_volume_id, del_root
+                )
+            else:
+                block_device_mapping_v2 = self._build_bdm_from_image(
+                    service_image_id,
+                    root_size,
+                    delete_on_termination=del_root
+                )
+
         key_name, key_path = self._get_key(context)
         if not (self.get_config_option("service_instance_password") or
                 key_name):
@@ -585,10 +694,16 @@ class ServiceInstanceManager(object):
                 network_data['admin_port']['id'])
         try:
             create_kwargs = self._get_service_instance_create_kwargs()
+            if boot_from_volume:
+                create_kwargs[
+                    'block_device_mapping_v2'
+                ] = block_device_mapping_v2
+                create_kwargs['image'] = None
+            else:
+                create_kwargs['image'] = service_image_id
             service_instance = self.compute_api.server_create(
                 context,
                 name=instance_name,
-                image=service_image_id,
                 flavor=self.get_config_option("service_instance_flavor_id"),
                 key_name=key_name,
                 nics=network_data['nics'],
@@ -635,6 +750,18 @@ class ServiceInstanceManager(object):
 
         except Exception as e:
             e.detail_data = {'server_details': fail_safe_data}
+            # Clean up boot volume if we created one and instance creation
+            # failed. If instance was created successfully, the volume is
+            # attached and will be cleaned up when the instance is deleted.
+            if boot_volume_id and 'instance_id' not in fail_safe_data:
+                LOG.warning("Cleaning up orphaned boot volume %s after "
+                            "service instance creation failure.",
+                            boot_volume_id)
+                try:
+                    self.volume_api.delete(context, boot_volume_id)
+                except Exception:
+                    LOG.exception("Failed to delete orphaned boot volume %s.",
+                                  boot_volume_id)
             raise
 
         service_instance.update(fail_safe_data)

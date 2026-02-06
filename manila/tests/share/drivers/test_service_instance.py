@@ -41,6 +41,8 @@ CONF = cfg.CONF
 def fake_get_config_option(key):
     if key == 'driver_handles_share_servers':
         return True
+    if key == 'service_instance_boot_from_volume':
+        return False
     elif key == 'service_instance_password':
         return None
     elif key == 'service_instance_user':
@@ -86,6 +88,7 @@ class FakeServiceInstance(object):
     def __init__(self, driver_config=None):
         super(FakeServiceInstance, self).__init__()
         self.compute_api = service_instance.compute.API()
+        self.volume_api = service_instance.volume.API()
         self.admin_context = service_instance.context.get_admin_context()
         self.driver_config = driver_config
 
@@ -1114,6 +1117,206 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                 server_get['id'],
                 sg[0]['id']))
         self._manager.network_helper.get_network_name.assert_has_calls([])
+
+    def test___create_service_instance_with_bfv_with_image(self):
+        self.mock_object(service_instance, 'NeutronNetworkHelper',
+                         mock.Mock(side_effect=FakeNetworkHelper))
+        config_data = dict(DEFAULT=dict(
+            service_instance_boot_from_volume=True,
+            service_instance_boot_volume_size=100,
+            service_instance_boot_volume_name_template="boo_vol_name_%s",
+            driver_handles_share_servers=True,
+            service_instance_user='fake_user',
+            limit_ssh_access=True))
+        with test_utils.create_temp_config_with_opts(config_data):
+            self._manager = service_instance.ServiceInstanceManager()
+
+        server_create = dict(id='fakeid', status='CREATING', networks=dict())
+        net_name = self._manager.get_config_option("service_network_name")
+        sg = [{'id': 'fakeid', 'name': 'fakename'}, ]
+        ip_address = 'fake_ip_address'
+        service_image_id = 'fake_service_image_id'
+        key_data = 'fake_key_name', 'fake_key_path'
+        instance_name = 'fake_instance_name'
+        network_info = dict(server_id='fake_server')
+        network_data = {'nics': ['fake_nic1', 'fake_nic2']}
+        network_data['router'] = dict(id='fake_router_id')
+        server_get = dict(
+            id='fakeid', status='ACTIVE', networks={net_name: [ip_address]})
+        block_device_mapping_v2 = [{
+            'boot_index': 0, 'uuid': service_image_id,
+            'source_type': 'image', 'destination_type': 'volume',
+            'volume_size': 100, 'delete_on_termination': True
+        }]
+        network_data.update(dict(
+            router_id='fake_router_id', subnet_id='fake_subnet_id',
+            public_port=dict(id='fake_public_port',
+                             fixed_ips=[dict(ip_address=ip_address)]),
+            service_port=dict(id='fake_service_port',
+                              fixed_ips=[{'ip_address': ip_address}]),
+            admin_port={'id': 'fake_admin_port',
+                        'fixed_ips': [{'ip_address': ip_address}]},
+            service_subnet={'id': 'fake_subnet_id',
+                            'cidr': '10.254.0.0/28'})
+        )
+        self.mock_object(service_instance.time, 'time',
+                         mock.Mock(return_value=5))
+        self.mock_object(self._manager.network_helper, 'setup_network',
+                         mock.Mock(return_value=network_data))
+        self.mock_object(self._manager.network_helper, 'get_network_name',
+                         mock.Mock(return_value=net_name))
+        self.mock_object(self._manager, '_get_service_image',
+                         mock.Mock(return_value=service_image_id))
+        self.mock_object(self._manager, '_get_key',
+                         mock.Mock(return_value=key_data))
+        self.mock_object(self._manager, '_get_or_create_security_groups',
+                         mock.Mock(return_value=sg))
+        self.mock_object(self._manager.compute_api, 'server_create',
+                         mock.Mock(return_value=server_create))
+        self.mock_object(self._manager.compute_api, 'server_get',
+                         mock.Mock(return_value=server_get))
+        self.mock_object(self._manager.compute_api,
+                         'add_security_group_to_server')
+        self.mock_object(self._manager.volume_api, 'create')
+        self.mock_object(self._manager.volume_api, 'wait_for_available_volume')
+        expected = {
+            'id': server_get['id'],
+            'status': server_get['status'],
+            'pk_path': key_data[1],
+            'public_address': ip_address,
+            'router_id': network_data.get('router_id'),
+            'subnet_id': network_data.get('subnet_id'),
+            'instance_id': server_get['id'],
+            'ip': ip_address,
+            'networks': server_get['networks'],
+            'public_port_id': 'fake_public_port',
+            'service_port_id': 'fake_service_port',
+            'admin_port_id': 'fake_admin_port',
+            'admin_ip': 'fake_ip_address',
+        }
+
+        result = self._manager._create_service_instance(
+            self._manager.admin_context, instance_name, network_info)
+
+        self.assertEqual(expected, result)
+        self._manager.compute_api.server_create.assert_called_once_with(
+            self._manager.admin_context, name=instance_name,
+            image=None, flavor='100',
+            key_name=key_data[0], nics=network_data['nics'],
+            availability_zone=service_instance.CONF.storage_availability_zone,
+            block_device_mapping_v2=block_device_mapping_v2,
+        )
+        self._manager.volume_api.create.assert_not_called()
+        self._manager.volume_api.wait_for_available_volume.assert_not_called()
+
+    def test___create_service_instance_with_bfv_with_vol(self):
+        self.mock_object(service_instance, 'NeutronNetworkHelper',
+                         mock.Mock(side_effect=FakeNetworkHelper))
+        config_data = dict(DEFAULT=dict(
+            service_instance_boot_from_volume=True,
+            service_instance_boot_volume_size=100,
+            service_instance_boot_volume_type='lvm_test1',
+            service_instance_base_boot_volume_id='fake_boot_base_vol',
+            service_instance_boot_volume_delete_on_termination=False,
+            driver_handles_share_servers=True,
+            service_instance_user='fake_user',
+            limit_ssh_access=True))
+        with test_utils.create_temp_config_with_opts(config_data):
+            self._manager = service_instance.ServiceInstanceManager()
+
+        server_create = dict(id='fakeid', status='CREATING', networks=dict())
+        net_name = self._manager.get_config_option("service_network_name")
+        sg = [{'id': 'fakeid', 'name': 'fakename'}, ]
+        ip_address = 'fake_ip_address'
+        service_image_id = 'fake_service_image_id'
+        key_data = 'fake_key_name', 'fake_key_path'
+        instance_name = 'fake_instance_name'
+        network_info = dict(server_id='fake_server')
+        network_data = {'nics': ['fake_nic1', 'fake_nic2']}
+        network_data['router'] = dict(id='fake_router_id')
+        server_get = dict(
+            id='fakeid', status='ACTIVE', networks={net_name: [ip_address]})
+        block_device_mapping_v2 = [{
+            'boot_index': 0, 'uuid': 'fake_vol',
+            'source_type': 'volume', 'destination_type': 'volume',
+            'delete_on_termination': False
+        }]
+        network_data.update(dict(
+            router_id='fake_router_id', subnet_id='fake_subnet_id',
+            public_port=dict(id='fake_public_port',
+                             fixed_ips=[dict(ip_address=ip_address)]),
+            service_port=dict(id='fake_service_port',
+                              fixed_ips=[{'ip_address': ip_address}]),
+            admin_port={'id': 'fake_admin_port',
+                        'fixed_ips': [{'ip_address': ip_address}]},
+            service_subnet={'id': 'fake_subnet_id',
+                            'cidr': '10.254.0.0/28'})
+        )
+        fake_volume = {'status': 'creating', 'id': 'fake_vol'}
+        fake_available_volume = {'status': 'available', 'id': 'fake_vol'}
+
+        self.mock_object(service_instance.time, 'time',
+                         mock.Mock(return_value=5))
+        self.mock_object(self._manager.network_helper, 'setup_network',
+                         mock.Mock(return_value=network_data))
+        self.mock_object(self._manager.network_helper, 'get_network_name',
+                         mock.Mock(return_value=net_name))
+        self.mock_object(self._manager, '_get_service_image',
+                         mock.Mock(return_value=service_image_id))
+        self.mock_object(self._manager, '_get_key',
+                         mock.Mock(return_value=key_data))
+        self.mock_object(self._manager, '_get_or_create_security_groups',
+                         mock.Mock(return_value=sg))
+        self.mock_object(self._manager.compute_api, 'server_create',
+                         mock.Mock(return_value=server_create))
+        self.mock_object(self._manager.compute_api, 'server_get',
+                         mock.Mock(return_value=server_get))
+        self.mock_object(self._manager.compute_api,
+                         'add_security_group_to_server')
+        self.mock_object(self._manager.volume_api, 'create',
+                         mock.Mock(return_value=fake_volume))
+        self.mock_object(self._manager.volume_api, 'wait_for_available_volume',
+                         mock.Mock(return_value=fake_available_volume))
+        expected = {
+            'id': server_get['id'],
+            'status': server_get['status'],
+            'pk_path': key_data[1],
+            'public_address': ip_address,
+            'router_id': network_data.get('router_id'),
+            'subnet_id': network_data.get('subnet_id'),
+            'instance_id': server_get['id'],
+            'ip': ip_address,
+            'networks': server_get['networks'],
+            'public_port_id': 'fake_public_port',
+            'service_port_id': 'fake_service_port',
+            'admin_port_id': 'fake_admin_port',
+            'admin_ip': 'fake_ip_address',
+        }
+
+        result = self._manager._create_service_instance(
+            self._manager.admin_context, instance_name, network_info)
+
+        self.assertEqual(expected, result)
+        self._manager.compute_api.server_create.assert_called_once_with(
+            self._manager.admin_context, name=instance_name,
+            image=None, flavor='100',
+            key_name=key_data[0], nics=network_data['nics'],
+            availability_zone=service_instance.CONF.storage_availability_zone,
+            block_device_mapping_v2=block_device_mapping_v2,
+        )
+        self._manager.volume_api.create.assert_called_once_with(
+            self._manager.admin_context,
+            size=100, name='manila-share-fake_server-boot',
+            description='', availability_zone='nova',
+            source_volid='fake_boot_base_vol', volume_type='lvm_test1'
+        )
+        (self._manager.volume_api.wait_for_available_volume.
+         assert_called_once_with(
+             {'status': 'creating', 'id': 'fake_vol'},
+             180,
+             msg_error='Failed to create bootable volume',
+             msg_timeout='Volume has not been created in 180s. Giving up')
+         )
 
     def test___create_service_instance_neutron_no_admin_ip(self):
         self.mock_object(service_instance, 'NeutronNetworkHelper',
