@@ -10,12 +10,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-
 import copy
 
-
 from manila.api.validation import helpers
-from manila.api.validation import parameter_types
 
 _request_quota_prop = {
     'type': 'object',
@@ -52,6 +49,7 @@ _request_quota_prop = {
     #  in a future microversion
     'additionalProperties': True,
 }
+
 _request_quota_prop_v253 = copy.deepcopy(_request_quota_prop)
 _request_quota_prop_v253['properties'].update(
     {
@@ -71,44 +69,40 @@ _request_quota_prop_v253['properties'].update(
 _request_quota_prop_v262 = copy.deepcopy(_request_quota_prop_v253)
 _request_quota_prop_v262['properties'].update(
     {
-        'per_share_gigabytes': parameter_types.single_param(
-            {
-                'type': 'integer',
-                'description': helpers.description(
-                    'quota_per_share_gigabytes_request'
-                ),
-            }
-        )
+        'per_share_gigabytes': {
+            'type': 'integer',
+            'description': helpers.description(
+                'quota_per_share_gigabytes_request'
+            ),
+        },
     }
 )
 
 _request_quota_prop_v280 = copy.deepcopy(_request_quota_prop_v262)
 _request_quota_prop_v280['properties'].update(
     {
-        'backups': parameter_types.single_param({
+        'backups': {
             'type': 'integer',
             'description': helpers.description('quota_backups_request'),
-        }),
-        'backup_gigabytes': parameter_types.single_param(
-            {
-                'type': 'integer',
-                'description': helpers.description(
-                    'quota_backup_gigabytes_request'
-                ),
-            }
-        ),
+        },
+        'backup_gigabytes': {
+            'type': 'integer',
+            'description': helpers.description(
+                'quota_backup_gigabytes_request'
+            ),
+        },
     }
 )
 
 _request_quota_prop_v290 = copy.deepcopy(_request_quota_prop_v280)
 _request_quota_prop_v290['properties'].update(
     {
-        'encryption_keys': parameter_types.single_param({
+        'encryption_keys': {
             'type': 'integer',
             'description': helpers.description(
                 'quota_encryption_keys_request'
             ),
-        }),
+        },
     }
 )
 
@@ -116,9 +110,10 @@ show_request_query = {
     'type': 'object',
     'properties': {},
     # TODO(jonathan): Exclude additional query string parameters
-    #  in a future microversion
+    # in a future microversion
     'additionalProperties': True,
 }
+
 update_request_body = {
     'type': 'object',
     'properties': {
@@ -127,7 +122,7 @@ update_request_body = {
     'description': helpers.description('quota_class_set'),
     'required': ['quota_class_set'],
     # TODO(jonathan): Exclude additional query string parameters
-    #  in a future microversion
+    # in a future microversion
     'additionalProperties': True,
 }
 
@@ -139,7 +134,7 @@ update_request_body_v253 = {
     'description': helpers.description('quota_class_set'),
     'required': ['quota_class_set'],
     # TODO(jonathan): Exclude additional query string parameters
-    #  in a future microversion
+    # in a future microversion
     'additionalProperties': True,
 }
 
@@ -178,7 +173,6 @@ update_request_body_v290 = {
     #  in a future microversion
     'additionalProperties': True,
 }
-
 
 _rsp_quota_prop = {
     'type': 'object',
