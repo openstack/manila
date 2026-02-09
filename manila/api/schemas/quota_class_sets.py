@@ -14,6 +14,14 @@ import copy
 
 from manila.api.validation import helpers
 
+show_request_query = {
+    'type': 'object',
+    'properties': {},
+    # TODO(jonathan): Exclude additional query string parameters
+    # in a future microversion
+    'additionalProperties': True,
+}
+
 _request_quota_prop = {
     'type': 'object',
     'properties': {
@@ -106,14 +114,6 @@ _request_quota_prop_v290['properties'].update(
     }
 )
 
-show_request_query = {
-    'type': 'object',
-    'properties': {},
-    # TODO(jonathan): Exclude additional query string parameters
-    # in a future microversion
-    'additionalProperties': True,
-}
-
 update_request_body = {
     'type': 'object',
     'properties': {
@@ -126,55 +126,27 @@ update_request_body = {
     'additionalProperties': True,
 }
 
-update_request_body_v253 = {
-    'type': 'object',
-    'properties': {
-        'quota_class_set': _request_quota_prop_v253,
-    },
-    'description': helpers.description('quota_class_set'),
-    'required': ['quota_class_set'],
-    # TODO(jonathan): Exclude additional query string parameters
-    # in a future microversion
-    'additionalProperties': True,
-}
+update_request_body_v253 = copy.deepcopy(update_request_body)
+update_request_body_v253['properties']['quota_class_set'] = (
+    _request_quota_prop_v253
+)
 
-update_request_body_v262 = {
-    'type': 'object',
-    'properties': {
-        'quota_class_set': _request_quota_prop_v262,
-    },
-    'description': helpers.description('quota_class_set'),
-    'required': ['quota_class_set'],
-    # TODO(jonathan): Exclude additional query string parameters
-    #  in a future microversion
-    'additionalProperties': True,
-}
+update_request_body_v262 = copy.deepcopy(update_request_body_v253)
+update_request_body_v262['properties']['quota_class_set'] = (
+    _request_quota_prop_v262
+)
 
-update_request_body_v280 = {
-    'type': 'object',
-    'properties': {
-        'quota_class_set': _request_quota_prop_v280,
-    },
-    'description': helpers.description('quota_class_set'),
-    'required': ['quota_class_set'],
-    # TODO(jonathan): Exclude additional query string parameters
-    #  in a future microversion
-    'additionalProperties': True,
-}
+update_request_body_v280 = copy.deepcopy(update_request_body_v262)
+update_request_body_v280['properties']['quota_class_set'] = (
+    _request_quota_prop_v280
+)
 
-update_request_body_v290 = {
-    'type': 'object',
-    'properties': {
-        'quota_class_set': _request_quota_prop_v290,
-    },
-    'description': helpers.description('quota_class_set'),
-    'required': ['quota_class_set'],
-    # TODO(jonathan): Exclude additional query string parameters
-    #  in a future microversion
-    'additionalProperties': True,
-}
+update_request_body_v290 = copy.deepcopy(update_request_body_v280)
+update_request_body_v290['properties']['quota_class_set'] = (
+    _request_quota_prop_v290
+)
 
-_rsp_quota_prop = {
+show_response_body = {
     'type': 'object',
     'properties': {
         'quota_class_set': {
@@ -224,8 +196,8 @@ _rsp_quota_prop = {
     'additionalProperties': False,
 }
 
-_rsp_quota_prop_v240 = copy.deepcopy(_rsp_quota_prop)
-_rsp_quota_prop_v240['properties']['quota_class_set']['properties'].update(
+show_response_body_v240 = copy.deepcopy(show_response_body)
+show_response_body_v240['properties']['quota_class_set']['properties'].update(
     {
         'share_group_snapshots': {
             'type': 'integer',
@@ -237,14 +209,12 @@ _rsp_quota_prop_v240['properties']['quota_class_set']['properties'].update(
         },
     }
 )
-(
-    _rsp_quota_prop_v240['properties']['quota_class_set']['required'].extend(
-        ['share_group_snapshots', 'share_groups']
-    )
+show_response_body_v240['properties']['quota_class_set']['required'].extend(
+    ['share_group_snapshots', 'share_groups']
 )
 
-_rsp_quota_prop_v253 = copy.deepcopy(_rsp_quota_prop_v240)
-_rsp_quota_prop_v253['properties']['quota_class_set']['properties'].update(
+show_response_body_v253 = copy.deepcopy(show_response_body_v240)
+show_response_body_v253['properties']['quota_class_set']['properties'].update(
     {
         'share_replicas': {
             'type': 'integer',
@@ -256,11 +226,12 @@ _rsp_quota_prop_v253['properties']['quota_class_set']['properties'].update(
         },
     }
 )
-(_rsp_quota_prop_v253['properties']['quota_class_set']['required']
- .extend(['share_replicas', 'replica_gigabytes']))
+show_response_body_v253['properties']['quota_class_set']['required'].extend(
+    ['share_replicas', 'replica_gigabytes']
+)
 
-_rsp_quota_prop_v262 = copy.deepcopy(_rsp_quota_prop_v253)
-_rsp_quota_prop_v262['properties']['quota_class_set']['properties'].update(
+show_response_body_v262 = copy.deepcopy(show_response_body_v253)
+show_response_body_v262['properties']['quota_class_set']['properties'].update(
     {
         'per_share_gigabytes': {
             'type': 'integer',
@@ -268,11 +239,12 @@ _rsp_quota_prop_v262['properties']['quota_class_set']['properties'].update(
         }
     }
 )
-(_rsp_quota_prop_v262['properties']['quota_class_set']['required']
- .append('per_share_gigabytes'))
+show_response_body_v262['properties']['quota_class_set']['required'].append(
+    'per_share_gigabytes'
+)
 
-_rsp_quota_prop_v280 = copy.deepcopy(_rsp_quota_prop_v262)
-_rsp_quota_prop_v280['properties']['quota_class_set']['properties'].update(
+show_response_body_v280 = copy.deepcopy(show_response_body_v262)
+show_response_body_v280['properties']['quota_class_set']['properties'].update(
     {
         'backups': {
             'type': 'integer',
@@ -284,11 +256,12 @@ _rsp_quota_prop_v280['properties']['quota_class_set']['properties'].update(
         },
     }
 )
-(_rsp_quota_prop_v280['properties']['quota_class_set']['required']
- .extend(['backups', 'backup_gigabytes']))
+show_response_body_v280['properties']['quota_class_set']['required'].extend(
+    ['backups', 'backup_gigabytes']
+)
 
-_rsp_quota_prop_v290 = copy.deepcopy(_rsp_quota_prop_v280)
-_rsp_quota_prop_v290['properties']['quota_class_set']['properties'].update(
+show_response_body_v290 = copy.deepcopy(show_response_body_v280)
+show_response_body_v290['properties']['quota_class_set']['properties'].update(
     {
         'encryption_keys': {
             'type': 'integer',
@@ -296,19 +269,13 @@ _rsp_quota_prop_v290['properties']['quota_class_set']['properties'].update(
         },
     }
 )
-(_rsp_quota_prop_v290['properties']['quota_class_set']['required']
- .append('encryption_keys'))
+show_response_body_v290['properties']['quota_class_set']['required'].append(
+    'encryption_keys'
+)
 
-show_response_body = _rsp_quota_prop
-show_response_body_v240 = _rsp_quota_prop_v240
-show_response_body_v253 = _rsp_quota_prop_v253
-show_response_body_v262 = _rsp_quota_prop_v262
-show_response_body_v280 = _rsp_quota_prop_v280
-show_response_body_v290 = _rsp_quota_prop_v290
-
-update_response_body = _rsp_quota_prop
-update_response_body_v240 = _rsp_quota_prop_v240
-update_response_body_v253 = _rsp_quota_prop_v253
-update_response_body_v262 = _rsp_quota_prop_v262
-update_response_body_v280 = _rsp_quota_prop_v280
-update_response_body_v290 = _rsp_quota_prop_v290
+update_response_body = show_response_body
+update_response_body_v240 = show_response_body_v240
+update_response_body_v253 = show_response_body_v253
+update_response_body_v262 = show_response_body_v262
+update_response_body_v280 = show_response_body_v280
+update_response_body_v290 = show_response_body_v290
