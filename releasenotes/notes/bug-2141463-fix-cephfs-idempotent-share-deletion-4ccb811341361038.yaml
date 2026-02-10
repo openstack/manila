@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #2141463 <https://bugs.launchpad.net/manila/+bug/2141463>`_:
+    Fixed an issue that caused the deletion of shares that do not exist
+    anymore fail in the CephFS driver. The driver will no longer fail when the
+    share is not found.
