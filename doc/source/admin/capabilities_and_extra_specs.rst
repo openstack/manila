@@ -147,6 +147,17 @@ can be used verbatim as extra_specs in share types used to create shares.
 Share type common capability extra-specs that are visible to end users:
 -----------------------------------------------------------------------
 
+.. note::
+
+    Share types are mutable. Any changes to the extra-specs associated with a
+    share type do not affect existing shares of that type. Cloud administrators
+    can update the value of tenant-visible extra-specs at any time, but they
+    must be aware that modifying tenant-visible extra-specs (without also
+    modifying affected properties of pre-existing shares) may confuse end users.
+    For example, changing the ``availability_zones`` extra-spec on a share type
+    will not change which availability zones existing shares of that type reside
+    in, but users will see the new value when viewing the share type.
+
 * **driver_handles_share_servers** is a special, required common
   capability. When set to True, the scheduler matches requests with back ends
   that can isolate user workloads with dedicated share servers exporting

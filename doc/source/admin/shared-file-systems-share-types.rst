@@ -196,6 +196,19 @@ using **manila type-key <share_type> set <key=value>** command.
 Use :command:`manila type-key <share_type> unset <key>` to unset an extra
 specification.
 
+.. warning::
+
+    Share types are mutable. Any changes to the extra-specs associated with a
+    share type do not affect existing shares of that type. Cloud administrators
+    can update extra-specs at any time, but they must be aware that modifying
+    tenant-visible extra-specs (such as ``availability_zones``,
+    ``snapshot_support``, ``replication_type``, etc.) without also modifying
+    affected properties of pre-existing shares may confuse end users. For
+    example, if you change ``snapshot_support`` from True to False on a share
+    type, shares that were already created with that type will still support
+    snapshots, but users viewing the share type's extra-specs will see
+    ``snapshot_support=False``.
+
 A share type can be deleted with the :command:`manila type-delete
 <share_type>` command. However, a share type can only be deleted if there
 are no shares, share groups or share group types associated with the share
