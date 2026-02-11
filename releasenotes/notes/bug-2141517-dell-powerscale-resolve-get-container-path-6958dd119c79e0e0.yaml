@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Dell PowerScale: bug #2141517
+    <https://bugs.launchpad.net/manila/+bug/2141517>_:
+    Implemented resolve managed share path in _get_container_path
