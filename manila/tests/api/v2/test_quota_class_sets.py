@@ -15,7 +15,7 @@
 #    under the License.
 
 """
-Tests for manila.api.v1.quota_class_sets.py
+Tests for manila.api.v2.quota_class_sets.py
 """
 
 import copy

@@ -24,10 +24,10 @@ from manila.api import common
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.schemas import shares as schema
-from manila.api.v1 import share_manage
-from manila.api.v1 import share_unmanage
 from manila.api.v1 import shares
 from manila.api.v2 import metadata
+from manila.api.v2 import share_manage
+from manila.api.v2 import share_unmanage
 from manila.api import validation
 from manila.api.views import share_accesses as share_access_views
 from manila.api.views import share_migration as share_migration_views

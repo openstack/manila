@@ -19,7 +19,7 @@ import ddt
 import webob
 
 from manila.api import common
-from manila.api.v1 import share_manage
+from manila.api.v2 import share_manage
 from manila.db import api as db_api
 from manila import exception
 from manila import policy

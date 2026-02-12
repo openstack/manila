@@ -18,7 +18,7 @@ from unittest import mock
 import ddt
 import webob
 
-from manila.api.v1 import share_unmanage
+from manila.api.v2 import share_unmanage
 from manila.common import constants
 from manila import exception
 from manila import policy
