@@ -198,7 +198,10 @@ class PowerScaleTest(test.TestCase):
         # create snapshot
         snapshot_name = "snapshot01"
         snapshot_path = '/ifs/home/admin'
-        snapshot = {'name': snapshot_name, 'share_name': snapshot_path}
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 "mount_snapshot_support": False}
+        snapshot = {'name': snapshot_name, 'share_name': snapshot_path,
+                    'share': share}
         self.storage_connection.create_snapshot(self.mock_context, snapshot,
                                                 None)
 
@@ -209,9 +212,13 @@ class PowerScaleTest(test.TestCase):
     def test_create_snapshot_backend_failure(self):
         snapshot_name = "snapshot01"
         snapshot_path = '/ifs/home/admin'
-        snapshot = {'name': snapshot_name, 'share_name': snapshot_path}
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 "mount_snapshot_support": False}
+        snapshot = {'name': snapshot_name, 'share_name': snapshot_path,
+                    'share': share}
         self._mock_powerscale_api.create_snapshot.return_value = None
 
+        self._mock_powerscale_api.create_snapshot.return_value = None
         self.assertRaises(
             exception.ShareBackendException,
             self.storage_connection.create_snapshot,
@@ -450,8 +457,10 @@ class PowerScaleTest(test.TestCase):
         # create a snapshot
         snapshot_name = "snapshot01"
         snapshot_path = '/ifs/home/admin'
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 "mount_snapshot_support": False}
         snapshot = {'name': snapshot_name, 'share_name': snapshot_path,
-                    'provider_location': None}
+                    'share': share}
         self.assertFalse(self._mock_powerscale_api.delete_snapshot.called)
 
         # delete the created snapshot
@@ -463,7 +472,9 @@ class PowerScaleTest(test.TestCase):
             snapshot_name)
 
     def test_delete_snapshot_failure(self):
-        snapshot = {'name': 'test_snapshot', 'provider_location': None}
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 "mount_snapshot_support": False}
+        snapshot = {'name': 'test_snapshot', 'share': share}
         self._mock_powerscale_api.delete_snapshot.return_value = False
         self.assertRaises(
             exception.ShareBackendException,
@@ -550,6 +561,7 @@ class PowerScaleTest(test.TestCase):
             'free_capacity_gb': 100,
             'allocated_capacity_gb': 2110.0,
             'qos': False,
+            'mount_snapshot_support': True,
         }
         expected_stats = {
             'share_backend_name': 'PowerScale_backend',
@@ -794,7 +806,7 @@ class PowerScaleTest(test.TestCase):
             'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
         }
         access_rules = [access]
-        self._mock_powerscale_api.modify_smb_share_access.return_value = True
+        self._mock_powerscale_api.modify_smb_share_access.return_value = False
 
         rule_map = self.storage_connection.update_access(
             self.mock_context, share, access_rules, [], [])
@@ -929,7 +941,7 @@ class PowerScaleTest(test.TestCase):
             self.mock_context, share, access_rules, [], [])
 
         expected_data = {
-            'host_acl': ['allow:10.1.1.10'],
+            'host_acl': ['allow:10.1.1.10', 'deny:ALL'],
             'permissions': [
                 {
                     'permission': 'read',
@@ -1132,10 +1144,13 @@ class PowerScaleTest(test.TestCase):
         return {
             'id': 'snapshot-id-123',
             'provider_location': '123',
+            'name': 'test-ss',
             'share': {
                 'id': 'share-id-123',
                 'name': self.SHARE_NAME,
+                'mount_snapshot_support': False,
                 'size': 8,
+                "share_proto": "NFS",
                 'export_locations': [{
                     # NFS-style export: <ip>:/ifs/manila-test/share-foo
                     'path': '%s:%s' % (self.POWERSCALE_ADDR, self.SHARE_DIR),
@@ -1256,10 +1271,39 @@ class PowerScaleTest(test.TestCase):
             {'size': 3, 'provider_location': snapshot['provider_location']},
             result)
 
+    def test_manage_existing_snapshot_with_mount_support(self):
+        snapshot = self._get_base_snapshot()
+        snapshot['share']['mount_snapshot_support'] = True
+        driver_options = {
+            'size': '3',  # valid integer string
+        }
+
+        self._mock_powerscale_api.get_snapshot_id.return_value = {
+            'id': 'backend-snap-id',
+            'path': self.SHARE_DIR,
+            'name': 'fake-snap-name'
+        }
+
+        result = self.storage_connection.manage_existing_snapshot(
+            snapshot, driver_options)
+
+        self._mock_powerscale_api.get_snapshot_id.assert_called_once_with(
+            snapshot['provider_location'])
+        self.assertEqual(
+            {'size': 3, 'provider_location': snapshot['provider_location'],
+             'export_locations': [{'is_admin_only': False,
+                                   'metadata': {'preferred': True},
+                                   'path': '10.0.0.1:/ifs/'
+                                           '.snapshot/fake-snap-name'}]},
+            result)
+
     def test_delete_snapshot_with_provider_location_success(self):
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 "mount_snapshot_support": False}
         snapshot = {
             'name': 'snap-001',
             'provider_location': 'backend-snap-loc-001',
+            'share': share
         }
 
         # Backend delete succeeds
@@ -1275,9 +1319,12 @@ class PowerScaleTest(test.TestCase):
          assert_called_once_with(snapshot['provider_location']))
 
     def test_delete_snapshot_with_provider_location_failure(self):
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 "mount_snapshot_support": False}
         snapshot = {
             'name': 'snap-001',
             'provider_location': 'backend-snap-loc-001',
+            'share': share
         }
 
         # Backend delete fails
@@ -1490,3 +1537,164 @@ class PowerScaleTest(test.TestCase):
             share,
             driver_options={},
         )
+
+    def _make_snapshot(self, proto="NFS"):
+        return {
+            "name": "snap-001",
+            "share": {
+                "share_proto": proto,
+            }
+        }
+
+    def test_create_snap_export_path_nfs(self):
+        snapshot = self._make_snapshot(proto="NFS")
+
+        snap_path = "/ifs/manila-test/.snapshots/snap-001"
+        export_path = "%s:%s" % (self.POWERSCALE_ADDR, snap_path)
+        expected_location = [{"path": export_path,
+                              "is_admin_only": False,
+                              "metadata": {"preferred": True}}]
+        self.storage_connection._format_nfs_path = mock.Mock(
+            return_value=export_path)
+        self.storage_connection._get_location = mock.Mock(
+            return_value=expected_location)
+        self.storage_connection._get_snapshot_path = mock.Mock(
+            return_value=snap_path)
+        (self._mock_powerscale_api.
+         lookup_nfs_export).return_value = None
+        (self.
+         _mock_powerscale_api.
+         create_snapshot_nfs_export).return_value = True
+        result = self.storage_connection._create_snap_export_path(snapshot)
+        self.storage_connection._get_snapshot_path.assert_called_once_with(
+            snapshot)
+        (self.
+         _mock_powerscale_api.
+         create_snapshot_nfs_export.assert_called_once_with(snap_path))
+        self.storage_connection._format_nfs_path.assert_called_once_with(
+            snap_path)
+        self.storage_connection._get_location.assert_called_once_with(
+            export_path)
+        self.assertEqual({"export_locations": expected_location}, result)
+
+    def test_create_snap_export_path_cifs(self):
+        snap_path = "/ifs/manila-test/.snapshots/snap-001"
+        snapshot = self._make_snapshot(proto="CIFS")
+        smb_export_path = "\\\\%s\\snap-001" % self.POWERSCALE_ADDR
+        expected_location = [{"path": smb_export_path,
+                              "is_admin_only": False,
+                              "metadata": {"preferred": True}}]
+        self.storage_connection._format_smb_path = mock.Mock(
+            return_value=smb_export_path)
+        self.storage_connection._get_location = mock.Mock(
+            return_value=expected_location)
+        self.storage_connection._get_snapshot_path = mock.Mock(
+            return_value=snap_path)
+        (self.
+         _mock_powerscale_api.
+         create_snapshot_smb_export).return_value = True
+        (self._mock_powerscale_api.
+         lookup_smb_share).return_value = None
+        result = self.storage_connection._create_snap_export_path(snapshot)
+        self.storage_connection._get_snapshot_path.assert_called_once_with(
+            snapshot)
+        (self.
+         _mock_powerscale_api.
+         create_snapshot_smb_export.assert_called_once_with("snap-001",
+                                                            snap_path))
+        self.storage_connection._format_smb_path.assert_called_once_with(
+            "snap-001")
+        self.storage_connection._get_location.assert_called_once_with(
+            smb_export_path)
+
+        self.assertEqual({"export_locations": expected_location}, result)
+
+    def test_create_snap_export_path_failure_raises(self):
+        snapshot = self._make_snapshot(proto="NFS")
+        snap_path = "/ifs/manila-test/.snapshots/snap-001"
+        self.storage_connection._get_snapshot_path = mock.Mock(
+            return_value=snap_path)
+        (self._mock_powerscale_api.
+         lookup_nfs_export).return_value = None
+        (self.
+         _mock_powerscale_api.
+         create_snapshot_nfs_export).return_value = False
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection._create_snap_export_path,
+            snapshot)
+
+    def test_snapshot_update_access_nfs(self):
+        snapshot = self._make_snapshot(proto="NFS")
+        access_rules = [{"access_to": "10.10.10.10"}]
+        snap_path = "/ifs/manila-test/.snapshots/snap-001"
+        expected_state = {"10.10.10.10": "active"}
+        self.storage_connection._get_snapshot_path = mock.Mock(
+            return_value=snap_path)
+        self.storage_connection._update_access_nfs = mock.Mock(
+            return_value=expected_state)
+        result = self.storage_connection.snapshot_update_access(
+            self.mock_context,
+            snapshot,
+            access_rules,
+            add_rules=None,
+            delete_rules=None,
+            share_server=None)
+        self.storage_connection._get_snapshot_path.assert_called_once_with(
+            snapshot)
+        self.storage_connection._update_access_nfs.assert_called_once_with(
+            "snap-001", snap_path, access_rules)
+        self.assertEqual(expected_state, result)
+
+    def test_snapshot_update_access_cifs(self):
+        snapshot = self._make_snapshot(proto="CIFS")
+        access_rules = [{"access_to": "user1"}]
+        expected_state = {"user1": "active"}
+        self.storage_connection._update_access_cifs = mock.Mock(
+            return_value=expected_state)
+        result = self.storage_connection.snapshot_update_access(
+            self.mock_context,
+            snapshot,
+            access_rules,
+            add_rules=None,
+            delete_rules=None,
+            share_server=None)
+        self.storage_connection._update_access_cifs.assert_called_once_with(
+            "snap-001", access_rules, read_only=True)
+        self.assertEqual(expected_state, result)
+
+    def test_update_snapshot_ip_access_rule(self):
+        snapshot = self._make_snapshot(proto="CIFS")
+        access = {
+            'access_type': 'ip',
+            'access_to': '1.1.1.1',
+            'access_level': const.ACCESS_LEVEL_RO,
+            'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        access_rules = [access]
+        self._mock_powerscale_api.modify_smb_share_access.return_value = True
+        rule_map = self.storage_connection.snapshot_update_access(
+            self.mock_context,
+            snapshot,
+            access_rules,
+            add_rules=None,
+            delete_rules=None,
+            share_server=None)
+        expected_rule_map = {
+            '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'active'
+            }
+        }
+        self.assertEqual(expected_rule_map, rule_map)
+
+    def test_create_snapshot_with_mount_support(self):
+        snapshot_name = "snapshot01"
+        snapshot_path = '/ifs/home/admin'
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 "mount_snapshot_support": True}
+        snapshot = {'name': snapshot_name, 'share_name': snapshot_path,
+                    'share': share}
+        self.storage_connection.create_snapshot(self.mock_context, snapshot,
+                                                None)
+        self._mock_powerscale_api.create_snapshot.assert_called_with(
+            snapshot_name, snapshot_path)

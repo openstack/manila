@@ -1147,3 +1147,44 @@ class PowerScaleApiTest(test.TestCase):
 
         result = self.powerscale_api.delete_snapshot_by_id(snapshot_id)
         self.assertFalse(result)
+
+    @ddt.data((201, True), (400, False), (500, False))
+    def test_create_snapshot_nfs_export(self, data):
+        status_code, expected_return_value = data
+        with requests_mock.mock() as m:
+            self.assertEqual(0, len(m.request_history))
+            export_path = "/ifs/manila-test/.snapshots/snap-001"
+            url = self._mock_url + "/platform/22/protocols/nfs/exports"
+            m.post(url, status_code=status_code)
+            r = self.powerscale_api.create_snapshot_nfs_export(export_path)
+            self.assertEqual(expected_return_value, r)
+            self.assertEqual(1, len(m.request_history))
+            call = m.request_history[0]
+            expected_request_body = {
+                "paths": [export_path],
+                "read_only": True,
+                "map_root": {"enabled": False},
+            }
+            self.assertEqual(expected_request_body, json.loads(call.body))
+            self.assertEqual(url, call.url)
+
+    @ddt.data((201, True), (404, False), (500, False))
+    def test_create_snapshot_smb_export(self, data):
+        status_code, expected_return_value = data
+        with requests_mock.mock() as m:
+            self.assertEqual(0, len(m.request_history))
+            snapshot_name = "snap-001"
+            share_path = "/ifs/manila-test/.snapshots/snap-001"
+            url = self._mock_url + "/platform/1/protocols/smb/shares"
+            m.post(url, status_code=status_code)
+            r = self.powerscale_api.create_snapshot_smb_export(
+                snapshot_name, share_path)
+            self.assertEqual(expected_return_value, r)
+            self.assertEqual(1, len(m.request_history))
+            expected_request_data = {
+                "name": snapshot_name,
+                "path": share_path,
+            }
+            self.assertEqual(expected_request_data,
+                             json.loads(m.request_history[0].body))
+            self.assertEqual(url, m.request_history[0].url)

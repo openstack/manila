@@ -37,9 +37,10 @@ from manila.share.drivers.dell_emc.plugins.powerscale import powerscale_api
     1.0.4 - Rename isilon to powerscale
     1.0.5 - Add support for share shrink
     1.0.6 - Add support of manage/unmanage share and snapshot
+    1.0.7 - Add support of mount snapshot
 
 """
-VERSION = "1.0.6"
+VERSION = "1.0.7"
 
 CONF = cfg.CONF
 
@@ -91,10 +92,15 @@ class PowerScaleStorageConnection(base.StorageConnection):
         self._threshold_limit = 0
         self.shrink_share_support = True
         self.manage_existing_support = True
+        self.mount_snapshot_support = True
+        self._snapshot_root_dir = '/ifs/.snapshot'
 
     def _get_container_path(self, share):
         """Return path to a container."""
         return os.path.join(self._root_dir, share['name'])
+
+    def _get_snapshot_path(self, snapshot):
+        return os.path.join(self._snapshot_root_dir, snapshot['name'])
 
     def create_share(self, context, share, share_server):
         """Is called to create share."""
@@ -189,6 +195,10 @@ class PowerScaleStorageConnection(base.StorageConnection):
             LOG.error(message)
             raise exception.ShareBackendException(msg=message)
         result['provider_location'] = snap_id
+        if snapshot['share']['mount_snapshot_support']:
+            snap_result = self._create_snap_export_path(snapshot=snapshot,
+                                                        snap_actual_name=None)
+            result.update(snap_result)
         return result
 
     def delete_share(self, context, share, share_server):
@@ -241,50 +251,33 @@ class PowerScaleStorageConnection(base.StorageConnection):
 
     def _delete_nfs_share(self, share):
         """Is called to remove nfs share."""
-        share_id = self._powerscale_api.lookup_nfs_export(
-            self._get_container_path(share))
-
-        if share_id is None:
-            lw = ('Attempted to delete NFS Share "%s", but the share does '
-                  'not appear to exist.')
-            LOG.warning(lw, share['name'])
-        else:
-            # attempt to delete the share
-            export_deleted = self._powerscale_api.delete_nfs_share(share_id)
-            if not export_deleted:
-                message = _('Error deleting NFS share: %s') % share['name']
-                LOG.error(message)
-                raise exception.ShareBackendException(msg=message)
+        self._delete_export(proto="NFS",
+                            name=share['name'],
+                            path=self._get_container_path(share))
 
     def _delete_cifs_share(self, share):
         """Is called to remove CIFS share."""
-        smb_share = self._powerscale_api.lookup_smb_share(share['name'])
-        if smb_share is None:
-            lw = ('Attempted to delete CIFS Share "%s", but the share does '
-                  'not appear to exist.')
-            LOG.warning(lw, share['name'])
-        else:
-            share_deleted = self._powerscale_api.delete_smb_share(
-                share['name'])
-            if not share_deleted:
-                message = _('Error deleting CIFS share: %s') % share['name']
-                LOG.error(message)
-                raise exception.ShareBackendException(msg=message)
+        self._delete_export(proto="CIFS", name=share['name'])
 
     def delete_snapshot(self, context, snapshot, share_server):
         """Is called to remove snapshot."""
-        LOG.debug(f'Deleting snapshot {snapshot["name"]}')
+        snap_name = snapshot['name']
+        proto = snapshot['share']['share_proto']
+        snap_path = self._get_snapshot_path(snapshot)
+        LOG.debug('Deleting snapshot %s', snap_name)
         if snapshot.get('provider_location'):
             deleted = (self._powerscale_api.
                        delete_snapshot_by_id(snapshot['provider_location']))
         else:
             deleted = self._powerscale_api.delete_snapshot(snapshot['name'])
         if not deleted:
-            message = (
-                _('Failed to delete snapshot "%(snap)s".') %
-                {'snap': snapshot['name']})
+            message = (_('Failed to delete snapshot "%(snap)s".') %
+                       {'snap': snapshot['name']})
             LOG.error(message)
             raise exception.ShareBackendException(msg=message)
+        self._delete_export(proto=proto,
+                            name=snap_name,
+                            path=snap_path)
 
     def ensure_share(self, context, share, share_server):
         """Invoked to ensure that share is exported."""
@@ -470,6 +463,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
             'max_over_subscription_ratio':
                 self.max_over_subscription_ratio,
             'thin_provisioning': True,
+            'mount_snapshot_support': True,
         }
         spaces = self._powerscale_api.get_space_stats()
         if spaces:
@@ -496,14 +490,17 @@ class PowerScaleStorageConnection(base.StorageConnection):
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
         """Update share access."""
-        LOG.debug(f'Updaing access for share {share["name"]}.')
+        share_name = share["name"]
+        LOG.debug(f'Updaing access for share {share_name}.')
+        state_map = {}
         if share['share_proto'] == 'NFS':
-            state_map = self._update_access_nfs(share, access_rules)
+            path = self._get_container_path(share)
+            state_map = self._update_access_nfs(share_name, path, access_rules)
         if share['share_proto'] == 'CIFS':
-            state_map = self._update_access_cifs(share, access_rules)
+            state_map = self._update_access_cifs(share_name, access_rules)
         return state_map
 
-    def _update_access_nfs(self, share, access_rules):
+    def _update_access_nfs(self, share_name, path, access_rules):
         """Updates access on a NFS share."""
         nfs_rw_ips = set()
         nfs_ro_ips = set()
@@ -514,17 +511,19 @@ class PowerScaleStorageConnection(base.StorageConnection):
             }
 
         for rule in access_rules:
-            if rule['access_level'] == const.ACCESS_LEVEL_RW:
+            access_level = const.ACCESS_LEVEL_RO
+            if rule.get('access_level'):
+                access_level = rule.get('access_level')
+            if access_level == const.ACCESS_LEVEL_RW:
                 nfs_rw_ips.add(rule['access_to'])
-            elif rule['access_level'] == const.ACCESS_LEVEL_RO:
+            elif access_level == const.ACCESS_LEVEL_RO:
                 nfs_ro_ips.add(rule['access_to'])
 
-        export_id = self._powerscale_api.lookup_nfs_export(
-            self._get_container_path(share))
+        export_id = self._powerscale_api.lookup_nfs_export(path)
         if export_id is None:
             # share does not exist on backend (set all rules to error state)
             message = _('Failed to update access for NFS share %s: '
-                        'share not found.') % share['name']
+                        'share not found.') % share_name
             LOG.error(message)
             return rule_state_map
 
@@ -538,7 +537,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
             rule_state_map[rule['access_id']]['state'] = 'active'
         return rule_state_map
 
-    def _update_access_cifs(self, share, access_rules):
+    def _update_access_cifs(self, share_name, access_rules, read_only=False):
         """Update access on a CIFS share."""
         rule_state_map = {}
         ip_access_rules = []
@@ -553,12 +552,22 @@ class PowerScaleStorageConnection(base.StorageConnection):
                              ) % {'type': rule['access_type']})
                 LOG.error(message)
                 rule_state_map.update({rule['access_id']: {'state': 'error'}})
-        ips = self._get_cifs_ip_list(ip_access_rules, rule_state_map)
+        ips = self._get_cifs_ip_list(ip_access_rules, rule_state_map,
+                                     read_only)
         user_permissions = self._get_cifs_user_permissions(
             user_access_rules, rule_state_map)
-
+        if read_only and len(user_permissions) == 0:
+            user_permissions = [{
+                "permission": "read",
+                "permission_type": "allow",
+                "trustee": {
+                    "id": "SID:S-1-1-0",
+                    "name": "Everyone",
+                    "type": "wellknown"
+                }
+            }]
         share_updated = self._powerscale_api.modify_smb_share_access(
-            share['name'],
+            share_name,
             host_acl=ips,
             permissions=user_permissions)
 
@@ -567,7 +576,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
                 _(
                     'Failed to update access rules for CIFS share '
                     '"%(share)s".'
-                ) % {'share': share['name']}
+                ) % {'share': share_name}
             )
             LOG.error(message)
             for rule in access_rules:
@@ -577,11 +586,11 @@ class PowerScaleStorageConnection(base.StorageConnection):
 
         return rule_state_map
 
-    def _get_cifs_ip_list(self, access_rules, rule_state_map):
+    def _get_cifs_ip_list(self, access_rules, rule_state_map, read_only):
         """Get CIFS ip list."""
         cifs_ips = []
         for rule in access_rules:
-            if rule['access_level'] != const.ACCESS_LEVEL_RW:
+            if not read_only and rule['access_level'] != const.ACCESS_LEVEL_RW:
                 message = ('Only RW access level is supported '
                            'for CIFS IP access.')
                 LOG.error(message)
@@ -589,23 +598,22 @@ class PowerScaleStorageConnection(base.StorageConnection):
                 continue
             cifs_ips.append('allow:' + rule['access_to'])
             rule_state_map.update({rule['access_id']: {'state': 'active'}})
+        if len(cifs_ips) > 0:
+            cifs_ips.append('deny:ALL')
         return cifs_ips
 
     def _get_cifs_user_permissions(self, access_rules, rule_state_map):
         """Get CIFS user permissions."""
         cifs_user_permissions = []
         for rule in access_rules:
-            if rule['access_level'] == const.ACCESS_LEVEL_RW:
+            access_level = const.ACCESS_LEVEL_RO
+            smb_permission = powerscale_api.SmbPermission.ro
+            if rule.get('access_level'):
+                access_level = rule.get('access_level')
+            if access_level == const.ACCESS_LEVEL_RW:
                 smb_permission = powerscale_api.SmbPermission.rw
-            elif rule['access_level'] == const.ACCESS_LEVEL_RO:
+            elif access_level == const.ACCESS_LEVEL_RO:
                 smb_permission = powerscale_api.SmbPermission.ro
-            else:
-                message = ('Only RW and RO access levels are supported '
-                           'for CIFS user access.')
-                LOG.error(message)
-                rule_state_map.update({rule['access_id']: {'state': 'error'}})
-                continue
-
             user_sid = self._powerscale_api.get_user_sid(rule['access_to'])
             if user_sid:
                 cifs_user_permissions.append({
@@ -728,4 +736,85 @@ class PowerScaleStorageConnection(base.StorageConnection):
                  "with ID %(snapshot_id)s.",
                  {'provider_location': snapshot.get('provider_location'),
                   'snapshot_id': snapshot['id']})
-        return {"size": snapshot_size, "provider_location": provider_location}
+        manage_snap_result = {"size": snapshot_size,
+                              "provider_location": provider_location}
+        if snapshot['share']['mount_snapshot_support']:
+            snap_result = self._create_snap_export_path(
+                snapshot=snapshot,
+                snap_actual_name=snap['name']
+            )
+            manage_snap_result.update(snap_result)
+        return manage_snap_result
+
+    def _create_snap_export_path(self, snapshot, snap_actual_name=None):
+        share_proto = snapshot['share']['share_proto']
+        snap_export_path = self._get_snapshot_path(snapshot)
+        snap_name = snapshot['name']
+        if snap_actual_name:
+            snap_name = snap_actual_name
+            snap_export_path = os.path.join(self._snapshot_root_dir,
+                                            snap_name)
+        created = True
+        export_path = None
+        if share_proto == "NFS":
+            share_export = (self._powerscale_api.
+                            lookup_nfs_export(snap_export_path))
+            if share_export is None:
+                created = (self.
+                           _powerscale_api.
+                           create_snapshot_nfs_export(snap_export_path))
+            export_path = self._format_nfs_path(snap_export_path)
+        elif share_proto == "CIFS":
+            smb_export = (self._powerscale_api.
+                          lookup_smb_share(snap_name))
+            if smb_export is None:
+                created = (self._powerscale_api.
+                           create_snapshot_smb_export(snap_name,
+                                                      snap_export_path))
+            export_path = self._format_smb_path(snap_name)
+        if not created:
+            msg = _('Failed to create snapshot export path '
+                    '"%(snap)s".') % {'snap': snap_name}
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+        return {'export_locations': self._get_location(export_path)}
+
+    def _delete_export(self, proto, name, path=None):
+        if proto == "NFS":
+            share_id = self._powerscale_api.lookup_nfs_export(path)
+            if share_id is None:
+                LOG.warning('Attempted to delete NFS export "%s", '
+                            'but it does not exist.', name)
+                return
+            if not self._powerscale_api.delete_nfs_share(share_id):
+                msg = _('Error deleting NFS export: %s') % name
+                LOG.error(msg)
+                raise exception.ShareBackendException(msg=msg)
+        elif proto == "CIFS":
+            smb_share = self._powerscale_api.lookup_smb_share(name)
+            if smb_share is None:
+                LOG.warning('Attempted to delete CIFS export "%s", '
+                            'but it does not exist.', name)
+                return
+            if not self._powerscale_api.delete_smb_share(name):
+                msg = _('Error deleting CIFS export: %s') % name
+                LOG.error(msg)
+                raise exception.ShareBackendException(msg=msg)
+
+    def snapshot_update_access(self, context, snapshot,
+                               access_rules, add_rules=None,
+                               delete_rules=None, share_server=None):
+        """Update snapshot access."""
+        snapshot_name = snapshot["name"]
+        LOG.debug(f'Updating access for snapshot {snapshot_name}.')
+        share_proto = snapshot['share']['share_proto']
+        state_map = {}
+        if share_proto == 'NFS':
+            path = self._get_snapshot_path(snapshot)
+            state_map = self._update_access_nfs(snapshot_name,
+                                                path, access_rules)
+        if share_proto == 'CIFS':
+            state_map = self._update_access_cifs(snapshot_name,
+                                                 access_rules,
+                                                 read_only=True)
+        return state_map

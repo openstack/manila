@@ -97,7 +97,7 @@ class PowerScaleApi(object):
     def clone_snapshot(self, snapshot_name, fq_target_dir,
                        provider_location):
         self.create_directory(fq_target_dir)
-        if provider_location is not None:
+        if provider_location:
             snapshot = self.get_snapshot_id(provider_location)
             snapshot_name = snapshot['name']
         else:
@@ -221,6 +221,33 @@ class PowerScaleApi(object):
 
         data = {'paths': [export_path]}
         url = self.host_url + '/platform/1/protocols/nfs/exports'
+        response = self.send_post_request(url, data=data)
+        return response.status_code == 201
+
+    def create_snapshot_nfs_export(self, export_path):
+        """Creates an NFS export using the Platform API.
+
+        :param export_path: a string specifying the desired export path
+        :return: "True" if created successfully; "False" otherwise
+        """
+
+        data = {'paths': [export_path],
+                'read_only': True,
+                "map_root": {"enabled": False}}
+        url = self.host_url + '/platform/22/protocols/nfs/exports'
+        response = self.send_post_request(url, data=data)
+        return response.status_code == 201
+
+    def create_snapshot_smb_export(self, snapshot_name, share_path):
+        """Creates an SMB/CIFS share.
+
+        :param snapshot_name: the name of the CIFS share
+        :param share_path: the path associated with the CIFS share
+        :return: "True" if the share created successfully; returns "False"
+        otherwise
+        """
+        data = {'name': snapshot_name, 'path': share_path}
+        url = self.host_url + '/platform/1/protocols/smb/shares'
         response = self.send_post_request(url, data=data)
         return response.status_code == 201
 

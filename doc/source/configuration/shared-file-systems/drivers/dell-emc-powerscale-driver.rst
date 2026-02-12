@@ -55,6 +55,8 @@ The following operations are supported:
 
 - Manage and Unmanage CIFS/NFS share.
 
+- Mount snapshot.
+
 Back end configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -110,6 +112,23 @@ documentation:
 Notes and behavior
 ------------------
 * Unmanage does not delete the export; clients remain connected.
+
+Mount Snapshot
+~~~~~~~~~~~~~~
+
+To enable snapshot-mount support for a share type, set the following extra
+specification:
+
+.. code-block:: ini
+
+    openstack share type set <share_type> --extra-spec \
+    mount_snapshot_support="<is> True"
+
+Access behavior
+
+- Mounted snapshots are always read-only.
+- For NFS and CIFS, IP-based access rules are applied.
+- For CIFS, user-based access rules are also supported.
 
 Shrink a share
 ~~~~~~~~~~~~~~
