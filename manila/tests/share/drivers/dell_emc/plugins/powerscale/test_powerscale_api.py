@@ -19,6 +19,7 @@ import ddt
 from oslo_serialization import jsonutils as json
 import requests
 import requests_mock
+from urllib.parse import quote
 
 from manila import exception
 from manila.share.drivers.dell_emc.plugins.powerscale import powerscale_api
@@ -1188,3 +1189,102 @@ class PowerScaleApiTest(test.TestCase):
             self.assertEqual(expected_request_data,
                              json.loads(m.request_history[0].body))
             self.assertEqual(url, m.request_history[0].url)
+
+    @requests_mock.mock()
+    def test_create_nfs_export_aliases_success(self, m):
+        self.assertEqual(0, len(m.request_history))
+        alias_name = 'my_custom_name'
+        alias_path = '/ifs/my_share'
+        expected_url = (self.
+                        _mock_url +
+                        '/platform/12/protocols/nfs/aliases?zone=System')
+        m.post(expected_url, status_code=201)
+        result = (self.
+                  powerscale_api.create_nfs_export_aliases(alias_name,
+                                                           alias_path))
+        self.assertTrue(result)
+        self.assertEqual(1, len(m.request_history))
+        expected_body = {"name": alias_name, "path": alias_path}
+        self.assertEqual(expected_body, json.loads(m.request_history[0].body))
+
+    @ddt.data(400, 404, 500)
+    def test_create_nfs_export_aliases_error_codes(self, status):
+        with requests_mock.mock() as m:
+            self.assertEqual(0, len(m.request_history))
+            alias_name = 'my_custom_name'
+            alias_path = '/ifs/my_share'
+            url = (self.
+                   _mock_url +
+                   '/platform/12/protocols/nfs/aliases?zone=System')
+            m.post(url, status_code=status)
+            result = (self.
+                      powerscale_api.create_nfs_export_aliases(alias_name,
+                                                               alias_path))
+            self.assertFalse(result)
+            self.assertEqual(1, len(m.request_history))
+
+    @requests_mock.mock()
+    def test_delete_nfs_export_aliases_success(self, m):
+        self.assertEqual(0, len(m.request_history))
+        alias_name = '/my_custom_name'
+        encoded_alias = quote(alias_name, safe='')
+        expected_url = (self._mock_url +
+                        '/platform/12/protocols/nfs/aliases/' +
+                        encoded_alias + '?zone=System')
+        m.delete(expected_url, status_code=204)
+        result = self.powerscale_api.delete_nfs_export_aliases(alias_name)
+        self.assertTrue(result)
+        self.assertEqual(1, len(m.request_history))
+
+    @requests_mock.mock()
+    def test_delete_nfs_export_aliases_not_found(self, m):
+        self.assertEqual(0, len(m.request_history))
+        alias_name = '/my_custom_name'
+        encoded_alias = quote(alias_name, safe='')
+        expected_url = (self._mock_url +
+                        '/platform/12/protocols/nfs/aliases/' +
+                        encoded_alias + '?zone=System')
+        m.delete(expected_url, status_code=404)
+        result = self.powerscale_api.delete_nfs_export_aliases(alias_name)
+        self.assertFalse(result)
+        self.assertEqual(1, len(m.request_history))
+
+    @requests_mock.mock()
+    def test_get_nfs_export_aliases_success(self, m):
+        self.assertEqual(0, len(m.request_history))
+        alias_name = '/my_custom_name'
+        encoded_alias = quote(alias_name, safe='')
+        expected_url = (self._mock_url +
+                        '/platform/12/protocols/nfs/aliases/' +
+                        encoded_alias + '?zone=System')
+        expected_response = {
+            "aliases": [
+                {
+                    "id": alias_name,
+                    "name": alias_name,
+                    "path": "/ifs/my_share",
+                    "zone": "System"
+                }
+            ]
+        }
+        m.get(expected_url, status_code=200, json=expected_response)
+        result = self.powerscale_api.get_nfs_export_aliases(alias_name)
+        self.assertEqual(expected_response['aliases'][0], result)
+        self.assertEqual(1, len(m.request_history))
+
+    @ddt.data(400, 404, 500)
+    def test_get_nfs_export_aliases_error_codes(self, status):
+        with requests_mock.mock() as m:
+            self.assertEqual(0, len(m.request_history))
+            alias_name = '/my_custom_name'
+            encoded_alias = quote(alias_name, safe='')
+            expected_url = (self._mock_url +
+                            '/platform/12/protocols/nfs/aliases/' +
+                            encoded_alias + '?zone=System')
+            m.get(expected_url, status_code=status)
+            self.assertRaises(
+                exception.ShareBackendException,
+                self.powerscale_api.get_nfs_export_aliases,
+                alias_name
+            )
+            self.assertEqual(1, len(m.request_history))

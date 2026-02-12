@@ -311,6 +311,13 @@ class PowerScaleTest(test.TestCase):
 
         # delete the share
         share = {"name": self.SHARE_NAME, "share_proto": 'CIFS'}
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'id': self.SHARE_NAME,
+            'path': '/ifs/manila-test/share-foo',
+        }
+        container_path = '/ifs/manila-test/share-foo'
+        self.storage_connection._get_container_path = mock.MagicMock(
+            return_value=container_path)
         self.storage_connection.delete_share(self.mock_context, share, None)
 
         # verify share deleted
@@ -346,7 +353,13 @@ class PowerScaleTest(test.TestCase):
 
     def test_delete_cifs_share_backend_failure(self):
         share = {"name": self.SHARE_NAME, "share_proto": 'CIFS'}
-
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'id': self.SHARE_NAME,
+            'path': '/ifs/manila-test/share-foo',
+        }
+        container_path = '/ifs/manila-test/share-foo'
+        self.storage_connection._get_container_path = mock.MagicMock(
+            return_value=container_path)
         self._mock_powerscale_api.delete_smb_share.return_value = False
         self.assertRaises(
             exception.ShareBackendException,
@@ -562,6 +575,7 @@ class PowerScaleTest(test.TestCase):
             'allocated_capacity_gb': 2110.0,
             'qos': False,
             'mount_snapshot_support': True,
+            'mount_point_name_support': True,
         }
         expected_stats = {
             'share_backend_name': 'PowerScale_backend',
@@ -1281,7 +1295,7 @@ class PowerScaleTest(test.TestCase):
         self._mock_powerscale_api.get_snapshot_id.return_value = {
             'id': 'backend-snap-id',
             'path': self.SHARE_DIR,
-            'name': 'fake-snap-name'
+            'name': 'fake-snap-name',
         }
 
         result = self.storage_connection.manage_existing_snapshot(
@@ -1574,7 +1588,7 @@ class PowerScaleTest(test.TestCase):
         self.storage_connection._format_nfs_path.assert_called_once_with(
             snap_path)
         self.storage_connection._get_location.assert_called_once_with(
-            export_path)
+            {export_path: True})
         self.assertEqual({"export_locations": expected_location}, result)
 
     def test_create_snap_export_path_cifs(self):
@@ -1605,7 +1619,7 @@ class PowerScaleTest(test.TestCase):
         self.storage_connection._format_smb_path.assert_called_once_with(
             "snap-001")
         self.storage_connection._get_location.assert_called_once_with(
-            smb_export_path)
+            {smb_export_path: True})
 
         self.assertEqual({"export_locations": expected_location}, result)
 
@@ -1698,3 +1712,248 @@ class PowerScaleTest(test.TestCase):
                                                 None)
         self._mock_powerscale_api.create_snapshot.assert_called_with(
             snapshot_name, snapshot_path)
+
+    def test_create_share_nfs_with_mount_point_name(self):
+        share_path = self.SHARE_DIR
+        mount_point_name = "/my_custom_share"
+        alias_path = mount_point_name
+        self._mock_powerscale_api.create_nfs_export.return_value = True
+        self._mock_powerscale_api.create_nfs_export_aliases.return_value = True
+
+        self.assertFalse(self._mock_powerscale_api.create_directory.called)
+        self.assertFalse(self._mock_powerscale_api.create_nfs_export.called)
+        self.assertFalse(
+            self._mock_powerscale_api.create_nfs_export_aliases.called)
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'NFS',
+            "size": 8,
+            "mount_point_name": "my_custom_share",
+            'share_type_id': 'fake_id',
+        }
+        location = self.storage_connection.create_share(
+            self.mock_context, share, None)
+        original_path = '%s:%s' % (self.POWERSCALE_ADDR, share_path)
+        alias_export_path = '%s:%s' % (self.POWERSCALE_ADDR, alias_path)
+        expected_location = [
+            {
+                'is_admin_only': False,
+                'metadata': {'preferred': False},
+                'path': original_path,
+            },
+            {
+                'is_admin_only': False,
+                'metadata': {'preferred': True},
+                'path': alias_export_path,
+            }
+        ]
+        self.assertEqual(expected_location, location)
+        self._mock_powerscale_api.create_directory.assert_called_once_with(
+            share_path, False)
+        self._mock_powerscale_api.create_nfs_export.assert_called_once_with(
+            share_path)
+        (self._mock_powerscale_api.create_nfs_export_aliases.
+         assert_called_once_with(mount_point_name, share_path))
+        self._mock_powerscale_api.quota_create.assert_called_once_with(
+            share_path, 'directory', 8 * units.Gi)
+
+    def test_failed_to_create_share_nfs_with_mount_point_name(self):
+        self._mock_powerscale_api.create_nfs_export.return_value = True
+        (self._mock_powerscale_api.
+         create_nfs_export_aliases).return_value = False
+        self.assertFalse(self._mock_powerscale_api.create_directory.called)
+        self.assertFalse(self._mock_powerscale_api.create_nfs_export.called)
+        self.assertFalse(
+            self._mock_powerscale_api.create_nfs_export_aliases.called)
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'NFS',
+            "size": 8,
+            "mount_point_name": "my_custom_share",
+        }
+        self.assertRaises(exception.ShareBackendException,
+                          self.storage_connection.create_share,
+                          self.mock_context, share,
+                          share_server=None)
+
+    def test_create_share_cifs_with_mount_point_name(self):
+        self._mock_powerscale_api.create_smb_share.return_value = True
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'CIFS',
+            "size": 8,
+            "mount_point_name": "custom_smb",
+            'share_type_id': 'fake_id',
+        }
+        location = self.storage_connection.create_share(
+            self.mock_context, share, None)
+
+        path = '\\\\{0}\\{1}'.format(self.POWERSCALE_ADDR, "custom_smb")
+        expected_location = [{
+            'is_admin_only': False,
+            'metadata': {'preferred': True},
+            'path': path,
+        }]
+        self.assertEqual(expected_location, location)
+        self._mock_powerscale_api.create_smb_share.assert_called_once_with(
+            "custom_smb", self.SHARE_DIR)
+
+    def test_delete_share_nfs_with_mount_point_alias_deleted(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "mount_point_name": "my_custom_share",
+        }
+        fake_share_id = 42
+        (self._mock_powerscale_api.
+         lookup_nfs_export).return_value = fake_share_id
+        self._mock_powerscale_api.delete_nfs_share.return_value = True
+        self.storage_connection._check_valid_aliases = mock.MagicMock(
+            return_value=True)
+        self._mock_powerscale_api.delete_nfs_export_aliases.return_value = True
+        self.storage_connection.delete_share(self.mock_context, share, None)
+        self._mock_powerscale_api.lookup_nfs_export.assert_called_once_with(
+            self.storage_connection._get_container_path(share)
+        )
+        (self._mock_powerscale_api.
+         delete_nfs_share.assert_called_once_with(fake_share_id))
+        (self._mock_powerscale_api.
+         delete_nfs_export_aliases.assert_called_once_with("/my_custom_share"))
+
+    def test_delete_invalid_share_nfs_with_mount_point_alias_deleted(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "mount_point_name": "my_custom_share",
+        }
+        fake_share_id = 42
+        (self._mock_powerscale_api.
+         lookup_nfs_export).return_value = fake_share_id
+        self._mock_powerscale_api.delete_nfs_share.return_value = True
+        self.storage_connection._check_valid_aliases = mock.MagicMock(
+            return_value=False)
+        self.storage_connection.delete_share(self.mock_context, share, None)
+        self._mock_powerscale_api.lookup_nfs_export.assert_called_once_with(
+            self.storage_connection._get_container_path(share)
+        )
+        (self._mock_powerscale_api.
+         delete_nfs_share.assert_called_once_with(fake_share_id))
+        (self._mock_powerscale_api.
+         delete_nfs_export_aliases.assert_not_called())
+
+    def test_failed_to_delete_share_nfs_with_mount_point_alias_deleted(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "mount_point_name": "my_custom_share",
+        }
+        fake_share_id = 42
+        (self._mock_powerscale_api.
+         lookup_nfs_export).return_value = fake_share_id
+        self._mock_powerscale_api.delete_nfs_share.return_value = True
+        self.storage_connection._check_valid_aliases = mock.MagicMock(
+            return_value=True)
+        (self._mock_powerscale_api.
+         delete_nfs_export_aliases).return_value = False
+        self.assertRaises(exception.ShareBackendException,
+                          self.storage_connection.delete_share,
+                          self.mock_context, share,
+                          share_server=None)
+
+    def test_delete_share_cifs_with_mount_point_name(self):
+        self.assertFalse(self._mock_powerscale_api.delete_smb_share.called)
+        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS',
+                 "mount_point_name": "my_custom_share", }
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'id': self.SHARE_NAME,
+            'path': '/ifs/manila-test/share-foo',
+        }
+        container_path = '/ifs/manila-test/share-foo'
+        self.storage_connection._get_container_path = mock.MagicMock(
+            return_value=container_path)
+        self.storage_connection.delete_share(self.mock_context, share, None)
+        self._mock_powerscale_api.delete_smb_share.assert_called_with(
+            'my_custom_share')
+
+    def test_delete_invalid_share_cifs_with_mount_point_name(self):
+        self.assertFalse(self._mock_powerscale_api.delete_smb_share.called)
+        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS',
+                 "mount_point_name": "my_custom_share", }
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'id': self.SHARE_NAME,
+            'path': '/ifs/manila-test/share-foo-test',
+        }
+        container_path = '/ifs/manila-test/share-foo'
+        self.storage_connection._get_container_path = mock.MagicMock(
+            return_value=container_path)
+        self.storage_connection.delete_share(self.mock_context, share, None)
+        self._mock_powerscale_api.delete_smb_share.assert_not_called()
+
+    def test_ensure_shares_nfs_share_exists_with_mount_point_name(self):
+        share = {
+            'id': '123',
+            'share_proto': 'NFS',
+            'name': 'my_share',
+            "mount_point_name": "my_custom_share",
+        }
+        container_path = '/ifs/my_share'
+        location = ['10.0.0.1:/ifs/my_share',
+                    '10.0.0.1:/my_custom_share']
+        self.storage_connection._get_container_path = mock.MagicMock(
+            return_value=container_path)
+        self._mock_powerscale_api.lookup_nfs_export.return_value = '123'
+        result = self.storage_connection.ensure_shares(None,
+                                                       [share])
+        expected_result = {
+            '123': {
+                'export_locations': location,
+                'status': 'available',
+                'reapply_access_rules': True,
+            }
+        }
+        self.assertEqual(result, expected_result)
+
+    def test_ensure_shares_cifs_share_exists_with_mount_point_name(self):
+        share = {
+            'id': '123',
+            'share_proto': 'CIFS',
+            'name': 'my_share',
+            "mount_point_name": "my_custom_share",
+        }
+        location = '\\\\10.0.0.1\\my_custom_share'
+        self._mock_powerscale_api.lookup_smb_share.return_value = share
+
+        result = self.storage_connection.ensure_shares(None,
+                                                       [share])
+        expected_result = {
+            '123': {
+                'export_locations': [location],
+                'status': 'available',
+                'reapply_access_rules': True,
+            }
+        }
+        self.assertEqual(result, expected_result)
+
+    def test_check_valid_aliases_success(self):
+        mount_point_name = '/my_alias'
+        container_path = '/ifs/manila/share-123'
+        self._mock_powerscale_api.get_nfs_export_aliases.return_value = {
+            'path': container_path
+        }
+        result = self.storage_connection._check_valid_aliases(
+            mount_point_name, container_path)
+        self.assertTrue(result)
+        (self._mock_powerscale_api.
+         get_nfs_export_aliases.assert_called_once_with(mount_point_name))
+
+    def test_check_valid_aliases_path_mismatch(self):
+        mount_point_name = '/my_alias'
+        container_path = '/ifs/manila/share-123'
+        self._mock_powerscale_api.get_nfs_export_aliases.return_value = {
+            'path': '/ifs/manila/other-share'
+        }
+        result = self.storage_connection._check_valid_aliases(
+            mount_point_name, container_path)
+        self.assertFalse(result)
+        (self._mock_powerscale_api.
+         get_nfs_export_aliases.assert_called_once_with(mount_point_name))

@@ -57,6 +57,8 @@ The following operations are supported:
 
 - Mount snapshot.
 
+- Mount point name.
+
 Back end configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -129,6 +131,24 @@ Access behavior
 - Mounted snapshots are always read-only.
 - For NFS and CIFS, IP-based access rules are applied.
 - For CIFS, user-based access rules are also supported.
+
+Mount Point Name
+~~~~~~~~~~~~~~~~
+
+PowerScale system supports providing a custom mount point name for
+both NFS and CIFS protocols.
+The mount point name will be prepended and will become the share's mount path.
+
+.. code-block:: ini
+
+    openstack share type set <share_type> --extra-spec \
+    mount_point_name_support="<is> True"
+    provisioning:mount_point_prefix=<prefix>
+
+For detailed usage instructions, refer to the Manila administration
+documentation:
+
+:doc:`/admin/share_mount_point_name`
 
 Shrink a share
 ~~~~~~~~~~~~~~

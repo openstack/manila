@@ -38,9 +38,10 @@ from manila.share.drivers.dell_emc.plugins.powerscale import powerscale_api
     1.0.5 - Add support for share shrink
     1.0.6 - Add support of manage/unmanage share and snapshot
     1.0.7 - Add support of mount snapshot
+    1.0.8 - Add support of mount point name
 
 """
-VERSION = "1.0.7"
+VERSION = "1.0.8"
 
 CONF = cfg.CONF
 
@@ -141,6 +142,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
         LOG.debug(f'Creating NFS share {share["name"]}.')
         # Create directory
         container_path = self._get_container_path(share)
+        path = {}
         self._create_directory(container_path)
         # Create nfs share
         share_created = self._powerscale_api.create_nfs_export(container_path)
@@ -150,8 +152,25 @@ class PowerScaleStorageConnection(base.StorageConnection):
                 {'share': share['name']})
             LOG.error(message)
             raise exception.ShareBackendException(msg=message)
-        location = self._get_location(self._format_nfs_path(container_path))
-        return location
+        format_path = self._format_nfs_path(container_path)
+        path[format_path] = True
+        if share.get('mount_point_name'):
+            path[format_path] = False
+            mount_point_name = (
+                self._format_nfs_mount_point_name(
+                    share.get('mount_point_name')))
+            alias_created = (self._powerscale_api.
+                             create_nfs_export_aliases(mount_point_name,
+                                                       container_path))
+            format_path = self._format_nfs_path(mount_point_name)
+            path[format_path] = True
+            if not alias_created:
+                message = (
+                    _('Failed to create NFS alias for "%(share)s".') %
+                    {'share': share['name']})
+                LOG.error(message)
+                raise exception.ShareBackendException(msg=message)
+        return self._get_location(path)
 
     def _create_cifs_share(self, share):
         """Is called to create cifs share."""
@@ -160,15 +179,19 @@ class PowerScaleStorageConnection(base.StorageConnection):
         container_path = self._get_container_path(share)
         self._create_directory(container_path)
         # Create smb share
+        share_name = share['name']
+        if share.get('mount_point_name'):
+            share_name = share.get('mount_point_name')
         share_created = self._powerscale_api.create_smb_share(
-            share['name'], container_path)
+            share_name, container_path)
         if not share_created:
             message = (
                 _('The requested CIFS share "%(share)s" was not created.') %
                 {'share': share['name']})
             LOG.error(message)
             raise exception.ShareBackendException(msg=message)
-        location = self._get_location(self._format_smb_path(share['name']))
+        location = (self.
+                    _get_location({self._format_smb_path(share_name): True}))
         return location
 
     def _create_directory(self, path, recursive=False):
@@ -251,13 +274,40 @@ class PowerScaleStorageConnection(base.StorageConnection):
 
     def _delete_nfs_share(self, share):
         """Is called to remove nfs share."""
-        self._delete_export(proto="NFS",
-                            name=share['name'],
-                            path=self._get_container_path(share))
+        container_path = self._get_container_path(share)
+        self._delete_export("NFS", share['name'], container_path)
+        if share.get('mount_point_name'):
+            self._delete_nfs_aliases(share['mount_point_name'],
+                                     container_path, share['name'])
+
+    def _delete_nfs_aliases(self, mount_point_name,
+                            container_path, share_name):
+        mount_point_name = (
+            self._format_nfs_mount_point_name(mount_point_name))
+        valid_alias = self._check_valid_aliases(mount_point_name,
+                                                container_path)
+        if valid_alias:
+            alias_deleted = (
+                self._powerscale_api.
+                delete_nfs_export_aliases(mount_point_name))
+            if not alias_deleted:
+                message = (_('Error deleting NFS alias for '
+                             'share: %s') % share_name)
+                LOG.error(message)
+                raise exception.ShareBackendException(msg=message)
+        else:
+            message = (_("NFS alias %(alias_name)s is exist "
+                         "with another share path.") %
+                       {'alias_name': mount_point_name})
+            LOG.warning(message)
 
     def _delete_cifs_share(self, share):
         """Is called to remove CIFS share."""
-        self._delete_export(proto="CIFS", name=share['name'])
+        share_name = share['name']
+        container_path = self._get_container_path(share)
+        if share.get('mount_point_name'):
+            share_name = share.get('mount_point_name')
+        self._delete_export("CIFS", share_name, container_path)
 
     def delete_snapshot(self, context, snapshot, share_server):
         """Is called to remove snapshot."""
@@ -275,9 +325,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
                        {'snap': snapshot['name']})
             LOG.error(message)
             raise exception.ShareBackendException(msg=message)
-        self._delete_export(proto=proto,
-                            name=snap_name,
-                            path=snap_path)
+        self._delete_export(proto, snap_name, snap_path)
 
     def ensure_share(self, context, share, share_server):
         """Invoked to ensure that share is exported."""
@@ -464,6 +512,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
                 self.max_over_subscription_ratio,
             'thin_provisioning': True,
             'mount_snapshot_support': True,
+            'mount_point_name_support': True,
         }
         spaces = self._powerscale_api.get_space_stats()
         if spaces:
@@ -655,19 +704,27 @@ class PowerScaleStorageConnection(base.StorageConnection):
                 share_id = self._powerscale_api.lookup_nfs_export(
                     container_path)
                 if share_id:
-                    location = self._format_nfs_path(container_path)
+                    location = [self._format_nfs_path(container_path)]
+                    if share.get('mount_point_name'):
+                        location.append(self._format_nfs_path(
+                            self._format_nfs_mount_point_name(
+                                share.get('mount_point_name'))
+                        ))
                     updates[share['id']] = {
-                        'export_locations': [location],
+                        'export_locations': location,
                         'status': 'available',
                         'reapply_access_rules': True,
                     }
                 else:
                     LOG.warning(f'NFS Share {share["name"]} is not found.')
             elif share['share_proto'] == 'CIFS':
+                share_name = share['name']
+                if share.get('mount_point_name'):
+                    share_name = share.get('mount_point_name')
                 smb_share = self._powerscale_api.lookup_smb_share(
-                    share['name'])
+                    share_name)
                 if smb_share:
-                    location = self._format_smb_path(share['name'])
+                    location = self._format_smb_path(share_name)
                     updates[share['id']] = {
                         'export_locations': [location],
                         'status': 'available',
@@ -690,11 +747,25 @@ class PowerScaleStorageConnection(base.StorageConnection):
     def _format_nfs_path(self, container_path):
         return '{0}:{1}'.format(self._server, container_path)
 
-    def _get_location(self, path):
-        export_locations = [{'path': path,
-                             'is_admin_only': False,
-                             'metadata': {"preferred": True}}]
-        return export_locations
+    def _get_location(self, paths):
+        return [
+            {
+                'path': path,
+                'is_admin_only': False,
+                'metadata': {'preferred': bool(is_preferred)}
+            }
+            for path, is_preferred in paths.items()
+        ]
+
+    def _format_nfs_mount_point_name(self, mount_point_name):
+        return '/{0}'.format(mount_point_name)
+
+    def _check_valid_aliases(self, mount_point_name,
+                             container_path):
+        alias_details = (self.
+                         _powerscale_api.
+                         get_nfs_export_aliases(mount_point_name))
+        return alias_details['path'] == container_path
 
     def manage_existing_snapshot(self, snapshot, driver_options):
         """Brings an existing snapshot under Manila management."""
@@ -777,7 +848,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
                     '"%(snap)s".') % {'snap': snap_name}
             LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
-        return {'export_locations': self._get_location(export_path)}
+        return {'export_locations': self._get_location({export_path: True})}
 
     def _delete_export(self, proto, name, path=None):
         if proto == "NFS":
@@ -796,10 +867,18 @@ class PowerScaleStorageConnection(base.StorageConnection):
                 LOG.warning('Attempted to delete CIFS export "%s", '
                             'but it does not exist.', name)
                 return
-            if not self._powerscale_api.delete_smb_share(name):
-                msg = _('Error deleting CIFS export: %s') % name
-                LOG.error(msg)
-                raise exception.ShareBackendException(msg=msg)
+            elif smb_share['path'] == path:
+                share_deleted = self._powerscale_api.delete_smb_share(name)
+                if not share_deleted:
+                    message = (_('Error deleting CIFS share: %s') %
+                               name)
+                    LOG.error(message)
+                    raise exception.ShareBackendException(msg=message)
+            else:
+                message = _('CIFS share "%s": the delete operation '
+                            'failed because the share path '
+                            'does not match the expected path.') % name
+                LOG.warning(message)
 
     def snapshot_update_access(self, context, snapshot,
                                access_rules, add_rules=None,
