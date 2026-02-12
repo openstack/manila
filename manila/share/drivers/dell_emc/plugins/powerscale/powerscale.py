@@ -36,8 +36,10 @@ from manila.share.drivers.dell_emc.plugins.powerscale import powerscale_api
     1.0.3 - Add support for thin provisioning
     1.0.4 - Rename isilon to powerscale
     1.0.5 - Add support for share shrink
+    1.0.6 - Add support of manage/unmanage share and snapshot
+
 """
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 
 CONF = cfg.CONF
 
@@ -80,6 +82,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
         self._powerscale_api = None
         self.driver_handles_share_servers = False
         self.ipv6_implemented = True
+        self.manage_existing_snapshot_support = True
         # props for share status update
         self.reserved_percentage = None
         self.reserved_snapshot_percentage = None
@@ -87,6 +90,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
         self.max_over_subscription_ratio = None
         self._threshold_limit = 0
         self.shrink_share_support = True
+        self.manage_existing_support = True
 
     def _get_container_path(self, share):
         """Return path to a container."""
@@ -121,7 +125,8 @@ class PowerScaleStorageConnection(base.StorageConnection):
 
         # Clone snapshot to new location
         fq_target_dir = self._get_container_path(share)
-        self._powerscale_api.clone_snapshot(snapshot['name'], fq_target_dir)
+        self._powerscale_api.clone_snapshot(snapshot['name'], fq_target_dir,
+                                            snapshot['provider_location'])
 
         return location
 
@@ -174,14 +179,17 @@ class PowerScaleStorageConnection(base.StorageConnection):
         """Is called to create snapshot."""
         LOG.debug(f'Creating snapshot {snapshot["name"]}.')
         snapshot_path = os.path.join(self._root_dir, snapshot['share_name'])
-        snap_created = self._powerscale_api.create_snapshot(
+        snap_id = self._powerscale_api.create_snapshot(
             snapshot['name'], snapshot_path)
-        if not snap_created:
+        result = {}
+        if snap_id is None:
             message = (
                 _('Failed to create snapshot "%(snap)s".') %
                 {'snap': snapshot['name']})
             LOG.error(message)
             raise exception.ShareBackendException(msg=message)
+        result['provider_location'] = snap_id
+        return result
 
     def delete_share(self, context, share, share_server):
         """Is called to remove share."""
@@ -266,7 +274,11 @@ class PowerScaleStorageConnection(base.StorageConnection):
     def delete_snapshot(self, context, snapshot, share_server):
         """Is called to remove snapshot."""
         LOG.debug(f'Deleting snapshot {snapshot["name"]}')
-        deleted = self._powerscale_api.delete_snapshot(snapshot['name'])
+        if snapshot.get('provider_location'):
+            deleted = (self._powerscale_api.
+                       delete_snapshot_by_id(snapshot['provider_location']))
+        else:
+            deleted = self._powerscale_api.delete_snapshot(snapshot['name'])
         if not deleted:
             message = (
                 _('Failed to delete snapshot "%(snap)s".') %
@@ -286,6 +298,63 @@ class PowerScaleStorageConnection(base.StorageConnection):
         new_quota_size = new_size * units.Gi
         self._powerscale_api.quota_set(
             self._get_container_path(share), 'directory', new_quota_size)
+
+    def manage_existing(self, share, driver_options):
+        """Import an external NFS/CIFS share into Manila."""
+        export_path = (
+            share.get('export_location')
+            or share.get('export_locations', [None])[0]
+        )
+        protocol = share.get('share_proto')
+        LOG.info(
+            "Managing existing share with protocol: %s, export path: %s",
+            protocol,
+            export_path,
+        )
+        if protocol == 'NFS':
+            nfs_path = export_path.split(':', 1)[1]
+            export_id = self._powerscale_api.lookup_nfs_export(nfs_path)
+            if not export_id:
+                raise exception.ShareBackendException(
+                    msg=f"NFS export {nfs_path} not found."
+                )
+            backend_quota_path = nfs_path
+            export_location = export_path
+        elif protocol == 'CIFS':
+            share_name = export_path.split('\\')[-1]
+            smb_share = self._powerscale_api.lookup_smb_share(share_name)
+            if not smb_share:
+                raise exception.ShareBackendException(
+                    msg=f"CIFS share {share_name} not found."
+                )
+            backend_quota_path = smb_share.get('path')
+            if not backend_quota_path:
+                raise exception.ShareBackendException(
+                    msg=(
+                        "Unable to resolve OneFS path for CIFS share "
+                        f"{share_name}."
+                    )
+                )
+            export_location = export_path
+        share_quota = self._powerscale_api.quota_get(
+            backend_quota_path, 'directory'
+        )
+        size_bytes = (
+            share_quota.get('thresholds', {}).get('hard')
+            if share_quota else 0
+        )
+        if not size_bytes:
+            raise exception.ManageInvalidShare(
+                reason=(
+                    "Managing existing share requires a directory quota hard "
+                    "limit on backend path %s." % backend_quota_path
+                )
+            )
+        size_gb = size_bytes // units.Gi
+        return {
+            'size': size_gb,
+            'export_locations': [export_location],
+        }
 
     def shrink_share(self, share, new_size, share_server=None):
         """Shrink a share by lowering its directory hard quota.
@@ -618,3 +687,45 @@ class PowerScaleStorageConnection(base.StorageConnection):
                              'is_admin_only': False,
                              'metadata': {"preferred": True}}]
         return export_locations
+
+    def manage_existing_snapshot(self, snapshot, driver_options):
+        """Brings an existing snapshot under Manila management."""
+        provider_location = snapshot.get('provider_location')
+        snap = self._powerscale_api.get_snapshot_id(provider_location)
+        if not snap:
+            message = ("Could not find a snapshot in the backend with "
+                       "ID: %s, please make sure "
+                       "the snapshot exists in the backend."
+                       % provider_location)
+            LOG.error(message)
+            raise exception.ManageInvalidShareSnapshot(reason=message)
+        elif (snap['path'] !=
+              self._get_container_path(snapshot['share'])):
+            message = ("Snapshot does not belong to the given share %s."
+                       % snapshot['share']['name'])
+            LOG.error(message)
+            raise exception.ManageInvalidShareSnapshot(reason=message)
+        try:
+            snapshot_size = int(driver_options.get("size", 0))
+        except (ValueError, TypeError):
+            msg = _("The size in driver options to manage snapshot "
+                    "%(snap_id)s should be an integer, in format "
+                    "driver-options size=<SIZE>. Value passed: "
+                    "%(size)s.") % {'snap_id': snapshot['id'],
+                                    'size': driver_options.get("size")}
+            LOG.error(msg)
+            raise exception.ManageInvalidShareSnapshot(reason=msg)
+
+        if not snapshot_size:
+            msg = _("Snapshot %(snap_id)s has no specified size. "
+                    "Use default value to share size, "
+                    "set size in driver options if you "
+                    "want.") % {'snap_id': snapshot['id']}
+            LOG.info(msg)
+            snapshot_size = snapshot['share']['size']
+        LOG.info("Snapshot %(provider_location)s in "
+                 "PowerScale will be managed "
+                 "with ID %(snapshot_id)s.",
+                 {'provider_location': snapshot.get('provider_location'),
+                  'snapshot_id': snapshot['id']})
+        return {"size": snapshot_size, "provider_location": provider_location}

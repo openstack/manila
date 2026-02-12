@@ -120,7 +120,7 @@ class EMCShareDriver(driver.ShareDriver):
         if self.manage_existing_support:
             return self.plugin.manage_existing(share, driver_options)
         else:
-            return NotImplementedError()
+            raise NotImplementedError()
 
     def manage_existing_with_server(self, share, driver_options,
                                     share_server=None):

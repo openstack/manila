@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added support of manage/unmanage share and snapshot on
+    Dell PowerScale.
