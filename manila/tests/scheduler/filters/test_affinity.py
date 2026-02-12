@@ -105,7 +105,7 @@ class AffinityFilterTestCase(test.TestCase):
         self.assertRaises(affinity.SchedulerHintsNotSet,
                           self.filter._validate, hints)
 
-    @ mock.patch('manila.share.api.API.get')
+    @mock.patch('manila.share.api.API.get')
     def test_affinity_filter(self, mock_share_get):
         mock_share_get.side_effect = self._fake_get
 
@@ -118,7 +118,7 @@ class AffinityFilterTestCase(test.TestCase):
         self.assertNotIn('host2', valid_hosts)
         self.assertNotIn('host3', valid_hosts)
 
-    @ mock.patch('manila.share.api.API.get')
+    @mock.patch('manila.share.api.API.get')
     def test_anti_affinity_filter(self, mock_share_get):
         mock_share_get.side_effect = self._fake_get
 

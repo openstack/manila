@@ -1,13 +1,13 @@
 ---
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: mixed-line-ending
         args: ['--fix', 'lf']
         exclude: '.*\.(svg)$'
-      - id: check-byte-order-marker
+      - id: fix-byte-order-marker
       - id: check-executables-have-shebangs
       - id: check-merge-conflict
       - id: debug-statements
@@ -15,7 +15,7 @@ repos:
         files: .*\.(yaml|yml)$
         exclude: '^(zuul.d|rally-jobs)/.*$'
   - repo: https://github.com/PyCQA/doc8
-    rev: v1.1.1
+    rev: v2.0.0
     hooks:
       - id: doc8
         args: ['--ignore', 'D001']
@@ -25,7 +25,7 @@ repos:
       - id: bashate
         args: ['--ignore', 'E006,E042,E043']
   - repo: https://opendev.org/openstack/hacking
-    rev: 6.1.0
+    rev: 8.0.0
     hooks:
       - id: hacking
         additional_dependencies: []
