@@ -126,8 +126,8 @@ class ServiceMixin(object):
 class ServiceControllerLegacy(ServiceMixin, wsgi.Controller):
     """Deprecated Services API controller.
 
-    Used by legacy API v1 and v2 microversions from 2.0 to 2.6.
-    Registered under deprecated API URL 'os-services'.
+    Used from microversions 2.0 to 2.6. Registered under deprecated API URL
+    'os-services'.
     """
 
     @wsgi.Controller.api_version('1.0', '2.6')
@@ -142,8 +142,7 @@ class ServiceControllerLegacy(ServiceMixin, wsgi.Controller):
 class ServiceController(ServiceMixin, wsgi.Controller):
     """Services API controller.
 
-    Used only by API v2 starting from microversion 2.7.
-    Registered under API URL 'services'.
+    Used from microversion 2.7. Registered under API URL 'services'.
     """
 
     def __init__(self):
