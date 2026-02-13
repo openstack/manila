@@ -21,25 +21,28 @@ from webob import exc
 
 from manila.api import common
 from manila.api.openstack import wsgi
-from manila.api.v1 import share_servers
 from manila.api.views import share_server_migration as server_migration_views
+from manila.api.views import share_servers as share_servers_views
 from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
+from manila import share
 from manila.share import utils as share_utils
 from manila import utils
 
 LOG = log.getLogger(__name__)
 
 
-class ShareServerController(share_servers.ShareServerController,
-                            wsgi.Controller,
-                            wsgi.AdminActionsMixin):
+class ShareServerController(wsgi.Controller, wsgi.AdminActionsMixin):
     """The Share Server API V2 controller for the OpenStack API."""
 
+    _view_builder_class = share_servers_views.ViewBuilder
+    resource_name = 'share_server'
+
     def __init__(self):
-        super(ShareServerController, self).__init__()
+        self.share_api = share.API()
+        super().__init__()
         self._migration_view_builder = server_migration_views.ViewBuilder()
 
     valid_statuses = {
@@ -52,6 +55,102 @@ class ShareServerController(share_servers.ShareServerController,
 
     def _update(self, context, id, update):
         db_api.share_server_update(context, id, update)
+
+    @wsgi.Controller.authorize
+    def index(self, req):
+        """Returns a list of share servers."""
+
+        context = req.environ['manila.context']
+
+        search_opts = {}
+        search_opts.update(req.GET)
+        share_servers = db_api.share_server_get_all(context)
+        for s in share_servers:
+            try:
+                share_network = db_api.share_network_get(
+                    context, s.share_network_id)
+                s.project_id = share_network['project_id']
+                if share_network['name']:
+                    s.share_network_name = share_network['name']
+                else:
+                    s.share_network_name = share_network['id']
+            except exception.ShareNetworkNotFound:
+                # NOTE(dviroel): The share-network may already be deleted while
+                # the share-server is in 'deleting' state. In this scenario,
+                # we will return some empty values.
+                LOG.debug("Unable to retrieve share network details for share "
+                          "server %(server)s, the network %(network)s was "
+                          "not found.",
+                          {'server': s.id, 'network': s.share_network_id})
+                s.project_id = ''
+                s.share_network_name = ''
+        if search_opts:
+            for k, v in search_opts.items():
+                share_servers = [s for s in share_servers if
+                                 (hasattr(s, k) and
+                                  s[k] == v or k == 'share_network' and
+                                  v in [s.share_network_name,
+                                        s.share_network_id] or
+                                  k == 'share_network_subnet_id' and
+                                  v in s.share_network_subnet_ids)]
+        return self._view_builder.build_share_servers(req, share_servers)
+
+    @wsgi.Controller.authorize
+    def show(self, req, id):
+        """Return data about the requested share server."""
+        context = req.environ['manila.context']
+        try:
+            server = db_api.share_server_get(context, id)
+            share_network = db_api.share_network_get(
+                context, server['share_network_id'])
+            server.project_id = share_network['project_id']
+            if share_network['name']:
+                server.share_network_name = share_network['name']
+            else:
+                server.share_network_name = share_network['id']
+        except exception.ShareServerNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+        except exception.ShareNetworkNotFound:
+            msg = _("Share server could not be found. Its associated share "
+                    "network %s does not exist.") % server['share_network_id']
+            raise exc.HTTPNotFound(explanation=msg)
+        return self._view_builder.build_share_server(req, server)
+
+    @wsgi.Controller.authorize
+    def details(self, req, id):
+        """Return details for requested share server."""
+        context = req.environ['manila.context']
+        try:
+            share_server = db_api.share_server_get(context, id)
+        except exception.ShareServerNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+
+        return self._view_builder.build_share_server_details(
+            share_server['backend_details'])
+
+    @wsgi.Controller.authorize
+    def delete(self, req, id):
+        """Delete specified share server."""
+        context = req.environ['manila.context']
+        try:
+            share_server = db_api.share_server_get(context, id)
+        except exception.ShareServerNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+        allowed_statuses = [constants.STATUS_ERROR, constants.STATUS_ACTIVE]
+        if share_server['status'] not in allowed_statuses:
+            data = {
+                'status': share_server['status'],
+                'allowed_statuses': allowed_statuses,
+            }
+            msg = _("Share server's actual status is %(status)s, allowed "
+                    "statuses for deletion are %(allowed_statuses)s.") % (data)
+            raise exc.HTTPForbidden(explanation=msg)
+        LOG.debug("Deleting share server with id: %s.", id)
+        try:
+            self.share_api.delete_share_server(context, share_server)
+        except exception.ShareServerInUse as e:
+            raise exc.HTTPConflict(explanation=e.msg)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version('2.49')
     @wsgi.action('reset_status')
