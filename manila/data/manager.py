@@ -81,11 +81,11 @@ backup_opts = [
 data_opts = [
     cfg.StrOpt(
         'mount_tmp_location',
-        default='/tmp/',
+        default='/tmp/',  # nosec: B108
         help="Temporary path to create and mount shares during migration."),
     cfg.StrOpt(
         'backup_mount_tmp_location',
-        default='/tmp/',
+        default='/tmp/',  # nosec: B108
         help="Temporary path to create and mount backup during share backup."),
     cfg.BoolOpt(
         'check_hash',

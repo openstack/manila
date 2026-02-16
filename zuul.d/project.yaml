@@ -29,8 +29,7 @@
             voting: false
         - manila-rally-ss:
             voting: false
-        - manila-tox-bandit:
-            voting: false
+        - manila-tox-bandit
         - manila-tox-py3-eventlet:
             voting: false
         # Test OpenAPI spec generation.

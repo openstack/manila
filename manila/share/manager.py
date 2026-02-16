@@ -451,8 +451,9 @@ class ShareManager(manager.SchedulerDependentManager):
 
             if new_backend_info:
                 new_backend_info_hash = hashlib.sha1(
-                    str(sorted(new_backend_info.items())).encode(
-                        'utf-8')).hexdigest()
+                    str(sorted(new_backend_info.items())).encode('utf-8'),
+                    usedforsecurity=False,
+                ).hexdigest()
             if ((old_backend_info_hash == new_backend_info_hash and
                     backend_info_implemented) and not skip_backend_info_check):
                 LOG.debug(

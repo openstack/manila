@@ -161,21 +161,17 @@ class RestAPIExecutor(object):
         LOG.debug('CMD: %(cmd)s, URL: %(url)s, DATA: %(data)s',
                   {'cmd': cmd, 'url': url, 'data': data})
         if cmd == 'post':
-            req = requests.post(url,
-                                data=data,
-                                headers=header)
+            req = requests.post(
+                url, data=data, headers=header, timeout=60)
         elif cmd == 'get':
-            req = requests.get(url,
-                               data=data,
-                               headers=header)
+            req = requests.get(
+                url, data=data, headers=header, timeout=60)
         elif cmd == 'put':
-            req = requests.put(url,
-                               data=data,
-                               headers=header)
+            req = requests.put(
+                url, data=data, headers=header, timeout=60)
         elif cmd == 'delete':
-            req = requests.delete(url,
-                                  data=data,
-                                  headers=header)
+            req = requests.delete(
+                url, data=data, headers=header, timeout=60)
         else:
             msg = (_('Unsupported cmd: %s') % cmd)
             raise exception.ShareBackendException(msg)

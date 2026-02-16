@@ -249,7 +249,8 @@ class RestAPIExecutorTestCase(test.TestCase):
         headers = {'X-Auth-Token': 'fake_token'}
         mock_request.assert_called_once_with(url,
                                              data=json.dumps(params),
-                                             headers=headers)
+                                             headers=headers,
+                                             timeout=60)
 
     @ddt.data({'method': r'security/token',
                'params': {'name': test_config.as13000_nas_login,
@@ -277,7 +278,8 @@ class RestAPIExecutorTestCase(test.TestCase):
                  test_config.as13000_nas_port,
                  method),
                 data=json.dumps(params),
-                headers=None)
+                headers=None,
+                timeout=60)
         if request_type == 'delete':
             fake_value = {'code': 0, 'message': 'Success!'}
             self.rest_api._token_pool = ['fake_token']
@@ -292,7 +294,8 @@ class RestAPIExecutorTestCase(test.TestCase):
                  test_config.as13000_nas_port,
                  method),
                 data=None,
-                headers={'X-Auth-Token': 'fake_token'})
+                headers={'X-Auth-Token': 'fake_token'},
+                timeout=60)
 
     def test_send_api_wrong_access_fail(self):
         req_params = {'method': r'security/token',
@@ -317,7 +320,8 @@ class RestAPIExecutorTestCase(test.TestCase):
              req_params['method']),
             data=json.dumps(
                 req_params['params']),
-            headers=None)
+            headers=None,
+            timeout=60)
 
     def test_send_api_token_overtime_fail(self):
         self.rest_api._token_pool = ['fake_token']
@@ -341,7 +345,8 @@ class RestAPIExecutorTestCase(test.TestCase):
              fake_value['method']),
             data=json.dumps('fake_params'),
             headers={
-                'X-Auth-Token': 'fake_token'})
+                'X-Auth-Token': 'fake_token'},
+            timeout=60)
 
     def test_send_api_fail(self):
         self.rest_api._token_pool = ['fake_token']
@@ -362,7 +367,8 @@ class RestAPIExecutorTestCase(test.TestCase):
              test_config.as13000_nas_port,
              'fake_method'),
             data=json.dumps('fake_params'),
-            headers={'X-Auth-Token': 'fake_token'}
+            headers={'X-Auth-Token': 'fake_token'},
+            timeout=60
         )
 
 
