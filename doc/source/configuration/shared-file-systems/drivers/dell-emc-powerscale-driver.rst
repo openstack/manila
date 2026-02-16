@@ -183,8 +183,9 @@ The PowerScale driver has the following restrictions:
 
 To Manage and Unmanage an existing share snapshot
 -------------------------------------------------
-To manage a snapshot existing in PowerScale System, you need make sure the related
-share is existing in OpenStack, otherwise need to manage share first.
+To manage a snapshot existing in PowerScale System,
+you need make sure the related share is existing in
+OpenStack, otherwise need to manage share first.
 
 For detailed usage instructions, refer to the Manila administration
 documentation:
@@ -193,6 +194,8 @@ documentation:
 
 .. note::
     - provider_location is the snapshot id in PowerScale system.
+    - If the snapshot size is not provided, it will automatically
+      use the share size as the default.
 
 Driver options
 ~~~~~~~~~~~~~~
