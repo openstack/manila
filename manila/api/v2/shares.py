@@ -28,8 +28,6 @@ from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.schemas import shares as schema
 from manila.api.v2 import metadata
-from manila.api.v2 import share_manage
-from manila.api.v2 import share_unmanage
 from manila.api import validation
 from manila.api.views import share_accesses as share_access_views
 from manila.api.views import share_migration as share_migration_views
@@ -42,14 +40,29 @@ from manila.lock import api as resource_locks
 from manila import policy
 from manila import share
 from manila.share import share_types
+from manila.share import utils as share_utils
 from manila import utils
 
 LOG = log.getLogger(__name__)
 CONF = cfg.CONF
 
 
-class ShareMixin:
-    """Mixin class for Share API Controllers."""
+class ShareController(
+    wsgi.Controller, metadata.MetadataController, wsgi.AdminActionsMixin
+):
+    """The Shares API v2 controller for the OpenStack API."""
+    resource_name = 'share'
+    _view_builder_class = share_views.ViewBuilder
+
+    def __init__(self):
+        super(ShareController, self).__init__()
+        self.share_api = share.API()
+        self.resource_locks_api = resource_locks.API()
+        self._access_view_builder = share_access_views.ViewBuilder()
+        self._migration_view_builder = share_migration_views.ViewBuilder()
+        self._conf_admin_only_metadata_keys = getattr(
+            CONF, 'admin_only_metadata', []
+        )
 
     def _update(self, *args, **kwargs):
         db.share_update(*args, **kwargs)
@@ -59,206 +72,6 @@ class ShareMixin:
 
     def _delete(self, *args, **kwargs):
         return self.share_api.delete(*args, **kwargs)
-
-    @wsgi.Controller.authorize('get')
-    def show(self, req, id):
-        """Return data about the given share."""
-        context = req.environ['manila.context']
-
-        try:
-            share = self.share_api.get(context, id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
-
-        return self._view_builder.detail(req, share)
-
-    @wsgi.Controller.authorize
-    def delete(self, req, id):
-        """Delete a share."""
-        context = req.environ['manila.context']
-
-        LOG.info("Delete share with id: %s", id, context=context)
-
-        try:
-            share = self.share_api.get(context, id)
-
-            # NOTE(ameade): If the share is in a share group, we require its
-            # id be specified as a param.
-            sg_id_key = 'share_group_id'
-            if share.get(sg_id_key):
-                share_group_id = req.params.get(sg_id_key)
-                if not share_group_id:
-                    msg = _("Must provide '%s' as a request "
-                            "parameter when deleting a share in a share "
-                            "group.") % sg_id_key
-                    raise exc.HTTPBadRequest(explanation=msg)
-                elif share_group_id != share.get(sg_id_key):
-                    msg = _("The specified '%s' does not match "
-                            "the share group id of the share.") % sg_id_key
-                    raise exc.HTTPBadRequest(explanation=msg)
-
-            self.share_api.delete(context, share)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
-        except exception.InvalidShare as e:
-            raise exc.HTTPForbidden(explanation=e.msg)
-        except exception.Conflict as e:
-            raise exc.HTTPConflict(explanation=e.msg)
-
-        return webob.Response(status_int=http_client.ACCEPTED)
-
-    @wsgi.Controller.authorize("get_all")
-    def index(self, req):
-        """Returns a summary list of shares."""
-        req.GET.pop('export_location_id', None)
-        req.GET.pop('export_location_path', None)
-        req.GET.pop('name~', None)
-        req.GET.pop('description~', None)
-        req.GET.pop('description', None)
-        req.GET.pop('with_count', None)
-        return self._get_shares(req, is_detail=False)
-
-    @wsgi.Controller.authorize("get_all")
-    def detail(self, req):
-        """Returns a detailed list of shares."""
-        req.GET.pop('export_location_id', None)
-        req.GET.pop('export_location_path', None)
-        req.GET.pop('name~', None)
-        req.GET.pop('description~', None)
-        req.GET.pop('description', None)
-        req.GET.pop('with_count', None)
-        return self._get_shares(req, is_detail=True)
-
-    def _get_shares(self, req, is_detail):
-        """Returns a list of shares, transformed through view builder."""
-        context = req.environ['manila.context']
-
-        common._validate_pagination_query(req)
-
-        search_opts = {}
-        search_opts.update(req.GET)
-
-        # Remove keys that are not related to share attrs
-        sort_key = search_opts.pop('sort_key', 'created_at')
-        sort_dir = search_opts.pop('sort_dir', 'desc')
-
-        show_count = False
-        if 'with_count' in search_opts:
-            show_count = utils.get_bool_from_api_params(
-                'with_count', search_opts)
-            search_opts.pop('with_count')
-
-        if 'is_soft_deleted' in search_opts:
-            is_soft_deleted = utils.get_bool_from_api_params(
-                'is_soft_deleted', search_opts)
-            search_opts['is_soft_deleted'] = is_soft_deleted
-
-        # Deserialize dicts
-        if 'metadata' in search_opts:
-            search_opts['metadata'] = ast.literal_eval(search_opts['metadata'])
-        if 'extra_specs' in search_opts:
-            search_opts['extra_specs'] = ast.literal_eval(
-                search_opts['extra_specs'])
-
-        # NOTE(vponomaryov): Manila stores in DB key 'display_name', but
-        # allows to use both keys 'name' and 'display_name'. It is leftover
-        # from Cinder v1 and v2 APIs.
-        if 'name' in search_opts:
-            search_opts['display_name'] = search_opts.pop('name')
-        if 'description' in search_opts:
-            search_opts['display_description'] = search_opts.pop(
-                'description')
-
-        # like filter
-        for key, db_key in (('name~', 'display_name~'),
-                            ('description~', 'display_description~')):
-            if key in search_opts:
-                search_opts[db_key] = search_opts.pop(key)
-
-        if sort_key == 'name':
-            sort_key = 'display_name'
-
-        common.remove_invalid_options(
-            context, search_opts, self._get_share_search_options())
-
-        total_count = None
-        if show_count:
-            count, shares = self.share_api.get_all_with_count(
-                context, search_opts=search_opts, sort_key=sort_key,
-                sort_dir=sort_dir)
-            total_count = count
-        else:
-            shares = self.share_api.get_all(
-                context, search_opts=search_opts, sort_key=sort_key,
-                sort_dir=sort_dir)
-
-        if is_detail:
-            shares = self._view_builder.detail_list(req, shares, total_count)
-        else:
-            shares = self._view_builder.summary_list(req, shares, total_count)
-        return shares
-
-    def _get_share_search_options(self):
-        """Return share search options allowed by non-admin."""
-        # NOTE(vponomaryov): share_server_id depends on policy, allow search
-        #                    by it for non-admins in case policy changed.
-        #                    Also allow search by extra_specs in case policy
-        #                    for it allows non-admin access.
-        return (
-            'display_name', 'status', 'share_server_id', 'volume_type_id',
-            'share_type_id', 'snapshot_id', 'host', 'share_network_id',
-            'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
-            'share_group_id', 'share_group_snapshot_id', 'export_location_id',
-            'export_location_path', 'display_name~', 'display_description~',
-            'display_description', 'limit', 'offset', 'is_soft_deleted',
-            'mount_point_name')
-
-    @wsgi.Controller.authorize
-    def update(self, req, id, body):
-        """Update a share."""
-        context = req.environ['manila.context']
-
-        if not body or 'share' not in body:
-            raise exc.HTTPUnprocessableEntity()
-
-        share_data = body['share']
-        valid_update_keys = (
-            'display_name',
-            'display_description',
-            'is_public',
-        )
-
-        update_dict = {key: share_data[key]
-                       for key in valid_update_keys
-                       if key in share_data}
-
-        common.check_display_field_length(
-            update_dict.get('display_name'), 'display_name')
-        common.check_display_field_length(
-            update_dict.get('display_description'), 'display_description')
-
-        try:
-            share = self.share_api.get(context, id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
-
-        if share.get('is_soft_deleted'):
-            msg = _("Share '%s cannot be updated, "
-                    "since it has been soft deleted.") % share['id']
-            raise exc.HTTPForbidden(explanation=msg)
-
-        update_dict = common.validate_public_share_policy(
-            context, update_dict, api='update')
-
-        share = self.share_api.update(context, share, update_dict)
-        share.update(update_dict)
-        return self._view_builder.detail(req, share)
-
-    def create(self, req, body):
-        # Remove share group attributes
-        body.get('share', {}).pop('share_group_id', None)
-        share = self._create(req, body)
-        return share
 
     @wsgi.Controller.authorize('create')
     def _create(self, req, body,
@@ -485,462 +298,6 @@ class ShareMixin:
                                           **kwargs)
 
         return self._view_builder.detail(req, new_share)
-
-    @staticmethod
-    def _any_instance_has_errored_rules(share):
-        for instance in share['instances']:
-            access_rules_status = instance['access_rules_status']
-            if access_rules_status == constants.SHARE_INSTANCE_RULES_ERROR:
-                return True
-        return False
-
-    def _create_access_locks(
-            self, context, access, lock_deletion=False, lock_visibility=False,
-            lock_reason=None):
-        """Creates locks for access rules and rollback if it fails."""
-
-        # We must populate project_id and user_id in the access object, as this
-        # is not in this entity
-        access['project_id'] = context.project_id
-        access['user_id'] = context.user_id
-
-        def raise_lock_failed(resource_id, lock_action,
-                              resource_type='access rule'):
-            word_mapping = {
-                constants.RESOURCE_ACTION_SHOW: 'visibility',
-                constants.RESOURCE_ACTION_DELETE: 'deletion'
-            }
-            msg = _("Failed to lock the %(action)s of the %(resource_type)s "
-                    "%(resource_id)s.") % {
-                'action': word_mapping[lock_action],
-                'resource_id': resource_id,
-                'resource_type': resource_type
-            }
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        access_deletion_lock = {}
-        share_deletion_lock = {}
-
-        if lock_deletion:
-            try:
-                access_deletion_lock = self.resource_locks_api.create(
-                    context, resource_id=access['id'],
-                    resource_type='access_rule',
-                    resource_action=constants.RESOURCE_ACTION_DELETE,
-                    resource=access, lock_reason=lock_reason)
-            except Exception:
-                raise_lock_failed(
-                    access['id'], constants.RESOURCE_ACTION_DELETE
-                )
-            try:
-                share_lock_reason = (
-                    constants.SHARE_LOCKED_BY_ACCESS_LOCK_REASON % {
-                        'lock_id': access_deletion_lock['id']
-                    }
-                )
-                share_deletion_lock = self.resource_locks_api.create(
-                    context, resource_id=access['share_id'],
-                    resource_type='share',
-                    resource_action=constants.RESOURCE_ACTION_DELETE,
-                    lock_reason=share_lock_reason)
-            except Exception:
-                self.resource_locks_api.delete(
-                    context, access_deletion_lock['id'])
-                raise_lock_failed(
-                    access['share_id'], constants.RESOURCE_ACTION_DELETE,
-                    resource_type='share'
-                )
-
-        if lock_visibility:
-            try:
-                self.resource_locks_api.create(
-                    context, resource_id=access['id'],
-                    resource_type='access_rule',
-                    resource_action=constants.RESOURCE_ACTION_SHOW,
-                    resource=access, lock_reason=lock_reason)
-            except Exception:
-                # If a deletion lock was placed and the visibility wasn't,
-                # we should rollback the deletion lock.
-                if access_deletion_lock:
-                    self.resource_locks_api.delete(
-                        context, access_deletion_lock['id'])
-                if share_deletion_lock:
-                    self.resource_locks_api.delete(
-                        context, share_deletion_lock['id'])
-                raise_lock_failed(access['id'], constants.RESOURCE_ACTION_SHOW)
-
-    @wsgi.Controller.authorize('allow_access')
-    def _allow_access(self, req, id, body, enable_ceph=False,
-                      allow_on_error_status=False, enable_ipv6=False,
-                      enable_metadata=False, allow_on_error_state=False,
-                      lock_visibility=False, lock_deletion=False,
-                      lock_reason=None):
-        """Add share access rule."""
-        context = req.environ['manila.context']
-        access_data = body.get('allow_access', body.get('os-allow_access'))
-        if not enable_metadata:
-            access_data.pop('metadata', None)
-        share = self.share_api.get(context, id)
-
-        if share.get('is_soft_deleted'):
-            msg = _("Cannot allow access for share '%s' "
-                    "since it has been soft deleted.") % id
-            raise exc.HTTPForbidden(explanation=msg)
-        share_network_id = share.get('share_network_id')
-        if share_network_id:
-            share_network = db.share_network_get(context, share_network_id)
-            common.check_share_network_is_active(share_network)
-
-        if (not allow_on_error_status and
-                self._any_instance_has_errored_rules(share)):
-            msg = _("Access rules cannot be added while the share or any of "
-                    "its replicas or migration copies has its "
-                    "access_rules_status set to %(instance_rules_status)s. "
-                    "Deny any rules in %(rule_state)s state and try "
-                    "again.") % {
-                'instance_rules_status': constants.SHARE_INSTANCE_RULES_ERROR,
-                'rule_state': constants.ACCESS_STATE_ERROR,
-            }
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        if not (lock_visibility or lock_deletion) and lock_reason:
-            msg = _("Lock reason can only be specified when locking the "
-                    "visibility or the deletion of an access rule.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        access_type = access_data['access_type']
-        access_to = access_data['access_to']
-        common.validate_access(access_type=access_type,
-                               access_to=access_to,
-                               enable_ceph=enable_ceph,
-                               enable_ipv6=enable_ipv6)
-        try:
-            access = self.share_api.allow_access(
-                context, share, access_type, access_to,
-                access_data.get('access_level'), access_data.get('metadata'),
-                allow_on_error_state)
-        except exception.ShareAccessExists as e:
-            raise webob.exc.HTTPBadRequest(explanation=e.msg)
-
-        except exception.InvalidMetadata as error:
-            raise exc.HTTPBadRequest(explanation=error.msg)
-
-        except exception.InvalidMetadataSize as error:
-            raise exc.HTTPBadRequest(explanation=error.msg)
-
-        if lock_deletion or lock_visibility:
-            self._create_access_locks(
-                context, access, lock_deletion=lock_deletion,
-                lock_visibility=lock_visibility, lock_reason=lock_reason)
-
-        return self._access_view_builder.view(req, access)
-
-    def _check_for_access_rule_locks(self, context, access_data, access_id,
-                                     share_id):
-        """Fetches locks for access rules and attempts deleting them."""
-
-        # ensure the requester is asking to remove the restrictions of the rule
-        unrestrict = access_data.get('unrestrict', False)
-        search_opts = {
-            'resource_id': access_id,
-            'resource_action': constants.RESOURCE_ACTION_DELETE,
-            'all_projects': True,
-        }
-
-        locks, locks_count = (
-            self.resource_locks_api.get_all(
-                context.elevated(), search_opts=search_opts,
-                show_count=True) or []
-        )
-
-        # no locks placed, nothing to do
-        if not locks:
-            return
-
-        def raise_rule_is_locked(share_id, unrestrict=False):
-            msg = _(
-                "Cannot deny access for share '%s' since it has been "
-                "locked. Please remove the locks and retry the "
-                "operation") % share_id
-            if unrestrict:
-                msg = _(
-                    "Unable to drop access rule restrictions that are not "
-                    "placed by you.")
-            raise exc.HTTPForbidden(explanation=msg)
-
-        if locks_count and not unrestrict:
-            raise_rule_is_locked(share_id)
-
-        non_deletable_locks = []
-        for lock in locks:
-            try:
-                self.resource_locks_api.ensure_context_can_delete_lock(
-                    context, lock['id'])
-            except (exception.NotAuthorized, exception.ResourceLockNotFound):
-                # If it is not found, then it means that the context doesn't
-                # have access to this resource and should be denied.
-                non_deletable_locks.append(lock)
-
-        if non_deletable_locks:
-            raise_rule_is_locked(share_id, unrestrict=unrestrict)
-
-    @wsgi.Controller.authorize('deny_access')
-    def _deny_access(self, req, id, body, allow_on_error_state=False):
-        """Remove share access rule."""
-        context = req.environ['manila.context']
-
-        access_data = body.get('deny_access', body.get('os-deny_access'))
-        access_id = access_data['access_id']
-
-        self._check_for_access_rule_locks(context, access_data, access_id, id)
-
-        share = self.share_api.get(context, id)
-
-        if share.get('is_soft_deleted'):
-            msg = _("Cannot deny access for share '%s' "
-                    "since it has been soft deleted.") % id
-            raise exc.HTTPForbidden(explanation=msg)
-
-        share_network_id = share.get('share_network_id', None)
-
-        if share_network_id:
-            share_network = db.share_network_get(context, share_network_id)
-            common.check_share_network_is_active(share_network)
-
-        try:
-            access = self.share_api.access_get(context, access_id)
-            if access.share_id != id:
-                raise exception.NotFound()
-            share = self.share_api.get(context, id)
-        except exception.NotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.message)
-        self.share_api.deny_access(context, share, access,
-                                   allow_on_error_state)
-        return webob.Response(status_int=http_client.ACCEPTED)
-
-    def _access_list(self, req, id, body):
-        """List share access rules."""
-        context = req.environ['manila.context']
-
-        share = self.share_api.get(context, id)
-        access_rules = self.share_api.access_get_all(context, share)
-
-        return self._access_view_builder.list_view(req, access_rules)
-
-    @wsgi.Controller.authorize("extend")
-    def _extend(self, req, id, body):
-        """Extend size of a share."""
-        context = req.environ['manila.context']
-        share, size, force = self._get_valid_extend_parameters(
-            context, id, body, 'os-extend')
-
-        if share.get('is_soft_deleted'):
-            msg = _("Cannot extend share '%s' "
-                    "since it has been soft deleted.") % id
-            raise exc.HTTPForbidden(explanation=msg)
-
-        try:
-            self.share_api.extend(context, share, size, force=force)
-        except (exception.InvalidInput, exception.InvalidShare) as e:
-            raise webob.exc.HTTPBadRequest(explanation=str(e))
-        except exception.ShareSizeExceedsAvailableQuota as e:
-            raise webob.exc.HTTPForbidden(explanation=e.message)
-
-        return webob.Response(status_int=http_client.ACCEPTED)
-
-    @wsgi.Controller.authorize("shrink")
-    def _shrink(self, req, id, body):
-        """Shrink size of a share."""
-        context = req.environ['manila.context']
-        share, size = self._get_valid_shrink_parameters(
-            context, id, body, 'os-shrink')
-
-        if share.get('is_soft_deleted'):
-            msg = _("Cannot shrink share '%s' "
-                    "since it has been soft deleted.") % id
-            raise exc.HTTPForbidden(explanation=msg)
-
-        try:
-            self.share_api.shrink(context, share, size)
-        except (exception.InvalidInput, exception.InvalidShare) as e:
-            raise webob.exc.HTTPBadRequest(explanation=str(e))
-
-        return webob.Response(status_int=http_client.ACCEPTED)
-
-    def _get_valid_extend_parameters(self, context, id, body, action):
-        try:
-            share = self.share_api.get(context, id)
-        except exception.NotFound as e:
-            raise webob.exc.HTTPNotFound(explanation=e.message)
-
-        try:
-            size = int(body.get(action, body.get('extend'))['new_size'])
-        except (KeyError, ValueError, TypeError):
-            msg = _("New share size must be specified as an integer.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        # force is True means share extend will extend directly, is False
-        # means will go through scheduler. Default value is False,
-        try:
-            force = strutils.bool_from_string(body.get(
-                action, body.get('extend'))['force'], strict=True)
-        except KeyError:
-            force = False
-        except (ValueError, TypeError):
-            msg = (_('Invalid boolean force : %(value)s') %
-                   {'value': body.get('extend')['force']})
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        return share, size, force
-
-    def _get_valid_shrink_parameters(self, context, id, body, action):
-        try:
-            share = self.share_api.get(context, id)
-        except exception.NotFound as e:
-            raise webob.exc.HTTPNotFound(explanation=e.message)
-
-        try:
-            size = int(body.get(action, body.get('shrink'))['new_size'])
-        except (KeyError, ValueError, TypeError):
-            msg = _("New share size must be specified as an integer.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        return share, size
-
-
-class ShareController(
-    wsgi.Controller,
-    ShareMixin,
-    share_manage.ShareManageMixin,
-    share_unmanage.ShareUnmanageMixin,
-    metadata.MetadataController,
-    wsgi.AdminActionsMixin,
-):
-    """The Shares API v2 controller for the OpenStack API."""
-    resource_name = 'share'
-    _view_builder_class = share_views.ViewBuilder
-
-    def __init__(self):
-        super(ShareController, self).__init__()
-        self.share_api = share.API()
-        self.resource_locks_api = resource_locks.API()
-        self._access_view_builder = share_access_views.ViewBuilder()
-        self._migration_view_builder = share_migration_views.ViewBuilder()
-        self._conf_admin_only_metadata_keys = getattr(
-            CONF, 'admin_only_metadata', []
-        )
-
-    @wsgi.Controller.authorize('revert_to_snapshot')
-    def _revert(self, req, id, body=None):
-        """Revert a share to a snapshot."""
-        context = req.environ['manila.context']
-
-        try:
-            share_id = id
-            snapshot_id = body['revert']['snapshot_id']
-
-            share = self.share_api.get(context, share_id)
-            snapshot = self.share_api.get_snapshot(context, snapshot_id)
-
-            if share.get('is_soft_deleted'):
-                msg = _("Share '%s cannot revert to snapshot, "
-                        "since it has been soft deleted.") % share_id
-                raise exc.HTTPForbidden(explanation=msg)
-
-            # Ensure share supports reverting to a snapshot
-            if not share['revert_to_snapshot_support']:
-                msg_args = {'share_id': share_id, 'snap_id': snapshot_id}
-                msg = _('Share %(share_id)s may not be reverted to snapshot '
-                        '%(snap_id)s, because the share does not have that '
-                        'capability.')
-                raise exc.HTTPBadRequest(explanation=msg % msg_args)
-
-            # Ensure requested share & snapshot match.
-            if share['id'] != snapshot['share_id']:
-                msg_args = {'share_id': share_id, 'snap_id': snapshot_id}
-                msg = _('Snapshot %(snap_id)s is not associated with share '
-                        '%(share_id)s.')
-                raise exc.HTTPBadRequest(explanation=msg % msg_args)
-
-            # Ensure share status is 'available'.
-            if share['status'] != constants.STATUS_AVAILABLE:
-                msg_args = {
-                    'share_id': share_id,
-                    'state': share['status'],
-                    'available': constants.STATUS_AVAILABLE,
-                }
-                msg = _("Share %(share_id)s is in '%(state)s' state, but it "
-                        "must be in '%(available)s' state to be reverted to a "
-                        "snapshot.")
-                raise exc.HTTPConflict(explanation=msg % msg_args)
-
-            # Ensure snapshot status is 'available'.
-            if snapshot['status'] != constants.STATUS_AVAILABLE:
-                msg_args = {
-                    'snap_id': snapshot_id,
-                    'state': snapshot['status'],
-                    'available': constants.STATUS_AVAILABLE,
-                }
-                msg = _("Snapshot %(snap_id)s is in '%(state)s' state, but it "
-                        "must be in '%(available)s' state to be restored.")
-                raise exc.HTTPConflict(explanation=msg % msg_args)
-
-            # Ensure a long-running task isn't active on the share
-            if share.is_busy:
-                msg_args = {'share_id': share_id}
-                msg = _("Share %(share_id)s may not be reverted while it has "
-                        "an active task.")
-                raise exc.HTTPConflict(explanation=msg % msg_args)
-
-            # Ensure the snapshot is the most recent one.
-            latest_snapshot = self.share_api.get_latest_snapshot_for_share(
-                context, share_id)
-            if not latest_snapshot:
-                msg_args = {'share_id': share_id}
-                msg = _("Could not determine the latest snapshot for share "
-                        "%(share_id)s.")
-                raise exc.HTTPBadRequest(explanation=msg % msg_args)
-            if latest_snapshot['id'] != snapshot_id:
-                msg_args = {
-                    'share_id': share_id,
-                    'snap_id': snapshot_id,
-                    'latest_snap_id': latest_snapshot['id'],
-                }
-                msg = _("Snapshot %(snap_id)s may not be restored because "
-                        "it is not the most recent snapshot of share "
-                        "%(share_id)s. Currently the latest snapshot is "
-                        "%(latest_snap_id)s.")
-                raise exc.HTTPConflict(explanation=msg % msg_args)
-
-            # Ensure the access rules are not in the process of updating
-            for instance in share['instances']:
-                access_rules_status = instance['access_rules_status']
-                if access_rules_status != constants.ACCESS_STATE_ACTIVE:
-                    msg_args = {
-                        'share_id': share_id,
-                        'snap_id': snapshot_id,
-                        'state': constants.ACCESS_STATE_ACTIVE
-                    }
-                    msg = _("Snapshot %(snap_id)s belongs to a share "
-                            "%(share_id)s which has access rules that are "
-                            "not %(state)s.")
-                    raise exc.HTTPConflict(explanation=msg % msg_args)
-
-            msg_args = {'share_id': share_id, 'snap_id': snapshot_id}
-            msg = 'Reverting share %(share_id)s to snapshot %(snap_id)s.'
-            LOG.info(msg, msg_args)
-
-            self.share_api.revert_to_snapshot(context, share, snapshot)
-        except exception.ShareNotFound as e:
-            raise exc.HTTPNotFound(explanation=e.msg)
-        except exception.ShareSnapshotNotFound as e:
-            raise exc.HTTPBadRequest(explanation=e.msg)
-        except exception.ShareSizeExceedsAvailableQuota as e:
-            raise exc.HTTPForbidden(explanation=e.msg)
-        except exception.ReplicationException as e:
-            raise exc.HTTPBadRequest(explanation=e.msg)
-
-        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version("2.90")
     def create(self, req, body):
@@ -1244,6 +601,156 @@ class ShareController(
         return self._reset_status(req, id, body, status_attr='task_state',
                                   resource=share)
 
+    def _create_access_locks(
+        self, context, access, lock_deletion=False, lock_visibility=False,
+        lock_reason=None
+    ):
+        """Creates locks for access rules and rollback if it fails."""
+
+        # We must populate project_id and user_id in the access object, as this
+        # is not in this entity
+        access['project_id'] = context.project_id
+        access['user_id'] = context.user_id
+
+        def raise_lock_failed(resource_id, lock_action,
+                              resource_type='access rule'):
+            word_mapping = {
+                constants.RESOURCE_ACTION_SHOW: 'visibility',
+                constants.RESOURCE_ACTION_DELETE: 'deletion'
+            }
+            msg = _("Failed to lock the %(action)s of the %(resource_type)s "
+                    "%(resource_id)s.") % {
+                'action': word_mapping[lock_action],
+                'resource_id': resource_id,
+                'resource_type': resource_type
+            }
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        access_deletion_lock = {}
+        share_deletion_lock = {}
+
+        if lock_deletion:
+            try:
+                access_deletion_lock = self.resource_locks_api.create(
+                    context, resource_id=access['id'],
+                    resource_type='access_rule',
+                    resource_action=constants.RESOURCE_ACTION_DELETE,
+                    resource=access, lock_reason=lock_reason)
+            except Exception:
+                raise_lock_failed(
+                    access['id'], constants.RESOURCE_ACTION_DELETE
+                )
+            try:
+                share_lock_reason = (
+                    constants.SHARE_LOCKED_BY_ACCESS_LOCK_REASON % {
+                        'lock_id': access_deletion_lock['id']
+                    }
+                )
+                share_deletion_lock = self.resource_locks_api.create(
+                    context, resource_id=access['share_id'],
+                    resource_type='share',
+                    resource_action=constants.RESOURCE_ACTION_DELETE,
+                    lock_reason=share_lock_reason)
+            except Exception:
+                self.resource_locks_api.delete(
+                    context, access_deletion_lock['id'])
+                raise_lock_failed(
+                    access['share_id'], constants.RESOURCE_ACTION_DELETE,
+                    resource_type='share'
+                )
+
+        if lock_visibility:
+            try:
+                self.resource_locks_api.create(
+                    context, resource_id=access['id'],
+                    resource_type='access_rule',
+                    resource_action=constants.RESOURCE_ACTION_SHOW,
+                    resource=access, lock_reason=lock_reason)
+            except Exception:
+                # If a deletion lock was placed and the visibility wasn't,
+                # we should rollback the deletion lock.
+                if access_deletion_lock:
+                    self.resource_locks_api.delete(
+                        context, access_deletion_lock['id'])
+                if share_deletion_lock:
+                    self.resource_locks_api.delete(
+                        context, share_deletion_lock['id'])
+                raise_lock_failed(access['id'], constants.RESOURCE_ACTION_SHOW)
+
+    @staticmethod
+    def _any_instance_has_errored_rules(share):
+        for instance in share['instances']:
+            access_rules_status = instance['access_rules_status']
+            if access_rules_status == constants.SHARE_INSTANCE_RULES_ERROR:
+                return True
+        return False
+
+    @wsgi.Controller.authorize('allow_access')
+    def _allow_access(self, req, id, body, enable_ceph=False,
+                      allow_on_error_status=False, enable_ipv6=False,
+                      enable_metadata=False, allow_on_error_state=False,
+                      lock_visibility=False, lock_deletion=False,
+                      lock_reason=None):
+        """Add share access rule."""
+        context = req.environ['manila.context']
+        access_data = body.get('allow_access', body.get('os-allow_access'))
+        if not enable_metadata:
+            access_data.pop('metadata', None)
+        share = self.share_api.get(context, id)
+
+        if share.get('is_soft_deleted'):
+            msg = _("Cannot allow access for share '%s' "
+                    "since it has been soft deleted.") % id
+            raise exc.HTTPForbidden(explanation=msg)
+        share_network_id = share.get('share_network_id')
+        if share_network_id:
+            share_network = db.share_network_get(context, share_network_id)
+            common.check_share_network_is_active(share_network)
+
+        if (not allow_on_error_status and
+                self._any_instance_has_errored_rules(share)):
+            msg = _("Access rules cannot be added while the share or any of "
+                    "its replicas or migration copies has its "
+                    "access_rules_status set to %(instance_rules_status)s. "
+                    "Deny any rules in %(rule_state)s state and try "
+                    "again.") % {
+                'instance_rules_status': constants.SHARE_INSTANCE_RULES_ERROR,
+                'rule_state': constants.ACCESS_STATE_ERROR,
+            }
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        if not (lock_visibility or lock_deletion) and lock_reason:
+            msg = _("Lock reason can only be specified when locking the "
+                    "visibility or the deletion of an access rule.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        access_type = access_data['access_type']
+        access_to = access_data['access_to']
+        common.validate_access(access_type=access_type,
+                               access_to=access_to,
+                               enable_ceph=enable_ceph,
+                               enable_ipv6=enable_ipv6)
+        try:
+            access = self.share_api.allow_access(
+                context, share, access_type, access_to,
+                access_data.get('access_level'), access_data.get('metadata'),
+                allow_on_error_state)
+        except exception.ShareAccessExists as e:
+            raise webob.exc.HTTPBadRequest(explanation=e.msg)
+
+        except exception.InvalidMetadata as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+
+        except exception.InvalidMetadataSize as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+
+        if lock_deletion or lock_visibility:
+            self._create_access_locks(
+                context, access, lock_deletion=lock_deletion,
+                lock_visibility=lock_visibility, lock_reason=lock_reason)
+
+        return self._access_view_builder.view(req, access)
+
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-allow_access')
     def allow_access_legacy(self, req, id, body):
@@ -1275,6 +782,89 @@ class ShareController(
 
         return self._allow_access(*args, **kwargs)
 
+    def _check_for_access_rule_locks(self, context, access_data, access_id,
+                                     share_id):
+        """Fetches locks for access rules and attempts deleting them."""
+
+        # ensure the requester is asking to remove the restrictions of the rule
+        unrestrict = access_data.get('unrestrict', False)
+        search_opts = {
+            'resource_id': access_id,
+            'resource_action': constants.RESOURCE_ACTION_DELETE,
+            'all_projects': True,
+        }
+
+        locks, locks_count = (
+            self.resource_locks_api.get_all(
+                context.elevated(), search_opts=search_opts,
+                show_count=True) or []
+        )
+
+        # no locks placed, nothing to do
+        if not locks:
+            return
+
+        def raise_rule_is_locked(share_id, unrestrict=False):
+            msg = _(
+                "Cannot deny access for share '%s' since it has been "
+                "locked. Please remove the locks and retry the "
+                "operation") % share_id
+            if unrestrict:
+                msg = _(
+                    "Unable to drop access rule restrictions that are not "
+                    "placed by you.")
+            raise exc.HTTPForbidden(explanation=msg)
+
+        if locks_count and not unrestrict:
+            raise_rule_is_locked(share_id)
+
+        non_deletable_locks = []
+        for lock in locks:
+            try:
+                self.resource_locks_api.ensure_context_can_delete_lock(
+                    context, lock['id'])
+            except (exception.NotAuthorized, exception.ResourceLockNotFound):
+                # If it is not found, then it means that the context doesn't
+                # have access to this resource and should be denied.
+                non_deletable_locks.append(lock)
+
+        if non_deletable_locks:
+            raise_rule_is_locked(share_id, unrestrict=unrestrict)
+
+    @wsgi.Controller.authorize('deny_access')
+    def _deny_access(self, req, id, body, allow_on_error_state=False):
+        """Remove share access rule."""
+        context = req.environ['manila.context']
+
+        access_data = body.get('deny_access', body.get('os-deny_access'))
+        access_id = access_data['access_id']
+
+        self._check_for_access_rule_locks(context, access_data, access_id, id)
+
+        share = self.share_api.get(context, id)
+
+        if share.get('is_soft_deleted'):
+            msg = _("Cannot deny access for share '%s' "
+                    "since it has been soft deleted.") % id
+            raise exc.HTTPForbidden(explanation=msg)
+
+        share_network_id = share.get('share_network_id', None)
+
+        if share_network_id:
+            share_network = db.share_network_get(context, share_network_id)
+            common.check_share_network_is_active(share_network)
+
+        try:
+            access = self.share_api.access_get(context, access_id)
+            if access.share_id != id:
+                raise exception.NotFound()
+            share = self.share_api.get(context, id)
+        except exception.NotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.message)
+        self.share_api.deny_access(context, share, access,
+                                   allow_on_error_state)
+        return webob.Response(status_int=http_client.ACCEPTED)
+
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-deny_access')
     def deny_access_legacy(self, req, id, body):
@@ -1291,6 +881,15 @@ class ShareController(
             kwargs['allow_on_error_state'] = True
         return self._deny_access(*args, **kwargs)
 
+    def _access_list(self, req, id, body):
+        """List share access rules."""
+        context = req.environ['manila.context']
+
+        share = self.share_api.get(context, id)
+        access_rules = self.share_api.access_get_all(context, share)
+
+        return self._access_view_builder.list_view(req, access_rules)
+
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-access_list')
     def access_list_legacy(self, req, id, body):
@@ -1302,6 +901,53 @@ class ShareController(
     def access_list(self, req, id, body):
         """List share access rules."""
         return self._access_list(req, id, body)
+
+    def _get_valid_extend_parameters(self, context, id, body, action):
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound as e:
+            raise webob.exc.HTTPNotFound(explanation=e.message)
+
+        try:
+            size = int(body.get(action, body.get('extend'))['new_size'])
+        except (KeyError, ValueError, TypeError):
+            msg = _("New share size must be specified as an integer.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        # force is True means share extend will extend directly, is False
+        # means will go through scheduler. Default value is False,
+        try:
+            force = strutils.bool_from_string(body.get(
+                action, body.get('extend'))['force'], strict=True)
+        except KeyError:
+            force = False
+        except (ValueError, TypeError):
+            msg = (_('Invalid boolean force : %(value)s') %
+                   {'value': body.get('extend')['force']})
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        return share, size, force
+
+    @wsgi.Controller.authorize("extend")
+    def _extend(self, req, id, body):
+        """Extend size of a share."""
+        context = req.environ['manila.context']
+        share, size, force = self._get_valid_extend_parameters(
+            context, id, body, 'os-extend')
+
+        if share.get('is_soft_deleted'):
+            msg = _("Cannot extend share '%s' "
+                    "since it has been soft deleted.") % id
+            raise exc.HTTPForbidden(explanation=msg)
+
+        try:
+            self.share_api.extend(context, share, size, force=force)
+        except (exception.InvalidInput, exception.InvalidShare) as e:
+            raise webob.exc.HTTPBadRequest(explanation=str(e))
+        except exception.ShareSizeExceedsAvailableQuota as e:
+            raise webob.exc.HTTPForbidden(explanation=e.message)
+
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-extend')
@@ -1323,6 +969,39 @@ class ShareController(
             body.get('extend', {}).pop('force', None)
         return self._extend(req, id, body)
 
+    def _get_valid_shrink_parameters(self, context, id, body, action):
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound as e:
+            raise webob.exc.HTTPNotFound(explanation=e.message)
+
+        try:
+            size = int(body.get(action, body.get('shrink'))['new_size'])
+        except (KeyError, ValueError, TypeError):
+            msg = _("New share size must be specified as an integer.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        return share, size
+
+    @wsgi.Controller.authorize("shrink")
+    def _shrink(self, req, id, body):
+        """Shrink size of a share."""
+        context = req.environ['manila.context']
+        share, size = self._get_valid_shrink_parameters(
+            context, id, body, 'os-shrink')
+
+        if share.get('is_soft_deleted'):
+            msg = _("Cannot shrink share '%s' "
+                    "since it has been soft deleted.") % id
+            raise exc.HTTPForbidden(explanation=msg)
+
+        try:
+            self.share_api.shrink(context, share, size)
+        except (exception.InvalidInput, exception.InvalidShare) as e:
+            raise webob.exc.HTTPBadRequest(explanation=str(e))
+
+        return webob.Response(status_int=http_client.ACCEPTED)
+
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-shrink')
     @validation.request_body_schema(schema.shrink_request_body)
@@ -1339,6 +1018,104 @@ class ShareController(
         """Shrink size of a share."""
         return self._shrink(req, id, body)
 
+    @wsgi.Controller.authorize("manage")
+    def _manage(self, req, body, allow_dhss_true=False):
+        context = req.environ['manila.context']
+        share_data = self._validate_manage_parameters(context, body)
+        share_data = common.validate_public_share_policy(context, share_data)
+
+        # NOTE(vponomaryov): compatibility actions are required between API and
+        # DB layers for 'name' and 'description' API params that are
+        # represented in DB as 'display_name' and 'display_description'
+        # appropriately.
+        name = share_data.get('display_name', share_data.get('name'))
+        description = share_data.get(
+            'display_description', share_data.get('description'))
+
+        share = {
+            'host': share_data['service_host'],
+            'export_location_path': share_data['export_path'],
+            'share_proto': share_data['protocol'].upper(),
+            'share_type_id': share_data['share_type_id'],
+            'display_name': name,
+            'display_description': description,
+        }
+
+        if share_data.get('is_public') is not None:
+            share['is_public'] = share_data['is_public']
+
+        driver_options = share_data.get('driver_options', {})
+
+        if allow_dhss_true:
+            share['share_server_id'] = share_data.get('share_server_id')
+
+        try:
+            share_ref = self.share_api.manage(context, share, driver_options)
+        except exception.PolicyNotAuthorized as e:
+            raise exc.HTTPForbidden(explanation=e.msg)
+        except (exception.InvalidShare, exception.InvalidShareServer) as e:
+            raise exc.HTTPConflict(explanation=e.msg)
+        except exception.InvalidInput as e:
+            raise exc.HTTPBadRequest(explanation=e.msg)
+
+        return self._view_builder.detail(req, share_ref)
+
+    def _validate_manage_parameters(self, context, body):
+        if not (body and self.is_valid_body(body, 'share')):
+            msg = _("Share entity not found in request body")
+            raise exc.HTTPUnprocessableEntity(explanation=msg)
+
+        required_parameters = ('export_path', 'service_host', 'protocol')
+
+        data = body['share']
+
+        for parameter in required_parameters:
+            if parameter not in data:
+                msg = _("Required parameter %s not found") % parameter
+                raise exc.HTTPUnprocessableEntity(explanation=msg)
+            if not data.get(parameter):
+                msg = _("Required parameter %s is empty") % parameter
+                raise exc.HTTPUnprocessableEntity(explanation=msg)
+
+        if isinstance(data['export_path'], dict):
+            # the path may be inside this dictionary
+            try:
+                data['export_path'] = data['export_path']['path']
+            except KeyError:
+                msg = ("Export path must be a string, or a dictionary "
+                       "with a 'path' item")
+                raise exc.HTTPUnprocessableEntity(explanation=msg)
+
+        if not share_utils.extract_host(data['service_host'], 'pool'):
+            msg = _("service_host parameter should contain pool.")
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        try:
+            utils.validate_service_host(
+                context, share_utils.extract_host(data['service_host']))
+        except exception.ServiceNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+        except exception.PolicyNotAuthorized as e:
+            raise exc.HTTPForbidden(explanation=e.msg)
+        except exception.AdminRequired as e:
+            raise exc.HTTPForbidden(explanation=e.msg)
+        except exception.ServiceIsDown as e:
+            raise exc.HTTPBadRequest(explanation=e.msg)
+
+        data['share_type_id'] = self._get_share_type_id(
+            context, data.get('share_type'))
+
+        return data
+
+    @staticmethod
+    def _get_share_type_id(context, share_type):
+        try:
+            stype = share_types.get_share_type_by_name_or_id(context,
+                                                             share_type)
+            return stype['id']
+        except exception.ShareTypeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+
     @wsgi.Controller.api_version('2.7')
     def manage(self, req, body):
         if req.api_version_request < api_version.APIVersionRequest('2.8'):
@@ -1351,6 +1128,56 @@ class ShareController(
         detail = self._manage(req, body, allow_dhss_true=allow_dhss_true)
         return detail
 
+    @wsgi.Controller.authorize("unmanage")
+    def _unmanage(self, req, id, body=None, allow_dhss_true=False):
+        """Unmanage a share."""
+        context = req.environ['manila.context']
+
+        LOG.info("Unmanage share with id: %s", id, context=context)
+
+        try:
+            share = self.share_api.get(context, id)
+            if share.get('is_soft_deleted'):
+                msg = _("Share '%s cannot be unmanaged, "
+                        "since it has been soft deleted.") % share['id']
+                raise exc.HTTPForbidden(explanation=msg)
+            if share.get('has_replicas'):
+                msg = _("Share %s has replicas. It cannot be unmanaged "
+                        "until all replicas are removed.") % share['id']
+                raise exc.HTTPConflict(explanation=msg)
+            if (not allow_dhss_true and
+                    share['instance'].get('share_server_id')):
+                msg = _("Operation 'unmanage' is not supported for shares "
+                        "that are created on top of share servers "
+                        "(created with share-networks).")
+                raise exc.HTTPForbidden(explanation=msg)
+            elif share['status'] in constants.TRANSITIONAL_STATUSES:
+                msg = _("Share with transitional state can not be unmanaged. "
+                        "Share '%(s_id)s' is in '%(state)s' state.") % dict(
+                            state=share['status'], s_id=share['id'])
+                raise exc.HTTPForbidden(explanation=msg)
+            snapshots = self.share_api.db.share_snapshot_get_all_for_share(
+                context, id)
+            if snapshots:
+                msg = _("Share '%(s_id)s' can not be unmanaged because it has "
+                        "'%(amount)s' dependent snapshot(s).") % {
+                            's_id': id, 'amount': len(snapshots)}
+                raise exc.HTTPForbidden(explanation=msg)
+            filters = {'share_id': id}
+            backups = self.share_api.db.share_backups_get_all(context, filters)
+            if backups:
+                msg = _("Share '%(s_id)s' can not be unmanaged because it has "
+                        "'%(amount)s' dependent backup(s).") % {
+                            's_id': id, 'amount': len(backups)}
+                raise exc.HTTPForbidden(explanation=msg)
+            self.share_api.unmanage(context, share)
+        except exception.NotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+        except (exception.InvalidShare, exception.PolicyNotAuthorized) as e:
+            raise exc.HTTPForbidden(explanation=e.msg)
+
+        return webob.Response(status_int=http_client.ACCEPTED)
+
     @wsgi.Controller.api_version('2.7')
     @wsgi.action('unmanage')
     @validation.request_body_schema(schema.unmanage_request_body)
@@ -1361,12 +1188,296 @@ class ShareController(
             allow_dhss_true = True
         return self._unmanage(req, id, body, allow_dhss_true=allow_dhss_true)
 
+    @wsgi.Controller.authorize('revert_to_snapshot')
+    def _revert(self, req, id, body=None):
+        """Revert a share to a snapshot."""
+        context = req.environ['manila.context']
+
+        try:
+            share_id = id
+            snapshot_id = body['revert']['snapshot_id']
+
+            share = self.share_api.get(context, share_id)
+            snapshot = self.share_api.get_snapshot(context, snapshot_id)
+
+            if share.get('is_soft_deleted'):
+                msg = _("Share '%s cannot revert to snapshot, "
+                        "since it has been soft deleted.") % share_id
+                raise exc.HTTPForbidden(explanation=msg)
+
+            # Ensure share supports reverting to a snapshot
+            if not share['revert_to_snapshot_support']:
+                msg_args = {'share_id': share_id, 'snap_id': snapshot_id}
+                msg = _('Share %(share_id)s may not be reverted to snapshot '
+                        '%(snap_id)s, because the share does not have that '
+                        'capability.')
+                raise exc.HTTPBadRequest(explanation=msg % msg_args)
+
+            # Ensure requested share & snapshot match.
+            if share['id'] != snapshot['share_id']:
+                msg_args = {'share_id': share_id, 'snap_id': snapshot_id}
+                msg = _('Snapshot %(snap_id)s is not associated with share '
+                        '%(share_id)s.')
+                raise exc.HTTPBadRequest(explanation=msg % msg_args)
+
+            # Ensure share status is 'available'.
+            if share['status'] != constants.STATUS_AVAILABLE:
+                msg_args = {
+                    'share_id': share_id,
+                    'state': share['status'],
+                    'available': constants.STATUS_AVAILABLE,
+                }
+                msg = _("Share %(share_id)s is in '%(state)s' state, but it "
+                        "must be in '%(available)s' state to be reverted to a "
+                        "snapshot.")
+                raise exc.HTTPConflict(explanation=msg % msg_args)
+
+            # Ensure snapshot status is 'available'.
+            if snapshot['status'] != constants.STATUS_AVAILABLE:
+                msg_args = {
+                    'snap_id': snapshot_id,
+                    'state': snapshot['status'],
+                    'available': constants.STATUS_AVAILABLE,
+                }
+                msg = _("Snapshot %(snap_id)s is in '%(state)s' state, but it "
+                        "must be in '%(available)s' state to be restored.")
+                raise exc.HTTPConflict(explanation=msg % msg_args)
+
+            # Ensure a long-running task isn't active on the share
+            if share.is_busy:
+                msg_args = {'share_id': share_id}
+                msg = _("Share %(share_id)s may not be reverted while it has "
+                        "an active task.")
+                raise exc.HTTPConflict(explanation=msg % msg_args)
+
+            # Ensure the snapshot is the most recent one.
+            latest_snapshot = self.share_api.get_latest_snapshot_for_share(
+                context, share_id)
+            if not latest_snapshot:
+                msg_args = {'share_id': share_id}
+                msg = _("Could not determine the latest snapshot for share "
+                        "%(share_id)s.")
+                raise exc.HTTPBadRequest(explanation=msg % msg_args)
+            if latest_snapshot['id'] != snapshot_id:
+                msg_args = {
+                    'share_id': share_id,
+                    'snap_id': snapshot_id,
+                    'latest_snap_id': latest_snapshot['id'],
+                }
+                msg = _("Snapshot %(snap_id)s may not be restored because "
+                        "it is not the most recent snapshot of share "
+                        "%(share_id)s. Currently the latest snapshot is "
+                        "%(latest_snap_id)s.")
+                raise exc.HTTPConflict(explanation=msg % msg_args)
+
+            # Ensure the access rules are not in the process of updating
+            for instance in share['instances']:
+                access_rules_status = instance['access_rules_status']
+                if access_rules_status != constants.ACCESS_STATE_ACTIVE:
+                    msg_args = {
+                        'share_id': share_id,
+                        'snap_id': snapshot_id,
+                        'state': constants.ACCESS_STATE_ACTIVE
+                    }
+                    msg = _("Snapshot %(snap_id)s belongs to a share "
+                            "%(share_id)s which has access rules that are "
+                            "not %(state)s.")
+                    raise exc.HTTPConflict(explanation=msg % msg_args)
+
+            msg_args = {'share_id': share_id, 'snap_id': snapshot_id}
+            msg = 'Reverting share %(share_id)s to snapshot %(snap_id)s.'
+            LOG.info(msg, msg_args)
+
+            self.share_api.revert_to_snapshot(context, share, snapshot)
+        except exception.ShareNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+        except exception.ShareSnapshotNotFound as e:
+            raise exc.HTTPBadRequest(explanation=e.msg)
+        except exception.ShareSizeExceedsAvailableQuota as e:
+            raise exc.HTTPForbidden(explanation=e.msg)
+        except exception.ReplicationException as e:
+            raise exc.HTTPBadRequest(explanation=e.msg)
+
+        return webob.Response(status_int=http_client.ACCEPTED)
+
     @wsgi.Controller.api_version('2.27')
     @wsgi.action('revert')
     @validation.request_body_schema(schema.revert_request_body)
     @validation.response_body_schema(schema.revert_response_body)
-    def revert(self, req, id, body):
+    def revert(self, req, id, body=None):
         return self._revert(req, id, body)
+
+    @wsgi.Controller.authorize('get')
+    def show(self, req, id):
+        """Return data about the given share."""
+        context = req.environ['manila.context']
+
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+
+        return self._view_builder.detail(req, share)
+
+    @wsgi.Controller.authorize
+    def update(self, req, id, body):
+        """Update a share."""
+        context = req.environ['manila.context']
+
+        if not body or 'share' not in body:
+            raise exc.HTTPUnprocessableEntity()
+
+        share_data = body['share']
+        valid_update_keys = (
+            'display_name',
+            'display_description',
+            'is_public',
+        )
+
+        update_dict = {key: share_data[key]
+                       for key in valid_update_keys
+                       if key in share_data}
+
+        common.check_display_field_length(
+            update_dict.get('display_name'), 'display_name')
+        common.check_display_field_length(
+            update_dict.get('display_description'), 'display_description')
+
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+
+        if share.get('is_soft_deleted'):
+            msg = _("Share '%s cannot be updated, "
+                    "since it has been soft deleted.") % share['id']
+            raise exc.HTTPForbidden(explanation=msg)
+
+        update_dict = common.validate_public_share_policy(
+            context, update_dict, api='update')
+
+        share = self.share_api.update(context, share, update_dict)
+        share.update(update_dict)
+        return self._view_builder.detail(req, share)
+
+    @wsgi.Controller.authorize
+    def delete(self, req, id):
+        """Delete a share."""
+        context = req.environ['manila.context']
+
+        LOG.info("Delete share with id: %s", id, context=context)
+
+        try:
+            share = self.share_api.get(context, id)
+
+            # NOTE(ameade): If the share is in a share group, we require its
+            # id be specified as a param.
+            sg_id_key = 'share_group_id'
+            if share.get(sg_id_key):
+                share_group_id = req.params.get(sg_id_key)
+                if not share_group_id:
+                    msg = _("Must provide '%s' as a request "
+                            "parameter when deleting a share in a share "
+                            "group.") % sg_id_key
+                    raise exc.HTTPBadRequest(explanation=msg)
+                elif share_group_id != share.get(sg_id_key):
+                    msg = _("The specified '%s' does not match "
+                            "the share group id of the share.") % sg_id_key
+                    raise exc.HTTPBadRequest(explanation=msg)
+
+            self.share_api.delete(context, share)
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+        except exception.InvalidShare as e:
+            raise exc.HTTPForbidden(explanation=e.msg)
+        except exception.Conflict as e:
+            raise exc.HTTPConflict(explanation=e.msg)
+
+        return webob.Response(status_int=http_client.ACCEPTED)
+
+    def _get_shares(self, req, is_detail):
+        """Returns a list of shares, transformed through view builder."""
+        context = req.environ['manila.context']
+
+        common._validate_pagination_query(req)
+
+        search_opts = {}
+        search_opts.update(req.GET)
+
+        # Remove keys that are not related to share attrs
+        sort_key = search_opts.pop('sort_key', 'created_at')
+        sort_dir = search_opts.pop('sort_dir', 'desc')
+
+        show_count = False
+        if 'with_count' in search_opts:
+            show_count = utils.get_bool_from_api_params(
+                'with_count', search_opts)
+            search_opts.pop('with_count')
+
+        if 'is_soft_deleted' in search_opts:
+            is_soft_deleted = utils.get_bool_from_api_params(
+                'is_soft_deleted', search_opts)
+            search_opts['is_soft_deleted'] = is_soft_deleted
+
+        # Deserialize dicts
+        if 'metadata' in search_opts:
+            search_opts['metadata'] = ast.literal_eval(search_opts['metadata'])
+        if 'extra_specs' in search_opts:
+            search_opts['extra_specs'] = ast.literal_eval(
+                search_opts['extra_specs'])
+
+        # NOTE(vponomaryov): Manila stores in DB key 'display_name', but
+        # allows to use both keys 'name' and 'display_name'. It is leftover
+        # from Cinder v1 and v2 APIs.
+        if 'name' in search_opts:
+            search_opts['display_name'] = search_opts.pop('name')
+        if 'description' in search_opts:
+            search_opts['display_description'] = search_opts.pop(
+                'description')
+
+        # like filter
+        for key, db_key in (('name~', 'display_name~'),
+                            ('description~', 'display_description~')):
+            if key in search_opts:
+                search_opts[db_key] = search_opts.pop(key)
+
+        if sort_key == 'name':
+            sort_key = 'display_name'
+
+        common.remove_invalid_options(
+            context, search_opts, self._get_share_search_options())
+
+        total_count = None
+        if show_count:
+            count, shares = self.share_api.get_all_with_count(
+                context, search_opts=search_opts, sort_key=sort_key,
+                sort_dir=sort_dir)
+            total_count = count
+        else:
+            shares = self.share_api.get_all(
+                context, search_opts=search_opts, sort_key=sort_key,
+                sort_dir=sort_dir)
+
+        if is_detail:
+            shares = self._view_builder.detail_list(req, shares, total_count)
+        else:
+            shares = self._view_builder.summary_list(req, shares, total_count)
+        return shares
+
+    def _get_share_search_options(self):
+        """Return share search options allowed by non-admin."""
+        # NOTE(vponomaryov): share_server_id depends on policy, allow search
+        #                    by it for non-admins in case policy changed.
+        #                    Also allow search by extra_specs in case policy
+        #                    for it allows non-admin access.
+        return (
+            'display_name', 'status', 'share_server_id', 'volume_type_id',
+            'share_type_id', 'snapshot_id', 'host', 'share_network_id',
+            'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
+            'share_group_id', 'share_group_snapshot_id', 'export_location_id',
+            'export_location_path', 'display_name~', 'display_description~',
+            'display_description', 'limit', 'offset', 'is_soft_deleted',
+            'mount_point_name')
 
     @wsgi.Controller.api_version("2.0")
     @wsgi.Controller.authorize("get_all")

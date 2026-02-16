@@ -236,26 +236,6 @@ class ShareUnmanageTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'unmanage')
 
-    def test_unmanage_allow_dhss_true_with_share_server(self):
-        share = {
-            'status': constants.STATUS_AVAILABLE,
-            'id': 'foo_id',
-            'instance': '',
-            'share_server_id': 'fake'
-        }
-        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
-        self.mock_object(share_api.API, 'unmanage', mock.Mock())
-        self.mock_object(
-            self.controller.share_api.db, 'share_snapshot_get_all_for_share',
-            mock.Mock(return_value=[]))
-
-        actual_result = self.controller._unmanage(self.request, share['id'],
-                                                  allow_dhss_true=True)
-
-        self.assertEqual(202, actual_result.status_int)
-        self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'unmanage')
-
     def test_wrong_permissions(self):
         share_id = 'fake'
         req = fakes.HTTPRequest.blank('/share/%s/unmanage' % share_id,

@@ -27,10 +27,18 @@ from manila import share
 LOG = log.getLogger(__name__)
 
 
-class ShareUnmanageMixin(object):
+class ShareUnmanageController(wsgi.Controller):
+    """The Unmanage API controller for the OpenStack API."""
 
+    resource_name = "share"
+
+    def __init__(self, *args, **kwargs):
+        super(ShareUnmanageController, self).__init__(*args, **kwargs)
+        self.share_api = share.API()
+
+    @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.Controller.authorize("unmanage")
-    def _unmanage(self, req, id, body=None, allow_dhss_true=False):
+    def unmanage(self, req, id):
         """Unmanage a share."""
         context = req.environ['manila.context']
 
@@ -46,8 +54,7 @@ class ShareUnmanageMixin(object):
                 msg = _("Share %s has replicas. It cannot be unmanaged "
                         "until all replicas are removed.") % share['id']
                 raise exc.HTTPConflict(explanation=msg)
-            if (not allow_dhss_true and
-                    share['instance'].get('share_server_id')):
+            if share['instance'].get('share_server_id'):
                 msg = _("Operation 'unmanage' is not supported for shares "
                         "that are created on top of share servers "
                         "(created with share-networks).")
@@ -78,20 +85,6 @@ class ShareUnmanageMixin(object):
             raise exc.HTTPForbidden(explanation=e.msg)
 
         return webob.Response(status_int=http_client.ACCEPTED)
-
-
-class ShareUnmanageController(ShareUnmanageMixin, wsgi.Controller):
-    """The Unmanage API controller for the OpenStack API."""
-
-    resource_name = "share"
-
-    def __init__(self, *args, **kwargs):
-        super(ShareUnmanageController, self).__init__(*args, **kwargs)
-        self.share_api = share.API()
-
-    @wsgi.Controller.api_version('2.0', '2.6')
-    def unmanage(self, req, id):
-        return self._unmanage(req, id)
 
 
 def create_resource():

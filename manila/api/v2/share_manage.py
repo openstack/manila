@@ -25,10 +25,17 @@ from manila.share import utils as share_utils
 from manila import utils
 
 
-class ShareManageMixin(object):
+class ShareManageController(wsgi.Controller):
+    """Allows existing share to be 'managed' by Manila."""
 
-    @wsgi.Controller.authorize('manage')
-    def _manage(self, req, body, allow_dhss_true=False):
+    resource_name = "share"
+    _view_builder_class = share_views.ViewBuilder
+
+    def __init__(self, *args, **kwargs):
+        super(ShareManageController, self).__init__(*args, **kwargs)
+        self.share_api = share.API()
+
+    def _manage(self, req, body):
         context = req.environ['manila.context']
         share_data = self._validate_manage_parameters(context, body)
         share_data = common.validate_public_share_policy(context, share_data)
@@ -54,9 +61,6 @@ class ShareManageMixin(object):
             share['is_public'] = share_data['is_public']
 
         driver_options = share_data.get('driver_options', {})
-
-        if allow_dhss_true:
-            share['share_server_id'] = share_data.get('share_server_id')
 
         try:
             share_ref = self.share_api.manage(context, share, driver_options)
@@ -125,18 +129,8 @@ class ShareManageMixin(object):
         except exception.ShareTypeNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
 
-
-class ShareManageController(ShareManageMixin, wsgi.Controller):
-    """Allows existing share to be 'managed' by Manila."""
-
-    resource_name = "share"
-    _view_builder_class = share_views.ViewBuilder
-
-    def __init__(self, *args, **kwargs):
-        super(ShareManageController, self).__init__(*args, **kwargs)
-        self.share_api = share.API()
-
     @wsgi.Controller.api_version('2.0', '2.6')
+    @wsgi.Controller.authorize('manage')
     def create(self, req, body):
         """Legacy method for 'manage share' operation.
 

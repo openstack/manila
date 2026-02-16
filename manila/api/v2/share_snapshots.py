@@ -42,8 +42,17 @@ from manila import utils
 LOG = log.getLogger(__name__)
 
 
-class ShareSnapshotMixin:
-    """Mixin class for Share Snapshot Controllers."""
+class ShareSnapshotsController(
+    wsgi.Controller, metadata.MetadataController, wsgi.AdminActionsMixin
+):
+    """The Share Snapshots API V2 controller for the OpenStack API."""
+
+    resource_name = 'share_snapshot'
+    _view_builder_class = snapshot_views.ViewBuilder
+
+    def __init__(self):
+        super().__init__()
+        self.share_api = share.API()
 
     def _update(self, *args, **kwargs):
         db.share_snapshot_update(*args, **kwargs)
@@ -82,100 +91,6 @@ class ShareSnapshotMixin:
         except exception.NotFound:
             raise exc.HTTPNotFound()
         return webob.Response(status_int=http_client.ACCEPTED)
-
-    def index(self, req):
-        """Returns a summary list of snapshots."""
-        req.GET.pop('name~', None)
-        req.GET.pop('description~', None)
-        req.GET.pop('description', None)
-        return self._get_snapshots(req, is_detail=False)
-
-    def detail(self, req):
-        """Returns a detailed list of snapshots."""
-        req.GET.pop('name~', None)
-        req.GET.pop('description~', None)
-        req.GET.pop('description', None)
-        return self._get_snapshots(req, is_detail=True)
-
-    def _get_snapshots(self, req, is_detail):
-        """Returns a list of snapshots."""
-        context = req.environ['manila.context']
-
-        search_opts = {}
-        search_opts.update(req.GET)
-        params = common.get_pagination_params(req)
-        limit, offset = [params.get('limit'), params.get('offset')]
-
-        # Remove keys that are not related to share attrs
-        search_opts.pop('limit', None)
-        search_opts.pop('offset', None)
-
-        show_count = False
-        if 'with_count' in search_opts:
-            show_count = utils.get_bool_from_api_params(
-                'with_count', search_opts)
-            search_opts.pop('with_count')
-
-        sort_key, sort_dir = common.get_sort_params(search_opts)
-        key_dict = {"name": "display_name",
-                    "description": "display_description"}
-        for key in key_dict:
-            if sort_key == key:
-                sort_key = key_dict[key]
-
-        # NOTE(vponomaryov): Manila stores in DB key 'display_name', but
-        # allows to use both keys 'name' and 'display_name'. It is leftover
-        # from Cinder v1 and v2 APIs.
-        if 'name' in search_opts:
-            search_opts['display_name'] = search_opts.pop('name')
-        if 'description' in search_opts:
-            search_opts['display_description'] = search_opts.pop(
-                'description')
-
-        # Deserialize dicts
-        if req.api_version_request >= api_version.APIVersionRequest("2.73"):
-            if 'metadata' in search_opts:
-                try:
-                    search_opts['metadata'] = ast.literal_eval(
-                        search_opts['metadata'])
-                except ValueError:
-                    msg = _('Invalid value for metadata filter.')
-                    raise webob.exc.HTTPBadRequest(explanation=msg)
-        else:
-            search_opts.pop('metadata', None)
-
-        # like filter
-        for key, db_key in (('name~', 'display_name~'),
-                            ('description~', 'display_description~')):
-            if key in search_opts:
-                search_opts[db_key] = search_opts.pop(key)
-
-        common.remove_invalid_options(context, search_opts,
-                                      self._get_snapshots_search_options())
-
-        total_count = None
-        if show_count:
-            count, snapshots = self.share_api.get_all_snapshots_with_count(
-                context, search_opts=search_opts, limit=limit, offset=offset,
-                sort_key=sort_key, sort_dir=sort_dir)
-            total_count = count
-        else:
-            snapshots = self.share_api.get_all_snapshots(
-                context, search_opts=search_opts, limit=limit, offset=offset,
-                sort_key=sort_key, sort_dir=sort_dir)
-
-        if is_detail:
-            snapshots = self._view_builder.detail_list(
-                req, snapshots, total_count)
-        else:
-            snapshots = self._view_builder.summary_list(
-                req, snapshots, total_count)
-        return snapshots
-
-    def _get_snapshots_search_options(self):
-        """Return share snapshot search options allowed by non-admin."""
-        return ('display_name', 'status', 'share_id', 'size', 'display_name~',
-                'display_description~', 'display_description', 'metadata')
 
     def update(self, req, id, body):
         """Update a snapshot."""
@@ -273,55 +188,45 @@ class ShareSnapshotMixin:
         return self._view_builder.detail(
             req, dict(new_snapshot.items()))
 
+    # TODO(stephenfin): This method should be removed once we have JSON Schema
+    # schemas in place
+    def _validate_parameters(self, data, required_parameters,
+                             fix_response=False):
+        if fix_response:
+            exc_response = exc.HTTPBadRequest
+        else:
+            exc_response = exc.HTTPUnprocessableEntity
 
-class ShareSnapshotsController(
-    ShareSnapshotMixin,
-    wsgi.Controller,
-    metadata.MetadataController,
-    wsgi.AdminActionsMixin,
-):
-    """The Share Snapshots API V2 controller for the OpenStack API."""
+        for parameter in required_parameters:
+            if parameter not in data:
+                msg = _("Required parameter %s not found.") % parameter
+                raise exc_response(explanation=msg)
+            if not data.get(parameter):
+                msg = _("Required parameter %s is empty.") % parameter
+                raise exc_response(explanation=msg)
+            if not isinstance(data[parameter], str):
+                msg = _("Parameter %s must be a string.") % parameter
+                raise exc_response(explanation=msg)
 
-    resource_name = 'share_snapshot'
-    _view_builder_class = snapshot_views.ViewBuilder
+    @wsgi.Controller.api_version('2.0', '2.6')
+    @wsgi.action('os-reset_status')
+    def snapshot_reset_status_legacy(self, req, id, body):
+        return self._reset_status(req, id, body)
 
-    def __init__(self):
-        super().__init__()
-        self.share_api = share.API()
+    @wsgi.Controller.api_version('2.7')
+    @wsgi.action('reset_status')
+    def snapshot_reset_status(self, req, id, body):
+        return self._reset_status(req, id, body)
 
-    @wsgi.Controller.authorize('unmanage_snapshot')
-    def _unmanage(self, req, id, body=None, allow_dhss_true=False):
-        """Unmanage a share snapshot."""
-        context = req.environ['manila.context']
+    @wsgi.Controller.api_version('2.0', '2.6')
+    @wsgi.action('os-force_delete')
+    def snapshot_force_delete_legacy(self, req, id, body):
+        return self._force_delete(req, id, body)
 
-        LOG.info("Unmanage share snapshot with id: %s.", id)
-
-        try:
-            snapshot = self.share_api.get_snapshot(context, id)
-
-            share = self.share_api.get(context, snapshot['share_id'])
-            if not allow_dhss_true and share.get('share_server_id'):
-                msg = _("Operation 'unmanage_snapshot' is not supported for "
-                        "snapshots of shares that are created with share"
-                        " servers (created with share-networks).")
-                raise exc.HTTPForbidden(explanation=msg)
-            elif share.get('has_replicas'):
-                msg = _("Share %s has replicas. Snapshots of this share "
-                        "cannot currently be unmanaged until all replicas "
-                        "are removed.") % share['id']
-                raise exc.HTTPConflict(explanation=msg)
-            elif snapshot['status'] in constants.TRANSITIONAL_STATUSES:
-                msg = _("Snapshot with transitional state cannot be "
-                        "unmanaged. Snapshot '%(s_id)s' is in '%(state)s' "
-                        "state.") % {'state': snapshot['status'],
-                                     's_id': snapshot['id']}
-                raise exc.HTTPForbidden(explanation=msg)
-
-            self.share_api.unmanage_snapshot(context, snapshot, share['host'])
-        except (exception.ShareSnapshotNotFound, exception.ShareNotFound) as e:
-            raise exc.HTTPNotFound(explanation=e.msg)
-
-        return webob.Response(status_int=http_client.ACCEPTED)
+    @wsgi.Controller.api_version('2.7')
+    @wsgi.action('force_delete')
+    def snapshot_force_delete(self, req, id, body):
+        return self._force_delete(req, id, body)
 
     @wsgi.Controller.authorize('manage_snapshot')
     def _manage(self, req, body):
@@ -347,7 +252,15 @@ class ShareSnapshotsController(
         """
 
         context = req.environ['manila.context']
-        snapshot_data = self._validate_manage_parameters(context, body)
+
+        if not (body and self.is_valid_body(body, 'snapshot')):
+            msg = _("Snapshot entity not found in request body.")
+            raise exc.HTTPUnprocessableEntity(explanation=msg)
+
+        snapshot_data = body['snapshot']
+
+        required_parameters = ('share_id', 'provider_location')
+        self._validate_parameters(snapshot_data, required_parameters)
 
         # NOTE(vponomaryov): compatibility actions are required between API and
         # DB layers for 'name' and 'description' API params that are
@@ -395,36 +308,55 @@ class ShareSnapshotsController(
 
         return self._view_builder.detail(req, snapshot_ref)
 
-    def _validate_manage_parameters(self, context, body):
-        if not (body and self.is_valid_body(body, 'snapshot')):
-            msg = _("Snapshot entity not found in request body.")
-            raise exc.HTTPUnprocessableEntity(explanation=msg)
+    @wsgi.Controller.api_version('2.12')
+    @wsgi.response(202)
+    def manage(self, req, body):
+        return self._manage(req, body)
 
-        data = body['snapshot']
+    @wsgi.Controller.authorize('unmanage_snapshot')
+    def _unmanage(self, req, id, body=None, allow_dhss_true=False):
+        """Unmanage a share snapshot."""
+        context = req.environ['manila.context']
 
-        required_parameters = ('share_id', 'provider_location')
-        self._validate_parameters(data, required_parameters)
+        LOG.info("Unmanage share snapshot with id: %s.", id)
 
-        return data
+        try:
+            snapshot = self.share_api.get_snapshot(context, id)
 
-    def _validate_parameters(self, data, required_parameters,
-                             fix_response=False):
+            share = self.share_api.get(context, snapshot['share_id'])
+            if not allow_dhss_true and share.get('share_server_id'):
+                msg = _("Operation 'unmanage_snapshot' is not supported for "
+                        "snapshots of shares that are created with share"
+                        " servers (created with share-networks).")
+                raise exc.HTTPForbidden(explanation=msg)
+            elif share.get('has_replicas'):
+                msg = _("Share %s has replicas. Snapshots of this share "
+                        "cannot currently be unmanaged until all replicas "
+                        "are removed.") % share['id']
+                raise exc.HTTPConflict(explanation=msg)
+            elif snapshot['status'] in constants.TRANSITIONAL_STATUSES:
+                msg = _("Snapshot with transitional state cannot be "
+                        "unmanaged. Snapshot '%(s_id)s' is in '%(state)s' "
+                        "state.") % {'state': snapshot['status'],
+                                     's_id': snapshot['id']}
+                raise exc.HTTPForbidden(explanation=msg)
 
-        if fix_response:
-            exc_response = exc.HTTPBadRequest
-        else:
-            exc_response = exc.HTTPUnprocessableEntity
+            self.share_api.unmanage_snapshot(context, snapshot, share['host'])
+        except (exception.ShareSnapshotNotFound, exception.ShareNotFound) as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
 
-        for parameter in required_parameters:
-            if parameter not in data:
-                msg = _("Required parameter %s not found.") % parameter
-                raise exc_response(explanation=msg)
-            if not data.get(parameter):
-                msg = _("Required parameter %s is empty.") % parameter
-                raise exc_response(explanation=msg)
-            if not isinstance(data[parameter], str):
-                msg = _("Parameter %s must be a string.") % parameter
-                raise exc_response(explanation=msg)
+        return webob.Response(status_int=http_client.ACCEPTED)
+
+    @wsgi.Controller.api_version('2.12', '2.48')
+    @wsgi.action('unmanage')
+    def unmanage(self, req, id, body=None):
+        return self._unmanage(req, id, body)
+
+    @wsgi.Controller.api_version('2.49')  # noqa
+    @wsgi.action('unmanage')
+    def unmanage(self, req, id,   # pylint: disable=function-redefined  # noqa F811
+                 body=None):
+        return self._unmanage(req, id, body, allow_dhss_true=True)
 
     def _check_if_share_share_network_is_active(self, context, snapshot):
         share_network_id = snapshot['share'].get('share_network_id')
@@ -432,6 +364,15 @@ class ShareSnapshotsController(
             share_network = db_api.share_network_get(
                 context, share_network_id)
             common.check_share_network_is_active(share_network)
+
+    def _check_mount_snapshot_support(self, context, snapshot):
+        share = self.share_api.get(context, snapshot['share_id'])
+        if not share['mount_snapshot_support']:
+            msg = _("Cannot control access to the snapshot %(snap)s since the "
+                    "parent share %(share)s does not support mounting its "
+                    "snapshots.") % {'snap': snapshot['id'],
+                                     'share': share['id']}
+            raise exc.HTTPBadRequest(explanation=msg)
 
     def _allow(self, req, id, body, enable_ipv6=False):
         context = req.environ['manila.context']
@@ -467,6 +408,16 @@ class ShareSnapshotsController(
 
         return self._view_builder.detail_access(req, access)
 
+    @wsgi.Controller.api_version('2.32')
+    @wsgi.action('allow_access')
+    @wsgi.response(202)
+    @wsgi.Controller.authorize
+    def allow_access(self, req, id, body=None):
+        enable_ipv6 = False
+        if req.api_version_request >= api_version.APIVersionRequest("2.38"):
+            enable_ipv6 = True
+        return self._allow(req, id, body, enable_ipv6)
+
     def _deny(self, req, id, body):
         context = req.environ['manila.context']
 
@@ -497,14 +448,11 @@ class ShareSnapshotsController(
         self.share_api.snapshot_deny_access(context, snapshot, access)
         return webob.Response(status_int=http_client.ACCEPTED)
 
-    def _check_mount_snapshot_support(self, context, snapshot):
-        share = self.share_api.get(context, snapshot['share_id'])
-        if not share['mount_snapshot_support']:
-            msg = _("Cannot control access to the snapshot %(snap)s since the "
-                    "parent share %(share)s does not support mounting its "
-                    "snapshots.") % {'snap': snapshot['id'],
-                                     'share': share['id']}
-            raise exc.HTTPBadRequest(explanation=msg)
+    @wsgi.Controller.api_version('2.32')
+    @wsgi.action('deny_access')
+    @wsgi.Controller.authorize
+    def deny_access(self, req, id, body=None):
+        return self._deny(req, id, body)
 
     def _access_list(self, req, snapshot_id):
         context = req.environ['manila.context']
@@ -515,62 +463,90 @@ class ShareSnapshotsController(
 
         return self._view_builder.detail_list_access(req, access_list)
 
-    @wsgi.Controller.api_version('2.0', '2.6')
-    @wsgi.action('os-reset_status')
-    def snapshot_reset_status_legacy(self, req, id, body):
-        return self._reset_status(req, id, body)
-
-    @wsgi.Controller.api_version('2.7')
-    @wsgi.action('reset_status')
-    def snapshot_reset_status(self, req, id, body):
-        return self._reset_status(req, id, body)
-
-    @wsgi.Controller.api_version('2.0', '2.6')
-    @wsgi.action('os-force_delete')
-    def snapshot_force_delete_legacy(self, req, id, body):
-        return self._force_delete(req, id, body)
-
-    @wsgi.Controller.api_version('2.7')
-    @wsgi.action('force_delete')
-    def snapshot_force_delete(self, req, id, body):
-        return self._force_delete(req, id, body)
-
-    @wsgi.Controller.api_version('2.12')
-    @wsgi.response(202)
-    def manage(self, req, body):
-        return self._manage(req, body)
-
-    @wsgi.Controller.api_version('2.12', '2.48')
-    @wsgi.action('unmanage')
-    def unmanage(self, req, id, body=None):
-        return self._unmanage(req, id, body)
-
-    @wsgi.Controller.api_version('2.49')  # noqa
-    @wsgi.action('unmanage')
-    def unmanage(self, req, id,   # pylint: disable=function-redefined  # noqa F811
-                 body=None):
-        return self._unmanage(req, id, body, allow_dhss_true=True)
-
-    @wsgi.Controller.api_version('2.32')
-    @wsgi.action('allow_access')
-    @wsgi.response(202)
-    @wsgi.Controller.authorize
-    def allow_access(self, req, id, body=None):
-        enable_ipv6 = False
-        if req.api_version_request >= api_version.APIVersionRequest("2.38"):
-            enable_ipv6 = True
-        return self._allow(req, id, body, enable_ipv6)
-
-    @wsgi.Controller.api_version('2.32')
-    @wsgi.action('deny_access')
-    @wsgi.Controller.authorize
-    def deny_access(self, req, id, body=None):
-        return self._deny(req, id, body)
-
     @wsgi.Controller.api_version('2.32')
     @wsgi.Controller.authorize
     def access_list(self, req, snapshot_id):
         return self._access_list(req, snapshot_id)
+
+    def _get_snapshots(self, req, is_detail):
+        """Returns a list of snapshots."""
+        context = req.environ['manila.context']
+
+        search_opts = {}
+        search_opts.update(req.GET)
+        params = common.get_pagination_params(req)
+        limit, offset = [params.get('limit'), params.get('offset')]
+
+        # Remove keys that are not related to share attrs
+        search_opts.pop('limit', None)
+        search_opts.pop('offset', None)
+
+        show_count = False
+        if 'with_count' in search_opts:
+            show_count = utils.get_bool_from_api_params(
+                'with_count', search_opts)
+            search_opts.pop('with_count')
+
+        sort_key, sort_dir = common.get_sort_params(search_opts)
+        key_dict = {"name": "display_name",
+                    "description": "display_description"}
+        for key in key_dict:
+            if sort_key == key:
+                sort_key = key_dict[key]
+
+        # NOTE(vponomaryov): Manila stores in DB key 'display_name', but
+        # allows to use both keys 'name' and 'display_name'. It is leftover
+        # from Cinder v1 and v2 APIs.
+        if 'name' in search_opts:
+            search_opts['display_name'] = search_opts.pop('name')
+        if 'description' in search_opts:
+            search_opts['display_description'] = search_opts.pop(
+                'description')
+
+        # Deserialize dicts
+        if req.api_version_request >= api_version.APIVersionRequest("2.73"):
+            if 'metadata' in search_opts:
+                try:
+                    search_opts['metadata'] = ast.literal_eval(
+                        search_opts['metadata'])
+                except ValueError:
+                    msg = _('Invalid value for metadata filter.')
+                    raise webob.exc.HTTPBadRequest(explanation=msg)
+        else:
+            search_opts.pop('metadata', None)
+
+        # like filter
+        for key, db_key in (('name~', 'display_name~'),
+                            ('description~', 'display_description~')):
+            if key in search_opts:
+                search_opts[db_key] = search_opts.pop(key)
+
+        common.remove_invalid_options(context, search_opts,
+                                      self._get_snapshots_search_options())
+
+        total_count = None
+        if show_count:
+            count, snapshots = self.share_api.get_all_snapshots_with_count(
+                context, search_opts=search_opts, limit=limit, offset=offset,
+                sort_key=sort_key, sort_dir=sort_dir)
+            total_count = count
+        else:
+            snapshots = self.share_api.get_all_snapshots(
+                context, search_opts=search_opts, limit=limit, offset=offset,
+                sort_key=sort_key, sort_dir=sort_dir)
+
+        if is_detail:
+            snapshots = self._view_builder.detail_list(
+                req, snapshots, total_count)
+        else:
+            snapshots = self._view_builder.summary_list(
+                req, snapshots, total_count)
+        return snapshots
+
+    def _get_snapshots_search_options(self):
+        """Return share snapshot search options allowed by non-admin."""
+        return ('display_name', 'status', 'share_id', 'size', 'display_name~',
+                'display_description~', 'display_description', 'metadata')
 
     @wsgi.Controller.api_version("2.0")
     @validation.request_query_schema(schema.index_request_query, "2.0", "2.35")
