@@ -1204,6 +1204,7 @@ AGGR_GET_SPACE_RESPONSE = etree.XML("""
     <attributes-list>
       <aggr-attributes>
         <aggr-raid-attributes>
+          <encrypt-with-aggr-key>true</encrypt-with-aggr-key>
           <plexes>
             <plex-attributes>
               <plex-name>/%(aggr1)s/plex0</plex-name>
@@ -3777,6 +3778,9 @@ AGGR_GET_ITER_RESPONSE_REST = {
             },
             "snaplock_type": "enterprise",
             "is_snaplock": True,
+            "data_encryption": {
+                "software_encryption_enabled": True
+            },
             "space": {
                 "footprint": 702764609536,
                 "footprint_percent": 55,
@@ -3823,6 +3827,9 @@ AGGR_GET_ITER_RESPONSE_REST = {
             "name": "fake_aggr2",
             "home_node": {
                 "name": "fake_home_node_name"
+            },
+            "data_encryption": {
+                "software_encryption_enabled": False
             },
             "space": {
                 "footprint": 699261227008,

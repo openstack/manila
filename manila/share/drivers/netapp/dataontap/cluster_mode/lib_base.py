@@ -425,9 +425,10 @@ class NetAppCmodeFileStorageLibrary(object):
                    'share_id': share_id.replace('-', '_')})
 
     @na_utils.trace
-    def _get_aggregate_space(self, aggr_set):
+    def _get_aggregate_pool_attributes(self, aggr_set):
         if self._have_cluster_creds:
-            return self._client.get_cluster_aggregate_capacities(aggr_set)
+            return self._client.get_cluster_aggregate_attributes(
+                aggr_set)
         else:
             return self._client.get_vserver_aggregate_capacities(aggr_set)
 
@@ -519,7 +520,10 @@ class NetAppCmodeFileStorageLibrary(object):
         aggr_pool = set(self._find_matching_aggregates())
         flexgroup_pools = self._flexgroup_pools
         flexgroup_aggr = self._get_flexgroup_aggr_set()
-        aggr_space = self._get_aggregate_space(aggr_pool.union(flexgroup_aggr))
+        aggr_info = self._get_aggregate_pool_attributes(
+            aggr_pool.union(flexgroup_aggr))
+        nae_support = (not self.configuration.netapp_use_legacy_client
+                       or self._client.features.NAE_SUPPORT)
 
         cluster_name = self._cluster_name
         if self._have_cluster_creds and not cluster_name:
@@ -533,9 +537,13 @@ class NetAppCmodeFileStorageLibrary(object):
                            else None)
         for aggr_name in sorted(aggr_pool):
             total_gb, free_gb, used_gb = self._get_flexvol_pool_space(
-                aggr_space, aggr_name)
+                aggr_info, aggr_name)
 
-            pool = self._get_pool(aggr_name, total_gb, free_gb, used_gb)
+            aggr_encryption = aggr_info.get(aggr_name, {}).get(
+                'encryption_enabled', False) and nae_support
+
+            pool = self._get_pool(aggr_name, total_gb, free_gb, used_gb,
+                                  aggr_encryption)
 
             cached_pools.append(pool)
             pool_with_func = copy.deepcopy(pool)
@@ -550,9 +558,12 @@ class NetAppCmodeFileStorageLibrary(object):
             filter_function = (get_filter_function(pool=pool_name)
                                if get_filter_function else None)
             total_gb, free_gb, used_gb = self._get_flexgroup_pool_space(
-                aggr_space, aggr_list)
+                aggr_info, aggr_list)
 
-            pool = self._get_pool(pool_name, total_gb, free_gb, used_gb)
+            aggr_encryption = self._get_flexgroup_encryption_status(
+                aggr_info, aggr_list) and nae_support
+            pool = self._get_pool(pool_name, total_gb, free_gb, used_gb,
+                                  aggr_encryption)
             cached_pools.append(pool)
             pool_with_func = copy.deepcopy(pool)
             pool_with_func['filter_function'] = filter_function
@@ -567,7 +578,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def _get_pool(self, pool_name, total_capacity_gb, free_capacity_gb,
-                  allocated_capacity_gb):
+                  allocated_capacity_gb, aggr_encryption):
         """Gets the pool dictionary."""
         if self._have_cluster_creds:
             qos_support = True
@@ -575,6 +586,7 @@ class NetAppCmodeFileStorageLibrary(object):
         else:
             qos_support = False
             qos_type_support = False
+            aggr_encryption = False
 
         # Share-server/share encryption support with NetApp will only be
         # possible with DHSS=True
@@ -621,6 +633,7 @@ class NetAppCmodeFileStorageLibrary(object):
             'share_replicas_migration_support': True,
             'encryption_support': encryption_support,
             'qos_type_support': qos_type_support,
+            'netapp_aggregate_encryption': aggr_encryption,
         }
 
         # Add storage service catalog data.
@@ -693,6 +706,26 @@ class NetAppCmodeFileStorageLibrary(object):
             used_gb = na_utils.round_down(total_gb - free_gb)
 
         return total_gb, free_gb, used_gb
+
+    @na_utils.trace
+    def _get_flexgroup_encryption_status(self, aggr_info, aggr_pool):
+        """Returns the encryption status for a FlexGroup pool.
+
+        :param aggr_info: FlexGroup pool info dict.
+        :param aggr_pool: list of aggregate names for the FlexGroup pool.
+        Return True if all aggregates in pool have encryption enabled.
+        """
+        encryption_status = True
+        for aggr_name in sorted(aggr_pool):
+            if aggr_name not in aggr_info:
+                encryption_status = False
+                break
+            aggr_encryption = aggr_info.get(aggr_name, {}).get(
+                'encryption_enabled', False)
+            if not aggr_encryption:
+                encryption_status = False
+                break
+        return encryption_status
 
     @na_utils.trace
     def _handle_ems_logging(self):
@@ -1261,6 +1294,25 @@ class NetAppCmodeFileStorageLibrary(object):
                 self._create_fpolicy_for_share(share, vserver, vserver_client,
                                                **provisioning_options)
 
+    @na_utils.trace
+    def _is_nae_pool(self, pool_name):
+        if not self._have_cluster_creds:
+            return None
+
+        nae_support = (not self.configuration.netapp_use_legacy_client
+                       or self._client.features.NAE_SUPPORT)
+
+        if not self._is_flexgroup_pool(pool_name):
+            aggr_set = {pool_name}
+            aggr_info = self._get_aggregate_pool_attributes(aggr_set)
+            return aggr_info.get(pool_name, {}).get(
+                'encryption_enabled', False) and nae_support
+        else:
+            aggr_list = self._get_flexgroup_aggregate_list(pool_name)
+            aggr_info = self._get_aggregate_pool_attributes(set(aggr_list))
+            return self._get_flexgroup_encryption_status(
+                aggr_info, aggr_list) and nae_support
+
     def _apply_snapdir_visibility(
             self, hide_snapdir, share_name, vserver_client):
 
@@ -1426,6 +1478,21 @@ class NetAppCmodeFileStorageLibrary(object):
         self._check_boolean_extra_specs_validity(
             share, extra_specs, list(self.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP))
         self._check_string_extra_specs_validity(share, extra_specs)
+
+        # Verify NAE cannot exist with NVE or encryption_support is enabled
+        nve = self._get_nve_option(extra_specs)
+        nae = self._get_nae_option(extra_specs)
+
+        encryption_support = share.get('encryption_key_ref')
+
+        if nae and (nve or encryption_support):
+            args = {'type_id': share['share_type_id'],
+                    'share_id': share['id']}
+            msg = _('Invalid combination of extra_specs in share_type '
+                    '%(type_id)s for share %(share_id)s: '
+                    'netapp_aggregate_encryption is not compatible with '
+                    'netapp_flexvol_encryption or encryption_support.')
+            raise exception.NetAppException(msg % args)
 
     @na_utils.trace
     def _check_string_extra_specs_validity(self, share, extra_specs):
@@ -1928,6 +1995,13 @@ class NetAppCmodeFileStorageLibrary(object):
         extra_specs = self._remap_standard_boolean_extra_specs(extra_specs)
         self._check_extra_specs_validity(share, extra_specs)
         provisioning_options = self._get_provisioning_options(extra_specs)
+
+        pool_name = share_utils.extract_host(share['host'], level='pool')
+        if pool_name is None:
+            msg = _("Pool is not available in the share host field.")
+            raise exception.InvalidHost(reason=msg)
+        aggregate_encrypted = self._is_nae_pool(pool_name)
+        provisioning_options['aggregate_encrypted'] = aggregate_encrypted
         qos_specs = self._get_normalized_qos_specs(extra_specs)
 
         qos_type_specs = qos_types.get_specs_from_share(share)
@@ -2064,6 +2138,15 @@ class NetAppCmodeFileStorageLibrary(object):
             nve = False
 
         return nve
+
+    @na_utils.trace
+    def _get_nae_option(self, specs):
+        if 'netapp_aggregate_encryption' in specs:
+            nae = specs['netapp_aggregate_encryption'].lower() == 'true'
+        else:
+            nae = False
+
+        return nae
 
     @na_utils.trace
     def _check_aggregate_extra_specs_validity(self, pool_name, specs):
@@ -4243,9 +4326,14 @@ class NetAppCmodeFileStorageLibrary(object):
 
                 encrypt_dest = self._get_dest_flexvol_encryption_value(
                     destination_share)
+
+                dest_aggr_encryption = self._get_dest_aggr_encryption_value(
+                    backend, destination_aggregate)
+
                 self._client.check_volume_move(
                     share_volume, source_vserver, destination_aggregate,
-                    encrypt_destination=encrypt_dest)
+                    encrypt_destination=encrypt_dest,
+                    dest_aggr_encryption=dest_aggr_encryption)
 
             except Exception:
                 msg = ("Cannot migrate share %(shr)s efficiently between "
@@ -4315,8 +4403,11 @@ class NetAppCmodeFileStorageLibrary(object):
         # Intra-cluster migration
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_volume = self._get_backend_share_name(source_share['id'])
+        destination_host = destination_share['host']
         destination_aggregate = share_utils.extract_host(
-            destination_share['host'], level='pool')
+            destination_host, level='pool')
+        backend = share_utils.extract_host(
+            destination_host, level='backend_name')
 
         # If the destination's share type extra-spec for Flexvol encryption
         # is different than the source's, then specify the volume-move
@@ -4325,12 +4416,16 @@ class NetAppCmodeFileStorageLibrary(object):
         encrypt_dest = self._get_dest_flexvol_encryption_value(
             destination_share)
 
+        dest_aggr_encryption = self._get_dest_aggr_encryption_value(
+            backend, destination_aggregate)
+
         self._client.start_volume_move(
             share_volume,
             vserver,
             destination_aggregate,
             cutover_action=cutover_action,
-            encrypt_destination=encrypt_dest)
+            encrypt_destination=encrypt_dest,
+            dest_aggr_encryption=dest_aggr_encryption)
 
         msg = ("Began volume move operation of share %(shr)s from %(src)s "
                "to %(dest)s.")
@@ -4362,9 +4457,27 @@ class NetAppCmodeFileStorageLibrary(object):
             destination_share['share_type_id'],
             'netapp_flexvol_encryption')
         encrypt_destination = share_types.parse_boolean_extra_spec(
-            'netapp_flexvol_encryption', dest_share_type_encrypted_val)
+            'netapp_flexvol_encryption',
+            dest_share_type_encrypted_val)
 
         return encrypt_destination
+
+    def _get_dest_aggr_encryption_value(self, destination_backend,
+                                        destination_aggregate):
+        destination_client = self._get_api_client_for_backend(
+            destination_backend)
+        if not destination_client.check_for_cluster_credentials():
+            return None
+
+        nae_support = (not self.configuration.netapp_use_legacy_client
+                       or self._client.features.NAE_SUPPORT)
+        dest_aggr_info = (
+            destination_client.get_cluster_aggregate_attributes(
+                {destination_aggregate}))
+        aggr_encryption = (dest_aggr_info.get(
+            destination_aggregate, {}).get('encryption_enabled',
+                                           False) and nae_support)
+        return aggr_encryption
 
     def _check_volume_move_completed(self, source_share, share_server):
         """Check progress of volume move operation."""

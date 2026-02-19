@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    The NetApp driver now supports NAE (aggregate-level encryption) by adding
+    a new capability netapp_aggregate_encryption. This feature is supported
+    only for cluster scoped backends (Not supported for SVM scoped backends).
+    This feature is supported for ONTAP versions >= 9.6.

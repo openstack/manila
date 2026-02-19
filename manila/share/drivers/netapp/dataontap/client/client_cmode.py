@@ -83,6 +83,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontapi_1_150 = ontapi_version >= (1, 150)
         ontapi_1_180 = ontapi_version >= (1, 180)
         ontapi_1_191 = ontapi_version >= (1, 191)
+        ontap_9_6 = self.get_system_version()['version-tuple'] >= (9, 6, 0)
         ontap_9_10 = self.get_system_version()['version-tuple'] >= (9, 10, 0)
         ontap_9_10_1 = self.get_system_version()['version-tuple'] >= (9, 10, 1)
         ontap_9_11_1 = self.get_system_version()['version-tuple'] >= (9, 11, 1)
@@ -117,6 +118,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                   supported=ontap_9_11_1)
         self.features.add_feature('AES_ENCRYPTION_TYPES',
                                   supported=ontap_9_12_1)
+        self.features.add_feature('NAE_SUPPORT', supported=ontap_9_6)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -1485,10 +1487,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return aggr_ownership_attrs.get_child_content('home-name')
 
     @na_utils.trace
-    def get_cluster_aggregate_capacities(self, aggregate_names):
-        """Calculates capacity of one or more aggregates.
+    def get_cluster_aggregate_attributes(self, aggregate_names):
+        """Calculate capacity and encryption status for one or more aggregates.
 
-        Returns dictionary of aggregate capacity metrics.
+        Returns dictionary of aggregate capacity metrics and
+        aggregate encryption status.
         'size-used' is the actual space consumed on the aggregate.
         'size-available' is the actual space remaining.
         'size-total' is the defined total aggregate size, such that
@@ -1508,22 +1511,35 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
+
+        if self.features.NAE_SUPPORT:
+            desired_attributes['aggr-attributes']['aggr-raid-attributes'] = {}
+            desired_attributes['aggr-attributes']['aggr-raid-attributes'][
+                'encrypt-with-aggr-key'] = None
+
         aggrs = self._get_aggregates(aggregate_names=aggregate_names,
                                      desired_attributes=desired_attributes)
-        aggr_space_dict = dict()
+        aggregate_space_and_encryption_status = dict()
         for aggr in aggrs:
             aggr_name = aggr.get_child_content('aggregate-name')
             aggr_space_attrs = aggr.get_child_by_name('aggr-space-attributes')
+            aggr_raid_attrs = aggr.get_child_by_name('aggr-raid-attributes')
+            if aggr_raid_attrs:
+                aggr_encryption = aggr_raid_attrs.get_child_content(
+                    'encrypt-with-aggr-key') == 'true'
+            else:
+                aggr_encryption = False
 
-            aggr_space_dict[aggr_name] = {
+            aggregate_space_and_encryption_status[aggr_name] = {
                 'available':
                 int(aggr_space_attrs.get_child_content('size-available')),
                 'total':
                 int(aggr_space_attrs.get_child_content('size-total')),
                 'used':
                 int(aggr_space_attrs.get_child_content('size-used')),
+                'encryption_enabled': aggr_encryption,
             }
-        return aggr_space_dict
+        return aggregate_space_and_encryption_status
 
     @na_utils.trace
     def get_vserver_aggregate_capacities(self, aggregate_names=None):
@@ -2406,8 +2422,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       compression_enabled=False, max_files=None,
                       snapshot_reserve=None, volume_type='rw',
                       qos_policy_group=None, adaptive_qos_policy_group=None,
-                      encrypt=False, mount_point_name=None,
-                      snaplock_type=None, **options):
+                      encrypt=False, mount_point_name=None, snaplock_type=None,
+                      aggregate_encrypted=None, **options):
         """Creates a volume."""
         if adaptive_qos_policy_group and not self.features.ADAPTIVE_QOS:
             msg = 'Adaptive QoS not supported on this backend ONTAP version.'
@@ -2421,7 +2437,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         api_args.update(self._get_create_volume_api_args(
             volume_name, thin_provisioned, snapshot_policy, language,
             snapshot_reserve, volume_type, qos_policy_group, encrypt,
-            adaptive_qos_policy_group, mount_point_name, snaplock_type))
+            adaptive_qos_policy_group, mount_point_name, snaplock_type,
+            aggregate_encrypted))
 
         self.send_request('volume-create', api_args)
 
@@ -2451,7 +2468,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                             volume_type='rw', qos_policy_group=None,
                             encrypt=False, adaptive_qos_policy_group=None,
                             auto_provisioned=False, mount_point_name=None,
-                            snaplock_type=None, **options):
+                            snaplock_type=None, aggregate_encrypted=None,
+                            **options):
         """Creates a volume asynchronously."""
 
         if adaptive_qos_policy_group and not self.features.ADAPTIVE_QOS:
@@ -2470,7 +2488,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         api_args.update(self._get_create_volume_api_args(
             volume_name, thin_provisioned, snapshot_policy, language,
             snapshot_reserve, volume_type, qos_policy_group, encrypt,
-            adaptive_qos_policy_group, mount_point_name, snaplock_type))
+            adaptive_qos_policy_group, mount_point_name, snaplock_type,
+            aggregate_encrypted))
 
         result = self.send_request('volume-create-async', api_args)
         job_info = {
@@ -2486,7 +2505,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                     qos_policy_group, encrypt,
                                     adaptive_qos_policy_group,
                                     mount_point_name=None,
-                                    snaplock_type=None):
+                                    snaplock_type=None,
+                                    aggregate_encrypted=None):
         api_args = {
             'volume-type': volume_type,
             'space-reserve': ('none' if thin_provisioned else 'volume'),
@@ -2512,7 +2532,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(msg)
             else:
                 api_args['encrypt'] = 'true'
-        else:
+        elif aggregate_encrypted is False:
             api_args['encrypt'] = 'false'
 
         if snaplock_type is not None:
@@ -5776,7 +5796,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def start_volume_move(self, volume_name, vserver, destination_aggregate,
-                          cutover_action='wait', encrypt_destination=None):
+                          cutover_action='wait', encrypt_destination=None,
+                          dest_aggr_encryption=None):
         """Moves a FlexVol across Vserver aggregates.
 
         Requires cluster-scoped credentials.
@@ -5785,11 +5806,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             volume_name, vserver,
             destination_aggregate,
             cutover_action=cutover_action,
-            encrypt_destination=encrypt_destination)
+            encrypt_destination=encrypt_destination,
+            dest_aggr_encryption=dest_aggr_encryption)
 
     @na_utils.trace
     def check_volume_move(self, volume_name, vserver, destination_aggregate,
-                          encrypt_destination=None):
+                          encrypt_destination=None, dest_aggr_encryption=None):
         """Moves a FlexVol across Vserver aggregates.
 
         Requires cluster-scoped credentials.
@@ -5799,14 +5821,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             vserver,
             destination_aggregate,
             validation_only=True,
-            encrypt_destination=encrypt_destination)
+            encrypt_destination=encrypt_destination,
+            dest_aggr_encryption=dest_aggr_encryption)
 
     @na_utils.trace
     def _send_volume_move_request(self, volume_name, vserver,
                                   destination_aggregate,
                                   cutover_action='wait',
                                   validation_only=False,
-                                  encrypt_destination=None):
+                                  encrypt_destination=None,
+                                  dest_aggr_encryption=None):
         """Send request to check if vol move is possible, or start it.
 
         :param volume_name: Name of the FlexVol to be moved.
@@ -5821,6 +5845,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             move is possible, does not trigger data copy.
         :param encrypt_destination: If set to True, it encrypts the Flexvol
             after the volume move is complete.
+        :param dest_aggr_encryption: If set to True and encrypt_destination is
+            False, it encrypts the Flexvol with aggregate encryption key.
+            after the volume move is complete.
         """
         api_args = {
             'source-volume': volume_name,
@@ -5829,15 +5856,31 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'cutover-action': CUTOVER_ACTION_MAP[cutover_action],
         }
 
-        if self.features.FLEXVOL_ENCRYPTION:
+        if encrypt_destination and not self.features.FLEXVOL_ENCRYPTION:
+            msg = ('Flexvol encryption is not supported on the '
+                   'destination storage pool %s.')
+            raise exception.NetAppException(msg, destination_aggregate)
+
+        if dest_aggr_encryption and not self.features.NAE_SUPPORT:
+            msg = ('NetApp Aggregate encryption is not supported on the '
+                   'destination storage pool %s.')
+            raise exception.NetAppException(msg, destination_aggregate)
+
+        if self.features.NAE_SUPPORT:
+            if encrypt_destination:
+                api_args['encrypt-destination'] = 'true'
+                api_args['encrypt-with-aggr-key'] = 'false'
+            elif dest_aggr_encryption is True:
+                api_args['encrypt-destination'] = 'true'
+                api_args['encrypt-with-aggr-key'] = 'true'
+            elif dest_aggr_encryption is False:
+                api_args['encrypt-destination'] = 'false'
+                api_args['encrypt-with-aggr-key'] = 'false'
+        elif self.features.FLEXVOL_ENCRYPTION:
             if encrypt_destination:
                 api_args['encrypt-destination'] = 'true'
             else:
                 api_args['encrypt-destination'] = 'false'
-        elif encrypt_destination:
-            msg = 'Flexvol encryption is not supported on this backend.'
-            raise exception.NetAppException(msg)
-
         if validation_only:
             api_args['perform-validation-only'] = 'true'
 

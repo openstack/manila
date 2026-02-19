@@ -221,31 +221,40 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('security-key-manager-volume-encryption-supported',
                       api_args)])
 
-    @ddt.data((True, True, True), (False, None, False))
+    @ddt.data((True, True, True, True), (False, True, None, False),
+              (True, False, True, True), (False, False, None, False))
     @ddt.unpack
     def test_send_volume_move_request_success(self, validation_only,
+                                              dest_aggr_encryption,
                                               encrypt_dst, fv_encryption):
         self.mock_object(self.client, 'features',
-                         mock.Mock(FLEXVOL_ENCRYPTION=fv_encryption))
-        self.client._send_volume_move_request(fake.ROOT_VOLUME_NAME,
-                                              fake.NODE_VSERVER_NAME,
-                                              fake.SHARE_AGGREGATE_NAME,
-                                              validation_only=validation_only,
-                                              encrypt_destination=encrypt_dst)
+                         mock.Mock(FLEXVOL_ENCRYPTION=fv_encryption,
+                                   NAE_SUPPORT=dest_aggr_encryption))
+        self.client._send_volume_move_request(
+            fake.ROOT_VOLUME_NAME,
+            fake.NODE_VSERVER_NAME,
+            fake.SHARE_AGGREGATE_NAME,
+            validation_only=validation_only,
+            encrypt_destination=encrypt_dst,
+            dest_aggr_encryption=dest_aggr_encryption)
 
-    @ddt.data((True, True, False))
+    @ddt.data((True, True, True, False))
     @ddt.unpack
     def test_send_volume_move_request_failure(self, validation_only,
+                                              dest_aggr_encryption,
                                               encrypt_dst, fv_encrypt):
         self.mock_object(self.client, 'features',
                          mock.Mock(FLEXVOL_ENCRYPTION=fv_encrypt))
+        self.mock_object(self.client, 'features',
+                         mock.Mock(NAE_SUPPORT=False))
         self.assertRaises(exception.NetAppException,
                           self.client._send_volume_move_request,
                           fake.ROOT_VOLUME_NAME,
                           fake.NODE_VSERVER_NAME,
                           fake.SHARE_AGGREGATE_NAME,
                           validation_only=validation_only,
-                          encrypt_destination=encrypt_dst)
+                          encrypt_destination=encrypt_dst,
+                          dest_aggr_encryption=dest_aggr_encryption)
 
     def test_invoke_vserver_api(self):
 
@@ -2196,8 +2205,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertIsNone(result)
 
-    def test_get_cluster_aggregate_capacities(self):
-
+    def test_get_cluster_aggregate_attributes(self):
+        self.mock_object(self.client, 'features',
+                         mock.Mock(NAE_SUPPORT=True))
         api_response = netapp_api.NaElement(
             fake.AGGR_GET_SPACE_RESPONSE).get_child_by_name(
             'attributes-list').get_children()
@@ -2205,7 +2215,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          '_get_aggregates',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_cluster_aggregate_capacities(
+        result = self.client.get_cluster_aggregate_attributes(
             fake.SHARE_AGGREGATE_NAMES)
 
         desired_attributes = {
@@ -2215,6 +2225,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     'size-available': None,
                     'size-total': None,
                     'size-used': None,
+                },
+                'aggr-raid-attributes': {
+                    'encrypt-with-aggr-key': None,
                 }
             }
         }
@@ -2229,30 +2242,32 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 'available': 45670400,
                 'total': 943718400,
                 'used': 898048000,
+                'encryption_enabled': True,
             },
             fake.SHARE_AGGREGATE_NAMES[1]: {
                 'available': 4267659264,
                 'total': 7549747200,
                 'used': 3282087936,
+                'encryption_enabled': False,
             },
         }
         self.assertDictEqual(expected, result)
 
-    def test_get_cluster_aggregate_capacities_not_found(self):
+    def test_get_cluster_aggregate_attributes_not_found(self):
 
         api_response = netapp_api.NaElement('none').get_children()
         self.mock_object(self.client,
                          '_get_aggregates',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_cluster_aggregate_capacities(
+        result = self.client.get_cluster_aggregate_attributes(
             fake.SHARE_AGGREGATE_NAMES)
 
         self.assertEqual({}, result)
 
-    def test_get_cluster_aggregate_capacities_none_requested(self):
+    def test_get_cluster_aggregate_attributes_none_requested(self):
 
-        result = self.client.get_cluster_aggregate_capacities([])
+        result = self.client.get_cluster_aggregate_attributes([])
 
         self.assertEqual({}, result)
 
@@ -3438,7 +3453,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client._get_create_volume_api_args.assert_called_once_with(
             fake.SHARE_NAME, False, None, None, None, 'rw', None, False,
-            None, None, None)
+            None, None, None, None)
         self.client.send_request.assert_called_with('volume-create',
                                                     volume_create_args)
         (
@@ -3470,7 +3485,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume-type': 'rw',
             'junction-path': '/%s' % fake.SHARE_NAME,
             'space-reserve': ('none' if thin_provisioned else 'volume'),
-            'encrypt': 'false'
         }
 
         self.client.send_request.assert_called_once_with('volume-create',
@@ -3494,7 +3508,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume-type': 'rw',
             'junction-path': '/%s' % fake.SHARE_NAME,
             'space-reserve': 'volume',
-            'encrypt': 'false',
             'snaplock-type': snaplock_type,
         }
 
@@ -3544,7 +3557,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client._get_create_volume_api_args.assert_called_once_with(
             fake.SHARE_NAME, False, None, None, None, 'rw', None, False,
-            None, None, None)
+            None, None, None, None)
         self.client.send_request.assert_called_with('volume-create-async',
                                                     volume_create_args)
         self.assertEqual(expected_result, result)
@@ -3632,10 +3645,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
         qos_name = None
         encrypt = False
         qos_adaptive_name = None
+        aggregate_encrypted = False
 
         result_api_args = self.client._get_create_volume_api_args(
             fake.SHARE_NAME, thin_provisioned, snapshot_policy, language,
-            reserve, volume_type, qos_name, encrypt, qos_adaptive_name)
+            reserve, volume_type, qos_name, encrypt, qos_adaptive_name,
+            aggregate_encrypted=aggregate_encrypted)
 
         expected_api_args = {
             'volume-type': volume_type,
@@ -3647,10 +3662,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_get_create_volume_api_args_encrypted_not_supported(self):
 
         encrypt = True
+        aggregate_encrypted = False
         self.assertRaises(exception.NetAppException,
                           self.client._get_create_volume_api_args,
                           fake.SHARE_NAME, True, 'default', 'en-US',
-                          15, 'rw', 'fake_qos', encrypt, 'fake_qos_adaptive')
+                          15, 'rw', 'fake_qos', encrypt, 'fake_qos_adaptive',
+                          aggregate_encrypted)
 
     def test_is_flexvol_encrypted_unsupported(self):
 
@@ -7868,9 +7885,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     @ddt.data(
         {'method_name': 'start_volume_move', 'ontapi_version': (1, 20)},
-        {'method_name': 'start_volume_move', 'ontapi_version': (1, 110)},
+        {'method_name': 'start_volume_move', 'ontapi_version': (9, 6, 0)},
         {'method_name': 'check_volume_move', 'ontapi_version': (1, 20)},
-        {'method_name': 'check_volume_move', 'ontapi_version': (1, 110)}
+        {'method_name': 'check_volume_move', 'ontapi_version': (9, 6, 0)}
     )
     @ddt.unpack
     def test_volume_move_method(self, method_name, ontapi_version):
@@ -7878,13 +7895,18 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          'get_ontapi_version',
                          mock.Mock(return_value=ontapi_version))
 
+        self.mock_object(self.client,
+                         'get_system_version',
+                         mock.Mock(
+                             return_value={'version-tuple': ontapi_version}))
         self.client._init_features()
 
         method = getattr(self.client, method_name)
         self.mock_object(self.client, 'send_request')
-
+        dest_aggr_encryption = ontapi_version >= (9, 6, 0)
         retval = method(fake.SHARE_NAME, fake.VSERVER_NAME,
-                        fake.SHARE_AGGREGATE_NAME)
+                        fake.SHARE_AGGREGATE_NAME,
+                        dest_aggr_encryption=dest_aggr_encryption)
 
         expected_api_args = {
             'source-volume': fake.SHARE_NAME,
@@ -7894,10 +7916,13 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
 
         if ontapi_version >= (1, 110):
-            expected_api_args['encrypt-destination'] = 'false'
+            expected_api_args['encrypt-destination'] = 'true'
+            expected_api_args['encrypt-with-aggr-key'] = 'true'
             self.assertTrue(self.client.features.FLEXVOL_ENCRYPTION)
+            self.assertTrue(self.client.features.NAE_SUPPORT)
         else:
             self.assertFalse(self.client.features.FLEXVOL_ENCRYPTION)
+            self.assertFalse(self.client.features.NAE_SUPPORT)
 
         if method_name.startswith('check'):
             expected_api_args['perform-validation-only'] = 'true'
