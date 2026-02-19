@@ -48,7 +48,7 @@ class ViewBuilder(object):
                       'href': self._generate_href(version='v2')})
         return links
 
-    def _generate_href(self, version='v1', path=None):
+    def _generate_href(self, version='v2', path=None):
         """Create a URL that refers to a specific version_number."""
         base_url = self._get_base_url_without_version()
         href = urllib.parse.urljoin(base_url, version).rstrip('/') + '/'
@@ -57,5 +57,5 @@ class ViewBuilder(object):
         return href
 
     def _get_base_url_without_version(self):
-        """Get the base URL with out the /v1 suffix."""
+        """Get the base URL without the version suffix."""
         return re.sub('v[1-9]+/?$', '', self.base_url)

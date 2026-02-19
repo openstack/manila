@@ -306,10 +306,7 @@ class ViewBuilder(object):
 
     def _get_project_id(self, request):
         project_id = request.environ["manila.context"].project_id
-        if '/v1/' in request.url:
-            # project_ids are mandatory in v1 URLs
-            return project_id
-        elif project_id and ("/v2/%s" % project_id in request.url):
+        if project_id and ("/v2/%s" % project_id in request.url):
             # project_ids are not mandatory within v2 URLs, but links need
             # to include them if the request does.
             return project_id
