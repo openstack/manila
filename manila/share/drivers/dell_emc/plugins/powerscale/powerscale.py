@@ -1,4 +1,4 @@
-# Copyright 2015 EMC Corporation
+# Copyright 2026 EMC Corporation
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -27,6 +27,7 @@ from manila import exception
 from manila.i18n import _
 from manila.share.drivers.dell_emc.plugins import base
 from manila.share.drivers.dell_emc.plugins.powerscale import powerscale_api
+from manila.share import share_types
 
 """Version history:
     0.1.0 - Initial version
@@ -39,9 +40,9 @@ from manila.share.drivers.dell_emc.plugins.powerscale import powerscale_api
     1.0.6 - Add support of manage/unmanage share and snapshot
     1.0.7 - Add support of mount snapshot
     1.0.8 - Add support of mount point name
-
+    1.0.9 - Add support to schedule Dedupe job for a share
 """
-VERSION = "1.0.8"
+VERSION = "1.0.9"
 
 CONF = cfg.CONF
 
@@ -55,7 +56,11 @@ POWERSCALE_OPTS = [
     cfg.IntOpt('powerscale_threshold_limit',
                default=0,
                help='Specifies the threshold limit (in percentage) '
-                    'for triggering SmartQuotas alerts in PowerScale')
+                    'for triggering SmartQuotas alerts in PowerScale'),
+    cfg.StrOpt('powerscale_dedupe_schedule',
+               default="every 1 weeks on sunday at 12:00 AM",
+               help='Specifies the schedule '
+                    'for triggering Dedupe job in PowerScale')
 ]
 
 
@@ -170,6 +175,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
                     {'share': share['name']})
                 LOG.error(message)
                 raise exception.ShareBackendException(msg=message)
+        self._process_dedupe(share, None, False)
         return self._get_location(path)
 
     def _create_cifs_share(self, share):
@@ -192,7 +198,41 @@ class PowerScaleStorageConnection(base.StorageConnection):
             raise exception.ShareBackendException(msg=message)
         location = (self.
                     _get_location({self._format_smb_path(share_name): True}))
+        self._process_dedupe(share, None, False)
         return location
+
+    def _process_dedupe(self, share, manage_share_path, delete_share):
+        share_type_id = share.get("share_type_id")
+        extra_specs = share_types.get_share_type_extra_specs(share_type_id)
+        dedupe_status = extra_specs.get('dedupe', 'False')
+        dedupe_enabled = share_types.parse_boolean_extra_spec('dedupe',
+                                                              dedupe_status)
+        if manage_share_path is not None:
+            paths = self.get_dedupe_settings(share)
+            if dedupe_enabled is not True and manage_share_path in paths:
+                message = _(
+                    'Cannot manage share at "%(path)s" because '
+                    'dedupe is already enabled for the given path.'
+                ) % {'path': manage_share_path}
+                LOG.error(message)
+                raise exception.ShareBackendException(msg=message)
+
+            if (dedupe_enabled is True and
+                    manage_share_path not in paths):
+                message = _(
+                    'Cannot manage share at "%(path)s" because '
+                    'dedupe is disabled for the given path'
+                ) % {'path': manage_share_path}
+                LOG.error(message)
+                raise exception.ShareBackendException(msg=message)
+            return
+
+        if dedupe_enabled is True:
+            if delete_share:
+                # delete share path from dedupe settings
+                self.deregister_dedupe_settings(share)
+            else:
+                self._update_dedupe_settings(share)
 
     def _create_directory(self, path, recursive=False):
         """Is called to create a directory."""
@@ -275,6 +315,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
     def _delete_nfs_share(self, share):
         """Is called to remove nfs share."""
         container_path = self._get_container_path(share)
+        self._process_dedupe(share, None, True)
         self._delete_export("NFS", share['name'], container_path)
         if share.get('mount_point_name'):
             self._delete_nfs_aliases(share['mount_point_name'],
@@ -305,6 +346,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
         """Is called to remove CIFS share."""
         share_name = share['name']
         container_path = self._get_container_path(share)
+        self._process_dedupe(share, None, True)
         if share.get('mount_point_name'):
             share_name = share.get('mount_point_name')
         self._delete_export("CIFS", share_name, container_path)
@@ -392,6 +434,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
                 )
             )
         size_gb = size_bytes // units.Gi
+        self._process_dedupe(share, backend_quota_path, False)
         return {
             'size': size_gb,
             'export_locations': [export_location],
@@ -450,6 +493,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
         self._password = config.safe_get("emc_nas_password")
         self._root_dir = config.safe_get("emc_nas_root_dir")
         self._threshold_limit = config.safe_get("powerscale_threshold_limit")
+        self._dedupe_schedule = config.safe_get("powerscale_dedupe_schedule")
 
         # validate IP, username and password
         if not all([self._server,
@@ -469,7 +513,8 @@ class PowerScaleStorageConnection(base.StorageConnection):
             self._server_url, self._username, self._password,
             self._verify_ssl_cert, self._ssl_cert_path,
             self._dir_permission,
-            self._threshold_limit)
+            self._threshold_limit,
+            self._dedupe_schedule)
 
         if not self._powerscale_api.is_path_existent(self._root_dir):
             self._create_directory(self._root_dir, recursive=True)
@@ -513,6 +558,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
             'thin_provisioning': True,
             'mount_snapshot_support': True,
             'mount_point_name_support': True,
+            'dedupe': True
         }
         spaces = self._powerscale_api.get_space_stats()
         if spaces:
@@ -897,3 +943,72 @@ class PowerScaleStorageConnection(base.StorageConnection):
                                                  access_rules,
                                                  read_only=True)
         return state_map
+
+    def _update_dedupe_settings(self, share):
+        """Schedule dedupe job for a given share.
+
+        :share: NFS/CIFS share
+        """
+        LOG.debug(f'Updating dedupe settings for share {share["name"]}.')
+        dedupe_settings = self._powerscale_api.get_dedupe_settings()
+        paths = dedupe_settings["settings"]["paths"]
+        assess_paths = dedupe_settings["settings"]["assess_paths"]
+        share_path = self._get_container_path(share)
+
+        if share_path not in paths:
+            paths.append(share_path)
+        if share_path not in assess_paths:
+            assess_paths.append(share_path)
+
+        self._powerscale_api.modify_dedupe_settings(paths, assess_paths)
+        dedupe_job_schedule = self._powerscale_api.get_dedupe_schedule()
+
+        def normalize(s: str) -> str:
+            return " ".join((s or "").split()).strip()
+
+        needs_action = any(
+            job.get("id") == "Dedupe" and (
+                normalize(job.get("schedule", "")).lower()
+                != self._dedupe_schedule.lower() or
+                (not bool(job.get("enabled", True)))
+            )
+            for job in dedupe_job_schedule.get("types", [])
+        )
+        if needs_action:
+            self._powerscale_api.schedule_dedupe_job()
+
+    def remove_share_from_paths(self, share_path, paths, assess_paths):
+        if share_path in paths and share_path in assess_paths:
+            paths = [path for path in paths if path != share_path]
+            assess_paths = [
+                assess_path for assess_path in assess_paths
+                if assess_path != share_path
+            ]
+
+        return paths, assess_paths
+
+    def deregister_dedupe_settings(self, share):
+        """Deregister dedupe settings for a given share
+
+        :share: NFS/CIFS share
+        """
+        LOG.debug(f'Deregistering dedupe settings for share {share["name"]}.')
+        dedupe_settings = self._powerscale_api.get_dedupe_settings()
+        paths = dedupe_settings["settings"]["paths"]
+        assess_paths = dedupe_settings["settings"]["assess_paths"]
+        share_path = self._get_container_path(share)
+        updated_paths, updated_assess_paths = self.remove_share_from_paths(
+            share_path, paths, assess_paths
+        )
+        self._powerscale_api.modify_dedupe_settings(updated_paths,
+                                                    updated_assess_paths)
+
+    def get_dedupe_settings(self, share):
+        """Fetch dedupe settings for a given share
+
+        :share: NFS/CIFS share
+        """
+        LOG.debug(f'Fetching dedupe settings for share {share["name"]}.')
+        dedupe_settings = self._powerscale_api.get_dedupe_settings()
+        paths = dedupe_settings["settings"]["paths"]
+        return paths

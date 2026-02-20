@@ -1,4 +1,4 @@
-# Copyright (c) 2015 EMC Corporation.
+# Copyright (c) 2026 EMC Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -33,7 +33,8 @@ class PowerScaleApi(object):
                  verify_ssl_cert=False,
                  ssl_cert_path=None,
                  dir_permission=None,
-                 threshold_limit=0):
+                 threshold_limit=0,
+                 dedupe_schedule=None):
         self.host_url = api_url
         self.session = requests.session()
         self.username = username
@@ -42,6 +43,7 @@ class PowerScaleApi(object):
         self.certificate_path = ssl_cert_path
         self.dir_permission = dir_permission
         self.threshold_limit = threshold_limit
+        self.dedupe_schedule = dedupe_schedule
 
         # Create session
         self.session_token = None
@@ -558,6 +560,43 @@ class PowerScaleApi(object):
     send_put_request = functools.partialmethod(request, "PUT")
     send_delete_request = functools.partialmethod(request, "DELETE")
     send_head_request = functools.partialmethod(request, "HEAD")
+
+    def get_dedupe_settings(self):
+        r = self.send_get_request(
+            self.host_url + '/platform/1/dedupe/settings')
+        if r.status_code == 200:
+            return r.json()
+        else:
+            r.raise_for_status()
+
+    def modify_dedupe_settings(self, paths, assess_paths):
+        data = {}
+        data['paths'] = paths
+        data['assess_paths'] = assess_paths
+        url = ('{0}/platform/1/dedupe/settings'
+               .format(self.host_url))
+        r = self.send_put_request(url, data=data)
+        return r.status_code == 204
+
+    def schedule_dedupe_job(self):
+        payload = {
+            "enabled": True,
+            "policy": "LOW",
+            "priority": 4,
+            "schedule": self.dedupe_schedule
+        }
+        url = ('{0}/platform/1/job/types/Dedupe'
+               .format(self.host_url))
+        r = self.send_put_request(url, data=payload)
+        return r.status_code == 204
+
+    def get_dedupe_schedule(self):
+        r = self.send_get_request(
+            self.host_url + '/platform/1/job/types/Dedupe')
+        if r.status_code == 200:
+            return r.json()
+        else:
+            r.raise_for_status()
 
 
 class SmbPermission(enum.Enum):
