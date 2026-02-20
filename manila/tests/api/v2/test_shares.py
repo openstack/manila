@@ -4057,6 +4057,12 @@ class ShareManageTest(test.TestCase):
         self._test_share_manage(get_fake_manage_body(
             name='foo', description='bar', is_public=True), "2.16")
 
+    def test_share_manage_with_mount_point_name(self):
+        self._test_share_manage(get_fake_manage_body(
+            name='foo', description='bar',
+            mount_point_name='mount_point', is_public=False,
+            share_server_id='fake_share_server_id'), "2.92")
+
     def _test_share_manage(self, data, version):
         expected = {
             'share': {
@@ -4135,12 +4141,50 @@ class ShareManageTest(test.TestCase):
             expected['share']['user_id'] = 'fakeuser'
 
         if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.24')):
+            expected['share']['create_share_from_snapshot_support'] = True
+
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.27')):
+            expected['share']['revert_to_snapshot_support'] = False
+
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.31')):
+            expected['share']['share_group_id'] = None
+            expected['share']['source_share_group_snapshot_member_id'] = None
+
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.32')):
+            expected['share']['mount_snapshot_support'] = False
+
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.54')):
+            expected['share']['progress'] = None
+
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.69')):
+            expected['share']['is_soft_deleted'] = False
+            expected['share']['scheduled_to_be_deleted_at'] = None
+
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.80')):
+            expected['share']['source_backup_id'] = None
+
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.90')):
+            expected['share']['encryption_key_ref'] = None
+
+        if (api_version.APIVersionRequest(version) >=
                 api_version.APIVersionRequest('2.8')):
             share['is_public'] = data['share']['is_public']
 
         if (api_version.APIVersionRequest(version) >=
-                api_version.APIVersionRequest('2.80')):
-            share['source_backup_id'] = None
+                api_version.APIVersionRequest('2.49')):
+            share['share_server_id'] = data['share']['share_server_id']
+
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.92')):
+            share['mount_point_name'] = data['share']['mount_point_name']
 
         req = fakes.HTTPRequest.blank('/v2/fake/shares/manage',
                                       version=version,

@@ -2086,6 +2086,13 @@ migration_progress_details:
   required: true
   type: object
   min_version: 2.59
+mount_point_name_manage_request:
+  description: |
+    The user defined export location of the managed share.
+  in: body
+  required: false
+  type: string
+  min_version: 2.92
 mount_point_name_request:
   description: |
     The user defined export location of the share.

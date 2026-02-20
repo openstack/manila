@@ -1,0 +1,9 @@
+---
+features:
+  - A human readable ``mount_point_name`` can be specified as a option
+    while managing shares through the mount_point_name parameter,
+    just like when creating shares.
+    Manila will prepend a prefix to the mount point name which
+    can be configured through the ``provisioning:mount_point_prefix``
+    in share type extra spec, or ``default_mount_point_prefix``
+    configuration.

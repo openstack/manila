@@ -11,6 +11,7 @@
         "service_host": "manila2@openstackstor01#accountingpool",
         "is_public": true,
         "description": "Common storage for spreadsheets and presentations. Please contact John Accessman to be added to the users of this drive.",
-        "share_server_id": "00137b40-ca06-4ae8-83a3-2c5989eebcce"
+        "share_server_id": "00137b40-ca06-4ae8-83a3-2c5989eebcce",
+        "mount_point_name": "share-accounting_p8787"
     }
 }

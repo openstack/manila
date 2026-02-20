@@ -570,6 +570,7 @@ Request
    - share_server_id: manage_share_server_id
    - is_public: is_public_manage_request
    - description: description_request
+   - mount_point_name: mount_point_name_manage_request
 
 Request example
 ---------------
@@ -612,12 +613,10 @@ Response parameters
    - source_share_group_snapshot_member_id: source_share_group_snapshot_member_id
    - mount_snapshot_support: mount_snapshot_support_share_capability
    - progress: progress_share_instance
-   - count: count
    - volume_type: volume_type_shares_response
-   - export_location: export_location
-   - export_locations: export_locations
    - is_soft_deleted: is_soft_deleted_response
    - scheduled_to_be_deleted_at: scheduled_to_be_deleted_at_response
+   - source_backup_id: source_backup_id_shares_response
    - encryption_key_ref: encryption_key_ref_response
 
 Response example
