@@ -681,7 +681,7 @@ class PowerScaleTest(test.TestCase):
 
     def test_update_access_add_nfs(self):
         share = {
-            "name": self.SHARE_NAME,
+            'name': self.SHARE_NAME,
             "share_proto": 'NFS',
         }
         fake_export_id = 4
@@ -755,7 +755,7 @@ class PowerScaleTest(test.TestCase):
 
     def test_update_access_delete_nfs(self):
         share = {
-            "name": self.SHARE_NAME,
+            'name': self.SHARE_NAME,
             "share_proto": 'NFS',
         }
         fake_export_id = 4
@@ -808,7 +808,7 @@ class PowerScaleTest(test.TestCase):
 
     def test_update_access_nfs_share_not_found(self):
         share = {
-            "name": self.SHARE_NAME,
+            'name': self.SHARE_NAME,
             "share_proto": 'NFS',
         }
         access = {
@@ -832,7 +832,7 @@ class PowerScaleTest(test.TestCase):
 
     def test_update_access_nfs_http_error_on_clear_rules(self):
         share = {
-            "name": self.SHARE_NAME,
+            'name': self.SHARE_NAME,
             "share_proto": 'NFS',
         }
         access = {
@@ -953,7 +953,7 @@ class PowerScaleTest(test.TestCase):
     def test_update_access_recover_nfs(self):
         # verify that new ips are added and ips not in rules are removed
         share = {
-            "name": self.SHARE_NAME,
+            'name': self.SHARE_NAME,
             "share_proto": 'NFS',
         }
         fake_export_id = 4
@@ -1532,10 +1532,10 @@ class PowerScaleTest(test.TestCase):
         )
 
     def test_manage_existing_nfs_export_locations_fallback(self):
-        """Fallback for export_location using export_locations list."""
         share = {
-            "name": self.SHARE_NAME,
+            'name': self.SHARE_NAME,
             'share_proto': 'NFS',
+            'export_location': '10.0.0.2:/ifs/projects/teamX',
             'export_locations': ['10.0.0.2:/ifs/projects/teamX'],
             'share_type_id': 'fake-st-id'
         }
@@ -1547,18 +1547,26 @@ class PowerScaleTest(test.TestCase):
         self._mock_powerscale_api.quota_get.return_value = {
             'thresholds': {'hard': 9 * units.Gi},
         }
-        result = self.storage_connection.manage_existing(
-            share, driver_options={}
-        )
+        with mock.patch.object(
+            self._mock_powerscale_api,
+            'is_path_existent',
+            side_effect=[False, True],
+        ):
+            result = self.storage_connection.manage_existing(
+                share,
+                driver_options={},
+            )
         self.assertEqual(
-            ['10.0.0.2:/ifs/projects/teamX'], result['export_locations'],
+            ['10.0.0.2:/ifs/projects/teamX'],
+            result['export_locations'],
         )
         self.assertEqual(9, result['size'])
         self._mock_powerscale_api.lookup_nfs_export.assert_called_once_with(
             '/ifs/projects/teamX'
         )
         self._mock_powerscale_api.quota_get.assert_called_once_with(
-            '/ifs/projects/teamX', 'directory'
+            '/ifs/projects/teamX',
+            'directory',
         )
 
     def test_manage_existing_cifs_export_locations_fallback(self):
@@ -1596,6 +1604,7 @@ class PowerScaleTest(test.TestCase):
 
     def test_manage_existing_cifs_raises_when_quota_absent(self):
         share = {
+            'name': self.SHARE_NAME,
             'share_proto': 'CIFS',
             'export_location': '\\\\10.0.0.1\\share-foo',
         }
@@ -1604,7 +1613,6 @@ class PowerScaleTest(test.TestCase):
             'path': f'{self.ROOT_DIR}/{self.SHARE_NAME}',
         }
         self._mock_powerscale_api.quota_get.return_value = None
-
         self.assertRaises(
             exception.ManageInvalidShare,
             self.storage_connection.manage_existing,
@@ -1613,22 +1621,28 @@ class PowerScaleTest(test.TestCase):
         )
 
     def test_manage_existing_nfs_raises_when_quota_absent(self):
-        share = {
-            'share_proto': 'NFS',
-            'export_location': '10.0.0.1:/ifs/projects/teamX',
-        }
-        self._mock_powerscale_api.lookup_nfs_export.return_value = 42
-        self._mock_powerscale_api.quota_get.return_value = None
-
-        self.assertRaises(
-            exception.ManageInvalidShare,
-            self.storage_connection.manage_existing,
-            share,
-            driver_options={},
-        )
+        with mock.patch.object(
+            self._mock_powerscale_api,
+            'is_path_existent',
+            return_value=False
+        ):
+            share = {
+                'name': self.SHARE_NAME,
+                'share_proto': 'NFS',
+                'export_location': '10.0.0.1:/ifs/projects/teamX',
+            }
+            self._mock_powerscale_api.lookup_nfs_export.return_value = 42
+            self._mock_powerscale_api.quota_get.return_value = None
+            self.assertRaises(
+                exception.ManageInvalidShare,
+                self.storage_connection.manage_existing,
+                share,
+                driver_options={},
+            )
 
     def test_manage_existing_raises_when_hard_limit_missing_usage_only(self):
         share = {
+            'name': self.SHARE_NAME,
             'share_proto': 'CIFS',
             'export_location': '\\\\10.0.0.1\\share-foo',
         }
@@ -1645,6 +1659,48 @@ class PowerScaleTest(test.TestCase):
             share,
             driver_options={},
         )
+
+    def test__get_container_path_nfs_derive_from_export_location(self):
+        self._mock_powerscale_api.is_path_existent.side_effect = [False, True]
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/manila-test/managed-dir',
+        }
+        got = self.storage_connection._get_container_path(share, True)
+        self.assertEqual('/ifs/manila-test/managed-dir', got)
+
+    def test__get_container_path_cifs_derive_from_export_location(self):
+        self._mock_powerscale_api.is_path_existent.side_effect = [False, True]
+        share = {
+            'name': 'shareA',
+            'share_proto': 'CIFS',
+            'export_location': r'\\10.0.0.1\shareA',
+        }
+        got = self.storage_connection._get_container_path(share, True)
+        self.assertEqual('/ifs/manila-test/shareA', got)
+
+    def test__get_container_path_nfs_derive_from_export_locations_dict(self):
+        self._mock_powerscale_api.is_path_existent.side_effect = [False, True]
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'export_locations': [
+                {'path': '10.0.0.2:/ifs/projects/teamX'}
+            ],
+        }
+        got = self.storage_connection._get_container_path(share, True)
+        self.assertEqual('/ifs/projects/teamX', got)
+
+    def test__get_container_path_fallback_when_derived_missing(self):
+        self._mock_powerscale_api.is_path_existent.side_effect = [False, False]
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/nowhere',
+        }
+        got = self.storage_connection._get_container_path(share, True)
+        self.assertEqual(self.SHARE_DIR, got)
 
     def _make_snapshot(self, proto="NFS"):
         return {

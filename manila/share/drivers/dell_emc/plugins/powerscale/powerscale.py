@@ -101,9 +101,30 @@ class PowerScaleStorageConnection(base.StorageConnection):
         self.mount_snapshot_support = True
         self._snapshot_root_dir = '/ifs/.snapshot'
 
-    def _get_container_path(self, share):
+    def _get_container_path(self, share, check_path=None):
         """Return path to a container."""
-        return os.path.join(self._root_dir, share['name'])
+        container_path = os.path.join(self._root_dir, share['name'])
+        if (check_path and
+                not self._powerscale_api.is_path_existent(container_path)):
+            export_path = (
+                share.get('export_location') or
+                share.get('export_locations', [None])[0]['path']
+            )
+            protocol = share['share_proto']
+            manage_container_path = None
+            if protocol == "NFS":
+                manage_container_path = export_path.split(':', 1)[1]
+            elif protocol == "CIFS":
+                manage_container_path = os.path.join(
+                    self._root_dir,
+                    export_path.split('\\')[-1]
+                )
+            if (manage_container_path and
+                    self._powerscale_api.is_path_existent(
+                        manage_container_path
+                    )):
+                return manage_container_path
+        return container_path
 
     def _get_snapshot_path(self, snapshot):
         return os.path.join(self._snapshot_root_dir, snapshot['name'])
@@ -277,7 +298,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
             LOG.warning(message)
             return
 
-        dir_path = self._get_container_path(share)
+        dir_path = self._get_container_path(share, check_path=True)
         # remove quota
         self._delete_quota(dir_path)
         # remove directory
@@ -314,7 +335,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
 
     def _delete_nfs_share(self, share):
         """Is called to remove nfs share."""
-        container_path = self._get_container_path(share)
+        container_path = self._get_container_path(share, check_path=True)
         self._process_dedupe(share, None, True)
         self._delete_export("NFS", share['name'], container_path)
         if share.get('mount_point_name'):
@@ -345,7 +366,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
     def _delete_cifs_share(self, share):
         """Is called to remove CIFS share."""
         share_name = share['name']
-        container_path = self._get_container_path(share)
+        container_path = self._get_container_path(share, check_path=True)
         self._process_dedupe(share, None, True)
         if share.get('mount_point_name'):
             share_name = share.get('mount_point_name')
@@ -380,7 +401,8 @@ class PowerScaleStorageConnection(base.StorageConnection):
         })
         new_quota_size = new_size * units.Gi
         self._powerscale_api.quota_set(
-            self._get_container_path(share), 'directory', new_quota_size)
+            self._get_container_path(share, check_path=True),
+            'directory', new_quota_size)
 
     def manage_existing(self, share, driver_options):
         """Import an external NFS/CIFS share into Manila."""
@@ -422,6 +444,14 @@ class PowerScaleStorageConnection(base.StorageConnection):
         share_quota = self._powerscale_api.quota_get(
             backend_quota_path, 'directory'
         )
+        expected_path = self._get_container_path(share, check_path=True)
+        if backend_quota_path != expected_path:
+            raise exception.ManageInvalidShare(
+                reason=(
+                    "Export path %s does not match driver container path %s. "
+                    "This would cause extend/shrink operations to fail."
+                ) % (backend_quota_path, expected_path)
+            )
         size_bytes = (
             share_quota.get('thresholds', {}).get('hard')
             if share_quota else 0
@@ -449,7 +479,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
             'Shrinking share %(name)s to %(size)sG.',
             {'name': share['name'], 'size': new_size}
         )
-        path = self._get_container_path(share)
+        path = self._get_container_path(share, check_path=True)
         quota_json = self._powerscale_api.quota_get(path, 'directory')
         used_bytes = 0
         if quota_json:
@@ -589,7 +619,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
         LOG.debug(f'Updaing access for share {share_name}.')
         state_map = {}
         if share['share_proto'] == 'NFS':
-            path = self._get_container_path(share)
+            path = self._get_container_path(share, check_path=True)
             state_map = self._update_access_nfs(share_name, path, access_rules)
         if share['share_proto'] == 'CIFS':
             state_map = self._update_access_cifs(share_name, access_rules)
@@ -746,7 +776,9 @@ class PowerScaleStorageConnection(base.StorageConnection):
         updates = {}
         for share in shares:
             if share['share_proto'] == 'NFS':
-                container_path = self._get_container_path(share)
+                container_path = self._get_container_path(
+                    share, check_path=True
+                )
                 share_id = self._powerscale_api.lookup_nfs_export(
                     container_path)
                 if share_id:
@@ -825,7 +857,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
             LOG.error(message)
             raise exception.ManageInvalidShareSnapshot(reason=message)
         elif (snap['path'] !=
-              self._get_container_path(snapshot['share'])):
+              self._get_container_path(snapshot['share'], check_path=True)):
             message = ("Snapshot does not belong to the given share %s."
                        % snapshot['share']['name'])
             LOG.error(message)
@@ -953,7 +985,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
         dedupe_settings = self._powerscale_api.get_dedupe_settings()
         paths = dedupe_settings["settings"]["paths"]
         assess_paths = dedupe_settings["settings"]["assess_paths"]
-        share_path = self._get_container_path(share)
+        share_path = self._get_container_path(share, check_path=True)
 
         if share_path not in paths:
             paths.append(share_path)
@@ -996,7 +1028,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
         dedupe_settings = self._powerscale_api.get_dedupe_settings()
         paths = dedupe_settings["settings"]["paths"]
         assess_paths = dedupe_settings["settings"]["assess_paths"]
-        share_path = self._get_container_path(share)
+        share_path = self._get_container_path(share, check_path=True)
         updated_paths, updated_assess_paths = self.remove_share_from_paths(
             share_path, paths, assess_paths
         )
