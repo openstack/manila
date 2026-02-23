@@ -1229,3 +1229,8 @@ class VastShareNotFound(ShareBackendException):
 
 class VastDriverException(ShareBackendException):
     message = _("Vast driver error: %(reason)s.")
+
+
+# HPE Alletra B10000 Storage driver
+class HPEAlletraB10000DriverException(ShareBackendException):
+    message = _("HPEAlletraB10000 driver error: %(reason)s.")

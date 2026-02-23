@@ -27,6 +27,7 @@ Share drivers
    drivers/hitachi-hnas-driver.rst
    drivers/hitachi-hsp-driver.rst
    drivers/hpe-3par-share-driver.rst
+   drivers/hpe-alletra-mp-b10000-driver.rst
    drivers/huawei-nas-driver.rst
    drivers/ibm-spectrumscale-driver.rst
    drivers/infinidat-share-driver.rst
