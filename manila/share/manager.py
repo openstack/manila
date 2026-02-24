@@ -4096,7 +4096,7 @@ class ShareManager(manager.SchedulerDependentManager):
         snapshot_instance_id = snapshot_instance['id']
 
         snapshot_instance = self._get_snapshot_instance_dict(
-            context, snapshot_instance)
+            context, snapshot_instance, snapshot=snapshot_ref)
 
         try:
 
@@ -4174,7 +4174,7 @@ class ShareManager(manager.SchedulerDependentManager):
         snapshot_instance_id = snapshot_instance['id']
 
         snapshot_instance = self._get_snapshot_instance_dict(
-            context, snapshot_instance)
+            context, snapshot_instance, snapshot=snapshot_ref)
 
         share_ref = self.db.share_get(context, snapshot_ref['share_id'])
 
@@ -5573,9 +5573,10 @@ class ShareManager(manager.SchedulerDependentManager):
         }
 
         if snapshot:
-            snapshot_instance_ref.update({
-                'size': snapshot.get('size'),
-            })
+            snapshot_instance_ref['size'] = snapshot.get('size')
+            display_name = snapshot.get('display_name')
+            if display_name:
+                snapshot_instance_ref['display_name'] = display_name
 
         return snapshot_instance_ref
 

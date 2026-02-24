@@ -227,7 +227,6 @@ class PowerScaleTest(test.TestCase):
             self.mock_context, share, share_server=None)
 
     def test_create_snapshot(self):
-
         # create snapshot
         snapshot_name = "snapshot01"
         snapshot_path = '/ifs/home/admin'
@@ -235,12 +234,18 @@ class PowerScaleTest(test.TestCase):
                  "mount_snapshot_support": False}
         snapshot = {'name': snapshot_name, 'share_name': snapshot_path,
                     'share': share}
+        self.storage_connection._get_container_path = mock.Mock(
+            return_value=snapshot_path
+        )
         self.storage_connection.create_snapshot(self.mock_context, snapshot,
                                                 None)
 
         # verify the create snapshot API call is executed
         self._mock_powerscale_api.create_snapshot.assert_called_with(
             snapshot_name, snapshot_path)
+        self.storage_connection._get_container_path.assert_called_once_with(
+            snapshot['share'], check_path=True
+        )
 
     def test_create_snapshot_backend_failure(self):
         snapshot_name = "snapshot01"
@@ -249,6 +254,9 @@ class PowerScaleTest(test.TestCase):
                  "mount_snapshot_support": False}
         snapshot = {'name': snapshot_name, 'share_name': snapshot_path,
                     'share': share}
+        self.storage_connection._get_container_path = mock.Mock(
+            return_value=snapshot_path
+        )
         self._mock_powerscale_api.create_snapshot.return_value = None
 
         self._mock_powerscale_api.create_snapshot.return_value = None
@@ -256,6 +264,9 @@ class PowerScaleTest(test.TestCase):
             exception.ShareBackendException,
             self.storage_connection.create_snapshot,
             self.mock_context, snapshot, None)
+        self.storage_connection._get_container_path.assert_called_once_with(
+            snapshot['share'], check_path=True
+        )
 
     def test_create_share_from_snapshot_nfs(self):
         # assertions
@@ -410,6 +421,20 @@ class PowerScaleTest(test.TestCase):
         # not throw exception
         self.storage_connection.delete_share(self.mock_context, share, None)
 
+    def test_delete_cifs_share_share_does_not_exist(self):
+        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS',
+                 'share_type_id': 'fake-st-id'}
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
+        self.storage_connection._get_container_path = mock.MagicMock(
+            return_value=self.SHARE_DIR
+        )
+        self._mock_powerscale_api.lookup_smb_share.return_value = None
+        self.storage_connection.delete_share(self.mock_context, share, None)
+        self._mock_powerscale_api.delete_smb_share.assert_not_called()
+
     def test_delete_cifs_share_backend_failure(self):
         share = {"name": self.SHARE_NAME, "share_proto": 'CIFS',
                  'share_type_id': 'fake-st-id'}
@@ -430,19 +455,6 @@ class PowerScaleTest(test.TestCase):
             self.storage_connection.delete_share,
             self.mock_context, share, None
         )
-
-    def test_delete_cifs_share_share_does_not_exist(self):
-        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS',
-                 'share_type_id': 'fake-st-id'}
-        self.mock_object(
-            share_types, 'get_share_type',
-            mock.Mock(return_value=self.get_fake_share_type())
-        )
-        self._mock_powerscale_api.lookup_smb_share.return_value = None
-
-        # verify the calling delete on a non-existent share returns and does
-        # not throw exception
-        self.storage_connection.delete_share(self.mock_context, share, None)
 
     @mock.patch(
         'manila.share.drivers.dell_emc.plugins.powerscale.powerscale.LOG'
@@ -1672,6 +1684,7 @@ class PowerScaleTest(test.TestCase):
 
     def test__get_container_path_cifs_derive_from_export_location(self):
         self._mock_powerscale_api.is_path_existent.side_effect = [False, True]
+        self._mock_powerscale_api.lookup_smb_share.return_value = None
         share = {
             'name': 'shareA',
             'share_proto': 'CIFS',
@@ -1858,10 +1871,16 @@ class PowerScaleTest(test.TestCase):
                  "mount_snapshot_support": True}
         snapshot = {'name': snapshot_name, 'share_name': snapshot_path,
                     'share': share}
+        self.storage_connection._get_container_path = mock.Mock(
+            return_value=snapshot_path
+        )
         self.storage_connection.create_snapshot(self.mock_context, snapshot,
                                                 None)
         self._mock_powerscale_api.create_snapshot.assert_called_with(
             snapshot_name, snapshot_path)
+        self.storage_connection._get_container_path.assert_called_once_with(
+            snapshot['share'], check_path=True
+        )
 
     def test_create_share_nfs_with_mount_point_name(self):
         share_path = self.SHARE_DIR
@@ -2318,3 +2337,157 @@ class PowerScaleTest(test.TestCase):
         self.storage_connection._update_dedupe_settings(self.share)
         # Assert
         self._mock_powerscale_api.schedule_dedupe_job.assert_called_once()
+
+    def test_delete_cifs_share_uses_manage_name_when_primary_missing(self):
+        share = {
+            "name": "os-generated-id",
+            "display_name": self.SHARE_NAME,
+            "share_proto": "CIFS",
+            "share_type_id": "fake-st-id",
+        }
+        self.mock_object(
+            share_types, "get_share_type", mock.Mock(
+                return_value=self.get_fake_share_type()
+            )
+        )
+        self.storage_connection._get_container_path = mock.MagicMock(
+            return_value=self.SHARE_DIR
+        )
+        self._mock_powerscale_api.lookup_smb_share.side_effect = [
+            None,
+            {"name": self.SHARE_NAME, "path": self.SHARE_DIR},
+        ]
+        self._mock_powerscale_api.delete_smb_share.return_value = True
+        self.storage_connection.delete_share(self.mock_context, share, None)
+        self._mock_powerscale_api.lookup_smb_share.assert_has_calls(
+            [mock.call("os-generated-id"), mock.call(self.SHARE_NAME)]
+        )
+        self._mock_powerscale_api.delete_smb_share.assert_called_once_with(
+            self.SHARE_NAME
+        )
+
+    def test_delete_cifs_share_skips_when_path_mismatch(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "CIFS",
+            "share_type_id": "fake-st-id",
+        }
+        self.mock_object(
+            share_types,
+            "get_share_type",
+            mock.Mock(return_value=self.get_fake_share_type())
+        )
+        self.storage_connection._get_container_path = mock.MagicMock(
+            return_value=self.SHARE_DIR
+        )
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            "name": self.SHARE_NAME,
+            "path": f"{self.ROOT_DIR}/wrong-dir",
+        }
+        self.storage_connection.delete_share(self.mock_context, share, None)
+        self._mock_powerscale_api.delete_smb_share.assert_not_called()
+
+    def test_delete_cifs_share_allows_manage_name_path_variant(self):
+        share = {
+            "name": "os-id-123",
+            "display_name": "pretty-name",
+            "share_proto": "CIFS",
+            "share_type_id": "fake-st-id",
+        }
+        self.mock_object(
+            share_types, "get_share_type", mock.Mock(
+                return_value=self.get_fake_share_type()
+            )
+        )
+        self.storage_connection._get_container_path = mock.MagicMock(
+            return_value=f"{self.ROOT_DIR}/different"
+        )
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            "name": "os-id-123",
+            "path": f"{self.ROOT_DIR}/os-id-123",
+        }
+        self._mock_powerscale_api.delete_smb_share.return_value = True
+        self.storage_connection.delete_share(
+            self.mock_context,
+            share,
+            None
+        )
+        self._mock_powerscale_api.delete_smb_share.assert_called_once_with(
+            "os-id-123"
+        )
+
+    def test__get_cifs_manage_name_path_for_share_and_snapshot(self):
+        share_path = self.storage_connection._get_cifs_manage_name_path(
+            True,
+            "demo"
+        )
+        self.assertEqual(f"{self.ROOT_DIR}/demo", share_path)
+        snap_root = self.storage_connection._snapshot_root_dir
+        snap_path = self.storage_connection._get_cifs_manage_name_path(
+            False,
+            "snap-001"
+        )
+        self.assertEqual(f"{snap_root}/snap-001", snap_path)
+
+    def test_delete_snapshot_cifs_uses_manage_name_path_variant(self):
+        snapshot = {
+            "name": "snapx",
+            "display_name": "snapx-manage",
+            "share": {"share_proto": "CIFS"},
+        }
+        snap_root = self.storage_connection._snapshot_root_dir
+        snap_path = f"{snap_root}/snapx"
+        self.storage_connection._get_snapshot_path = mock.Mock(
+            return_value=snap_path
+        )
+        self._mock_powerscale_api.delete_snapshot.return_value = True
+        self._mock_powerscale_api.lookup_smb_share.side_effect = [
+            None,
+            {"name": "snapx-manage", "path": f"{snap_root}/snapx-manage"},
+        ]
+        self._mock_powerscale_api.delete_smb_share.return_value = True
+        self.storage_connection.delete_snapshot(
+            self.mock_context, snapshot, None
+        )
+        self._mock_powerscale_api.lookup_smb_share.assert_has_calls(
+            [mock.call("snapx"), mock.call("snapx-manage")]
+        )
+        self._mock_powerscale_api.delete_smb_share.assert_called_once_with(
+            "snapx-manage"
+        )
+
+    def test_delete_snapshot_cifs_no_share_found(self):
+        snapshot = {
+            "name": "snapy",
+            "display_name": "snapy-manage",
+            "share": {"share_proto": "CIFS"},
+        }
+        snap_root = self.storage_connection._snapshot_root_dir
+        self.storage_connection._get_snapshot_path = mock.Mock(
+            return_value=f"{snap_root}/snapy"
+        )
+        self._mock_powerscale_api.delete_snapshot.return_value = True
+        self._mock_powerscale_api.lookup_smb_share.side_effect = [None, None]
+        self.storage_connection.delete_snapshot(
+            self.mock_context, snapshot, None
+        )
+        self._mock_powerscale_api.delete_smb_share.assert_not_called()
+
+    def test_check_for_setup_error_noop(self):
+        cfg = mock.Mock()
+        cfg.append_config_values = mock.Mock()
+        conn = powerscale.PowerScaleStorageConnection(configuration=cfg)
+        conn.check_for_setup_error()
+
+    def test_get_network_allocations_number_zero(self):
+        cfg = mock.Mock()
+        cfg.append_config_values = mock.Mock()
+        conn = powerscale.PowerScaleStorageConnection(configuration=cfg)
+        self.assertEqual(0, conn.get_network_allocations_number())
+
+    def test_setup_and_teardown_server_noop(self):
+        cfg = mock.Mock()
+        cfg.append_config_values = mock.Mock()
+        conn = powerscale.PowerScaleStorageConnection(configuration=cfg)
+        conn.setup_server({}, metadata=None)
+        conn.teardown_server({})

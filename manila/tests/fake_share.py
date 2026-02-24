@@ -103,7 +103,7 @@ def fake_snapshot(create_instance=False, **kwargs):
                      'status', 'progress', 'provider_location')
     snapshot_keys = ('id', 'share_name', 'share_id', 'name', 'share_size',
                      'share_proto', 'instance', 'aggregate_status', 'share',
-                     'project_id', 'size')
+                     'project_id', 'size', 'display_name')
 
     instance_kwargs = {k: kwargs.get(k) for k in instance_keys if k in kwargs}
     snapshot_kwargs = {k: kwargs.get(k) for k in snapshot_keys if k in kwargs}

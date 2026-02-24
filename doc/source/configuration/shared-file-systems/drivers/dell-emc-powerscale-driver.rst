@@ -107,15 +107,22 @@ PowerScale. Managing registers an external export with Manila using the
 service host, protocol, and export path; unmanaging removes only Manila
 metadata and is non-disruptive to clients.
 
-.. warning::
+.. note::
 
-   **Supported only when the export points to the driver's container path.**
-   The PowerScale driver will manage (or unmanage) an existing NFS/CIFS
-   export **only if** the backend directory of that export is exactly the
-   driver's container path:
+   - **Supported only when the export points to the driver's container path.**
+     The PowerScale driver will manage (or unmanage) an existing NFS/CIFS
+     export **only if** the backend directory of that export is exactly the
+     driver's container path.
 
-   This is to prevent follow‑up operations (for example, **extend** or **shrink**)
-   from failing later because quotas would be applied on the wrong directory.
+   - This is to prevent follow‑up operations (for example, **extend** or **shrink**)
+     from failing later because quotas would be applied on the wrong directory.
+
+   - **CIFS:** The **SMB share name must match the OneFS directory leaf**
+     under the driver’s container path (for example, SMB share ``demo`` →
+     path ``/ifs/<root>/demo``). If name and directory differ, **manage is
+     rejected** and the share is not adopted. This alignment is **required**
+     so that later **delete** (which operates by share name) succeeds without
+     ambiguity.
 
 Managing and unmanaging existing shares is performed using the OpenStack
 Manila API or CLI.
@@ -210,6 +217,10 @@ documentation:
     - provider_location is the snapshot id in PowerScale system.
     - If the snapshot size is not provided, it will automatically
       use the share size as the default.
+    - For **CIFS snapshots**, the **Manila snapshot name must exactly match
+      the snapshot export name on PowerScale**. If names do not match,
+      snapshot delete or mount operations may fail because the driver looks
+      up CIFS snapshot exports by name.
 
 Schedule Dedupe job for a share
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
