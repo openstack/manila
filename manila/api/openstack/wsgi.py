@@ -53,7 +53,6 @@ VER_METHOD_ATTR = 'versioned_methods'
 API_VERSION_REQUEST_HEADER = 'X-OpenStack-Manila-API-Version'
 EXPERIMENTAL_API_REQUEST_HEADER = 'X-OpenStack-Manila-API-Experimental'
 
-V1_SCRIPT_NAME = '/v1'
 V2_SCRIPT_NAME = '/v2'
 
 

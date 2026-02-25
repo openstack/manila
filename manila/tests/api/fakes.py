@@ -85,11 +85,7 @@ class HTTPRequest(os_wsgi.Request):
     @classmethod
     def blank(cls, *args, **kwargs):
         if not kwargs.get('base_url'):
-            method_url = args[0]
-            if method_url.startswith('/v2'):
-                kwargs['base_url'] = 'http://localhost/share/v2'
-            else:
-                kwargs['base_url'] = 'http://localhost/share/v1'
+            kwargs['base_url'] = 'http://localhost/share/v2'
         use_admin_context = kwargs.pop('use_admin_context', False)
         version = kwargs.pop('version', api_version.DEFAULT_API_VERSION)
         experimental = kwargs.pop('experimental', False)

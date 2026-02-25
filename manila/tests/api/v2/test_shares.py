@@ -2881,7 +2881,7 @@ class ShareActionsTest(test.TestCase):
         id = 'fake_share_id'
         body = {'os-allow_access': access}
         expected = {'access': {'fake': 'fake'}}
-        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/v2/tenant1/shares/%s/action' % id)
 
         res = self.controller._allow_access(req, id, body)
 
@@ -3156,7 +3156,7 @@ class ShareActionsTest(test.TestCase):
         id = 'fake_share_id'
         access_data = {"access_id": 'fake_acces_id'}
         body = {"os-deny_access": access_data}
-        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        req = fakes.HTTPRequest.blank('/v2/tenant1/shares/%s/action' % id)
 
         res = self.controller._deny_access(req, id, body)
 

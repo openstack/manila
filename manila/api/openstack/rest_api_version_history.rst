@@ -8,10 +8,14 @@ user documentation.
 
 1.0 (Maximum in Kilo)
 ---------------------
-  The 1.0 Manila API includes all v1 core APIs existing prior to
-  the introduction of microversions.  The /v1 URL is used to call
-  1.0 APIs, and microversions headers sent to this endpoint are
+  The 1.0 Manila API included all v1 core APIs existing prior to
+  the introduction of microversions.  The /v1 URL was used to call
+  1.0 APIs, and microversions headers sent to this endpoint were
   ignored.
+
+  .. note::
+
+     The v1 API was removed in the 2026.1 (Gazpacho) release.
 
 2.0
 ---
