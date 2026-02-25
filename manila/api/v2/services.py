@@ -15,15 +15,20 @@
 #    under the License.
 
 import http.client as http_client
+
+from oslo_log import log
 from oslo_utils import strutils
 import webob.exc
 
 from manila.api.openstack import wsgi
 from manila.api.views import services as services_views
+from manila.common import constants
 from manila import db
 from manila import exception
 from manila.i18n import _
 from manila.services import api as service_api
+
+LOG = log.getLogger(__name__)
 
 
 class ServiceMixin(object):
@@ -37,41 +42,47 @@ class ServiceMixin(object):
     _view_builder_class = services_views.ViewBuilder
 
     @wsgi.Controller.authorize("index")
-    def _index(self, req, support_ensure_shares=False):
+    def _index(self, req, support_filtering_by_ensure=False):
         """Return a list of all running services."""
 
         context = req.environ['manila.context']
-        all_services = db.service_get_all(context)
+        filters = {}
+        filters.update(req.GET)
 
-        services = []
-        for service in all_services:
-            service_data = {
-                'id': service['id'],
-                'binary': service['binary'],
-                'host': service['host'],
-                'zone': service['availability_zone']['name'],
-                'status': 'disabled' if service['disabled'] else 'enabled',
-                'disabled_reason': service.get('disabled_reason'),
-                'state': service['state'],
-                'updated_at': service['updated_at'],
-            }
-            if support_ensure_shares:
-                service_data['ensuring'] = service['ensuring']
-            services.append(service_data)
+        if not support_filtering_by_ensure and filters.get('ensuring'):
+            filters.pop('ensuring')
 
-        search_opts = [
-            'host',
-            'binary',
-            'zone',
-            'state',
-            'status',
-        ]
-        for search_opt in search_opts:
-            if search_opt in req.GET:
-                value = req.GET[search_opt]
-                services = [s for s in services if s[search_opt] == value]
-            if len(services) == 0:
-                break
+        status = filters.get('status')
+        valid_statuses = [constants.STATUS_DISABLED, constants.STATUS_ENABLED]
+        if status and status not in valid_statuses:
+            # NOTE(carloss): we only support 'enabled' and 'disabled' statuses.
+            # This was not an issue while the filtering happened in the API,
+            # but from API version 2.93 the filters were moved to the database
+            # and we need to enforce the correct values.
+            # 'support_filtering_by_ensure' was implemented on 2.93 and is
+            # being used as an API microversion check.
+            if support_filtering_by_ensure:
+                msg = _("Invalid status. Valid statuses are "
+                        "%s.") % valid_statuses
+                raise webob.exc.HTTPBadRequest(msg)
+            else:
+                msg = _("An invalid status was provided. Please choose from "
+                        "one of the valid statuses while filtering services: "
+                        "%s.") % valid_statuses
+                LOG.error(msg)
+                # Prior to API 2.93, we would only return an empty list when
+                # the status was wrong. Re-implement the same behavior so we
+                # don't break any clients.
+                return self._view_builder.detail_list(req, [])
+
+        try:
+            services = db.service_get_all_with_filters(context, filters)
+        except exception.AvailabilityZoneNotFound:
+            # NOTE(carloss): we're maintaining backwards compatibility by
+            # keeping the behavior where in case an invalid availability zone
+            # ID or name is provided, we return an empty list instead of raise
+            # an exception.
+            services = []
 
         return self._view_builder.detail_list(req, services)
 
@@ -153,9 +164,13 @@ class ServiceController(ServiceMixin, wsgi.Controller):
     def index(self, req):
         return self._index(req)
 
-    @wsgi.Controller.api_version('2.86') # noqa
+    @wsgi.Controller.api_version('2.86', '2.92') # noqa
     def index(self, req): # pylint: disable=function-redefined  # noqa F811
-        return self._index(req, support_ensure_shares=True)
+        return self._index(req)
+
+    @wsgi.Controller.api_version('2.93')  # noqa
+    def index(self, req):  # pylint: disable=function-redefined  # noqa F811
+        return self._index(req, support_filtering_by_ensure=True)
 
     @wsgi.Controller.api_version('2.7', '2.82')
     def update(self, req, id, body):

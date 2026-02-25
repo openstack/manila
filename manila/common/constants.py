@@ -122,6 +122,10 @@ TASK_STATE_DATA_COPYING_CANCELLED = 'data_copying_cancelled'
 TASK_STATE_DATA_COPYING_ERROR = 'data_copying_error'
 BACKUP_TYPE = "backup_type"
 
+# Services statuses
+STATUS_DISABLED = 'disabled'
+STATUS_ENABLED = 'enabled'
+
 BUSY_TASK_STATES = (
     TASK_STATE_MIGRATION_STARTING,
     TASK_STATE_MIGRATION_IN_PROGRESS,

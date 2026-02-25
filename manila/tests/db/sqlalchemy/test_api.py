@@ -4090,6 +4090,7 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         self.assertEqual(count, len(servers))
 
 
+@ddt.ddt
 class ServiceDatabaseAPITestCase(test.TestCase):
 
     def setUp(self):
@@ -4152,6 +4153,95 @@ class ServiceDatabaseAPITestCase(test.TestCase):
         valid_values = self.service_data
         valid_values.update(update_data)
         self.assertSubDictMatch(valid_values, service.to_dict())
+
+    @ddt.data('host', 'binary', 'state', 'topic')
+    def test_service_get_all_with_filters(self, filter_key):
+        # Create a service to filter later
+        expected_service_data = {
+            'host': "fake_host",
+            'binary': "fake_binary",
+            'topic': "fake_topic",
+            'report_count': 0,
+            'availability_zone': "fake_zone"
+        }
+        filter_value = f'{filter_key}_filter'
+        # Update the values to filter for what we need
+        expected_service_data.update({filter_key: filter_value})
+        db_api.service_create(self.ctxt, expected_service_data)
+
+        # Create another service that shouldn't show up in the list
+        dummy_service_data = {
+            'host': "fake_host",
+            'binary': "fake_binary",
+            'topic': "fake_topic",
+            'report_count': 0,
+            'availability_zone': "fake_zone"
+        }
+        db_api.service_create(self.ctxt, dummy_service_data)
+
+        filters = {filter_key: filter_value}
+        services = db_api.service_get_all_with_filters(self.ctxt, filters)
+
+        self.assertEqual(len(services), 1)
+        self.assertEqual(services[0][filter_key], filter_value)
+
+    @ddt.data(True, False)
+    def test_service_get_all_with_filters_ensuring(self, ensuring):
+        # Create a service to filter later
+        expected_service_data = {
+            'host': "fake_host",
+            'binary': "fake_binary",
+            'topic': "fake_topic",
+            'report_count': 0,
+            'availability_zone': "fake_zone",
+            'ensuring': ensuring
+        }
+        db_api.service_create(self.ctxt, expected_service_data)
+
+        # Create another service that shouldn't show up in the list
+        dummy_service_data = {
+            'host': "fake_host",
+            'binary': "fake_binary",
+            'topic': "fake_topic",
+            'report_count': 0,
+            'availability_zone': "fake_zone",
+            'ensuring': False if ensuring else True
+        }
+        db_api.service_create(self.ctxt, dummy_service_data)
+
+        filters = {'ensuring': str(ensuring)}
+        services = db_api.service_get_all_with_filters(self.ctxt, filters)
+
+        self.assertEqual(len(services), 1)
+        self.assertEqual(services[0]['ensuring'], ensuring)
+
+    def test_service_get_all_with_filters_az(self):
+        # Create a service to filter later
+        zone_name = "fake_zone"
+        expected_service_data = {
+            'host': "fake_host",
+            'binary': "fake_binary",
+            'topic': "fake_topic",
+            'report_count': 0,
+            'availability_zone': zone_name,
+        }
+        db_api.service_create(self.ctxt, expected_service_data)
+
+        # Create another service that shouldn't show up in the list
+        dummy_service_data = {
+            'host': "fake_host",
+            'binary': "fake_binary",
+            'topic': "fake_topic",
+            'report_count': 0,
+            'availability_zone': "fake_zone_1",
+        }
+        db_api.service_create(self.ctxt, dummy_service_data)
+
+        filters = {'zone': zone_name}
+        services = db_api.service_get_all_with_filters(self.ctxt, filters)
+
+        self.assertEqual(len(services), 1)
+        self.assertEqual(services[0]['availability_zone']['name'], zone_name)
 
 
 @ddt.ddt

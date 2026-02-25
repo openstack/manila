@@ -598,6 +598,41 @@ def service_get_all(context, disabled=None):
     return query.all()
 
 
+def _service_get_all_with_filters(context, filters):
+    query = model_query(context, models.Service, read_deleted="no")
+
+    availability_zone = filters.pop('zone', None)
+    if availability_zone:
+        availability_zone_id = _availability_zone_get(
+            context, availability_zone)['id']
+        filters['availability_zone_id'] = availability_zone_id
+
+    status = filters.pop('status', None)
+    if status:
+        # Status can only be 'disabled' or 'enabled' because it is actually
+        # referring to the disabled field.
+        disabled = True if status == 'disabled' else False
+        filters['disabled'] = disabled
+
+    ensuring = filters.pop('ensuring', None)
+    if ensuring is not None:
+        ensuring = strutils.bool_from_string(ensuring)
+        filters['ensuring'] = ensuring
+
+    legal_filter_keys = ('host', 'binary', 'state', 'topic',
+                         'disabled', 'ensuring', 'availability_zone_id')
+    query = exact_filter(query, models.Service,
+                         filters, legal_filter_keys)
+
+    return query.all()
+
+
+@require_admin_context
+@context_manager.reader
+def service_get_all_with_filters(context, filters):
+    return _service_get_all_with_filters(context, filters)
+
+
 @require_admin_context
 @context_manager.reader
 def service_get_all_by_topic(context, topic, consider_disabled=False):

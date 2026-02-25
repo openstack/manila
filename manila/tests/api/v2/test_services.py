@@ -16,6 +16,7 @@
 
 
 import datetime
+import random
 from unittest import mock
 import webob
 
@@ -77,89 +78,8 @@ fake_services_list = [
     },
 ]
 
-
-fake_response_service_list = {'services': [
-    {
-        'id': 1,
-        'binary': 'manila-scheduler',
-        'host': 'host1',
-        'zone': 'manila1',
-        'status': 'disabled',
-        'state': 'up',
-        'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 2),
-    },
-    {
-        'id': 2,
-        'binary': 'manila-share',
-        'host': 'host1',
-        'zone': 'manila1',
-        'status': 'disabled',
-        'state': 'up',
-        'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 5),
-    },
-    {
-        'id': 3,
-        'binary': 'manila-scheduler',
-        'host': 'host2',
-        'zone': 'manila2',
-        'status': 'enabled',
-        'state': 'down',
-        'updated_at': datetime.datetime(2012, 9, 19, 6, 55, 34),
-    },
-    {
-        'id': 4,
-        'binary': 'manila-share',
-        'host': 'host2',
-        'zone': 'manila2',
-        'status': 'disabled',
-        'state': 'down',
-        'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),
-    },
-]}
-
-fake_response_service_list_with_disabled_reason = {'services': [
-    {
-        'id': 1,
-        'binary': 'manila-scheduler',
-        'host': 'host1',
-        'zone': 'manila1',
-        'status': 'disabled',
-        'disabled_reason': 'test1',
-        'state': 'up',
-        'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 2),
-    },
-    {
-        'id': 2,
-        'binary': 'manila-share',
-        'host': 'host1',
-        'zone': 'manila1',
-        'status': 'disabled',
-        'disabled_reason': 'test2',
-        'state': 'up',
-        'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 5),
-    },
-    {
-        'id': 3,
-        'binary': 'manila-scheduler',
-        'host': 'host2',
-        'zone': 'manila2',
-        'status': 'enabled',
-        'disabled_reason': '',
-        'state': 'down',
-        'updated_at': datetime.datetime(2012, 9, 19, 6, 55, 34),
-    },
-    {
-        'id': 4,
-        'binary': 'manila-share',
-        'host': 'host2',
-        'zone': 'manila2',
-        'status': 'disabled',
-        'disabled_reason': 'test4',
-        'state': 'down',
-        'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),
-    },
-]}
 ENSURE_SHARES_VERSION = "2.86"
+FILTERING_BY_ENSURE_VERSION = "2.93"
 
 
 def fake_service_get_all(context):
@@ -199,7 +119,6 @@ class ServicesTest(test.TestCase):
     def setUp(self):
         super(ServicesTest, self).setUp()
 
-        self.mock_object(db, "service_get_all", fake_service_get_all)
         self.mock_object(timeutils, "utcnow", fake_utcnow)
         self.mock_object(db, "service_get_by_args",
                          fake_service_get_by_host_binary)
@@ -211,110 +130,191 @@ class ServicesTest(test.TestCase):
         self.mock_policy_check = self.mock_object(
             policy, 'check_policy', mock.Mock(return_value=True))
 
+    def _generate_fake_response_service_list(self, with_disabled_reason=False,
+                                             with_ensuring=False):
+        fake_services = []
+        for i in range(0, 3):
+            service = {
+                'id': i,
+                'binary': random.choice([
+                    'manila-scheduler', 'manila-share']),
+                'host': 'host1',
+                'availability_zone': {
+                    'name': random.choice(['manila1', 'manila2'])
+                },
+                'disabled': False,
+                'state': 'up',
+                'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 2),
+            }
+            if with_disabled_reason:
+                service['disabled_reason'] = f'test{i}'
+            if with_ensuring:
+                service['ensuring'] = random.choice([True, False])
+            fake_services.append(service)
+        return fake_services
+
     @ddt.data(
         ('os-services', '2.6', services.ServiceControllerLegacy),
         ('services', '2.7', services.ServiceController),
         ('services', '2.83', services.ServiceController),
+        ('services', '2.86', services.ServiceController),
     )
     @ddt.unpack
     def test_services_list(self, url, version, controller):
         req = fakes.HTTPRequest.blank('/%s' % url, version=version)
         req.environ['manila.context'] = self.context
+        with_disabled_reason = (
+            api_version.APIVersionRequest(version) >=
+            api_version.APIVersionRequest('2.83')
+        )
+        with_ensuring = (
+            api_version.APIVersionRequest(version) >=
+            api_version.APIVersionRequest('2.86')
+        )
+        expected_return = {
+            'services': self._generate_fake_response_service_list(
+                with_disabled_reason=with_disabled_reason,
+                with_ensuring=with_ensuring)
+        }
+        mock_service_get_all = self.mock_object(
+            db, 'service_get_all_with_filters',
+            mock.Mock(return_value=expected_return['services'])
+        )
+        expected_services_result = expected_return
 
         res_dict = controller().index(req)
 
-        if (api_version.APIVersionRequest(version) >=
-                api_version.APIVersionRequest('2.83')):
-            self.assertEqual(fake_response_service_list_with_disabled_reason,
-                             res_dict)
+        for service in expected_services_result['services']:
+            service['status'] = (
+                'disabled' if service['disabled'] else 'enabled'
+            )
+            service.pop('disabled')
+            service['zone'] = service['availability_zone']['name']
+            service.pop('availability_zone')
+
+        self.assertEqual(expected_services_result, res_dict)
+        mock_service_get_all.assert_called_once_with(self.context, req.GET)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'index')
+
+    @ddt.data(
+        ({'ensuring': 'True'}, ENSURE_SHARES_VERSION),
+        ({'host': 'fakehost@fakebackend', 'ensuring': 'True'},
+         FILTERING_BY_ENSURE_VERSION),
+        ({'host': 'fakehost@fakebackend', 'topic': 'manila-share'},
+         FILTERING_BY_ENSURE_VERSION),
+    )
+    @ddt.unpack
+    def test_services_list_with_search_opts(self, filters, version):
+        url = '/services?'
+        for k, v in filters.items():
+            url += '%s=%s&' % (k, v)
+
+        req = fakes.HTTPRequest.blank(url, version=version)
+        req.environ['manila.context'] = self.context
+        fake_response = {
+            'services': self._generate_fake_response_service_list(
+                with_disabled_reason=True, with_ensuring=True)
+        }
+
+        mock_service_get_all = self.mock_object(
+            db, 'service_get_all_with_filters',
+            mock.Mock(return_value=fake_response['services'])
+        )
+        expected_services_result = fake_response
+
+        supports_filtering_by_ensuring = (
+            api_version.APIVersionRequest(version) >=
+            api_version.APIVersionRequest(FILTERING_BY_ENSURE_VERSION)
+        )
+        if not supports_filtering_by_ensuring and 'ensuring' in filters:
+            filters.pop('ensuring')
+
+        self.controller.index(req)
+
+        for service in expected_services_result['services']:
+            service['status'] = (
+                'disabled' if service['disabled'] else 'enabled'
+            )
+            service['zone'] = service['availability_zone']['name']
+            service.pop('availability_zone')
+
+        mock_service_get_all.assert_called_once_with(self.context, filters)
+
+    @ddt.data(
+        (services.ServiceControllerLegacy, '2.6'),
+        (services.ServiceController, '2.85'))
+    @ddt.unpack
+    def test_services_list_ensuring_provided_but_not_supported(
+            self, controller, version):
+        fake_response = {
+            'services': self._generate_fake_response_service_list(
+                with_disabled_reason=True, with_ensuring=False)
+        }
+        req = fakes.HTTPRequest.blank(
+            'services?ensuring=True', version=version)
+        req.environ['manila.context'] = self.context
+        mock_service_get_all = self.mock_object(
+            db, 'service_get_all_with_filters',
+            mock.Mock(return_value=fake_response['services'])
+        )
+        expected_services_result = fake_response
+
+        res_dict = controller().index(req)
+
+        for service in expected_services_result['services']:
+            service['status'] = (
+                'disabled' if service['disabled'] else 'enabled'
+            )
+            service.pop('disabled')
+            service['zone'] = service['availability_zone']['name']
+            service.pop('availability_zone')
+            if (api_version.APIVersionRequest(version) <
+                    api_version.APIVersionRequest('2.83')):
+                service.pop('disabled_reason')
+
+        self.assertEqual(expected_services_result, res_dict)
+        mock_service_get_all.assert_called_once_with(self.context, {})
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'index')
+
+    @ddt.data(('available', FILTERING_BY_ENSURE_VERSION),
+              ('migrating', '2.85'))
+    @ddt.unpack
+    def test_services_list_invalid_status(self, status, version):
+        req = fakes.HTTPRequest.blank('services?status=%s' % status,
+                                      version=version)
+        req.environ['manila.context'] = self.context
+        mock_log_error = self.mock_object(services.LOG, 'error')
+        support_listing_by_ensuring = (
+            api_version.APIVersionRequest(version) >=
+            api_version.APIVersionRequest(FILTERING_BY_ENSURE_VERSION)
+        )
+
+        if support_listing_by_ensuring:
+            self.assertRaises(
+                webob.exc.HTTPBadRequest,
+                self.controller.index,
+                req
+            )
         else:
-            self.assertEqual(fake_response_service_list, res_dict)
-        self.mock_policy_check.assert_called_once_with(
-            req.environ['manila.context'], self.resource_name, 'index')
+            result = self.controller.index(req)
+            self.assertEqual(len(result['services']), 0)
+            mock_log_error.assert_called()
 
-    def test_services_list_with_host(self):
-        req = fakes.HTTPRequest.blank('/services?host=host1', version='2.7')
+    @ddt.data(
+        ('services', '2.7', services.ServiceController),
+        ('services', '2.92', services.ServiceController,),
+    )
+    @ddt.unpack
+    def test_services_list_supports_ensure(self, url, version, controller):
+        req = fakes.HTTPRequest.blank('/%s' % url, version=version)
         req.environ['manila.context'] = self.context
+        mock__index = self.mock_object(controller, '_index')
 
-        res_dict = self.controller.index(req)
+        controller().index(req)
 
-        response = {'services': [
-            fake_response_service_list['services'][0],
-            fake_response_service_list['services'][1],
-        ]}
-        self.assertEqual(response, res_dict)
-        self.mock_policy_check.assert_called_once_with(
-            req.environ['manila.context'], self.resource_name, 'index')
-
-    def test_services_list_with_binary(self):
-        req = fakes.HTTPRequest.blank(
-            '/services?binary=manila-share', version='2.7')
-        req.environ['manila.context'] = self.context
-
-        res_dict = self.controller.index(req)
-
-        response = {'services': [
-            fake_response_service_list['services'][1],
-            fake_response_service_list['services'][3],
-        ]}
-
-        self.assertEqual(response, res_dict)
-        self.mock_policy_check.assert_called_once_with(
-            req.environ['manila.context'], self.resource_name, 'index')
-
-    def test_services_list_with_zone(self):
-        req = fakes.HTTPRequest.blank('/services?zone=manila1', version='2.7')
-        req.environ['manila.context'] = self.context
-
-        res_dict = self.controller.index(req)
-
-        response = {'services': [
-            fake_response_service_list['services'][0],
-            fake_response_service_list['services'][1],
-        ]}
-        self.assertEqual(response, res_dict)
-        self.mock_policy_check.assert_called_once_with(
-            req.environ['manila.context'], self.resource_name, 'index')
-
-    def test_services_list_with_status(self):
-        req = fakes.HTTPRequest.blank(
-            '/services?status=enabled', version='2.7')
-        req.environ['manila.context'] = self.context
-
-        res_dict = self.controller.index(req)
-
-        response = {'services': [
-            fake_response_service_list['services'][2],
-        ]}
-        self.assertEqual(response, res_dict)
-        self.mock_policy_check.assert_called_once_with(
-            req.environ['manila.context'], self.resource_name, 'index')
-
-    def test_services_list_with_state(self):
-        req = fakes.HTTPRequest.blank('/services?state=up', version='2.7')
-        req.environ['manila.context'] = self.context
-
-        res_dict = self.controller.index(req)
-
-        response = {'services': [
-            fake_response_service_list['services'][0],
-            fake_response_service_list['services'][1],
-        ]}
-        self.assertEqual(response, res_dict)
-        self.mock_policy_check.assert_called_once_with(
-            req.environ['manila.context'], self.resource_name, 'index')
-
-    def test_services_list_with_host_binary(self):
-        req = fakes.HTTPRequest.blank(
-            "/services?binary=manila-share&state=up", version='2.7')
-        req.environ['manila.context'] = self.context
-
-        res_dict = self.controller.index(req)
-
-        response = {'services': [fake_response_service_list['services'][1], ]}
-        self.assertEqual(response, res_dict)
-        self.mock_policy_check.assert_called_once_with(
-            req.environ['manila.context'], self.resource_name, 'index')
+        mock__index.assert_called_once_with(req)
 
     @ddt.data(
         ('os-services', '2.6', services.ServiceControllerLegacy),

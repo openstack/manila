@@ -33,9 +33,17 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, service):
         """Detailed view of a single service."""
-        keys = ('id', 'binary', 'host', 'zone', 'status',
-                'state', 'updated_at')
-        service_dict = {key: service.get(key) for key in keys}
+        status = 'disabled' if service['disabled'] else 'enabled'
+        service['status'] = status
+        service_dict = {
+            'id': service['id'],
+            'binary': service['binary'],
+            'host': service['host'],
+            'zone': service['availability_zone']['name'],
+            'status': status,
+            'state': service['state'],
+            'updated_at': service['updated_at'],
+        }
         self.update_versioned_resource_dict(request, service_dict, service)
         return service_dict
 
@@ -48,7 +56,6 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("2.83")
     def add_disabled_reason_field(self, context, service_dict, service):
         service_dict.pop('disabled', None)
-        service_dict['status'] = service.get('status')
         service_dict['disabled_reason'] = service.get('disabled_reason')
 
     @common.ViewBuilder.versioned_method("2.86")
