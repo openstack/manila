@@ -3733,7 +3733,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         """Mounts a volume on a junction path."""
         api_args = {
             'volume-name': volume_name,
-            'junction-path': (junction_path if junction_path
+            'junction-path': ('/%s' % junction_path if junction_path
                               else '/%s' % volume_name)
         }
         self.send_request('volume-mount', api_args)

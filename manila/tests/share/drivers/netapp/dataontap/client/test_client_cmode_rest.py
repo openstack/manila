@@ -2984,7 +2984,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
     def test_mount_volume_with_junction_path(self):
         volume_name = fake.SHARE_NAME
-        junction_path = '/fake_path'
+        junction_path = 'fake_path'
         volume = fake.VOLUME
 
         self.mock_object(self.client, '_get_volume_by_args',
@@ -2996,7 +2996,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         uuid = volume['uuid']
 
         body = {
-            'nas.path': junction_path
+            'nas.path': '/%s' % junction_path
         }
 
         self.client.send_request.assert_called_once_with(

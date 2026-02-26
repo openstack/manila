@@ -5214,13 +5214,13 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_mount_volume(self):
 
         self.mock_object(self.client, 'send_request')
-        fake_path = '/fake_path'
+        fake_path = 'fake_path'
 
         self.client.mount_volume(fake.SHARE_NAME, junction_path=fake_path)
 
         volume_mount_args = {
             'volume-name': fake.SHARE_NAME,
-            'junction-path': fake_path,
+            'junction-path': '/%s' % fake_path,
         }
 
         self.client.send_request.assert_has_calls([
