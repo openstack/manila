@@ -183,6 +183,11 @@ class Detail(object):
           "or create a new subnet/share network. If this doesn't work, "
           "contact your administrator to troubleshoot "
           "issues with your network."))
+    UNSUPPORTED_REPLICA_CREATE_CONFIG = (
+        '034',
+        _("Share driver has failed to create share replica "
+          "because of unsupported configuration options. "
+          "Please try again with a different configuration."))
 
     ALL = (
         UNKNOWN_ERROR,
@@ -217,7 +222,8 @@ class Detail(object):
         UPDATE_METADATA_FAILURE,
         UPDATE_METADATA_NOT_DELETED,
         TARGETED_RESTORE_UNSUPPORTED,
-        NEUTRON_SUBNET_FULL
+        NEUTRON_SUBNET_FULL,
+        UNSUPPORTED_REPLICA_CREATE_CONFIG
     )
 
     # Exception and detail mappings

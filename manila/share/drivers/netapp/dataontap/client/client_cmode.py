@@ -5089,6 +5089,22 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             if e.code != netapp_api.ERELATION_EXISTS:
                 raise
 
+    def _snapmirror_path(self, vserver, volume=None):
+        """Return a formatted SnapMirror endpoint path.
+
+        :param vserver: the vServer (SVM) name.
+        :param volume: optional volume name. When provided the path is
+            ``<vserver>:<volume>`` (volume endpoint); when omitted the
+            path is ``<vserver>:`` (SVM endpoint).
+        :returns: formatted path string, or ``None`` if *vserver* is
+            ``None``.
+        """
+        if vserver is None:
+            return None
+        if volume:
+            return f"{vserver}:{volume}"
+        return f"{vserver}:"
+
     def _build_snapmirror_request(self, source_path=None, dest_path=None,
                                   source_vserver=None, dest_vserver=None,
                                   source_volume=None, dest_volume=None):
@@ -5114,8 +5130,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def initialize_snapmirror_vol(self, source_vserver, source_volume,
                                   dest_vserver, dest_volume,
                                   source_snapshot=None,
-                                  transfer_priority=None):
+                                  transfer_priority=None,
+                                  state=None):
         """Initializes a SnapMirror relationship between volumes."""
+        # NOTE(kumart): The 'state' argument is always None
+        # as it is not required for ZAPI. It was kept in the signature
+        # due to compatibility with the REST implementation.
+
         return self._initialize_snapmirror(
             source_vserver=source_vserver, dest_vserver=dest_vserver,
             source_volume=source_volume, dest_volume=dest_volume,
@@ -5126,8 +5147,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def initialize_snapmirror_svm(self, source_vserver, dest_vserver,
                                   transfer_priority=None):
         """Initializes a SnapMirror relationship between vServer."""
-        source_path = source_vserver + ':'
-        dest_path = dest_vserver + ':'
+        source_path = self._snapmirror_path(source_vserver)
+        dest_path = self._snapmirror_path(dest_vserver)
         return self._initialize_snapmirror(source_path=source_path,
                                            dest_path=dest_path,
                                            transfer_priority=transfer_priority)
@@ -5181,9 +5202,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                    "List returned: %s." % snapmirror_destinations_list)
             raise exception.NetAppException(msg)
 
+        source_path = self._snapmirror_path(source_vserver, source_volume)
+        dest_path = self._snapmirror_path(dest_vserver, dest_volume)
+
         api_args = self._build_snapmirror_request(
-            source_vserver=source_vserver, dest_vserver=dest_vserver,
-            source_volume=source_volume, dest_volume=dest_volume)
+            source_path=source_path, dest_path=dest_path)
         api_args['relationship-info-only'] = (
             'true' if relationship_info_only else 'false')
 
@@ -5202,8 +5225,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def release_snapmirror_svm(self, source_vserver, dest_vserver,
                                relationship_info_only=False):
         """Removes a SnapMirror relationship on the source endpoint."""
-        source_path = source_vserver + ':'
-        dest_path = dest_vserver + ':'
+        source_path = self._snapmirror_path(source_vserver)
+        dest_path = self._snapmirror_path(dest_vserver)
         dest_info = self._build_snapmirror_request(
             source_path=source_path, dest_path=dest_path)
         self._ensure_snapmirror_v2()
@@ -5221,16 +5244,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def quiesce_snapmirror_vol(self, source_vserver, source_volume,
                                dest_vserver, dest_volume):
         """Disables future transfers to a SnapMirror destination."""
-        self._quiesce_snapmirror(source_vserver=source_vserver,
-                                 dest_vserver=dest_vserver,
-                                 source_volume=source_volume,
-                                 dest_volume=dest_volume)
+        source_path = self._snapmirror_path(source_vserver, source_volume)
+        dest_path = self._snapmirror_path(dest_vserver, dest_volume)
+        self._quiesce_snapmirror(source_path=source_path,
+                                 dest_path=dest_path)
 
     @na_utils.trace
     def quiesce_snapmirror_svm(self, source_vserver, dest_vserver):
         """Disables future transfers to a SnapMirror destination."""
-        source_path = source_vserver + ':'
-        dest_path = dest_vserver + ':'
+        source_path = self._snapmirror_path(source_vserver)
+        dest_path = self._snapmirror_path(dest_vserver)
         self._quiesce_snapmirror(source_path=source_path, dest_path=dest_path)
 
     @na_utils.trace
@@ -5251,18 +5274,18 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                              dest_vserver, dest_volume,
                              clear_checkpoint=False):
         """Stops ongoing transfers for a SnapMirror relationship."""
-        self._abort_snapmirror(source_vserver=source_vserver,
-                               dest_vserver=dest_vserver,
-                               source_volume=source_volume,
-                               dest_volume=dest_volume,
+        source_path = self._snapmirror_path(source_vserver, source_volume)
+        dest_path = self._snapmirror_path(dest_vserver, dest_volume)
+        self._abort_snapmirror(source_path=source_path,
+                               dest_path=dest_path,
                                clear_checkpoint=clear_checkpoint)
 
     @na_utils.trace
     def abort_snapmirror_svm(self, source_vserver, dest_vserver,
                              clear_checkpoint=False):
         """Stops ongoing transfers for a SnapMirror relationship."""
-        source_path = source_vserver + ':'
-        dest_path = dest_vserver + ':'
+        source_path = self._snapmirror_path(source_vserver)
+        dest_path = self._snapmirror_path(dest_vserver)
         self._abort_snapmirror(source_path=source_path, dest_path=dest_path,
                                clear_checkpoint=clear_checkpoint)
 
@@ -5289,16 +5312,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def break_snapmirror_vol(self, source_vserver, source_volume,
                              dest_vserver, dest_volume):
         """Breaks a data protection SnapMirror relationship."""
-        self._break_snapmirror(source_vserver=source_vserver,
-                               dest_vserver=dest_vserver,
-                               source_volume=source_volume,
-                               dest_volume=dest_volume)
+        source_path = self._snapmirror_path(source_vserver, source_volume)
+        dest_path = self._snapmirror_path(dest_vserver, dest_volume)
+        self._break_snapmirror(source_path=source_path,
+                               dest_path=dest_path)
 
     @na_utils.trace
     def break_snapmirror_svm(self, source_vserver=None, dest_vserver=None):
         """Breaks a data protection SnapMirror relationship."""
-        source_path = source_vserver + ':' if source_vserver else None
-        dest_path = dest_vserver + ':' if dest_vserver else None
+        source_path = self._snapmirror_path(source_vserver)
+        dest_path = self._snapmirror_path(dest_vserver)
         self._break_snapmirror(source_path=source_path, dest_path=dest_path)
 
     @na_utils.trace
@@ -5359,16 +5382,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def delete_snapmirror_vol(self, source_vserver, source_volume,
                               dest_vserver, dest_volume):
         """Destroys a SnapMirror relationship between volumes."""
-        self._delete_snapmirror(source_vserver=source_vserver,
-                                dest_vserver=dest_vserver,
-                                source_volume=source_volume,
-                                dest_volume=dest_volume)
+        source_path = self._snapmirror_path(source_vserver, source_volume)
+        dest_path = self._snapmirror_path(dest_vserver, dest_volume)
+        self._delete_snapmirror(source_path=source_path,
+                                dest_path=dest_path)
 
     @na_utils.trace
     def delete_snapmirror_svm(self, source_vserver, dest_vserver):
         """Destroys a SnapMirror relationship between vServers."""
-        source_path = source_vserver + ':'
-        dest_path = dest_vserver + ':'
+        source_path = self._snapmirror_path(source_vserver)
+        dest_path = self._snapmirror_path(dest_vserver)
         self._delete_snapmirror(source_path=source_path, dest_path=dest_path)
 
     @na_utils.trace
@@ -5401,8 +5424,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def update_snapmirror_svm(self, source_vserver, dest_vserver):
         """Schedules a snapmirror update between vServers."""
-        source_path = source_vserver + ':'
-        dest_path = dest_vserver + ':'
+        source_path = self._snapmirror_path(source_vserver)
+        dest_path = self._snapmirror_path(dest_vserver)
         self._update_snapmirror(source_path=source_path, dest_path=dest_path)
 
     @na_utils.trace
@@ -5427,16 +5450,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def resume_snapmirror_vol(self, source_vserver, source_volume,
                               dest_vserver, dest_volume):
         """Resume a SnapMirror relationship if it is quiesced."""
-        self._resume_snapmirror(source_vserver=source_vserver,
-                                dest_vserver=dest_vserver,
-                                source_volume=source_volume,
-                                dest_volume=dest_volume)
+        source_path = self._snapmirror_path(source_vserver, source_volume)
+        dest_path = self._snapmirror_path(dest_vserver, dest_volume)
+        self._resume_snapmirror(source_path=source_path, dest_path=dest_path)
 
     @na_utils.trace
     def resume_snapmirror_svm(self, source_vserver, dest_vserver):
         """Resume a SnapMirror relationship if it is quiesced."""
-        source_path = source_vserver + ':'
-        dest_path = dest_vserver + ':'
+        source_path = self._snapmirror_path(source_vserver)
+        dest_path = self._snapmirror_path(dest_vserver)
         self._resume_snapmirror(source_path=source_path, dest_path=dest_path)
 
     @na_utils.trace
@@ -5460,16 +5482,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def resync_snapmirror_vol(self, source_vserver, source_volume,
                               dest_vserver, dest_volume):
         """Resync a SnapMirror relationship between volumes."""
-        self._resync_snapmirror(source_vserver=source_vserver,
-                                dest_vserver=dest_vserver,
-                                source_volume=source_volume,
-                                dest_volume=dest_volume)
+        source_path = self._snapmirror_path(source_vserver, source_volume)
+        dest_path = self._snapmirror_path(dest_vserver, dest_volume)
+        self._resync_snapmirror(source_path=source_path, dest_path=dest_path)
 
     @na_utils.trace
     def resync_snapmirror_svm(self, source_vserver, dest_vserver):
         """Resync a SnapMirror relationship between vServers."""
-        source_path = source_vserver + ':'
-        dest_path = dest_vserver + ':'
+        source_path = self._snapmirror_path(source_vserver)
+        dest_path = self._snapmirror_path(dest_vserver)
         self._resync_snapmirror(source_path=source_path, dest_path=dest_path)
 
     @na_utils.trace
@@ -5512,8 +5533,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def get_snapmirrors_svm(self, source_vserver=None, dest_vserver=None,
                             desired_attributes=None):
-        source_path = source_vserver + ':' if source_vserver else None
-        dest_path = dest_vserver + ':' if dest_vserver else None
+        source_path = self._snapmirror_path(source_vserver)
+        dest_path = self._snapmirror_path(dest_vserver)
         return self.get_snapmirrors(source_path=source_path,
                                     dest_path=dest_path,
                                     desired_attributes=desired_attributes)
@@ -7095,3 +7116,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             }
             data_lif_info.append(lif_info_node)
         return data_lif_info
+
+    @na_utils.trace
+    def get_desired_sync_snapmirror_state(self):
+        """Returns the desired Sync SnapMirror state for ZAPI."""
+        return na_utils.SM_SNAPMIRRORED_STATE

@@ -58,6 +58,22 @@ CLONE_SPLIT_STATUS_ONGOING = 'ongoing'
 CLONE_SPLIT_STATUS_UNKNOWN = 'unknown'
 CLONE_SPLIT_STATUS_FINISHED = 'finished'
 
+SYNC_POLICY_NAME = 'Sync'
+STRICT_SYNC_POLICY_NAME = 'StrictSync'
+SUPPORTED_SYNC_POLICIES = (SYNC_POLICY_NAME, STRICT_SYNC_POLICY_NAME)
+
+SYNC_POLICY_TYPE_NAME = 'sync'
+ASYNC_POLICY_TYPE_NAME = 'async'
+ZAPI_STRICT_SYNC_POLICY_TYPE_NAME = 'strict_sync_mirror'
+ZAPI_SYNC_POLICY_TYPE_NAME = 'sync_mirror'
+
+SM_SNAPMIRRORED_STATE = 'snapmirrored'
+SM_IN_SYNC_STATE = 'in_sync'
+SM_PREPARING_STATE = 'preparing'
+SM_TRANSFERRING_STATE = 'transferring'
+SM_FINALIZING_STATE = 'finalizing'
+SM_SYNCHRONIZING_STATE = 'synchronizing'
+
 
 class NetAppDriverException(exception.ShareBackendException):
     message = _("NetApp Manila Driver exception.")
