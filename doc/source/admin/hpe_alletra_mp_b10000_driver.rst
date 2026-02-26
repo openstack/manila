@@ -70,11 +70,11 @@ The following driver-specific extra specs are supported by Alletra MP B10000:
    this reduce type are created on the backend. The reduce setting is applied
    at share creation time and cannot be changed for existing shares.
 
-   The ``reduce`` parameter controls the ``compression`` and ``dedup`` capabilities
+   The ``reduce`` parameter controls the ``compression`` and ``dedupe`` capabilities
    of the share:
 
-   - If reduce = true: compression = true, dedup = true
-   - If reduce = false: compression = false, dedup = false
+   - If reduce = true: compression = true, dedupe = true
+   - If reduce = false: compression = false, dedupe = false
 
    If the reduce key is not provided, its value defaults to ``true``.
 
@@ -170,38 +170,16 @@ IP-based access rules are required for NFS shares.
    permissions on the backend Alletra B10000 array. You must explicitly create
    access rules to allow client access.
 
-To allow read-write access:
-
-.. code-block:: console
-
-   $ openstack share access create <share> ip <ip-address> --access-level rw
-
-To allow read-only access:
-
-.. code-block:: console
-
-   $ openstack share access create <share> ip <ip-address> --access-level ro
-
-To view current access rules:
-
-.. code-block:: console
-
-   $ openstack share access list <share>
-
-To remove access:
-
-.. code-block:: console
-
-   $ openstack share access delete <share> <access-id>
+For CLI commands and more information on managing access rules,
+see :ref:`manage access to share <access_to_share>`.
 
 Extending Shares
 ----------------
 
 The driver supports extending shares to increase their size.
 
-.. code-block:: console
-
-   $ openstack share resize <share> <new-size>
+For CLI commands and more information on extending shares,
+see :ref:`share resize <shared_file_systems_share_resize>`.
 
 .. note::
 
@@ -245,25 +223,6 @@ Before managing an existing share, ensure the following requirements are met:
 
       $ setfilesystem -size 500 <filesystem_name>
 
-Managing a Share
-~~~~~~~~~~~~~~~~
-
-To manage an existing share:
-
-.. code-block:: console
-
-   $ openstack share adopt <host>@<backend>#<pool> <protocol> <export-path> --share-type <share-type> --name <share-name>
-
-Unmanaging Shares
-~~~~~~~~~~~~~~~~~
-
-When a share is unmanaged, it is removed from Manila management but remains
-intact on the backend array.
-
-.. code-block:: console
-
-   $ openstack share abandon <share>
-
 Ensure Shares Operation
 -----------------------
 
@@ -279,9 +238,8 @@ If the backend fileshare export path changes due to file port IP change
 or other reasons, the administrator must manually trigger the ensure shares
 command in OpenStack to update the latest export paths.
 
-.. code-block:: console
-
-   $ openstack share service ensure shares <host>
+Refer to :ref:`recalculating the shares export location <shared_file_systems_services_manage.rst>`
+for details on manually triggering the ensure shares operation.
 
 Driver Capabilities
 -------------------
@@ -327,21 +285,6 @@ Common Issues
    - Clear all access rules from the backend share
    - Verify filesystem size is a multiple of 1 GiB
    - Ensure share type's reduce value matches the backend share
-
-Checking Driver Status
-~~~~~~~~~~~~~~~~~~~~~~
-
-To verify the driver is running correctly:
-
-.. code-block:: console
-
-   $ openstack share service list
-
-To check the backend pool status:
-
-.. code-block:: console
-
-   $ openstack share pool list --detail
 
 The :mod:`manila.share.drivers.hpe.alletra_mp_b10000.hpe_alletra_driver` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
