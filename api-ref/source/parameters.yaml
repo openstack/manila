@@ -94,6 +94,18 @@ project_id_quota_request_path:
   in: path
   required: false
   type: string
+qos_type_id_path:
+  description: |
+    The UUID of the qos type.
+  in: path
+  required: true
+  type: string
+qos_type_spec_key_path:
+  description: |
+    The specification key for qos type.
+  in: path
+  required: true
+  type: string
 quota_class_name:
   description:
     The name of the quota class for which to set quotas.
@@ -2388,6 +2400,64 @@ protocol:
   in: body
   required: true
   type: string
+qos_type_description:
+  description: |
+    The description of the qos type.
+  in: body
+  required: true
+  type: string
+  min_version: 2.94
+qos_type_description_body:
+  description: |
+    The description of the qos type.
+  in: body
+  required: true
+  type: string
+qos_type_description_request:
+  description: |
+    The description of the qos type.
+  in: body
+  required: false
+  type: string
+  min_version: 2.94
+qos_type_description_update_request:
+  description: |
+    New description for the qos type.
+  in: body
+  required: false
+  type: string
+qos_type_id_body:
+  description: |
+    The UUID of the qos type.
+  in: body
+  required: true
+  type: string
+qos_type_name:
+  description: |
+    Name of the qos type.
+  in: body
+  required: true
+  type: string
+qos_type_name_request:
+  description: |
+    Name of the qos type.
+  in: body
+  required: false
+  type: string
+qos_type_specs:
+  description: |
+    Specifications of the qos type. These are key=value pairs of
+    parameters that the shares of this qos type are expected to possess.
+  in: body
+  required: true
+  type: object
+qos_type_specs_request_body:
+  description: |
+    Specifications of the qos type. These are key=value pairs of
+    parameters that the shares of this qos type are expected to possess.
+  in: body
+  required: false
+  type: object
 quota_backup_gigabytes:
   description: |
     The number of gigabytes for the backups allowed for each project.

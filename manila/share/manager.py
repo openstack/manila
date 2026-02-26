@@ -920,7 +920,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     share_instance['host'],
                     share_instance['share_type_id'],
                     app_cred=app_cred,
-                    encryption_key_ref=encryption_key_ref
+                    encryption_key_ref=encryption_key_ref,
+                    qos_type_id=share_instance['qos_type_id'],
                 )
                 compatible_share_server = (
                     self._create_share_server_in_backend(
@@ -931,8 +932,8 @@ class ShareManager(manager.SchedulerDependentManager):
         return _wrapped_provide_share_server_for_share()
 
     def _build_server_metadata(self, context, host, share_type_id,
-                               app_cred=None,
-                               encryption_key_ref=None):
+                               app_cred=None, encryption_key_ref=None,
+                               qos_type_id=None):
 
         encryption_key_href = None
         if encryption_key_ref:
@@ -944,6 +945,7 @@ class ShareManager(manager.SchedulerDependentManager):
         metadata = {
             'request_host': host,
             'share_type_id': share_type_id,
+            'qos_type_id': qos_type_id,
             'encryption_key_ref': encryption_key_href,
             'keystone_url': keystone_url,
         }
@@ -1262,10 +1264,18 @@ class ShareManager(manager.SchedulerDependentManager):
 
         share_server = self._get_share_server(context, src_share_instance)
 
+        qos_type_id = None
+        share_type = share_types.get_share_type(context, new_share_type_id)
+        qos_type = share_type.get('extra_specs', {}).get('default_qos_type')
+        if qos_type:
+            qos_db = self.db.qos_type_get_by_name_or_id(context, qos_type)
+            qos_type_id = qos_db['id']
+
         request_spec, dest_share_instance = (
             self.share_api.create_share_instance_and_get_request_spec(
                 context, share_ref, new_az_id, None, dest_host,
-                new_share_network_id, new_share_type_id))
+                new_share_network_id, new_share_type_id,
+                qos_type_id=qos_type_id))
 
         self.db.share_instance_update(
             context, dest_share_instance['id'],

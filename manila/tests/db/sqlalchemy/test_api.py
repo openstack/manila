@@ -5978,3 +5978,28 @@ class ResourceLocksTestCase(test.TestCase):
             self.ctxt, filters=filters1, show_count=True)
         self.assertEqual(0, len(result3))
         self.assertEqual(0, count3)
+
+
+class QosTypesTestCase(test.TestCase):
+    """Test case for qos types."""
+
+    def setUp(self):
+        super(QosTypesTestCase, self).setUp()
+        self.ctxt = context.get_admin_context()
+
+    def test_qos_type_create_with_soft_delete(self):
+        qos1 = db_api.qos_type_create(self.ctxt, {
+            'id': uuidutils.generate_uuid(),
+            'name': 'gold',
+            'description': 'test',
+            })
+
+        db_api.qos_type_delete(self.ctxt, qos1['id'])
+
+        qos2 = db_api.qos_type_create(self.ctxt, {
+            'id': uuidutils.generate_uuid(),
+            'name': 'gold',
+            'description': 'test',
+            })
+
+        self.assertEqual('gold', qos2['name'])

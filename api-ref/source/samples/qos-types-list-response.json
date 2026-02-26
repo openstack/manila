@@ -1,0 +1,24 @@
+{
+    "qos_types": [
+        {
+            "id": "1fa1342b-de9d-4d89-bdc8-af67795c0e52",
+            "specs": {
+                 "policy_type": "adaptive",
+                 "peak_iops": 5000,
+                 "expected_iops": 2000
+            },
+            "name": "testing",
+            "description": "qos type description"
+        },
+        {
+            "id": "2fa1342b-de9d-4d89-bdc8-af67795c0e52",
+            "specs": {
+                 "policy_type": "adaptive",
+                 "peak_iops": 3000,
+                 "expected_iops": 1000
+            },
+            "name": "testing2",
+            "description": "qos type description2"
+        }
+    ]
+}

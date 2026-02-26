@@ -1662,7 +1662,7 @@ def _extract_share_instance_values(values):
         'status', 'host', 'scheduled_at', 'launched_at', 'terminated_at',
         'share_server_id', 'share_network_id', 'availability_zone_id',
         'replica_state', 'share_type_id', 'share_type', 'access_rules_status',
-        'mount_point_name', 'encryption_key_ref',
+        'mount_point_name', 'encryption_key_ref', 'qos_type_id',
     ]
     share_instance_values, share_values = (
         _extract_subdict_by_fields(values, share_instance_model_fields)
@@ -7909,3 +7909,223 @@ def encryption_keys_get_all(context, filters=None):
         query = query.filter_by(encryption_key_ref=encryption_key_ref)
 
     return query.all()
+
+###############################
+
+
+@require_context
+def _qos_type_get_query(context, read_deleted=False):
+    return model_query(
+        context,
+        models.QosTypes,
+        read_deleted=read_deleted,
+    ).options(orm.joinedload(models.QosTypes.specs))
+
+
+@require_admin_context
+@context_manager.writer
+def qos_type_create(context, values):
+    """Create a qos type."""
+    values = ensure_model_dict_has_id(values)
+    try:
+        values['specs'] = _metadata_refs(
+            values.get('specs'),
+            models.QosTypeSpecs,
+        )
+        qos_type_ref = models.QosTypes()
+        qos_type_ref.update(values)
+        qos_type_ref.save(session=context.session)
+    except db_exception.DBDuplicateEntry:
+        raise exception.QosTypeExists(id=values['name'])
+
+    return qos_type_get(context, qos_type_ref['id'])
+
+
+@require_admin_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
+def qos_type_update(context, qos_type_id, values):
+    """Update a qos type."""
+    qos_type_ref = _qos_type_get(context, qos_type_id)
+    qos_type_ref.update(values)
+    qos_type_ref.save(session=context.session)
+    return qos_type_get(context, qos_type_ref['id'])
+
+
+@require_admin_context
+@context_manager.writer
+def qos_type_delete(context, qos_type_id):
+    """Delete a qos type."""
+    qos_type_ref = _qos_type_get(context, qos_type_id)
+    shares_count = model_query(
+        context,
+        models.ShareInstance,
+        read_deleted="no",
+    ).filter_by(qos_type_id=qos_type_id).count()
+    if shares_count:
+        msg = ("Deletion of qos type %(qtype)s failed; it is in use by "
+               "%(shares)d shares")
+        msg_args = {'qtype': qos_type_id, 'shares': shares_count}
+        LOG.error(msg, msg_args)
+        raise exception.QosTypeInUse(qos_type_id=qos_type_id)
+
+    model_query(
+        context, models.QosTypeSpecs,
+    ).filter_by(
+        qos_type_id=qos_type_id,
+    ).soft_delete()
+    qos_type_ref.soft_delete(session=context.session)
+
+
+@require_context
+def _qos_type_get(context, qos_type_id):
+    query = _qos_type_get_query(context)
+    result = query.filter_by(id=qos_type_id).first()
+
+    if not result:
+        raise exception.QosTypeNotFound(qos_type_id=qos_type_id)
+    return result
+
+
+@require_context
+@context_manager.reader
+def qos_type_get(context, qos_type_id):
+    """Retrieve a qos type."""
+    result = _qos_type_get(context, qos_type_id)
+    return _dict_with_specs(result, specs_key='specs')
+
+
+def _qos_type_get_by_name(context, name):
+    query = _qos_type_get_query(context)
+    result = query.filter_by(name=name).first()
+
+    if not result:
+        raise exception.QosTypeNotFoundByName(qos_type_name=name)
+    return result
+
+
+@require_context
+@context_manager.reader
+def qos_type_get_by_name(context, name):
+    """Retrieve a qos type by name."""
+    result = _qos_type_get_by_name(context, name)
+    return _dict_with_specs(result, specs_key='specs')
+
+
+@require_context
+@context_manager.reader
+def qos_type_get_by_name_or_id(context, name_or_id):
+    """Return a dict describing specific qos_type using its name or ID."""
+    try:
+        return qos_type_get(context, name_or_id)
+    except exception.QosTypeNotFound:
+        try:
+            return qos_type_get_by_name(context, name_or_id)
+        except exception.QosTypeNotFoundByName:
+            return None
+
+
+@require_context
+@context_manager.reader
+def qos_type_get_all(context, filters=None, limit=None, offset=None,
+                     sort_key=None, sort_dir=None):
+    """Retrieve a qos type by filters."""
+
+    sort_key = sort_key or 'created_at'
+    sort_dir = sort_dir or 'desc'
+    filters = copy.deepcopy(filters) if filters else {}
+
+    qos_types = models.QosTypes
+    query = model_query(
+        context, qos_types, read_deleted="no"
+    ).options(orm.joinedload(models.QosTypes.specs))
+
+    legal_filter_keys = ('id', 'name', 'name~', 'description~', 'description')
+
+    query = exact_filter(query, qos_types, filters, legal_filter_keys)
+    query = apply_sorting(qos_types, query, sort_key, sort_dir)
+
+    if limit is not None:
+        query = query.limit(limit)
+
+    if offset:
+        query = query.offset(offset)
+
+    rows = query.all()
+
+    result = {}
+    for row in rows:
+        result[row['name']] = _dict_with_specs(row, specs_key='specs')
+
+    return result
+
+
+def _qos_type_specs_query(context, qos_type_id):
+    return model_query(
+        context, models.QosTypeSpecs, read_deleted="no",
+    ).filter_by(
+        qos_type_id=qos_type_id,
+    ).options(orm.joinedload(models.QosTypeSpecs.qos_type))
+
+
+@require_context
+@context_manager.reader
+def qos_type_specs_get(context, qos_type_id):
+    rows = _qos_type_specs_query(context, qos_type_id).all()
+    result = {}
+    for row in rows:
+        result[row['key']] = row['value']
+
+    return result
+
+
+@require_admin_context
+@context_manager.writer
+def qos_type_specs_delete(context, qos_type_id, key):
+    _qos_type_specs_get_item(context, qos_type_id, key)
+    _qos_type_specs_query(
+        context, qos_type_id,
+    ).filter_by(key=key).soft_delete()
+
+
+def _qos_type_specs_get_item(context, qos_type_id, key):
+    result = _qos_type_specs_query(
+        context, qos_type_id,
+    ).filter_by(
+        key=key,
+    ).options(
+        orm.joinedload(models.QosTypeSpecs.qos_type),
+    ).first()
+
+    if not result:
+        raise exception.QosTypeSpecsNotFound(
+            qos_type_id=qos_type_id,
+            key=key,
+        )
+
+    return result
+
+
+@require_admin_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
+def qos_type_specs_update_or_create(context, qos_type_id, specs):
+    spec_ref = None
+    for key, value in specs.items():
+        try:
+            spec_ref = _qos_type_specs_get_item(
+                context, qos_type_id, key,
+            )
+        except exception.QosTypeSpecsNotFound:
+            spec_ref = models.QosTypeSpecs()
+        spec_ref.update(
+            {
+                "key": key,
+                "value": value,
+                "qos_type_id": qos_type_id,
+                "deleted": 'False',
+            }
+        )
+        spec_ref.save(session=context.session)
+
+    return specs

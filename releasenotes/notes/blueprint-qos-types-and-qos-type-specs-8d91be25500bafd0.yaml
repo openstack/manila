@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added support for QoS type and QoS type specs. The QoS type with its specs
+    will be used to define certain quality of service(qos) features by backend
+    storage driver. The QoS type will be used as template from which backend
+    driver will create QoS polices and apply those to resources like share,
+    share servers etc.

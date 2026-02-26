@@ -1913,3 +1913,62 @@ def encryption_keys_get_count(context, filters=None):
 def encryption_keys_get_all(context, filters=None):
     """Get all encryption keys."""
     return IMPL.encryption_keys_get_all(context, filters=filters)
+
+##################
+
+
+def qos_type_create(context, values):
+    """Create a qos type."""
+    return IMPL.qos_type_create(context, values)
+
+
+def qos_type_update(context, qos_type_id, values):
+    """Update a qos type."""
+    return IMPL.qos_type_update(context, qos_type_id, values)
+
+
+def qos_type_delete(context, qos_type_id):
+    """Delete a qos type."""
+    return IMPL.qos_type_delete(context, qos_type_id)
+
+
+def qos_type_get(context, qos_type_id):
+    """Retrieve a qos type."""
+    return IMPL.qos_type_get(context, qos_type_id)
+
+
+def qos_type_get_by_name(context, qos_type_name):
+    """Retrieve a qos type."""
+    return IMPL.qos_type_get_by_name(context, qos_type_name)
+
+
+def qos_type_get_by_name_or_id(context, name_or_id):
+    """Get qos type by name or ID and return None if not found."""
+    return IMPL.qos_type_get_by_name_or_id(context, name_or_id)
+
+
+def qos_type_get_all(context, filters=None, limit=None, offset=None,
+                     sort_key=None, sort_dir=None):
+    """Retrieve all qos types."""
+    return IMPL.qos_type_get_all(
+        context, filters=filters, limit=limit, offset=offset,
+        sort_key=sort_key, sort_dir=sort_dir)
+
+
+def qos_type_specs_get(context, qos_type_id):
+    """Get all specs for a qos type."""
+    return IMPL.qos_type_specs_get(context, qos_type_id)
+
+
+def qos_type_specs_delete(context, qos_type_id, key):
+    """Delete the given specs item."""
+    return IMPL.qos_type_specs_delete(context, qos_type_id, key)
+
+
+def qos_type_specs_update_or_create(context, qos_type_id, specs):
+    """Create or update qos type specs.
+
+    This adds or modifies the key/value pairs specified in the specs
+    dict argument.
+    """
+    return IMPL.qos_type_specs_update_or_create(context, qos_type_id, specs)

@@ -1,0 +1,7 @@
+{
+    "specs": {
+        "policy_type": "adaptive",
+        "peak_iops": 5000,
+        "expected_iops": 2000
+    }
+}

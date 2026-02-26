@@ -72,6 +72,7 @@ def generate_stats(host_state, properties):
         'share_replicas_migration_support': (
             host_state.share_replicas_migration_support),
         'encryption_support': host_state.encryption_support,
+        'qos_type_support': host_state.qos_type_support,
     }
 
     host_caps = host_state.capabilities
@@ -147,6 +148,7 @@ def capabilities_satisfied(capabilities, extra_specs):
     # These extra-specs are not capabilities for matching hosts
     ignored_extra_specs = (
         'availability_zones', 'capabilities:availability_zones',
+        'default_qos_type',
     )
 
     for key, req in extra_specs.items():

@@ -360,6 +360,7 @@ class ExtraSpecs(object):
     PROVISIONING_MIN_SHARE_SIZE = "provisioning:min_share_size"
     PROVISIONING_MAX_SHARE_EXTEND_SIZE = "provisioning:max_share_extend_size"
     PROVISIONING_MOUNT_POINT_PREFIX = "provisioning:mount_point_prefix"
+    DEFAULT_QOS_TYPE = "default_qos_type"
 
     # Extra specs containers
     REQUIRED = (
@@ -379,6 +380,7 @@ class ExtraSpecs(object):
         PROVISIONING_MIN_SHARE_SIZE,
         PROVISIONING_MAX_SHARE_EXTEND_SIZE,
         PROVISIONING_MOUNT_POINT_PREFIX,
+        DEFAULT_QOS_TYPE,
     )
 
     # NOTE(cknight): Some extra specs are necessary parts of the Manila API and
