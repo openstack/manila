@@ -33,9 +33,10 @@ class FileSharesettingHandler(object):
         self.validator.validate_get_filesharesettings_be_resp(
             be_filesharesettings)
 
-        fe_filesharesettings = self.convert.\
-            convert_filesharesettings_to_fe_model(
+        fe_filesharesettings = (
+            self.convert.convert_filesharesettings_to_fe_model(
                 be_filesharesettings)
+        )
 
         return fe_filesharesettings
 
@@ -59,9 +60,10 @@ class FileSharesettingModelConvert(object):
         fe_filesharesettings_resp = []
         filesharesetting_dict = be_filesharesettings['members']
         for key in filesharesetting_dict:
-            fe_filesharesetting = self.\
-                convert_filesharesetting_by_id_to_fe_model(
+            fe_filesharesetting = (
+                self.convert_filesharesetting_by_id_to_fe_model(
                     filesharesetting_dict[key])
+            )
             fe_filesharesettings_resp.append(fe_filesharesetting)
         return fe_filesharesettings_resp
 

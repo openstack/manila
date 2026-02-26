@@ -101,8 +101,7 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
         existing_session_key = None
         if (self.rest_client is not None and
                 self.rest_client.session_key is not None):
-            existing_session_key \
-                = self.rest_client.session_key
+            existing_session_key = self.rest_client.session_key
 
         # Initialize rest client
         self.rest_client = rest_client.HpeAlletraRestClient(
@@ -143,8 +142,9 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
 
         extra_specs = share_types.get_extra_specs_from_share(share)
 
-        be_fileshare_name, be_filesystem_name, be_sharesetting_name \
-            = self.fileshare_handler.create_fileshare(share, extra_specs)
+        be_fileshare_name, be_filesystem_name, be_sharesetting_name = (
+            self.fileshare_handler.create_fileshare(share, extra_specs)
+        )
 
         # Get backend fileshare uid using get fileshares response
         try:
@@ -175,8 +175,9 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
 
         try:
             (be_share_id, be_share_name, be_filesystem_name,
-             be_sharesetting_name) = self.privatestorage_handler.\
-                get_share_by_id(share['id'])
+             be_sharesetting_name) = (
+                self.privatestorage_handler.get_share_by_id(share['id'])
+            )
         except Exception as e:
             LOG.error(
                 "Failed to retrieve share %(share_id)s from private "
@@ -206,8 +207,9 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
             self.privatestorage_handler.delete_share_by_id(share['id'])
             return
 
-        self.fileshare_handler.\
-            delete_fileshare_by_id(share['id'], be_share_id)
+        self.fileshare_handler.delete_fileshare_by_id(
+            share['id'], be_share_id
+        )
 
         self.privatestorage_handler.delete_share_by_id(share['id'])
 
@@ -216,8 +218,10 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
 
         extra_specs = share_types.get_extra_specs_from_share(share)
 
-        be_share_id, be_share_name, be_filesystem_name, be_sharesetting_name \
-            = self.privatestorage_handler.get_share_by_id(share['id'])
+        (be_share_id, be_share_name, be_filesystem_name,
+         be_sharesetting_name) = (
+            self.privatestorage_handler.get_share_by_id(share['id'])
+        )
 
         self.fileshare_handler._compare_values_with_be_share(
             be_share_id, be_share_name,
@@ -240,8 +244,10 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
 
         extra_specs = share_types.get_extra_specs_from_share(share)
 
-        be_share_id, be_share_name, be_filesystem_name, be_sharesetting_name \
-            = self.privatestorage_handler.get_share_by_id(share['id'])
+        (be_share_id, be_share_name, be_filesystem_name,
+         be_sharesetting_name) = (
+            self.privatestorage_handler.get_share_by_id(share['id'])
+        )
 
         try:
             self.fileshare_handler._compare_values_with_be_share(
@@ -276,14 +282,16 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
 
         extra_specs = share_types.get_extra_specs_from_share(share)
 
-        fe_fileshare, be_filesystem_size = self.\
-            fileshare_handler.manage_fileshare(
-                share, extra_specs)
+        fe_fileshare, be_filesystem_size = (
+            self.fileshare_handler.manage_fileshare(share, extra_specs)
+        )
 
-        manage_existing_resp = self.driver_helper.\
-            _build_manage_share_resp(fe_fileshare['host_ip'],
-                                     fe_fileshare['mount_path'],
-                                     be_filesystem_size)
+        manage_existing_resp = (
+            self.driver_helper._build_manage_share_resp(
+                fe_fileshare['host_ip'],
+                fe_fileshare['mount_path'],
+                be_filesystem_size)
+        )
 
         # Store backend fileshare details in private storage
         self.privatestorage_handler.update_share_by_id(
@@ -300,8 +308,9 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
 
         try:
             (be_share_id, be_share_name, be_filesystem_name,
-             be_sharesetting_name) = self.privatestorage_handler.\
-                get_share_by_id(share['id'])
+             be_sharesetting_name) = (
+                self.privatestorage_handler.get_share_by_id(share['id'])
+            )
         except Exception as e:
             LOG.warning(
                 "Failed to retrieve share %(share_id)s "
@@ -357,9 +366,10 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
         # Process each share
         for share in shares:
             try:
-                ps_be_share_id, ps_be_share_name, ps_be_filesystem_name, \
-                    ps_be_sharesetting_name = self.privatestorage_handler.\
-                    get_share_by_id(share['id'])
+                (ps_be_share_id, ps_be_share_name, ps_be_filesystem_name,
+                 ps_be_sharesetting_name) = (
+                    self.privatestorage_handler.get_share_by_id(share['id'])
+                )
 
                 # Lookup share in the retrieved fileshares
                 fe_fileshare = fe_fileshares_map.get(ps_be_share_id)
@@ -598,8 +608,8 @@ class HPEAlletraPrivateStorageHandler(object):
         be_filesystem_name = ps_share_data.get('alletra_be_filesystem_name')
         be_sharesetting_name = ps_share_data.get(
             'alletra_be_sharesetting_name')
-        return be_share_id, be_share_name, \
-            be_filesystem_name, be_sharesetting_name
+        return (be_share_id, be_share_name,
+                be_filesystem_name, be_sharesetting_name)
 
     def delete_share_by_id(self, fe_share_id):
         if fe_share_id is None:

@@ -327,25 +327,8 @@ Supported Features
 Creating and deleting shares
 ----------------------------
 
-To create a share using the configured share type:
-
-.. code-block:: console
-
-   $ openstack share create --share-type alletra_nfs --name my_share NFS 10
-
-This creates a 10 GB NFS share on the HPE Alletra MP B10000 backend.
-
-To view share details including export location:
-
-.. code-block:: console
-
-   $ openstack share show my_share
-
-To delete a share:
-
-.. code-block:: console
-
-   $ openstack share delete my_share
+Refer to :ref:`share operations <shared_file_systems_crud_share>`
+for CLI commands and more information.
 
 .. note::
 
@@ -366,32 +349,16 @@ IP-based access rules are required for NFS shares.
    permissions on the backend Alletra B10000 array. You must explicitly create
    access rules to allow client access.
 
-To allow read-write access:
-
-.. code-block:: console
-
-   $ openstack share access create <share> ip <ip-address> --access-level rw
-
-To allow read-only access:
-
-.. code-block:: console
-
-   $ openstack share access create <share> ip <ip-address> --access-level ro
-
-To remove access:
-
-.. code-block:: console
-
-   $ openstack share access delete <share> <access-id>
+For CLI commands and more information on managing access rules,
+see :ref:`manage access to share <access_to_share>`.
 
 Share extend
 ------------
 
 Share extend operation is supported by the driver.
 
-.. code-block:: console
-
-   $ openstack share resize <share> <new-size>
+For CLI commands and more information on extending shares,
+see :ref:`share resize <shared_file_systems_share_resize>`.
 
 .. note::
 
@@ -417,9 +384,8 @@ If the backend fileshare export path changes due to file port IP change
 or other reasons, the administrator must manually trigger the ensure shares
 command in OpenStack to update the latest export paths.
 
-.. code-block:: console
-
-   $ openstack share service ensure shares <host>
+Refer to :ref:`recalculating the shares export location <shared_file_systems_services_manage.rst>`
+for details on manually triggering the ensure shares operation.
 
 Manage and unmanage
 -------------------
@@ -427,12 +393,6 @@ Manage and unmanage
 The driver supports the ability to bring an existing share on the HPE Alletra
 array into Manila management. When managing a share, the driver validates that
 the share exists on the backend before bringing it into manila management.
-
-To manage an existing share:
-
-.. code-block:: console
-
-   $ openstack share adopt <host>@<backend>#<pool> NFS <export-path> --share-type <share-type> --name <share-name>
 
 Certain metadata requirements must be satisfied in order to manage an existing share:
 
@@ -467,9 +427,8 @@ Certain metadata requirements must be satisfied in order to manage an existing s
 When unmanage share operation is performed, the driver removes the share from Manila
 management but leaves the share intact on the backend array.
 
-.. code-block:: console
-
-   $ openstack share abandon <share>
+Refer to :ref:`manage and unmanage share <shared_file_systems_manage_and_unmanage_share>`
+for CLI commands and more information.
 
 Restrictions and limitations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

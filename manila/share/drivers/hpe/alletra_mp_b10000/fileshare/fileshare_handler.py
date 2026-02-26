@@ -38,8 +38,10 @@ class FileShareHandler(object):
 
         self.filesystem_handler = filesystem_handler.FileSystemHandler(
             rest_client)
-        self.filesharesetting_handler = filesharesetting_handler.\
-            FileSharesettingHandler(rest_client)
+        self.filesharesetting_handler = (
+            filesharesetting_handler.FileSharesettingHandler(
+                rest_client)
+        )
 
     # BE APIs
     def create_fileshare(self, fe_create_fileshare, extra_specs):
@@ -63,8 +65,10 @@ class FileShareHandler(object):
             "CREATE_FILESHARE " +
             fe_create_fileshare['id'])
 
-        be_fileshare_name, be_filesystem_name, be_sharesetting_name \
-            = self.convert._get_be_share_resource_names(fe_create_fileshare)
+        be_fileshare_name, be_filesystem_name, be_sharesetting_name = (
+            self.convert._get_be_share_resource_names(
+                fe_create_fileshare)
+        )
         msg = _(
             "Create fileshare backend operation completed for id: %(fe_id)s. "
             "Backend share name %(be_name)s") % {
@@ -127,8 +131,10 @@ class FileShareHandler(object):
         be_existing_filesystem_size = None
         if expand_filesystem:
             try:
-                fe_filesystem = self.filesystem_handler.\
-                    _get_filesystem_by_name(be_filesystem_name)
+                fe_filesystem = (
+                    self.filesystem_handler._get_filesystem_by_name(
+                        be_filesystem_name)
+                )
             except Exception as e:
                 msg = _("Edit fileshare failed for id"
                         " %(share_id)s. Error: %(error)s") % {
@@ -197,9 +203,10 @@ class FileShareHandler(object):
     def manage_fileshare(self, fe_manage_fileshare, extra_specs):
         self.validator.validate_manage_fileshare_fe_req(
             fe_manage_fileshare, extra_specs)
-        be_manage_fileshare = self.convert.\
-            convert_manage_fileshare_to_be_model(
+        be_manage_fileshare = (
+            self.convert.convert_manage_fileshare_to_be_model(
                 fe_manage_fileshare, extra_specs)
+        )
 
         try:
             fe_fileshare = self._get_fileshare_by_hostip_mountpath(
@@ -232,9 +239,10 @@ class FileShareHandler(object):
             LOG.error(msg)
             raise exception.HPEAlletraB10000DriverException(reason=msg)
         try:
-            fe_filesharesetting = self.filesharesetting_handler.\
-                _get_filesharesetting_by_name(
+            fe_filesharesetting = (
+                self.filesharesetting_handler._get_filesharesetting_by_name(
                     fe_fileshare['be_sharesetting_name'])
+            )
         except Exception as e:
             msg = (
                 _(
@@ -397,8 +405,11 @@ class FileShareHandler(object):
 class FileShareModelConvert(object):
     # Create fileshare
     def convert_fileshare_to_be_model(self, fe_create_fileshare, extra_specs):
-        be_fileshare_name, be_filesystem_name, be_sharesetting_name \
-            = self._get_be_share_resource_names(fe_create_fileshare)
+        be_fileshare_name, be_filesystem_name, be_sharesetting_name = (
+            self._get_be_share_resource_names(
+                fe_create_fileshare
+            )
+        )
 
         be_filesystem_size_mib = int(fe_create_fileshare['size']) * 1024
 
